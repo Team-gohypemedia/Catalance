@@ -92,48 +92,6 @@ const truncatePhaseLabel = (value, maxLength = 28) => {
     : trimmedValue;
 };
 
-const buildPhaseTickLines = (value, maxLineLength = 12, maxLines = 2) => {
-  if (typeof value !== "string") return [];
-  const trimmedValue = value.trim();
-  if (!trimmedValue) return [];
-
-  const words = trimmedValue.split(/\s+/);
-  const lines = [];
-  let currentLine = "";
-
-  words.forEach((word) => {
-    const candidate = currentLine ? `${currentLine} ${word}` : word;
-
-    if (candidate.length <= maxLineLength) {
-      currentLine = candidate;
-      return;
-    }
-
-    if (currentLine) {
-      lines.push(currentLine);
-    }
-
-    currentLine =
-      word.length > maxLineLength ? truncatePhaseLabel(word, maxLineLength) : word;
-  });
-
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
-  if (lines.length <= maxLines) {
-    return lines;
-  }
-
-  const visibleLines = lines.slice(0, maxLines);
-  visibleLines[maxLines - 1] = truncatePhaseLabel(
-    [visibleLines[maxLines - 1], ...lines.slice(maxLines)].join(" "),
-    maxLineLength,
-  );
-
-  return visibleLines;
-};
-
 const DashboardPanel = ({ className, children, ...props }) => (
   <div
     {...props}
@@ -728,18 +686,6 @@ const ProjectProgressXAxisTick = ({ x, y, payload, phaseLookup }) => {
     return null;
   }
 
-  const compactPhaseLines = buildPhaseTickLines(
-    phase.phaseFullLabel || phase.phaseLabel,
-    12,
-    2,
-  );
-  const phaseCount = phaseLookup.size;
-  const textAnchor = phase.phaseIndex === 0
-    ? "start"
-    : phase.phaseIndex === phaseCount - 1
-      ? "end"
-      : "middle";
-
   const titleColor = phase.isCurrent
     ? "#f3f4f6"
     : phase.isCompleted
@@ -753,20 +699,9 @@ const ProjectProgressXAxisTick = ({ x, y, payload, phaseLookup }) => {
 
   return (
     <g transform={`translate(${x},${y})`}>
-      <text
-        x={0}
-        y={12}
-        textAnchor={textAnchor}
-        fill={titleColor}
-        fontSize="9"
-        fontWeight="600"
-      >
-        {compactPhaseLines.map((line, index) => (
-          <tspan key={`${phase.phaseKey || phase.phaseIndex}-line-${index}`} x="0" dy={index === 0 ? 0 : 12}>
-            {line}
-          </tspan>
-        ))}
-        <tspan x="0" dy={compactPhaseLines.length > 1 ? 14 : 18} fill={summaryColor} fontSize="8.5" fontWeight="500">
+      <text x={0} y={14} textAnchor="middle" fill={titleColor} fontSize="11" fontWeight="600">
+        <tspan x="0">{phase.phaseLabel}</tspan>
+        <tspan x="0" dy="20" fill={summaryColor} fontSize="10" fontWeight="500">
           {phase.taskSummary}
         </tspan>
       </text>
@@ -1096,79 +1031,91 @@ const ProjectProgressChartCard = ({
 
   return (
     <Card className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-accent text-white shadow-none backdrop-blur-[10px]">
-      <CardContent className="px-3 py-4 sm:px-6 sm:py-5">
-        <ChartContainer
-          config={projectProgressChartConfig}
-          className="h-[320px] w-full aspect-auto [&_.recharts-cartesian-axis-tick_text]:fill-[#8f96a3] sm:h-[380px] lg:h-[430px]"
-        >
-          <AreaChart
-            accessibilityLayer
-            data={chartData}
-            margin={{
-              top: 20,
-              right: isMobile ? 6 : 10,
-              left: 0,
-              bottom: isMobile ? 8 : 20,
-            }}
-          >
-            <defs>
-              <linearGradient id={progressFillId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--color-progress)" stopOpacity={0.45} />
-                <stop offset="95%" stopColor="var(--color-progress)" stopOpacity={0.06} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
-            <XAxis
-              type="number"
-              dataKey="phasePosition"
-              domain={[chartStartX, Math.max(chartMaxX, normalizedPhases.length - 1, 0)]}
-              ticks={normalizedPhases.map((_, index) => index)}
-              tickLine={false}
-              axisLine={false}
-              interval={0}
-              height={isMobile ? 14 : 86}
-              tickMargin={isMobile ? 0 : 12}
-              tick={isMobile
-                ? false
-                : (props) => (
-                  <ProjectProgressXAxisTick
-                    {...props}
-                    phaseLookup={phaseLookup}
-                  />
-                )}
-            />
-            <YAxis
-              domain={[0, 100]}
-              ticks={[0, 20, 40, 60, 80, 100]}
-              tickLine={false}
-              axisLine={false}
-              width={isMobile ? 38 : 46}
-              tickMargin={8}
-              tickFormatter={(value) => formatWholePercentage(value)}
-              tick={{ fill: "#a3a3a3", fontSize: isMobile ? 10 : 11 }}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={<ProjectProgressTooltip />}
-            />
-            <Area
-              dataKey="progressValue"
-              type="linear"
-              fill={`url(#${progressFillId})`}
-              fillOpacity={1}
-              connectNulls={false}
-              stroke="var(--color-progress)"
-              strokeWidth={4}
-              dot={<ProjectProgressAreaDot compact={isMobile} />}
-              activeDot={{
-                r: isMobile ? 7 : 9,
-                fill: "#facc15",
-                stroke: "#232323",
-                strokeWidth: isMobile ? 2.5 : 3,
-              }}
-            />
-          </AreaChart>
-        </ChartContainer>
+      <CardContent className="px-3 pb-2 pt-4 sm:px-6 sm:pb-3 sm:pt-5">
+        <p className={cn("mb-3 text-[11px] font-medium text-[#8f96a3] lg:hidden", isMobile && "hidden")}>
+          Swipe horizontally to view the full timeline.
+        </p>
+        <div className={cn(
+          !isMobile && "overflow-x-auto pb-2 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]",
+        )}>
+          <div className={cn(!isMobile && "min-w-[720px] md:min-w-[860px] lg:min-w-0")}>
+            <ChartContainer
+              config={projectProgressChartConfig}
+              className={cn(
+                "w-full aspect-auto [&_.recharts-cartesian-axis-tick_text]:fill-[#8f96a3]",
+                isMobile ? "h-[320px]" : "h-[328px] sm:h-[368px] lg:h-[410px]",
+              )}
+            >
+              <AreaChart
+                accessibilityLayer
+                data={chartData}
+                margin={{
+                  top: 20,
+                  right: isMobile ? 6 : 24,
+                  left: isMobile ? 0 : 4,
+                  bottom: isMobile ? 8 : 12,
+                }}
+              >
+                <defs>
+                  <linearGradient id={progressFillId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-progress)" stopOpacity={0.45} />
+                    <stop offset="95%" stopColor="var(--color-progress)" stopOpacity={0.06} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
+                <XAxis
+                  type="number"
+                  dataKey="phasePosition"
+                  domain={[chartStartX, Math.max(chartMaxX, normalizedPhases.length - 1, 0)]}
+                  ticks={normalizedPhases.map((_, index) => index)}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={0}
+                  height={isMobile ? 14 : 58}
+                  tickMargin={isMobile ? 0 : 14}
+                  tick={isMobile
+                    ? false
+                    : (props) => (
+                      <ProjectProgressXAxisTick
+                        {...props}
+                        phaseLookup={phaseLookup}
+                      />
+                    )}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  ticks={[0, 20, 40, 60, 80, 100]}
+                  tickLine={false}
+                  axisLine={false}
+                  width={isMobile ? 38 : 56}
+                  tickMargin={10}
+                  tickFormatter={(value) => formatWholePercentage(value)}
+                  tick={{ fill: "#a3a3a3", fontSize: isMobile ? 10 : 12 }}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ProjectProgressTooltip />}
+                />
+                <Area
+                  dataKey="progressValue"
+                  type="linear"
+                  fill={`url(#${progressFillId})`}
+                  fillOpacity={1}
+                  connectNulls={false}
+                  stroke="var(--color-progress)"
+                  strokeWidth={4}
+                  dot={<ProjectProgressAreaDot compact={isMobile} />}
+                  activeDot={{
+                    r: isMobile ? 7 : 9,
+                    fill: "#facc15",
+                    stroke: "#232323",
+                    strokeWidth: isMobile ? 2.5 : 3,
+                  }}
+                />
+              </AreaChart>
+            </ChartContainer>
+          </div>
+        </div>
       </CardContent>
 
       <CardFooter className="flex flex-col items-start gap-4 border-t border-white/[0.05] px-4 py-5 text-[#d4d4d4] sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
