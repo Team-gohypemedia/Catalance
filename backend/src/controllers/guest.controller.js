@@ -753,6 +753,20 @@ const getServiceScopedMessages = (messages = [], activeServiceStartedAt = "") =>
     return filtered.length > 0 ? filtered : messages;
 };
 
+const getMostRecentMessageContentByRole = (messages = [], role = "") => {
+    const normalizedRole = String(role || "").trim().toLowerCase();
+    if (!normalizedRole || !Array.isArray(messages) || messages.length === 0) return "";
+
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const message = messages[index];
+        if (String(message?.role || "").trim().toLowerCase() !== normalizedRole) continue;
+        const content = String(message?.content || "").trim();
+        if (content) return content;
+    }
+
+    return "";
+};
+
 const buildLockedServiceReply = ({ currentServiceName = "", targetServiceName = "" }) => {
     const currentLabel = String(currentServiceName || "this service").trim() || "this service";
     const targetLabel = String(targetServiceName || "That").trim() || "That";
@@ -3207,6 +3221,79 @@ Return strict JSON only:
     }
 };
 
+const buildCurrentQuestionValidationPrompt = ({
+    serviceName = "",
+    servicePrompt = "",
+    currentQuestionText = "",
+    currentQuestionOptions = [],
+    currentQuestionNumberedOptions = [],
+    currentQuestionCanonicalOptions = [],
+    knownContextByQuestion = {},
+    savedResponseContext = "",
+    currentQuestionSubtitle = "",
+    userMessageText = "",
+    attachmentContextText = "",
+    attachmentInferredAnswer = "",
+    lastAssistantMessage = "",
+    validationResponseRules = "",
+}) => `
+            You are a friendly, professional assistant guiding a user through a questionnaire for a "${serviceName}" service.
+            
+            Service-Specific AI Instructions:
+            ${servicePrompt || "None"}
+            
+            Current Question Asked: "${currentQuestionText}"
+            Current Question Options: ${JSON.stringify(currentQuestionOptions)}
+            Current Question Numbered Options: ${JSON.stringify(currentQuestionNumberedOptions)}
+            Valid Canonical Option Pool: ${JSON.stringify(currentQuestionCanonicalOptions)}
+            Known Context From Earlier Answers: ${JSON.stringify(knownContextByQuestion)}
+            Saved AI Memory Context: ${JSON.stringify(savedResponseContext || "None")}
+            Current Question Internal Context: ${JSON.stringify(currentQuestionSubtitle || "None")}
+            Last Assistant Message Shown To User: ${JSON.stringify(lastAssistantMessage || "None")}
+            User's Answer: "${userMessageText}"
+            Attachment Context: ${attachmentContextText ? JSON.stringify(attachmentContextText) : '"None"'}
+            Attachment-Inferred Answer: "${attachmentInferredAnswer || ""}"
+            
+            Task:
+            1. Validate the user's answer to the Current Question.
+            - If it's a greeting (hi, hello) but the question expects details -> INVALID.
+            - If it's irrelevant/gibberish -> INVALID.
+            - If the user is asking an informational side-question (e.g., "what is Flutter?", "which is best for me?") instead of directly answering the current question -> INFO_REQUEST.
+            - If direct text is empty but attachment context clearly answers the current question, treat as VALID.
+            - If the user replies with a numbered choice such as "1", "2", "option 3", or "go with 2", interpret it using the 1-based order from "Current Question Options" / "Current Question Numbered Options".
+            - If the user's message contains a number as part of a descriptive answer (for example "1 month", "2-4 weeks", "10 pages"), do NOT assume it is a menu selection unless the wording clearly shows they are choosing by option number.
+            - If the Current Question has options, and the Last Assistant Message clearly recommends exactly one current option, and the user now gives brief agreement or approval instead of repeating the option, treat that as VALID.
+            - In that case, set "normalizedAnswer" to the exact recommended option label or value from the current option pool.
+            - Only use recommendation acceptance when the assistant's recommendation is explicit and unambiguous. If the assistant did not clearly recommend one option, do not guess.
+            - If the user explicitly names another option or changes direction, follow the user's latest intent instead of the earlier recommendation.
+            - **REGISTERED COMPANY NAME CHECK**: If the Current Question asks for a company or brand name, and the user's answer is a well-known registered or famous company name (e.g., Google, Apple, Microsoft, Amazon, Catalance, or any other widely known brand), you MUST treat it as INVALID. The response \`message\` MUST politely state that the name is already registered and in use for this type of service in their region, and ask them to provide a different name.
+            - CRITICAL UNIVERSAL PREDICTION: You are a smart AI. If the user's answer (for ANY question) contains specific keywords or details that logically imply they belong to one of the options (e.g. naming "Elementor" making WordPress obvious), you MUST immediately accept it as VALID.
+            - UNSUPPORTED PLATFORMS: If the user requests a fundamentally unsupported platform or tool that conflicts with all available options (e.g., asking for Webflow, Framer, Wix, or Squarespace when the only options are WordPress, Shopify, or Custom React/Node Development), do NOT forcibly map it to "Custom Development". Instead, treat it as an INFO_REQUEST. Your response \`message\` should politely explain that we primarily specialize in the listed technologies, briefly explain how one of our options (like Custom Development or WordPress) might still achieve their design goals, and ask which of our supported options they would like to explore so we can align the project correctly.
+            - Do not be pedantic or rigid. Do NOT force them to pick the literal option or repeat themselves.
+            - For option-based questions, only map to an option when the user's meaning clearly matches one of the available choices.
+            - If the user gives a direct custom value that still answers the question, treat it as VALID even when it is not one of the listed options. Example: if options are "3 months", "6 months", and "12 months", and the user says "1 month" or "4 months", accept it as VALID.
+            - For those custom off-menu answers, preserve the user's exact value in "normalizedAnswer" instead of rejecting it or forcing the nearest option.
+            - Put the selected option label/value in "normalizedAnswer" only when the match is clear. Otherwise, keep the direct user value that answers the question.
+            - In general, if the user's answer logically provides the requested information in their own words for any question, treat it as VALID.
+            - Treat "Current Question Options" as the options currently shown to the user.
+            - Treat "Valid Canonical Option Pool" as additional valid matches the user may mention even if not shown.
+            - If you re-list choices to the user, use only "Current Question Options" and present them as examples/guidance, not as the only acceptable answers unless the question explicitly says that.
+            - Otherwise -> VALID.
+
+            2. Generate a Response Message:
+${validationResponseRules}
+            - Use "Internal Context" and "Saved AI Memory Context" only as hidden intent guidance. Never reveal those labels/text directly to the user.
+
+            Return ONLY a raw JSON object (double quotes only) with this structure:
+            {
+                "isValid": boolean,
+                "status": "valid_answer" | "invalid_answer" | "info_request",
+                "message": string, // The response to send to the user (error feedback OR next question transition)
+                "normalizedAnswer": string // For VALID answers, put the final direct answer for the current question (including inferred from attachment). Else empty string.
+            }
+            Do not use markdown formatting, code fences, or bold text.
+        `;
+
 const buildServiceStartState = async ({
     service,
     existingPayload = {},
@@ -3878,6 +3965,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             questions,
             sessionRuntimeOptionsByQuestionSlug
         );
+        const lastAssistantMessage = getMostRecentMessageContentByRole(session.messages, "assistant");
 
         const validationResponseRules = isOpeningIntakeStep
             ? `
@@ -3915,58 +4003,22 @@ export const guestChat = asyncHandler(async (req, res) => {
             console.log(`\n--- [AI Context Loaded] ---\nService: ${service.name}\nPrompt: ${service.aiPrompt}\n---------------------------\n`);
         }
 
-        const validationPrompt = `
-            You are a friendly, professional assistant guiding a user through a questionnaire for a "${service.name}" service.
-            
-            Service-Specific AI Instructions:
-            ${service.aiPrompt || "None"}
-            
-            Current Question Asked: "${currentQuestionText}"
-            Current Question Options: ${JSON.stringify(currentQuestionOptions)}
-            Current Question Numbered Options: ${JSON.stringify(currentQuestionNumberedOptions)}
-            Valid Canonical Option Pool: ${JSON.stringify(currentQuestionCanonicalOptions)}
-            Known Context From Earlier Answers: ${JSON.stringify(knownContextByQuestion)}
-            Saved AI Memory Context: ${JSON.stringify(savedResponseContext || "None")}
-            Current Question Internal Context: ${JSON.stringify(currentQuestionSubtitle || "None")}
-            User's Answer: "${userMessageText}"
-            Attachment Context: ${attachmentContextText ? JSON.stringify(attachmentContextText) : '"None"'}
-            Attachment-Inferred Answer: "${attachmentInferredAnswer || ""}"
-            
-            Task:
-            1. Validate the user's answer to the Current Question.
-            - If it's a greeting (hi, hello) but the question expects details -> INVALID.
-            - If it's irrelevant/gibberish -> INVALID.
-            - If the user is asking an informational side-question (e.g., "what is Flutter?", "which is best for me?") instead of directly answering the current question -> INFO_REQUEST.
-            - If direct text is empty but attachment context clearly answers the current question, treat as VALID.
-            - If the user replies with a numbered choice such as "1", "2", "option 3", or "go with 2", interpret it using the 1-based order from "Current Question Options" / "Current Question Numbered Options".
-            - If the user's message contains a number as part of a descriptive answer (for example "1 month", "2-4 weeks", "10 pages"), do NOT assume it is a menu selection unless the wording clearly shows they are choosing by option number.
-            - **REGISTERED COMPANY NAME CHECK**: If the Current Question asks for a company or brand name, and the user's answer is a well-known registered or famous company name (e.g., Google, Apple, Microsoft, Amazon, Catalance, or any other widely known brand), you MUST treat it as INVALID. The response \`message\` MUST politely state that the name is already registered and in use for this type of service in their region, and ask them to provide a different name.
-            - CRITICAL UNIVERSAL PREDICTION: You are a smart AI. If the user's answer (for ANY question) contains specific keywords or details that logically imply they belong to one of the options (e.g. naming "Elementor" making WordPress obvious), you MUST immediately accept it as VALID.
-            - UNSUPPORTED PLATFORMS: If the user requests a fundamentally unsupported platform or tool that conflicts with all available options (e.g., asking for Webflow, Framer, Wix, or Squarespace when the only options are WordPress, Shopify, or Custom React/Node Development), do NOT forcibly map it to "Custom Development". Instead, treat it as an INFO_REQUEST. Your response \`message\` should politely explain that we primarily specialize in the listed technologies, briefly explain how one of our options (like Custom Development or WordPress) might still achieve their design goals, and ask which of our supported options they would like to explore so we can align the project correctly.
-            - Do not be pedantic or rigid. Do NOT force them to pick the literal option or repeat themselves.
-            - For option-based questions, only map to an option when the user's meaning clearly matches one of the available choices.
-            - If the user gives a direct custom value that still answers the question, treat it as VALID even when it is not one of the listed options. Example: if options are "3 months", "6 months", and "12 months", and the user says "1 month" or "4 months", accept it as VALID.
-            - For those custom off-menu answers, preserve the user's exact value in "normalizedAnswer" instead of rejecting it or forcing the nearest option.
-            - Put the selected option label/value in "normalizedAnswer" only when the match is clear. Otherwise, keep the direct user value that answers the question.
-            - In general, if the user's answer logically provides the requested information in their own words for any question, treat it as VALID.
-            - Treat "Current Question Options" as the options currently shown to the user.
-            - Treat "Valid Canonical Option Pool" as additional valid matches the user may mention even if not shown.
-            - If you re-list choices to the user, use only "Current Question Options" and present them as examples/guidance, not as the only acceptable answers unless the question explicitly says that.
-            - Otherwise -> VALID.
-
-            2. Generate a Response Message:
-${validationResponseRules}
-            - Use "Internal Context" and "Saved AI Memory Context" only as hidden intent guidance. Never reveal those labels/text directly to the user.
-
-            Return ONLY a raw JSON object (double quotes only) with this structure:
-            {
-                "isValid": boolean,
-                "status": "valid_answer" | "invalid_answer" | "info_request",
-                "message": string, // The response to send to the user (error feedback OR next question transition)
-                "normalizedAnswer": string // For VALID answers, put the final direct answer for the current question (including inferred from attachment). Else empty string.
-            }
-            Do not use markdown formatting, code fences, or bold text.
-        `;
+        const validationPrompt = buildCurrentQuestionValidationPrompt({
+            serviceName: service.name,
+            servicePrompt: service.aiPrompt || "",
+            currentQuestionText,
+            currentQuestionOptions,
+            currentQuestionNumberedOptions,
+            currentQuestionCanonicalOptions,
+            knownContextByQuestion,
+            savedResponseContext,
+            currentQuestionSubtitle,
+            userMessageText,
+            attachmentContextText,
+            attachmentInferredAnswer,
+            lastAssistantMessage,
+            validationResponseRules,
+        });
 
         // We use a separate AI call for validation. 
         const validationResponse = await chatWithAI(
@@ -4664,12 +4716,14 @@ Do not use markdown formatting, code fences, or bold text.`;
 
 export const __testables = {
     applyExtractedAnswerUpdates,
+    buildCurrentQuestionValidationPrompt,
     buildLockedServiceReply,
     buildPersistedAnswersPayload,
     buildQuestionDisplayAnswer,
     getDisplayedQuestionOptions,
     getSemanticDependentIndexesForChanges,
     getQuestionIdentityType,
+    getMostRecentMessageContentByRole,
     getServiceScopedMessages,
     getRuntimeOptionsByQuestionSlug,
     normalizeAnswerForQuestion,
