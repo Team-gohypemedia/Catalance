@@ -5,11 +5,13 @@ const { __testables } = await import("../guest.controller.js");
 
 const {
   applyExtractedAnswerUpdates,
+  buildCurrentQuestionValidationPrompt,
   buildLockedServiceReply,
   buildPersistedAnswersPayload,
   buildQuestionDisplayAnswer,
   getDisplayedQuestionOptions,
   getQuestionIdentityType,
+  getMostRecentMessageContentByRole,
   getSemanticDependentIndexesForChanges,
   getServiceScopedMessages,
   normalizeAnswerForQuestion,
@@ -216,4 +218,46 @@ test("reopens the business-name step when a corrected personal name matches it",
   );
 
   assert.deepEqual(result, [1]);
+});
+
+test("finds the most recent assistant message for validation context", () => {
+  const messages = [
+    { role: "assistant", content: "Earlier recommendation" },
+    { role: "user", content: "Can you recommend one?" },
+    { role: "assistant", content: "I recommend **Cross-platform** for launch speed." },
+  ];
+
+  assert.equal(
+    getMostRecentMessageContentByRole(messages, "assistant"),
+    "I recommend **Cross-platform** for launch speed."
+  );
+});
+
+test("builds a validation prompt that lets the model accept the assistant recommendation", () => {
+  const prompt = buildCurrentQuestionValidationPrompt({
+    serviceName: "App Development",
+    servicePrompt: "",
+    currentQuestionText: "Which platform do you want to launch on?",
+    currentQuestionOptions: ["Android only", "iOS only", "Android and iOS"],
+    currentQuestionNumberedOptions: [
+      "1. Android only",
+      "2. iOS only",
+      "3. Android and iOS",
+    ],
+    currentQuestionCanonicalOptions: ["Android only", "iOS only", "Android and iOS"],
+    knownContextByQuestion: { "Preferred app type": "Marketplace" },
+    savedResponseContext: "Preferred mobile app development approach: Flutter",
+    currentQuestionSubtitle: "Choose the launch platform",
+    userMessageText: "okay",
+    attachmentContextText: "",
+    attachmentInferredAnswer: "",
+    lastAssistantMessage:
+      "I recommend **Android and iOS** because cross-platform development aligns well with your selected stack.",
+    validationResponseRules: "- If VALID: use one short acknowledgement.",
+  });
+
+  assert.match(prompt, /Last Assistant Message Shown To User/);
+  assert.match(prompt, /I recommend \*\*Android and iOS\*\*/);
+  assert.match(prompt, /brief agreement or approval/);
+  assert.match(prompt, /set "normalizedAnswer" to the exact recommended option label or value/i);
 });
