@@ -1399,14 +1399,19 @@ const ClientDashboardShell = ({
           ) : null}
 
           <section className="mt-14">
-          <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
-                  Active Projects
-                </h2>
-                <span className="size-[15px] rounded-full bg-[#10b981]/10 p-[4.5px]">
-                  <span className="block size-[6px] rounded-full bg-[#10b981]" />
-                </span>
+          <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+                    Active Projects
+                  </h2>
+                  <span className="size-[15px] rounded-full bg-[#10b981]/10 p-[4.5px]">
+                    <span className="block size-[6px] rounded-full bg-[#10b981]" />
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-[#94a3b8]">
+                  Track your active deliveries, budgets, and freelancer progress at a glance.
+                </p>
               </div>
 
               {shouldUseProjectCarousel ? (

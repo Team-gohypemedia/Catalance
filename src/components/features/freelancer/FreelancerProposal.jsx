@@ -10,6 +10,7 @@ import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTopBar";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -18,6 +19,7 @@ import {
   formatINR,
   getFreelancerVisibleBudgetValue,
 } from "@/shared/lib/currency";
+import { cn } from "@/shared/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +45,16 @@ const REJECTION_REASON_OPTIONS = [
 ];
 
 const CUSTOM_REJECTION_REASON_KEY = "custom";
+const GENERIC_PROPOSAL_CATEGORIES = new Set(["project", "general"]);
+const freelancerProposalPanelClassName =
+  "rounded-[24px] border border-[#1e293b] bg-[#303030]/40 backdrop-blur-[6px]";
+const freelancerProposalStatusClasses = {
+  pending: "border-[#856715] bg-[#241c0b] text-[#f4c128]",
+  received: "border-[#856715] bg-[#241c0b] text-[#f4c128]",
+  accepted: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
+  rejected: "border-[#5b2a2a] bg-[#261617] text-[#f49e9e]",
+  awarded: "border-white/10 bg-[#2f3135] text-[#d4d7dd]",
+};
 
 /**
  * Extracts key details (Budget, Timeline) from the proposal text content.
@@ -237,128 +249,153 @@ const ProposalRowCard = ({
   );
   const isPendingProposal = proposal.status === "pending";
   const isProcessing = processingId === proposal.id;
+  const canDeleteProposal = typeof onDelete === "function" && proposal.status !== "accepted";
+  const rejectionReasonText = String(proposal.rejectionReason || "").trim();
+  const showRejectionReason = proposal.status === "rejected" && Boolean(rejectionReasonText);
+  const serviceLabel = useMemo(() => {
+    const normalizedCategory = String(proposal.category || "").trim();
+    if (!normalizedCategory) return "";
+    if (GENERIC_PROPOSAL_CATEGORIES.has(normalizedCategory.toLowerCase())) return "";
+    return normalizedCategory;
+  }, [proposal.category]);
+  const clientInitials = String(proposal.clientName || "Client")
+    .trim()
+    .charAt(0)
+    .toUpperCase();
 
   return (
-    <div className="group relative flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-xl border border-border/50 bg-card/40 hover:bg-card hover:border-primary/20 transition-all duration-300 shadow-sm">
-      {/* Left Content Section */}
-      <div className="flex-1 space-y-4 w-full">
-        {/* Top Row: Badge & Date */}
-        <div className="flex items-center gap-3">
-          <Badge
-            variant="outline"
-            className={`uppercase text-[10px] font-bold tracking-wider px-2 py-1 rounded-md ${config.className.replace(
-              "bg-",
-              "bg-opacity-10 "
-            )}`}
-          >
-            {config.label}
-          </Badge>
-          <span className="text-xs text-muted-foreground font-medium">
-            {proposal.submittedDate}
-          </span>
-        </div>
+    <Card className={cn("shadow-none", freelancerProposalPanelClassName)}>
+      <CardContent className="p-0">
+        <div className="space-y-6 px-5 py-5 sm:px-6 sm:py-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1 space-y-5">
+              <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium uppercase tracking-[0.16em] text-[#94a3b8]">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
+                    freelancerProposalStatusClasses[proposal.status] ||
+                      freelancerProposalStatusClasses.pending,
+                  )}
+                >
+                  {config.label}
+                </Badge>
+                <span>{proposal.submittedDate}</span>
+              </div>
 
-        {/* Title & Client */}
-        <div className="space-y-1">
-          <h3 className="text-xl font-bold text-foreground tracking-tight">
-            {proposal.title}
-          </h3>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Client:</span>
-            <div className="flex items-center gap-1.5 text-foreground font-medium">
-              <Avatar className="h-5 w-5">
-                <AvatarImage src={proposal.clientAvatar} />
-                <AvatarFallback className="text-[10px]">
-                  {proposal.clientName?.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              {proposal.clientName}
+              <div className="space-y-2">
+                <h3 className="text-[2rem] font-semibold tracking-[-0.04em] text-white sm:text-[2.2rem]">
+                  {proposal.title}
+                </h3>
+                {serviceLabel ? (
+                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#8d96a7]">
+                    {serviceLabel}
+                  </p>
+                ) : null}
+                {showRejectionReason ? (
+                  <div className="pt-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-300/80">
+                      Reason
+                    </p>
+                    <p
+                      className="mt-1 max-w-[20rem] text-sm font-medium leading-6 text-rose-100"
+                      title={rejectionReasonText}
+                    >
+                      {rejectionReasonText}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {canDeleteProposal ? (
+              <div className="flex shrink-0 flex-col items-end gap-3 self-start">
+                {canDeleteProposal ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 rounded-full text-[#8d96a7] hover:bg-white/5 hover:text-white"
+                    onClick={() => onDelete(proposal.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="grid grid-cols-2 gap-6 border-t border-white/6 pt-6 lg:grid-cols-[1.2fr_1fr_1fr_auto] lg:items-start">
+            <div className="col-span-2 space-y-2 lg:col-span-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
+                Client
+              </p>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12 border border-white/10">
+                  <AvatarImage src={proposal.clientAvatar} alt={proposal.clientName} />
+                  <AvatarFallback className="bg-[#111214] text-sm font-bold text-primary">
+                    {clientInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-semibold text-white">
+                    {proposal.clientName}
+                  </p>
+                  <p className="text-base text-[#a5acc0]">Client</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
+                Agreed Amount
+              </p>
+              <div className="text-[1.9rem] font-semibold tracking-[-0.03em] text-primary">
+                {budget}
+              </div>
+            </div>
+
+            <div className="space-y-2 text-right lg:text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
+                Delivery
+              </p>
+              <div className="inline-flex items-center justify-end gap-2 text-[1.9rem] font-semibold tracking-[-0.03em] text-white lg:justify-start">
+                <Clock className="h-4.5 w-4.5 text-[#97a1b2]" />
+                <span className="capitalize">{timeline}</span>
+              </div>
+            </div>
+
+            <div className="col-span-2 flex w-full flex-col gap-3 lg:col-span-1 lg:w-[12rem] lg:items-end">
+              <Button
+                className="h-11 rounded-full bg-primary px-6 font-semibold text-[#141414] hover:bg-primary/90 lg:w-full"
+                onClick={() => onOpen(proposal)}
+              >
+                <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                View Details
+              </Button>
+
+              {isPendingProposal ? (
+                <div className="flex w-full flex-col gap-2">
+                  <Button
+                    className="h-11 w-full rounded-full bg-emerald-500 px-6 font-semibold text-black hover:bg-emerald-400"
+                    onClick={() => onAccept(proposal.id)}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? "Accepting..." : "Accept Proposal"}
+                  </Button>
+                  <Button
+                    className="h-11 w-full rounded-full border border-rose-600 bg-rose-600 px-6 font-semibold text-white hover:border-rose-500 hover:bg-rose-500"
+                    onClick={() => onReject(proposal)}
+                    disabled={isProcessing}
+                  >
+                    Reject Proposal
+                  </Button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
-
-        {/* Metrics Row */}
-        <div className="flex flex-wrap items-center gap-x-12 gap-y-4 pt-2">
-          {/* Agreed Amount */}
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
-              Agreed Amount
-            </p>
-            <p className="text-base font-bold text-foreground">{budget}</p>
-          </div>
-
-          {/* Project Status (Mapped from proposal status) */}
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
-              Project Status
-            </p>
-            <p
-              className={`text-base font-medium ${
-                proposal.status === "accepted"
-                  ? "text-blue-400"
-                  : "text-foreground"
-              }`}
-            >
-              {proposal.status === "accepted" ? "In Progress" : config.label}
-            </p>
-          </div>
-
-          {/* Delivery */}
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
-              Delivery
-            </p>
-            <p className="text-base font-bold text-foreground">{timeline}</p>
-          </div>
-        </div>
-
-        {proposal.status === "rejected" && proposal.rejectionReason ? (
-          <div className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-            Reason: {proposal.rejectionReason}
-          </div>
-        ) : null}
-      </div>
-
-      {/* Right Action Section */}
-      <div className="flex w-full flex-wrap items-center justify-end gap-3 md:w-auto md:mt-0">
-        {isPendingProposal ? (
-          <Button
-            variant="outline"
-            className="w-full border-red-500/30 text-red-300 hover:bg-red-500/10 hover:text-red-200 md:w-auto"
-            onClick={() => onReject(proposal)}
-            disabled={isProcessing}
-          >
-            Reject Proposal
-          </Button>
-        ) : null}
-        {isPendingProposal ? (
-          <Button
-            className="w-full bg-emerald-600 text-white hover:bg-emerald-700 md:w-auto"
-            onClick={() => onAccept(proposal.id)}
-            disabled={isProcessing}
-          >
-            {isProcessing ? "Accepting..." : "Accept Proposal"}
-          </Button>
-        ) : null}
-        <Button
-          className="w-full bg-amber-400 px-6 font-semibold text-black hover:bg-amber-500 md:w-auto"
-          onClick={() => onOpen(proposal)}
-        >
-          <ExternalLink className="w-4 h-4 mr-2" />
-          View Details
-        </Button>
-        {onDelete && proposal.status !== "accepted" && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-destructive transition-colors hidden md:flex"
-            onClick={() => onDelete(proposal.id)}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -616,7 +653,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                 </div>
 
                 <div className="flex justify-start lg:justify-end">
-                  <TabsList className="inline-flex h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <TabsList className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-white/[0.08] bg-accent p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                     {[
                       { value: "pending", label: "Pending Approval" },
                       { value: "rejected", label: "Rejected" },
@@ -624,7 +661,10 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                       <TabsTrigger
                         key={item.value}
                         value={item.value}
-                        className="h-11 rounded-full border border-transparent px-5 text-[0.95rem] font-semibold text-muted-foreground shadow-none transition hover:text-foreground data-[state=active]:!border-primary/70 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-none"
+                        className={cn(
+                          "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] text-[#a3a6ad] shadow-none transition hover:text-white sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal data-[state=active]:!border-primary/70 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-none",
+                          item.value === "pending" ? "sm:min-w-[11rem]" : "sm:min-w-[8.5rem]",
+                        )}
                       >
                         {item.label}
                       </TabsTrigger>
