@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
@@ -34,7 +34,7 @@ const PROJECT_PROGRESS_BY_STATUS = Object.freeze({
 
 const projectStatusToneMap = {
   success: "border-[#14532d] bg-[#0c2616] text-[#34d399]",
-  warning: "border-[#5a3b0d] bg-[#2f1e05] text-[#fbbf24]",
+  warning: "border-white/[0.08] bg-white/[0.06] text-primary",
   slate: "border-white/[0.08] bg-white/[0.04] text-[#cbd5e1]",
 };
 
@@ -821,7 +821,7 @@ export const buildProjectCardModel = (project) => {
 export const ProjectCardSkeleton = ({ className }) => (
   <div
     className={cn(
-      "rounded-[28px] border border-white/[0.06] bg-accent p-6",
+      "rounded-[28px] border border-white/[0.06] bg-accent p-4 sm:p-5 xl:p-6",
       className,
     )}
   >
@@ -834,7 +834,7 @@ export const ProjectCardSkeleton = ({ className }) => (
         <Skeleton className="h-4 w-28 bg-white/8" />
       </div>
     </div>
-    <div className="mt-6 grid grid-cols-2 gap-4">
+    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Skeleton className="h-24 rounded-[14px] bg-white/8" />
       <Skeleton className="h-24 rounded-[14px] bg-white/8" />
     </div>
@@ -878,13 +878,16 @@ const ProjectPhaseStep = ({ item }) => {
   const StatusIcon = statusMeta.Icon;
 
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <StatusIcon className={cn("size-5 shrink-0", statusMeta.iconClassName)} />
+    <div className="flex w-full min-w-0 items-start justify-between gap-2.5 sm:items-center sm:gap-3">
+      <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center sm:gap-3">
+        <StatusIcon className={cn("mt-0.5 size-4 shrink-0 sm:mt-0 sm:size-5", statusMeta.iconClassName)} />
 
         <span
           title={item.title || item.label}
-          className={cn("truncate text-[0.88rem] leading-5", statusMeta.textClassName)}
+          className={cn(
+            "block min-w-0 flex-1 text-[0.8rem] leading-4 line-clamp-2 sm:text-[0.88rem] sm:leading-5 sm:truncate",
+            statusMeta.textClassName,
+          )}
         >
           {item.title || item.label}
         </span>
@@ -892,7 +895,7 @@ const ProjectPhaseStep = ({ item }) => {
 
       <span
         className={cn(
-          "inline-flex shrink-0 items-center rounded-full border px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em]",
+          "inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 text-[0.56rem] font-semibold uppercase tracking-[0.1em] sm:px-2 sm:py-1 sm:text-[0.63rem] sm:tracking-[0.12em]",
           statusMeta.badgeClassName,
         )}
       >
@@ -910,6 +913,8 @@ export const ProjectProposalCard = ({
 }) => {
   const [showPhaseDetails, setShowPhaseDetails] = useState(false);
   const [hasFreelancerAvatarError, setHasFreelancerAvatarError] = useState(false);
+  const detailPanelRef = useRef(null);
+  const actionSectionRef = useRef(null);
   const progressText = `${project.phaseProgressValue}%`;
   const showServiceType =
     Boolean(project.serviceType) &&
@@ -919,7 +924,7 @@ export const ProjectProposalCard = ({
     "border border-white/[0.06] bg-white/[0.035] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
   const phaseSteps = Array.isArray(project.currentPhaseSteps) ? project.currentPhaseSteps : [];
   const actionClassName = cn(
-    "flex w-full items-center justify-center rounded-[14px] px-4 py-3.5 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80",
+    "flex w-full items-center justify-center rounded-[14px] px-3 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80 sm:px-4 sm:py-3.5 sm:text-base",
     projectActionToneMap[project.actionTone] || projectActionToneMap.slate,
   );
   const canRenderFreelancerAvatar =
@@ -929,40 +934,78 @@ export const ProjectProposalCard = ({
     setHasFreelancerAvatarError(false);
   }, [project.freelancerAvatar]);
 
+  useEffect(() => {
+    if (!showPhaseDetails || typeof window === "undefined") {
+      return undefined;
+    }
+
+    if (!window.matchMedia("(max-width: 1024px)").matches) {
+      return undefined;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const detailRect = detailPanelRef.current?.getBoundingClientRect();
+      const actionRect = actionSectionRef.current?.getBoundingClientRect();
+      const safeTop = 88;
+      const safeBottom = window.innerHeight - 112;
+
+      if (detailRect && detailRect.top < safeTop) {
+        window.scrollBy({
+          top: detailRect.top - safeTop,
+          behavior: "smooth",
+        });
+        return;
+      }
+
+      if (actionRect && actionRect.bottom > safeBottom) {
+        window.scrollBy({
+          top: actionRect.bottom - safeBottom,
+          behavior: "smooth",
+        });
+      }
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [showPhaseDetails]);
+
   return (
     <article
       className={cn(
-        "flex self-start flex-col rounded-[28px] border border-white/[0.06] bg-accent p-6 transition-transform duration-200 hover:-translate-y-1",
+        "flex h-auto w-full max-w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[28px] border border-white/[0.06] bg-accent p-4 transition-transform duration-200 hover:-translate-y-1 sm:p-5 xl:p-6",
         className,
       )}
     >
-      <div className="flex flex-col">
-        <div className="flex items-start justify-between gap-4">
-          <span className="rounded-[8px] bg-white/[0.06] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#23d18b]">
-            {project.sectionLabel}
-          </span>
+      <div className="flex min-w-0 flex-col">
+        <div className="flex items-start justify-between gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="inline-flex h-7 shrink-0 items-center justify-center whitespace-nowrap rounded-[8px] bg-white/[0.06] px-2.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#23d18b] sm:h-8 sm:px-3 sm:text-[11px] sm:tracking-[0.22em]">
+              {project.sectionLabel}
+            </span>
+          </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-start justify-end gap-2">
             <span
               className={cn(
-                "inline-flex rounded-full border px-3 py-1 text-[0.82rem] font-semibold",
+                "inline-flex h-7 min-w-0 max-w-full shrink items-center justify-center whitespace-nowrap rounded-[8px] border px-2.5 text-[9px] font-bold uppercase tracking-[0.12em] sm:h-8 sm:px-3 sm:text-[0.68rem] sm:tracking-[0.14em]",
                 projectStatusToneMap[project.statusMeta.tone] || projectStatusToneMap.slate,
               )}
+              title={project.statusMeta.label}
             >
               {project.statusMeta.label}
             </span>
-
             <button
               type="button"
               onClick={() => setShowPhaseDetails((current) => !current)}
               aria-expanded={showPhaseDetails}
               aria-label={showPhaseDetails ? "Hide phases" : "Show phases"}
               title={showPhaseDetails ? "Hide phases" : "Show phases"}
-              className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-[#94a3b8] transition-colors hover:bg-white/[0.08] hover:text-white"
+              className="inline-flex h-7 w-7 shrink-0 self-start items-center justify-center rounded-[8px] border border-white/[0.08] bg-white/[0.04] text-[#94a3b8] transition-colors hover:bg-white/[0.08] hover:text-white sm:h-8 sm:w-8"
             >
               <ChevronDown
                 className={cn(
-                  "size-4 transition-transform duration-200",
+                  "size-3.5 transition-transform duration-200 sm:size-4",
                   showPhaseDetails ? "rotate-180" : "rotate-0",
                 )}
               />
@@ -970,7 +1013,7 @@ export const ProjectProposalCard = ({
           </div>
         </div>
 
-        <h2 className="mt-5 text-[clamp(1.75rem,2vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
+        <h2 className="mt-4 text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-white sm:mt-5">
           {project.title}
         </h2>
         {showServiceType ? (
@@ -979,7 +1022,7 @@ export const ProjectProposalCard = ({
           </p>
         ) : null}
 
-        <div className="mt-6 flex items-center gap-3">
+        <div className="mt-5 flex items-center gap-3 sm:mt-6">
           <Avatar className="size-11 shrink-0 border border-white/10 shadow-[0_12px_24px_rgba(0,0,0,0.24)]">
             {canRenderFreelancerAvatar ? (
               <img
@@ -1003,7 +1046,7 @@ export const ProjectProposalCard = ({
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
           <div className={cn("rounded-[14px] p-4", detailPanelClassName)}>
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">Budget</p>
             <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
@@ -1015,13 +1058,13 @@ export const ProjectProposalCard = ({
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">
               {project.dateLabel}
             </p>
-            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            <p className="mt-3 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
               {project.dateValue}
             </p>
           </div>
         </div>
 
-        <div className="mt-7 flex items-center justify-between gap-3">
+        <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
           <span className="text-sm text-[#9ca3af]">Current Phase Progress</span>
           <span className="text-sm font-semibold text-[#ffc107]">{progressText}</span>
         </div>
@@ -1036,36 +1079,37 @@ export const ProjectProposalCard = ({
         {showPhaseDetails ? (
           <>
             <div
+              ref={detailPanelRef}
               className={cn(
-                "mt-5 flex min-h-[174px] flex-col rounded-[18px] p-3.5",
+                "mt-5 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[18px] p-3 sm:p-3.5",
                 detailPanelClassName,
               )}
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#7f8794]">
                   Current Phase
                 </p>
-                <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
+                <span className="shrink-0 self-start rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em] text-[#94a3b8] sm:self-auto">
                   {project.currentPhaseCountLabel}
                 </span>
               </div>
               <p
                 title={project.currentPhase?.label || "Phase 1"}
-                className="mt-2 line-clamp-1 text-[0.98rem] font-semibold tracking-[-0.02em] text-white"
+                className="mt-2 line-clamp-2 text-[0.98rem] font-semibold tracking-[-0.02em] text-white sm:line-clamp-1"
               >
                 {project.currentPhase?.label || "Phase 1"}
               </p>
               {project.currentPhase?.subLabel ? (
                 <p
                   title={project.currentPhase.subLabel}
-                  className="mt-1 truncate text-sm text-[#8f96a3]"
+                  className="mt-1 text-sm text-[#8f96a3] sm:truncate"
                 >
                   {project.currentPhase.subLabel}
                 </p>
               ) : null}
 
               {phaseSteps.length > 0 ? (
-                <div className="mt-3 max-h-[104px] space-y-2 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]">
+                <div className="mt-3 max-h-[104px] min-w-0 space-y-2 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [overscroll-behavior:contain] touch-pan-y [&::-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]">
                   {phaseSteps.map((step) => (
                     <ProjectPhaseStep
                       key={`${project.id}-${step.id || step.title}`}
@@ -1082,7 +1126,7 @@ export const ProjectProposalCard = ({
           </>
         ) : null}
 
-        <div className="mt-auto pt-6">
+        <div ref={actionSectionRef} className="mt-auto min-w-0 pt-5 sm:pt-6">
           {project.actionType === "pay" ? (
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -1107,7 +1151,7 @@ export const ProjectProposalCard = ({
               <Link
                 to={project.actionHref || `/client/project/${project.id}`}
                 className={cn(
-                  "flex w-full items-center justify-center rounded-[14px] px-4 py-3.5 text-base font-semibold transition-colors",
+                  "flex w-full items-center justify-center rounded-[14px] px-3 py-3 text-sm font-semibold transition-colors sm:px-4 sm:py-3.5 sm:text-base",
                   projectActionToneMap.slate,
                 )}
               >
@@ -1299,13 +1343,13 @@ const ClientProjects = () => {
 
           <section className="mt-12">
             {isLoading ? (
-              <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {[1, 2, 3].map((item) => (
                   <ProjectCardSkeleton key={item} />
                 ))}
               </div>
             ) : visibleProjectCards.length > 0 ? (
-              <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {visibleProjectCards.map((project) => (
                   <ProjectProposalCard
                     key={project.id}

@@ -1720,11 +1720,12 @@ export const DashboardContent = ({ _roleOverride }) => {
               </div>
             ) : (
               <div>
-                <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid min-w-0 items-start justify-items-center gap-6 md:grid-cols-2 md:justify-items-stretch xl:grid-cols-3">
                   {runningProjectCards.slice(projectCarouselIndex, projectCarouselIndex + 3).map((projectCard) => (
                     <ProjectProposalCard
                       key={projectCard.id}
                       project={projectCard}
+                      className="mx-auto w-full max-w-[22.5rem] md:mx-0 md:max-w-none"
                     />
                   ))}
                 </div>

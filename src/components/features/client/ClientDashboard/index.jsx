@@ -1,8 +1,6 @@
 "use client";
 
 import React, {
-  Suspense,
-  lazy,
   startTransition,
   useCallback,
   useEffect,
@@ -330,85 +328,6 @@ const parseProposalBudgetValue = (budget) => {
   if (!Number.isFinite(numericValue)) return 0;
 
   return Math.round(hasKSuffix ? numericValue * 1000 : numericValue);
-};
-
-const stripProposalMarkdown = (value = "") =>
-  String(value || "")
-    .replace(/```markdown\n?/gi, "")
-    .replace(/```\n?/g, "")
-    .trim();
-
-const uniqueProposalItems = (items = []) => {
-  const seen = new Set();
-  const result = [];
-  items.forEach((item) => {
-    const normalized = String(item || "").trim();
-    if (!normalized) return;
-    const key = normalized.toLowerCase();
-    if (seen.has(key)) return;
-    seen.add(key);
-    result.push(normalized);
-  });
-  return result;
-};
-
-const parseProposalSections = (proposal = {}) => {
-  const rawContent = proposal?.summary || proposal?.content || "";
-  const cleanContent = stripProposalMarkdown(rawContent);
-  const lines = cleanContent.split("\n");
-  let overview = "";
-  const objectives = [];
-  const features = [];
-  let currentSection = "";
-
-  lines.forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    const lowerLine = trimmed.toLowerCase();
-
-    if (/project overview:|overview:|summary:/.test(lowerLine)) {
-      currentSection = "overview";
-      const value = trimmed.split(":").slice(1).join(":").trim();
-      if (value) overview = value;
-      return;
-    }
-
-    if (/primary objectives:|objectives:|goals:/.test(lowerLine)) {
-      currentSection = "objectives";
-      return;
-    }
-
-    if (/features|deliverables|scope/.test(lowerLine)) {
-      currentSection = "features";
-      return;
-    }
-
-    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-      const item = trimmed.replace(/^[-*]\s+/, "").trim();
-      if (!item) return;
-      if (currentSection === "objectives") {
-        objectives.push(item);
-      } else if (currentSection === "features") {
-        features.push(item);
-      }
-      return;
-    }
-
-    if (currentSection === "overview") {
-      overview = overview ? `${overview} ${trimmed}` : trimmed;
-    }
-  });
-
-  if (!overview && cleanContent) {
-    overview = cleanContent.slice(0, 220);
-  }
-
-  return {
-    cleanContent,
-    overview: overview.trim(),
-    objectives: uniqueProposalItems(objectives),
-    features: uniqueProposalItems(features),
-  };
 };
 
 const resolveProposalServiceLabel = (proposal = {}) =>
@@ -969,25 +888,18 @@ const getChatMessagePreview = (message) => {
   return "";
 };
 
-const getProjectAcceptedProposal = (project = {}) =>
-  Array.isArray(project?.proposals)
-    ? project.proposals.find(
-        (proposal) => String(proposal?.status || "").toUpperCase() === "ACCEPTED",
-      )
-    : null;
+const getProjectPendingProposalCount = (project = {}) => {
+  const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
+  let pendingCount = 0;
 
-const getProjectPendingProposals = (project = {}) =>
-  Array.isArray(project?.proposals)
-    ? project.proposals
-        .filter(
-          (proposal) => String(proposal?.status || "").toUpperCase() === "PENDING",
-        )
-        .sort(
-          (left, right) =>
-            new Date(right?.createdAt || 0).getTime() -
-            new Date(left?.createdAt || 0).getTime(),
-        )
-    : [];
+  for (const proposal of proposals) {
+    if (String(proposal?.status || "").toUpperCase() === "PENDING") {
+      pendingCount += 1;
+    }
+  }
+
+  return pendingCount;
+};
 
 const getFirstNonEmptyText = (...values) => {
   for (const value of values.flat()) {
@@ -1070,9 +982,7 @@ const hasUnlockedProjectProgress = (project = {}) => {
   return firstInstallmentAmount > 0 && paidAmount >= firstInstallmentAmount;
 };
 
-const resolveProjectBusinessName = (project = {}) => {
-  const acceptedProposal = getProjectAcceptedProposal(project);
-
+const resolveProjectBusinessName = (project = {}, acceptedProposal = null) => {
   return getFirstNonEmptyText(
     project?.businessName,
     project?.companyName,
@@ -1091,9 +1001,7 @@ const resolveProjectBusinessName = (project = {}) => {
   );
 };
 
-const resolveProjectServiceLabel = (project = {}) => {
-  const acceptedProposal = getProjectAcceptedProposal(project);
-
+const resolveProjectServiceLabel = (project = {}, acceptedProposal = null) => {
   return getFirstNonEmptyText(
     project?.service,
     project?.serviceName,
@@ -1196,11 +1104,6 @@ const ClientDashboardContent = () => {
       savedProposals[0]
     );
   }, [savedProposals, activeProposalId]);
-
-  const parsedSavedProposal = useMemo(
-    () => parseProposalSections(savedProposal || {}),
-    [savedProposal],
-  );
 
   const projectRequiredSkills = useMemo(() => {
     if (!showFreelancerSelect) return [];
@@ -1765,54 +1668,167 @@ const ClientDashboardContent = () => {
     );
   }, [projects]);
 
-  // Computed metrics
-  const metrics = useMemo(() => {
-    const projectsWithAccepted = uniqueProjects.filter((p) =>
-      (p.proposals || []).some(
-        (pr) => (pr.status || "").toUpperCase() === "ACCEPTED",
-      ),
-    );
+  const dashboardProjectSummary = useMemo(() => {
+    const acceptedFreelancerRows = [];
+    const acceptedProjectsForShowcase = [];
+    const pendingProposalCountByProjectId = new Map();
+    let totalSpent = 0;
+    let activeProjects = 0;
+    let completedProjects = 0;
+    let pendingFreelancerRequests = 0;
+    let pendingPaymentsAmount = 0;
+    let latestAcceptedProject = null;
+    let latestCompletedProject = null;
 
-    // Use actual spent amount from projects, not full budget
-    const actualSpent = projectsWithAccepted.reduce((acc, p) => {
-      // If project has a 'spent' field, use it; otherwise use 50% of budget (upfront payment)
-      const spent =
-        p.spent !== undefined
-          ? parseInt(p.spent) || 0
-          : Math.round((parseInt(p.budget) || 0) * 0.5);
-      return acc + spent;
-    }, 0);
+    uniqueProjects.forEach((project, index) => {
+      const normalizedProjectStatus = String(project?.status || "").toUpperCase();
+      const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
+      const projectLookupKey = project?.id ?? `project-index-${index}`;
+      let acceptedProposal = null;
+      let hasAcceptedProposal = false;
+      let pendingProposalCount = 0;
 
-    const activeProjectsCount = uniqueProjects.filter((p) => {
-      const status = (p.status || "").toUpperCase();
-      // Only count projects where payment is done (IN_PROGRESS)
-      // Exclude OPEN (proposals) and AWAITING_PAYMENT
-      return status === "IN_PROGRESS";
-    }).length;
+      for (const proposal of proposals) {
+        const normalizedProposalStatus = String(proposal?.status || "").toUpperCase();
 
-    const totalBudget = uniqueProjects
-      .filter((p) => {
-        const status = (p.status || "").toUpperCase();
-        const hasAcceptedProposal = (p.proposals || []).some(
-          (pr) => (pr.status || "").toUpperCase() === "ACCEPTED",
+        if (normalizedProposalStatus === "ACCEPTED") {
+          hasAcceptedProposal = true;
+          if (!acceptedProposal) {
+            acceptedProposal = proposal;
+          }
+          continue;
+        }
+
+        if (normalizedProposalStatus === "PENDING") {
+          pendingProposalCount += 1;
+        }
+      }
+
+      pendingProposalCountByProjectId.set(projectLookupKey, pendingProposalCount);
+      pendingFreelancerRequests += pendingProposalCount;
+
+      if (
+        normalizedProjectStatus === "IN_PROGRESS" ||
+        normalizedProjectStatus === "AWAITING_PAYMENT"
+      ) {
+        activeProjects += 1;
+      }
+
+      if (normalizedProjectStatus === "COMPLETED") {
+        completedProjects += 1;
+        if (!latestCompletedProject) {
+          latestCompletedProject = project;
+        }
+      }
+
+      if (
+        normalizedProjectStatus === "AWAITING_PAYMENT" &&
+        project.paymentPlan?.nextDueInstallment
+      ) {
+        pendingPaymentsAmount += Math.round(
+          (parseInt(project.budget, 10) || 0) *
+            (project.paymentPlan.nextDueInstallment.percentage / 100),
         );
+      }
 
-        // Only count budget for projects that are actually active/committed
-        // Exclude purely "OPEN" projects (invites) that haven't been accepted yet
-        return (
-          status === "IN_PROGRESS" ||
-          status === "AWAITING_PAYMENT" ||
-          hasAcceptedProposal
-        );
-      })
-      .reduce((acc, p) => acc + (parseInt(p.budget) || 0), 0);
+      if (hasAcceptedProposal) {
+        if (!latestAcceptedProject) {
+          latestAcceptedProject = project;
+        }
+
+        acceptedProjectsForShowcase.push(project);
+        totalSpent +=
+          project.spent !== undefined
+            ? parseInt(project.spent, 10) || 0
+            : Math.round((parseInt(project.budget, 10) || 0) * 0.5);
+      }
+
+      if (
+        !ACTIVE_PROJECT_CHAT_STATUSES.has(normalizedProjectStatus) ||
+        !acceptedProposal ||
+        !hasUnlockedProjectChat(project)
+      ) {
+        return;
+      }
+
+      const assignedFreelancer = acceptedProposal?.freelancer || null;
+      const displayName =
+        assignedFreelancer?.fullName ||
+        assignedFreelancer?.name ||
+        acceptedProposal?.freelancerName ||
+        assignedFreelancer?.email ||
+        `Freelancer ${index + 1}`;
+      const serviceLabel = resolveProjectServiceLabel(project, acceptedProposal);
+      const projectLabel =
+        toDisplayTitleCase(resolveProjectBusinessName(project, acceptedProposal)) ||
+        project?.title ||
+        toDisplayTitleCase(serviceLabel) ||
+        "Project collaboration";
+      const activityTime =
+        acceptedProposal?.updatedAt ||
+        acceptedProposal?.createdAt ||
+        project?.updatedAt ||
+        project?.createdAt;
+      const activityTimestamp = new Date(activityTime || 0).getTime();
+
+      acceptedFreelancerRows.push({
+        id:
+          project?.id ||
+          acceptedProposal?.id ||
+          assignedFreelancer?.id ||
+          `accepted-freelancer-${index}`,
+        sortValue: Number.isNaN(activityTimestamp) ? 0 : activityTimestamp,
+        name: displayName,
+        initial: displayName.charAt(0).toUpperCase(),
+        avatar: getFirstNonEmptyText(
+          assignedFreelancer?.avatar,
+          assignedFreelancer?.avatarUrl,
+          assignedFreelancer?.profilePhoto,
+          acceptedProposal?.freelancerAvatar,
+          acceptedProposal?.avatar,
+        ),
+        role:
+          assignedFreelancer?.professionalTitle ||
+          assignedFreelancer?.jobTitle ||
+          assignedFreelancer?.headline ||
+          toDisplayTitleCase(serviceLabel) ||
+          "Active collaboration",
+        statusLabel: "Active",
+        projectLabel,
+        activityLabel: `Updated ${formatDashboardRelativeTime(activityTime)}`,
+        viewLabel: "Project",
+        onView: () =>
+          navigate(
+            project?.id
+              ? `/client/project/${encodeURIComponent(project.id)}`
+              : "/client/project",
+          ),
+        onMessage: () =>
+          navigate(
+            project?.id
+              ? `/client/messages?projectId=${encodeURIComponent(project.id)}`
+              : "/client/messages",
+          ),
+      });
+    });
+
+    acceptedFreelancerRows.sort((left, right) => right.sortValue - left.sortValue);
 
     return {
-      totalSpent: actualSpent,
-      activeProjects: activeProjectsCount,
-      totalBudget: totalBudget,
+      acceptedFreelancerCount: acceptedFreelancerRows.length,
+      acceptedFreelancerRows,
+      acceptedProjectsForShowcase,
+      activeProjects,
+      completedProjects,
+      latestAcceptedProject,
+      latestCompletedProject,
+      latestProject: uniqueProjects[0] || null,
+      pendingFreelancerRequests,
+      pendingPaymentsAmount,
+      pendingProposalCountByProjectId,
+      totalSpent,
     };
-  }, [uniqueProjects]);
+  }, [navigate, uniqueProjects]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -1822,69 +1838,6 @@ const ClientDashboardContent = () => {
   }, []);
 
   const firstName = sessionUser?.fullName?.split(" ")[0] || "User";
-
-  const handleSelectSavedProposal = useCallback((proposalId) => {
-    if (!proposalId) return;
-    setActiveProposalId((currentId) => {
-      if (currentId === proposalId) return currentId;
-      persistActiveProposalSelection(savedProposals, proposalId, storageKeys);
-      return proposalId;
-    });
-  }, [savedProposals, storageKeys]);
-
-  const handleDeleteSavedProposal = useCallback((proposalId) => {
-    if (!proposalId) return;
-
-    const remaining = savedProposals.filter((proposal) => proposal.id !== proposalId);
-    const nextActiveId = remaining[0]?.id || null;
-
-    if (!remaining.length && storageKeys?.singleKey) {
-      localStorage.removeItem(storageKeys.singleKey);
-    }
-
-    persistSavedProposalState(remaining, nextActiveId);
-    toast.success("Proposal deleted");
-  }, [persistSavedProposalState, savedProposals, storageKeys]);
-
-  const legacyActiveProjects = useMemo(
-    () =>
-      uniqueProjects.filter(
-        (project) =>
-          project.status === "IN_PROGRESS" ||
-          (project.status === "AWAITING_PAYMENT" &&
-            (project.proposals || []).some(
-              (proposal) =>
-                String(proposal?.status || "").toUpperCase() === "ACCEPTED",
-            )),
-      ),
-    [uniqueProjects],
-  );
-
-  const legacyProposalProjects = useMemo(
-    () =>
-      uniqueProjects.filter((project) => {
-        if (project.status !== "OPEN") return false;
-        return (project.proposals || []).some(
-          (proposal) =>
-            ["PENDING", "ACCEPTED"].includes(
-              String(proposal?.status || "").toUpperCase(),
-            ) && !proposal?.deletedAt,
-        );
-      }),
-    [uniqueProjects],
-  );
-
-  const legacyActivityProjects = useMemo(
-    () =>
-      projects
-        .filter((project) =>
-          ["IN_PROGRESS", "COMPLETED"].includes(
-            String(project?.status || "").toUpperCase(),
-          ),
-        )
-        .slice(0, 2),
-    [projects],
-  );
 
   const openEditProposal = useCallback(() => {
     if (!savedProposal) return;
@@ -1993,15 +1946,6 @@ const ClientDashboardContent = () => {
     savedProposal,
     savedProposals,
   ]);
-
-  // Map project status to display
-  const getStatusBadge = useCallback((status) => {
-    const s = (status || "").toUpperCase();
-    if (s === "COMPLETED") return { label: "Completed", variant: "default" };
-    if (s === "IN_PROGRESS") return { label: "On Track", variant: "success" };
-    if (s === "OPEN") return { label: "Open", variant: "warning" };
-    return { label: status || "Pending", variant: "secondary" };
-  }, []);
 
   // Send proposal to freelancer
   const sendProposalToFreelancer = async (freelancer) => {
@@ -2191,12 +2135,6 @@ const ClientDashboardContent = () => {
       setProjectToPay(null);
     }
   }, [authFetch, loadProjects, sessionUser?.email, sessionUser?.fullName, sessionUser?.phone, sessionUser?.phoneNumber]);
-
-  const handleIncreaseBudgetClick = useCallback((project) => {
-    setBudgetProject(project);
-    setNewBudget(String(project.budget || ""));
-    setShowIncreaseBudget(true);
-  }, []);
 
   const handleIncreaseBudgetDialogChange = useCallback((open) => {
     setShowIncreaseBudget(open);
@@ -2416,71 +2354,44 @@ const ClientDashboardContent = () => {
     [firstName, greeting],
   );
 
-  const pendingFreelancerRequests = useMemo(
-    () =>
-      uniqueProjects.reduce(
-        (count, project) => count + getProjectPendingProposals(project).length,
-        0,
-      ),
-    [uniqueProjects],
-  );
-
   const dashboardMetricCards = useMemo(
     () => {
-      const activeProjects = uniqueProjects.filter((project) => {
-        const status = String(project.status || "").toUpperCase();
-        return status === "IN_PROGRESS" || status === "AWAITING_PAYMENT";
-      }).length;
-
-      const completedProjects = uniqueProjects.filter(
-        (project) => String(project.status || "").toUpperCase() === "COMPLETED",
-      ).length;
-
-      const pendingPaymentsAmount = uniqueProjects.reduce((total, project) => {
-        const status = String(project.status || "").toUpperCase();
-        if (status === "AWAITING_PAYMENT" && project.paymentPlan?.nextDueInstallment) {
-          const amount = Math.round(
-            (parseInt(project.budget) || 0) *
-              (project.paymentPlan.nextDueInstallment.percentage / 100),
-          );
-          return total + amount;
-        }
-        return total;
-      }, 0);
-
       return [
         {
           id: "active-projects",
           title: "ACTIVE PROJECTS",
-          value: String(activeProjects).padStart(2, "0"),
+          value: String(dashboardProjectSummary.activeProjects).padStart(2, "0"),
           iconKey: "projects",
         },
         {
           id: "completed-projects",
           title: "COMPLETED PROJECTS",
-          value: String(completedProjects).padStart(2, "0"),
+          value: String(dashboardProjectSummary.completedProjects).padStart(2, "0"),
           iconKey: "projects",
         },
         {
           id: "pending-approvals",
           title: "PENDING APPROVALS",
-          value: String(pendingFreelancerRequests).padStart(2, "0"),
-          detail: pendingFreelancerRequests === 1 ? "Awaiting Review" : "Awaiting Reviews",
+          value: String(dashboardProjectSummary.pendingFreelancerRequests).padStart(2, "0"),
+          detail:
+            dashboardProjectSummary.pendingFreelancerRequests === 1
+              ? "Awaiting Review"
+              : "Awaiting Reviews",
           iconKey: "proposals",
         },
         {
           id: "payments-summary",
-          title: "TOTAL PAID",
-          value: formatINR(metrics.totalSpent || 0),
+          title: "TOTAL AMOUNT PAID",
+          value: formatINR(dashboardProjectSummary.totalSpent || 0),
           alternateTitle: "PENDING PAYMENTS",
-          alternateValue: formatINR(pendingPaymentsAmount),
+          alternateValue: formatINR(dashboardProjectSummary.pendingPaymentsAmount),
           defaultMode: "alternate",
           hasValueSwitch: true,
           iconKey: "payments",
         },
       ];
     },
-    [metrics.totalSpent, pendingFreelancerRequests, uniqueProjects],
+    [dashboardProjectSummary],
   );
 
   const draftProposalRows = useMemo(() => {
@@ -2515,86 +2426,11 @@ const ClientDashboardContent = () => {
   }, [persistSavedProposalState, savedProposals, storageKeys]);
 
   const acceptedFreelancerSection = useMemo(() => {
-    const rows = uniqueProjects
-      .map((project, index) => {
-        const normalizedProjectStatus = String(project?.status || "").toUpperCase();
-        const acceptedProposal = getProjectAcceptedProposal(project);
-        if (
-          !ACTIVE_PROJECT_CHAT_STATUSES.has(normalizedProjectStatus) ||
-          !acceptedProposal ||
-          !hasUnlockedProjectChat(project)
-        ) {
-          return null;
-        }
-
-        const assignedFreelancer = acceptedProposal?.freelancer || null;
-        const displayName =
-          assignedFreelancer?.fullName ||
-          assignedFreelancer?.name ||
-          acceptedProposal?.freelancerName ||
-          assignedFreelancer?.email ||
-          `Freelancer ${index + 1}`;
-        const serviceLabel = resolveProjectServiceLabel(project);
-        const projectLabel =
-          toDisplayTitleCase(resolveProjectBusinessName(project)) ||
-          project?.title ||
-          toDisplayTitleCase(serviceLabel) ||
-          "Project collaboration";
-        const activityTime =
-          acceptedProposal?.updatedAt ||
-          acceptedProposal?.createdAt ||
-          project?.updatedAt ||
-          project?.createdAt;
-        const activityTimestamp = new Date(activityTime || 0).getTime();
-
-        return {
-          id:
-            project?.id ||
-            acceptedProposal?.id ||
-            assignedFreelancer?.id ||
-            `accepted-freelancer-${index}`,
-          sortValue: Number.isNaN(activityTimestamp) ? 0 : activityTimestamp,
-          name: displayName,
-          initial: displayName.charAt(0).toUpperCase(),
-          avatar: getFirstNonEmptyText(
-            assignedFreelancer?.avatar,
-            assignedFreelancer?.avatarUrl,
-            assignedFreelancer?.profilePhoto,
-            acceptedProposal?.freelancerAvatar,
-            acceptedProposal?.avatar,
-          ),
-          role:
-            assignedFreelancer?.professionalTitle ||
-            assignedFreelancer?.jobTitle ||
-            assignedFreelancer?.headline ||
-            toDisplayTitleCase(serviceLabel) ||
-            "Active collaboration",
-          statusLabel: "Active",
-          projectLabel,
-          activityLabel: `Updated ${formatDashboardRelativeTime(activityTime)}`,
-          viewLabel: "Project",
-          onView: () =>
-            navigate(
-              project?.id
-                ? `/client/project/${encodeURIComponent(project.id)}`
-                : "/client/project",
-            ),
-          onMessage: () =>
-            navigate(
-              project?.id
-                ? `/client/messages?projectId=${encodeURIComponent(project.id)}`
-                : "/client/messages",
-            ),
-        };
-      })
-      .filter(Boolean)
-      .sort((left, right) => right.sortValue - left.sortValue);
-
     return {
-      rows: rows.slice(0, 3),
-      count: rows.length,
+      rows: dashboardProjectSummary.acceptedFreelancerRows.slice(0, 3),
+      count: dashboardProjectSummary.acceptedFreelancerCount,
     };
-  }, [navigate, uniqueProjects]);
+  }, [dashboardProjectSummary]);
 
   const progressProjects = useMemo(() => {
     const clampProgress = (value) => {
@@ -2669,12 +2505,18 @@ const ClientDashboardContent = () => {
         : [];
 
       if (Array.isArray(project?.phases) && project.phases.length > 0) {
-        return project.phases.map((phase, index) => ({
-          label: phase.label || phase.name || `Phase ${index + 1}`,
-          value: clampProgress(phase.progress ?? phase.value),
-          subLabel: resolvePhaseSummary(paymentPlanPhases[index] || phase),
-          steps: phaseSteps[index] || [],
-        }));
+        return project.phases.map((phase, index) => {
+          const value = clampProgress(phase.progress ?? phase.value);
+          const targetValue = Math.max(value, clampProgress(phase.value ?? phase.progress));
+
+          return {
+            label: phase.label || phase.name || `Phase ${index + 1}`,
+            value,
+            targetValue,
+            subLabel: resolvePhaseSummary(paymentPlanPhases[index] || phase),
+            steps: phaseSteps[index] || [],
+          };
+        });
       }
 
       if (paymentPlanPhases.length > 0) {
@@ -2696,6 +2538,7 @@ const ClientDashboardContent = () => {
           return {
             label: phase?.name || `Phase ${index + 1}`,
             value,
+            targetValue: value,
             subLabel: resolvePhaseSummary(phase, phase?.isComplete ? "Completed" : "Pending"),
             steps: phaseSteps[index] || [],
           };
@@ -2721,6 +2564,7 @@ const ClientDashboardContent = () => {
           return {
             label: milestone?.label || milestone?.name || `Phase ${index + 1}`,
             value,
+            targetValue: value,
             subLabel: isCompleted
               ? "Completed"
               : clampProgress(milestone?.progress) > 0
@@ -2733,6 +2577,7 @@ const ClientDashboardContent = () => {
 
       return buildDefaultPhases(Number(project?.phaseCount) || 4).map((phase, index) => ({
         ...phase,
+        targetValue: phase.value,
         steps: phaseSteps[index] || [],
       }));
     };
@@ -2860,7 +2705,11 @@ const ClientDashboardContent = () => {
         );
         const phases = basePhases.map((phase, phaseIndex) => ({
           ...phase,
-          value: phaseIndex === highlightIndex ? currentProgress : phase.value,
+          value:
+            phaseIndex === highlightIndex
+              ? currentProgress
+              : clampProgress(phase?.targetValue ?? phase?.value),
+          targetValue: clampProgress(phase?.targetValue ?? phase?.value),
           subLabel: phase.subLabel || buildFallbackSubLabel(phaseIndex, highlightIndex),
           steps: Array.isArray(phase.steps)
             ? phase.steps.map((step, stepIndex, collection) => {
@@ -2880,7 +2729,51 @@ const ClientDashboardContent = () => {
               })
             : [],
         }));
-        const pendingCount = getProjectPendingProposals(project).length;
+        const paymentCheckpoints = Array.isArray(project?.paymentPlan?.installments)
+          ? project.paymentPlan.installments
+              .filter((installment) => installment?.isPaid)
+              .map((installment, installmentIndex) => {
+                const dueAfterCompletedPhases = Math.max(
+                  0,
+                  Number(installment?.dueAfterCompletedPhases || 0),
+                );
+                const gatePhaseIndex = dueAfterCompletedPhases > 0
+                  ? Math.min(dueAfterCompletedPhases - 1, Math.max(basePhases.length - 1, 0))
+                  : 0;
+                const gatePhase = basePhases[gatePhaseIndex];
+
+                return {
+                  id:
+                    `${project.id || `progress-${index}`}-payment-${
+                      installment?.sequence || installmentIndex + 1
+                    }`,
+                  label:
+                    installment?.label ||
+                    `Client payment ${installment?.sequence || installmentIndex + 1}`,
+                  amountLabel:
+                    Number(installment?.amount || 0) > 0
+                      ? formatINR(Number(installment.amount))
+                      : "",
+                  percentageLabel:
+                    Number(installment?.percentage || 0) > 0
+                      ? `${installment.percentage}% of project budget`
+                      : "Client payment received",
+                  dueAfterCompletedPhases,
+                  phaseFullLabel:
+                    dueAfterCompletedPhases <= 0
+                      ? "Before project start"
+                      : gatePhase?.label || `Phase ${gatePhaseIndex + 1}`,
+                  progressValue:
+                    dueAfterCompletedPhases <= 0
+                      ? 0
+                      : clampProgress(gatePhase?.targetValue ?? gatePhase?.value),
+                };
+              })
+          : [];
+        const pendingCount =
+          dashboardProjectSummary.pendingProposalCountByProjectId.get(
+            project?.id ?? `project-index-${index}`,
+          ) ?? getProjectPendingProposalCount(project);
 
         let calloutDetail = "Workspace active";
         if (pendingCount > 0) {
@@ -2917,12 +2810,13 @@ const ClientDashboardContent = () => {
             firstInstallment?.label
               ? `${firstInstallment.label} must be paid before the project progress graph appears.`
               : "The project progress graph will appear after the initial project amount is paid.",
+          paymentCheckpoints,
           phases,
         };
       })
       .filter((project) => project.progressCategory === "ongoing")
       .slice(0, 3);
-  }, [uniqueProjects]);
+  }, [dashboardProjectSummary, uniqueProjects]);
 
   const recentActivities = useMemo(() => {
     const fromNotifications = Array.isArray(notifications)
@@ -3008,13 +2902,9 @@ const ClientDashboardContent = () => {
     }
 
     const fallback = [];
-    const latestProject = uniqueProjects[0];
-    const latestAcceptedProject = uniqueProjects.find((project) =>
-      Boolean(getProjectAcceptedProposal(project)),
-    );
-    const latestCompletedProject = uniqueProjects.find(
-      (project) => String(project?.status || "").toUpperCase() === "COMPLETED",
-    );
+    const latestProject = dashboardProjectSummary.latestProject;
+    const latestAcceptedProject = dashboardProjectSummary.latestAcceptedProject;
+    const latestCompletedProject = dashboardProjectSummary.latestCompletedProject;
     const latestChat = freelancers[0];
 
     if (latestProject) {
@@ -3092,13 +2982,13 @@ const ClientDashboardContent = () => {
     }
 
     return fallback.slice(0, 4);
-  }, [freelancers, navigate, notifications, savedProposal, uniqueProjects]);
+  }, [dashboardProjectSummary, freelancers, navigate, notifications, savedProposal]);
 
   const showcaseItems = useMemo(() => {
-    return normalizeClientProjects(uniqueProjects)
+    return normalizeClientProjects(dashboardProjectSummary.acceptedProjectsForShowcase)
       .map((project) => buildProjectCardModel(project))
       .filter((project) => project.statusMeta.label !== "Completed");
-  }, [uniqueProjects]);
+  }, [dashboardProjectSummary.acceptedProjectsForShowcase]);
 
   return (
     <>
