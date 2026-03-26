@@ -2359,58 +2359,217 @@ const GuestAIDemo = () => {
         );
     }
 
+    const isInitialScreen = messages.length > 0 && !messages.some(msg => msg.role === 'user');
+
+    const renderChatInput = () => {
+        if (!shouldShowTextInput) return null;
+
+        return (
+            <form
+                onSubmit={handleSendMessage}
+                className={`rounded-3xl border p-2.5 shadow-md backdrop-blur-xl ${isDark
+                    ? 'border-white/10 bg-[#2F2F2F]'
+                    : 'border-slate-200 bg-[#F4F4F4]'
+                    }`}
+            >
+                {isPendingOptionFollowup && (
+                    <div className={`mb-3 flex items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5 text-sm ${isDark
+                        ? 'bg-white/5 text-slate-200'
+                        : 'bg-black/5 text-slate-700'
+                        }`}>
+                        <p className="min-w-0 flex-1">
+                            {contextualPendingOptionNotice}
+                        </p>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 shrink-0 rounded-full hover:bg-black/10`}
+                            onClick={() => {
+                                setPendingOptionFollowup(null);
+                                setSelectedOptions([]);
+                                setInput('');
+                            }}
+                            aria-label="Clear selected special option"
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+                {pendingAttachments.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-2 px-2 pt-1">
+                        {pendingAttachments.map((file, index) => {
+                            const imageFile = String(file.type || '').startsWith('image/');
+                            return (
+                                <div
+                                    key={`${file.name}-${file.size}-${index}`}
+                                    className={`inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-xs ${isDark
+                                        ? 'border-white/10 bg-[#212121] text-slate-200'
+                                        : 'border-slate-300 bg-white text-slate-700'
+                                        }`}
+                                >
+                                    {imageFile ? (
+                                        <ImageIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                                    ) : (
+                                        <FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                                    )}
+                                    <span className="max-w-[190px] truncate font-medium">{file.name}</span>
+                                    <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        {formatBytes(file.size)}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className={`rounded-full p-0.5 ml-1 ${isDark ? 'hover:bg-white/15' : 'hover:bg-slate-100'}`}
+                                        onClick={() => removePendingAttachment(index)}
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+                <div className="flex items-end gap-2">
+                    <div className="flex flex-1 items-center bg-transparent">
+                        <div className="flex flex-col flex-1">
+                            <textarea
+                                ref={inputRef}
+                                autoFocus
+                                value={input}
+                                onChange={(e) => {
+                                    setInput(e.target.value);
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        if (input.trim() || pendingAttachments.length > 0) {
+                                            handleSendMessage(e);
+                                        }
+                                    }
+                                }}
+                                rows={1}
+                                placeholder={contextualPendingOptionPlaceholder}
+                                className={`max-h-[120px] min-h-[44px] w-full resize-none bg-transparent px-4 py-3 text-base outline-none ${isDark
+                                    ? 'text-white placeholder:text-slate-400'
+                                    : 'text-slate-900 placeholder:text-slate-500'
+                                    }`}
+                                disabled={isTyping || isUploadingAttachment}
+                                style={{ overflowY: 'auto' }}
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="flex shrink-0 items-center gap-1.5 px-2 pb-1.5">
+                        <input
+                            ref={attachmentInputRef}
+                            type="file"
+                            multiple
+                            accept={CHAT_FILE_ACCEPT}
+                            className="hidden"
+                            onChange={handleAttachmentPick}
+                        />
+                        <Button
+                            size="icon"
+                            type="button"
+                            variant="ghost"
+                            onClick={openAttachmentPicker}
+                            disabled={isTyping || isUploadingAttachment}
+                            className={`h-9 w-9 rounded-full ${isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
+                        >
+                            <Paperclip className="h-4 w-4" />
+                        </Button>
+                        {isSpeechSupported && (
+                            <Button
+                                size="icon"
+                                type="button"
+                                variant="ghost"
+                                onClick={toggleVoiceInput}
+                                disabled={isTyping || isUploadingAttachment}
+                                className={`h-9 w-9 rounded-full ${isListening ? 'bg-primary/20 text-primary animate-pulse' : isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
+                            >
+                                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                            </Button>
+                        )}
+                        <Button
+                            size="icon"
+                            type="submit"
+                            disabled={((!input.trim() && pendingAttachments.length === 0) || (isPendingOptionFollowup && !input.trim())) || isTyping || isUploadingAttachment}
+                            className={`h-9 w-9 rounded-full transition-colors ${
+                                input.trim() || pendingAttachments.length > 0
+                                    ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
+                                    : isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-400'
+                            }`}
+                        >
+                            <Send className="h-4 w-4 shrink-0" />
+                        </Button>
+                    </div>
+                </div>
+                {isUploadingAttachment && (
+                    <p className={`mt-1 pl-4 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Uploading attachment...
+                    </p>
+                )}
+            </form>
+        );
+    };
+
     return (
-        <div className={`mt-20 flex h-[calc(100svh-5rem)] overflow-hidden lg:mt-24 lg:h-[calc(100svh-6rem)] ${isDark
-            ? 'bg-[#050507] bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.17),transparent_52%)]'
-            : 'bg-[#f5f7fb] bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.22),transparent_58%)]'
+        <div className={`mt-16 flex h-[calc(100svh-4rem)] overflow-hidden lg:mt-20 lg:h-[calc(100svh-5rem)] ${isDark
+            ? 'bg-[#212121]'
+            : 'bg-white'
             }`}
         >
-            <aside className={`hidden shrink-0 border-r p-4 transition-[width] duration-300 md:flex md:flex-col ${isSidebarCompact ? 'w-[18rem]' : 'w-[22rem]'} ${isDark ? 'border-white/10 bg-black/35' : 'border-slate-300/70 bg-white/80'}`}>
-                <div className="mb-3 flex items-center justify-between gap-2">
-                    <Button
-                        variant="ghost"
-                        className={`w-fit rounded-full px-2.5 ${isDark ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
-                        onClick={handleBackToServices}
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        <span className={isSidebarCompact ? 'text-xs' : 'text-sm'}>Back to services</span>
-                    </Button>
+            <aside className={`hidden shrink-0 overflow-hidden p-3 transition-all duration-300 md:flex md:flex-col ${isSidebarCompact ? 'w-16 items-center' : 'w-72'} ${isDark ? 'bg-[#171717]' : 'bg-[#F9F9F9]'}`}>
+                <div className={`mb-3 flex items-center gap-2 ${isSidebarCompact ? 'flex-col justify-center' : 'justify-between'}`}>
+                    {!isSidebarCompact && (
+                        <Button
+                            variant="ghost"
+                            className={`w-fit rounded-full px-2.5 text-sm ${isDark ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
+                            onClick={handleBackToServices}
+                        >
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to services
+                        </Button>
+                    )}
                     <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         onClick={toggleSidebarSize}
-                        className={`h-8 w-8 rounded-lg border ${isDark ? 'border-white/15 text-slate-200 hover:bg-white/10' : 'border-black/10 text-slate-700 hover:bg-slate-100'}`}
-                        title={isSidebarCompact ? 'Expand sidebar' : 'Make sidebar compact'}
-                        aria-label={isSidebarCompact ? 'Expand sidebar' : 'Make sidebar compact'}
+                        className={`h-8 w-8 rounded-lg border shrink-0 ${isDark ? 'border-white/15 text-slate-200 hover:bg-white/10' : 'border-black/10 text-slate-700 hover:bg-slate-100'}`}
+                        title={isSidebarCompact ? 'Expand sidebar' : 'Collapse sidebar'}
+                        aria-label={isSidebarCompact ? 'Expand sidebar' : 'Collapse sidebar'}
                     >
                         {isSidebarCompact ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                     </Button>
                 </div>
 
-                <div className={`relative mb-3 overflow-hidden rounded-2xl border p-4 ${isDark ? 'border-white/10 bg-gradient-to-br from-amber-300/[0.08] via-white/[0.03] to-transparent' : 'border-amber-200/70 bg-gradient-to-br from-amber-50 to-white'}`}>
-                    {/* Decorative glow */}
-                    <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[#ffc800]/15 blur-2xl" />
-                    <div className="relative flex items-start gap-3">
-                        <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl border ${isDark ? 'border-amber-300/30 bg-amber-300/15 shadow-[0_0_12px_-3px_rgba(251,191,36,0.4)]' : 'border-amber-300/50 bg-amber-100'} ${isSidebarCompact ? 'h-10 w-10' : 'h-12 w-12'}`}>
+                <div className={`relative mb-3 overflow-hidden rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-black/5'} ${isSidebarCompact ? 'flex justify-center' : ''}`}>
+                    <div className={`relative flex items-start gap-3 ${isSidebarCompact ? 'flex-col items-center' : ''}`}>
+                        <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl border ${isDark ? 'border-amber-300/30 bg-amber-300/15 shadow-[0_0_12px_-3px_rgba(251,191,36,0.4)]' : 'border-amber-300/50 bg-amber-100'} ${isSidebarCompact ? 'h-9 w-9' : 'h-12 w-12'}`}>
                             <img src={cataLogo} alt="CATA AI logo" className={`${isSidebarCompact ? 'h-5 w-5' : 'h-7 w-7'} object-contain`} />
                         </div>
-                        <div className="min-w-0">
-                            <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isDark ? 'text-amber-300/80' : 'text-amber-600'}`}>
-                                AI Assistant
-                            </p>
-                            <h2 className={`mt-0.5 truncate font-bold leading-tight ${isSidebarCompact ? 'text-base' : 'text-lg'} ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                {selectedService.name}
-                            </h2>
-                            <p className={`mt-1 text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                {sidebarServiceDescription || 'Guided consultation'}
-                            </p>
-                        </div>
+                        {!isSidebarCompact && (
+                            <div className="min-w-0">
+                                <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isDark ? 'text-amber-300/80' : 'text-amber-600'}`}>
+                                    AI Assistant
+                                </p>
+                                <h2 className={`mt-0.5 truncate text-lg font-bold leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                    {selectedService.name}
+                                </h2>
+                                <p className={`mt-1 text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    {sidebarServiceDescription || 'Guided consultation'}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
+                {!isSidebarCompact && (
                 <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
-                    <div className={`flex min-h-0 flex-[1.05] flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-white/90'}`}>
+                    <div className="flex min-h-0 flex-[1.05] flex-col p-2">
                         <div className="mb-3 flex items-center justify-between gap-2">
                             <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${isDark ? 'bg-primary/15 text-primary' : 'bg-amber-100 text-amber-700'}`}>
                                 <Sparkles className="h-3 w-3" />
@@ -2432,9 +2591,9 @@ const GuestAIDemo = () => {
                                             key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
                                             type="button"
                                             onClick={() => handleOpenProposalPreview(proposal)}
-                                            className={`group w-full rounded-xl border px-3 py-2 text-left transition-all duration-200 ${isDark
-                                                ? 'border-white/12 bg-white/[0.04] hover:border-primary/35 hover:bg-white/[0.08]'
-                                                : 'border-black/10 bg-white hover:border-primary/35 hover:bg-slate-50'
+                                            className={`group w-full rounded-lg px-3 py-2 text-left transition-colors duration-200 ${isDark
+                                                ? 'hover:bg-white/10'
+                                                : 'hover:bg-black/5'
                                                 }`}
                                             title="Open proposal details"
                                         >
@@ -2470,7 +2629,7 @@ const GuestAIDemo = () => {
                         )}
                     </div>
 
-                    <div className={`flex min-h-0 flex-1 flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-white/90'}`}>
+                    <div className={`flex min-h-0 flex-1 flex-col mt-2 ${isSidebarCompact ? 'p-1' : 'p-2'}`}>
                         <div className={`mb-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${isDark ? 'bg-white/[0.06] text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
                             <History className="h-3 w-3" />
                             Previous chats
@@ -2492,13 +2651,13 @@ const GuestAIDemo = () => {
                                         return (
                                             <div
                                                 key={chat.sessionId}
-                                                className={`group relative overflow-hidden rounded-xl border transition-all duration-300 ${isCurrent
+                                                className={`group relative overflow-hidden rounded-lg transition-colors duration-200 ${isCurrent
                                                     ? isDark
-                                                        ? 'border-[#ffc800]/40 bg-gradient-to-r from-[#ffc800]/10 to-transparent shadow-[inset_2px_0_0_0_#ffc800]'
-                                                        : 'border-amber-400/40 bg-gradient-to-r from-amber-100/50 to-transparent shadow-[inset_2px_0_0_0_#fbbf24]'
+                                                        ? 'bg-white/10'
+                                                        : 'bg-black/10'
                                                     : isDark
-                                                        ? 'border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.05]'
-                                                        : 'border-black/5 bg-white hover:border-black/10 hover:bg-slate-50'
+                                                        ? 'hover:bg-white/5'
+                                                        : 'hover:bg-black/5'
                                                     }`}
                                             >
                                                 <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
@@ -2537,18 +2696,17 @@ const GuestAIDemo = () => {
                         )}
                     </div>
                 </div>
+                )}
 
-                <div className={`mt-3 shrink-0 overflow-hidden rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-none bg-gradient-to-t from-[#ffc800]/10 to-white/[0.02]' : 'border-amber-200/50 bg-gradient-to-t from-amber-50 to-white'}`}>
+                <div className={`mt-auto shrink-0 overflow-hidden ${isSidebarCompact ? 'p-1 flex flex-col items-center' : 'p-3'}`}>
                     {isAuthLoading ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center">
                             <span className={`h-2.5 w-2.5 animate-pulse rounded-full ${isDark ? 'bg-amber-400/50' : 'bg-amber-500/50'}`} />
-                            <p className={`text-xs font-medium ${isDark ? 'text-amber-200/50' : 'text-amber-700/60'}`}>
-                                Checking status...
-                            </p>
+                            {!isSidebarCompact && <p className={`ml-2 text-xs font-medium ${isDark ? 'text-amber-200/50' : 'text-amber-700/60'}`}>Checking status...</p>}
                         </div>
                     ) : isUserLoggedIn ? (
-                        <div>
-                            <div className="flex items-center gap-3">
+                        <div className={isSidebarCompact ? 'flex flex-col items-center gap-2' : ''}>
+                            <div className={`flex items-center gap-3 ${isSidebarCompact ? 'justify-center' : ''}`}>
                                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 ${isDark ? 'border-[#ffc800]/20 bg-black' : 'border-amber-200 bg-white'}`}>
                                     {userAvatar ? (
                                         <img src={userAvatar} alt={userDisplayName} className="h-full w-full object-cover" />
@@ -2556,28 +2714,41 @@ const GuestAIDemo = () => {
                                         <User className={`h-4 w-4 ${isDark ? 'text-[#ffc800]' : 'text-amber-600'}`} />
                                     )}
                                 </div>
-                                <div className="min-w-0">
-                                    <p className={`truncate ${isSidebarCompact ? 'text-[11px]' : 'text-xs'} font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                                        {userDisplayName}
-                                    </p>
-                                    <p className={`truncate text-[10px] font-medium ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-                                        {userDisplayEmail || 'Authenticated user'}
-                                    </p>
-                                </div>
+                                {!isSidebarCompact && (
+                                    <div className="min-w-0">
+                                        <p className={`truncate text-xs font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                            {userDisplayName}
+                                        </p>
+                                        <p className={`truncate text-[10px] font-medium ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                            {userDisplayEmail || 'Authenticated user'}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
-                                className={`mt-3 w-full h-8 rounded-lg text-xs font-medium transition-colors ${isDark
-                                    ? 'bg-white/[0.05] text-white hover:bg-white/[0.1]'
-                                    : 'bg-black/5 text-slate-700 hover:bg-black/10'
-                                    }`}
-                            >
-                                <LogIn className="mr-2 h-3.5 w-3.5" />
-                                Switch account
-                            </Button>
+                            {!isSidebarCompact && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
+                                    className={`mt-3 w-full h-8 rounded-lg text-xs font-medium transition-colors ${isDark
+                                        ? 'bg-white/[0.05] text-white hover:bg-white/[0.1]'
+                                        : 'bg-black/5 text-slate-700 hover:bg-black/10'
+                                        }`}
+                                >
+                                    <LogIn className="mr-2 h-3.5 w-3.5" />
+                                    Switch account
+                                </Button>
+                            )}
                         </div>
+                    ) : isSidebarCompact ? (
+                        <Button
+                            type="button"
+                            size="icon"
+                            onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
+                            className={`h-10 w-10 rounded-xl font-bold ${isDark ? 'bg-[#ffc800] text-black hover:bg-[#ffc800]/90' : 'bg-amber-400 text-amber-950 hover:bg-amber-500'}`}
+                        >
+                            <LogIn className="h-4 w-4" />
+                        </Button>
                     ) : (
                         <Button
                             type="button"
@@ -2591,10 +2762,10 @@ const GuestAIDemo = () => {
                 </div>
             </aside>
 
-            <section className={`relative flex min-w-0 flex-1 flex-col pt-3 ${isDark ? 'bg-transparent' : 'bg-transparent'}`}>
+            <section className={`relative flex min-w-0 flex-1 flex-col pt-3 bg-transparent ${isInitialScreen ? 'justify-center items-center' : ''}`}>
 
-                <ScrollArea ref={scrollRef} className="flex-1 min-h-0 px-4 pt-2 pb-6 md:px-8 md:pt-3 md:pb-8">
-                    <div className="mx-auto w-full max-w-6xl space-y-5 pb-8">
+                <ScrollArea ref={scrollRef} className={`w-full ${isInitialScreen ? 'flex flex-col' : 'flex-1 min-h-0 pt-4'}`}>
+                    <div className={`mx-auto w-full max-w-3xl space-y-8 flex flex-col px-4 md:px-0 ${isInitialScreen ? 'pt-8' : 'pt-4 pb-52'}`}>
                         {messages.map((msg, idx) => {
                             const { text: messageContent, attachments: messageAttachments } = parseMessageContentWithAttachments(
                                 msg.content,
@@ -2605,52 +2776,78 @@ const GuestAIDemo = () => {
                             const isLatestAssistantMessage = msg.role === 'assistant' && idx === messages.length - 1;
                             const shouldEnableOptionClick = isLatestAssistantMessage && !isTyping && hasOptionInput;
 
-                            return (
+                            return msg.role === 'user' ? (
+                                /* ── USER message: right-aligned bubble ── */
                                 <motion.div
                                     key={messageKey}
-                                    initial={{ opacity: 0, y: 12 }}
+                                    initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className={`flex items-start gap-3 md:gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                    className="flex w-full justify-end"
                                 >
-                                    {msg.role === 'assistant' && (
-                                        <div className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-amber-300/35 bg-amber-300/15 shadow-[0_0_0_5px_rgba(245,158,11,0.10)]' : 'border-amber-400/35 bg-amber-100'}`}>
-                                            <img src={cataLogo} alt="CATA AI logo" className="h-4 w-4 object-contain" />
-                                        </div>
-                                    )}
+                                    <div className="flex max-w-[75%] flex-col items-end gap-2">
+                                        {/* attachments above bubble */}
+                                        {messageAttachments.length > 0 && (
+                                            <div className="flex flex-wrap justify-end gap-2">
+                                                {messageAttachments.map((attachment, attachmentIdx) => {
+                                                    const isImg = String(attachment.type || '').startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(String(attachment.url || ''));
+                                                    return isImg ? (
+                                                        <a key={`${attachment.url}-${attachmentIdx}`} href={attachment.url} target="_blank" rel="noopener noreferrer" className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/10' : 'border-black/5'}`}>
+                                                            <img src={attachment.url} alt={attachment.name || 'Attachment'} className="max-h-36 object-contain" />
+                                                        </a>
+                                                    ) : (
+                                                        <a key={`${attachment.url}-${attachmentIdx}`} href={attachment.url} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${isDark ? 'border-white/10 bg-white/5 text-slate-200' : 'border-black/5 bg-slate-100 text-slate-700'}`}>
+                                                            <FileText className="h-4 w-4 shrink-0 opacity-70" />
+                                                            <span className="max-w-[150px] truncate">{attachment.name || 'Attachment'}</span>
+                                                        </a>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        {/* text bubble */}
+                                        {messageContent && (
+                                            <div className={`rounded-3xl px-5 py-3 text-[15px] leading-relaxed whitespace-pre-wrap break-words ${
+                                                isDark
+                                                    ? 'bg-[#2F2F2F] text-white'
+                                                    : 'bg-[#F0F0F0] text-slate-900'
+                                            }`}>
+                                                {messageContent}
+                                            </div>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            ) : (
+                                /* ── ASSISTANT message: left-aligned with avatar ── */
+                                <motion.div
+                                    key={messageKey}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="flex w-full items-start gap-3"
+                                >
+                                    {/* avatar */}
+                                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-black/5'}`}>
+                                        <img src={cataLogo} alt="AI logo" className="h-5 w-5 object-contain" />
+                                    </div>
 
-                                    {proposalCard ? (
-                                        <div className={`w-full max-w-4xl rounded-[1.5rem] border p-5 shadow-sm md:p-6 ${isDark ? 'border-amber-300/30 bg-gradient-to-b from-white/[0.07] to-white/[0.04] text-white shadow-[0_18px_50px_-30px_rgba(0,0,0,0.70)]' : 'border-amber-400/30 bg-white text-slate-900 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.35)]'}`}>
-                                            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
-                                                <Sparkles className="h-3.5 w-3.5" />
-                                                Generated Proposal
+                                    {/* content */}
+                                    <div className="flex-1 min-w-0 max-w-[85%]">
+                                        {proposalCard ? (
+                                            <div className={`rounded-2xl border p-5 md:p-6 ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-white shadow-sm'}`}>
+                                                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                                                    <Sparkles className="h-3.5 w-3.5" />
+                                                    Generated Proposal
+                                                </div>
+                                                <ProposalPreview content={messageContent || msg.content} isDark={isDark} />
+                                                <div className={`mt-5 pt-4 flex justify-end ${isDark ? 'border-t border-white/10' : 'border-t border-slate-200'}`}>
+                                                    <Button
+                                                        onClick={() => handleProceed(messageContent || msg.content)}
+                                                        className="w-full sm:w-auto px-6 py-2 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+                                                    >
+                                                        Find Freelancer for this proposal
+                                                    </Button>
+                                                </div>
                                             </div>
-                                            <ProposalPreview content={messageContent || msg.content} isDark={isDark} />
-                                            <div className={`mt-6 pt-5 flex justify-end ${isDark ? 'border-t border-primary/20' : 'border-t border-primary/20'}`}>
-                                                <Button
-                                                    onClick={() => handleProceed(messageContent || msg.content)}
-                                                    className="w-full sm:w-auto px-8 py-2.5 rounded-xl font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98]"
-                                                >
-                                                    Find Freelancer for this proposal
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div
-                                            className={`text-sm leading-7 md:text-[15px]
-                                            ${msg.role === 'user'
-                                                    ? 'w-fit max-w-2xl rounded-[1.45rem] rounded-tr-md border px-4 py-3.5 md:px-5 md:py-4'
-                                                    : 'w-full max-w-4xl rounded-[1.45rem] border px-4 py-3.5 md:px-5 md:py-4'
-                                                }
-                                            ${msg.role === 'user'
-                                                    ? isDark
-                                                        ? 'border-amber-300/35 bg-gradient-to-br from-amber-300/22 via-amber-300/15 to-amber-300/8 text-amber-50 shadow-[0_16px_34px_-22px_rgba(245,158,11,0.75)]'
-                                                        : 'border-amber-400/40 bg-amber-100 text-amber-900 shadow-[0_16px_30px_-24px_rgba(146,64,14,0.45)]'
-                                                    : isDark
-                                                        ? 'border-white/12 bg-gradient-to-b from-white/[0.08] to-white/[0.04] text-white shadow-[0_20px_50px_-34px_rgba(0,0,0,0.68)]'
-                                                        : 'border-black/10 bg-white text-slate-800 shadow-[0_20px_40px_-34px_rgba(15,23,42,0.35)]'
-                                                }`}
-                                        >
-                                            {msg.role === 'assistant' ? (
+                                        ) : (
+                                            <div className={`text-[15px] leading-relaxed ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                                 <AssistantMessageBody
                                                     content={messageContent || msg.content}
                                                     isDark={isDark}
@@ -2662,70 +2859,9 @@ const GuestAIDemo = () => {
                                                     selectedCount={selectedOptions.length}
                                                     onSubmitMulti={(e) => handleSendMessage(e, selectedOptions)}
                                                 />
-                                            ) : (
-                                                <div className="space-y-2">
-                                                    {messageContent && (
-                                                        <div className="whitespace-pre-wrap break-words">
-                                                            {messageContent}
-                                                        </div>
-                                                    )}
-                                                    {messageAttachments.length > 0 && (
-                                                        <div className="space-y-2">
-                                                            {messageAttachments.map((attachment, attachmentIdx) => {
-                                                                const isImageAttachment = String(attachment.type || '').startsWith('image/')
-                                                                    || /\.(jpg|jpeg|png|gif|webp)$/i.test(String(attachment.url || ''));
-
-                                                                if (isImageAttachment) {
-                                                                    return (
-                                                                        <a
-                                                                            key={`${attachment.url}-${attachmentIdx}`}
-                                                                            href={attachment.url}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className={`block overflow-hidden rounded-xl border ${isDark ? 'border-white/15 bg-black/15' : 'border-black/10 bg-white'}`}
-                                                                        >
-                                                                            <img
-                                                                                src={attachment.url}
-                                                                                alt={attachment.name || 'Attachment'}
-                                                                                className="max-h-44 w-full object-cover"
-                                                                            />
-                                                                        </a>
-                                                                    );
-                                                                }
-
-                                                                return (
-                                                                    <a
-                                                                        key={`${attachment.url}-${attachmentIdx}`}
-                                                                        href={attachment.url}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${isDark
-                                                                            ? 'border-white/20 bg-white/[0.06] text-slate-100'
-                                                                            : 'border-black/15 bg-white text-slate-700'
-                                                                            }`}
-                                                                    >
-                                                                        <FileText className="h-3.5 w-3.5 shrink-0" />
-                                                                        <span className="truncate">{attachment.name || 'Attachment'}</span>
-                                                                        {attachment.size > 0 && (
-                                                                            <span className={`${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                                                {formatBytes(attachment.size)}
-                                                                            </span>
-                                                                        )}
-                                                                    </a>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {msg.role === 'user' && (
-                                        <div className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${isDark ? 'border-white/15 bg-white/10 text-slate-200' : 'border-black/10 bg-slate-100 text-slate-600'}`}>
-                                            <User className="h-4 w-4" />
-                                        </div>
-                                    )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </motion.div>
                             );
                         })}
@@ -2734,164 +2870,38 @@ const GuestAIDemo = () => {
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="flex items-start gap-4"
+                                className="flex w-full items-start gap-3"
                             >
-                                <div className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-amber-300/35 bg-amber-300/15' : 'border-amber-400/35 bg-amber-100'}`}>
-                                    <img src={cataLogo} alt="CATA AI logo" className="h-4 w-4 object-contain" />
+                                <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-black/5'}`}>
+                                    <img src={cataLogo} alt="AI logo" className="h-5 w-5 object-contain" />
                                 </div>
-                                <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 ${isDark ? 'border-white/12 bg-white/[0.06]' : 'border-black/10 bg-white'}`}>
-                                    <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
-                                    <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '140ms' }} />
-                                    <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '280ms' }} />
+                                <div className="flex min-h-[2rem] items-center gap-1.5 opacity-60">
+                                    <div className={`h-1.5 w-1.5 animate-bounce rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} style={{ animationDelay: '0ms' }} />
+                                    <div className={`h-1.5 w-1.5 animate-bounce rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} style={{ animationDelay: '140ms' }} />
+                                    <div className={`h-1.5 w-1.5 animate-bounce rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} style={{ animationDelay: '280ms' }} />
                                 </div>
                             </motion.div>
                         )}
 
+                        {isInitialScreen && (
+                            <div className="mt-8 w-full">
+                                {renderChatInput()}
+                            </div>
+                        )}
                     </div>
                 </ScrollArea>
 
-                <div className={`border-t px-4 py-4 md:px-8 ${isDark ? 'border-white/10 bg-black/35' : 'border-slate-300/70 bg-white/75'}`}>
-                    <div className="mx-auto w-full max-w-6xl space-y-2.5">
-                        {shouldShowTextInput && (
-                            <form
-                                onSubmit={handleSendMessage}
-                                className={`rounded-[1.75rem] border p-3 shadow-[0_24px_48px_-34px_rgba(15,23,42,0.85)] backdrop-blur-xl ${isDark
-                                    ? 'border-white/15 bg-gradient-to-b from-white/[0.10] to-white/[0.03]'
-                                    : 'border-slate-300/70 bg-white'
-                                    }`}
-                            >
-                                {isPendingOptionFollowup && (
-                                    <div className={`mb-3 flex items-center justify-between gap-3 rounded-2xl border px-3.5 py-2.5 text-sm ${isDark
-                                        ? 'border-amber-300/25 bg-amber-300/[0.08] text-amber-50'
-                                        : 'border-amber-300/40 bg-amber-50 text-amber-900'
-                                        }`}>
-                                        <p className="min-w-0 flex-1">
-                                            {contextualPendingOptionNotice}
-                                        </p>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 shrink-0 rounded-full"
-                                            onClick={() => {
-                                                setPendingOptionFollowup(null);
-                                                setSelectedOptions([]);
-                                                setInput('');
-                                            }}
-                                            aria-label="Clear selected special option"
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                )}
-                                {pendingAttachments.length > 0 && (
-                                    <div className="mb-3 flex flex-wrap gap-2">
-                                        {pendingAttachments.map((file, index) => {
-                                            const imageFile = String(file.type || '').startsWith('image/');
-                                            return (
-                                                <div
-                                                    key={`${file.name}-${file.size}-${index}`}
-                                                    className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1 text-xs ${isDark
-                                                        ? 'border-white/20 bg-white/[0.08] text-slate-200'
-                                                        : 'border-black/15 bg-slate-50 text-slate-700'
-                                                        }`}
-                                                >
-                                                    {imageFile ? (
-                                                        <ImageIcon className="h-3.5 w-3.5 shrink-0" />
-                                                    ) : (
-                                                        <FileText className="h-3.5 w-3.5 shrink-0" />
-                                                    )}
-                                                    <span className="max-w-[190px] truncate">{file.name}</span>
-                                                    <span className={`${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                        {formatBytes(file.size)}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        className={`rounded-full p-0.5 ${isDark ? 'hover:bg-white/15' : 'hover:bg-slate-200'}`}
-                                                        onClick={() => removePendingAttachment(index)}
-                                                        aria-label={`Remove ${file.name}`}
-                                                    >
-                                                        <X className="h-3 w-3" />
-                                                    </button>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                                <div className="flex items-center gap-2.5">
-                                    <Input
-                                        ref={inputRef}
-                                        autoFocus
-                                        value={input}
-                                        onChange={(e) => setInput(e.target.value)}
-                                        placeholder={contextualPendingOptionPlaceholder}
-                                        className={`h-12 flex-1 rounded-2xl border-0 bg-transparent text-base ${isDark
-                                            ? 'text-white placeholder:text-slate-400'
-                                            : 'text-slate-900 placeholder:text-slate-500'
-                                            }`}
-                                        disabled={isTyping || isUploadingAttachment}
-                                    />
-                                    <input
-                                        ref={attachmentInputRef}
-                                        type="file"
-                                        multiple
-                                        accept={CHAT_FILE_ACCEPT}
-                                        className="hidden"
-                                        onChange={handleAttachmentPick}
-                                    />
-                                    <Button
-                                        size="icon"
-                                        type="button"
-                                        onClick={openAttachmentPicker}
-                                        disabled={isTyping || isUploadingAttachment}
-                                        aria-label="Upload image or document"
-                                        title="Upload image or document"
-                                        className={`h-10 w-10 rounded-xl ${isDark
-                                            ? 'border border-white/20 bg-white/[0.08] text-slate-200 hover:bg-white/[0.14]'
-                                            : 'border border-black/15 bg-white text-slate-700 hover:bg-slate-100'
-                                            }`}
-                                    >
-                                        <Paperclip className="h-4 w-4" />
-                                    </Button>
-                                    {isSpeechSupported && (
-                                        <Button
-                                            size="icon"
-                                            type="button"
-                                            onClick={toggleVoiceInput}
-                                            disabled={isTyping || isUploadingAttachment}
-                                            aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
-                                            title={isListening ? 'Stop voice input' : 'Start voice input'}
-                                            className={`${isListening
-                                                ? 'animate-pulse bg-primary text-primary-foreground hover:bg-primary/90'
-                                                : isDark
-                                                    ? 'border border-white/20 bg-white/[0.08] text-slate-200 hover:bg-white/[0.14]'
-                                                    : 'border border-black/15 bg-white text-slate-700 hover:bg-slate-100'
-                                                } h-10 w-10 rounded-xl`}
-                                        >
-                                            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                                        </Button>
-                                    )}
-                                    <Button
-                                        size="icon"
-                                        type="submit"
-                                        disabled={((!input.trim() && pendingAttachments.length === 0) || (isPendingOptionFollowup && !input.trim())) || isTyping || isUploadingAttachment}
-                                        className="h-10 w-10 rounded-xl bg-primary text-primary-foreground shadow-[0_14px_28px_-16px_rgba(245,158,11,0.9)] hover:bg-primary/90"
-                                    >
-                                        <Send className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                                {isUploadingAttachment && (
-                                    <p className={`mt-2 text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                        Uploading attachment...
-                                    </p>
-                                )}
-                            </form>
-                        )}
-                        <p className={`text-center text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            AI may produce inaccurate information about people, places, or facts.
-                        </p>
+                {/* Fixed bottom input box only when NOT initial screen */}
+                {!isInitialScreen && (
+                    <div className={`absolute bottom-0 w-full px-4 pb-4 pt-12 md:px-8 bg-gradient-to-t ${isDark ? 'from-[#212121] via-[#212121]/90 to-transparent' : 'from-[#F9F9F9] via-[#F9F9F9]/90 to-transparent'}`}>
+                        <div className="mx-auto w-full max-w-3xl space-y-2.5">
+                            {renderChatInput()}
+                            <p className={`text-center text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                AI can make mistakes. Check important info.
+                            </p>
+                        </div>
                     </div>
-                </div>
+                )}
             </section>
 
             {selectedProposalPreview && (
