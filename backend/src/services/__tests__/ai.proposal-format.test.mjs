@@ -77,6 +77,54 @@ Budget: 20000
   assert.doesNotMatch(normalized, /^Overview:/m);
 });
 
+test("keeps confirmed structured budget and timeline over conflicting draft values", () => {
+  const normalized = normalizeProposalMarkdown({
+    markdown: `
+Client Name: ravindra
+Business Name: cleclo
+Service Type: Web Development
+Project Overview: Build a custom e-commerce platform.
+Primary Objectives:
+- Launch the store
+Features/Deliverables Included:
+- Product listing
+Launch Timeline: 1 month
+Budget: INR 5,000
+Website Type: E-commerce Store
+Frontend Framework: Next.js
+Backend Technology: Node.js
+Database: MySQL
+    `,
+    proposalContext: {
+      clientName: "ravindra",
+      companyName: "cleclo",
+      serviceName: "Web Development",
+      questionnaireAnswersBySlug: {
+        q_web_budget: "10k",
+        q_web_timeline: "2 months"
+      },
+      serviceQuestionAnswers: [
+        {
+          slug: "q_web_budget",
+          question: "What kind of budget range are you planning for this project?",
+          answer: "10k"
+        },
+        {
+          slug: "q_web_timeline",
+          question: "What timeline do you have in mind for this project?",
+          answer: "2 months"
+        }
+      ]
+    },
+    selectedServiceName: "Web Development"
+  });
+
+  assert.match(normalized, /^Launch Timeline: 2 months$/m);
+  assert.match(normalized, /^Budget: INR 10,000$/m);
+  assert.doesNotMatch(normalized, /^Launch Timeline: 1 month$/m);
+  assert.doesNotMatch(normalized, /^Budget: INR 5,000$/m);
+});
+
 test("normalizes standalone numeric helpers", () => {
   assert.equal(normalizeNumericFieldValue("seven pages"), "7");
   assert.equal(normalizeProposalBudgetValue("twenty five thousand"), "INR 25,000");

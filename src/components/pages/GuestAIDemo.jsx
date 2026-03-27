@@ -490,6 +490,8 @@ const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
 const QUESTION_LINE_REGEX = /\?\s*$/;
 const OPTION_PROMPT_CUE_REGEX = /\b(choose|select|pick|prefer|options?|choice|choices|kindly|please|type|tap|reply|which one|which of these|here are)\b/i;
 const FREEFORM_FOLLOWUP_OPTION_REGEX = /\b(not sure|other|suggest|recommend|advice|help)\b/i;
+const AUTO_HELPER_QUESTION_REGEX = /\b(budget|price|pricing|cost|timeline|ready|launch|deadline|when would you like|when do you want|how soon)\b/i;
+const AUTO_RECOMMEND_OPTION_VALUE = 'Recommend best option';
 
 const repairBrokenTechTokens = (text = "") =>
     String(text || "")
@@ -1044,6 +1046,14 @@ const buildFreeformOptionHelperCopy = ({
         };
 };
 
+const shouldAutoRecommendCurrentQuestion = ({
+    questionText = '',
+    contextText = '',
+}) => {
+    const combinedPrompt = `${normalizeHelperIntentText(questionText)} ${normalizeHelperIntentText(contextText)}`.trim();
+    return AUTO_HELPER_QUESTION_REGEX.test(combinedPrompt);
+};
+
 const PROPOSAL_INLINE_FIELD_LABELS = [
     'Client Name',
     'Business Name',
@@ -1310,6 +1320,7 @@ const GuestAIDemo = () => {
     const inputRef = useRef(null);
     const attachmentInputRef = useRef(null);
     const recognitionRef = useRef(null);
+    const dismissedAutoHelperKeysRef = useRef(new Set());
     const speechBaseInputRef = useRef("");
     const speechFinalRef = useRef("");
     const suppressSpeechCommitRef = useRef(false);
@@ -1423,15 +1434,16 @@ const GuestAIDemo = () => {
     const isNotSureFollowup = /\b(not sure|other|suggest|recommend|advice|help)\b/.test(pendingOptionNormalized);
     const pendingOptionNotice = isPendingOptionFollowup
         ? isNotSureFollowup
-            ? "No problem. Tell me a little about what you need, and I will suggest the best fit."
+            ? "I will recommend the best fit for this step based on your project context."
             : `Got it. Tell me what you have in mind for ${pendingOptionLabel}, and I will tailor it for you.`
         : "";
     const pendingOptionPlaceholder = isPendingOptionFollowup
         ? isNotSureFollowup
-            ? "Tell me a bit about what you are trying to build..."
+            ? "e.g. use the recommended answer..."
             : `Tell me a bit more about "${pendingOptionLabel}"...`
         : "Message CATA AI...";
     const latestAssistantMessage = [...messages].reverse().find((message) => message?.role === 'assistant');
+    const latestAssistantIsProposal = isProposalMessage(latestAssistantMessage?.content || '');
     const latestAssistantPrompt = latestAssistantMessage
         ? parseAssistantMessageLayout(latestAssistantMessage.content || '', { forceInteractiveOptions: true })
         : { questionText: '', contextText: '', options: [] };
@@ -1451,11 +1463,20 @@ const GuestAIDemo = () => {
         })
         : { notice: '', placeholder: 'Message CATA AI...' };
     const contextualPendingOptionNotice = pendingOptionFollowup?.loadingAdvice
-        ? "Asking AI for advice..."
+        ? ((pendingOptionFollowup?.autoSuggestion || isNotSureFollowup) ? "Asking AI for a recommendation..." : "Asking AI for advice...")
         : (pendingOptionFollowup?.notice || contextualPendingOptionHelperCopy.notice || pendingOptionNotice);
     const contextualPendingOptionPlaceholder = pendingOptionFollowup?.loadingAdvice
         ? "Please wait..."
         : (pendingOptionFollowup?.placeholder || contextualPendingOptionHelperCopy.placeholder || pendingOptionPlaceholder);
+    const shouldAutoRecommendQuestion = !latestAssistantIsProposal
+        && Boolean(latestAssistantPrompt.questionText)
+        && shouldAutoRecommendCurrentQuestion({
+            questionText: latestAssistantPrompt.questionText,
+            contextText: latestAssistantPrompt.contextText,
+        });
+    const automaticQuestionHelperKey = shouldAutoRecommendQuestion
+        ? `${sessionId || 'guest'}::${normalizeOptionToken(latestAssistantPrompt.questionText)}::${normalizeOptionToken(latestAssistantPrompt.contextText)}`
+        : '';
 
     const optionIsSelected = (value = '') =>
         selectedOptions.some((selected) => normalizeOptionToken(selected) === normalizeOptionToken(value));
@@ -1490,14 +1511,27 @@ const GuestAIDemo = () => {
             && normalizeOptionToken(pendingOptionValue) === normalizeOptionToken(resolvedValue);
     };
 
-    const fetchOptionAdvice = async (optionValue) => {
+    const fetchOptionAdvice = async (optionValue, extraContext = {}) => {
+        const isRecommendationRequest = extraContext.mode === 'auto_question_recommendation'
+            || /\b(not sure|other|suggest|recommend|advice|help)\b/i.test(String(optionValue || ''));
+        const fallbackNotice = isRecommendationRequest
+            ? 'Recommended: use the best-fit answer for this step based on your current project direction.'
+            : `Got it. ${stripMarkdownDecorators(optionValue)}.`;
+        const fallbackPlaceholder = isRecommendationRequest
+            ? 'e.g. use the recommended answer...'
+            : 'Tell me a bit more...';
+
         try {
             const contextText = messages
                 .filter((msg) => msg?.role === 'user')
                 .slice(-4)
                 .map((msg) => msg?.content)
                 .join(' ');
-            const currentQ = latestAssistantPrompt.questionText;
+            const currentQ = extraContext.questionText ?? latestAssistantPrompt.questionText;
+            const questionContext = extraContext.assistantContext ?? latestAssistantPrompt.contextText;
+            const currentOptions = Array.isArray(extraContext.currentOptions)
+                ? extraContext.currentOptions
+                : latestAssistantPrompt.options;
 
             const response = await request('/guest/advice', {
                 method: 'POST',
@@ -1506,23 +1540,37 @@ const GuestAIDemo = () => {
                     serviceId: selectedService?.slug || selectedService?.id,
                     option: optionValue,
                     context: contextText,
-                    currentQuestion: currentQ
+                    currentQuestion: currentQ,
+                    assistantContext: questionContext,
+                    currentOptions,
+                    mode: extraContext.mode || 'manual_option_followup',
                 })
             });
             const data = unwrapPayload(response);
             setPendingOptionFollowup((current) => {
                 if (current?.optionValue !== optionValue) return current;
+                if (extraContext.questionKey && current?.questionKey && current.questionKey !== extraContext.questionKey) {
+                    return current;
+                }
                 return {
                     ...current,
                     loadingAdvice: false,
-                    notice: data?.notice || `Got it. ${stripMarkdownDecorators(optionValue)}.`,
-                    placeholder: data?.placeholder || 'Tell me a bit more...'
+                    notice: data?.notice || fallbackNotice,
+                    placeholder: data?.placeholder || fallbackPlaceholder
                 };
             });
         } catch (err) {
             setPendingOptionFollowup((current) => {
                 if (current?.optionValue !== optionValue) return current;
-                return { ...current, loadingAdvice: false };
+                if (extraContext.questionKey && current?.questionKey && current.questionKey !== extraContext.questionKey) {
+                    return current;
+                }
+                return {
+                    ...current,
+                    loadingAdvice: false,
+                    notice: fallbackNotice,
+                    placeholder: fallbackPlaceholder,
+                };
             });
         }
     };
@@ -1654,6 +1702,48 @@ const GuestAIDemo = () => {
     useEffect(() => {
         setSelectedOptions([]);
     }, [inputConfig.type, inputConfig.options]);
+
+    useEffect(() => {
+        if (!pendingOptionFollowup?.autoSuggestion) return;
+
+        if (!automaticQuestionHelperKey) {
+            setPendingOptionFollowup(null);
+        }
+    }, [automaticQuestionHelperKey, pendingOptionFollowup?.autoSuggestion]);
+
+    useEffect(() => {
+        if (!automaticQuestionHelperKey) return;
+        if (dismissedAutoHelperKeysRef.current.has(automaticQuestionHelperKey)) return;
+
+        if (pendingOptionFollowup?.autoSuggestion) {
+            if (pendingOptionFollowup.questionKey === automaticQuestionHelperKey) return;
+        } else if (pendingOptionFollowup) {
+            return;
+        }
+
+        setPendingOptionFollowup({
+            optionValue: AUTO_RECOMMEND_OPTION_VALUE,
+            loadingAdvice: true,
+            autoSuggestion: true,
+            questionKey: automaticQuestionHelperKey,
+        });
+        fetchOptionAdvice(AUTO_RECOMMEND_OPTION_VALUE, {
+            mode: 'auto_question_recommendation',
+            questionText: latestAssistantPrompt.questionText,
+            assistantContext: latestAssistantPrompt.contextText,
+            currentOptions: latestAssistantPrompt.options,
+            questionKey: automaticQuestionHelperKey,
+        });
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(() => focusMessageInput());
+        }
+    }, [
+        automaticQuestionHelperKey,
+        latestAssistantPrompt.contextText,
+        latestAssistantPrompt.options,
+        latestAssistantPrompt.questionText,
+        pendingOptionFollowup,
+    ]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return undefined;
@@ -1918,6 +2008,7 @@ const GuestAIDemo = () => {
 
     const handleLoadPreviousChat = async (chatMeta) => {
         if (!chatMeta?.sessionId) return;
+        dismissedAutoHelperKeysRef.current = new Set();
         const fallbackServiceId = chatMeta.serviceId || chatMeta.sessionId;
         const serviceMatch = services.find((service) => (
             service.slug === chatMeta.serviceId
@@ -1980,6 +2071,7 @@ const GuestAIDemo = () => {
     };
 
     const handleServiceSelect = async (service) => {
+        dismissedAutoHelperKeysRef.current = new Set();
         setSelectedService(service);
         setLoading(true);
         setInput('');
@@ -2164,6 +2256,7 @@ const GuestAIDemo = () => {
     };
 
     const handleBackToServices = () => {
+        dismissedAutoHelperKeysRef.current = new Set();
         setSelectedService(null);
         setSessionId(null);
         setMessages([]);
@@ -2386,6 +2479,9 @@ const GuestAIDemo = () => {
                             size="icon"
                             className={`h-8 w-8 shrink-0 rounded-full hover:bg-black/10`}
                             onClick={() => {
+                                if (pendingOptionFollowup?.autoSuggestion && pendingOptionFollowup?.questionKey) {
+                                    dismissedAutoHelperKeysRef.current.add(pendingOptionFollowup.questionKey);
+                                }
                                 setPendingOptionFollowup(null);
                                 setSelectedOptions([]);
                                 setInput('');

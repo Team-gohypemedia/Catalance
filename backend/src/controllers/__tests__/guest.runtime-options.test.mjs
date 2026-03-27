@@ -8,12 +8,19 @@ const {
   buildCurrentQuestionValidationPrompt,
   buildLockedServiceReply,
   buildPersistedAnswersPayload,
+  buildSupplementalBudgetExtractions,
   buildQuestionDisplayAnswer,
+  findExtractedBudgetMinimumViolation,
+  findBudgetMinimumViolationChange,
   getDisplayedQuestionOptions,
+  getBudgetMinimumValidationResult,
   getQuestionIdentityType,
   getMostRecentMessageContentByRole,
+  getPostProposalBudgetFollowupAction,
   getSemanticDependentIndexesForChanges,
   getServiceScopedMessages,
+  isBudgetQuestion,
+  mergeExtractedAnswers,
   normalizeAnswerForQuestion,
   toChronologicalGuestHistory,
 } = __testables;
@@ -260,4 +267,186 @@ test("builds a validation prompt that lets the model accept the assistant recomm
   assert.match(prompt, /I recommend \*\*Android and iOS\*\*/);
   assert.match(prompt, /brief agreement or approval/);
   assert.match(prompt, /set "normalizedAnswer" to the exact recommended option label or value/i);
+});
+
+test("detects budget questions from question text", () => {
+  assert.equal(
+    isBudgetQuestion({ slug: "user_budget", text: "What is your budget for this project?" }),
+    true
+  );
+  assert.equal(
+    isBudgetQuestion({ slug: "timeline", text: "When do you want to launch?" }),
+    false
+  );
+});
+
+test("detects late budget update messages outside the active budget step", () => {
+  const extracted = buildSupplementalBudgetExtractions({
+    message: "update budget 5k",
+    currentQuestion: {
+      slug: "q_final_notes",
+      text: "Is there anything else you want to mention before I prepare the proposal?"
+    },
+    questions: [
+      {
+        slug: "q_web_budget",
+        text: "What kind of budget range are you planning for this project?"
+      },
+      {
+        slug: "q_final_notes",
+        text: "Is there anything else you want to mention before I prepare the proposal?"
+      }
+    ]
+  });
+
+  assert.deepEqual(extracted, [
+    {
+      slug: "q_web_budget",
+      answer: "update budget 5k",
+      confidence: 0.99
+    }
+  ]);
+});
+
+test("flags late extracted budget updates that go below the service minimum", () => {
+  const extractedAnswers = buildSupplementalBudgetExtractions({
+    message: "update budget to 5k",
+    currentQuestion: {
+      slug: "q_final_notes",
+      text: "Is there anything else you want to mention before I prepare the proposal?"
+    },
+    questions: [
+      {
+        slug: "q_web_budget",
+        text: "What kind of budget range are you planning for this project?"
+      }
+    ]
+  });
+
+  const violation = findExtractedBudgetMinimumViolation({
+    extractedAnswers,
+    questionsBySlug: new Map([
+      [
+        "q_web_budget",
+        { slug: "q_web_budget", text: "What kind of budget range are you planning for this project?" }
+      ]
+    ]),
+    service: { name: "Web Development", minBudget: 10000, currency: "INR" }
+  });
+
+  assert.ok(violation);
+  assert.equal(violation.extractedAnswer.slug, "q_web_budget");
+  assert.match(violation.validation.message, /below the minimum for Web Development/i);
+  assert.match(violation.validation.message, /INR 10,000/);
+});
+
+test("blocks post-proposal regeneration when requested budget goes below minimum", () => {
+  const action = getPostProposalBudgetFollowupAction({
+    userMessage: "update my budget to 5k and regenerate the proposal",
+    service: { name: "Web Development", minBudget: 10000, currency: "INR" },
+    questions: [
+      {
+        slug: "q_web_budget",
+        text: "What kind of budget range are you planning for this project?"
+      }
+    ],
+    existingAnswersBySlug: { q_web_budget: "10k" },
+    runtimeOptionsByQuestionSlug: {}
+  });
+
+  assert.ok(action);
+  assert.equal(action.proposedAnswersBySlug, null);
+  assert.match(action.blockedMessage, /below the minimum for Web Development/i);
+  assert.match(action.blockedMessage, /INR 10,000/);
+});
+
+test("prepares a valid post-proposal budget update for regeneration", () => {
+  const action = getPostProposalBudgetFollowupAction({
+    userMessage: "update my budget to 15k and regenerate the proposal",
+    service: { name: "Web Development", minBudget: 10000, currency: "INR" },
+    questions: [
+      {
+        slug: "q_web_budget",
+        text: "What kind of budget range are you planning for this project?"
+      }
+    ],
+    existingAnswersBySlug: { q_web_budget: "10k" },
+    runtimeOptionsByQuestionSlug: {}
+  });
+
+  assert.ok(action);
+  assert.equal(action.blockedMessage, "");
+  assert.equal(action.proposedAnswersBySlug.q_web_budget, "update my budget to 15k and regenerate the proposal");
+  assert.match(action.reply, /budget updated to INR 15,000/i);
+});
+
+test("rejects budget answers below the service minimum", () => {
+  const result = getBudgetMinimumValidationResult({
+    question: { slug: "user_budget", text: "What is your budget for this project?" },
+    service: { name: "Web Development", minBudget: 10000, currency: "INR" },
+    answerText: "INR 5000",
+  });
+
+  assert.ok(result);
+  assert.equal(result.isValid, false);
+  assert.equal(result.status, "invalid_answer");
+  assert.match(result.message, /below the minimum for Web Development/i);
+  assert.match(result.message, /INR 10,000/);
+  assert.match(result.message, /Please increase your budget/i);
+});
+
+test("accepts budget answers that meet the service minimum", () => {
+  const result = getBudgetMinimumValidationResult({
+    question: { slug: "user_budget", text: "What is your budget for this project?" },
+    service: { name: "Web Development", minBudget: 10000, currency: "INR" },
+    answerText: "15k",
+  });
+
+  assert.equal(result, null);
+});
+
+test("detects below-minimum budget corrections for earlier answers", () => {
+  const violation = findBudgetMinimumViolationChange({
+    changes: [
+      {
+        index: 0,
+        slug: "q_web_budget",
+        previousValue: "20k",
+        nextValue: "i changed my mind, now my budget is 100rs",
+      },
+    ],
+    questions: [
+      { slug: "q_web_budget", text: "What kind of budget range are you planning for this project?" },
+    ],
+    service: { name: "Web Development", minBudget: 10000, currency: "INR" },
+  });
+
+  assert.ok(violation);
+  assert.equal(violation.change.slug, "q_web_budget");
+  assert.match(violation.validation.message, /below the minimum for Web Development/i);
+  assert.match(violation.validation.message, /INR 10,000/);
+});
+
+test("does not let transcript enrichment overwrite a confirmed minimum budget with a lower value", () => {
+  const merged = mergeExtractedAnswers({
+    baseAnswers: { q_web_budget: "10k" },
+    extractedAnswers: [
+      {
+        slug: "q_web_budget",
+        answer: "update my budget to 5k",
+        confidence: 0.95,
+      },
+    ],
+    validSlugs: new Set(["q_web_budget"]),
+    questionsBySlug: new Map([
+      [
+        "q_web_budget",
+        { slug: "q_web_budget", text: "What kind of budget range are you planning for this project?" },
+      ],
+    ]),
+    runtimeOptionsByQuestionSlug: {},
+    service: { name: "Web Development", minBudget: 10000, currency: "INR" },
+  });
+
+  assert.equal(merged.q_web_budget, "10k");
 });
