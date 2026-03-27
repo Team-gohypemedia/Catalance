@@ -520,7 +520,7 @@ const FreelancerWorkspaceHeader = ({
       </div>
 
       <div className="hidden space-y-4 pb-3 pt-3 lg:block">
-        <div className="mx-auto w-full rounded-[40px] border border-border bg-[#171717]/70 p-3 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[6px] sm:p-4 xl:w-[70%]">
+        <div className="mx-auto w-full rounded-[40px] border border-border bg-background p-3 sm:p-4 xl:w-[70%]">
           <div className="flex items-center justify-between gap-4">
             <Link to="/">
               <BrandMark />

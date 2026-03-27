@@ -3185,7 +3185,7 @@ const ClientProposalContent = () => {
               title="Project Proposals"
               description="Manage your draft, pending, and rejected proposals. Keep your potential collaborations moving."
               actions={
-                <TabsList className="inline-flex h-auto w-full max-w-[24rem] flex-nowrap items-stretch justify-between gap-1 rounded-[32px] border border-white/[0.08] bg-accent p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
+                <TabsList className="inline-flex h-auto w-full max-w-[24rem] flex-nowrap items-stretch justify-between gap-1 rounded-[32px] border border-border bg-background p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                   {[
                     { value: "draft", label: "Draft" },
                     { value: "pending", label: "Pending Approval" },
@@ -3195,7 +3195,7 @@ const ClientProposalContent = () => {
                       key={item.value}
                       value={item.value}
                       className={cn(
-                        "h-10 min-w-[4.75rem] flex-none rounded-full border border-transparent text-center text-[0.72rem] font-semibold text-[#a3a6ad] shadow-none transition hover:text-white sm:h-11 sm:min-w-0 sm:flex-none sm:px-5 sm:text-[0.95rem] sm:leading-normal sm:tracking-normal sm:whitespace-nowrap data-[state=active]:!border-[#ffc107]/70 data-[state=active]:!bg-[#ffc107] data-[state=active]:!text-[#141414] data-[state=active]:!shadow-none",
+                        "h-10 min-w-[4.75rem] flex-none rounded-full border border-transparent text-center text-[0.72rem] font-semibold text-muted-foreground shadow-none transition hover:text-foreground sm:h-11 sm:min-w-0 sm:flex-none sm:px-5 sm:text-[0.95rem] sm:leading-normal sm:tracking-normal sm:whitespace-nowrap data-[state=active]:!border-primary/70 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-none",
                         item.value === "pending"
                           ? "max-w-[6.5rem] whitespace-normal px-2 py-1 leading-[1.02] tracking-[-0.01em] sm:max-w-none sm:py-0"
                           : "whitespace-nowrap px-4 leading-none tracking-[-0.01em]",

@@ -816,7 +816,7 @@ const formatDashboardActivityTime = (value) => {
 };
 
 const FREELANCER_DASHBOARD_PANEL_CLASSNAME =
-  "overflow-hidden rounded-[24px] border border-white/[0.08] bg-accent";
+  "overflow-hidden rounded-[24px] border border-white/[0.08] bg-card";
 
 const freelancerDashboardCurrencyFormatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -929,16 +929,13 @@ const FreelancerMetricCardsSkeleton = () => (
 );
 
 const FreelancerActiveProjectsSkeleton = () => (
-  <section className="mt-3">
+  <section className="mt-14">
     <div className="mb-6 flex items-center justify-between gap-4">
-      <div>
-        <div className="flex items-center gap-3">
-          <FreelancerDashboardSkeletonBlock className="h-8 w-44 rounded-full" />
-          <FreelancerDashboardSkeletonBlock className="size-3 rounded-full" />
-        </div>
-        <FreelancerDashboardSkeletonBlock className="mt-2 h-4 w-72 rounded-full" />
+      <div className="flex items-center gap-3">
+        <FreelancerDashboardSkeletonBlock className="h-8 w-44 rounded-full" />
+        <FreelancerDashboardSkeletonBlock className="size-3 rounded-full" />
       </div>
-      <div className="hidden sm:flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <FreelancerDashboardSkeletonBlock className="size-8 rounded-full" />
         <FreelancerDashboardSkeletonBlock className="size-8 rounded-full" />
       </div>
@@ -1014,22 +1011,18 @@ const FreelancerRecentActivitySkeleton = () => (
 );
 
 const FreelancerProfileCompletionSkeleton = () => (
-  <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
-    <div className="flex items-start justify-between gap-3">
-      <div>
-        <FreelancerDashboardSkeletonBlock className="h-5 w-36 rounded-full" />
-        <FreelancerDashboardSkeletonBlock className="mt-2 h-4 w-44 rounded-full" />
+  <section className="mt-5">
+    <FreelancerDashboardPanel className="p-4 sm:p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <FreelancerDashboardSkeletonBlock className="h-8 w-[26rem] max-w-full rounded-full" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:w-auto lg:justify-end">
+          <FreelancerDashboardSkeletonBlock className="h-5 w-24 rounded-full" />
+          <FreelancerDashboardSkeletonBlock className="h-10 w-full rounded-full sm:w-32" />
+        </div>
       </div>
-      <FreelancerDashboardSkeletonBlock className="h-5 w-12 rounded-full" />
-    </div>
-    <FreelancerDashboardSkeletonBlock className="mt-4 h-2 w-full rounded-full" />
-    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-      <FreelancerDashboardSkeletonBlock className="h-4 w-20 rounded-full" />
-      <FreelancerDashboardSkeletonBlock className="h-4 w-24 rounded-full" />
-      <FreelancerDashboardSkeletonBlock className="h-4 w-16 rounded-full" />
-    </div>
-    <FreelancerDashboardSkeletonBlock className="mt-5 h-10 w-full rounded-full" />
-  </FreelancerDashboardPanel>
+      <FreelancerDashboardSkeletonBlock className="mt-5 h-2 w-full rounded-full" />
+    </FreelancerDashboardPanel>
+  </section>
 );
 
 const FreelancerChatsSkeleton = () => (
@@ -1140,7 +1133,7 @@ const FreelancerMetricCard = ({
   className = "",
 }) => (
   <article
-    className={`group flex min-h-[96px] flex-col rounded-[24px] border border-transparent bg-accent p-3.5 transition-colors hover:border-[#facc15]/70 sm:min-h-[110px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
+    className={`group flex min-h-[96px] flex-col rounded-[24px] border border-transparent bg-card p-3.5 transition-colors hover:border-[#facc15]/70 sm:min-h-[110px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
     onClick={onClick}
     role={onClick ? "button" : undefined}
     aria-label={ariaLabel}
@@ -1148,10 +1141,10 @@ const FreelancerMetricCard = ({
     <div className="flex h-full flex-col gap-2.5 sm:gap-3">
       <div className="flex items-start justify-between gap-2 sm:gap-3">
         <div className="flex min-w-0 items-start gap-2 sm:items-center sm:gap-3">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#9ca3af] sm:size-9">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground sm:size-9">
             <Icon className="size-3.5 sm:size-4" />
           </div>
-          <p className="line-clamp-2 text-[10px] font-medium uppercase leading-4 tracking-[0.1em] text-[#6b7280] sm:text-[11px] sm:tracking-[0.12em]">
+          <p className="line-clamp-2 text-[10px] font-medium uppercase leading-4 tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.12em]">
             {title}
           </p>
         </div>
@@ -1181,7 +1174,7 @@ const FreelancerProjectCarouselControls = ({
       onClick={onPrevious}
       disabled={!canGoPrevious}
       aria-label="Show previous active freelancer projects"
-      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-[#94a3b8] transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-white/35"
     >
       <ChevronLeft className="size-4" />
     </button>
@@ -1191,7 +1184,7 @@ const FreelancerProjectCarouselControls = ({
       onClick={onNext}
       disabled={!canGoNext}
       aria-label="Show next active freelancer projects"
-      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-[#94a3b8] transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-white/35"
     >
       <ChevronRight className="size-4" />
     </button>
@@ -1199,9 +1192,9 @@ const FreelancerProjectCarouselControls = ({
 );
 
 const FreelancerProjectRedirectCard = ({ item, className }) => (
-  <FreelancerDashboardPanel
+  <div
     className={cn(
-      "flex flex-col overflow-hidden p-4 sm:p-5 xl:p-6",
+      "flex flex-col overflow-hidden rounded-[28px] border border-white/[0.06] bg-card p-4 sm:p-5 xl:p-6",
       className,
     )}
   >
@@ -1243,7 +1236,7 @@ const FreelancerProjectRedirectCard = ({ item, className }) => (
       <span>{item.actionLabel}</span>
       <ChevronRight className="size-4" />
     </button>
-  </FreelancerDashboardPanel>
+  </div>
 );
 
 export const DashboardContent = ({ _roleOverride }) => {
@@ -1710,12 +1703,41 @@ export const DashboardContent = ({ _roleOverride }) => {
     upcomingMeeting,
   ]);
 
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
-    return "Good Evening";
+  const [dashboardClock, setDashboardClock] = useState(() => new Date());
+
+  useEffect(() => {
+    const syncDashboardClock = () => {
+      const next = new Date();
+
+      setDashboardClock((current) => {
+        if (
+          current.getFullYear() === next.getFullYear() &&
+          current.getMonth() === next.getMonth() &&
+          current.getDate() === next.getDate() &&
+          current.getHours() === next.getHours() &&
+          current.getMinutes() === next.getMinutes()
+        ) {
+          return current;
+        }
+
+        return next;
+      });
+    };
+
+    syncDashboardClock();
+    const intervalId = window.setInterval(syncDashboardClock, 60 * 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, []);
+
+  const greeting = useMemo(() => {
+    const hour = dashboardClock.getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  }, [dashboardClock]);
 
   const firstName = useMemo(() => {
     const rawName = String(headerProfile?.name || "Freelancer").trim();
@@ -1728,14 +1750,9 @@ export const DashboardContent = ({ _roleOverride }) => {
         weekday: "long",
         month: "short",
         day: "numeric",
-      }).format(new Date()),
-    [],
+      }).format(dashboardClock),
+    [dashboardClock],
   );
-  const profileCompletionHighlights = useMemo(
-    () => (Array.isArray(profileCompletion.missingDetails) ? profileCompletion.missingDetails.slice(0, 2) : []),
-    [profileCompletion.missingDetails],
-  );
-
   const pendingProposalRows = useMemo(
     () =>
       metrics.pendingProposals.slice(0, 4).map((proposal, index) => {
@@ -1874,7 +1891,7 @@ export const DashboardContent = ({ _roleOverride }) => {
     [metrics.acceptedProposals, resolveProjectProgress]
   );
   const shouldUseProjectCarousel = runningProjectCards.length > 3;
-  const activeProjectCardClassName = "h-full w-full";
+  const activeProjectCardClassName = "w-full";
   const activeProjectRedirectCardClassName = "w-full md:min-h-[506px]";
   const freelancerProjectRedirectCards = useMemo(() => {
     if (runningProjectCards.length === 0 || shouldUseProjectCarousel) {
@@ -2175,11 +2192,11 @@ export const DashboardContent = ({ _roleOverride }) => {
               <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
                 {greeting}, {firstName}
               </h1>
-              <p className="mt-1 text-sm text-[#94a3b8]">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Here&apos;s a summary of your freelance business.
               </p>
             </div>
-            <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#64748b]">
+            <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
               {dashboardDateLabel}
             </p>
           </section>
@@ -2238,23 +2255,57 @@ export const DashboardContent = ({ _roleOverride }) => {
             </section>
           )}
 
+          {showProfileCompletionSkeleton ? (
+            <FreelancerProfileCompletionSkeleton />
+          ) : (
+            <section className="mt-5">
+              <FreelancerDashboardPanel className="p-4 sm:p-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <h2 className="min-w-0 text-[1.2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white sm:text-[1.35rem] lg:text-[1.55rem]">
+                    {profileCompletionComplete
+                      ? "Your Catalance profile is ready"
+                      : "Finish setting up your Catalance profile"}
+                  </h2>
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:w-auto lg:justify-end lg:gap-4">
+                    <span className="text-sm font-bold text-[#facc15]">
+                      {profileCompletionPercent}% Complete
+                    </span>
+                    <Button
+                      className="h-10 w-full rounded-full bg-[#facc15] px-5 text-xs font-semibold text-black hover:bg-[#ffd54f] sm:w-auto"
+                      onClick={() => navigate("/freelancer/profile")}
+                    >
+                      {profileCompletionComplete ? "Open Profile" : "Finish Setup"}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+                  <div
+                    className="h-full rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.96),rgba(255,255,255,0.72))] transition-all duration-700"
+                    style={{ width: `${profileCompletionPercent}%` }}
+                  />
+                </div>
+              </FreelancerDashboardPanel>
+            </section>
+          )}
+
           {metricsLoading ? (
             <FreelancerActiveProjectsSkeleton />
           ) : (
-          <section className="mt-3">
-            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
+          <section className="mt-14">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
                     Active Projects
                   </h2>
-                  <span className="size-[15px] rounded-full bg-[#10b981]/10 p-[4.5px]">
-                    <span className="block size-[6px] rounded-full bg-[#10b981]" />
+                  <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
+                    <span className="absolute inset-0 rounded-full bg-[#10b981]/10" />
+                    <span className="absolute inset-0 rounded-full bg-[#10b981]/20 animate-ping" />
+                    <span className="relative block size-[6px] rounded-full bg-[#10b981]" />
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-[#94a3b8]">
-                  Stay on top of your current deliveries, timelines, and client workspaces.
-                </p>
               </div>
 
               {shouldUseProjectCarousel ? (
@@ -2268,11 +2319,13 @@ export const DashboardContent = ({ _roleOverride }) => {
             </div>
 
             {runningProjectCards.length === 0 ? (
-              <FreelancerDashboardPanel className="flex min-h-[220px] items-center justify-center p-8 text-center">
-                <div>
-                  <p className="text-base font-medium text-white">No active projects right now.</p>
-                  <p className="mt-2 max-w-[360px] text-sm text-[#8f96a3]">
-                    Accepted projects will appear here once a client approves your proposal.
+              <FreelancerDashboardPanel className="flex min-h-[220px] items-center justify-center rounded-[28px] border border-white/[0.06] bg-card p-8 text-center">
+                <div className="max-w-md">
+                  <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+                    No active projects yet
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+                    Projects will appear here once a client approves your proposal and work has started.
                   </p>
                 </div>
               </FreelancerDashboardPanel>
@@ -2287,14 +2340,15 @@ export const DashboardContent = ({ _roleOverride }) => {
                 }}
                 className="w-full"
               >
-                <CarouselContent className="items-stretch [backface-visibility:hidden] [will-change:transform]">
+                <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
                   {runningProjectCards.map((projectCard) => (
                     <CarouselItem
                       key={projectCard.id}
-                      className="basis-full md:basis-1/2 xl:basis-1/3"
+                      className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
                     >
                       <ProjectProposalCard
                         project={projectCard}
+                        replaceSectionBadgeWithStatus
                         className={activeProjectCardClassName}
                       />
                     </CarouselItem>
@@ -2307,6 +2361,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                     <ProjectProposalCard
                       key={projectCard.id}
                       project={projectCard}
+                      replaceSectionBadgeWithStatus
                       className={activeProjectCardClassName}
                     />
                   ))}
@@ -2334,9 +2389,6 @@ export const DashboardContent = ({ _roleOverride }) => {
                     <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
                       Pending Proposals
                     </h2>
-                    <p className="mt-1 text-sm text-[#94a3b8]">
-                      Review recent opportunities that still need a client decision.
-                    </p>
                   </div>
                   <Button
                     variant="link"
@@ -2350,11 +2402,11 @@ export const DashboardContent = ({ _roleOverride }) => {
 
               {pendingProposalRows.length === 0 ? (
                 <div className="flex flex-col items-center justify-center px-5 py-10 text-center sm:px-6 sm:py-12">
-                  <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-16">
+                  <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground sm:size-16">
                     <ClipboardList className="size-6 sm:size-7" />
                   </div>
                   <p className="mt-5 text-base font-medium text-white">No pending proposals</p>
-                  <p className="mt-2 max-w-[320px] text-sm text-[#8f96a3]">
+                  <p className="mt-2 max-w-[320px] text-sm text-muted-foreground">
                     New proposal requests from clients will appear here.
                   </p>
                   <button
@@ -2415,7 +2467,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                 <FreelancerRecentActivitySkeleton />
               ) : (
               <FreelancerDashboardPanel>
-              <div className="flex items-center justify-between border-b border-white/[0.05] px-4 py-4 sm:px-6 sm:py-5">
+              <div className="flex items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
                 <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
                   Recent Activity
                 </h2>
@@ -2452,9 +2504,9 @@ export const DashboardContent = ({ _roleOverride }) => {
                                 {item.badge}
                               </span>
                             </div>
-                            <p className="mt-1 text-xs leading-5 text-zinc-400 sm:line-clamp-1">{item.subtitle}</p>
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground sm:line-clamp-1">{item.subtitle}</p>
                           </div>
-                          <span className="shrink-0 text-[11px] text-zinc-500">{item.timeLabel}</span>
+                          <span className="shrink-0 text-[11px] text-muted-foreground">{item.timeLabel}</span>
                         </div>
                       </div>
                     </button>
@@ -2469,58 +2521,7 @@ export const DashboardContent = ({ _roleOverride }) => {
               )}
             </div>
 
-            <div className="grid content-start items-start gap-5 self-start md:grid-cols-2 xl:grid-cols-1">
-              {showProfileCompletionSkeleton ? (
-                <FreelancerProfileCompletionSkeleton />
-              ) : (
-              <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-zinc-100">Profile Completion</h3>
-                  <p className="mt-1 text-sm leading-6 text-[#94a3b8]">
-                    {profileCompletion.message}
-                  </p>
-                </div>
-                <span className="text-sm font-bold text-[#facc15]">{profileCompletionPercent}%</span>
-              </div>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.12]">
-                <div
-                  className="h-full rounded-full bg-[#facc15] transition-all duration-700"
-                  style={{ width: `${profileCompletionPercent}%` }}
-                />
-              </div>
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[#94a3b8]">
-                <p>
-                  <span className="font-semibold text-white">{profileCompletion.completedSections}</span>{" "}
-                  complete
-                </p>
-                <p>
-                  <span className="font-semibold text-white">{profileCompletion.partialSections}</span>{" "}
-                  in progress
-                </p>
-                <p>
-                  <span className="font-semibold text-white">{profileCompletion.totalSections}</span>{" "}
-                  total
-                </p>
-              </div>
-              {profileCompletionHighlights.length > 0 ? (
-                <ul className="mt-4 space-y-2">
-                  {profileCompletionHighlights.map((item) => (
-                    <li key={item} className="text-sm leading-6 text-[#94a3b8]">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <Button
-                className="mt-4 h-10 w-full rounded-full bg-zinc-100 text-xs font-semibold text-zinc-900 hover:bg-zinc-200"
-                onClick={() => navigate("/freelancer/profile")}
-              >
-                {profileCompletionComplete ? "Open Profile" : "Finish Setup"}
-              </Button>
-            </FreelancerDashboardPanel>
-              )}
-
+            <div className="grid content-start items-start gap-5 self-start">
               {metricsLoading ? (
                 <FreelancerChatsSkeleton />
               ) : (
@@ -2528,9 +2529,6 @@ export const DashboardContent = ({ _roleOverride }) => {
               <h3 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.6rem]">
                 Active Project Chats
               </h3>
-              <p className="mt-2 text-[14px] leading-5 text-[#8f8f8f]">
-                Quick shortcuts to message clients on active projects.
-              </p>
               {previewMessages.length === 0 ? (
                 <div className="flex min-h-[220px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[260px] sm:py-10">
                   <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-14">
@@ -2570,7 +2568,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                                 {message.previewText}
                               </p>
                             </div>
-                            <span className="shrink-0 text-[11px] text-zinc-500">
+                            <span className="shrink-0 text-[11px] text-muted-foreground">
                               {message.timeLabel}
                             </span>
                           </div>
@@ -2965,5 +2963,3 @@ export const ClientDashboard = () => {
 };
 
 export default FreelancerDashboard;
-
-

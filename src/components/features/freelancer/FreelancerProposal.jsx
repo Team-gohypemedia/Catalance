@@ -5,7 +5,6 @@ import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
-import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +20,13 @@ import {
 } from "@/shared/lib/currency";
 import { cn } from "@/shared/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -47,14 +53,19 @@ const REJECTION_REASON_OPTIONS = [
 const CUSTOM_REJECTION_REASON_KEY = "custom";
 const GENERIC_PROPOSAL_CATEGORIES = new Set(["project", "general"]);
 const freelancerProposalPanelClassName =
-  "rounded-[24px] border border-[#1e293b] bg-[#303030]/40 backdrop-blur-[6px]";
+  "rounded-[32px] border border-border bg-card";
 const freelancerProposalStatusClasses = {
-  pending: "border-[#856715] bg-[#241c0b] text-[#f4c128]",
-  received: "border-[#856715] bg-[#241c0b] text-[#f4c128]",
-  accepted: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
-  rejected: "border-[#5b2a2a] bg-[#261617] text-[#f49e9e]",
-  awarded: "border-white/10 bg-[#2f3135] text-[#d4d7dd]",
+  pending: "border-primary/35 bg-transparent text-primary",
+  received: "border-primary/35 bg-transparent text-primary",
+  accepted: "border-emerald-500/30 bg-transparent text-emerald-300",
+  rejected: "border-destructive/30 bg-transparent text-destructive",
+  awarded: "border-border bg-transparent text-muted-foreground",
 };
+const proposalDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
 
 /**
  * Extracts key details (Budget, Timeline) from the proposal text content.
@@ -192,6 +203,15 @@ const normalizeProposalStatus = (status = "") => {
   }
 };
 
+const formatProposalSubmittedDate = (value) => {
+  if (!value) return "";
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
+  return proposalDateFormatter.format(parsedDate);
+};
+
 const mapApiProposal = (proposal = {}) => {
   const clientName =
     proposal.project?.owner?.fullName ||
@@ -217,9 +237,7 @@ const mapApiProposal = (proposal = {}) => {
     clientAvatar: clientAvatar,
     recipientId: proposal.ownerId || "CLIENT", // Owner is client
     projectId: proposal.project?.id || null,
-    submittedDate: proposal.createdAt
-      ? new Date(proposal.createdAt).toLocaleDateString()
-      : "", // No static fallback
+    submittedDate: formatProposalSubmittedDate(proposal.createdAt),
     proposalId: proposal.id
       ? `PRP-${proposal.id.slice(0, 6).toUpperCase()}`
       : `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
@@ -258,144 +276,187 @@ const ProposalRowCard = ({
     if (GENERIC_PROPOSAL_CATEGORIES.has(normalizedCategory.toLowerCase())) return "";
     return normalizedCategory;
   }, [proposal.category]);
+  const displayTitle = String(proposal.title || serviceLabel || "Proposal").trim();
   const clientInitials = String(proposal.clientName || "Client")
     .trim()
     .charAt(0)
     .toUpperCase();
 
   return (
-    <Card className={cn("shadow-none", freelancerProposalPanelClassName)}>
+    <Card
+      className={cn(
+        "h-full w-full shadow-none",
+        freelancerProposalPanelClassName,
+      )}
+    >
       <CardContent className="p-0">
-        <div className="space-y-6 px-5 py-5 sm:px-6 sm:py-6">
+        <div className="flex h-full flex-col gap-6 px-6 py-6 sm:px-8 sm:py-8">
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1 space-y-5">
-              <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium uppercase tracking-[0.16em] text-[#94a3b8]">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                 <Badge
                   variant="outline"
                   className={cn(
-                    "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
+                    "rounded-full border bg-transparent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
                     freelancerProposalStatusClasses[proposal.status] ||
                       freelancerProposalStatusClasses.pending,
                   )}
                 >
                   {config.label}
                 </Badge>
-                <span>{proposal.submittedDate}</span>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-[2rem] font-semibold tracking-[-0.04em] text-white sm:text-[2.2rem]">
-                  {proposal.title}
-                </h3>
-                {serviceLabel ? (
-                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#8d96a7]">
-                    {serviceLabel}
-                  </p>
-                ) : null}
-                {showRejectionReason ? (
-                  <div className="pt-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-300/80">
-                      Reason
-                    </p>
-                    <p
-                      className="mt-1 max-w-[20rem] text-sm font-medium leading-6 text-rose-100"
-                      title={rejectionReasonText}
-                    >
-                      {rejectionReasonText}
-                    </p>
-                  </div>
+                {proposal.submittedDate ? (
+                  <span className="normal-case tracking-[0.08em] text-muted-foreground">
+                    {proposal.submittedDate}
+                  </span>
                 ) : null}
               </div>
             </div>
 
             {canDeleteProposal ? (
-              <div className="flex shrink-0 flex-col items-end gap-3 self-start">
-                {canDeleteProposal ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 rounded-full text-[#8d96a7] hover:bg-white/5 hover:text-white"
-                    onClick={() => onDelete(proposal.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                ) : null}
-              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+                onClick={() => onDelete(proposal.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             ) : null}
           </div>
 
-          <div className="grid grid-cols-2 gap-6 border-t border-white/6 pt-6 lg:grid-cols-[1.2fr_1fr_1fr_auto] lg:items-start">
-            <div className="col-span-2 space-y-2 lg:col-span-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
-                Client
-              </p>
-              <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12 border border-white/10">
-                  <AvatarImage src={proposal.clientAvatar} alt={proposal.clientName} />
-                  <AvatarFallback className="bg-[#111214] text-sm font-bold text-primary">
-                    {clientInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <p className="truncate text-lg font-semibold text-white">
-                    {proposal.clientName}
+          <div className="space-y-6">
+            <div className="space-y-2.5">
+              <h3 className="min-h-[4.5rem] max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
+                {displayTitle}
+              </h3>
+              {showRejectionReason ? (
+                <div className="max-w-[24rem] space-y-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-destructive/80">
+                    Reason
                   </p>
-                  <p className="text-base text-[#a5acc0]">Client</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
-                Agreed Amount
-              </p>
-              <div className="text-[1.9rem] font-semibold tracking-[-0.03em] text-primary">
-                {budget}
-              </div>
-            </div>
-
-            <div className="space-y-2 text-right lg:text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
-                Delivery
-              </p>
-              <div className="inline-flex items-center justify-end gap-2 text-[1.9rem] font-semibold tracking-[-0.03em] text-white lg:justify-start">
-                <Clock className="h-4.5 w-4.5 text-[#97a1b2]" />
-                <span className="capitalize">{timeline}</span>
-              </div>
-            </div>
-
-            <div className="col-span-2 flex w-full flex-col gap-3 lg:col-span-1 lg:w-[12rem] lg:items-end">
-              <Button
-                className="h-11 rounded-full bg-primary px-6 font-semibold text-[#141414] hover:bg-primary/90 lg:w-full"
-                onClick={() => onOpen(proposal)}
-              >
-                <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                View Details
-              </Button>
-
-              {isPendingProposal ? (
-                <div className="flex w-full flex-col gap-2">
-                  <Button
-                    className="h-11 w-full rounded-full bg-emerald-500 px-6 font-semibold text-black hover:bg-emerald-400"
-                    onClick={() => onAccept(proposal.id)}
-                    disabled={isProcessing}
+                  <p
+                    className="text-sm font-medium leading-6 text-destructive/90"
+                    title={rejectionReasonText}
                   >
-                    {isProcessing ? "Accepting..." : "Accept Proposal"}
-                  </Button>
-                  <Button
-                    className="h-11 w-full rounded-full border border-rose-600 bg-rose-600 px-6 font-semibold text-white hover:border-rose-500 hover:bg-rose-500"
-                    onClick={() => onReject(proposal)}
-                    disabled={isProcessing}
-                  >
-                    Reject Proposal
-                  </Button>
+                    {rejectionReasonText}
+                  </p>
                 </div>
               ) : null}
             </div>
+
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12 border border-border bg-background">
+                <AvatarImage src={proposal.clientAvatar} alt={proposal.clientName} />
+                <AvatarFallback className="bg-background text-sm font-bold text-primary">
+                  {clientInitials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Client
+                </p>
+                <p className="mt-1 truncate text-[1.05rem] font-semibold leading-tight tracking-[-0.02em] text-white sm:text-[1.125rem]">
+                  {proposal.clientName}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-5">
+              <div className="space-y-2.5">
+                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Agreed Amount
+                </p>
+                <div className="text-[2rem] font-semibold leading-none tracking-[-0.04em] text-primary sm:text-[2.15rem]">
+                  {budget}
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Delivery
+                </p>
+                <div className="inline-flex items-center gap-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="capitalize">{timeline}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-auto flex flex-col gap-3">
+            <Button
+              className="h-14 rounded-[20px] bg-primary px-6 text-base font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
+              onClick={() => onOpen(proposal)}
+            >
+              View Details
+            </Button>
+
+            {isPendingProposal ? (
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  className="h-11 rounded-[18px] border border-emerald-500/30 bg-emerald-500/10 px-6 text-sm font-semibold text-emerald-400 shadow-none hover:bg-emerald-500/15"
+                  onClick={() => onAccept(proposal.id)}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? "Accepting..." : "Accept"}
+                </Button>
+                <Button
+                  className="h-11 rounded-[18px] border border-destructive/30 bg-transparent px-6 text-sm font-semibold text-destructive shadow-none hover:bg-destructive/10"
+                  onClick={() => onReject(proposal)}
+                  disabled={isProcessing}
+                >
+                  Reject
+                </Button>
+              </div>
+            ) : null}
           </div>
         </div>
       </CardContent>
     </Card>
+  );
+};
+
+const ProposalCardsCarousel = ({
+  proposals,
+  onOpen,
+  onDelete,
+  onAccept,
+  onReject,
+  processingId,
+}) => {
+  if (!proposals.length) return null;
+
+  return (
+    <Carousel
+      className="w-full"
+      opts={{
+        align: "start",
+        containScroll: "trimSnaps",
+      }}
+    >
+      <div className="mb-5 flex justify-end gap-2">
+        <CarouselPrevious className="static !left-auto !right-auto size-11 translate-y-0 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground disabled:[&_svg]:text-muted-foreground [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-foreground" />
+        <CarouselNext className="static !left-auto !right-auto size-11 translate-y-0 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground disabled:[&_svg]:text-muted-foreground [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-foreground" />
+      </div>
+
+      <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform]">
+        {proposals.map((proposal) => (
+          <CarouselItem
+            key={proposal.id}
+            className="pl-0 basis-full md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)] xl:basis-[calc((100%-3.75rem)/4)]"
+          >
+            <ProposalRowCard
+              proposal={proposal}
+              onOpen={onOpen}
+              onDelete={onDelete}
+              onAccept={onAccept}
+              onReject={onReject}
+              processingId={processingId}
+            />
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+    </Carousel>
   );
 };
 
@@ -653,7 +714,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                 </div>
 
                 <div className="flex justify-start lg:justify-end">
-                  <TabsList className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-white/[0.08] bg-accent p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
+                  <TabsList className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-background p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                     {[
                       { value: "pending", label: "Pending Approval" },
                       { value: "rejected", label: "Rejected" },
@@ -662,7 +723,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                         key={item.value}
                         value={item.value}
                         className={cn(
-                          "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] text-[#a3a6ad] shadow-none transition hover:text-white sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal data-[state=active]:!border-primary/70 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-none",
+                          "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] text-muted-foreground shadow-none transition hover:text-foreground sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal data-[state=active]:!border-primary/70 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-none",
                           item.value === "pending" ? "sm:min-w-[11rem]" : "sm:min-w-[8.5rem]",
                         )}
                       >
@@ -673,20 +734,6 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                 </div>
               </div>
 
-              <div className="flex min-h-7 flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                {activeTab === "pending" && grouped.pending.length > 0 ? (
-                  <span>
-                    {grouped.pending.length} proposal
-                    {grouped.pending.length === 1 ? "" : "s"} awaiting your decision.
-                  </span>
-                ) : null}
-                {activeTab === "rejected" && grouped.rejected.length > 0 ? (
-                  <span>
-                    {grouped.rejected.length} rejected proposal
-                    {grouped.rejected.length === 1 ? "" : "s"} kept for reference.
-                  </span>
-                ) : null}
-              </div>
             </section>
 
             {["pending", "rejected"].map((tabValue) => (
@@ -696,21 +743,23 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                   const tabMeta = tabCopy[tabValue] || tabCopy.pending;
 
                   return isLoading ? (
-                    <Skeleton className="h-32 w-full rounded-xl" />
-                  ) : tabItems.length > 0 ? (
-                    <div className="space-y-6">
-                      {tabItems.map((proposal) => (
-                        <ProposalRowCard
-                          key={proposal.id}
-                          proposal={proposal}
-                          onOpen={setSelectedProposal}
-                          onDelete={handleDelete}
-                          onAccept={(id) => handleStatusChange(id, "accepted")}
-                          onReject={handleOpenRejectFlow}
-                          processingId={processingId}
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                      {Array.from({ length: 4 }).map((_, index) => (
+                        <Skeleton
+                          key={index}
+                          className="h-[30rem] w-full rounded-[32px]"
                         />
                       ))}
                     </div>
+                  ) : tabItems.length > 0 ? (
+                    <ProposalCardsCarousel
+                      proposals={tabItems}
+                      onOpen={setSelectedProposal}
+                      onDelete={handleDelete}
+                      onAccept={(id) => handleStatusChange(id, "accepted")}
+                      onReject={handleOpenRejectFlow}
+                      processingId={processingId}
+                    />
                   ) : (
                     <div className="rounded-3xl border border-dashed border-border/70 bg-card/40 px-6 py-14 text-center">
                       <h3 className="text-lg font-semibold text-foreground">

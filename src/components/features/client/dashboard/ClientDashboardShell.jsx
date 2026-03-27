@@ -1480,7 +1480,7 @@ const ClientDashboardShell = ({
                     }}
                     className="w-full"
                   >
-                    <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                    <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
                       {showcaseItems.map((item) => (
                         <CarouselItem
                           key={item.id}
@@ -1491,7 +1491,7 @@ const ClientDashboardShell = ({
                             onPay={onPayRunningProject}
                             isPaying={runningProjectProcessingId === item.id}
                             replaceSectionBadgeWithStatus
-                            className="h-full w-full"
+                            className={activeProjectCardClassName}
                           />
                         </CarouselItem>
                       ))}
