@@ -2,7 +2,12 @@ import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
 import { env } from "../config/env.js";
-import { chatWithAI, generateProposalMarkdown } from "../services/ai.service.js";
+import {
+    chatWithAI,
+    formatCurrencyValue,
+    generateProposalMarkdown,
+    parseBudgetFromText,
+} from "../services/ai.service.js";
 
 const GREETING_ONLY_REGEX = /^(hi|hello|hey|yo|hola|good\s*(morning|afternoon|evening))[!.\s]*$/i;
 const NAME_QUESTION_REGEX = /\bname\b/i;
@@ -771,6 +776,91 @@ const buildLockedServiceReply = ({ currentServiceName = "", targetServiceName = 
     const currentLabel = String(currentServiceName || "this service").trim() || "this service";
     const targetLabel = String(targetServiceName || "That").trim() || "That";
     return `${targetLabel} is a different service from the current ${currentLabel} service. This chat will stay on ${currentLabel}.`;
+};
+
+const BUDGET_QUESTION_HINT_REGEX = /\b(budget|investment|price|cost|spend)\b/i;
+
+const isBudgetQuestion = (question = {}) =>
+    BUDGET_QUESTION_HINT_REGEX.test(
+        `${question?.slug || ""} ${question?.text || ""} ${question?.subtitle || ""}`.trim()
+    );
+
+const formatServiceBudgetAmount = (amount, currencyCode = "INR") => {
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return "";
+    const normalizedCurrency = String(currencyCode || "INR").trim().toUpperCase() || "INR";
+    const formattedValue = formatCurrencyValue(numericAmount, normalizedCurrency);
+    return formattedValue ? `${normalizedCurrency} ${formattedValue}` : `${normalizedCurrency} ${numericAmount}`;
+};
+
+const extractParsedBudgetFromAnswerText = (answerText = "") => {
+    const rawText = String(answerText || "").trim();
+    if (!rawText) return null;
+
+    const directParse = parseBudgetFromText(rawText);
+    if (directParse?.amount && Number.isFinite(directParse.amount)) {
+        return directParse;
+    }
+
+    const budgetCandidates = rawText.match(
+        /(?:rs\.?|inr|usd|eur|gbp)?\s*[\d,]+(?:\.\d+)?\s*(?:lakh|lac|k|thousand)?\s*(?:rs\.?|inr|usd|eur|gbp)?/gi
+    ) || [];
+
+    for (const candidate of budgetCandidates) {
+        const parsedCandidate = parseBudgetFromText(String(candidate || "").trim());
+        if (parsedCandidate?.amount && Number.isFinite(parsedCandidate.amount)) {
+            return parsedCandidate;
+        }
+    }
+
+    return null;
+};
+
+const getBudgetMinimumValidationResult = ({
+    question = {},
+    service = {},
+    answerText = "",
+}) => {
+    if (!isBudgetQuestion(question)) return null;
+
+    const minBudget = Number(service?.minBudget || 0);
+    if (!Number.isFinite(minBudget) || minBudget <= 0) return null;
+
+    const parsedBudget = extractParsedBudgetFromAnswerText(answerText);
+    if (!parsedBudget?.amount || !Number.isFinite(parsedBudget.amount)) return null;
+    if (parsedBudget.amount >= minBudget) return null;
+
+    const currency = String(service?.currency || parsedBudget.currency || "INR").trim().toUpperCase() || "INR";
+    const enteredBudget = formatServiceBudgetAmount(parsedBudget.amount, currency);
+    const minimumBudget = formatServiceBudgetAmount(minBudget, currency);
+    const serviceLabel = String(service?.name || "this service").trim() || "this service";
+
+    return {
+        isValid: false,
+        status: "invalid_answer",
+        message: `The budget you shared (${enteredBudget}) is below the minimum for ${serviceLabel}. Please increase your budget to at least ${minimumBudget} and share the updated amount.`,
+        normalizedAnswer: "",
+    };
+};
+
+const findBudgetMinimumViolationChange = ({
+    changes = [],
+    questions = [],
+    service = {},
+}) => {
+    for (const change of Array.isArray(changes) ? changes : []) {
+        const question = questions?.[change?.index];
+        const validation = getBudgetMinimumValidationResult({
+            question,
+            service,
+            answerText: change?.nextValue || "",
+        });
+        if (validation) {
+            return { change, validation };
+        }
+    }
+
+    return null;
 };
 
 const normalizeOptionComparableText = (value = "") =>
@@ -3637,8 +3727,52 @@ export const guestChat = asyncHandler(async (req, res) => {
 
         // intent === "yes"
         const state = session.answers.pendingCorrectionState;
-        let correctedAnswersBySlug = state.proposedAnswersBySlug;
-        const correctionChanges = state.changes;
+        let correctedAnswersBySlug = {
+            ...(state?.proposedAnswersBySlug && typeof state.proposedAnswersBySlug === "object"
+                ? state.proposedAnswersBySlug
+                : {})
+        };
+        let correctionChanges = Array.isArray(state?.changes) ? state.changes : [];
+        let correctionGuardMessage = "";
+
+        const budgetCorrectionViolation = findBudgetMinimumViolationChange({
+            changes: correctionChanges,
+            questions,
+            service,
+        });
+        if (budgetCorrectionViolation) {
+            correctedAnswersBySlug[budgetCorrectionViolation.change.slug] =
+                budgetCorrectionViolation.change.previousValue;
+            correctionChanges = correctionChanges.filter((change) =>
+                change?.slug !== budgetCorrectionViolation.change.slug
+                || change?.index !== budgetCorrectionViolation.change.index
+            );
+            correctionGuardMessage = `${budgetCorrectionViolation.validation.message} I'll keep your earlier budget for now.`;
+        }
+
+        if (correctionChanges.length === 0) {
+            const nextAnswers = { ...(session.answers || {}) };
+            delete nextAnswers.pendingCorrectionState;
+            await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
+
+            const followQuestionBlock = currentQuestion
+                ? formatQuestionWithOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug)
+                : "";
+            const blockedCorrectionMessage = [correctionGuardMessage, followQuestionBlock]
+                .filter(Boolean)
+                .join("\n\n")
+                .trim();
+            await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: blockedCorrectionMessage } });
+            const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: 'asc' } } } });
+            return res.json({
+                success: true,
+                message: blockedCorrectionMessage,
+                inputConfig: currentQuestion
+                    ? { type: currentQuestion?.type || "text", options: getDisplayedQuestionOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug) }
+                    : { type: "text", options: [] },
+                history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
+            });
+        }
         
         let correctedRuntimeOptionsByQuestionSlug = { ...sessionRuntimeOptionsByQuestionSlug };
         const dependentIndexes = Array.from(
@@ -3687,7 +3821,10 @@ export const guestChat = asyncHandler(async (req, res) => {
             ? formatQuestionWithOptions(questions[correctionNextStep], correctedRuntimeOptionsByQuestionSlug) 
             : "Thanks, I updated that. Let me generate your proposal now.";
         const correctionBridgeCore = dependentIndexes.length > 0 ? `All set. I updated your earlier answer and adjusted related steps.` : `All set. I updated your earlier answer.`;
-        const correctionMessage = buildFriendlyMessage(followQuestionText, correctionBridgeCore);
+        const correctionMessage = [correctionGuardMessage, buildFriendlyMessage(followQuestionText, correctionBridgeCore)]
+            .filter(Boolean)
+            .join("\n\n")
+            .trim();
 
         await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: correctionMessage } });
         const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: 'asc' } } } });
@@ -4084,6 +4221,23 @@ export const guestChat = asyncHandler(async (req, res) => {
             console.log("[Validation Parse Fallback]:", validationResult);
         }
 
+        if (validationResult.isValid) {
+            const minimumBudgetValidation = getBudgetMinimumValidationResult({
+                question: currentQuestion,
+                service,
+                answerText:
+                    validationResult?.normalizedAnswer
+                    || attachmentInferredAnswer
+                    || userMessageText
+            });
+
+            if (minimumBudgetValidation) {
+                validationResult = minimumBudgetValidation;
+                aiResponseContent = minimumBudgetValidation.message;
+                console.log("[Budget Minimum Validation]:", minimumBudgetValidation);
+            }
+        }
+
         if (!validationResult.isValid) {
             if (validationResult.status === "info_request") {
                 const questionBlock = formatQuestionWithOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug);
@@ -4333,13 +4487,33 @@ export const guestChat = asyncHandler(async (req, res) => {
         autoCapturedAnswerSlugs = autoCapture.updatedSlugs;
     }
 
-    const changedAnswers = getChangedAnswerDetails(
+    let changedAnswers = getChangedAnswerDetails(
         questions,
         existingAnswersBySlug,
         updatedAnswersBySlug
     );
 
-    const pastChanges = changedAnswers.filter(c => c.index < currentStep);
+    let budgetMinimumGuardMessage = "";
+    let pastChanges = changedAnswers.filter(c => c.index < currentStep);
+    const budgetPastChangeViolation = findBudgetMinimumViolationChange({
+        changes: pastChanges,
+        questions,
+        service,
+    });
+
+    if (budgetPastChangeViolation) {
+        updatedAnswersBySlug[budgetPastChangeViolation.change.slug] =
+            budgetPastChangeViolation.change.previousValue;
+        changedAnswers = getChangedAnswerDetails(
+            questions,
+            existingAnswersBySlug,
+            updatedAnswersBySlug
+        );
+        pastChanges = changedAnswers.filter(c => c.index < currentStep);
+        budgetMinimumGuardMessage = `${budgetPastChangeViolation.validation.message} I'll keep your earlier budget for now.`;
+        console.log("[Budget Past Change Blocked]:", budgetPastChangeViolation.validation);
+    }
+
     let activePastChange = null;
     let activePastConfirmMsg = "";
 
@@ -4387,7 +4561,10 @@ export const guestChat = asyncHandler(async (req, res) => {
             data: { answers: persistedAnswers, currentStep: nextStep }
         });
 
-        const confirmMsg = activePastConfirmMsg;
+        const confirmMsg = [budgetMinimumGuardMessage, activePastConfirmMsg]
+            .filter(Boolean)
+            .join("\n\n")
+            .trim();
         await prisma.aiGuestMessage.create({
             data: { sessionId, role: "assistant", content: confirmMsg }
         });
@@ -4577,6 +4754,10 @@ export const guestChat = asyncHandler(async (req, res) => {
         // No input config for final step (or maybe CTA in future)
     }
 
+    if (budgetMinimumGuardMessage) {
+        responseContent = buildFriendlyMessage(responseContent, budgetMinimumGuardMessage);
+    }
+
     responseContent = stripNameNotedRecap(responseContent);
 
     // 5. Save Assistant Message
@@ -4720,11 +4901,14 @@ export const __testables = {
     buildLockedServiceReply,
     buildPersistedAnswersPayload,
     buildQuestionDisplayAnswer,
+    findBudgetMinimumViolationChange,
     getDisplayedQuestionOptions,
+    getBudgetMinimumValidationResult,
     getSemanticDependentIndexesForChanges,
     getQuestionIdentityType,
     getMostRecentMessageContentByRole,
     getServiceScopedMessages,
+    isBudgetQuestion,
     getRuntimeOptionsByQuestionSlug,
     normalizeAnswerForQuestion,
     toChronologicalGuestHistory,

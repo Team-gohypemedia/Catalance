@@ -446,7 +446,7 @@ const extractPricingLevel = (text = "", allowShort = false) => {
   return null;
 };
 
-const formatCurrencyValue = (amount, currencyCode = "INR") => {
+export const formatCurrencyValue = (amount, currencyCode = "INR") => {
   if (typeof amount !== "number" || Number.isNaN(amount)) return null;
   const localeMap = {
     USD: "en-US",
@@ -870,7 +870,7 @@ const parseNumericSelections = (text = "", optionsLength = 0) => {
   return { numbers: Array.from(new Set(validNumbers)), ambiguous };
 };
 
-const parseBudgetFromText = (text = "") => {
+export const parseBudgetFromText = (text = "") => {
   if (typeof text !== "string") return null;
   const budgetRegex = /(?:(₹|rs\.?|inr|\$|usd|€|eur|£|gbp))?\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|k|L|thousand)?\s*(₹|rs\.?|inr|\$|usd|€|eur|£|gbp)?/i;
   const match = budgetRegex.exec(text);
