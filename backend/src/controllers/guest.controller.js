@@ -843,6 +843,121 @@ const getBudgetMinimumValidationResult = ({
     };
 };
 
+const buildSupplementalBudgetExtractions = ({
+    message = "",
+    questions = [],
+    currentQuestion = null,
+}) => {
+    const rawMessage = String(message || "").trim();
+    if (!rawMessage) return [];
+    if (isBudgetQuestion(currentQuestion)) return [];
+    if (!BUDGET_QUESTION_HINT_REGEX.test(rawMessage)) return [];
+
+    const parsedBudget = extractParsedBudgetFromAnswerText(rawMessage);
+    if (!parsedBudget?.amount || !Number.isFinite(parsedBudget.amount)) return [];
+
+    const budgetQuestion = (Array.isArray(questions) ? questions : []).find((question) =>
+        isBudgetQuestion(question)
+    );
+    if (!budgetQuestion?.slug) return [];
+
+    return [{
+        slug: budgetQuestion.slug,
+        answer: rawMessage,
+        confidence: 0.99,
+    }];
+};
+
+const findExtractedBudgetMinimumViolation = ({
+    extractedAnswers = [],
+    questionsBySlug = new Map(),
+    service = {},
+}) => {
+    for (const extractedAnswer of Array.isArray(extractedAnswers) ? extractedAnswers : []) {
+        const slug = String(extractedAnswer?.slug || "").trim();
+        if (!slug) continue;
+
+        const question = questionsBySlug.get(slug);
+        const validation = getBudgetMinimumValidationResult({
+            question,
+            service,
+            answerText: extractedAnswer?.answer || "",
+        });
+        if (validation) {
+            return { extractedAnswer, question, validation };
+        }
+    }
+
+    return null;
+};
+
+const getPostProposalBudgetFollowupAction = ({
+    userMessage = "",
+    service = {},
+    questions = [],
+    existingAnswersBySlug = {},
+    runtimeOptionsByQuestionSlug = {}
+}) => {
+    const budgetExtractions = buildSupplementalBudgetExtractions({
+        message: userMessage,
+        questions,
+        currentQuestion: null
+    });
+    if (budgetExtractions.length === 0) return null;
+
+    const questionsBySlug = new Map(
+        (Array.isArray(questions) ? questions : [])
+            .filter((question) => question?.slug)
+            .map((question) => [question.slug, question])
+    );
+    const budgetViolation = findExtractedBudgetMinimumViolation({
+        extractedAnswers: budgetExtractions,
+        questionsBySlug,
+        service
+    });
+    if (budgetViolation) {
+        return {
+            blockedMessage: budgetViolation.validation.message,
+            proposedAnswersBySlug: null,
+            reply: ""
+        };
+    }
+
+    const validSlugs = new Set(
+        (Array.isArray(questions) ? questions : [])
+            .map((question) => question?.slug)
+            .filter(Boolean)
+    );
+    const proposedAnswersBySlug = mergeExtractedAnswers({
+        baseAnswers: existingAnswersBySlug,
+        extractedAnswers: budgetExtractions,
+        validSlugs,
+        questionsBySlug,
+        runtimeOptionsByQuestionSlug,
+        service
+    });
+    const budgetChange = getChangedAnswerDetails(
+        questions,
+        existingAnswersBySlug,
+        proposedAnswersBySlug
+    ).find((change) => questionsBySlug.get(change?.slug) && isBudgetQuestion(questionsBySlug.get(change.slug)));
+    if (!budgetChange) return null;
+
+    const parsedBudget = extractParsedBudgetFromAnswerText(
+        proposedAnswersBySlug[budgetChange.slug] || budgetChange.nextValue || ""
+    );
+    const formattedBudget = parsedBudget?.amount
+        ? formatServiceBudgetAmount(parsedBudget.amount, service?.currency || parsedBudget.currency || "INR")
+        : String(proposedAnswersBySlug[budgetChange.slug] || budgetChange.nextValue || "").trim();
+    const serviceLabel = String(service?.name || "current").trim() || "current";
+
+    return {
+        blockedMessage: "",
+        proposedAnswersBySlug,
+        reply: `I can regenerate your ${serviceLabel} proposal with the budget updated to ${formattedBudget}.`
+    };
+};
+
 const findBudgetMinimumViolationChange = ({
     changes = [],
     questions = [],
@@ -3009,7 +3124,8 @@ const mergeExtractedAnswers = ({
     extractedAnswers = [],
     validSlugs = new Set(),
     questionsBySlug = new Map(),
-    runtimeOptionsByQuestionSlug = {}
+    runtimeOptionsByQuestionSlug = {},
+    service = {}
 }) => {
     const merged = { ...(baseAnswers || {}) };
 
@@ -3019,6 +3135,15 @@ const mergeExtractedAnswers = ({
         if (!hasAnswerValue(extracted?.answer)) continue;
 
         const question = questionsBySlug.get(slug);
+        const blockedByBudgetMinimum = getBudgetMinimumValidationResult({
+            question,
+            service,
+            answerText: extracted.answer,
+        });
+        if (blockedByBudgetMinimum) {
+            continue;
+        }
+
         const normalizedExtractedAnswer = question
             ? normalizeAnswerForQuestion(question, extracted.answer, runtimeOptionsByQuestionSlug)
             : extracted.answer;
@@ -3487,7 +3612,8 @@ const generateProposalResponseForSession = async ({
         extractedAnswers: extractedFromConversation,
         validSlugs: allQuestionSlugs,
         questionsBySlug,
-        runtimeOptionsByQuestionSlug
+        runtimeOptionsByQuestionSlug,
+        service
     });
     const proposalAnswersPayload = buildPersistedAnswersPayload(proposalAnswersBySlug, questions, {
         runtimeOptionsByQuestionSlug,
@@ -3904,7 +4030,22 @@ export const guestChat = asyncHandler(async (req, res) => {
             });
         }
 
-        const nextAnswers = mergeAnswersUiState(session.answers || {}, {
+        const proposedAnswersBySlug =
+            pendingProposalState?.proposedAnswersBySlug
+            && typeof pendingProposalState.proposedAnswersBySlug === "object"
+                ? pendingProposalState.proposedAnswersBySlug
+                : null;
+        const answersForRegeneration = proposedAnswersBySlug
+            ? buildPersistedAnswersPayload(
+                proposedAnswersBySlug,
+                questions,
+                {
+                    runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                    existingPayload: session.answers || {}
+                }
+            )
+            : (session.answers || {});
+        const nextAnswers = mergeAnswersUiState(answersForRegeneration, {
             [PENDING_PROPOSAL_STATE_KEY]: null
         });
         await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
@@ -3967,17 +4108,33 @@ export const guestChat = asyncHandler(async (req, res) => {
         let nextAnswers = session.answers || {};
 
         if (followupPlan.action === "regenerate_current") {
-            nextAnswers = mergeAnswersUiState(nextAnswers, {
-                [PENDING_PROPOSAL_STATE_KEY]: {
-                    action: "regenerate_current",
-                    targetServiceSlug: service.slug,
-                    targetServiceName: service.name,
-                    sourceMessage: trimmedMessageText
-                }
+            const existingAnswersBySlug = getAnswersBySlug(session.answers || {}, questions);
+            const postProposalBudgetAction = getPostProposalBudgetFollowupAction({
+                userMessage: trimmedMessageText,
+                service,
+                questions,
+                existingAnswersBySlug,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug
             });
-            await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
-            responseMessage = `${responseMessage}\n\nDo you want me to generate a new ${service.name} proposal now?`;
-            nextInputConfig = { type: "text", options: ["Yes", "No"] };
+
+            if (postProposalBudgetAction?.blockedMessage) {
+                responseMessage = `${postProposalBudgetAction.blockedMessage} If you still want another proposal, keep the budget at least ${formatServiceBudgetAmount(service.minBudget, service.currency || "INR")} and tell me when you are ready.`;
+                nextInputConfig = { type: "text", options: [] };
+            } else {
+                nextAnswers = mergeAnswersUiState(nextAnswers, {
+                    [PENDING_PROPOSAL_STATE_KEY]: {
+                        action: "regenerate_current",
+                        targetServiceSlug: service.slug,
+                        targetServiceName: service.name,
+                        sourceMessage: trimmedMessageText,
+                        proposedAnswersBySlug: postProposalBudgetAction?.proposedAnswersBySlug || null
+                    }
+                });
+                await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
+                responseMessage = postProposalBudgetAction?.reply || responseMessage;
+                responseMessage = `${responseMessage}\n\nDo you want me to generate a new ${service.name} proposal now?`;
+                nextInputConfig = { type: "text", options: ["Yes", "No"] };
+            }
         }
 
         console.log(`[Assistant]: ${responseMessage}`);
@@ -4076,7 +4233,31 @@ export const guestChat = asyncHandler(async (req, res) => {
             message: userMessageForReasoning || userMessageText,
             questions
         });
+        const supplementalBudgetExtractions = buildSupplementalBudgetExtractions({
+            message: userMessageForReasoning || userMessageText,
+            questions,
+            currentQuestion,
+        });
+        if (supplementalBudgetExtractions.length > 0) {
+            const existingExtractedSlugs = new Set(
+                extractedAnswersForMessage
+                    .map((entry) => String(entry?.slug || "").trim())
+                    .filter(Boolean)
+            );
+            supplementalBudgetExtractions.forEach((entry) => {
+                if (!existingExtractedSlugs.has(entry.slug)) {
+                    extractedAnswersForMessage.push(entry);
+                }
+            });
+        }
     }
+    const lateBudgetMinimumViolation = !isBudgetQuestion(currentQuestion)
+        ? findExtractedBudgetMinimumViolation({
+            extractedAnswers: extractedAnswersForMessage,
+            questionsBySlug,
+            service,
+        })
+        : null;
 
 
     // --- VALIDATION STEP ---
@@ -4135,6 +4316,13 @@ export const guestChat = asyncHandler(async (req, res) => {
             - Keep wording polite, friendly, and engaging.
             - Keep the total response under 100 words.
             `;
+        const minimumBudgetValidationRule = Number(service?.minBudget || 0) > 0
+            ? `
+            - If the user introduces or updates any project budget below ${formatServiceBudgetAmount(service.minBudget, service.currency || "INR")} for this service, treat it as INVALID.
+            - In that case, tell them to increase the budget to at least ${formatServiceBudgetAmount(service.minBudget, service.currency || "INR")}.
+            - Do NOT say you will note, save, or proceed with the lower budget.
+            `
+            : "";
 
         if (service.aiPrompt) {
             console.log(`\n--- [AI Context Loaded] ---\nService: ${service.name}\nPrompt: ${service.aiPrompt}\n---------------------------\n`);
@@ -4154,7 +4342,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             attachmentContextText,
             attachmentInferredAnswer,
             lastAssistantMessage,
-            validationResponseRules,
+            validationResponseRules: `${validationResponseRules}\n${minimumBudgetValidationRule}`.trim(),
         });
 
         // We use a separate AI call for validation. 
@@ -4221,6 +4409,12 @@ export const guestChat = asyncHandler(async (req, res) => {
             console.log("[Validation Parse Fallback]:", validationResult);
         }
 
+        if (lateBudgetMinimumViolation) {
+            validationResult = lateBudgetMinimumViolation.validation;
+            aiResponseContent = lateBudgetMinimumViolation.validation.message;
+            console.log("[Late Budget Minimum Validation]:", lateBudgetMinimumViolation.validation);
+        }
+
         if (validationResult.isValid) {
             const minimumBudgetValidation = getBudgetMinimumValidationResult({
                 question: currentQuestion,
@@ -4253,42 +4447,49 @@ export const guestChat = asyncHandler(async (req, res) => {
                 }
             }
 
-            const correctionCapture = applyExtractedAnswerUpdates({
-                baseAnswersBySlug: { ...existingAnswersBySlug },
-                existingAnswersBySlug,
-                extractedAnswers: extractedAnswersForMessage,
-                questionIndexBySlug,
-                questionsBySlug,
-                questionSlugSet,
-                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
-                currentStep,
-                currentQuestion,
-                ignoreSlug: currentQuestion?.slug,
-                correctionIntent: true,
-                logPrefix: "[Correction Capture]"
-            });
-            const correctionChanges = getChangedAnswerDetails(
-                questions,
-                existingAnswersBySlug,
-                correctionCapture.answersBySlug
-            );
-
             let activeCorrectionChange = null;
             let activeCorrectionConfirmMsg = "";
+            let correctionCapture = {
+                answersBySlug: { ...existingAnswersBySlug },
+                updatedSlugs: []
+            };
+            let correctionChanges = [];
 
-            if (correctionChanges.length > 0) {
-                for (const change of correctionChanges) {
-                    const rawQText = questions[change.index]?.text || "an earlier question";
-                    const qText = rawQText.split('\n').filter(Boolean).pop().trim();
-                    const evalResult = await checkMeaningfulChangeWithAI({
-                        questionText: qText,
-                        oldAnswer: change.previousValue,
-                        newAnswer: change.nextValue
-                    });
-                    if (evalResult.isMeaningful) {
-                        activeCorrectionChange = change;
-                        activeCorrectionConfirmMsg = evalResult.confirmMessage || `I noticed a change for "${qText}". Do you want to update it to "${change.nextValue}"?`;
-                        break;
+            if (!lateBudgetMinimumViolation) {
+                correctionCapture = applyExtractedAnswerUpdates({
+                    baseAnswersBySlug: { ...existingAnswersBySlug },
+                    existingAnswersBySlug,
+                    extractedAnswers: extractedAnswersForMessage,
+                    questionIndexBySlug,
+                    questionsBySlug,
+                    questionSlugSet,
+                    runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                    currentStep,
+                    currentQuestion,
+                    ignoreSlug: currentQuestion?.slug,
+                    correctionIntent: true,
+                    logPrefix: "[Correction Capture]"
+                });
+                correctionChanges = getChangedAnswerDetails(
+                    questions,
+                    existingAnswersBySlug,
+                    correctionCapture.answersBySlug
+                );
+
+                if (correctionChanges.length > 0) {
+                    for (const change of correctionChanges) {
+                        const rawQText = questions[change.index]?.text || "an earlier question";
+                        const qText = rawQText.split('\n').filter(Boolean).pop().trim();
+                        const evalResult = await checkMeaningfulChangeWithAI({
+                            questionText: qText,
+                            oldAnswer: change.previousValue,
+                            newAnswer: change.nextValue
+                        });
+                        if (evalResult.isMeaningful) {
+                            activeCorrectionChange = change;
+                            activeCorrectionConfirmMsg = evalResult.confirmMessage || `I noticed a change for "${qText}". Do you want to update it to "${change.nextValue}"?`;
+                            break;
+                        }
                     }
                 }
             }
@@ -4898,10 +5099,13 @@ Do not use markdown formatting, code fences, or bold text.`;
 export const __testables = {
     applyExtractedAnswerUpdates,
     buildCurrentQuestionValidationPrompt,
+    buildSupplementalBudgetExtractions,
     buildLockedServiceReply,
     buildPersistedAnswersPayload,
     buildQuestionDisplayAnswer,
+    findExtractedBudgetMinimumViolation,
     findBudgetMinimumViolationChange,
+    getPostProposalBudgetFollowupAction,
     getDisplayedQuestionOptions,
     getBudgetMinimumValidationResult,
     getSemanticDependentIndexesForChanges,
@@ -4910,6 +5114,7 @@ export const __testables = {
     getServiceScopedMessages,
     isBudgetQuestion,
     getRuntimeOptionsByQuestionSlug,
+    mergeExtractedAnswers,
     normalizeAnswerForQuestion,
     toChronologicalGuestHistory,
 };

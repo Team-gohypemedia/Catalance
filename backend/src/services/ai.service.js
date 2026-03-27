@@ -2224,6 +2224,8 @@ Use only the information provided in proposal_context and chat_history as ground
 Preserve confirmed user inputs exactly, but if a useful proposal field is missing, infer the best-fit recommendation from the confirmed business context, scope, service type, and standard delivery patterns for that kind of project.
 If proposal_context contains structured fields (such as questionnaireAnswers, questionnaireAnswersBySlug, appHints), prioritize those over ambiguous chat text.
 Treat each non-empty value in proposal_context.questionnaireAnswers / questionnaireAnswersBySlug / capturedFields as confirmed user input.
+If proposal_context already contains a confirmed structured Budget or Launch Timeline, use that exact confirmed value and do NOT override it with conflicting numbers from chat_history.
+If chat_history contains blocked, rejected, hypothetical, or conflicting alternatives, ignore them in favor of the structured confirmed values in proposal_context.
 Do not drop confirmed inputs. If a confirmed input does not fit the standard sections, include it under "Additional Confirmed Inputs" as bullet points.
 If proposal_context.serviceQuestionAnswers is present, treat every non-empty answer there as service-question-verified input.
 Cross-check proposal fields against serviceQuestionAnswers before finalizing output.
@@ -2294,8 +2296,8 @@ For APP DEVELOPMENT services, include:
 For other services, extract and include relevant fields from the chat history.
 
 CRITICAL INSTRUCTIONS:
-- ALWAYS extract the actual Launch Timeline value from the chat conversation when it exists. If no actual timeline was discussed, provide a single best-fit recommended launch timeline (e.g. "6 weeks"). NEVER write a range like "4-6 weeks".
-- ALWAYS extract the actual Budget value from the chat conversation when it exists. If no actual budget was discussed, provide a single best-fit recommended budget amount in INR (e.g. "INR 50,000"). NEVER write a budget range like "INR 30,000 - 50,000".
+- If proposal_context contains a confirmed structured Launch Timeline, use that exact value. Only fall back to chat_history when no structured timeline is present.
+- If proposal_context contains a confirmed structured Budget, use that exact value. Only fall back to chat_history when no structured budget is present.
 - NEVER use ranges anywhere in the proposal — not for budget, timeline, page count, or any other field. Always commit to a single definitive value.
 - If the user mentions specific technologies (Flutter, React Native, Node.js, Python, React.js dashboard, etc.), preserve them explicitly in the proposal.
 - Preserve confirmed requirements, but complete any missing proposal fields with sensible recommendations aligned to the user's goals.
@@ -2645,6 +2647,55 @@ const detectBudgetSuffix = (value = "", service = null) => {
   return serviceUnit || "";
 };
 
+const STRUCTURED_BUDGET_FIELD_REGEX = /\b(budget|investment|price|cost|spend)\b/i;
+const STRUCTURED_TIMELINE_FIELD_REGEX =
+  /\b(timeline|launch|delivery|deadline|when do you want|how soon|how quickly|duration)\b/i;
+
+const getStructuredProposalFieldValue = (
+  proposalContext = {},
+  { kind = "budget" } = {}
+) => {
+  const matcher =
+    kind === "timeline"
+      ? STRUCTURED_TIMELINE_FIELD_REGEX
+      : STRUCTURED_BUDGET_FIELD_REGEX;
+
+  const directValue =
+    kind === "timeline" ? proposalContext?.timeline : proposalContext?.budget;
+  const cleanedDirectValue = cleanProposalTextValue(directValue || "");
+  if (cleanedDirectValue) return cleanedDirectValue;
+
+  const serviceQuestionAnswers = Array.isArray(proposalContext?.serviceQuestionAnswers)
+    ? proposalContext.serviceQuestionAnswers
+    : [];
+  for (const entry of serviceQuestionAnswers) {
+    const signal = `${entry?.slug || ""} ${entry?.question || ""}`.trim();
+    if (!matcher.test(signal)) continue;
+    const answer = cleanProposalTextValue(entry?.answer || "");
+    if (answer) return answer;
+  }
+
+  const questionnaireAnswers = proposalContext?.questionnaireAnswers;
+  if (questionnaireAnswers && typeof questionnaireAnswers === "object") {
+    for (const [key, value] of Object.entries(questionnaireAnswers)) {
+      if (!matcher.test(String(key || ""))) continue;
+      const cleanedValue = cleanProposalTextValue(value || "");
+      if (cleanedValue) return cleanedValue;
+    }
+  }
+
+  const questionnaireAnswersBySlug = proposalContext?.questionnaireAnswersBySlug;
+  if (questionnaireAnswersBySlug && typeof questionnaireAnswersBySlug === "object") {
+    for (const [key, value] of Object.entries(questionnaireAnswersBySlug)) {
+      if (!matcher.test(String(key || ""))) continue;
+      const cleanedValue = cleanProposalTextValue(value || "");
+      if (cleanedValue) return cleanedValue;
+    }
+  }
+
+  return "";
+};
+
 const parseBudgetAmountTokens = (value = "") => {
   if (typeof value !== "string") return [];
   const budgetRegex =
@@ -2783,6 +2834,12 @@ const buildProposalFieldEntry = ({
         : [];
   const contextValue = cleanProposalTextValue(contextEntry?.value || "");
   const contextItems = cleanProposalListItems(contextEntry?.items || []);
+  const structuredTimelineValue = getStructuredProposalFieldValue(proposalContext, {
+    kind: "timeline"
+  });
+  const structuredBudgetValue = getStructuredProposalFieldValue(proposalContext, {
+    kind: "budget"
+  });
 
   switch (label) {
     case "Client Name":
@@ -2836,6 +2893,7 @@ const buildProposalFieldEntry = ({
     case "Launch Timeline":
       return {
         value:
+          structuredTimelineValue ||
           contextValue ||
           sectionValue ||
           getLatestTimelineFromHistory(chatHistory) ||
@@ -2845,7 +2903,7 @@ const buildProposalFieldEntry = ({
     case "Budget":
       return {
         value: normalizeProposalBudgetValue(
-          contextValue || sectionValue || "",
+          structuredBudgetValue || contextValue || sectionValue || "",
           service
         ),
         items: []
@@ -2986,8 +3044,12 @@ const normalizeProposalMarkdown = ({
       ...(Array.isArray(proposalContext?.requirements) ? proposalContext.requirements : [])
     ]
   });
-  addContextField("Launch Timeline", { value: proposalContext?.timeline });
-  addContextField("Budget", { value: proposalContext?.budget });
+  addContextField("Launch Timeline", {
+    value: getStructuredProposalFieldValue(proposalContext, { kind: "timeline" })
+  });
+  addContextField("Budget", {
+    value: getStructuredProposalFieldValue(proposalContext, { kind: "budget" })
+  });
   addContextField("Website Type", { value: proposalContext?.websiteType });
   addContextField("Design Style", { value: proposalContext?.designExperience });
   addContextField("Website Build Type", { value: proposalContext?.buildType });
