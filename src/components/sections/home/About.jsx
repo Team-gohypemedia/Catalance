@@ -67,7 +67,7 @@ const differentiators = [
 
 const About = () => {
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-screen bg-background text-white">
       <section className="mx-auto w-full max-w-5xl px-4 py-20 md:px-8 md:py-24">
         <header className="mb-12 space-y-6">
           <p className="text-sm uppercase tracking-[0.24em] text-primary">About Catalance</p>

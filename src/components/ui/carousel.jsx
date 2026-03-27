@@ -109,7 +109,11 @@ function CarouselContent({
   return (
     <div
       ref={carouselRef}
-      className="overflow-hidden"
+      className={cn(
+        orientation === "horizontal"
+          ? "overflow-x-hidden overflow-y-visible"
+          : "overflow-x-visible overflow-y-hidden",
+      )}
       data-slot="carousel-content">
       <div
         className={cn(

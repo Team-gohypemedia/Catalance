@@ -8,7 +8,7 @@ import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
@@ -34,18 +34,20 @@ const PROJECT_PROGRESS_BY_STATUS = Object.freeze({
 
 const projectStatusToneMap = {
   success: "border-[#14532d] bg-[#0c2616] text-[#34d399]",
-  warning: "border-white/[0.08] bg-white/[0.06] text-primary",
-  slate: "border-white/[0.08] bg-white/[0.04] text-[#cbd5e1]",
+  warning: "border-white/[0.08] bg-card text-primary",
+  slate: "border-white/[0.08] bg-card text-[#cbd5e1]",
 };
 
 const projectActionToneMap = {
   amber: "bg-[#ffc107] text-black hover:bg-[#ffd54f] disabled:bg-[#ffc107]/70",
-  slate: "bg-white/[0.08] text-white hover:bg-white/[0.12] disabled:bg-white/[0.08]",
+  slate:
+    "border border-white/[0.08] bg-card text-white hover:bg-white/[0.04] disabled:bg-card disabled:text-white/70",
 };
 const projectFilterOptions = [
   { key: "ongoing", label: "Ongoing Projects" },
   { key: "completed", label: "Completed Projects" },
 ];
+const projectFilterKeys = new Set(projectFilterOptions.map((option) => option.key));
 
 const getDisplayName = (user) =>
   user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
@@ -821,7 +823,7 @@ export const buildProjectCardModel = (project) => {
 export const ProjectCardSkeleton = ({ className }) => (
   <div
     className={cn(
-      "rounded-[28px] border border-white/[0.06] bg-accent p-4 sm:p-5 xl:p-6",
+      "rounded-[28px] border border-white/[0.06] bg-card p-4 sm:p-5 xl:p-6",
       className,
     )}
   >
@@ -871,9 +873,9 @@ const ProjectPhaseStep = ({ item }) => {
       : {
           label: "Pending",
           Icon: Circle,
-          badgeClassName: "border-white/[0.08] bg-white/[0.04] text-[#94a3b8]",
-          textClassName: "text-[#6b7280]",
-          iconClassName: "text-[#94a3b8]",
+          badgeClassName: "border-white/[0.08] bg-white/[0.04] text-muted-foreground",
+          textClassName: "text-muted-foreground",
+          iconClassName: "text-muted-foreground",
         };
   const StatusIcon = statusMeta.Icon;
 
@@ -910,6 +912,7 @@ export const ProjectProposalCard = ({
   onPay,
   isPaying,
   className,
+  replaceSectionBadgeWithStatus = false,
 }) => {
   const [showPhaseDetails, setShowPhaseDetails] = useState(false);
   const [hasFreelancerAvatarError, setHasFreelancerAvatarError] = useState(false);
@@ -921,7 +924,7 @@ export const ProjectProposalCard = ({
     normalizeComparableText(project.serviceType) !==
       normalizeComparableText(project.title);
   const detailPanelClassName =
-    "border border-white/[0.06] bg-white/[0.035] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+    "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
   const phaseSteps = Array.isArray(project.currentPhaseSteps) ? project.currentPhaseSteps : [];
   const actionClassName = cn(
     "flex w-full items-center justify-center rounded-[14px] px-3 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80 sm:px-4 sm:py-3.5 sm:text-base",
@@ -929,6 +932,17 @@ export const ProjectProposalCard = ({
   );
   const canRenderFreelancerAvatar =
     Boolean(project.freelancerAvatar) && !hasFreelancerAvatarError;
+  const statusBadge = (
+    <span
+      className={cn(
+        "inline-flex h-7 min-w-0 max-w-full shrink items-center justify-center whitespace-nowrap rounded-[8px] border px-2.5 text-[9px] font-bold uppercase tracking-[0.12em] sm:h-8 sm:px-3 sm:text-[0.68rem] sm:tracking-[0.14em]",
+        projectStatusToneMap[project.statusMeta.tone] || projectStatusToneMap.slate,
+      )}
+      title={project.statusMeta.label}
+    >
+      {project.statusMeta.label}
+    </span>
+  );
 
   useEffect(() => {
     setHasFreelancerAvatarError(false);
@@ -973,35 +987,31 @@ export const ProjectProposalCard = ({
   return (
     <article
       className={cn(
-        "flex h-auto w-full max-w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[28px] border border-white/[0.06] bg-accent p-4 transition-transform duration-200 hover:-translate-y-1 sm:p-5 xl:p-6",
+        "flex h-auto w-full max-w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[28px] border border-white/[0.06] bg-card p-4 transition-transform duration-200 hover:-translate-y-1 sm:p-5 xl:p-6",
         className,
       )}
     >
       <div className="flex min-w-0 flex-col">
         <div className="flex items-start justify-between gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="inline-flex h-7 shrink-0 items-center justify-center whitespace-nowrap rounded-[8px] bg-white/[0.06] px-2.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#23d18b] sm:h-8 sm:px-3 sm:text-[11px] sm:tracking-[0.22em]">
-              {project.sectionLabel}
-            </span>
+            {replaceSectionBadgeWithStatus ? (
+              statusBadge
+            ) : (
+              <span className="inline-flex h-7 shrink-0 items-center justify-center whitespace-nowrap rounded-[8px] bg-white/[0.06] px-2.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#23d18b] sm:h-8 sm:px-3 sm:text-[11px] sm:tracking-[0.22em]">
+                {project.sectionLabel}
+              </span>
+            )}
           </div>
 
           <div className="flex min-w-0 items-start justify-end gap-2">
-            <span
-              className={cn(
-                "inline-flex h-7 min-w-0 max-w-full shrink items-center justify-center whitespace-nowrap rounded-[8px] border px-2.5 text-[9px] font-bold uppercase tracking-[0.12em] sm:h-8 sm:px-3 sm:text-[0.68rem] sm:tracking-[0.14em]",
-                projectStatusToneMap[project.statusMeta.tone] || projectStatusToneMap.slate,
-              )}
-              title={project.statusMeta.label}
-            >
-              {project.statusMeta.label}
-            </span>
+            {!replaceSectionBadgeWithStatus ? statusBadge : null}
             <button
               type="button"
               onClick={() => setShowPhaseDetails((current) => !current)}
               aria-expanded={showPhaseDetails}
               aria-label={showPhaseDetails ? "Hide phases" : "Show phases"}
               title={showPhaseDetails ? "Hide phases" : "Show phases"}
-              className="inline-flex h-7 w-7 shrink-0 self-start items-center justify-center rounded-[8px] border border-white/[0.08] bg-white/[0.04] text-[#94a3b8] transition-colors hover:bg-white/[0.08] hover:text-white sm:h-8 sm:w-8"
+              className="inline-flex h-7 w-7 shrink-0 self-start items-center justify-center rounded-[8px] border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white sm:h-8 sm:w-8"
             >
               <ChevronDown
                 className={cn(
@@ -1017,7 +1027,7 @@ export const ProjectProposalCard = ({
           {project.title}
         </h2>
         {showServiceType ? (
-          <p className="mt-2 text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+          <p className="mt-1 text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {project.serviceType}
           </p>
         ) : null}
@@ -1042,20 +1052,20 @@ export const ProjectProposalCard = ({
 
           <div className="min-w-0">
             <p className="truncate text-[1rem] font-medium text-white">{project.freelancerName}</p>
-            <p className="truncate text-sm text-[#8f96a3]">{project.freelancerRole}</p>
+            <p className="truncate text-sm text-muted-foreground">{project.freelancerRole}</p>
           </div>
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
           <div className={cn("rounded-[14px] p-4", detailPanelClassName)}>
-            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">Budget</p>
+            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">Budget</p>
             <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
               {project.budgetLabel}
             </p>
           </div>
 
           <div className={cn("rounded-[14px] p-4", detailPanelClassName)}>
-            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">
+            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
               {project.dateLabel}
             </p>
             <p className="mt-3 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
@@ -1065,7 +1075,7 @@ export const ProjectProposalCard = ({
         </div>
 
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
-          <span className="text-sm text-[#9ca3af]">Current Phase Progress</span>
+          <span className="text-sm text-muted-foreground">Current Phase Progress</span>
           <span className="text-sm font-semibold text-[#ffc107]">{progressText}</span>
         </div>
 
@@ -1086,10 +1096,10 @@ export const ProjectProposalCard = ({
               )}
             >
               <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#7f8794]">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Current Phase
                 </p>
-                <span className="shrink-0 self-start rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em] text-[#94a3b8] sm:self-auto">
+                <span className="shrink-0 self-start rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:self-auto">
                   {project.currentPhaseCountLabel}
                 </span>
               </div>
@@ -1102,7 +1112,7 @@ export const ProjectProposalCard = ({
               {project.currentPhase?.subLabel ? (
                 <p
                   title={project.currentPhase.subLabel}
-                  className="mt-1 text-sm text-[#8f96a3] sm:truncate"
+                  className="mt-1 text-sm text-muted-foreground sm:truncate"
                 >
                   {project.currentPhase.subLabel}
                 </p>
@@ -1118,7 +1128,7 @@ export const ProjectProposalCard = ({
                   ))}
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-[#8f96a3]">
+                <p className="mt-3 text-sm text-muted-foreground">
                   No subpoints are available for this phase yet.
                 </p>
               )}
@@ -1174,7 +1184,7 @@ const EmptyProjectsState = ({
   description = "Active and pending collaborations will appear here once freelancers accept your proposals.",
   showAction = true,
 }) => (
-  <div className="rounded-[28px] border border-white/[0.06] bg-accent p-8 text-center">
+  <div className="rounded-[28px] border border-white/[0.06] bg-card p-8 text-center">
     <div className="mx-auto flex max-w-md flex-col items-center">
       <div className="flex size-16 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8]">
         <ClipboardList className="size-7" />
@@ -1200,11 +1210,14 @@ const EmptyProjectsState = ({
 const ClientProjects = () => {
   const { authFetch, isAuthenticated, user } = useAuth();
   const { unreadCount } = useNotifications();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingProjectId, setProcessingProjectId] = useState(null);
   const [activeFilter, setActiveFilter] = useState("ongoing");
   const hasUserSelectedFilterRef = React.useRef(false);
+  const requestedFilter = String(searchParams.get("filter") || "").toLowerCase();
+  const hasRequestedFilter = projectFilterKeys.has(requestedFilter);
 
   const loadProjects = useCallback(async () => {
     setIsLoading(true);
@@ -1226,6 +1239,17 @@ const ClientProjects = () => {
     if (!isAuthenticated) return;
     void loadProjects();
   }, [isAuthenticated, loadProjects]);
+
+  useEffect(() => {
+    if (!hasRequestedFilter) {
+      hasUserSelectedFilterRef.current = false;
+      setActiveFilter("ongoing");
+      return;
+    }
+
+    hasUserSelectedFilterRef.current = true;
+    setActiveFilter(requestedFilter);
+  }, [hasRequestedFilter, requestedFilter]);
 
   const handleApproveAndPay = useCallback(
     async (project) => {
@@ -1292,9 +1316,21 @@ const ClientProjects = () => {
       setActiveFilter("ongoing");
     }
   }, [activeFilter, completedProjectCount, isLoading, ongoingProjectCount]);
+  const handleSelectFilter = useCallback(
+    (nextFilter) => {
+      hasUserSelectedFilterRef.current = true;
+      setActiveFilter(nextFilter);
+      setSearchParams((currentParams) => {
+        const nextParams = new URLSearchParams(currentParams);
+        nextParams.set("filter", nextFilter);
+        return nextParams;
+      });
+    },
+    [setSearchParams],
+  );
 
   return (
-    <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
+    <div className="min-h-screen bg-background text-[#f1f5f9]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
         <ClientWorkspaceHeader
           profile={{
@@ -1322,10 +1358,7 @@ const ClientProjects = () => {
                     <button
                       key={option.key}
                       type="button"
-                      onClick={() => {
-                        hasUserSelectedFilterRef.current = true;
-                        setActiveFilter(option.key);
-                      }}
+                      onClick={() => handleSelectFilter(option.key)}
                       className={cn(
                         "h-11 rounded-full border border-transparent px-5 text-[0.95rem] font-semibold transition",
                         isActive

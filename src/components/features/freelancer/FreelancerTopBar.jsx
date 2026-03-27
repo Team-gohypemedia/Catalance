@@ -23,6 +23,7 @@ export const FreelancerTopBar = () => {
     if (pathname.startsWith("/freelancer/project")) return "projects";
     if (pathname.startsWith("/freelancer/messages")) return "messages";
     if (pathname.startsWith("/freelancer/payments")) return "payments";
+    if (pathname.startsWith("/freelancer/profile")) return "profile";
     return "dashboard";
   }, [pathname]);
   const profile = useMemo(() => {
@@ -58,6 +59,10 @@ export const FreelancerTopBar = () => {
       }
       if (key === "payments") {
         navigate("/freelancer/payments");
+        return;
+      }
+      if (key === "profile") {
+        navigate("/freelancer/profile");
       }
     },
     [navigate],

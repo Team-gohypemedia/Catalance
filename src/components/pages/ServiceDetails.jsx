@@ -80,35 +80,37 @@ const normalizePortfolio = (sd = {}) => {
 
 // ─── Loading Skeleton ────────────────────────────────────────────────────────
 const LoadingSkeleton = () => (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 max-w-[1200px] min-h-screen">
-        <Skeleton className="h-4 w-48 mb-6 rounded-full" />
-        <div className="flex flex-col lg:flex-row gap-10">
-            <div className="flex-1 space-y-8">
-                <div className="space-y-4">
-                    <Skeleton className="h-10 w-3/4 rounded-xl" />
-                    <Skeleton className="h-5 w-48 rounded-full" />
-                </div>
-                <Skeleton className="w-full aspect-video rounded-3xl" />
-                <div className="space-y-3 p-6 border border-border/40 rounded-2xl">
-                    <Skeleton className="h-6 w-40 rounded-lg" />
-                    <Skeleton className="h-4 w-full rounded" />
-                    <Skeleton className="h-4 w-5/6 rounded" />
-                    <Skeleton className="h-4 w-4/5 rounded" />
-                </div>
-                <div className="space-y-3 p-6 border border-border/40 rounded-2xl">
-                    <Skeleton className="h-6 w-48 rounded-lg" />
-                    <div className="flex gap-2">
-                        <Skeleton className="h-8 w-20 rounded-full" />
-                        <Skeleton className="h-8 w-24 rounded-full" />
-                        <Skeleton className="h-8 w-16 rounded-full" />
+    <div className="min-h-screen bg-background">
+        <div className="container mx-auto min-h-screen max-w-[1200px] px-4 py-8 pt-24 sm:px-6 lg:px-8">
+            <Skeleton className="mb-6 h-4 w-48 rounded-full" />
+            <div className="flex flex-col gap-10 lg:flex-row">
+                <div className="flex-1 space-y-8">
+                    <div className="space-y-4">
+                        <Skeleton className="h-10 w-3/4 rounded-xl" />
+                        <Skeleton className="h-5 w-48 rounded-full" />
+                    </div>
+                    <Skeleton className="aspect-video w-full rounded-3xl" />
+                    <div className="space-y-3 rounded-2xl border border-border/40 p-6">
+                        <Skeleton className="h-6 w-40 rounded-lg" />
+                        <Skeleton className="h-4 w-full rounded" />
+                        <Skeleton className="h-4 w-5/6 rounded" />
+                        <Skeleton className="h-4 w-4/5 rounded" />
+                    </div>
+                    <div className="space-y-3 rounded-2xl border border-border/40 p-6">
+                        <Skeleton className="h-6 w-48 rounded-lg" />
+                        <div className="flex gap-2">
+                            <Skeleton className="h-8 w-20 rounded-full" />
+                            <Skeleton className="h-8 w-24 rounded-full" />
+                            <Skeleton className="h-8 w-16 rounded-full" />
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div className="hidden lg:block w-[340px] shrink-0 space-y-4">
-                <Skeleton className="h-10 w-full rounded-xl" />
-                <Skeleton className="h-14 w-full rounded-2xl" />
-                <Skeleton className="h-14 w-full rounded-2xl" />
-                <Skeleton className="h-12 w-full rounded-2xl" />
+                <div className="hidden w-[340px] shrink-0 space-y-4 lg:block">
+                    <Skeleton className="h-10 w-full rounded-xl" />
+                    <Skeleton className="h-14 w-full rounded-2xl" />
+                    <Skeleton className="h-14 w-full rounded-2xl" />
+                    <Skeleton className="h-12 w-full rounded-2xl" />
+                </div>
             </div>
         </div>
     </div>
@@ -216,15 +218,17 @@ const ServiceDetails = () => {
 
     if (!service) {
         return (
-            <div className="container mx-auto px-4 py-32 text-center min-h-screen flex flex-col items-center justify-center">
-                <div className="w-20 h-20 rounded-3xl bg-muted/40 flex items-center justify-center mb-6 border border-dashed border-border/50">
-                    <Layers className="w-10 h-10 text-muted-foreground/40" />
+            <div className="min-h-screen bg-background">
+                <div className="container mx-auto flex min-h-screen flex-col items-center justify-center px-4 py-32 text-center">
+                    <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-dashed border-border/50 bg-muted/40">
+                        <Layers className="h-10 w-10 text-muted-foreground/40" />
+                    </div>
+                    <h1 className="mb-2 text-2xl font-bold">Service Not Found</h1>
+                    <p className="mb-6 text-sm text-muted-foreground">This service may have been removed or doesn't exist.</p>
+                    <Link to="/marketplace" className="text-sm font-semibold text-primary hover:underline">
+                        ← Back to Marketplace
+                    </Link>
                 </div>
-                <h1 className="text-2xl font-bold mb-2">Service Not Found</h1>
-                <p className="text-muted-foreground mb-6 text-sm">This service may have been removed or doesn't exist.</p>
-                <Link to="/marketplace" className="text-primary hover:underline font-semibold text-sm">
-                    ← Back to Marketplace
-                </Link>
             </div>
         );
     }
@@ -242,7 +246,8 @@ const ServiceDetails = () => {
     const portfolio = normalizePortfolio(serviceDetails);
 
     return (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 max-w-[1200px] min-h-screen relative">
+        <div className="min-h-screen bg-background">
+        <div className="container relative mx-auto min-h-screen max-w-[1200px] px-4 py-8 pt-24 sm:px-6 lg:px-8">
 
             {/* Share Toast */}
             {shareToast && (
@@ -442,6 +447,7 @@ const ServiceDetails = () => {
                     />
                 </div>
             </div>
+        </div>
         </div>
     );
 };

@@ -18,6 +18,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import logo from "@/assets/logos/logo.svg";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
 
@@ -40,9 +41,9 @@ const ProfileDropdown = ({ profile, displayName, profileInitial }) => {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 rounded-full border border-white/10 bg-[#222222] px-3 py-2 text-sm font-semibold text-white transition-colors hover:border-white/15 hover:bg-[#292929]"
+          className="flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-sm font-semibold text-white transition-colors hover:border-border hover:bg-background"
         >
-          <Avatar className="size-7 border border-black/10">
+          <Avatar className="size-7 border border-border">
             <AvatarImage src={profile?.avatar} alt={displayName} />
             <AvatarFallback className="bg-black/5 text-xs font-semibold text-black">
               {profileInitial}
@@ -50,7 +51,7 @@ const ProfileDropdown = ({ profile, displayName, profileInitial }) => {
           </Avatar>
           <span className="max-w-[120px] truncate">{displayName}</span>
           <svg
-            className={cn("h-3.5 w-3.5 text-white/40 transition-transform duration-200", open ? "rotate-180" : "")}
+            className={cn("h-3.5 w-3.5 text-white transition-transform duration-200", open ? "rotate-180" : "")}
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -60,11 +61,11 @@ const ProfileDropdown = ({ profile, displayName, profileInitial }) => {
       <PopoverContent
         align="end"
         sideOffset={10}
-        className="w-56 border border-white/10 bg-[#1a1a1b] p-0 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
+        className="w-56 border border-border bg-background p-0 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
       >
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
-          <Avatar className="size-9 border border-white/10">
+        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+          <Avatar className="size-9 border border-border">
             <AvatarImage src={profile?.avatar} alt={displayName} />
             <AvatarFallback className="bg-white/10 text-sm font-bold text-white">
               {profileInitial}
@@ -124,7 +125,7 @@ const ProfileDropdown = ({ profile, displayName, profileInitial }) => {
           </div>
 
           {/* Divider */}
-          <div className="my-1 border-t border-white/10" />
+          <div className="my-1 border-t border-border" />
 
           {/* Profile */}
           <Link
@@ -174,6 +175,7 @@ const workspaceNavItems = [
   { label: "Projects", key: "projects", to: "/freelancer/project" },
   { label: "Messages", key: "messages", to: "/freelancer/messages" },
   { label: "Payments", key: "payments", to: "/freelancer/payments" },
+  { label: "Profile", key: "profile", to: "/freelancer/profile" },
 ];
 
 const getInitials = (value = "") => {
@@ -190,8 +192,12 @@ const getInitials = (value = "") => {
 
 const BrandMark = () => (
   <div className="flex items-center gap-2">
-    <div className="flex size-8 items-center justify-center rounded-full bg-[#facc15]">
-      <div className="size-4 rounded-full border-2 border-[#0a0a0a]" />
+    <div className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary">
+      <img
+        src={logo}
+        alt=""
+        className="h-5 w-5 object-contain"
+      />
     </div>
     <span className="text-base font-bold tracking-[-0.5px] text-white">
       Catalance
@@ -204,19 +210,19 @@ const HeaderNavItem = ({ active, item, mobile, onSelect, variant = "marketing" }
     ? cn(
         "rounded-full border px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
         active
-          ? "border-[#ffc107]/30 bg-[#ffc107]/15 text-[#ffc107]"
-          : "border-white/10 bg-transparent text-[#94a3b8] hover:text-white",
+          ? "border-primary/30 bg-primary/15 text-primary"
+          : "border-border bg-transparent text-muted-foreground hover:text-foreground",
       )
     : variant === "workspace"
       ? cn(
           "rounded-full px-3 py-2 text-sm font-medium transition-colors",
           active
-            ? "border border-white/10 bg-white/[0.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-            : "text-[#94a3b8] hover:text-white",
+            ? "border border-border bg-background text-white"
+            : "text-muted-foreground hover:text-foreground",
         )
       : cn(
           "text-sm font-medium transition-colors",
-          active ? "text-[#facc15]" : "text-[#94a3b8] hover:text-white",
+          active ? "text-[#facc15]" : "text-muted-foreground hover:text-foreground",
         );
 
   if (typeof onSelect === "function") {
@@ -268,11 +274,11 @@ const MobileMenuLink = ({ active, item, onSelect, priority = "primary" }) => {
     priority === "primary"
       ? cn(
           "block w-full py-1 text-left text-[1.75rem] font-semibold uppercase tracking-[0.12em] transition-colors",
-          active ? "text-[#ffc107]" : "text-white hover:text-[#ffc107]",
+          active ? "text-[#ffc107]" : "text-muted-foreground hover:text-[#ffc107]",
         )
       : cn(
           "block w-full py-1 text-left text-base font-semibold uppercase tracking-[0.14em] transition-colors",
-          active ? "text-[#ffc107]" : "text-white/70 hover:text-white",
+          active ? "text-[#ffc107]" : "text-muted-foreground hover:text-foreground",
         );
 
   if (typeof onSelect === "function") {
@@ -313,9 +319,9 @@ const NotificationPopoverButton = ({
     <PopoverContent
       align="end"
       sideOffset={10}
-        className="w-[22rem] border border-white/10 bg-[#171718] p-0 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
-    >
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        className="w-[22rem] border border-border bg-[#171718] p-0 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
+      >
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h4 className="text-sm font-semibold">Notifications</h4>
         {unreadCount > 0 ? (
           <button
@@ -408,8 +414,8 @@ const FreelancerWorkspaceHeader = ({
   };
 
   return (
-    <header className={cn("sticky top-0 z-50 bg-[#212121]", className)}>
-      <div className="border-b border-white/10 px-4 py-5 lg:hidden">
+    <header className={cn("sticky top-0 z-50 bg-background", className)}>
+      <div className="border-b border-border px-4 py-5 lg:hidden">
         <div className="flex items-center justify-between gap-4">
           <Link to="/">
             <BrandMark />
@@ -428,7 +434,7 @@ const FreelancerWorkspaceHeader = ({
             <SheetContent
               side="right"
               showCloseButton={false}
-              className="w-full max-w-none border-l-0 bg-[#212121] p-0 text-white sm:max-w-none"
+              className="w-full max-w-none border-l-0 bg-background p-0 text-white sm:max-w-none"
             >
               <div className="flex items-center justify-between px-6 py-6">
                 <SheetClose asChild>
@@ -461,7 +467,7 @@ const FreelancerWorkspaceHeader = ({
                     ))}
                   </div>
 
-                  <div className="mt-12 border-t border-white/10 pt-8">
+                  <div className="mt-12 border-t border-border pt-8">
                     <div className="space-y-5">
                       {marketingNavItems.map((item) => (
                         <MobileMenuLink
@@ -514,7 +520,7 @@ const FreelancerWorkspaceHeader = ({
       </div>
 
       <div className="hidden space-y-4 pb-3 pt-3 lg:block">
-        <div className="mx-auto w-full rounded-[40px] border border-white/10 bg-[#171717]/70 p-3 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[6px] sm:p-4 xl:w-[70%]">
+        <div className="mx-auto w-full rounded-[40px] border border-border bg-[#171717]/70 p-3 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[6px] sm:p-4 xl:w-[70%]">
           <div className="flex items-center justify-between gap-4">
             <Link to="/">
               <BrandMark />
@@ -534,7 +540,7 @@ const FreelancerWorkspaceHeader = ({
           </div>
         </div>
 
-        <div className="mt-7 border-b border-[#ffc107]/10 pb-3">
+        <div className="mt-7 border-b border-border pb-3">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-3">
               <HeaderNav

@@ -2,7 +2,7 @@ import React from "react";
 
 const TermsConditions = () => {
   return (
-    <div className="min-h-screen bg-black text-white pt-32 pb-24 px-6 md:px-12">
+    <div className="min-h-screen bg-background text-foreground pt-32 pb-24 px-6 md:px-12">
       <div className="max-w-4xl mx-auto space-y-12">
         {/* Header */}
         <div className="text-center space-y-4">

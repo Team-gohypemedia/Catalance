@@ -2211,7 +2211,7 @@ const GuestAIDemo = () => {
         return (
             <>
                 <Navbar />
-                <div className={`flex min-h-screen items-center justify-center px-4 pb-10 pt-28 ${isDark ? 'bg-black' : 'bg-[#fbfbfa]'}`}>
+                <div className="flex min-h-screen items-center justify-center bg-background px-4 pb-10 pt-28">
                     <div className="flex flex-col items-center gap-3">
                         <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                         <p className={isDark ? 'text-sm text-slate-300' : 'text-sm text-slate-600'}>
@@ -2228,7 +2228,7 @@ const GuestAIDemo = () => {
         return (
             <>
                 <Navbar />
-                <main className="relative min-h-screen bg-black text-foreground overflow-hidden transition-colors pt-28 pb-10">
+                <main className="relative min-h-screen bg-background text-foreground overflow-hidden transition-colors pt-28 pb-10">
                     {/* Matrix Background Layer - Fixed to cover whole screen */}
                     <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
                         <MatrixPattern
@@ -2516,11 +2516,7 @@ const GuestAIDemo = () => {
     };
 
     return (
-        <div className={`mt-16 flex h-[calc(100svh-4rem)] overflow-hidden lg:mt-20 lg:h-[calc(100svh-5rem)] ${isDark
-            ? 'bg-[#212121]'
-            : 'bg-white'
-            }`}
-        >
+        <div className="mt-16 flex h-[calc(100svh-4rem)] overflow-hidden bg-background lg:mt-20 lg:h-[calc(100svh-5rem)]">
             <aside className={`hidden shrink-0 overflow-hidden p-3 transition-all duration-300 md:flex md:flex-col ${isSidebarCompact ? 'w-16 items-center' : 'w-72'} ${isDark ? 'bg-[#171717]' : 'bg-[#F9F9F9]'}`}>
                 <div className={`mb-3 flex items-center gap-2 ${isSidebarCompact ? 'flex-col justify-center' : 'justify-between'}`}>
                     {!isSidebarCompact && (

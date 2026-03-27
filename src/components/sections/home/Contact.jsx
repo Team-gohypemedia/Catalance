@@ -51,9 +51,7 @@ const Contact = () => {
   }, []);
 
   const isDark = resolvedTheme === "dark";
-  const bgColor = isDark
-    ? "bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1a180e] via-black to-black"
-    : "bg-[#f8f8f5]";
+  const bgColor = "bg-background";
   const textColor = isDark ? "text-white" : "text-[#1a180e]";
   const cardBg = isDark ? "bg-white/5" : "bg-white/60";
   const borderColor = isDark ? "border-white/10" : "border-black/5";

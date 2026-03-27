@@ -160,8 +160,7 @@ const ServiceCategoryCards = () => {
 
   return (
     <section
-      className={`w-full py-20 overflow-hidden ${isDark ? "bg-black" : "bg-white"
-        } flex items-center justify-center`}
+      className="flex w-full items-center justify-center overflow-hidden bg-background py-20"
     >
       <div className="max-w-7xl mx-auto px-4 w-full flex flex-col items-center gap-4">
         <div className="text-center space-y-4 mb-8">

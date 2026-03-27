@@ -114,7 +114,7 @@ const BrowseTalent = () => {
   }, []);
 
   const isDark = resolvedTheme === "dark";
-  const bgColor = isDark ? "bg-black" : "bg-white";
+  const bgColor = "bg-background";
   const textColor = isDark ? "text-white" : "text-gray-900";
   const mutedTextColor = isDark ? "text-neutral-400" : "text-gray-600";
   const gridColor = isDark

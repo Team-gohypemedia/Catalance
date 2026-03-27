@@ -19,9 +19,9 @@ const toneMap = {
   },
   workspace: {
     border: "border-white/[0.05]",
-    meta: "text-[#64748b]",
+    meta: "text-muted-foreground",
     icon: "text-[#ffc107]",
-    link: "text-[#64748b] hover:text-[#f1f5f9]",
+    link: "text-muted-foreground hover:text-foreground",
   },
 };
 

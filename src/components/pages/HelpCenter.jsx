@@ -426,7 +426,7 @@ const HelpCenter = () => {
   );
 
   return (
-    <main className={`min-h-screen ${isDark ? "bg-black text-white" : "bg-white text-gray-900"}`}>
+    <main className={`min-h-screen bg-background ${isDark ? "text-white" : "text-gray-900"}`}>
       <div className="mx-auto max-w-6xl px-5 pb-20 pt-28 md:px-8 md:pt-32">
         <section
           className={`rounded-3xl border p-7 md:p-10 ${

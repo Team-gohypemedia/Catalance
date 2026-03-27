@@ -9,7 +9,7 @@ const VibeCodingHelp = () => {
   const isDark = theme === "dark";
 
   return (
-    <section className="w-full bg-black py-12 px-4 md:px-8 lg:px-16">
+    <section className="w-full bg-background px-4 py-12 md:px-8 lg:px-16">
       <div
         className="relative max-w-7xl mx-auto rounded-3xl overflow-hidden transition-colors duration-500"
         style={{

@@ -1351,6 +1351,7 @@ export const DashboardContent = ({ _roleOverride }) => {
     if (location.pathname.startsWith("/freelancer/project")) return "projects";
     if (location.pathname.startsWith("/freelancer/messages")) return "messages";
     if (location.pathname.startsWith("/freelancer/payments")) return "payments";
+    if (location.pathname.startsWith("/freelancer/profile")) return "profile";
     return "dashboard";
   }, [location.pathname]);
   const headerProfile = useMemo(() => {
@@ -1386,6 +1387,10 @@ export const DashboardContent = ({ _roleOverride }) => {
       }
       if (key === "payments") {
         navigate("/freelancer/payments");
+        return;
+      }
+      if (key === "profile") {
+        navigate("/freelancer/profile");
       }
     },
     [navigate],
@@ -2086,7 +2091,7 @@ export const DashboardContent = ({ _roleOverride }) => {
   }, [paymentCollectionPercent, pendingPayoutRows.length, receivedPayoutRows.length]);
 
   return (
-    <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
+    <div className="min-h-screen bg-background text-[#f1f5f9]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
 
       <SuspensionAlert

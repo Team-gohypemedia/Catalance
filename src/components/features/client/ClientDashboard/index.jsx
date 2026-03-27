@@ -397,18 +397,6 @@ const resolveProposalBusinessName = (proposal = {}) => {
   );
 };
 
-const formatProposalUpdatedAt = (proposal = {}) => {
-  const timestamp = proposal?.updatedAt || proposal?.createdAt;
-  if (!timestamp) return "Recently";
-  const parsed = new Date(timestamp);
-  if (Number.isNaN(parsed.getTime())) return "Recently";
-  return parsed.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
 const normalizeFreelancerCardData = (candidate = {}) => {
   const freelancer = { ...candidate };
   const rawBio = freelancer.bio || freelancer.about;
@@ -824,6 +812,18 @@ const formatDashboardDate = (
   }
 
   return new Intl.DateTimeFormat("en-US", options).format(date);
+};
+
+const getDashboardGreeting = (value = new Date()) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Hello";
+  }
+
+  const hour = date.getHours();
+  if (hour < 12) return "Good Morning";
+  if (hour < 18) return "Good Afternoon";
+  return "Good Evening";
 };
 
 const formatDashboardRelativeTime = (value) => {
@@ -1830,11 +1830,25 @@ const ClientDashboardContent = () => {
     };
   }, [navigate, uniqueProjects]);
 
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
-    return "Good Evening";
+  const [greeting, setGreeting] = useState(() => getDashboardGreeting());
+
+  useEffect(() => {
+    const syncGreeting = () => {
+      const nextGreeting = getDashboardGreeting();
+
+      startTransition(() => {
+        setGreeting((currentGreeting) =>
+          currentGreeting === nextGreeting ? currentGreeting : nextGreeting,
+        );
+      });
+    };
+
+    syncGreeting();
+    const intervalId = window.setInterval(syncGreeting, 60 * 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   const firstName = sessionUser?.fullName?.split(" ")[0] || "User";
@@ -2291,6 +2305,7 @@ const ClientDashboardContent = () => {
         projects: "/client/project",
         messages: "/client/messages",
         payments: "/client/payments",
+        profile: "/client/profile",
         freelancers: "/marketplace",
       };
 
@@ -2362,12 +2377,14 @@ const ClientDashboardContent = () => {
           title: "ACTIVE PROJECTS",
           value: String(dashboardProjectSummary.activeProjects).padStart(2, "0"),
           iconKey: "projects",
+          to: "/client/project?filter=ongoing",
         },
         {
           id: "completed-projects",
           title: "COMPLETED PROJECTS",
           value: String(dashboardProjectSummary.completedProjects).padStart(2, "0"),
           iconKey: "projects",
+          to: "/client/project?filter=completed",
         },
         {
           id: "pending-approvals",
@@ -2378,6 +2395,7 @@ const ClientDashboardContent = () => {
               ? "Awaiting Review"
               : "Awaiting Reviews",
           iconKey: "proposals",
+          to: "/client/proposal?tab=pending",
         },
         {
           id: "payments-summary",
@@ -2388,6 +2406,7 @@ const ClientDashboardContent = () => {
           defaultMode: "alternate",
           hasValueSwitch: true,
           iconKey: "payments",
+          to: "/client/payments",
         },
       ];
     },
@@ -2405,11 +2424,15 @@ const ClientDashboardContent = () => {
       tag: resolveProposalServiceLabel(proposal).toUpperCase(),
       tagTone: toneCycle[index % toneCycle.length],
       budget: formatBudget(proposal.budget),
-      updatedAt: formatProposalUpdatedAt(proposal),
       onView: () => {
         setActiveProposalId(proposal.id);
         persistActiveProposalSelection(savedProposals, proposal.id, storageKeys);
         setShowViewProposal(true);
+      },
+      onSend: () => {
+        setActiveProposalId(proposal.id);
+        persistActiveProposalSelection(savedProposals, proposal.id, storageKeys);
+        openFreelancerSelection();
       },
       onDelete: () => {
         const remaining = savedProposals.filter((entry) => entry.id !== proposal.id);
@@ -2423,7 +2446,13 @@ const ClientDashboardContent = () => {
         toast.success("Proposal deleted");
       },
     }));
-  }, [persistSavedProposalState, savedProposals, storageKeys]);
+  }, [
+    openFreelancerSelection,
+    persistActiveProposalSelection,
+    persistSavedProposalState,
+    savedProposals,
+    storageKeys,
+  ]);
 
   const acceptedFreelancerSection = useMemo(() => {
     return {

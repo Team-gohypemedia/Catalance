@@ -14,7 +14,7 @@ const Section = ({ title, children }) => (
 
 const FeesPricing = () => {
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-white text-gray-900 dark:bg-black dark:text-white selection:bg-primary/30">
+    <main className="relative min-h-screen w-full overflow-hidden bg-background text-gray-900 dark:text-white selection:bg-primary/30">
       <div
         className="pointer-events-none absolute inset-0 z-0"
         style={{

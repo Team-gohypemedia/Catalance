@@ -27,9 +27,9 @@ const benefitItems = [
 
 const FreelancerJoinSection = () => {
   return (
-    <section className="w-full bg-[#efede8] px-4 py-16 md:px-8 md:py-20 lg:px-16 lg:py-24">
+    <section className="w-full bg-background px-4 py-16 md:px-8 md:py-20 lg:px-16 lg:py-24">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
-        <div className="rounded-[2rem] bg-[#efede8] px-4 py-4 md:px-6">
+        <div className="rounded-[2rem] bg-background px-4 py-4 md:px-6">
           <div className="space-y-12 rounded-[1.75rem] border border-black/5 bg-[#f4f2ee] px-6 py-10 shadow-[0_30px_80px_-60px_rgba(0,0,0,0.45)] md:px-10 md:py-14 lg:px-14">
             <div className="max-w-3xl">
               <h2 className="text-4xl font-medium tracking-tight text-[#2f4057] md:text-5xl">

@@ -67,14 +67,14 @@ const CatalanceHero = () => {
         `}
       </style>
       <section
-        className={`relative isolate min-h-screen w-full overflow-hidden bg-white dark:bg-black text-foreground flex flex-col items-center transition-colors duration-500`}
+        className="relative isolate flex min-h-screen w-full flex-col items-center overflow-hidden bg-background text-foreground transition-colors duration-500"
       >
         {/* ================== BACKGROUND ================== */}
         <div
           aria-hidden
           className="absolute inset-0 -z-30 transition-opacity duration-500"
           style={{
-            backgroundColor: isDark ? "#000000" : "#FFFFFF",
+            backgroundColor: "var(--background)",
           }}
         />
 
@@ -113,9 +113,7 @@ const CatalanceHero = () => {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-80 -z-10"
           style={{
-            background: isDark
-              ? "linear-gradient(to top, #000000 0%, transparent 100%)"
-              : "linear-gradient(to top, #FFFFFF 0%, transparent 100%)",
+            background: "linear-gradient(to top, var(--background) 0%, transparent 100%)",
           }}
         />
 

@@ -15,20 +15,20 @@ import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Users from "lucide-react/dist/esm/icons/users";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuLabel,
+DropdownMenuRadioGroup,
+DropdownMenuRadioItem,
+DropdownMenuSeparator,
+DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
@@ -68,10 +68,10 @@ const activityToneMap = {
 };
 
 const draftToneMap = {
-  amber: "bg-[#40310a] text-[#ffc107]",
-  blue: "bg-[#19345d] text-[#60a5fa]",
-  green: "bg-[#163822] text-[#34d399]",
-  violet: "bg-[#3d2459] text-[#c084fc]",
+  amber: "text-[#ffc107]",
+  blue: "text-[#60a5fa]",
+  green: "text-[#34d399]",
+  violet: "text-[#c084fc]",
 };
 
 const truncatePhaseSubLabel = (value, maxLength = 24) => {
@@ -114,12 +114,15 @@ const ClientDashboardLoadingSkeleton = ({ hero }) => (
   <main className="flex-1 pb-12">
     <section className="mt-14 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div>
+        <p className="mb-2 text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:hidden">
+          {hero.dateLabel}
+        </p>
         <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
           {hero.greeting}, {hero.firstName}
         </h1>
-        <p className="mt-1 text-sm text-[#94a3b8]">{hero.description}</p>
+        <p className="mt-2 text-sm text-muted-foreground sm:mt-1">{hero.description}</p>
       </div>
-      <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#64748b]">
+      <p className="hidden text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:block">
         {hero.dateLabel}
       </p>
     </section>
@@ -129,7 +132,7 @@ const ClientDashboardLoadingSkeleton = ({ hero }) => (
             <DashboardPanel
               key={`dashboard-metric-skeleton-${item}`}
               className={cn(
-                "bg-accent p-3.5 sm:p-5",
+                "bg-card p-3.5 sm:p-5",
                 item >= 2 && "col-span-2 xl:col-span-1",
               )}
             >
@@ -165,7 +168,7 @@ const ClientDashboardLoadingSkeleton = ({ hero }) => (
 
         <section className="mt-14 grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="flex flex-col gap-7">
-            <DashboardPanel className="overflow-hidden bg-accent">
+            <DashboardPanel className="overflow-hidden bg-card">
               <div className="flex items-center justify-between border-b border-white/[0.05] px-6 py-5">
                 <DashboardSkeletonBlock className="h-7 w-40 rounded-full" />
                 <DashboardSkeletonBlock className="h-4 w-16 rounded-full" />
@@ -191,15 +194,7 @@ const ClientDashboardLoadingSkeleton = ({ hero }) => (
           </div>
 
           <div className="flex flex-col gap-7">
-            <DashboardPanel className="bg-accent p-5">
-              <DashboardSkeletonBlock className="h-7 w-36 rounded-full" />
-              <div className="mt-5 space-y-3">
-                <DashboardSkeletonBlock className="h-12 w-full rounded-[18px]" />
-                <DashboardSkeletonBlock className="h-12 w-full rounded-[18px]" />
-              </div>
-            </DashboardPanel>
-
-            <DashboardPanel className="overflow-hidden bg-accent px-6 pb-6 pt-7">
+            <DashboardPanel className="overflow-hidden bg-card px-6 pb-6 pt-7">
               <DashboardSkeletonBlock className="h-7 w-44 rounded-full" />
               <DashboardSkeletonBlock className="mt-3 h-4 w-64 rounded-full" />
               <div className="mt-8 space-y-6">
@@ -246,9 +241,11 @@ const ClientDashboardLoadingSkeleton = ({ hero }) => (
 );
 
 const OverviewMetricCard = ({ item }) => {
+  const navigate = useNavigate();
   const Icon = metricIconMap[item.iconKey] || ClipboardList;
   const hasValueSwitch = Boolean(item.hasValueSwitch && item.alternateValue);
   const shouldSpanFullWidth = fullWidthMetricIds.has(item.id);
+  const isInteractive = Boolean(item.to || item.onClick);
   const [showPrimaryValue, setShowPrimaryValue] = React.useState(
     item.defaultMode !== "alternate",
   );
@@ -269,21 +266,52 @@ const OverviewMetricCard = ({ item }) => {
   const alternateToggleLabel = String(
     item.alternateTitle || item.title || "alternate value",
   ).toLowerCase();
+  const handleCardActivation = React.useCallback(() => {
+    if (typeof item.onClick === "function") {
+      item.onClick();
+      return;
+    }
+
+    if (item.to) {
+      navigate(item.to);
+    }
+  }, [item, navigate]);
+  const handleCardKeyDown = React.useCallback(
+    (event) => {
+      if (!isInteractive) return;
+
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        handleCardActivation();
+      }
+    },
+    [handleCardActivation, isInteractive],
+  );
 
   return (
     <DashboardPanel
+      role={isInteractive ? "link" : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      onClick={isInteractive ? handleCardActivation : undefined}
+      onKeyDown={isInteractive ? handleCardKeyDown : undefined}
+      aria-label={
+        isInteractive ? `Open ${String(displayedTitle || item.title).toLowerCase()}` : undefined
+      }
       className={cn(
-        "group min-h-[96px] border border-transparent bg-accent p-3.5 transition-colors hover:border-primary/70 sm:min-h-[110px] sm:p-5",
+        "group min-h-[96px] border border-transparent bg-card p-3.5 transition-colors sm:min-h-[110px] sm:p-5",
+        isInteractive
+          ? "cursor-pointer hover:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          : "hover:border-primary/70",
         shouldSpanFullWidth && "col-span-2 xl:col-span-1",
       )}
     >
       <div className="flex flex-col gap-2.5 sm:gap-3">
         <div className="flex items-start justify-between gap-2 sm:gap-3">
-          <div className="flex min-w-0 items-start gap-2 sm:items-center sm:gap-3">
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#9ca3af] sm:size-9">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground sm:size-9">
               <Icon className="size-3 sm:size-4" />
             </div>
-            <p className="line-clamp-2 text-[9px] font-medium uppercase leading-[1.05rem] tracking-[0.08em] text-[#6b7280] sm:text-[11px] sm:leading-4 sm:tracking-[0.12em]">
+            <p className="line-clamp-2 text-[9px] font-medium uppercase leading-[1.05rem] tracking-[0.08em] text-muted-foreground sm:text-[11px] sm:leading-4 sm:tracking-[0.12em]">
               {displayedTitle}
             </p>
           </div>
@@ -291,8 +319,14 @@ const OverviewMetricCard = ({ item }) => {
           {hasValueSwitch ? (
             <button
               type="button"
-              onClick={() => setShowPrimaryValue((current) => !current)}
-              className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#9ca3af] transition-colors hover:bg-white/[0.12] hover:text-primary sm:size-9"
+              onClick={(event) => {
+                event.stopPropagation();
+                setShowPrimaryValue((current) => !current);
+              }}
+              onKeyDown={(event) => {
+                event.stopPropagation();
+              }}
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground transition-colors hover:bg-white/[0.12] hover:text-primary sm:size-9"
               aria-label={
                 showPrimaryValue
                   ? `Show ${alternateToggleLabel}`
@@ -313,7 +347,7 @@ const OverviewMetricCard = ({ item }) => {
             {displayedValue}
           </p>
           {item.detail ? (
-            <p className="text-[10px] leading-4 text-[#6b7280] sm:text-xs">{item.detail}</p>
+            <p className="text-[10px] leading-4 text-muted-foreground sm:text-xs">{item.detail}</p>
           ) : null}
         </div>
       </div>
@@ -322,7 +356,7 @@ const OverviewMetricCard = ({ item }) => {
 };
 
 const DraftProposalsPanel = ({ draftProposalRows, onOpenQuickProject }) => (
-  <DashboardPanel className="overflow-hidden bg-accent">
+  <DashboardPanel className="overflow-hidden bg-card">
     <div className="px-4 py-4 sm:px-6 sm:py-5">
       <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
         Draft Proposals
@@ -335,7 +369,7 @@ const DraftProposalsPanel = ({ draftProposalRows, onOpenQuickProject }) => (
           <ClipboardList className="size-6 sm:size-7" />
         </div>
         <p className="mt-6 text-base font-medium text-white">No draft proposals yet</p>
-        <p className="mt-2 max-w-[320px] text-sm text-[#8f96a3]">
+        <p className="mt-2 max-w-[320px] text-sm text-muted-foreground">
           Start a new proposal to build your project brief and invite freelancers.
         </p>
         <button
@@ -364,7 +398,7 @@ const ProjectCarouselControls = ({
       onClick={onPrevious}
       disabled={!canGoPrevious}
       aria-label="Show previous active projects"
-      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-[#94a3b8] transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-white/35"
     >
       <ChevronLeft className="size-4" />
     </button>
@@ -374,7 +408,7 @@ const ProjectCarouselControls = ({
       onClick={onNext}
       disabled={!canGoNext}
       aria-label="Show next active projects"
-      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-[#94a3b8] transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-white/35"
     >
       <ChevronRight className="size-4" />
     </button>
@@ -384,7 +418,7 @@ const ProjectCarouselControls = ({
 const ProjectRedirectCard = ({ item, className }) => (
   <DashboardPanel
     className={cn(
-      "flex flex-col overflow-hidden bg-accent p-4 sm:p-5 xl:p-6",
+      "flex flex-col overflow-hidden bg-card p-4 sm:p-5 xl:p-6",
       className,
     )}
   >
@@ -449,10 +483,10 @@ const ActivityRow = ({ item }) => {
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-white">{item.title}</p>
-          <p className="text-xs leading-5 text-[#94a3b8] sm:truncate">{item.subtitle}</p>
+          <p className="text-xs leading-5 text-muted-foreground sm:truncate">{item.subtitle}</p>
         </div>
       </div>
-      <span className="pl-12 text-xs text-[#64748b] sm:pl-13 lg:pl-0">{item.timeLabel}</span>
+      <span className="pl-12 text-xs text-muted-foreground sm:pl-13 lg:pl-0">{item.timeLabel}</span>
     </button>
   );
 };
@@ -460,26 +494,31 @@ const ActivityRow = ({ item }) => {
 const DraftProposalRow = ({ item }) => (
   <div className="flex flex-col gap-4 border-b border-white/[0.05] px-4 py-4 last:border-b-0 sm:px-5 sm:py-5 md:flex-row md:items-center md:justify-between">
     <div className="min-w-0">
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         <p className="truncate text-lg font-medium text-white">{item.title}</p>
         <span
           className={cn(
-            "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em]",
+            "px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]",
             draftToneMap[item.tagTone] || draftToneMap.amber,
           )}
         >
           {item.tag}
         </span>
       </div>
-      {item.updatedAt ? (
-        <p className="mt-2 text-sm text-[#94a3b8]">Updated {item.updatedAt}</p>
-      ) : null}
     </div>
 
     <div className="flex flex-wrap items-center gap-3 md:flex-nowrap md:gap-4">
       <span className="min-w-0 text-left text-base font-medium text-[#f1f5f9] sm:text-[1.1rem] md:min-w-[112px] md:text-right">
         {item.budget}
       </span>
+
+      <button
+        type="button"
+        onClick={item.onSend}
+        className="inline-flex min-w-[144px] items-center justify-center rounded-full bg-[#ffc107] px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f] md:min-w-0"
+      >
+        Send Proposal
+      </button>
 
       <Link
         to="/client/proposal?tab=draft"
@@ -491,7 +530,7 @@ const DraftProposalRow = ({ item }) => (
       <button
         type="button"
         onClick={item.onDelete}
-        className="flex size-9 items-center justify-center rounded-full text-[#71809a] transition-colors hover:bg-white/[0.05] hover:text-white"
+        className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-white"
         aria-label={`Delete ${item.title}`}
       >
         <Trash2 className="size-4" />
@@ -514,7 +553,7 @@ const AcceptedFreelancerRow = ({ item }) => (
         <p className="min-w-0 truncate text-[1.08rem] font-semibold leading-[1.05] tracking-[-0.03em] text-white">
           {item.name}
         </p>
-        <p className="mt-0 min-w-0 truncate text-[12px] leading-none text-[#8a8a8a]">
+        <p className="mt-0 min-w-0 truncate text-[12px] leading-none text-muted-foreground">
           {item.role}
         </p>
       </div>
@@ -523,7 +562,7 @@ const AcceptedFreelancerRow = ({ item }) => (
         <button
           type="button"
           onClick={item.onView}
-          className="inline-flex h-8 flex-1 items-center justify-center rounded-[8px] bg-white/[0.08] px-3 text-[12px] font-semibold text-white transition-colors hover:bg-white/[0.14] sm:h-7 sm:flex-none"
+          className="inline-flex h-8 flex-1 items-center justify-center rounded-[8px] border border-white/[0.08] bg-card px-3 text-[12px] font-semibold text-white transition-colors hover:bg-white/[0.04] sm:h-7 sm:flex-none"
         >
           {item.viewLabel || "View"}
         </button>
@@ -536,7 +575,7 @@ const AcceptedFreelancerRow = ({ item }) => (
         </button>
       </div>
 
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] leading-none text-[#8f8f8f] sm:col-start-1 sm:row-start-2 sm:flex-nowrap sm:items-end sm:self-end">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] leading-none text-muted-foreground sm:col-start-1 sm:row-start-2 sm:flex-nowrap sm:items-end sm:self-end">
         <FolderKanban className="size-[12px] shrink-0 text-[#64748b]" />
         <span className="min-w-0 truncate text-white">{item.projectLabel}</span>
         <span className="shrink-0 text-[#64748b]">&bull;</span>
@@ -1173,9 +1212,6 @@ const ProjectProgressSection = ({
           <h2 className="text-[clamp(1.9rem,8vw,3rem)] font-semibold tracking-[-0.05em] text-white">
             Project Progress
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#94a3b8]">
-            Track ongoing project phases once the initial project payment has been completed.
-          </p>
         </div>
 
         {projects.length > 0 ? (
@@ -1274,7 +1310,6 @@ const ClientDashboardShell = ({
   onOpenNotifications,
   onOpenProfile,
   onOpenQuickProject,
-  onOpenViewProposals,
   onOpenViewProjects,
   onOpenMessages,
   onOpenHireFreelancer,
@@ -1353,7 +1388,7 @@ const ClientDashboardShell = ({
   }, [projectCarouselApi, shouldUseProjectCarousel]);
 
   return (
-    <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
+    <div className="min-h-screen bg-background text-[#f1f5f9]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
         <ClientWorkspaceHeader
           profile={profile}
@@ -1373,12 +1408,15 @@ const ClientDashboardShell = ({
           <main className="flex-1 pb-12">
           <section className="mt-14 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:hidden">
+                {hero.dateLabel}
+              </p>
               <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
                 {hero.greeting}, {hero.firstName}
               </h1>
-              <p className="mt-1 text-sm text-[#94a3b8]">{hero.description}</p>
+              <p className="mt-2 text-sm text-muted-foreground sm:mt-1">{hero.description}</p>
             </div>
-            <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#64748b]">
+            <p className="hidden text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:block">
               {hero.dateLabel}
             </p>
           </section>
@@ -1399,19 +1437,18 @@ const ClientDashboardShell = ({
           ) : null}
 
           <section className="mt-14">
-          <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
+          <div className="mb-6 flex items-center justify-between gap-4">
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
                     Active Projects
                   </h2>
-                  <span className="size-[15px] rounded-full bg-[#10b981]/10 p-[4.5px]">
-                    <span className="block size-[6px] rounded-full bg-[#10b981]" />
+                  <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
+                    <span className="absolute inset-0 rounded-full bg-[#10b981]/10" />
+                    <span className="absolute inset-0 rounded-full bg-[#10b981]/20 animate-ping" />
+                    <span className="relative block size-[6px] rounded-full bg-[#10b981]" />
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-[#94a3b8]">
-                  Track your active deliveries, budgets, and freelancer progress at a glance.
-                </p>
               </div>
 
               {shouldUseProjectCarousel ? (
@@ -1443,16 +1480,17 @@ const ClientDashboardShell = ({
                     }}
                     className="w-full"
                   >
-                    <CarouselContent className="items-stretch [backface-visibility:hidden] [will-change:transform]">
+                    <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
                       {showcaseItems.map((item) => (
                         <CarouselItem
                           key={item.id}
-                          className="basis-full md:basis-1/2 xl:basis-1/3"
+                          className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
                         >
                           <ProjectProposalCard
                             project={item}
                             onPay={onPayRunningProject}
                             isPaying={runningProjectProcessingId === item.id}
+                            replaceSectionBadgeWithStatus
                             className="h-full w-full"
                           />
                         </CarouselItem>
@@ -1467,6 +1505,7 @@ const ClientDashboardShell = ({
                           project={item}
                           onPay={onPayRunningProject}
                           isPaying={runningProjectProcessingId === item.id}
+                          replaceSectionBadgeWithStatus
                           className={activeProjectCardClassName}
                         />
                       ))}
@@ -1502,8 +1541,8 @@ const ClientDashboardShell = ({
                   onOpenQuickProject={onOpenQuickProject}
                 />
               ) : null}
-              <DashboardPanel className="overflow-hidden bg-accent">
-                <div className="flex items-center justify-between gap-3 border-b border-white/[0.05] px-4 py-4 sm:px-6 sm:py-5">
+              <DashboardPanel className="overflow-hidden bg-card">
+                <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
                   <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
                     Recent Activity
                   </h2>
@@ -1523,37 +1562,11 @@ const ClientDashboardShell = ({
               </DashboardPanel>
             </div>
 
-            <div className="grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-1 xl:gap-7">
-              <DashboardPanel className="bg-accent p-4 sm:p-5">
-                <h2 className="text-[1.4rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.55rem]">
-                  Action Center
-                </h2>
-
-                <div className="mt-5 space-y-3">
-                  <button
-                    type="button"
-                    onClick={onOpenViewProposals}
-                    className="w-full rounded-[18px] bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:text-base"
-                  >
-                    View Proposals
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onOpenViewProjects}
-                    className="w-full rounded-[18px] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition-colors hover:bg-white/90 sm:text-base"
-                  >
-                    View Projects
-                  </button>
-                </div>
-              </DashboardPanel>
-
-              <DashboardPanel className="w-full overflow-hidden rounded-[20px] bg-accent px-4 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-7">
+            <div className="grid gap-5 sm:gap-6 xl:gap-7">
+              <DashboardPanel className="w-full overflow-hidden rounded-[20px] bg-card px-4 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-7">
                 <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.6rem]">
                   Active Project Chats
                 </h2>
-                <p className="mt-2 text-[14px] leading-5 text-[#8f8f8f]">
-                  Quick shortcuts to message freelancers on active projects.
-                </p>
 
                 {acceptedFreelancers.length === 0 ? (
                   <div className="flex min-h-[220px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[260px] sm:py-10">
@@ -1576,7 +1589,7 @@ const ClientDashboardShell = ({
                     <button
                       type="button"
                       onClick={onOpenMessages}
-                      className="mt-9 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-[#8f8f8f] transition-colors hover:text-white"
+                      className="mt-9 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-white"
                     >
                       <span>
                         Open Messages ({acceptedFreelancersCount || acceptedFreelancers.length})
