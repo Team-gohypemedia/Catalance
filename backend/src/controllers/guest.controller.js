@@ -5038,24 +5038,136 @@ export const getGuestHistory = asyncHandler(async (req, res) => {
 // @route   POST /api/guest/advice
 // @access  Public
 export const getGuestAdvice = asyncHandler(async (req, res) => {
-    const { serviceId, option, context, currentQuestion } = req.body;
+    const {
+        sessionId,
+        serviceId,
+        option,
+        context,
+        currentQuestion,
+        assistantContext,
+        currentOptions,
+        mode
+    } = req.body;
 
-    const advicePrompt = `
-You are a friendly, conversational AI assistant directly helping a user fill out a questionnaire for their "${serviceId || 'digital'}" project.
+    const isAutoRecommendationMode = /auto_question_recommendation/i.test(String(mode || ""));
+    const isManualRecommendationTrigger = /\b(not sure|other|suggest|recommend|advice|help)\b/i.test(
+        String(option || "")
+    );
+    const isRecommendationMode = isAutoRecommendationMode || isManualRecommendationTrigger;
 
-Current Question: "${currentQuestion || ''}"
-User Selected Option: "${option || 'Not sure'}"
-Recent Chat Context: "${context || ''}"
+    let session = null;
+    if (sessionId) {
+        session = await prisma.aiGuestSession.findUnique({
+            where: { id: sessionId },
+            include: { messages: { orderBy: { createdAt: "asc" } } }
+        });
+    }
 
+    const resolvedServiceId = session?.serviceId || serviceId;
+    let service = null;
+    if (resolvedServiceId) {
+        service = await prisma.service.findFirst({
+            where: {
+                OR: [
+                    { slug: resolvedServiceId },
+                    { id: resolvedServiceId }
+                ]
+            }
+        });
+    }
+
+    const answersByQuestionText =
+        session?.answers?.byQuestionText && typeof session.answers.byQuestionText === "object"
+            ? session.answers.byQuestionText
+            : {};
+
+    const confirmedAnswersContext = Object.entries(answersByQuestionText)
+        .filter(([, value]) => {
+            if (Array.isArray(value)) return value.length > 0;
+            if (value && typeof value === "object") return Object.keys(value).length > 0;
+            return String(value ?? "").trim().length > 0;
+        })
+        .slice(-8)
+        .map(([questionText, value]) => {
+            const renderedValue = Array.isArray(value)
+                ? value.join(", ")
+                : value && typeof value === "object"
+                ? JSON.stringify(value)
+                : String(value ?? "").trim();
+            return `- ${questionText}: ${renderedValue}`;
+        })
+        .join("\n");
+
+    const visibleOptions = Array.isArray(currentOptions)
+        ? currentOptions
+            .map((optionEntry) => {
+                if (typeof optionEntry === "string") return optionEntry.trim();
+                if (optionEntry && typeof optionEntry === "object") {
+                    return String(optionEntry.label || optionEntry.value || "").trim();
+                }
+                return "";
+            })
+            .filter(Boolean)
+        : [];
+
+    const recentSessionContext = Array.isArray(session?.messages)
+        ? session.messages
+            .slice(-6)
+            .map((message) => `${message.role}: ${String(message.content || "").trim()}`)
+            .filter(Boolean)
+            .join("\n")
+        : "";
+
+    const minimumBudgetText = Number(service?.minBudget || 0) > 0
+        ? formatServiceBudgetAmount(service.minBudget, service.currency || "INR")
+        : "";
+
+    const taskBlock = isRecommendationMode
+        ? `
+Task:
+The helper needs to give a recommendation for the CURRENT question.
+Analyze the full flow using the current question, assistant context, visible options, confirmed answers, and recent session messages.
+Give a VERY SHORT, highly personalized recommendation (1-2 sentences maximum).
+Do NOT ask the user for more information.
+Do NOT give neutral guidance.
+Do NOT say "tell me", "share", "what feels comfortable", "what sounds best", "you can mention", or anything similar.
+Your notice MUST directly recommend the best answer for this user right now and MUST start with "Recommended:".
+If visible options exist, choose exactly ONE option from the visible options and write it exactly as shown.
+If this is a timeline question without fixed options, recommend one concrete timeline the user can send directly.
+If this is a budget question without fixed options, recommend one concrete budget figure or a narrow range the user can send directly.
+${minimumBudgetText ? `Never recommend a budget below ${minimumBudgetText}.` : ""}
+After the recommendation, add one short reason tied to their project.
+The placeholder must mirror the recommended final answer only and start with "e.g. ".
+`
+        : `
 Task:
 The user clicked "${option || 'Not sure'}" and needs a quick hint on what to type next.
 Provide a VERY SHORT, highly personalized helper message (1-2 sentences maximum).
-It MUST be written directly to the user in a conversational tone. Use any specific details from their context (like their business name or goal) naturally.
-Do not write a long paragraph of advice! Instead, give a quick guide with 2-3 short, concrete examples of what they could tell you.
-For example, use a format like: "No problem! For [Business Name], you might want [A] (like Shopify) or [B] (like Custom). What sounds best to you?"
-Keep it extremely concise, warm, and direct.
-
+It MUST be written directly to the user in a conversational tone. Use the current question, assistant context, confirmed answers, and recent chat details naturally.
+Do not write a long paragraph of advice. Give a quick guide with 2-3 short, concrete examples of what they could tell you next.
 Also, provide a short placeholder text (starting with "e.g. ") that acts as a hint in a text input box.
+`;
+
+    const advicePrompt = `
+You are a friendly, conversational AI assistant directly helping a user fill out a questionnaire for their "${service?.name || serviceId || 'digital'}" project.
+
+Service-Specific AI Instructions:
+${service?.aiPrompt || "None"}
+
+Current Question: "${currentQuestion || ''}"
+Current Question Context: "${assistantContext || ''}"
+User Trigger / Selected Option: "${option || 'Not sure'}"
+Visible Options: ${visibleOptions.length > 0 ? visibleOptions.join(" | ") : "None"}
+Service Minimum Budget: ${minimumBudgetText || "None"}
+Recent User Chat Context: "${context || ''}"
+
+Confirmed Answers So Far:
+${confirmedAnswersContext || "- none yet"}
+
+Recent Session Messages:
+${recentSessionContext || "- none yet"}
+
+${taskBlock}
 
 Return ONLY a raw JSON object (with double quotes) with this structure:
 {
@@ -5091,8 +5203,12 @@ Do not use markdown formatting, code fences, or bold text.`;
 
     res.json({
         success: true,
-        notice: `Got it. Tell me what you have in mind for ${option || 'this'}.`,
-        placeholder: "Tell me a bit more..."
+        notice: isRecommendationMode
+            ? "I have a quick recommendation for this question. You can use it as-is or adjust it."
+            : `Got it. Tell me what you have in mind for ${option || 'this'}.`,
+        placeholder: isRecommendationMode
+            ? "e.g. use the suggested option or tweak it"
+            : "Tell me a bit more..."
     });
 });
 
