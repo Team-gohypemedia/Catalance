@@ -25,7 +25,6 @@ function MatrixPattern({ mouseX, mouseY, randomString }) {
     );
 }
 import {
-    ArrowRight,
     ArrowLeft,
     PanelLeftClose,
     PanelLeftOpen,
@@ -35,7 +34,6 @@ import {
     Mic,
     MicOff,
     Sparkles,
-    History,
     Paperclip,
     X,
     Image as ImageIcon,
@@ -43,9 +41,7 @@ import {
     Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import ReactMarkdown from 'react-markdown';
@@ -83,12 +79,6 @@ const ALLOWED_UPLOAD_MIME_TYPES = new Set([
     'application/x-zip-compressed',
 ]);
 const ALLOWED_UPLOAD_EXTENSIONS = ['.pdf', '.doc', '.docx', '.txt', '.zip'];
-
-const DEMO_HIGHLIGHTS = [
-    'Live AI conversation',
-    'Proposal-ready output',
-    'No setup needed',
-];
 
 const SERVICE_LOGO_MODULES = import.meta.glob('../../assets/icons/*.png', {
     eager: true,
@@ -1336,10 +1326,6 @@ const GuestAIDemo = () => {
     const userDisplayName = user?.fullName || user?.name || "Logged-in user";
     const userDisplayEmail = user?.email || "";
     const userAvatar = user?.avatar || user?.profileImage || user?.image || "";
-    const sidebarServiceDescription = truncateText(
-        selectedService?.description || '',
-        isSidebarCompact ? 75 : 120
-    );
 
     const refreshPreviousChats = useCallback(() => {
         setPreviousChats(readStoredGuestSessions());
@@ -1355,6 +1341,11 @@ const GuestAIDemo = () => {
             writeStoredSidebarSize(next);
             return next;
         });
+    }, []);
+
+    const expandSidebar = useCallback(() => {
+        setSidebarSize('large');
+        writeStoredSidebarSize('large');
     }, []);
 
     const persistCurrentSessionSummary = useCallback((history, serviceOverride = null) => {
@@ -1511,7 +1502,7 @@ const GuestAIDemo = () => {
             && normalizeOptionToken(pendingOptionValue) === normalizeOptionToken(resolvedValue);
     };
 
-    const fetchOptionAdvice = async (optionValue, extraContext = {}) => {
+    const fetchOptionAdvice = useCallback(async (optionValue, extraContext = {}) => {
         const isRecommendationRequest = extraContext.mode === 'auto_question_recommendation'
             || /\b(not sure|other|suggest|recommend|advice|help)\b/i.test(String(optionValue || ''));
         const fallbackNotice = isRecommendationRequest
@@ -1559,7 +1550,7 @@ const GuestAIDemo = () => {
                     placeholder: data?.placeholder || fallbackPlaceholder
                 };
             });
-        } catch (err) {
+        } catch {
             setPendingOptionFollowup((current) => {
                 if (current?.optionValue !== optionValue) return current;
                 if (extraContext.questionKey && current?.questionKey && current.questionKey !== extraContext.questionKey) {
@@ -1573,7 +1564,15 @@ const GuestAIDemo = () => {
                 };
             });
         }
-    };
+    }, [
+        latestAssistantPrompt.contextText,
+        latestAssistantPrompt.options,
+        latestAssistantPrompt.questionText,
+        messages,
+        selectedService?.id,
+        selectedService?.slug,
+        sessionId,
+    ]);
 
     const handleChatOptionClick = (optionText = '') => {
         const resolvedValue = resolveConfiguredOptionValue(optionText);
@@ -1739,6 +1738,8 @@ const GuestAIDemo = () => {
         }
     }, [
         automaticQuestionHelperKey,
+        fetchOptionAdvice,
+        focusMessageInput,
         latestAssistantPrompt.contextText,
         latestAssistantPrompt.options,
         latestAssistantPrompt.questionText,
@@ -2009,6 +2010,7 @@ const GuestAIDemo = () => {
     const handleLoadPreviousChat = async (chatMeta) => {
         if (!chatMeta?.sessionId) return;
         dismissedAutoHelperKeysRef.current = new Set();
+        expandSidebar();
         const fallbackServiceId = chatMeta.serviceId || chatMeta.sessionId;
         const serviceMatch = services.find((service) => (
             service.slug === chatMeta.serviceId
@@ -2072,6 +2074,7 @@ const GuestAIDemo = () => {
 
     const handleServiceSelect = async (service) => {
         dismissedAutoHelperKeysRef.current = new Set();
+        expandSidebar();
         setSelectedService(service);
         setLoading(true);
         setInput('');
@@ -2612,252 +2615,208 @@ const GuestAIDemo = () => {
     };
 
     return (
-        <div className="mt-16 flex h-[calc(100svh-4rem)] overflow-hidden bg-background lg:mt-20 lg:h-[calc(100svh-5rem)]">
-            <aside className={`hidden shrink-0 overflow-hidden p-3 transition-all duration-300 md:flex md:flex-col ${isSidebarCompact ? 'w-16 items-center' : 'w-72'} ${isDark ? 'bg-[#171717]' : 'bg-[#F9F9F9]'}`}>
-                <div className={`mb-3 flex items-center gap-2 ${isSidebarCompact ? 'flex-col justify-center' : 'justify-between'}`}>
-                    {!isSidebarCompact && (
-                        <Button
-                            variant="ghost"
-                            className={`w-fit rounded-full px-2.5 text-sm ${isDark ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
-                            onClick={handleBackToServices}
-                        >
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to services
-                        </Button>
+        <div className={`mt-16 flex h-[calc(100svh-4rem)] overflow-hidden lg:mt-20 lg:h-[calc(100svh-5rem)] ${isDark
+            ? 'bg-[#212121]'
+            : 'bg-white'
+            }`}
+        >
+            {/* Backdrop — closes sidebar when clicking outside */}
+            {!isSidebarCompact && (
+                <div
+                    className="hidden"
+                    onClick={toggleSidebarSize}
+                    aria-hidden="true"
+                />
+            )}
+
+            {/* Sidebar drawer — slides in from left as fixed overlay */}
+            <aside className={`fixed left-0 z-40 flex flex-col w-72 shadow-2xl transition-transform duration-300 ease-in-out ${isSidebarCompact ? '-translate-x-full' : 'translate-x-0'} ${isDark ? 'bg-[#171717] border-r border-white/[0.06]' : 'bg-white border-r border-slate-200'}`} style={{top:'64px',bottom:0}}>
+                {/* ── Sidebar header ── */}
+                <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg ${isDark ? 'bg-amber-300/15' : 'bg-amber-100'}`}>
+                            <img src={cataLogo} alt="CATA" className="h-4 w-4 object-contain" />
+                        </div>
+                        <span className={`truncate text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                            {selectedService?.name || 'Catalance AI'}
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={toggleSidebarSize}
+                        className={`h-7 w-7 rounded-md flex items-center justify-center ${isDark ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
+                        title="Close sidebar"
+                    >
+                        <PanelLeftClose className="h-4 w-4" />
+                    </button>
+                </div>
+
+                {/* ── Back to services ── */}
+                <div className={`px-3 pb-2 ${isDark ? 'border-b border-white/[0.06]' : 'border-b border-slate-100'}`}>
+                    <button
+                        type="button"
+                        onClick={handleBackToServices}
+                        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+                        Back to services
+                    </button>
+                </div>
+
+                {/* ── Scrollable content ── */}
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-3">
+
+                    {/* ── Proposals section ── */}
+                    <div className="mb-1 px-4">
+                        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Proposals{generatedProposals.length > 0 ? ` · ${generatedProposals.length}` : ''}
+                        </p>
+                    </div>
+                    {generatedProposals.length === 0 ? (
+                        <div className="px-4 pb-3">
+                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>No proposals yet.</p>
+                        </div>
+                    ) : (
+                        <div className="mb-2 space-y-0.5 px-2">
+                            {generatedProposals.map((proposal, index) => (
+                                <button
+                                    key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
+                                    type="button"
+                                    onClick={() => handleOpenProposalPreview(proposal)}
+                                    className={`group flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                                    title="Open proposal"
+                                >
+                                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-50 text-amber-600'}`}>
+                                        <Sparkles className="h-3 w-3" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'}`}>
+                                            {proposal.projectTitle || 'AI Proposal'}
+                                        </p>
+                                        {(proposal.budget || proposal.timeline) && (
+                                            <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                {[proposal.budget, proposal.timeline].filter(Boolean).join(' · ')}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <span className={`shrink-0 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                        {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
                     )}
+
+                    {/* ── Divider ── */}
+                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
+
+                    {/* ── Previous chats section ── */}
+                    <div className="mb-1 px-4">
+                        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Recent chats
+                        </p>
+                    </div>
+                    {visiblePreviousChats.length === 0 ? (
+                        <div className="px-4">
+                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>No previous chats.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-0.5 px-2">
+                            {visiblePreviousChats.map((chat) => {
+                                const isCurrent = chat.sessionId === sessionId;
+                                const isLoadingHistory = loadingHistoryId === chat.sessionId;
+                                const preview = chat.preview || chat.serviceName || 'No preview';
+                                return (
+                                    <div
+                                        key={chat.sessionId}
+                                        className={`group relative flex items-center gap-1.5 rounded-md px-2 py-2 transition-colors ${isCurrent
+                                            ? isDark ? 'bg-white/10' : 'bg-slate-100'
+                                            : isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() => handleLoadPreviousChat(chat)}
+                                            disabled={isLoadingHistory || isCurrent}
+                                            className="min-w-0 flex-1 text-left outline-none"
+                                        >
+                                            <p className={`truncate text-sm font-medium transition-colors ${isCurrent
+                                                ? isDark ? 'text-amber-300' : 'text-amber-600'
+                                                : isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-600 group-hover:text-slate-900'
+                                            }`}>
+                                                {isLoadingHistory ? 'Loading...' : preview}
+                                            </p>
+                                            <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                {formatPreviousChatTime(chat.updatedAt)}
+                                            </p>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleDeletePreviousChat(e, chat)}
+                                            disabled={isLoadingHistory}
+                                            className={`shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 ${isDark ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}
+                                            aria-label="Delete chat"
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* ── Bottom: user / login ── */}
+                <div className={`shrink-0 border-t px-3 py-3 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                    {isAuthLoading ? (
+                        <div className="flex items-center gap-2 px-2">
+                            <span className={`h-2 w-2 animate-pulse rounded-full ${isDark ? 'bg-amber-400/50' : 'bg-amber-500/50'}`} />
+                            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Checking...</p>
+                        </div>
+                    ) : isUserLoggedIn ? (
+                        <div className={`flex items-center gap-3 rounded-md px-2 py-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
+                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-white/15 bg-white/10' : 'border-slate-200 bg-slate-100'}`}>
+                                {userAvatar
+                                    ? <img src={userAvatar} alt={userDisplayName} className="h-full w-full object-cover" />
+                                    : <User className={`h-4 w-4 ${isDark ? 'text-slate-300' : 'text-slate-500'}`} />
+                                }
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className={`truncate text-sm font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>{userDisplayName}</p>
+                                <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{userDisplayEmail || 'Authenticated'}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
+                            className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-slate-100'}`}
+                        >
+                            <LogIn className="h-4 w-4 shrink-0" />
+                            Login to save progress
+                        </button>
+                    )}
+                </div>
+            </aside>
+
+            <section className={`relative flex min-w-0 flex-1 flex-col bg-transparent pt-3 ${isInitialScreen ? 'justify-center items-center' : ''}`}>
+
+                {/* Sidebar toggle button in top-left of chat area */}
+                <div className="absolute left-3 top-3 z-20">
                     <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         onClick={toggleSidebarSize}
-                        className={`h-8 w-8 rounded-lg border shrink-0 ${isDark ? 'border-white/15 text-slate-200 hover:bg-white/10' : 'border-black/10 text-slate-700 hover:bg-slate-100'}`}
-                        title={isSidebarCompact ? 'Expand sidebar' : 'Collapse sidebar'}
-                        aria-label={isSidebarCompact ? 'Expand sidebar' : 'Collapse sidebar'}
+                        className={`h-8 w-8 rounded-lg border ${isDark ? 'border-white/15 text-slate-300 hover:bg-white/10' : 'border-black/10 text-slate-600 hover:bg-black/5'}`}
+                        title={isSidebarCompact ? 'Open sidebar' : 'Close sidebar'}
                     >
                         {isSidebarCompact ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                     </Button>
                 </div>
 
-                <div className={`relative mb-3 overflow-hidden rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-black/5'} ${isSidebarCompact ? 'flex justify-center' : ''}`}>
-                    <div className={`relative flex items-start gap-3 ${isSidebarCompact ? 'flex-col items-center' : ''}`}>
-                        <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl border ${isDark ? 'border-amber-300/30 bg-amber-300/15 shadow-[0_0_12px_-3px_rgba(251,191,36,0.4)]' : 'border-amber-300/50 bg-amber-100'} ${isSidebarCompact ? 'h-9 w-9' : 'h-12 w-12'}`}>
-                            <img src={cataLogo} alt="CATA AI logo" className={`${isSidebarCompact ? 'h-5 w-5' : 'h-7 w-7'} object-contain`} />
-                        </div>
-                        {!isSidebarCompact && (
-                            <div className="min-w-0">
-                                <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isDark ? 'text-amber-300/80' : 'text-amber-600'}`}>
-                                    AI Assistant
-                                </p>
-                                <h2 className={`mt-0.5 truncate text-lg font-bold leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                    {selectedService.name}
-                                </h2>
-                                <p className={`mt-1 text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                    {sidebarServiceDescription || 'Guided consultation'}
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {!isSidebarCompact && (
-                <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
-                    <div className="flex min-h-0 flex-[1.05] flex-col p-2">
-                        <div className="mb-3 flex items-center justify-between gap-2">
-                            <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${isDark ? 'bg-primary/15 text-primary' : 'bg-amber-100 text-amber-700'}`}>
-                                <Sparkles className="h-3 w-3" />
-                                Proposals
-                            </div>
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isDark ? 'border border-white/15 bg-white/10 text-slate-300' : 'border border-black/10 bg-black/5 text-slate-600'}`}>
-                                {generatedProposals.length}
-                            </span>
-                        </div>
-                        {generatedProposals.length === 0 ? (
-                            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                No proposals generated yet.
-                            </p>
-                        ) : (
-                            <ScrollArea className="-mr-1 min-h-0 flex-1 pr-1">
-                                <div className="space-y-2 pb-1">
-                                    {generatedProposals.map((proposal, index) => (
-                                        <button
-                                            key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
-                                            type="button"
-                                            onClick={() => handleOpenProposalPreview(proposal)}
-                                            className={`group w-full rounded-lg px-3 py-2 text-left transition-colors duration-200 ${isDark
-                                                ? 'hover:bg-white/10'
-                                                : 'hover:bg-black/5'
-                                                }`}
-                                            title="Open proposal details"
-                                        >
-                                            <div className="flex items-center justify-between gap-2">
-                                                <p className={`truncate text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                    {proposal.service || selectedService?.name || 'Proposal'}
-                                                </p>
-                                                <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
-                                                </span>
-                                            </div>
-                                            <p className={`mt-1 truncate ${isSidebarCompact ? 'text-xs' : 'text-sm'} font-medium ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                                                {proposal.projectTitle || 'AI Generated Proposal'}
-                                            </p>
-                                            {(proposal.budget || proposal.timeline) && (
-                                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                                    {proposal.budget && (
-                                                        <span className={`rounded-full border px-2 py-0.5 text-[10px] ${isDark ? 'border-white/15 text-slate-300' : 'border-black/10 text-slate-600'}`}>
-                                                            {proposal.budget}
-                                                        </span>
-                                                    )}
-                                                    {proposal.timeline && (
-                                                        <span className={`rounded-full border px-2 py-0.5 text-[10px] ${isDark ? 'border-white/15 text-slate-300' : 'border-black/10 text-slate-600'}`}>
-                                                            {proposal.timeline}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                        )}
-                    </div>
-
-                    <div className={`flex min-h-0 flex-1 flex-col mt-2 ${isSidebarCompact ? 'p-1' : 'p-2'}`}>
-                        <div className={`mb-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${isDark ? 'bg-white/[0.06] text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                            <History className="h-3 w-3" />
-                            Previous chats
-                        </div>
-                        {visiblePreviousChats.length === 0 ? (
-                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                No previous chats yet.
-                            </p>
-                        ) : (
-                            <ScrollArea className="-mr-1 min-h-0 flex-1 pr-1">
-                                <div className="space-y-1.5 pb-1 pr-3">
-                                    {visiblePreviousChats.map((chat) => {
-                                        const isCurrent = chat.sessionId === sessionId;
-                                        const isLoadingHistory = loadingHistoryId === chat.sessionId;
-                                        const compactPreview = [chat.serviceName || selectedService.name, chat.preview]
-                                            .filter(Boolean)
-                                            .join(' - ');
-
-                                        return (
-                                            <div
-                                                key={chat.sessionId}
-                                                className={`group relative overflow-hidden rounded-lg transition-colors duration-200 ${isCurrent
-                                                    ? isDark
-                                                        ? 'bg-white/10'
-                                                        : 'bg-black/10'
-                                                    : isDark
-                                                        ? 'hover:bg-white/5'
-                                                        : 'hover:bg-black/5'
-                                                    }`}
-                                            >
-                                                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleLoadPreviousChat(chat)}
-                                                        disabled={isLoadingHistory || isCurrent}
-                                                        className={`min-w-0 rounded-md text-left outline-none ${isCurrent ? 'cursor-default' : ''}`}
-                                                    >
-                                                        <p className={`truncate ${isSidebarCompact ? 'text-[11px]' : 'text-xs'} font-medium transition-colors ${isCurrent ? (isDark ? 'text-amber-300' : 'text-amber-700') : (isDark ? 'text-slate-300 group-hover:text-white' : 'text-slate-600 group-hover:text-slate-900')}`}>
-                                                            {compactPreview || 'No preview available'}
-                                                        </p>
-                                                    </button>
-                                                    <span className={`shrink-0 text-[10px] font-medium transition-colors ${isCurrent ? (isDark ? 'text-amber-300/60' : 'text-amber-700/60') : (isDark ? 'text-slate-500 group-hover:text-slate-400' : 'text-slate-400 group-hover:text-slate-500')}`}>
-                                                        {isLoadingHistory ? 'Loading...' : formatPreviousChatTime(chat.updatedAt)}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={(event) => handleDeletePreviousChat(event, chat)}
-                                                        disabled={isLoadingHistory}
-                                                        className={`relative z-30 shrink-0 rounded-lg p-1.5 opacity-0 transition-all focus-visible:opacity-100 group-hover:opacity-100 ${isDark
-                                                            ? 'text-slate-500 hover:bg-red-500/20 hover:text-red-400'
-                                                            : 'text-slate-400 hover:bg-red-50 hover:text-red-500'
-                                                            }`}
-                                                        aria-label="Delete previous chat"
-                                                        title="Delete chat"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </ScrollArea>
-                        )}
-                    </div>
-                </div>
-                )}
-
-                <div className={`mt-auto shrink-0 overflow-hidden ${isSidebarCompact ? 'p-1 flex flex-col items-center' : 'p-3'}`}>
-                    {isAuthLoading ? (
-                        <div className="flex items-center justify-center">
-                            <span className={`h-2.5 w-2.5 animate-pulse rounded-full ${isDark ? 'bg-amber-400/50' : 'bg-amber-500/50'}`} />
-                            {!isSidebarCompact && <p className={`ml-2 text-xs font-medium ${isDark ? 'text-amber-200/50' : 'text-amber-700/60'}`}>Checking status...</p>}
-                        </div>
-                    ) : isUserLoggedIn ? (
-                        <div className={isSidebarCompact ? 'flex flex-col items-center gap-2' : ''}>
-                            <div className={`flex items-center gap-3 ${isSidebarCompact ? 'justify-center' : ''}`}>
-                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 ${isDark ? 'border-[#ffc800]/20 bg-black' : 'border-amber-200 bg-white'}`}>
-                                    {userAvatar ? (
-                                        <img src={userAvatar} alt={userDisplayName} className="h-full w-full object-cover" />
-                                    ) : (
-                                        <User className={`h-4 w-4 ${isDark ? 'text-[#ffc800]' : 'text-amber-600'}`} />
-                                    )}
-                                </div>
-                                {!isSidebarCompact && (
-                                    <div className="min-w-0">
-                                        <p className={`truncate text-xs font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                                            {userDisplayName}
-                                        </p>
-                                        <p className={`truncate text-[10px] font-medium ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-                                            {userDisplayEmail || 'Authenticated user'}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                            {!isSidebarCompact && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
-                                    className={`mt-3 w-full h-8 rounded-lg text-xs font-medium transition-colors ${isDark
-                                        ? 'bg-white/[0.05] text-white hover:bg-white/[0.1]'
-                                        : 'bg-black/5 text-slate-700 hover:bg-black/10'
-                                        }`}
-                                >
-                                    <LogIn className="mr-2 h-3.5 w-3.5" />
-                                    Switch account
-                                </Button>
-                            )}
-                        </div>
-                    ) : isSidebarCompact ? (
-                        <Button
-                            type="button"
-                            size="icon"
-                            onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
-                            className={`h-10 w-10 rounded-xl font-bold ${isDark ? 'bg-[#ffc800] text-black hover:bg-[#ffc800]/90' : 'bg-amber-400 text-amber-950 hover:bg-amber-500'}`}
-                        >
-                            <LogIn className="h-4 w-4" />
-                        </Button>
-                    ) : (
-                        <Button
-                            type="button"
-                            onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
-                            className={`w-full h-10 rounded-xl font-bold shadow-none transition-all ${isDark ? 'bg-[#ffc800] text-black hover:bg-[#ffc800]/90 hover:shadow-[0_0_15px_-3px_rgba(255,200,0,0.4)]' : 'bg-amber-400 text-amber-950 hover:bg-amber-500'}`}
-                        >
-                            <LogIn className="mr-2 h-4 w-4" />
-                            Login to save progress
-                        </Button>
-                    )}
-                </div>
-            </aside>
-
-            <section className={`relative flex min-w-0 flex-1 flex-col pt-3 bg-transparent ${isInitialScreen ? 'justify-center items-center' : ''}`}>
-
-                <ScrollArea ref={scrollRef} className={`w-full ${isInitialScreen ? 'flex flex-col' : 'flex-1 min-h-0 pt-4'}`}>
-                    <div className={`mx-auto w-full max-w-3xl space-y-8 flex flex-col px-4 md:px-0 ${isInitialScreen ? 'pt-8' : 'pt-4 pb-52'}`}>
+                <ScrollArea ref={scrollRef} className={`w-full transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''} ${isInitialScreen ? 'flex flex-col' : 'flex-1 min-h-0 pt-4'}`}>
+                    <div className={`mx-auto flex w-full max-w-4xl flex-col space-y-8 px-5 lg:px-8 ${isInitialScreen ? 'pt-8' : 'pt-4 pb-52'}`}>
                         {messages.map((msg, idx) => {
                             const { text: messageContent, attachments: messageAttachments } = parseMessageContentWithAttachments(
                                 msg.content,
@@ -2923,18 +2882,22 @@ const GuestAIDemo = () => {
                                     {/* content */}
                                     <div className="flex-1 min-w-0 max-w-[85%]">
                                         {proposalCard ? (
-                                            <div className={`rounded-2xl border p-5 md:p-6 ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-white shadow-sm'}`}>
-                                                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
-                                                    <Sparkles className="h-3.5 w-3.5" />
-                                                    Generated Proposal
+                                            <div className="space-y-4">
+                                                <div className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    <Sparkles className="h-3 w-3 text-primary" />
+                                                    Proposal ready
                                                 </div>
-                                                <ProposalPreview content={messageContent || msg.content} isDark={isDark} />
-                                                <div className={`mt-5 pt-4 flex justify-end ${isDark ? 'border-t border-white/10' : 'border-t border-slate-200'}`}>
+                                                <div className={`text-[15px] leading-relaxed ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                                    <ProposalPreview content={messageContent || msg.content} isDark={isDark} />
+                                                </div>
+                                                <div className={`pt-3 border-t ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
                                                     <Button
                                                         onClick={() => handleProceed(messageContent || msg.content)}
-                                                        className="w-full sm:w-auto px-6 py-2 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+                                                        variant="outline"
+                                                        className={`rounded-xl px-5 py-2 h-9 text-sm font-medium transition-all ${isDark ? 'border-white/15 text-white hover:bg-white/10' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
                                                     >
-                                                        Find Freelancer for this proposal
+                                                        <Sparkles className="mr-2 h-3.5 w-3.5 text-primary" />
+                                                        Find a Freelancer
                                                     </Button>
                                                 </div>
                                             </div>
@@ -2985,8 +2948,8 @@ const GuestAIDemo = () => {
 
                 {/* Fixed bottom input box only when NOT initial screen */}
                 {!isInitialScreen && (
-                    <div className={`absolute bottom-0 w-full px-4 pb-4 pt-12 md:px-8 bg-gradient-to-t ${isDark ? 'from-[#212121] via-[#212121]/90 to-transparent' : 'from-[#F9F9F9] via-[#F9F9F9]/90 to-transparent'}`}>
-                        <div className="mx-auto w-full max-w-3xl space-y-2.5">
+                    <div className={`absolute bottom-0 w-full px-5 pb-4 pt-12 transition-[padding-left] duration-300 ease-in-out lg:px-8 ${!isSidebarCompact ? 'lg:pl-[20rem]' : ''} bg-gradient-to-t ${isDark ? 'from-[#212121] via-[#212121]/90 to-transparent' : 'from-[#F9F9F9] via-[#F9F9F9]/90 to-transparent'}`}>
+                        <div className="mx-auto w-full max-w-4xl space-y-2.5">
                             {renderChatInput()}
                             <p className={`text-center text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                 AI can make mistakes. Check important info.
