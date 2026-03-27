@@ -66,6 +66,33 @@ const proposalDateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   year: "numeric",
 });
+const getFirstNonEmptyText = (...values) => {
+  for (const value of values.flat()) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+
+  return "";
+};
+
+const toDisplayTitleCase = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/(^|[\s/-])([a-z])/g, (match, prefix, char) => `${prefix}${char.toUpperCase()}`);
+
+const resolveProposalBusinessName = (proposal = {}) =>
+  getFirstNonEmptyText(
+    proposal?.project?.businessName,
+    proposal?.project?.companyName,
+    proposal?.project?.brandName,
+    proposal?.project?.owner?.companyName,
+    proposal?.project?.owner?.businessName,
+    proposal?.project?.owner?.brandName,
+    proposal?.businessName,
+    proposal?.companyName,
+    proposal?.brandName,
+  );
 
 /**
  * Extracts key details (Budget, Timeline) from the proposal text content.
@@ -229,6 +256,7 @@ const mapApiProposal = (proposal = {}) => {
   return {
     id: proposal.id,
     title: proposal.project?.title || proposal.title || "Proposal",
+    businessName: resolveProposalBusinessName(proposal),
     category: proposal.project?.description
       ? "Project"
       : proposal.category || "General",
@@ -276,7 +304,12 @@ const ProposalRowCard = ({
     if (GENERIC_PROPOSAL_CATEGORIES.has(normalizedCategory.toLowerCase())) return "";
     return normalizedCategory;
   }, [proposal.category]);
-  const displayTitle = String(proposal.title || serviceLabel || "Proposal").trim();
+  const displayTitle = String(
+    (proposal.businessName ? toDisplayTitleCase(proposal.businessName) : "") ||
+      proposal.title ||
+      serviceLabel ||
+      "Proposal",
+  ).trim();
   const clientInitials = String(proposal.clientName || "Client")
     .trim()
     .charAt(0)

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Bell from "lucide-react/dist/esm/icons/bell";
 import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
+import Eye from "lucide-react/dist/esm/icons/eye";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Layers3 from "lucide-react/dist/esm/icons/layers-3";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -21,6 +22,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import {
   Dialog,
   DialogContent,
@@ -79,14 +87,14 @@ const statusLabels = {
 };
 
 const proposalPanelClassName =
-  "rounded-[24px] border border-[#1e293b] bg-[#303030]/40 backdrop-blur-[6px]";
+  "rounded-[32px] border border-border bg-card";
 
 const proposalCardStatusClasses = {
-  draft: "border-white/10 bg-[#2f3135] text-[#d4d7dd]",
-  accepted: "border-[#856715] bg-[#241c0b] text-[#f4c128]",
-  sent: "border-[#856715] bg-[#241c0b] text-[#f4c128]",
-  pending: "border-[#856715] bg-[#241c0b] text-[#f4c128]",
-  rejected: "border-[#5b2a2a] bg-[#261617] text-[#f49e9e]",
+  draft: "border-border bg-transparent text-muted-foreground",
+  accepted: "border-emerald-500/30 bg-transparent text-emerald-300",
+  sent: "border-primary/35 bg-transparent text-primary",
+  pending: "border-primary/35 bg-transparent text-primary",
+  rejected: "border-destructive/30 bg-transparent text-destructive",
 };
 
 const PROPOSAL_STACK_KEYS = [
@@ -1295,16 +1303,14 @@ const EmptyStateCard = ({ title, description }) => (
 );
 
 const ProposalLoadingState = () => (
-  <Card className={cn("shadow-none", proposalPanelClassName)}>
-    <CardContent className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-      <Skeleton className="h-12 w-12 rounded-xl bg-white/[0.08]" />
-      <div className="space-y-3">
-        <Skeleton className="mx-auto h-8 w-56 rounded-full bg-white/[0.08]" />
-        <Skeleton className="mx-auto h-4 w-80 max-w-full rounded-full bg-white/[0.06]" />
-        <Skeleton className="mx-auto h-4 w-64 max-w-full rounded-full bg-white/[0.06]" />
-      </div>
-    </CardContent>
-  </Card>
+  <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+    {Array.from({ length: 4 }).map((_, index) => (
+      <Skeleton
+        key={index}
+        className="h-[28rem] w-full rounded-[32px]"
+      />
+    ))}
+  </div>
 );
 
 const ProposalRowCard = ({
@@ -1320,18 +1326,12 @@ const ProposalRowCard = ({
   const details = extractProposalDetails(proposal);
   const isDraft = proposal.status === "draft";
   const canSendToFreelancers = isDraft && !proposal.requiresPayment && onSend;
-  const showSecondaryAction = canSendToFreelancers || Boolean(proposal.requiresPayment && onPay);
+  const showPrimaryAction = canSendToFreelancers || Boolean(proposal.requiresPayment && onPay);
   const businessName = resolveProposalBusinessName(proposal);
   const displayBusinessName = businessName ? toDisplayTitleCase(businessName) : "";
   const projectName = resolveProposalProjectName(proposal);
   const serviceLabel = resolveProposalServiceLabel(proposal);
-  const cardTitle = projectName || displayBusinessName || serviceLabel || "Proposal";
-  const useBusinessNameTitle =
-    Boolean(displayBusinessName) &&
-    normalizeComparableText(cardTitle) === normalizeComparableText(displayBusinessName);
-  const showServiceLabel =
-    Boolean(serviceLabel) &&
-    normalizeComparableText(serviceLabel) !== normalizeComparableText(cardTitle);
+  const cardTitle = displayBusinessName || projectName || serviceLabel || "Proposal";
   const freelancerRecipients = getProposalFreelancerRecipients(proposal);
   const canViewFreelancerDetails =
     freelancerRecipients.length > 0 && Boolean(onViewFreelancers);
@@ -1340,158 +1340,224 @@ const ProposalRowCard = ({
   const rejectionReasonText = shouldHideRejectedProposal(proposal)
     ? ""
     : getFirstNonEmptyText(proposal.rejectionReason);
-  const showRightSideRejectionReason =
-    proposal.status === "rejected" && Boolean(rejectionReasonText);
+  const showRejectionReason = proposal.status === "rejected" && Boolean(rejectionReasonText);
+  const recipientCount = freelancerRecipients.length;
+  const primaryActionLabel = canSendToFreelancers
+    ? isSending
+      ? "Sending..."
+      : "Send Proposal"
+    : proposal.requiresPayment && onPay
+      ? isPaying
+        ? "Processing..."
+        : "Approve & Pay"
+      : "";
+  const showRecipientSection = isDraft || recipientCount > 0;
 
   return (
-    <Card className="overflow-hidden rounded-[2.9rem] border border-white/6 bg-[#2b2b2d] shadow-none transition duration-200 hover:border-white/10">
-      <CardContent className="p-7 sm:p-8 lg:p-9">
-        <div className="space-y-2">
+    <Card className={cn("h-full w-full overflow-hidden shadow-none", proposalPanelClassName)}>
+      <CardContent className="p-0">
+        <div className="flex h-full flex-col gap-6 px-6 py-6 sm:px-8 sm:py-8">
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 space-y-4">
-              <div className="flex flex-wrap items-center gap-4 text-sm text-[#9a9ea8]">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                 <Badge
                   variant="outline"
                   className={cn(
-                    "rounded-md border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.24em]",
+                    "rounded-full border bg-transparent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
                     proposalCardStatusClasses[proposal.status] ||
                       proposalCardStatusClasses.pending,
                   )}
                 >
                   {statusLabels[proposal.status] || "Pending"}
                 </Badge>
-                <span>{proposal.submittedDate}</span>
-              </div>
-
-              <div className="space-y-2">
-                <h3
-                  className={cn(
-                    "text-[2rem] font-semibold tracking-[-0.04em] text-white sm:text-[2.2rem]",
-                    useBusinessNameTitle && "capitalize",
-                  )}
-                >
-                  {cardTitle}
-                </h3>
-                {showServiceLabel ? (
-                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#8d96a7]">
-                    {serviceLabel}
-                  </p>
-                ) : null}
+                <span className="normal-case tracking-[0.08em] text-muted-foreground">
+                  {proposal.submittedDate}
+                </span>
               </div>
             </div>
 
-            {showRightSideRejectionReason || canDeleteProposal ? (
-              <div className="flex shrink-0 flex-col items-end gap-3">
-                {canDeleteProposal ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 rounded-full text-[#8d96a7] hover:bg-white/5 hover:text-white"
-                    onClick={() => onDelete(proposal)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                ) : null}
+            {canDeleteProposal ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+                onClick={() => onDelete(proposal)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ) : null}
+          </div>
 
-                {showRightSideRejectionReason ? (
-                  <div className="max-w-[16rem] bg-transparent px-3 py-2 text-right">
-                    <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-rose-300/75">
-                      Freelancer response
-                    </p>
-                    <p
-                      className="mt-0.5 truncate text-xs font-medium text-rose-200"
-                      title={rejectionReasonText}
+          <div className="space-y-6">
+            <div className="space-y-2.5">
+              <h3 className="min-h-[4.5rem] max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
+                {cardTitle}
+              </h3>
+              {showRejectionReason ? (
+                <div className="max-w-[24rem] space-y-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-destructive/80">
+                    Freelancer response
+                  </p>
+                  <p
+                    className="text-sm font-medium leading-6 text-destructive/90"
+                    title={rejectionReasonText}
+                  >
+                    {rejectionReasonText}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-2 gap-5">
+              <div className="space-y-2.5">
+                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Agreed Amount
+                </p>
+                <div className="text-[2rem] font-semibold leading-none tracking-[-0.04em] text-primary sm:text-[2.15rem]">
+                  {details.budget}
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Delivery
+                </p>
+                <div className="inline-flex items-center gap-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
+                  <Clock3 className="h-4 w-4 text-muted-foreground" />
+                  {details.delivery}
+                </div>
+              </div>
+            </div>
+
+            {showRecipientSection ? (
+              <div className="rounded-[18px] border border-border/70 bg-background/35 p-4">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Proposal Sent To
+                  </p>
+                  {canViewFreelancerDetails ? (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:text-primary/80"
+                      onClick={() => onViewFreelancers?.(proposal)}
                     >
-                      {rejectionReasonText}
-                    </p>
-                  </div>
-                ) : null}
+                      {recipientCount > 0 ? (
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                          {recipientCount}
+                        </span>
+                      ) : null}
+                      <span>View All</span>
+                    </button>
+                  ) : null}
+                </div>
+
+                {recipientCount > 0 ? (
+                  <ProposalFreelancerAvatars
+                    proposal={proposal}
+                    avatarClassName="h-9 w-9"
+                    stackClassName="-space-x-2.5"
+                    maxVisible={4}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No freelancers selected yet.
+                  </p>
+                )}
               </div>
             ) : null}
           </div>
 
-          <div className="grid gap-6 border-t border-white/6 pt-6 lg:grid-cols-[1.25fr_1fr_1fr_auto] lg:items-start">
-            <ProposalSummaryItem
-              bordered={false}
-              label="Proposal Sent To"
-              value={
-                <div className="flex flex-col items-start gap-2.5">
-                  <ProposalFreelancerAvatars proposal={proposal} />
-                  {canViewFreelancerDetails ? (
-                    <button
-                      type="button"
-                      className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary transition hover:text-primary/80"
-                      onClick={() => onViewFreelancers?.(proposal)}
-                    >
-                      View details
-                    </button>
-                  ) : null}
-                </div>
-              }
-            />
-            <ProposalSummaryItem
-              bordered={false}
-              label="Budget"
-              value={details.budget}
-              valueClassName="text-[1.9rem] font-semibold tracking-[-0.03em] text-primary"
-            />
-            <ProposalSummaryItem
-              bordered={false}
-              label="Timeline"
-              value={
-                <span className="inline-flex items-center gap-2 text-lg font-semibold text-[#d8dbe2]">
-                  <Clock3 className="h-4 w-4 text-[#97a1b2]" />
-                  {details.delivery}
-                </span>
-              }
-            />
-            <div className="flex w-full flex-col gap-3 lg:w-[10.5rem] lg:items-end">
+          <div className="mt-auto flex flex-col gap-3">
+            {showPrimaryAction ? (
+              <div className="grid grid-cols-2 gap-3">
               <Button
-                className="h-11 rounded-full bg-primary px-6 font-semibold text-[#141414] hover:bg-primary/90 lg:w-full"
+                  className="h-11 rounded-[18px] border border-border bg-background/35 px-6 text-sm font-semibold text-foreground shadow-none hover:bg-background"
+                  onClick={() => onOpen?.(proposal)}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Details
+                </Button>
+
+                <Button
+                  className="h-11 rounded-[18px] bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
+                  onClick={() => {
+                    if (canSendToFreelancers) {
+                      onSend?.(proposal);
+                      return;
+                    }
+
+                    if (proposal.requiresPayment && onPay) {
+                      onPay(proposal);
+                    }
+                  }}
+                  disabled={isSending || isPaying}
+                >
+                  {isSending || isPaying ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  {primaryActionLabel}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                className="h-14 rounded-[20px] bg-primary px-6 text-base font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
                 onClick={() => onOpen?.(proposal)}
               >
-                <FileText className="mr-2 h-3.5 w-3.5" />
                 View Details
               </Button>
-
-              {showSecondaryAction ? (
-                <div className="flex w-full flex-col gap-2 lg:justify-end">
-                  {canSendToFreelancers ? (
-                    <Button
-                      className="h-11 w-full rounded-full border border-white/10 bg-white/[0.03] px-6 font-semibold text-white hover:bg-white/[0.06]"
-                      onClick={() => onSend?.(proposal)}
-                      disabled={isSending}
-                    >
-                      {isSending ? (
-                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Send className="mr-2 h-3.5 w-3.5" />
-                      )}
-                      {isSending ? "Sending Proposal..." : "Send Proposal"}
-                    </Button>
-                  ) : null}
-
-                  {proposal.requiresPayment && onPay ? (
-                    <Button
-                      className="h-9 w-full rounded-full bg-emerald-500 px-4 text-xs font-semibold text-black hover:bg-emerald-400"
-                      onClick={() => onPay(proposal)}
-                      disabled={isPaying}
-                    >
-                      {isPaying ? (
-                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <CreditCard className="mr-2 h-3.5 w-3.5" />
-                      )}
-                      {isPaying ? "Processing..." : "Approve & Pay"}
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
+            )}
           </div>
         </div>
       </CardContent>
     </Card>
+  );
+};
+
+const ClientProposalCardsCarousel = ({
+  proposals,
+  onDelete,
+  onOpen,
+  onPay,
+  onSend,
+  onViewFreelancers,
+  processingPaymentProposalId,
+  sendingProposalId,
+}) => {
+  if (!proposals.length) return null;
+
+  return (
+    <Carousel
+      className="w-full"
+      opts={{
+        align: "start",
+        containScroll: "trimSnaps",
+      }}
+    >
+      <div className="mb-5 flex justify-end gap-2">
+        <CarouselPrevious className="static !left-auto !right-auto size-11 translate-y-0 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground disabled:[&_svg]:text-muted-foreground [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-foreground" />
+        <CarouselNext className="static !left-auto !right-auto size-11 translate-y-0 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground disabled:[&_svg]:text-muted-foreground [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-foreground" />
+      </div>
+
+      <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform]">
+        {proposals.map((proposal) => (
+          <CarouselItem
+            key={proposal.id}
+            className="pl-0 basis-full md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)] xl:basis-[calc((100%-3.75rem)/4)]"
+          >
+            <ProposalRowCard
+              proposal={proposal}
+              onDelete={onDelete}
+              onOpen={onOpen}
+              onPay={onPay}
+              onSend={onSend}
+              onViewFreelancers={onViewFreelancers}
+              isPaying={processingPaymentProposalId === proposal.id}
+              isSending={sendingProposalId === proposal.id}
+            />
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+    </Carousel>
   );
 };
 
@@ -3212,19 +3278,14 @@ const ClientProposalContent = () => {
               {isLoading ? (
                 <ProposalLoadingState />
               ) : currentTabItems.length > 0 ? (
-                <div className="space-y-6">
-                  {currentTabItems.map((proposal) => (
-                    <ProposalRowCard
-                      key={proposal.id}
-                      proposal={proposal}
-                      onOpen={handleOpenProposal}
-                      onDelete={handleDelete}
-                      onSend={openFreelancerSelection}
-                      onViewFreelancers={handleOpenFreelancerDetails}
-                      isSending={sendingProposalId === proposal.id}
-                    />
-                  ))}
-                </div>
+                <ClientProposalCardsCarousel
+                  proposals={currentTabItems}
+                  onOpen={handleOpenProposal}
+                  onDelete={handleDelete}
+                  onSend={openFreelancerSelection}
+                  onViewFreelancers={handleOpenFreelancerDetails}
+                  sendingProposalId={sendingProposalId}
+                />
               ) : (
                 <EmptyStateCard
                   title={currentTabMeta.emptyTitle}
@@ -3237,19 +3298,14 @@ const ClientProposalContent = () => {
               {isLoading ? (
                 <ProposalLoadingState />
               ) : currentTabItems.length > 0 ? (
-                <div className="space-y-6">
-                  {currentTabItems.map((proposal) => (
-                    <ProposalRowCard
-                      key={proposal.id}
-                      proposal={proposal}
-                      onOpen={handleOpenProposal}
-                      onDelete={handleDelete}
-                      onPay={handleApproveAndPay}
-                      onViewFreelancers={handleOpenFreelancerDetails}
-                      isPaying={processingPaymentProposalId === proposal.id}
-                    />
-                  ))}
-                </div>
+                <ClientProposalCardsCarousel
+                  proposals={currentTabItems}
+                  onOpen={handleOpenProposal}
+                  onDelete={handleDelete}
+                  onPay={handleApproveAndPay}
+                  onViewFreelancers={handleOpenFreelancerDetails}
+                  processingPaymentProposalId={processingPaymentProposalId}
+                />
               ) : (
                 <EmptyStateCard
                   title={currentTabMeta.emptyTitle}
@@ -3262,17 +3318,12 @@ const ClientProposalContent = () => {
               {isLoading ? (
                 <ProposalLoadingState />
               ) : currentTabItems.length > 0 ? (
-                <div className="space-y-6">
-                  {currentTabItems.map((proposal) => (
-                    <ProposalRowCard
-                      key={proposal.id}
-                      proposal={proposal}
-                      onOpen={handleOpenProposal}
-                      onDelete={handleDelete}
-                      onViewFreelancers={handleOpenFreelancerDetails}
-                    />
-                  ))}
-                </div>
+                <ClientProposalCardsCarousel
+                  proposals={currentTabItems}
+                  onOpen={handleOpenProposal}
+                  onDelete={handleDelete}
+                  onViewFreelancers={handleOpenFreelancerDetails}
+                />
               ) : (
                 <EmptyStateCard
                   title={currentTabMeta.emptyTitle}
