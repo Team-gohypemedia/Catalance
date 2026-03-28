@@ -112,7 +112,7 @@ const CATALYST_REQUEST_TYPES = {
 const projectPanelClassName =
   "rounded-[26px] border border-white/[0.08] bg-[#171717] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 const projectInsetPanelClassName =
-  "rounded-[20px] border border-white/[0.08] bg-[#111111] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
+  "rounded-[20px] border border-white/[0.08] bg-[#111111] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
 const projectSectionEyebrowClassName =
   "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]";
 const projectDetailFieldNames = [
@@ -2202,7 +2202,7 @@ const ProjectDashboard = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background text-[#f1f5f9]">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-5 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <ClientWorkspaceHeader
             profile={{
               avatar: user?.avatar,
@@ -2232,7 +2232,7 @@ const ProjectDashboard = () => {
             primaryActionTo="/client/project"
           />
 
-          <main className="flex-1 space-y-6 pb-12 pt-6">
+          <main className="flex-1 space-y-5 pb-10 pt-4 sm:space-y-6 sm:pb-12 sm:pt-6">
           <div className="w-full max-w-full mx-auto space-y-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1.5">
@@ -2252,7 +2252,7 @@ const ProjectDashboard = () => {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 self-start">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:self-start">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -2297,9 +2297,9 @@ const ProjectDashboard = () => {
               { label: "Freelancer", value: projectDetailSnapshot.teammateName },
               { label: "Timeline", value: projectDetailSnapshot.timeline },
             ].map((item) => (
-              <div key={item.label} className={projectInsetPanelClassName}>
+              <div key={item.label} className={`${projectInsetPanelClassName} min-w-0`}>
                 <p className={projectSectionEyebrowClassName}>{item.label}</p>
-                <p className="mt-3 text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
+                <p className="mt-3 break-words text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
                   {item.value || "Not specified"}
                 </p>
               </div>
@@ -2326,19 +2326,22 @@ const ProjectDashboard = () => {
               </Card>
 
               <Card className={projectPanelClassName}>
-                <CardHeader className="pb-3">
+                <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
                   <CardTitle className={projectSectionEyebrowClassName}>
                     Website Details
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 pt-0">
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <CardContent className="space-y-4 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {projectDetailSnapshot.websiteDetails.map((item) => (
-                      <div key={item.label} className={projectInsetPanelClassName}>
+                      <div
+                        key={item.label}
+                        className={`${projectInsetPanelClassName} min-h-[90px] min-w-0 px-4 py-3.5 sm:px-5 sm:py-4`}
+                      >
                         <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
                           {item.label}
                         </p>
-                        <p className="mt-3 text-sm font-medium leading-6 text-white">
+                        <p className="mt-3 break-words text-sm font-medium leading-6 text-white">
                           {item.value || "Not specified"}
                         </p>
                       </div>
@@ -2382,7 +2385,7 @@ const ProjectDashboard = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     {Array.from({ length: 4 }).map((_, index) => {
                       const phase = derivedPhases[index];
                       const isCompleted = phase?.status === "completed";

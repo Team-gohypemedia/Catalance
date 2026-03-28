@@ -204,7 +204,7 @@ const mapStatus = (status = "") => {
 const projectPanelClassName =
   "rounded-[26px] border border-white/[0.08] bg-[#171717] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 const projectInsetPanelClassName =
-  "rounded-[20px] border border-white/[0.08] bg-[#111111] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
+  "rounded-[20px] border border-white/[0.08] bg-[#111111] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
 const projectSectionEyebrowClassName =
   "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]";
 const projectDetailFieldNames = [
@@ -1694,7 +1694,7 @@ const FreelancerProjectDetailContent = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background text-[#f1f5f9]">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-5 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <FreelancerWorkspaceHeader
             profile={{
               avatar: user?.avatar,
@@ -1724,7 +1724,7 @@ const FreelancerProjectDetailContent = () => {
             primaryActionTo="/freelancer/project"
           />
 
-          <main className="relative flex-1 space-y-6 pb-12 pt-6">
+          <main className="relative flex-1 space-y-5 pb-10 pt-4 sm:space-y-6 sm:pb-12 sm:pt-6">
         {project?.status === "AWAITING_PAYMENT" && (
           <div className="absolute inset-0 z-50 backdrop-blur-md bg-background/60">
             <div className="sticky top-0 h-screen w-full flex flex-col items-center justify-center p-6 text-center">
@@ -1776,7 +1776,7 @@ const FreelancerProjectDetailContent = () => {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 self-start">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:self-start">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -1854,9 +1854,9 @@ const FreelancerProjectDetailContent = () => {
               { label: "Client", value: projectDetailSnapshot.clientName },
               { label: "Timeline", value: projectDetailSnapshot.timeline },
             ].map((item) => (
-              <div key={item.label} className={projectInsetPanelClassName}>
+              <div key={item.label} className={`${projectInsetPanelClassName} min-w-0`}>
                 <p className={projectSectionEyebrowClassName}>{item.label}</p>
-                <p className="mt-3 text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
+                <p className="mt-3 break-words text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
                   {item.value || "Not specified"}
                 </p>
               </div>
@@ -1883,19 +1883,22 @@ const FreelancerProjectDetailContent = () => {
               </Card>
 
               <Card className={projectPanelClassName}>
-                <CardHeader className="pb-3">
+                <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
                   <CardTitle className={projectSectionEyebrowClassName}>
                     Website Details
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 pt-0">
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <CardContent className="space-y-4 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {projectDetailSnapshot.websiteDetails.map((item) => (
-                      <div key={item.label} className={projectInsetPanelClassName}>
+                      <div
+                        key={item.label}
+                        className={`${projectInsetPanelClassName} min-h-[90px] min-w-0 px-4 py-3.5 sm:px-5 sm:py-4`}
+                      >
                         <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
                           {item.label}
                         </p>
-                        <p className="mt-3 text-sm font-medium leading-6 text-white">
+                        <p className="mt-3 break-words text-sm font-medium leading-6 text-white">
                           {item.value || "Not specified"}
                         </p>
                       </div>
