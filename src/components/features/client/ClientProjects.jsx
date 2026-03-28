@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import Clock3 from "lucide-react/dist/esm/icons/clock-3";
@@ -12,11 +14,14 @@ import { Link, useSearchParams } from "react-router-dom";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
+import { Button } from "@/components/ui/button";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { formatINR } from "@/shared/lib/currency";
 import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
@@ -1207,13 +1212,47 @@ const EmptyProjectsState = ({
   </div>
 );
 
+const ProjectCarouselDots = ({ count, activeIndex, onSelect, ariaLabel }) => {
+  if (count <= 1) return null;
+
+  return (
+    <div className="mt-2.5 flex items-center justify-center gap-2" aria-label={ariaLabel}>
+      {Array.from({ length: count }, (_, index) => {
+        const isActive = index === activeIndex;
+
+        return (
+          <button
+            key={`client-project-carousel-dot-${index}`}
+            type="button"
+            onClick={() => onSelect(index)}
+            aria-label={`Go to project ${index + 1}`}
+            aria-pressed={isActive}
+            className={cn(
+              "h-2.5 rounded-full transition-all duration-200",
+              isActive
+                ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-2.5 bg-white/[0.14] hover:bg-white/[0.28]",
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
 const ClientProjects = () => {
   const { authFetch, isAuthenticated, user } = useAuth();
+  const isMobile = useIsMobile();
   const { unreadCount } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingProjectId, setProcessingProjectId] = useState(null);
+  const [projectCarouselApi, setProjectCarouselApi] = useState(null);
+  const [canGoToPreviousProject, setCanGoToPreviousProject] = useState(false);
+  const [canGoToNextProject, setCanGoToNextProject] = useState(false);
+  const [projectCarouselSnapCount, setProjectCarouselSnapCount] = useState(0);
+  const [activeProjectSnap, setActiveProjectSnap] = useState(0);
   const [activeFilter, setActiveFilter] = useState("ongoing");
   const hasUserSelectedFilterRef = React.useRef(false);
   const requestedFilter = String(searchParams.get("filter") || "").toLowerCase();
@@ -1293,7 +1332,6 @@ const ClientProjects = () => {
       projectCards.filter((project) => project.statusMeta.label === "Completed").length,
     [projectCards],
   );
-  const projectsHeaderSupportingText = `${ongoingProjectCount} ongoing project${ongoingProjectCount === 1 ? "" : "s"} and ${completedProjectCount} completed project${completedProjectCount === 1 ? "" : "s"} in your workspace.`;
   const visibleProjectCards = useMemo(
     () =>
       projectCards.filter((project) =>
@@ -1303,6 +1341,33 @@ const ClientProjects = () => {
       ),
     [activeFilter, projectCards],
   );
+  const shouldUseProjectCarousel = isMobile && visibleProjectCards.length > 1;
+
+  useEffect(() => {
+    if (!projectCarouselApi || !shouldUseProjectCarousel) {
+      setCanGoToPreviousProject(false);
+      setCanGoToNextProject(false);
+      setProjectCarouselSnapCount(0);
+      setActiveProjectSnap(0);
+      return undefined;
+    }
+
+    const syncProjectCarouselState = () => {
+      setCanGoToPreviousProject(projectCarouselApi.canScrollPrev());
+      setCanGoToNextProject(projectCarouselApi.canScrollNext());
+      setProjectCarouselSnapCount(projectCarouselApi.scrollSnapList().length);
+      setActiveProjectSnap(projectCarouselApi.selectedScrollSnap());
+    };
+
+    syncProjectCarouselState();
+    projectCarouselApi.on("select", syncProjectCarouselState);
+    projectCarouselApi.on("reInit", syncProjectCarouselState);
+
+    return () => {
+      projectCarouselApi.off("select", syncProjectCarouselState);
+      projectCarouselApi.off("reInit", syncProjectCarouselState);
+    };
+  }, [projectCarouselApi, shouldUseProjectCarousel]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -1345,10 +1410,9 @@ const ClientProjects = () => {
         <main className="flex-1 pb-12">
           <ClientPageHeader
             title="Project Proposals"
-            description="Manage your accepted, ongoing, and completed project collaborations in one place."
-            supportingText={projectsHeaderSupportingText}
+            dateLabel={false}
             actions={
-              <div className="inline-flex h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <div className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-card p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                 {projectFilterOptions.map((option) => {
                   const count =
                     option.key === "completed" ? completedProjectCount : ongoingProjectCount;
@@ -1360,7 +1424,7 @@ const ClientProjects = () => {
                       type="button"
                       onClick={() => handleSelectFilter(option.key)}
                       className={cn(
-                        "h-11 rounded-full border border-transparent px-5 text-[0.95rem] font-semibold transition",
+                        "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
                         isActive
                           ? "border-[#ffc107]/70 bg-[#ffc107] text-[#141414]"
                           : "text-[#a3a6ad] hover:text-white",
@@ -1382,16 +1446,73 @@ const ClientProjects = () => {
                 ))}
               </div>
             ) : visibleProjectCards.length > 0 ? (
-              <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {visibleProjectCards.map((project) => (
-                  <ProjectProposalCard
-                    key={project.id}
-                    project={project}
-                    onPay={handleApproveAndPay}
-                    isPaying={processingProjectId === project.id}
+              shouldUseProjectCarousel ? (
+                <div className="w-full">
+                  <Carousel
+                    setApi={setProjectCarouselApi}
+                    opts={{
+                      align: "start",
+                      containScroll: "trimSnaps",
+                      slidesToScroll: 1,
+                      duration: 34,
+                    }}
+                    className="w-full"
+                  >
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground md:hidden"
+                      onClick={() => projectCarouselApi?.scrollPrev()}
+                      disabled={!canGoToPreviousProject}
+                      aria-label="Show previous project"
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground md:hidden"
+                      onClick={() => projectCarouselApi?.scrollNext()}
+                      disabled={!canGoToNextProject}
+                      aria-label="Show next project"
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+
+                    <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                      {visibleProjectCards.map((project) => (
+                        <CarouselItem key={project.id} className="basis-full pl-[2px] pr-[2px] pt-1">
+                          <ProjectProposalCard
+                            project={project}
+                            onPay={handleApproveAndPay}
+                            isPaying={processingProjectId === project.id}
+                          />
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                  </Carousel>
+
+                  <ProjectCarouselDots
+                    count={projectCarouselSnapCount}
+                    activeIndex={activeProjectSnap}
+                    onSelect={(index) => projectCarouselApi?.scrollTo(index)}
+                    ariaLabel="Project carousel pagination"
                   />
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {visibleProjectCards.map((project) => (
+                    <ProjectProposalCard
+                      key={project.id}
+                      project={project}
+                      onPay={handleApproveAndPay}
+                      isPaying={processingProjectId === project.id}
+                    />
+                  ))}
+                </div>
+              )
             ) : projectCards.length > 0 ? (
               <EmptyProjectsState
                 title={

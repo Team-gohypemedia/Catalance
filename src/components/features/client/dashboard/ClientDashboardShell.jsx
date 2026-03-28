@@ -1791,9 +1791,12 @@ const ProjectProgressSection = ({
                         root: "w-full",
                         months: "w-full",
                         month: "w-full space-y-4",
+                        nav: "relative flex items-center justify-between px-1",
                         caption_label: "text-sm font-semibold text-white",
                         nav_button:
-                          "border border-white/[0.08] bg-white/[0.03] text-white hover:bg-white/[0.06]",
+                          "size-8 rounded-md border border-white/[0.08] bg-white/[0.03] text-white hover:bg-white/[0.06]",
+                        button_previous: "!static",
+                        button_next: "!static",
                         weekday:
                           "text-[11px] font-medium uppercase tracking-[0.16em] text-[#8f96a3]",
                         day: "text-sm text-[#d7d2ca]",
@@ -1926,7 +1929,8 @@ const ClientDashboardShell = ({
   runningProjectProcessingId = null,
   onViewProject,
 }) => {
-  const shouldUseProjectCarousel = showcaseItems.length > 3;
+  const isMobile = useIsMobile();
+  const shouldUseProjectCarousel = isMobile ? showcaseItems.length > 1 : showcaseItems.length > 3;
   const activeProjectCardClassName = "w-full";
   const activeProjectRedirectCardClassName = "w-full md:min-h-[506px]";
   const [projectCarouselApi, setProjectCarouselApi] = React.useState(null);

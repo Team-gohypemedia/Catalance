@@ -32,25 +32,18 @@ import Headset from "lucide-react/dist/esm/icons/headset";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import Image from "lucide-react/dist/esm/icons/image";
-import Globe from "lucide-react/dist/esm/icons/globe";
-import Linkedin from "lucide-react/dist/esm/icons/linkedin";
-import Github from "lucide-react/dist/esm/icons/github";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
-import Info from "lucide-react/dist/esm/icons/info";
 import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import X from "lucide-react/dist/esm/icons/x";
-import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
-import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
-import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Flag from "lucide-react/dist/esm/icons/flag";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 import { useAuth } from "@/shared/context/AuthContext";
-import { SOP_TEMPLATES, getSopFromTitle } from "@/shared/data/sopTemplates";
+import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -74,6 +67,7 @@ import isToday from "date-fns/isToday";
 import isYesterday from "date-fns/isYesterday";
 import isSameDay from "date-fns/isSameDay";
 import { getFreelancerVisibleBudgetValue } from "@/shared/lib/currency";
+import { extractStructuredFieldValue } from "@/shared/lib/labeled-fields";
 import { cn } from "@/shared/lib/utils";
 import {
   Accordion,
@@ -81,13 +75,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 const DEFAULT_MEETING_TIME_SLOTS = [
   "09:00 AM",
@@ -206,15 +193,6 @@ const getPhaseIcon = (status) => {
   }
 };
 
-const getStatusBadge = (status) => {
-  const variants = {
-    completed: "default",
-    "in-progress": "secondary",
-    pending: "outline",
-  };
-  return variants[status] || "outline";
-};
-
 const mapStatus = (status = "") => {
   const normalized = status.toString().toUpperCase();
   if (normalized === "COMPLETED") return "completed";
@@ -223,36 +201,107 @@ const mapStatus = (status = "") => {
   return "pending";
 };
 
-const COMMON_ISSUES = [
-  "Client Unresponsive",
-  "Payment Issue",
-  "Scope Creep",
-  "Project Stalled",
-  "Harassment/Unprofessional Behavior",
-  "Other",
+const projectPanelClassName =
+  "rounded-[26px] border border-white/[0.08] bg-[#171717] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+const projectInsetPanelClassName =
+  "rounded-[20px] border border-white/[0.08] bg-[#111111] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
+const projectSectionEyebrowClassName =
+  "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]";
+const projectDetailFieldNames = [
+  "Service",
+  "Project",
+  "Client",
+  "Website type",
+  "Website Type",
+  "Website Build Type",
+  "Tech stack",
+  "Pages",
+  "Timeline",
+  "Launch Timeline",
+  "Budget",
+  "Next Steps",
+  "Summary",
+  "Project Overview",
+  "Deliverables",
+  "Pages & Features",
+  "Core pages",
+  "Core pages included",
+  "Additional pages",
+  "Additional pages/features",
+  "Integrations",
+  "Payment Gateway",
+  "Designs",
+  "Design Style",
+  "Hosting",
+  "Domain",
+  "Deployment",
+  "Frontend Framework",
+  "Frontend",
+  "Backend Technology",
+  "Backend",
+  "Database",
 ];
 
-const ClientInfoCard = ({ client }) => {
+const readProjectDetailField = (description = "", fieldName = "") =>
+  extractStructuredFieldValue(description, fieldName, projectDetailFieldNames)
+    ?.replace(/^[\s-]+/, "")
+    ?.replace(/[\s-]+$/, "")
+    ?.trim() || "";
+
+const parseProjectDetailList = (value = "") =>
+  String(value || "")
+    .split(/[,•]/)
+    .map((item) =>
+      item
+        .replace(/^[\s-]+/, "")
+        .replace(/[\s-]+$/, "")
+        .trim(),
+    )
+    .filter(
+      (item) =>
+        item.length > 1 &&
+        !item.includes(":") &&
+        !item.toLowerCase().includes("additional") &&
+        !item.toLowerCase().includes("pages"),
+    );
+
+const formatAttachmentSize = (size) => {
+  const numericSize = Number(size);
+  if (!Number.isFinite(numericSize) || numericSize <= 0) return null;
+
+  const units = ["B", "KB", "MB", "GB"];
+  let unitIndex = 0;
+  let value = numericSize;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+};
+
+const ClientInfoCard = ({ client, project, onUpdateLink }) => {
   if (!client) return null;
 
   return (
-    <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+    <Card className={projectPanelClassName}>
       <CardHeader className="pb-3">
-        <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+        <CardTitle className={projectSectionEyebrowClassName}>
           Client Information
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-5 pt-0">
         <div className="flex items-center gap-3">
-          <Avatar className="h-12 w-12 border border-border">
+          <Avatar className="h-11 w-11 border border-white/[0.08] bg-[#111111]">
             <AvatarImage src={client.avatar} alt={client.fullName} />
-            <AvatarFallback>
+            <AvatarFallback className="bg-[#111111] text-white">
               {(client.fullName || "C").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-foreground">
+              <span className="font-semibold text-white">
                 {client.fullName || "Client Name"}
               </span>
               {client.isVerified && (
@@ -265,14 +314,20 @@ const ClientInfoCard = ({ client }) => {
             </div>
           </div>
         </div>
+
+        <div className="border-t border-white/[0.06] pt-4">
+          <ClientAboutCard
+            client={client}
+            project={project}
+            onUpdateLink={onUpdateLink}
+          />
+        </div>
       </CardContent>
     </Card>
   );
 };
 
 const ClientAboutCard = ({ client, project, onUpdateLink }) => {
-  if (!client) return null;
-
   const [isEditing, setIsEditing] = useState(false);
   const [linkValue, setLinkValue] = useState(project?.externalLink || "");
   const [isSaving, setIsSaving] = useState(false);
@@ -299,13 +354,15 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
     setIsEditing(false);
   };
 
-  const displayLink = project?.externalLink || client.portfolio;
+  if (!client) return null;
+
+  const displayLink = project?.externalLink || client?.portfolio;
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-semibold text-base text-foreground">About</h3>
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-white">About</h3>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {/* Project Link with Edit Mode */}
         <div className="flex flex-col gap-2">
           {isEditing ? (
@@ -315,7 +372,7 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
                 <Input
                   value={linkValue}
                   onChange={(e) => setLinkValue(e.target.value)}
-                  className="pl-9 h-9 text-sm"
+                  className="h-9 border-white/[0.08] bg-[#111111] pl-9 text-sm text-white"
                   placeholder="https://project-link.com"
                   autoFocus
                 />
@@ -347,7 +404,7 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
                   href={displayLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-start gap-2 text-sm text-blue-400 hover:underline font-medium break-all pr-8"
+                  className="flex items-start gap-2 break-all pr-8 text-sm font-medium text-blue-400 hover:underline"
                 >
                   <Link2 className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
@@ -375,31 +432,6 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
             </div>
           )}
         </div>
-
-        {/* Tech Stack - parsed from description */}
-        {(() => {
-          const desc = project?.description || "";
-          const techMatch = desc.match(/Tech stack:\s*([^-\n]+)/i);
-          const techStack = techMatch ? techMatch[1].trim() : null;
-          return techStack ? (
-            <div className="flex items-start gap-2 text-sm">
-              <span className="text-muted-foreground">Tech Stack:</span>
-              <span className="text-foreground font-medium">{techStack}</span>
-            </div>
-          ) : null;
-        })()}
-
-        {/* Summary - parsed from description */}
-        {(() => {
-          const desc = project?.description || "";
-          const summaryMatch = desc.match(/Summary[:\s-]+(.+)/i);
-          const summary = summaryMatch ? summaryMatch[1].trim() : null;
-          return summary ? (
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {summary}
-            </p>
-          ) : null;
-        })()}
       </div>
     </div>
   );
@@ -491,7 +523,7 @@ const FreelancerProjectDetailContent = () => {
     if (isToday) {
       slots = slots.filter((slot) => {
         const [time, period] = slot.split(" ");
-        let [hours, minutes] = time.split(":").map(Number);
+        let hours = Number(time.split(":")[0]);
         if (period === "PM" && hours !== 12) hours += 12;
         if (period === "AM" && hours === 12) hours = 0;
         return hours > currentHour;
@@ -1332,7 +1364,7 @@ const FreelancerProjectDetailContent = () => {
     const phases = activeSOP.phases;
     const allTasks = activeSOP.tasks;
 
-    return phases.map((phase, index) => {
+    return phases.map((phase) => {
       const phaseTasks = allTasks.filter((t) => t.phase === phase.id);
       const totalPhaseTasks = phaseTasks.length;
 
@@ -1484,9 +1516,6 @@ const FreelancerProjectDetailContent = () => {
     }
   };
 
-  const completedPhases = derivedPhases.filter(
-    (p) => p.status === "completed"
-  ).length;
   const pageTitle = project?.title
     ? `Project: ${project.title}`
     : "Project Dashboard";
@@ -1512,16 +1541,160 @@ const FreelancerProjectDetailContent = () => {
     );
   }, [derivedPhases]);
 
-  const visibleTasks = useMemo(() => {
-    if (!activePhase) return [];
-    return derivedTasks.filter((t) => t.phase === activePhase.id);
-  }, [derivedTasks, activePhase]);
+  const projectDetailSnapshot = useMemo(() => {
+    const description = String(project?.description || "").trim();
+    const extractField = (fieldName) => readProjectDetailField(description, fieldName);
+    const service =
+      extractField("Service") ||
+      extractField("Website type") ||
+      project?.title ||
+      "Not specified";
+    const clientName =
+      project?.owner?.fullName ||
+      project?.client ||
+      extractField("Client") ||
+      "Not specified";
+    const timeline =
+      extractField("Timeline") ||
+      extractField("Launch Timeline") ||
+      "Not set";
+    const websiteType =
+      extractField("Website type") ||
+      extractField("Website Type") ||
+      service;
+    const designStyle =
+      extractField("Design Style") ||
+      extractField("Designs") ||
+      extractField("Website Build Type");
+    const frontend =
+      extractField("Frontend Framework") ||
+      extractField("Frontend") ||
+      extractField("Tech stack");
+    const backend =
+      extractField("Backend Technology") ||
+      extractField("Backend") ||
+      extractField("Deployment");
+    const database = extractField("Database");
+    const techStack = extractField("Tech stack");
+    const summary =
+      extractField("Summary") ||
+      extractField("Project Overview") ||
+      "";
+
+    const corePages = parseProjectDetailList(
+      extractField("Core pages included") || extractField("Core pages"),
+    );
+    const additionalPages = parseProjectDetailList(
+      extractField("Additional pages/features") ||
+        extractField("Additional pages"),
+    );
+    const pagesField = extractField("Pages");
+    const allPages = [...corePages, ...additionalPages];
+    const pageSummary = pagesField || (allPages.length ? `${allPages.length} pages` : "Not specified");
+
+    const overview =
+      summary ||
+      (description
+        ? description
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .find(
+              (line) =>
+                line &&
+                !projectDetailFieldNames.some((field) =>
+                  line.toLowerCase().startsWith(`${field.toLowerCase()}:`),
+                ),
+            ) || ""
+        : "");
+
+    return {
+      service,
+      clientName,
+      timeline,
+      overview,
+      websiteDetails: [
+        { label: "Website Type", value: websiteType || "Not specified" },
+        { label: "Pages", value: pageSummary },
+        { label: "Design Style", value: designStyle || "Not specified" },
+        { label: "Client", value: clientName },
+        { label: "Frontend", value: frontend || techStack || "Not specified" },
+        { label: "Backend", value: backend || "Not specified" },
+        { label: "Database", value: database || "Not specified" },
+      ],
+      pageTags: allPages,
+    };
+  }, [project]);
+
+  const billingRoadmap = useMemo(() => {
+    const milestones = [
+      {
+        id: "kickoff",
+        label: "Phase 1 / Kickoff Payment",
+        percentage: 20,
+        note: "Unlocks project kickoff and initial delivery work.",
+      },
+      {
+        id: "review",
+        label: "Phase 2 / Progress Review",
+        percentage: 40,
+        note: "Shared after the mid-project review and approval.",
+      },
+      {
+        id: "handover",
+        label: "Phase 4 / Final Handover",
+        percentage: 40,
+        note: "Released once the final handover is approved.",
+      },
+    ];
+
+    let previousThreshold = 0;
+
+    return milestones.map((milestone, index) => {
+      const amount = Math.round((totalBudget * milestone.percentage) / 100);
+      const threshold = previousThreshold + amount;
+      const isPaid = spentBudget >= threshold && amount > 0;
+      const isCurrent =
+        !isPaid &&
+        amount > 0 &&
+        (spentBudget >= previousThreshold || (index === 0 && spentBudget <= 0));
+
+      previousThreshold = threshold;
+
+      return {
+        ...milestone,
+        amount,
+        status: isPaid ? "paid" : isCurrent ? "active" : "scheduled",
+      };
+    });
+  }, [spentBudget, totalBudget]);
+
+  const handleProjectLinkUpdate = useCallback(
+    async (newLink) => {
+      const response = await authFetch(`/projects/${projectId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ externalLink: newLink }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProject((prev) => ({
+          ...prev,
+          externalLink: data.data.externalLink,
+        }));
+        toast.success("Project link updated");
+        return;
+      }
+
+      toast.error("Failed to update link");
+    },
+    [authFetch, projectId],
+  );
 
   // Show skeleton while loading
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background text-[#f1f5f9]">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-5 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <FreelancerWorkspaceHeader
             profile={{
               avatar: user?.avatar,
@@ -1540,7 +1713,7 @@ const FreelancerProjectDetailContent = () => {
   return (
     <>
       <div className="min-h-screen bg-background text-[#f1f5f9]">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-5 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <FreelancerWorkspaceHeader
             profile={{
               avatar: user?.avatar,
@@ -1583,12 +1756,12 @@ const FreelancerProjectDetailContent = () => {
           </div>
         )}
         <div className="w-full max-w-full mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1.5">
+              <h1 className="text-[clamp(1.85rem,4vw,2.75rem)] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
                 {pageTitle}
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-[#8f96a3]">
                 {isLoading
                   ? "Loading project details..."
                   : isFallback
@@ -1596,20 +1769,20 @@ const FreelancerProjectDetailContent = () => {
                   : "Track project progress and deliverables in one place."}
               </p>
               {!isLoading && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-[#717784]">
                   {activeProjectManager
                     ? `Project Catalyst: ${activeProjectManager.fullName}`
                     : "Project Catalyst: Not assigned yet"}
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="default"
                     size="sm"
-                    className="gap-2 shadow-sm"
+                    className="h-9 gap-2 rounded-full bg-primary px-4 text-primary-foreground shadow-none hover:bg-primary/90"
                   >
                     <Headset className="w-4 h-4" /> Catalyst
                   </Button>
@@ -1675,516 +1848,188 @@ const FreelancerProjectDetailContent = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 space-y-4">
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              { label: "Service Type", value: projectDetailSnapshot.service },
+              { label: "Client", value: projectDetailSnapshot.clientName },
+              { label: "Timeline", value: projectDetailSnapshot.timeline },
+            ].map((item) => (
+              <div key={item.label} className={projectInsetPanelClassName}>
+                <p className={projectSectionEyebrowClassName}>{item.label}</p>
+                <p className="mt-3 text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
+                  {item.value || "Not specified"}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="space-y-4">
+              <Card className={projectPanelClassName}>
+                <CardHeader className="pb-3">
+                  <CardTitle className={projectSectionEyebrowClassName}>
+                    Overview
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex items-start gap-3 rounded-[18px] border border-amber-500/15 bg-amber-500/5 px-4 py-4">
+                    <span className="mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_6px_rgba(255,193,7,0.08)]" />
+                    <p className="text-sm leading-7 text-[#d4d4d8]">
+                      {projectDetailSnapshot.overview ||
+                        "Project scope, priorities, and delivery context will appear here once the brief is fully structured."}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className={projectPanelClassName}>
+                <CardHeader className="pb-3">
+                  <CardTitle className={projectSectionEyebrowClassName}>
+                    Website Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-0">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {projectDetailSnapshot.websiteDetails.map((item) => (
+                      <div key={item.label} className={projectInsetPanelClassName}>
+                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+                          {item.label}
+                        </p>
+                        <p className="mt-3 text-sm font-medium leading-6 text-white">
+                          {item.value || "Not specified"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  {projectDetailSnapshot.pageTags.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {projectDetailSnapshot.pageTags.map((page) => (
+                        <span
+                          key={page}
+                          className="inline-flex items-center rounded-full border border-white/[0.08] bg-[#111111] px-3 py-1 text-[11px] font-medium text-[#cfd3da]"
+                        >
+                          {page}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+
+              <Card className={projectPanelClassName}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle className="text-lg font-semibold text-foreground">
+                  <CardTitle className={projectSectionEyebrowClassName}>
                     Project Progress
                   </CardTitle>
-                  <span className="text-lg font-semibold text-amber-500">
+                  <span className="text-lg font-semibold text-primary">
                     {Math.round(overallProgress)}% Complete
                   </span>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Dark Progress Bar with Handle */}
+                <CardContent className="space-y-5 pt-0">
                   <div className="relative">
-                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
                       <div
                         className="h-full rounded-full transition-all duration-300 bg-linear-to-r from-amber-500 via-yellow-400 to-amber-400"
                         style={{ width: `${overallProgress}%` }}
                       />
                     </div>
-                    {/* Circular Handle */}
                     <div
-                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-gray-300 rounded-full shadow-md transition-all duration-300"
+                      className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-white/70 bg-white shadow-md transition-all duration-300"
                       style={{ left: `calc(${overallProgress}% - 8px)` }}
                     />
                   </div>
 
-                  {/* Phase Cards */}
-                  <div className="grid grid-cols-4 gap-3">
-                    {/* Phase 1 */}
-                    <div
-                      className={`p-4 rounded-lg border-l-4 ${
-                        derivedPhases[0]?.status === "completed"
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
-                          : derivedPhases[0]?.status === "in-progress"
-                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
-                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
-                      }`}
-                    >
-                      <div
-                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                          derivedPhases[0]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[0]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        Phase 1
-                      </div>
-                      <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[0]?.name || "Discovery"}
-                      </div>
-                      <div
-                        className={`text-xs flex items-center gap-1.5 ${
-                          derivedPhases[0]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[0]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {derivedPhases[0]?.status === "completed" && (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        )}
-                        {derivedPhases[0]?.status === "in-progress" && (
-                          <Circle className="w-3.5 h-3.5 fill-current" />
-                        )}
-                        {derivedPhases[0]?.status === "completed"
-                          ? "Completed"
-                          : derivedPhases[0]?.status === "in-progress"
-                          ? "Active"
-                          : "Pending"}
-                      </div>
-                    </div>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {derivedPhases.slice(0, 4).map((phase, index) => {
+                      const isCompleted = phase?.status === "completed";
+                      const isActive = phase?.status === "in-progress";
 
-                    {/* Phase 2 */}
-                    <div
-                      className={`p-4 rounded-lg border-l-4 ${
-                        derivedPhases[1]?.status === "completed"
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
-                          : derivedPhases[1]?.status === "in-progress"
-                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
-                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
-                      }`}
-                    >
-                      <div
-                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                          derivedPhases[1]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[1]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        Phase 2
-                      </div>
-                      <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[1]?.name || "Development"}
-                      </div>
-                      <div
-                        className={`text-xs flex items-center gap-1.5 ${
-                          derivedPhases[1]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[1]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {derivedPhases[1]?.status === "completed" && (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        )}
-                        {derivedPhases[1]?.status === "in-progress" && (
-                          <Circle className="w-3.5 h-3.5 fill-current" />
-                        )}
-                        {derivedPhases[1]?.status === "completed"
-                          ? "Completed"
-                          : derivedPhases[1]?.status === "in-progress"
-                          ? "Active"
-                          : "Pending"}
-                      </div>
-                    </div>
-
-                    {/* Phase 3 */}
-                    <div
-                      className={`p-4 rounded-lg border-l-4 ${
-                        derivedPhases[2]?.status === "completed"
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
-                          : derivedPhases[2]?.status === "in-progress"
-                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
-                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
-                      }`}
-                    >
-                      <div
-                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                          derivedPhases[2]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[2]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        Phase 3
-                      </div>
-                      <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[2]?.name || "Testing"}
-                      </div>
-                      <div
-                        className={`text-xs flex items-center gap-1.5 ${
-                          derivedPhases[2]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[2]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {derivedPhases[2]?.status === "completed" && (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        )}
-                        {derivedPhases[2]?.status === "in-progress" && (
-                          <Circle className="w-3.5 h-3.5 fill-current" />
-                        )}
-                        {derivedPhases[2]?.status === "completed"
-                          ? "Completed"
-                          : derivedPhases[2]?.status === "in-progress"
-                          ? "Active"
-                          : "Pending"}
-                      </div>
-                    </div>
-
-                    {/* Phase 4 */}
-                    <div
-                      className={`p-4 rounded-lg border-l-4 ${
-                        derivedPhases[3]?.status === "completed"
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
-                          : derivedPhases[3]?.status === "in-progress"
-                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
-                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
-                      }`}
-                    >
-                      <div
-                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                          derivedPhases[3]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[3]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        Phase 4
-                      </div>
-                      <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[3]?.name || "Deployment"}
-                      </div>
-                      <div
-                        className={`text-xs flex items-center gap-1.5 ${
-                          derivedPhases[3]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[3]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {derivedPhases[3]?.status === "completed" && (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        )}
-                        {derivedPhases[3]?.status === "in-progress" && (
-                          <Circle className="w-3.5 h-3.5 fill-current" />
-                        )}
-                        {derivedPhases[3]?.status === "completed"
-                          ? "Completed"
-                          : derivedPhases[3]?.status === "in-progress"
-                          ? "Active"
-                          : "Pending"}
-                      </div>
-                    </div>
+                      return (
+                        <div
+                          key={phase?.id || `project-phase-${index + 1}`}
+                          className={cn(
+                            "rounded-[18px] border px-4 py-4",
+                            isCompleted
+                              ? "border-emerald-500/25 bg-emerald-500/10"
+                              : isActive
+                                ? "border-primary/20 bg-primary/10"
+                                : "border-white/[0.08] bg-[#111111]",
+                          )}
+                        >
+                          <p
+                            className={cn(
+                              "text-[0.68rem] font-semibold uppercase tracking-[0.18em]",
+                              isCompleted
+                                ? "text-emerald-300"
+                                : isActive
+                                  ? "text-primary"
+                                  : "text-[#8f96a3]",
+                            )}
+                          >
+                            Phase {index + 1}
+                          </p>
+                          <p className="mt-2 text-sm font-semibold leading-6 text-white">
+                            {phase?.name || "Pending phase"}
+                          </p>
+                          <div
+                            className={cn(
+                              "mt-3 inline-flex items-center gap-2 text-xs font-medium",
+                              isCompleted
+                                ? "text-emerald-300"
+                                : isActive
+                                  ? "text-primary"
+                                  : "text-[#8f96a3]",
+                            )}
+                          >
+                            {isCompleted ? (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            ) : isActive ? (
+                              <Circle className="h-3.5 w-3.5 fill-current" />
+                            ) : (
+                              <Circle className="h-3.5 w-3.5" />
+                            )}
+                            {isCompleted ? "Completed" : isActive ? "In Progress" : "Pending"}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-lg font-semibold text-foreground">
-                    Project Description
-                  </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setDetailOpen(true)}
-                    aria-label="View full project details"
-                  >
-                    <Info className="h-4 w-4" />
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Main Description */}
-                  {project?.description ? (
-                    <>
-                      {/* Parse and display all description fields */}
-                      {(() => {
-                        const desc = project.description;
 
-                        // Field patterns - extract value until next field name or end
-                        // Include Budget and Next Steps as terminators but we won't display them
-                        const fieldNames = [
-                          "Service",
-                          "Project",
-                          "Client",
-                          "Website type",
-                          "Tech stack",
-                          "Pages",
-                          "Timeline",
-                          "Budget",
-                          "Next Steps",
-                          "Summary",
-                          "Deliverables",
-                          "Pages & Features",
-                          "Core pages",
-                          "Additional pages",
-                          "Integrations",
-                          "Payment Gateway",
-                          "Designs",
-                          "Hosting",
-                          "Domain",
-                        ];
-                        const fieldPattern = fieldNames.join("|");
-
-                        // Extract a field value - stops at next field name
-                        const extractField = (fieldName) => {
-                          const regex = new RegExp(
-                            `${fieldName}[:\\s]+(.+?)(?=(?:${fieldPattern})[:\\s]|$)`,
-                            "is"
-                          );
-                          const match = desc.match(regex);
-                          if (match) {
-                            // Clean up - remove leading/trailing dashes and trim
-                            return match[1]
-                              .replace(/^[\s-]+/, "")
-                              .replace(/[\s-]+$/, "")
-                              .trim();
-                          }
-                          return null;
-                        };
-
-                        const service = extractField("Service");
-                        const projectName = extractField("Project");
-                        const client = extractField("Client");
-                        const websiteType = extractField("Website type");
-                        const techStack = extractField("Tech stack");
-                        const pages = extractField("Pages");
-                        const timeline = extractField("Timeline");
-
-                        // Extract summary (everything after "Summary:" until next major field or end)
-                        const summaryMatch = desc.match(
-                          /Summary[:\s]+(.+?)(?=(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps)[:\s]|$)/is
-                        );
-                        const summary = summaryMatch
-                          ? summaryMatch[1]
-                              .replace(/^[\s-]+/, "")
-                              .replace(/[\s-]+$/, "")
-                              .trim()
-                          : null;
-
-                        // Extract deliverables
-                        const deliverables = [];
-                        const delivMatch = desc.match(
-                          /Deliverables[:\s-]+([^-]+)/i
-                        );
-                        if (delivMatch) {
-                          const items = delivMatch[1].split(/[,•]/);
-                          items.forEach((item) => {
-                            const trimmed = item.trim();
-                            if (trimmed && trimmed.length > 3) {
-                              deliverables.push(trimmed);
-                            }
-                          });
-                        }
-
-                        // Field items to display (excluding Budget, Next Steps)
-                        const fields = [
-                          { label: "Service", value: service },
-                          { label: "Project", value: projectName },
-                          { label: "Client", value: client },
-                          { label: "Website Type", value: websiteType },
-                          { label: "Tech Stack", value: techStack },
-                          { label: "Timeline", value: timeline },
-                        ].filter((f) => f.value);
-
-                        // Extract pages from Core pages and Additional pages sections
-                        const corePages =
-                          extractField("Core pages included") ||
-                          extractField("Core pages");
-                        const additionalPages =
-                          extractField("Additional pages\\/features") ||
-                          extractField("Additional pages");
-
-                        // Parse pages into arrays - clean up dashes and section markers
-                        const parsePagesString = (str) => {
-                          if (!str) return [];
-                          // Split by comma and clean each item
-                          return str
-                            .split(/[,]/)
-                            .map((p) =>
-                              p
-                                .replace(/^[\s-]+/, "")
-                                .replace(/[\s-]+$/, "")
-                                .trim()
-                            )
-                            .filter(
-                              (p) =>
-                                p.length > 2 &&
-                                !p.includes(":") &&
-                                !p.toLowerCase().includes("additional") &&
-                                !p.toLowerCase().includes("pages")
-                            );
-                        };
-
-                        const corePagesArr = parsePagesString(corePages);
-                        const additionalPagesArr =
-                          parsePagesString(additionalPages);
-
-                        return (
-                          <div className="space-y-4">
-                            {/* Display structured fields */}
-                            {fields.length > 0 && (
-                              <div className="grid grid-cols-2 gap-3">
-                                {fields.map((field, index) => (
-                                  <div key={index} className="text-sm">
-                                    <span className="text-muted-foreground">
-                                      {field.label}:{" "}
-                                    </span>
-                                    <span className="text-foreground font-medium">
-                                      {field.value}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Summary */}
-                            {summary && (
-                              <div className="pt-2">
-                                <p className="text-sm text-muted-foreground font-medium mb-1">
-                                  Summary
-                                </p>
-                                <p className="text-sm text-foreground leading-relaxed">
-                                  {summary}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Pages & Features */}
-                            {(corePagesArr.length > 0 ||
-                              additionalPagesArr.length > 0) && (
-                              <div className="pt-2">
-                                <p className="text-sm text-muted-foreground font-medium mb-3">
-                                  Pages & Features
-                                </p>
-                                <div className="space-y-4">
-                                  {corePagesArr.length > 0 && (
-                                    <div>
-                                      <p className="text-xs text-muted-foreground mb-2">
-                                        Core Pages:
-                                      </p>
-                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                                        {corePagesArr.map((page, index) => (
-                                          <div
-                                            key={index}
-                                            className="text-xs bg-muted px-2 py-1.5 rounded-md text-foreground text-center truncate"
-                                            title={page}
-                                          >
-                                            {page}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {additionalPagesArr.length > 0 && (
-                                    <div>
-                                      <p className="text-xs text-muted-foreground mb-2">
-                                        Additional Pages/Features:
-                                      </p>
-                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                                        {additionalPagesArr.map(
-                                          (page, index) => (
-                                            <div
-                                              key={index}
-                                              className="text-xs bg-primary/10 px-2 py-1.5 rounded-md text-foreground text-center truncate"
-                                              title={page}
-                                            >
-                                              {page}
-                                            </div>
-                                          )
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Deliverables */}
-                            {deliverables.length > 0 && (
-                              <div className="pt-2">
-                                <p className="text-sm text-muted-foreground font-medium mb-2">
-                                  Deliverables
-                                </p>
-                                <ul className="space-y-1.5">
-                                  {deliverables.map((item, index) => (
-                                    <li
-                                      key={index}
-                                      className="flex items-start gap-2 text-sm text-foreground"
-                                    >
-                                      <span className="text-primary mt-1">
-                                        •
-                                      </span>
-                                      <span>{item}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {/* If no structured fields found, show raw description */}
-                            {fields.length === 0 && !summary && (
-                              <p className="text-sm text-muted-foreground leading-relaxed">
-                                {desc}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      {/* Notes section - from project notes if available */}
-                      {project?.notes && (
-                        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                            <p className="text-sm text-amber-800 dark:text-amber-200">
-                              <span className="font-medium">Note:</span>{" "}
-                              {project.notes}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No project description available.
-                    </p>
-                  )}
-                  {renderProjectDescription({ showExtended: false })}
-                </CardContent>
-              </Card>
-
-              {/* All Tasks Grouped by Phase - Accordion */}
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-foreground">
-                    Project Tasks
-                  </CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    {
-                      derivedTasks.filter((t) => t.status === "completed")
-                        .length
-                    }{" "}
-                    of {derivedTasks.length} tasks completed
-                  </CardDescription>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <CardTitle className={projectSectionEyebrowClassName}>
+                        Project Description
+                      </CardTitle>
+                      <CardDescription className="mt-2 text-[#8f96a3]">
+                        {derivedTasks.filter((t) => t.status === "completed").length} of{" "}
+                        {derivedTasks.length} tasks completed
+                      </CardDescription>
+                    </div>
+                    <div className="min-w-[120px] space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+                        <span>Progress</span>
+                        <span>{Math.round(overallProgress)}%</span>
+                      </div>
+                      <Progress
+                        value={overallProgress}
+                        className="h-1.5 bg-white/[0.08]"
+                      />
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-2">
+                  {project?.notes ? (
+                    <div className="mb-4 flex items-start gap-2 rounded-[18px] border border-amber-500/20 bg-amber-500/8 px-4 py-3">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                      <p className="text-sm leading-6 text-[#f3e4b2]">
+                        <span className="font-medium text-white">Note:</span> {project.notes}
+                      </p>
+                    </div>
+                  ) : null}
                   <Accordion
                     type="single"
                     collapsible
@@ -2195,17 +2040,17 @@ const FreelancerProjectDetailContent = () => {
                       <AccordionItem
                         key={phaseGroup.phaseId}
                         value={phaseGroup.phaseId}
-                        className="border-border/60"
+                        className="border-white/[0.06]"
                       >
-                        <AccordionTrigger className="hover:no-underline py-3">
+                        <AccordionTrigger className="py-4 hover:no-underline">
                           <div className="flex items-center gap-3 flex-1">
                             {getPhaseIcon(phaseGroup.phaseStatus)}
                             <div className="flex-1 text-left">
-                              <div className="font-semibold text-sm text-foreground">
+                              <div className="text-sm font-semibold text-white">
                                 Phase {phaseGroup.phaseId}:{" "}
                                 {phaseGroup.phaseName}
                               </div>
-                              <div className="text-xs text-muted-foreground">
+                              <div className="text-xs text-[#8f96a3]">
                                 {
                                   phaseGroup.tasks.filter(
                                     (t) => t.status === "completed"
@@ -2222,8 +2067,8 @@ const FreelancerProjectDetailContent = () => {
                               }
                               className={
                                 phaseGroup.phaseStatus === "completed"
-                                  ? "bg-emerald-500 text-white"
-                                  : ""
+                                  ? "border-emerald-500/10 bg-emerald-500/15 text-emerald-200"
+                                  : "border-white/[0.08] bg-[#111111] text-[#cfd3da]"
                               }
                             >
                               {phaseGroup.phaseStatus === "completed"
@@ -2239,10 +2084,10 @@ const FreelancerProjectDetailContent = () => {
                             {phaseGroup.tasks.map((task) => (
                               <div
                                 key={task.uniqueKey}
-                                className={`flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card transition-colors ${
+                                className={`flex items-center gap-3 rounded-[16px] border border-white/[0.06] bg-[#111111] p-3.5 transition-colors ${
                                   phaseGroup.isLocked
-                                    ? "opacity-50 pointer-events-none bg-muted/50"
-                                    : "hover:bg-accent/60 cursor-pointer"
+                                    ? "pointer-events-none opacity-50"
+                                    : "cursor-pointer hover:bg-white/[0.03]"
                                 }`}
                                 onClick={(e) =>
                                   !phaseGroup.isLocked &&
@@ -2257,19 +2102,19 @@ const FreelancerProjectDetailContent = () => {
                                 <span
                                   className={`flex-1 text-sm ${
                                     task.status === "completed"
-                                      ? "line-through text-muted-foreground"
-                                      : "text-foreground"
+                                      ? "text-[#8f96a3] line-through"
+                                      : "text-white"
                                   }`}
                                 >
                                   {task.title}
                                   {phaseGroup.isLocked && (
-                                    <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
+                                    <span className="ml-2 inline-block text-xs font-medium text-amber-400 no-underline">
                                       (Locked)
                                     </span>
                                   )}
                                 </span>
                                 {task.verified && (
-                                  <Badge className="h-6 px-2 text-[10px] bg-emerald-500 text-white">
+                                  <Badge className="h-6 border-emerald-500/10 bg-emerald-500/15 px-2 text-[10px] text-emerald-200">
                                     Verified
                                   </Badge>
                                 )}
@@ -2285,40 +2130,22 @@ const FreelancerProjectDetailContent = () => {
             </div>
 
             <div className="space-y-4">
-              {/* Client Info Card - Top of sidebar */}
-              <ClientInfoCard client={project?.owner} />
-              <ClientAboutCard
+              <ClientInfoCard
                 client={project?.owner}
                 project={project}
-                onUpdateLink={async (newLink) => {
-                  const response = await authFetch(`/projects/${projectId}`, {
-                    method: "PATCH",
-                    body: JSON.stringify({ externalLink: newLink }),
-                  });
-                  if (response.ok) {
-                    const data = await response.json();
-                    setProject((prev) => ({
-                      ...prev,
-                      externalLink: data.data.externalLink,
-                    }));
-                    toast.success("Project link updated");
-                  } else {
-                    toast.error("Failed to update link");
-                  }
-                }}
+                onUpdateLink={handleProjectLinkUpdate}
               />
 
-              {/* Project Chat - First */}
-              <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="border-b border-border/60">
-                  <CardTitle className="text-base text-foreground">
+              <Card className={cn(projectPanelClassName, "overflow-hidden")}>
+                <CardHeader className="border-b border-white/[0.06] pb-3">
+                  <CardTitle className={projectSectionEyebrowClassName}>
                     Project Chat
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground">
+                  <CardDescription className="text-[#8f96a3]">
                     Ask questions and share documents
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto space-y-3 py-4">
+                <CardContent className="max-h-[320px] space-y-3 overflow-y-auto px-4 py-4">
                   {messages.map((message, index) => {
                     const isSelf = message.sender === "user";
                     const isAssistant = message.sender === "assistant";
@@ -2338,27 +2165,27 @@ const FreelancerProjectDetailContent = () => {
                     return (
                       <React.Fragment key={message.id || index}>
                         {showDateDivider && (
-                          <div className="flex justify-center my-4">
-                            <span className="bg-muted/40 px-3 py-1 rounded-full text-[10px] uppercase font-medium tracking-wide text-muted-foreground/70">
+                          <div className="my-4 flex justify-center">
+                            <span className="rounded-full border border-white/[0.06] bg-[#111111] px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-[#8f96a3]">
                               {isToday(currentDate)
                                 ? "Today"
                                 : isYesterday(currentDate)
-                                ? "Yesterday"
-                                : format(currentDate, "MMMM d, yyyy")}
+                                  ? "Yesterday"
+                                  : format(currentDate, "MMMM d, yyyy")}
                             </span>
                           </div>
                         )}
                         <div className={`flex ${align}`}>
                           <div
-                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col overflow-hidden ${
+                            className={`flex max-w-[88%] flex-col overflow-hidden rounded-2xl px-4 py-2.5 text-sm ${
                               isSelf
-                                ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm"
-                                : "bg-muted text-foreground rounded-tl-sm border border-border/60"
+                                ? "rounded-tr-sm bg-primary text-primary-foreground shadow-sm"
+                                : "rounded-tl-sm border border-white/[0.06] bg-[#111111] text-white"
                             }`}
                           >
                             {message.sender === "other" &&
                               message.senderName && (
-                                <span className="text-[10px] opacity-70 mb-1 block">
+                                <span className="mb-1 block text-[10px] text-[#8f96a3]">
                                   {message.senderName}
                                 </span>
                               )}
@@ -2396,10 +2223,10 @@ const FreelancerProjectDetailContent = () => {
                                     href={message.attachment.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className={`flex items-center gap-2 p-2 rounded-lg bg-background/20 hover:bg-background/30 transition-colors ${
+                                    className={`flex items-center gap-2 rounded-lg p-2 transition-colors ${
                                       !isSelf
-                                        ? "border border-border/50 bg-background/50"
-                                        : ""
+                                        ? "border border-white/[0.06] bg-white/[0.04]"
+                                        : "bg-black/10"
                                     }`}
                                   >
                                     <FileText className="h-4 w-4 shrink-0" />
@@ -2413,8 +2240,8 @@ const FreelancerProjectDetailContent = () => {
                               </div>
                             )}
 
-                            <div className="flex items-center gap-1 self-end mt-1 justify-end">
-                              <span className="text-[10px] opacity-70 whitespace-nowrap">
+                            <div className="mt-1 flex items-center justify-end gap-1 self-end">
+                              <span className="whitespace-nowrap text-[10px] opacity-70">
                                 {format(currentDate, "h:mm a")}
                               </span>
                               {isSelf && (
@@ -2433,22 +2260,23 @@ const FreelancerProjectDetailContent = () => {
                     );
                   })}
                 </CardContent>
-                <div className="border-t border-border/60 p-3 flex gap-2">
+                <div className="flex gap-2 border-t border-white/[0.06] p-3">
                   <Input
                     placeholder="Type your message..."
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                    className="h-9 text-sm bg-muted border-border/60"
+                    className="h-10 border-white/[0.08] bg-[#111111] text-sm text-white placeholder:text-[#6b7280]"
                   />
                   <Button
                     onClick={() => fileInputRef.current?.click()}
                     size="sm"
                     variant="outline"
-                    className="h-9 w-9 p-0 border-border/60"
+                    className="h-10 w-10 border-white/[0.08] bg-[#111111] p-0 text-[#cfd3da] hover:bg-white/[0.04]"
+                    disabled={isSending}
                     title="Upload document"
                   >
-                    <Upload className="w-4 h-4" />
+                    <Upload className="h-4 w-4" />
                   </Button>
                   <input
                     ref={fileInputRef}
@@ -2461,24 +2289,186 @@ const FreelancerProjectDetailContent = () => {
                     onClick={handleSendMessage}
                     size="sm"
                     variant="default"
-                    className="h-9 w-9 p-0"
+                    className="h-10 w-10 p-0"
+                    disabled={isSending}
                   >
-                    <Send className="w-4 h-4" />
+                    {isSending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </Card>
 
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
-                    <Flag className="w-4 h-4" />
-                    Submit Milestone for Review
+                  <CardTitle className={projectSectionEyebrowClassName}>
+                    Client Documents
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    Send deliverables, GitHub links, and Figma files to your PM.
+                </CardHeader>
+                <CardContent className="space-y-2 pt-0">
+                  {docs.length > 0 ? (
+                    docs.slice(0, 6).map((doc, idx) => {
+                      const isImage =
+                        doc.type?.startsWith("image/") ||
+                        doc.url?.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+                      const fileSize = formatAttachmentSize(doc.size);
+
+                      return (
+                        <a
+                          key={idx}
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 rounded-[16px] border border-white/[0.06] bg-[#111111] px-3 py-3 text-sm transition-colors hover:bg-white/[0.03]"
+                        >
+                          <span
+                            className={cn(
+                              "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                              isImage ? "bg-emerald-500/12" : "bg-primary/10",
+                            )}
+                          >
+                            {isImage ? (
+                              <Image className="h-4 w-4 text-emerald-300" />
+                            ) : (
+                              <FileText className="h-4 w-4 text-primary" />
+                            )}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-white">
+                              {doc.name}
+                            </p>
+                            <p className="mt-1 text-xs text-[#8f96a3]">
+                              {[fileSize, doc.createdAt ? format(new Date(doc.createdAt), "MMM d, yyyy") : null]
+                                .filter(Boolean)
+                                .join(" • ")}
+                            </p>
+                          </div>
+                        </a>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-[#8f96a3]">
+                      No documents attached yet. Upload project documentation
+                      here.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className={projectPanelClassName}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]">
+                    <IndianRupee className="h-3.5 w-3.5" />
+                    Budget Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-0">
+                  <div className={cn(projectInsetPanelClassName, "space-y-3 p-4")}>
+                    <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 text-sm text-[#8f96a3]">
+                      <span>Total Budget</span>
+                      <span className="font-semibold text-white">
+                        {project?.currency || "₹"}
+                        {totalBudget.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 text-sm text-[#8f96a3]">
+                      <span>Spent</span>
+                      <span className="font-semibold text-primary">
+                        {project?.currency || "₹"}
+                        {spentBudget.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-[#8f96a3]">
+                      <span>Remaining</span>
+                      <span className="font-semibold text-white">
+                        {project?.currency || "₹"}
+                        {remainingBudget.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="px-1">
+                    <div className="mb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+                      <span>Project burn</span>
+                      <span>
+                        {Math.round(
+                          totalBudget > 0 ? (spentBudget / totalBudget) * 100 : 0,
+                        )}
+                        %
+                      </span>
+                    </div>
+                    <Progress
+                      value={totalBudget > 0 ? (spentBudget / totalBudget) * 100 : 0}
+                      className="h-1.5 bg-white/[0.08]"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className={projectPanelClassName}>
+                <CardHeader className="pb-3">
+                  <CardTitle className={projectSectionEyebrowClassName}>
+                    Billing Roadmap
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-0">
+                  {billingRoadmap.map((milestone) => (
+                    <div
+                      key={milestone.id}
+                      className={cn(
+                        projectInsetPanelClassName,
+                        "space-y-3 p-4",
+                        milestone.status === "active" && "border-primary/25 bg-primary/8",
+                        milestone.status === "paid" && "border-emerald-500/20 bg-emerald-500/8",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+                            {milestone.label}
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white">
+                            {project?.currency || "₹"}
+                            {milestone.amount.toLocaleString()}
+                          </p>
+                        </div>
+                        <Badge
+                          className={cn(
+                            "border px-2.5 py-1 text-[10px] font-medium",
+                            milestone.status === "paid" &&
+                              "border-emerald-500/10 bg-emerald-500/15 text-emerald-200",
+                            milestone.status === "active" &&
+                              "border-primary/10 bg-primary/15 text-primary",
+                            milestone.status === "scheduled" &&
+                              "border-white/[0.08] bg-[#111111] text-[#cfd3da]",
+                          )}
+                        >
+                          {milestone.status === "paid"
+                            ? "Completed"
+                            : milestone.status === "active"
+                              ? "Active"
+                              : "Scheduled"}
+                        </Badge>
+                      </div>
+                      <p className="text-xs leading-5 text-[#8f96a3]">
+                        {milestone.note}
+                      </p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card className={projectPanelClassName}>
+                <CardHeader className="pb-3">
+                  <CardTitle className={projectSectionEyebrowClassName}>
+                    Submit Milestone
+                  </CardTitle>
+                  <CardDescription className="text-[#8f96a3]">
+                    Send deliverables, GitHub links, and Figma files for review.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-3 pt-0">
                   <Input
                     value={milestoneDraft.title}
                     onChange={(event) =>
@@ -2488,7 +2478,7 @@ const FreelancerProjectDetailContent = () => {
                       }))
                     }
                     placeholder="Milestone title (required)"
-                    className="h-9 text-sm"
+                    className="h-10 border-white/[0.08] bg-[#111111] text-sm text-white placeholder:text-[#6b7280]"
                   />
                   <Input
                     value={milestoneDraft.githubUrl}
@@ -2499,7 +2489,7 @@ const FreelancerProjectDetailContent = () => {
                       }))
                     }
                     placeholder="GitHub link (optional)"
-                    className="h-9 text-sm"
+                    className="h-10 border-white/[0.08] bg-[#111111] text-sm text-white placeholder:text-[#6b7280]"
                   />
                   <Input
                     value={milestoneDraft.figmaUrl}
@@ -2510,7 +2500,7 @@ const FreelancerProjectDetailContent = () => {
                       }))
                     }
                     placeholder="Figma link (optional)"
-                    className="h-9 text-sm"
+                    className="h-10 border-white/[0.08] bg-[#111111] text-sm text-white placeholder:text-[#6b7280]"
                   />
                   <Textarea
                     value={milestoneDraft.notes}
@@ -2521,7 +2511,7 @@ const FreelancerProjectDetailContent = () => {
                       }))
                     }
                     placeholder="Notes for PM (scope, QA checklist, known gaps)"
-                    className="min-h-21.5 text-sm"
+                    className="min-h-24 border-white/[0.08] bg-[#111111] text-sm text-white placeholder:text-[#6b7280]"
                   />
 
                   <div className="flex items-center gap-2">
@@ -2529,18 +2519,18 @@ const FreelancerProjectDetailContent = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8 gap-2"
+                      className="h-9 gap-2 border-white/[0.08] bg-[#111111] text-[#cfd3da] hover:bg-white/[0.04]"
                       onClick={() => milestoneFileInputRef.current?.click()}
                     >
-                      <Upload className="w-3.5 h-3.5" />
+                      <Upload className="h-3.5 w-3.5" />
                       {milestoneFile ? "Replace file" : "Attach file"}
                     </Button>
                     {milestoneFile ? (
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="truncate text-xs text-[#8f96a3]">
                         {milestoneFile.name}
                       </p>
                     ) : (
-                      <p className="text-xs text-muted-foreground">No file attached</p>
+                      <p className="text-xs text-[#8f96a3]">No file attached</p>
                     )}
                     <input
                       ref={milestoneFileInputRef}
@@ -2559,25 +2549,27 @@ const FreelancerProjectDetailContent = () => {
                     onClick={submitMilestoneForReview}
                   >
                     {isSubmittingMilestone ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Flag className="w-4 h-4" />
+                      <Flag className="h-4 w-4" />
                     )}
-                    Submit for PM Review
+                    Submit for Review
                   </Button>
 
                   {submittedMilestones.length > 0 ? (
-                    <div className="space-y-2 pt-1">
-                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    <div className="space-y-2 pt-2">
+                      <p className="text-xs uppercase tracking-[0.2em] text-[#8f96a3]">
                         Recent Submissions
                       </p>
                       {submittedMilestones.map((item) => (
                         <div
                           key={item.id}
-                          className="rounded-md border border-border/60 bg-background/30 p-2"
+                          className="rounded-[16px] border border-white/[0.06] bg-[#111111] p-3"
                         >
-                          <p className="text-xs text-foreground line-clamp-2">{item.text}</p>
-                          <p className="mt-1 text-[10px] text-muted-foreground">
+                          <p className="line-clamp-2 text-xs text-white">
+                            {item.text}
+                          </p>
+                          <p className="mt-1 text-[10px] text-[#8f96a3]">
                             {item.createdAt
                               ? format(new Date(item.createdAt), "MMM d, h:mm a")
                               : ""}
@@ -2586,86 +2578,6 @@ const FreelancerProjectDetailContent = () => {
                       ))}
                     </div>
                   ) : null}
-                </CardContent>
-              </Card>
-
-              {/* Documents - Second */}
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
-                    <FileText className="w-4 h-4" />
-                    Documents
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {docs.length > 0 ? (
-                    <div className="space-y-2">
-                      {docs.map((doc, idx) => {
-                        const isImage =
-                          doc.type?.startsWith("image/") ||
-                          doc.url?.match(/\.(jpg|jpeg|png|webp|gif)$/i);
-                        return (
-                          <a
-                            key={idx}
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20 hover:bg-muted/40 transition-colors"
-                          >
-                            {isImage ? (
-                              <Image className="w-4 h-4 text-blue-500 shrink-0" />
-                            ) : (
-                              <FileText className="w-4 h-4 text-amber-500 shrink-0" />
-                            )}
-                            <span className="truncate flex-1">{doc.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {doc.createdAt
-                                ? format(new Date(doc.createdAt), "MMM d, yyyy")
-                                : ""}
-                            </span>
-                          </a>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No documents attached yet. Upload project documentation
-                      here.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Budget Summary - Third */}
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
-                    <IndianRupee className="w-4 h-4" />
-                    Budget Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
-                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
-                    <span>Total Budget</span>
-                    <span className="font-semibold text-foreground">
-                      {project?.currency || "₹"}
-                      {totalBudget.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
-                    <span>Paid</span>
-                    <span className="font-semibold text-emerald-600">
-                      {project?.currency || "₹"}
-                      {spentBudget.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Remaining</span>
-                    <span className="font-semibold text-foreground">
-                      {project?.currency || "₹"}
-                      {remainingBudget.toLocaleString()}
-                    </span>
-                  </div>
                 </CardContent>
               </Card>
             </div>

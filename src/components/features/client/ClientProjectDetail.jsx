@@ -110,7 +110,84 @@ const CATALYST_REQUEST_TYPES = {
 };
 
 const projectPanelClassName =
-  "rounded-[20px] border border-white/[0.08] bg-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+  "rounded-[26px] border border-white/[0.08] bg-[#171717] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+const projectInsetPanelClassName =
+  "rounded-[20px] border border-white/[0.08] bg-[#111111] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
+const projectSectionEyebrowClassName =
+  "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]";
+const projectDetailFieldNames = [
+  "Service",
+  "Project",
+  "Client",
+  "Website type",
+  "Website Type",
+  "Website Build Type",
+  "Tech stack",
+  "Pages",
+  "Timeline",
+  "Launch Timeline",
+  "Budget",
+  "Next Steps",
+  "Summary",
+  "Project Overview",
+  "Deliverables",
+  "Pages & Features",
+  "Core pages",
+  "Core pages included",
+  "Additional pages",
+  "Additional pages/features",
+  "Integrations",
+  "Payment Gateway",
+  "Designs",
+  "Design Style",
+  "Hosting",
+  "Domain",
+  "Deployment",
+  "Frontend Framework",
+  "Frontend",
+  "Backend Technology",
+  "Backend",
+  "Database",
+];
+
+const readProjectDetailField = (description = "", fieldName = "") =>
+  extractStructuredFieldValue(description, fieldName, projectDetailFieldNames)
+    ?.replace(/^[\s-]+/, "")
+    ?.replace(/[\s-]+$/, "")
+    ?.trim() || "";
+
+const parseProjectDetailList = (value = "") =>
+  String(value || "")
+    .split(/[,•]/)
+    .map((item) =>
+      item
+        .replace(/^[\s-]+/, "")
+        .replace(/[\s-]+$/, "")
+        .trim(),
+    )
+    .filter(
+      (item) =>
+        item.length > 1 &&
+        !item.includes(":") &&
+        !item.toLowerCase().includes("additional") &&
+        !item.toLowerCase().includes("pages"),
+    );
+
+const formatAttachmentSize = (size) => {
+  const numericSize = Number(size);
+  if (!Number.isFinite(numericSize) || numericSize <= 0) return null;
+
+  const units = ["B", "KB", "MB", "GB"];
+  let unitIndex = 0;
+  let value = numericSize;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+};
 
 // Skeleton Loading Component
 const ProjectDetailSkeleton = () => (
@@ -242,43 +319,46 @@ const getPhaseIcon = (status) => {
   }
 };
 
-const FreelancerInfoCard = ({ freelancer }) => {
+const FreelancerInfoCard = ({ freelancer, project }) => {
   if (!freelancer) return null;
 
   return (
     <Card className={projectPanelClassName}>
       <CardHeader className="pb-3">
-        <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+        <CardTitle className={projectSectionEyebrowClassName}>
           Freelancer Information
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-5 pt-0">
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 border border-border">
+          <Avatar className="h-11 w-11 border border-white/[0.08] bg-[#111111]">
             <AvatarImage src={freelancer.avatar} alt={freelancer.fullName} />
-            <AvatarFallback>
+            <AvatarFallback className="bg-[#111111] text-white">
               {(freelancer.fullName || "F").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-base text-foreground">
+              <span className="text-base font-semibold text-white">
                 {freelancer.fullName || "Freelancer Name"}
               </span>
               {freelancer.isVerified && (
                 <CheckCircle2
-                  className="w-4 h-4 text-blue-500"
+                  className="h-3.5 w-3.5 text-blue-500"
                   fill="currentColor"
                   stroke="white"
                 />
               )}
             </div>
             {freelancer.jobTitle && (
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-[#8f96a3]">
                 {freelancer.jobTitle}
               </span>
             )}
           </div>
+        </div>
+        <div className="border-t border-white/[0.06] pt-4">
+          <FreelancerAboutCard freelancer={freelancer} project={project} />
         </div>
       </CardContent>
     </Card>
@@ -290,29 +370,29 @@ const FreelancerAboutCard = ({ freelancer, project }) => {
   const projectLink = project?.externalLink || "";
 
   return (
-    <div className="space-y-4 pt-2">
-      <h3 className="font-bold text-base text-foreground">About</h3>
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-white">About</h3>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {projectLink ? (
           <a
             href={projectLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-blue-500 hover:underline group"
+            className="group flex items-center gap-2 text-sm text-blue-400 hover:underline"
           >
             <div className="w-5 flex justify-center">
-              <Link2 className="w-4 h-4 text-muted-foreground group-hover:text-blue-500 transition-colors" />
+              <Link2 className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-blue-400" />
             </div>
             <span className="truncate">Project Link</span>
           </a>
         ) : (
-          <div className="text-sm text-muted-foreground italic">
+          <div className="flex items-center gap-2 text-sm text-[#8f96a3]">
+            <Link2 className="h-4 w-4 shrink-0" />
             No project link
           </div>
         )}
 
-        {/* Project Summary - parsed from description */}
         {(() => {
           const desc = (project?.description || "").trim();
           const summaryMatch = desc.match(
@@ -325,11 +405,11 @@ const FreelancerAboutCard = ({ freelancer, project }) => {
                 .trim()
             : null;
           return summary ? (
-            <div className="pt-2 border-t border-border/40">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">
+            <div className="border-t border-white/[0.06] pt-3">
+              <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[#8f96a3]">
                 Project Summary
               </span>
-              <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#cfd3da]">
                 {summary}
               </p>
             </div>
@@ -1417,9 +1497,13 @@ const ProjectDashboard = () => {
       : null;
   }, [project]);
 
-  const paymentPlanInstallments = Array.isArray(paymentPlan?.installments)
-    ? paymentPlan.installments
-    : [];
+  const paymentPlanInstallments = useMemo(
+    () =>
+      Array.isArray(paymentPlan?.installments)
+        ? paymentPlan.installments
+        : [],
+    [paymentPlan],
+  );
   const dueInstallment = paymentPlan?.nextDueInstallment || null;
   const initialInstallment =
     paymentPlanInstallments.find(
@@ -1482,6 +1566,90 @@ const ProjectDashboard = () => {
   const freelancer = useMemo(() => {
     return project?.proposals?.find((p) => p.status === "ACCEPTED")?.freelancer;
   }, [project]);
+
+  const projectDetailSnapshot = useMemo(() => {
+    const description = String(project?.description || "").trim();
+    const extractField = (fieldName) => readProjectDetailField(description, fieldName);
+    const service =
+      extractField("Service") ||
+      extractField("Website type") ||
+      project?.title ||
+      "Not specified";
+    const teammateName =
+      freelancer?.fullName ||
+      extractField("Freelancer") ||
+      "Not assigned";
+    const timeline =
+      extractField("Timeline") ||
+      extractField("Launch Timeline") ||
+      "Not set";
+    const websiteType =
+      extractField("Website type") ||
+      extractField("Website Type") ||
+      service;
+    const designStyle =
+      extractField("Design Style") ||
+      extractField("Designs") ||
+      extractField("Website Build Type");
+    const frontend =
+      extractField("Frontend Framework") ||
+      extractField("Frontend") ||
+      extractField("Tech stack");
+    const backend =
+      extractField("Backend Technology") ||
+      extractField("Backend") ||
+      extractField("Deployment");
+    const database = extractField("Database");
+    const techStack = extractField("Tech stack");
+    const summary =
+      extractField("Summary") ||
+      extractField("Project Overview") ||
+      "";
+
+    const corePages = parseProjectDetailList(
+      extractField("Core pages included") || extractField("Core pages"),
+    );
+    const additionalPages = parseProjectDetailList(
+      extractField("Additional pages/features") ||
+        extractField("Additional pages"),
+    );
+    const pagesField = extractField("Pages");
+    const allPages = [...corePages, ...additionalPages];
+    const pageSummary =
+      pagesField || (allPages.length ? `${allPages.length} pages` : "Not specified");
+
+    const overview =
+      summary ||
+      (description
+        ? description
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .find(
+              (line) =>
+                line &&
+                !projectDetailFieldNames.some((field) =>
+                  line.toLowerCase().startsWith(`${field.toLowerCase()}:`),
+                ),
+            ) || ""
+        : "");
+
+    return {
+      service,
+      teammateName,
+      timeline,
+      overview,
+      websiteDetails: [
+        { label: "Website Type", value: websiteType || "Not specified" },
+        { label: "Pages", value: pageSummary },
+        { label: "Design Style", value: designStyle || "Not specified" },
+        { label: "Freelancer", value: teammateName },
+        { label: "Frontend", value: frontend || techStack || "Not specified" },
+        { label: "Backend", value: backend || "Not specified" },
+        { label: "Database", value: database || "Not specified" },
+      ],
+      pageTags: allPages,
+    };
+  }, [freelancer, project]);
 
   const reviewDeferStorageKey = useMemo(
     () =>
@@ -2034,7 +2202,7 @@ const ProjectDashboard = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background text-[#f1f5f9]">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-5 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <ClientWorkspaceHeader
             profile={{
               avatar: user?.avatar,
@@ -2053,7 +2221,7 @@ const ProjectDashboard = () => {
   return (
     <>
       <div className="min-h-screen bg-background text-[#f1f5f9]">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-5 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <ClientWorkspaceHeader
             profile={{
               avatar: user?.avatar,
@@ -2065,37 +2233,39 @@ const ProjectDashboard = () => {
           />
 
           <main className="flex-1 space-y-6 pb-12 pt-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h1 className="text-3xl font-semibold tracking-[-0.02em] text-white">
+          <div className="w-full max-w-full mx-auto space-y-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1.5">
+              <h1 className="text-[clamp(1.85rem,4vw,2.75rem)] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
                 {pageTitle}
               </h1>
-              <p className="text-sm text-[#9aa3af]">
+              <p className="text-sm text-[#8f96a3]">
                 {isLoading
                   ? "Loading project details..."
-                  : "Track project progress and manage tasks efficiently"}
+                  : "Track project progress, approvals, and billing in one place."}
               </p>
               {!isLoading && (
-                <p className="text-xs text-[#7f8794]">
+                <p className="text-xs text-[#717784]">
                   {activeProjectManager
                     ? `Project Catalyst: ${activeProjectManager.fullName}`
                     : "Project Catalyst: Not assigned yet"}
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="default"
                       size="sm"
-                      className="h-9 rounded-full bg-[#ffc107] px-4 text-black hover:bg-[#ffd54f]"
+                      className="h-9 rounded-full bg-primary px-4 text-primary-foreground hover:bg-primary/90"
                       onClick={() =>
                         openCatalystDialog(CATALYST_REQUEST_TYPES.GENERAL)
                       }
                     >
-                      <Headset /> Catalyst
+                      <Headset className="mr-0.5 h-4 w-4" />
+                      Catalyst
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -2121,8 +2291,74 @@ const ProjectDashboard = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              { label: "Service Type", value: projectDetailSnapshot.service },
+              { label: "Freelancer", value: projectDetailSnapshot.teammateName },
+              { label: "Timeline", value: projectDetailSnapshot.timeline },
+            ].map((item) => (
+              <div key={item.label} className={projectInsetPanelClassName}>
+                <p className={projectSectionEyebrowClassName}>{item.label}</p>
+                <p className="mt-3 text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
+                  {item.value || "Not specified"}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="space-y-4">
+              <Card className={projectPanelClassName}>
+                <CardHeader className="pb-3">
+                  <CardTitle className={projectSectionEyebrowClassName}>
+                    Overview
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex items-start gap-3 rounded-[18px] border border-amber-500/15 bg-amber-500/5 px-4 py-4">
+                    <span className="mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_6px_rgba(255,193,7,0.08)]" />
+                    <p className="text-sm leading-7 text-[#d4d4d8]">
+                      {projectDetailSnapshot.overview ||
+                        "Project scope, priorities, and delivery context will appear here once the brief is fully structured."}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className={projectPanelClassName}>
+                <CardHeader className="pb-3">
+                  <CardTitle className={projectSectionEyebrowClassName}>
+                    Website Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-0">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {projectDetailSnapshot.websiteDetails.map((item) => (
+                      <div key={item.label} className={projectInsetPanelClassName}>
+                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+                          {item.label}
+                        </p>
+                        <p className="mt-3 text-sm font-medium leading-6 text-white">
+                          {item.value || "Not specified"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  {projectDetailSnapshot.pageTags.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {projectDetailSnapshot.pageTags.map((page) => (
+                        <span
+                          key={page}
+                          className="inline-flex items-center rounded-full border border-white/[0.08] bg-[#111111] px-3 py-1 text-[11px] font-medium text-[#cfd3da]"
+                        >
+                          {page}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+
               <Card className={projectPanelClassName}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                   <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
@@ -2569,9 +2805,7 @@ const ProjectDashboard = () => {
             </div>
 
             <div className="space-y-4">
-              {/* Freelancer Info Card */}
-              <FreelancerInfoCard freelancer={freelancer} />
-              <FreelancerAboutCard freelancer={freelancer} project={project} />
+              <FreelancerInfoCard freelancer={freelancer} project={project} />
 
               {/* Project Chat - First */}
               <Card className={`${projectPanelClassName} flex h-96 flex-col`}>
@@ -2752,29 +2986,35 @@ const ProjectDashboard = () => {
               {/* Documents - Second */}
               <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
-                    <FileText className="w-4 h-4" />
-                    Documents
+                  <CardTitle className={projectSectionEyebrowClassName}>
+                    Project Documents
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-2 pt-0">
                   {docs.length > 0 ? (
-                    <div className="space-y-2">
-                      {docs.map((doc, idx) => (
+                    docs.map((doc, idx) => {
+                      const fileSize = formatAttachmentSize(doc.size) || doc.size;
+                      return (
                         <div
                           key={idx}
-                          className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20"
+                          className="flex items-center gap-3 rounded-[16px] border border-white/[0.06] bg-[#111111] px-3 py-3 text-sm"
                         >
-                          <FileText className="w-4 h-4 text-primary" />
-                          <span className="truncate flex-1">{doc.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {doc.size}
+                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                            <FileText className="h-4 w-4 text-primary" />
                           </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-white">
+                              {doc.name}
+                            </p>
+                            <p className="mt-1 text-xs text-[#8f96a3]">
+                              {fileSize || "File"}
+                            </p>
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })
                   ) : (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-[#8f96a3]">
                       No documents attached yet. Upload project documentation
                       here.
                     </p>
@@ -3113,6 +3353,7 @@ const ProjectDashboard = () => {
               ) : null}
 
             </div>
+          </div>
           </div>
 
             <ClientDashboardFooter variant="workspace" />

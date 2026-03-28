@@ -2,16 +2,22 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import { Link, useSearchParams } from "react-router-dom";
 
+import { ProjectProposalCard } from "@/components/features/client/ClientProjects";
 import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTopBar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/shared/context/AuthContext";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { formatINR, getFreelancerVisibleBudgetValue } from "@/shared/lib/currency";
 import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
@@ -736,15 +742,48 @@ const ProjectPhaseStep = ({ item }) => {
 
 const FreelancerProjectCard = ({ project }) => {
   const detailPanelClassName =
-    "border border-white/[0.06] bg-white/[0.035] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+    "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
   const phaseSteps = Array.isArray(project.currentPhaseSteps) ? project.currentPhaseSteps : [];
   const actionClassName = cn(
     "flex w-full items-center justify-center gap-2 rounded-[14px] px-4 py-3.5 text-base font-semibold transition-colors",
     projectActionToneMap[project.actionTone] || projectActionToneMap.slate,
   );
 
+  const sharedCardProject = {
+    id: project.id,
+    sectionLabel: project.sectionLabel,
+    statusMeta: project.statusMeta,
+    title: project.title,
+    serviceType: project.serviceType,
+    freelancerName: project.clientName,
+    freelancerRole: project.clientRole,
+    freelancerInitial: project.clientInitial,
+    freelancerAvatar: project.clientAvatar,
+    budgetLabel: project.payoutLabel,
+    dateLabel: project.timelineDisplayLabel || "Timeline",
+    dateValue: project.timelineLabel,
+    phaseProgressValue: project.phaseProgressValue,
+    currentPhase: project.currentPhase,
+    currentPhaseCountLabel: project.currentPhaseCountLabel,
+    currentPhaseSteps: project.currentPhaseSteps,
+    actionType: "link",
+    actionLabel: project.actionLabel,
+    actionHref: project.actionHref,
+    actionTone: project.actionTone,
+  };
+
+  if (project?.renderWithSharedCard !== false) {
+    return (
+      <ProjectProposalCard
+        project={sharedCardProject}
+        replaceSectionBadgeWithStatus
+        className="w-full"
+      />
+    );
+  }
+
   return (
-    <article className="flex h-full flex-col rounded-[28px] border border-white/[0.06] bg-accent p-6 transition-transform duration-200 hover:-translate-y-1 [content-visibility:auto]">
+    <article className="flex h-full flex-col rounded-[28px] border border-white/[0.06] bg-card p-6 transition-transform duration-200 hover:-translate-y-1 [content-visibility:auto]">
       <div className="flex flex-1 flex-col">
         <div className="flex items-start justify-between gap-4">
           <span className="rounded-[8px] bg-white/[0.06] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#9ca3af]">
@@ -887,11 +926,45 @@ const EmptyProjectsState = ({
   </div>
 );
 
+const ProjectCarouselDots = ({ count, activeIndex, onSelect, ariaLabel }) => {
+  if (count <= 1) return null;
+
+  return (
+    <div className="mt-2.5 flex items-center justify-center gap-2" aria-label={ariaLabel}>
+      {Array.from({ length: count }, (_, index) => {
+        const isActive = index === activeIndex;
+
+        return (
+          <button
+            key={`freelancer-project-carousel-dot-${index}`}
+            type="button"
+            onClick={() => onSelect(index)}
+            aria-label={`Go to project ${index + 1}`}
+            aria-pressed={isActive}
+            className={cn(
+              "h-2.5 rounded-full transition-all duration-200",
+              isActive
+                ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-2.5 bg-white/[0.14] hover:bg-white/[0.28]",
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
 const FreelancerProjectsContent = () => {
   const { authFetch, isAuthenticated } = useAuth();
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [projectCarouselApi, setProjectCarouselApi] = useState(null);
+  const [canGoToPreviousProject, setCanGoToPreviousProject] = useState(false);
+  const [canGoToNextProject, setCanGoToNextProject] = useState(false);
+  const [projectCarouselSnapCount, setProjectCarouselSnapCount] = useState(0);
+  const [activeProjectSnap, setActiveProjectSnap] = useState(0);
   const hasUserSelectedFilterRef = React.useRef(false);
 
   const activeFilter = searchParams.get("view") === "completed" ? "completed" : "ongoing";
@@ -947,6 +1020,33 @@ const FreelancerProjectsContent = () => {
       ),
     [activeFilter, projectCards],
   );
+  const shouldUseProjectCarousel = isMobile && visibleProjectCards.length > 1;
+
+  useEffect(() => {
+    if (!projectCarouselApi || !shouldUseProjectCarousel) {
+      setCanGoToPreviousProject(false);
+      setCanGoToNextProject(false);
+      setProjectCarouselSnapCount(0);
+      setActiveProjectSnap(0);
+      return undefined;
+    }
+
+    const syncProjectCarouselState = () => {
+      setCanGoToPreviousProject(projectCarouselApi.canScrollPrev());
+      setCanGoToNextProject(projectCarouselApi.canScrollNext());
+      setProjectCarouselSnapCount(projectCarouselApi.scrollSnapList().length);
+      setActiveProjectSnap(projectCarouselApi.selectedScrollSnap());
+    };
+
+    syncProjectCarouselState();
+    projectCarouselApi.on("select", syncProjectCarouselState);
+    projectCarouselApi.on("reInit", syncProjectCarouselState);
+
+    return () => {
+      projectCarouselApi.off("select", syncProjectCarouselState);
+      projectCarouselApi.off("reInit", syncProjectCarouselState);
+    };
+  }, [projectCarouselApi, shouldUseProjectCarousel]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -973,22 +1073,16 @@ const FreelancerProjectsContent = () => {
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
         <div className="max-w-[1600px] mx-auto">
-          <section className="space-y-4">
+          <section className="space-y-5">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <p className="text-[0.84rem] font-semibold uppercase tracking-[0.34em] text-[#ffc107]/80">
-                  Freelancer Projects
-                </p>
-                <h1 className="mt-3 text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-[#f1f5f9]">
+                <h1 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-[#f1f5f9]">
                   Project Workspace
                 </h1>
-                <p className="mt-2 max-w-[38rem] text-sm text-[#94a3b8]">
-                  Track active delivery work, review completed handovers, and keep every client project in one place.
-                </p>
               </div>
 
               <div className="flex justify-start lg:justify-end">
-                <div className="inline-flex h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                <div className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-card p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                   {projectFilterOptions.map((option) => {
                     const count =
                       option.key === "completed" ? completedProjectCount : ongoingProjectCount;
@@ -1003,7 +1097,7 @@ const FreelancerProjectsContent = () => {
                           setActiveFilter(option.key);
                         }}
                         className={cn(
-                          "h-11 rounded-full border border-transparent px-5 text-[0.95rem] font-semibold transition",
+                          "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
                           isActive
                             ? "border-[#ffc107]/70 bg-[#ffc107] text-[#141414]"
                             : "text-[#a3a6ad] hover:text-white",
@@ -1018,7 +1112,7 @@ const FreelancerProjectsContent = () => {
             </div>
           </section>
 
-          <section className="mt-12">
+          <section className="mt-8 sm:mt-10 lg:mt-12">
             {isLoading ? (
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {[1, 2, 3].map((item) => (
@@ -1026,11 +1120,64 @@ const FreelancerProjectsContent = () => {
                 ))}
               </div>
             ) : visibleProjectCards.length > 0 ? (
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {visibleProjectCards.map((project) => (
-                  <FreelancerProjectCard key={project.id} project={project} />
-                ))}
-              </div>
+              shouldUseProjectCarousel ? (
+                <div className="w-full">
+                  <Carousel
+                    setApi={setProjectCarouselApi}
+                    opts={{
+                      align: "start",
+                      containScroll: "trimSnaps",
+                      slidesToScroll: 1,
+                      duration: 34,
+                    }}
+                    className="w-full"
+                  >
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground md:hidden"
+                      onClick={() => projectCarouselApi?.scrollPrev()}
+                      disabled={!canGoToPreviousProject}
+                      aria-label="Show previous project"
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground md:hidden"
+                      onClick={() => projectCarouselApi?.scrollNext()}
+                      disabled={!canGoToNextProject}
+                      aria-label="Show next project"
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+
+                    <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                      {visibleProjectCards.map((project) => (
+                        <CarouselItem key={project.id} className="basis-full pl-[2px] pr-[2px] pt-1">
+                          <FreelancerProjectCard project={project} />
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                  </Carousel>
+
+                  <ProjectCarouselDots
+                    count={projectCarouselSnapCount}
+                    activeIndex={activeProjectSnap}
+                    onSelect={(index) => projectCarouselApi?.scrollTo(index)}
+                    ariaLabel="Project carousel pagination"
+                  />
+                </div>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {visibleProjectCards.map((project) => (
+                    <FreelancerProjectCard key={project.id} project={project} />
+                  ))}
+                </div>
+              )
             ) : projectCards.length > 0 ? (
               <EmptyProjectsState
                 title={

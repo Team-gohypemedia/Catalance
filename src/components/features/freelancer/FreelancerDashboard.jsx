@@ -1773,6 +1773,7 @@ const FreelancerProjectRedirectCard = ({ item, className }) => (
 );
 
 export const DashboardContent = ({ _roleOverride }) => {
+  const isMobile = useIsMobile();
   const [sessionUser, setSessionUser] = useState(null);
   const { authFetch, user } = useAuth();
   const [metrics, setMetrics] = useState(INITIAL_FREELANCER_DASHBOARD_METRICS);
@@ -2516,7 +2517,7 @@ export const DashboardContent = ({ _roleOverride }) => {
       }),
     [metrics.acceptedProposals, resolveProjectProgress]
   );
-  const shouldUseProjectCarousel = runningProjectCards.length > 3;
+  const shouldUseProjectCarousel = isMobile ? runningProjectCards.length > 1 : runningProjectCards.length > 3;
   const activeProjectCardClassName = "w-full";
   const activeProjectRedirectCardClassName = "w-full md:min-h-[506px]";
   const freelancerProjectRedirectCards = useMemo(() => {
@@ -3219,10 +3220,6 @@ export const DashboardContent = ({ _roleOverride }) => {
                         Live snapshot
                       </Badge>
                     </div>
-                    <p className="mt-1 max-w-2xl text-sm leading-6 text-[#94a3b8]">
-                      Track what you&apos;ve already earned, what is still pending, and which active
-                      projects are likely to convert into your next payouts.
-                    </p>
                   </div>
 
                   <div className="flex flex-col gap-2 sm:flex-row">
