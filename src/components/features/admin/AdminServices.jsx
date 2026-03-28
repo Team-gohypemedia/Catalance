@@ -267,10 +267,12 @@ const AdminServices = () => {
                                     id="aiPrompt"
                                     value={formData.aiPrompt}
                                     onChange={(e) => setFormData({ ...formData, aiPrompt: e.target.value })}
-                                    placeholder="Provide specialized instructions or context so the AI remembers the specifics of this service during chat..."
+                                    placeholder={"General service rules for the AI.\n@reply: Keep replies concise and business-focused.\n@prioritize: Custom Development | WordPress | Shopify\n@recommend: Custom Development"}
                                     className="h-32 resize-y font-mono text-sm"
                                 />
-                                <p className="text-xs text-muted-foreground">This prompt is injected into the AI's system memory silently when a user discusses this specific service.</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Hidden from the user. You can add plain-language service context or optional directives like <code>@reply:</code>, <code>@prioritize:</code>, <code>@recommend:</code>, and <code>@validate:</code>.
+                                </p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg border">

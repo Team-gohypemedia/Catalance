@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 const { __testables } = await import("../guest.controller.js");
 
 const {
+  applyAdminControlsToOptions,
   applyExtractedAnswerUpdates,
+  buildAdminControlSummaryText,
   buildCurrentQuestionValidationPrompt,
   buildLockedServiceReply,
   buildPersistedAnswersPayload,
@@ -14,6 +16,7 @@ const {
   findBudgetMinimumViolationChange,
   getDisplayedQuestionOptions,
   getBudgetMinimumValidationResult,
+  getQuestionAdminControls,
   getQuestionIdentityType,
   getMostRecentMessageContentByRole,
   getPostProposalBudgetFollowupAction,
@@ -22,6 +25,7 @@ const {
   isBudgetQuestion,
   mergeExtractedAnswers,
   normalizeAnswerForQuestion,
+  parseAdminControlText,
   toChronologicalGuestHistory,
 } = __testables;
 
@@ -82,6 +86,110 @@ test("builds displayed answers from runtime option labels", () => {
     getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug)[0].label,
     "Fast Next.js build"
   );
+});
+
+test("reorders displayed options from question-level admin priority directives", () => {
+  const prioritizedQuestion = {
+    slug: "platform",
+    text: "Which platform do you want to launch on?",
+    type: "single_select",
+    subtitle: "@prioritize: Android and iOS | Android only | iOS only",
+    options: [
+      { label: "iOS only", value: "ios" },
+      { label: "Android only", value: "android" },
+      { label: "Android and iOS", value: "both" },
+    ],
+  };
+
+  assert.deepEqual(
+    getDisplayedQuestionOptions(prioritizedQuestion, {}).map((option) => option.label),
+    ["Android and iOS", "Android only", "iOS only"]
+  );
+});
+
+test("maps admin-configured aliases back to the canonical option value", () => {
+  const mappedQuestion = {
+    slug: "platform",
+    text: "Which platform do you want to launch on?",
+    type: "single_select",
+    subtitle: "@map: cross platform => Android and iOS; both apps => Android and iOS",
+    options: [
+      { label: "Android only", value: "android" },
+      { label: "iOS only", value: "ios" },
+      { label: "Android and iOS", value: "both" },
+    ],
+  };
+
+  assert.equal(
+    normalizeAnswerForQuestion(mappedQuestion, "cross platform", {}),
+    "both"
+  );
+});
+
+test("merges service and question admin controls with question overrides first", () => {
+  const controls = getQuestionAdminControls(
+    {
+      subtitle: [
+        "Choose the best launch platform.",
+        "@prioritize: Android and iOS | Android only",
+        "@map: cross platform => Android and iOS",
+      ].join("\n"),
+    },
+    [
+      "@reply: Keep replies concise.",
+      "@recommend: Android and iOS",
+      "@prioritize: iOS only",
+    ].join("\n")
+  );
+
+  assert.equal(controls.recommendedOption, "Android and iOS");
+  assert.deepEqual(controls.prioritizeOptions, [
+    "Android and iOS",
+    "Android only",
+    "iOS only",
+  ]);
+  assert.deepEqual(controls.optionMappings, [
+    { source: "cross platform", target: "Android and iOS" },
+  ]);
+  assert.match(buildAdminControlSummaryText(controls), /prefer Android and iOS/i);
+});
+
+test("parses admin control directives from free-text fields", () => {
+  const parsed = parseAdminControlText([
+    "Use this question to confirm the preferred launch path.",
+    "@reply: Keep the answer short and direct.",
+    "@validate: Treat WooCommerce as WordPress.",
+    "@map: woocommerce => WordPress; elementor => WordPress",
+  ].join("\n"));
+
+  assert.equal(parsed.contextText, "Use this question to confirm the preferred launch path.");
+  assert.deepEqual(parsed.responseRules, ["Keep the answer short and direct."]);
+  assert.deepEqual(parsed.validationRules, ["Treat WooCommerce as WordPress."]);
+  assert.deepEqual(parsed.optionMappings, [
+    { source: "woocommerce", target: "WordPress" },
+    { source: "elementor", target: "WordPress" },
+  ]);
+});
+
+test("applies admin-recommended option ordering deterministically", () => {
+  const reordered = applyAdminControlsToOptions(
+    [
+      { label: "WordPress", value: "wordpress" },
+      { label: "Shopify", value: "shopify" },
+      { label: "Custom Development", value: "custom" },
+    ],
+    {
+      recommendedOption: "Custom Development",
+      prioritizeOptions: ["Shopify"],
+      optionMappings: [{ source: "bespoke", target: "Custom Development" }],
+    }
+  );
+
+  assert.deepEqual(
+    reordered.map((option) => option.label),
+    ["Custom Development", "Shopify", "WordPress"]
+  );
+  assert.match(reordered[0].aliases.join(" "), /bespoke/i);
 });
 
 test("keeps custom off-menu option answers as-is", () => {
@@ -243,7 +351,7 @@ test("finds the most recent assistant message for validation context", () => {
 test("builds a validation prompt that lets the model accept the assistant recommendation", () => {
   const prompt = buildCurrentQuestionValidationPrompt({
     serviceName: "App Development",
-    servicePrompt: "",
+    servicePrompt: "@reply: Keep replies concise.",
     currentQuestionText: "Which platform do you want to launch on?",
     currentQuestionOptions: ["Android only", "iOS only", "Android and iOS"],
     currentQuestionNumberedOptions: [
@@ -254,7 +362,11 @@ test("builds a validation prompt that lets the model accept the assistant recomm
     currentQuestionCanonicalOptions: ["Android only", "iOS only", "Android and iOS"],
     knownContextByQuestion: { "Preferred app type": "Marketplace" },
     savedResponseContext: "Preferred mobile app development approach: Flutter",
-    currentQuestionSubtitle: "Choose the launch platform",
+    currentQuestionSubtitle: [
+      "Choose the launch platform",
+      "@recommend: Android and iOS",
+      "@map: cross platform => Android and iOS",
+    ].join("\n"),
     userMessageText: "okay",
     attachmentContextText: "",
     attachmentInferredAnswer: "",
@@ -267,6 +379,8 @@ test("builds a validation prompt that lets the model accept the assistant recomm
   assert.match(prompt, /I recommend \*\*Android and iOS\*\*/);
   assert.match(prompt, /brief agreement or approval/);
   assert.match(prompt, /set "normalizedAnswer" to the exact recommended option label or value/i);
+  assert.match(prompt, /Admin Controls \(highest priority when relevant\)/);
+  assert.match(prompt, /Option mapping alias: "cross platform" => "Android and iOS"/);
 });
 
 test("detects budget questions from question text", () => {
