@@ -213,6 +213,7 @@ const normalizeSavedProposal = (proposal = {}) => {
 
 const getProposalDedupKeys = (proposal = {}) => {
   const keys = [];
+  const proposalId = String(proposal.id || proposal.localId || "").trim();
   const linkedProjectId = resolveProposalProjectLink(proposal);
   const signature = getProposalSignature(proposal);
   const summaryKey = normalizeComparableText(
@@ -223,8 +224,12 @@ const getProposalDedupKeys = (proposal = {}) => {
     proposal.budget || proposal.amount || proposal.project?.budget || "",
   );
 
-  if (proposal.id) {
-    keys.push(`id:${String(proposal.id).trim()}`);
+  // Keep authored drafts distinct by their own ids. The broader
+  // project/signature heuristics are only for legacy records that
+  // do not have a stable identifier yet.
+  if (proposalId) {
+    keys.push(`id:${proposalId}`);
+    return keys;
   }
 
   if (linkedProjectId) {
@@ -785,6 +790,19 @@ const mapProjectToSavedProposal = (project = {}) =>
     createdAt: project.createdAt || new Date().toISOString(),
     updatedAt: project.updatedAt || project.createdAt || new Date().toISOString()
   });
+
+const getDraftProposalSortTime = (proposal = {}) => {
+  const rawTimestamp =
+    proposal?.updatedAt ||
+    proposal?.savedAt ||
+    proposal?.syncedAt ||
+    proposal?.createdAt ||
+    proposal?.project?.updatedAt ||
+    proposal?.project?.createdAt ||
+    "";
+  const parsedTimestamp = Date.parse(rawTimestamp);
+  return Number.isFinite(parsedTimestamp) ? parsedTimestamp : 0;
+};
 
 const generateGradient = (id) => {
   if (!id) return "bg-[#FFD700]";
@@ -2359,7 +2377,6 @@ const ClientDashboardContent = () => {
     () => ({
       greeting,
       firstName,
-      description: "Here's a quick overview of your workspace today.",
       dateLabel: formatDashboardDate(new Date(), {
         weekday: "long",
         month: "short",
@@ -2383,17 +2400,13 @@ const ClientDashboardContent = () => {
           id: "completed-projects",
           title: "COMPLETED PROJECTS",
           value: String(dashboardProjectSummary.completedProjects).padStart(2, "0"),
-          iconKey: "projects",
+          iconKey: "completed",
           to: "/client/project?filter=completed",
         },
         {
           id: "pending-approvals",
           title: "PENDING APPROVALS",
           value: String(dashboardProjectSummary.pendingFreelancerRequests).padStart(2, "0"),
-          detail:
-            dashboardProjectSummary.pendingFreelancerRequests === 1
-              ? "Awaiting Review"
-              : "Awaiting Reviews",
           iconKey: "proposals",
           to: "/client/proposal?tab=pending",
         },
@@ -2414,15 +2427,46 @@ const ClientDashboardContent = () => {
   );
 
   const draftProposalRows = useMemo(() => {
-    const toneCycle = ["amber", "blue", "green", "violet"];
+    const projectBackedDraftProposals = projects
+      .filter((project) => shouldHydrateProjectProposal(project))
+      .map((project) => mapProjectToSavedProposal(project));
 
-    return dedupeSavedProposals(savedProposals).slice(0, 4).map((proposal, index) => ({
+    const seenDraftProposalKeys = new Set();
+    const visibleDraftProposalSource = [...savedProposals, ...projectBackedDraftProposals]
+      .sort((left, right) => {
+        const timestampDifference =
+          getDraftProposalSortTime(right) - getDraftProposalSortTime(left);
+        if (timestampDifference !== 0) return timestampDifference;
+
+        return String(right?.id || right?.localId || "").localeCompare(
+          String(left?.id || left?.localId || ""),
+        );
+      })
+      .filter((proposal) => {
+        const linkedProjectId =
+          proposal?.syncedProjectId || proposal?.projectId || proposal?.project?.id || "";
+        const proposalId = proposal?.id || proposal?.localId || "";
+        const signature = getProposalSignature(proposal);
+        const dedupeKey = linkedProjectId
+          ? `project:${linkedProjectId}`
+          : proposalId
+            ? `proposal:${proposalId}`
+            : `signature:${signature}`;
+
+        if (!dedupeKey || seenDraftProposalKeys.has(dedupeKey)) {
+          return false;
+        }
+
+        seenDraftProposalKeys.add(dedupeKey);
+        return true;
+      });
+
+    return visibleDraftProposalSource.map((proposal) => ({
       id: proposal.id,
       title:
         toDisplayTitleCase(resolveProposalBusinessName(proposal)) ||
         resolveProposalTitle(proposal),
-      tag: resolveProposalServiceLabel(proposal).toUpperCase(),
-      tagTone: toneCycle[index % toneCycle.length],
+      tag: toDisplayTitleCase(resolveProposalServiceLabel(proposal)),
       budget: formatBudget(proposal.budget),
       onView: () => {
         setActiveProposalId(proposal.id);
@@ -2448,8 +2492,8 @@ const ClientDashboardContent = () => {
     }));
   }, [
     openFreelancerSelection,
-    persistActiveProposalSelection,
     persistSavedProposalState,
+    projects,
     savedProposals,
     storageKeys,
   ]);
@@ -2843,8 +2887,7 @@ const ClientDashboardContent = () => {
           phases,
         };
       })
-      .filter((project) => project.progressCategory === "ongoing")
-      .slice(0, 3);
+      .filter((project) => project.progressCategory === "ongoing");
   }, [dashboardProjectSummary, uniqueProjects]);
 
   const recentActivities = useMemo(() => {

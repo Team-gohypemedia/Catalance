@@ -3,6 +3,7 @@
 import React from "react";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
+import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
@@ -15,11 +16,12 @@ import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Users from "lucide-react/dist/esm/icons/users";
-import { Link, useNavigate } from "react-router-dom";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { useNavigate } from "react-router-dom";
+import { CartesianGrid, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import {
 DropdownMenu,
@@ -30,6 +32,7 @@ DropdownMenuRadioItem,
 DropdownMenuSeparator,
 DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import {
@@ -43,6 +46,7 @@ import { cn } from "@/shared/lib/utils";
 
 const metricIconMap = {
   proposals: ClipboardList,
+  completed: CheckCircle2,
   freelancers: Users,
   tasks: ShieldAlert,
   projects: FolderKanban,
@@ -67,30 +71,16 @@ const activityToneMap = {
   slate: "bg-[#273142] text-[#94a3b8]",
 };
 
-const draftToneMap = {
-  amber: "text-[#ffc107]",
-  blue: "text-[#60a5fa]",
-  green: "text-[#34d399]",
-  violet: "text-[#c084fc]",
-};
+const MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT = 2;
 
-const truncatePhaseSubLabel = (value, maxLength = 24) => {
-  if (typeof value !== "string") return "";
-  const trimmedValue = value.trim();
-  if (!trimmedValue) return "";
-  return trimmedValue.length > maxLength
-    ? `${trimmedValue.slice(0, maxLength - 3).trimEnd()}...`
-    : trimmedValue;
-};
+const draftProposalSurfaceToneClassName =
+  "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 
-const truncatePhaseLabel = (value, maxLength = 28) => {
-  if (typeof value !== "string") return "";
-  const trimmedValue = value.trim();
-  if (!trimmedValue) return "";
-  return trimmedValue.length > maxLength
-    ? `${trimmedValue.slice(0, maxLength - 3).trimEnd()}...`
-    : trimmedValue;
-};
+const draftProposalDetailBlockClassName =
+  `flex min-w-0 flex-col rounded-[14px] ${draftProposalSurfaceToneClassName} p-4 lg:h-[76px]`;
+
+const draftProposalActionButtonClassName =
+  "inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-[10px] px-4 text-sm font-semibold transition-colors";
 
 const DashboardPanel = ({ className, children, ...props }) => (
   <div
@@ -110,6 +100,56 @@ const DashboardSkeletonBlock = ({ className }) => (
   <Skeleton className={cn(dashboardSkeletonClassName, className)} />
 );
 
+const dashboardMetricSkeletonItems = [
+  { id: "active-projects", hasValueSwitch: false },
+  { id: "completed-projects", hasValueSwitch: false },
+  { id: "pending-approvals", hasValueSwitch: false },
+  { id: "payments-summary", hasValueSwitch: true },
+];
+
+const OverviewMetricCardSkeleton = ({ item }) => {
+  const shouldSpanFullWidth = fullWidthMetricIds.has(item.id);
+
+  return (
+    <DashboardPanel
+      className={cn(
+        "group relative min-h-[136px] border border-transparent bg-card px-3.5 py-4 sm:min-h-[110px] sm:p-5",
+        shouldSpanFullWidth && "col-span-2 xl:col-span-1",
+      )}
+    >
+      <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
+        {item.hasValueSwitch ? (
+          <div className="flex w-full items-center justify-between">
+            <span className="size-10 shrink-0" aria-hidden="true" />
+            <DashboardSkeletonBlock className="size-10 rounded-[16px]" />
+            <DashboardSkeletonBlock className="size-10 rounded-[16px]" />
+          </div>
+        ) : (
+          <DashboardSkeletonBlock className="size-10 rounded-[16px]" />
+        )}
+        <DashboardSkeletonBlock className="mt-4 h-8 w-16 rounded-full" />
+        <DashboardSkeletonBlock className="mt-3 h-3 w-24 rounded-full" />
+      </div>
+
+      <div className="hidden h-full flex-col gap-2.5 sm:flex sm:gap-3">
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <DashboardSkeletonBlock className="size-9 shrink-0 rounded-lg" />
+            <DashboardSkeletonBlock className="h-4 w-28 rounded-full" />
+          </div>
+          {item.hasValueSwitch ? (
+            <DashboardSkeletonBlock className="size-9 shrink-0 rounded-lg" />
+          ) : null}
+        </div>
+
+        <div className="mt-auto flex flex-wrap items-end gap-x-1.5 gap-y-1 sm:gap-2">
+          <DashboardSkeletonBlock className="h-8 w-16 rounded-full" />
+        </div>
+      </div>
+    </DashboardPanel>
+  );
+};
+
 const ClientDashboardLoadingSkeleton = ({ hero }) => (
   <main className="flex-1 pb-12">
     <section className="mt-14 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -120,7 +160,9 @@ const ClientDashboardLoadingSkeleton = ({ hero }) => (
         <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
           {hero.greeting}, {hero.firstName}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground sm:mt-1">{hero.description}</p>
+        {hero.description ? (
+          <p className="mt-2 text-sm text-muted-foreground sm:mt-1">{hero.description}</p>
+        ) : null}
       </div>
       <p className="hidden text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:block">
         {hero.dateLabel}
@@ -128,30 +170,16 @@ const ClientDashboardLoadingSkeleton = ({ hero }) => (
     </section>
 
         <section className="mt-12 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
-          {[0, 1, 2, 3].map((item) => (
-            <DashboardPanel
-              key={`dashboard-metric-skeleton-${item}`}
-              className={cn(
-                "bg-card p-3.5 sm:p-5",
-                item >= 2 && "col-span-2 xl:col-span-1",
-              )}
-            >
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex items-start justify-between gap-2 sm:gap-3">
-                  <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                    <DashboardSkeletonBlock className="size-8 rounded-lg sm:size-9" />
-                    <DashboardSkeletonBlock className="h-3 w-16 rounded-full sm:h-3.5 sm:w-24" />
-                  </div>
-                  <DashboardSkeletonBlock className="size-8 rounded-lg sm:h-6 sm:w-16 sm:rounded-full" />
-                </div>
-                <DashboardSkeletonBlock className="h-8 w-20 rounded-full sm:h-9 sm:w-28" />
-              </div>
-            </DashboardPanel>
+          {dashboardMetricSkeletonItems.map((item) => (
+            <OverviewMetricCardSkeleton
+              key={`dashboard-metric-skeleton-${item.id}`}
+              item={item}
+            />
           ))}
         </section>
 
         <section className="mt-14">
-          <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
             <div className="flex items-center gap-3">
               <DashboardSkeletonBlock className="h-8 w-44 rounded-full" />
               <DashboardSkeletonBlock className="size-3 rounded-full" />
@@ -266,6 +294,31 @@ const OverviewMetricCard = ({ item }) => {
   const alternateToggleLabel = String(
     item.alternateTitle || item.title || "alternate value",
   ).toLowerCase();
+  const renderSwitchButton = (className, iconClassName) => (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        setShowPrimaryValue((current) => !current);
+      }}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+      }}
+      className={className}
+      aria-label={
+        showPrimaryValue
+          ? `Show ${alternateToggleLabel}`
+          : `Show ${primaryToggleLabel}`
+      }
+      title={
+        showPrimaryValue
+          ? `Switch to ${alternateToggleLabel}`
+          : `Switch to ${primaryToggleLabel}`
+      }
+    >
+      <Repeat2 className={iconClassName} />
+    </button>
+  );
   const handleCardActivation = React.useCallback(() => {
     if (typeof item.onClick === "function") {
       item.onClick();
@@ -298,56 +351,63 @@ const OverviewMetricCard = ({ item }) => {
         isInteractive ? `Open ${String(displayedTitle || item.title).toLowerCase()}` : undefined
       }
       className={cn(
-        "group min-h-[96px] border border-transparent bg-card p-3.5 transition-colors sm:min-h-[110px] sm:p-5",
+        "group relative min-h-[136px] border border-transparent bg-card px-3.5 py-4 transition-colors sm:min-h-[110px] sm:p-5",
         isInteractive
           ? "cursor-pointer hover:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           : "hover:border-primary/70",
         shouldSpanFullWidth && "col-span-2 xl:col-span-1",
       )}
     >
-      <div className="flex flex-col gap-2.5 sm:gap-3">
+      <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
+        {hasValueSwitch ? (
+          <div className="flex w-full items-center justify-between">
+            <span className="size-10 shrink-0 sm:size-14" aria-hidden="true" />
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
+              <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
+            </div>
+            {renderSwitchButton(
+              "inline-flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-primary",
+              "size-4 text-muted-foreground/75",
+            )}
+          </div>
+        ) : (
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75">
+            <Icon className="size-[18px] text-muted-foreground/75" />
+          </div>
+        )}
+        <p className="mt-4 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-white transition-colors group-hover:text-primary">
+          {displayedValue}
+        </p>
+        <p className="mt-3 text-center text-[8px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          {displayedTitle}
+        </p>
+        {item.detail ? (
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+        ) : null}
+      </div>
+      <div className="hidden h-full flex-col gap-2.5 sm:flex sm:gap-3">
         <div className="flex items-start justify-between gap-2 sm:gap-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground sm:size-9">
-              <Icon className="size-3 sm:size-4" />
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground/75">
+              <Icon className="size-4 text-muted-foreground/75" />
             </div>
-            <p className="line-clamp-2 text-[9px] font-medium uppercase leading-[1.05rem] tracking-[0.08em] text-muted-foreground sm:text-[11px] sm:leading-4 sm:tracking-[0.12em]">
+            <p className="line-clamp-2 text-[11px] font-medium uppercase leading-4 tracking-[0.12em] text-muted-foreground">
               {displayedTitle}
             </p>
           </div>
-
-          {hasValueSwitch ? (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setShowPrimaryValue((current) => !current);
-              }}
-              onKeyDown={(event) => {
-                event.stopPropagation();
-              }}
-              className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground transition-colors hover:bg-white/[0.12] hover:text-primary sm:size-9"
-              aria-label={
-                showPrimaryValue
-                  ? `Show ${alternateToggleLabel}`
-                  : `Show ${primaryToggleLabel}`
-              }
-              title={
-                showPrimaryValue
-                  ? `Switch to ${alternateToggleLabel}`
-                  : `Switch to ${primaryToggleLabel}`
-              }
-            >
-              <Repeat2 className="size-3 sm:size-4" />
-            </button>
-          ) : null}
+          {hasValueSwitch
+            ? renderSwitchButton(
+                "inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-primary",
+                "size-4 text-muted-foreground/75",
+              )
+            : null}
         </div>
         <div className="flex flex-wrap items-end gap-x-1.5 gap-y-1 sm:gap-2">
-          <p className="text-[1.35rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-primary sm:text-[1.75rem]">
+          <p className="text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-primary">
             {displayedValue}
           </p>
           {item.detail ? (
-            <p className="text-[10px] leading-4 text-muted-foreground sm:text-xs">{item.detail}</p>
+            <p className="text-xs leading-4 text-muted-foreground">{item.detail}</p>
           ) : null}
         </div>
       </div>
@@ -355,49 +415,153 @@ const OverviewMetricCard = ({ item }) => {
   );
 };
 
-const DraftProposalsPanel = ({ draftProposalRows, onOpenQuickProject }) => (
-  <DashboardPanel className="overflow-hidden bg-card">
-    <div className="px-4 py-4 sm:px-6 sm:py-5">
-      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
-        Draft Proposals
-      </h2>
-    </div>
+const DraftProposalCard = ({ item }) => (
+  <article className="flex h-auto w-full max-w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[28px] border border-white/[0.06] bg-card p-4 transition-transform duration-200 hover:-translate-y-1 sm:p-5 xl:p-6">
+    <DraftProposalRow item={item} />
+  </article>
+);
 
-    {draftProposalRows.length === 0 ? (
-      <div className="flex min-h-[240px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[320px] sm:px-6 sm:py-12">
-        <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-16">
-          <ClipboardList className="size-6 sm:size-7" />
+const DraftProposalListPanel = ({ draftProposalRows }) => (
+  <DashboardPanel className="overflow-hidden bg-card">
+    <div className="divide-y divide-white/[0.06]">
+      {draftProposalRows.map((item) => (
+        <div key={item.id} className="px-4 py-5 sm:px-6 sm:py-6">
+          <DraftProposalRow item={item} />
         </div>
-        <p className="mt-6 text-base font-medium text-white">No draft proposals yet</p>
-        <p className="mt-2 max-w-[320px] text-sm text-muted-foreground">
-          Start a new proposal to build your project brief and invite freelancers.
-        </p>
-        <button
-          type="button"
-          onClick={onOpenQuickProject}
-          className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f] sm:min-w-0"
-        >
-          Create New Proposal
-        </button>
-      </div>
-    ) : (
-      draftProposalRows.map((item) => <DraftProposalRow key={item.id} item={item} />)
-    )}
+      ))}
+    </div>
   </DashboardPanel>
 );
+
+const DraftProposalsSection = ({ draftProposalRows, onOpenQuickProject, className = "" }) => {
+  const isMobile = useIsMobile();
+  const shouldUseDraftProposalCarousel = isMobile && draftProposalRows.length > 1;
+  const [draftProposalCarouselApi, setDraftProposalCarouselApi] = React.useState(null);
+  const [canGoToPreviousDraftProposal, setCanGoToPreviousDraftProposal] = React.useState(false);
+  const [canGoToNextDraftProposal, setCanGoToNextDraftProposal] = React.useState(false);
+  const [draftProposalSnapCount, setDraftProposalSnapCount] = React.useState(0);
+  const [activeDraftProposalSnap, setActiveDraftProposalSnap] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!draftProposalCarouselApi || !shouldUseDraftProposalCarousel) {
+      setCanGoToPreviousDraftProposal(false);
+      setCanGoToNextDraftProposal(false);
+      setDraftProposalSnapCount(0);
+      setActiveDraftProposalSnap(0);
+      return undefined;
+    }
+
+    const syncDraftProposalCarouselState = () => {
+      setCanGoToPreviousDraftProposal(draftProposalCarouselApi.canScrollPrev());
+      setCanGoToNextDraftProposal(draftProposalCarouselApi.canScrollNext());
+      setDraftProposalSnapCount(draftProposalCarouselApi.scrollSnapList().length);
+      setActiveDraftProposalSnap(draftProposalCarouselApi.selectedScrollSnap());
+    };
+
+    syncDraftProposalCarouselState();
+    draftProposalCarouselApi.on("select", syncDraftProposalCarouselState);
+    draftProposalCarouselApi.on("reInit", syncDraftProposalCarouselState);
+
+    return () => {
+      draftProposalCarouselApi.off("select", syncDraftProposalCarouselState);
+      draftProposalCarouselApi.off("reInit", syncDraftProposalCarouselState);
+    };
+  }, [draftProposalCarouselApi, shouldUseDraftProposalCarousel]);
+
+  return (
+    <section className={cn("w-full min-w-0", className)}>
+      <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
+        <div className="min-w-0">
+          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+            Drafted Proposals
+          </h2>
+        </div>
+
+        {shouldUseDraftProposalCarousel ? (
+          <ProjectCarouselControls
+            onPrevious={() => draftProposalCarouselApi?.scrollPrev()}
+            onNext={() => draftProposalCarouselApi?.scrollNext()}
+            canGoPrevious={canGoToPreviousDraftProposal}
+            canGoNext={canGoToNextDraftProposal}
+            previousLabel="Show previous draft proposal"
+            nextLabel="Show next draft proposal"
+          />
+        ) : null}
+      </div>
+
+      {draftProposalRows.length === 0 ? (
+        <DashboardPanel className="overflow-hidden bg-card">
+          <div className="flex min-h-[240px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[320px] sm:px-6 sm:py-12">
+            <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-16">
+              <ClipboardList className="size-6 sm:size-7" />
+            </div>
+            <p className="mt-6 text-base font-medium text-white">No draft proposals yet</p>
+            <p className="mt-2 max-w-[320px] text-sm text-muted-foreground">
+              Start a new proposal to build your project brief and invite freelancers.
+            </p>
+            <button
+              type="button"
+              onClick={onOpenQuickProject}
+              className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f] sm:min-w-0"
+            >
+              Create New Proposal
+            </button>
+          </div>
+        </DashboardPanel>
+      ) : shouldUseDraftProposalCarousel ? (
+        <div className="w-full min-w-0">
+          <Carousel
+            setApi={setDraftProposalCarouselApi}
+            opts={{
+              align: "start",
+              containScroll: "trimSnaps",
+              slidesToScroll: 1,
+              duration: 34,
+            }}
+            className="w-full"
+          >
+            <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+              {draftProposalRows.map((item) => (
+                <CarouselItem
+                  key={item.id}
+                  className="basis-full pl-[2px] pr-[2px] pt-1"
+                >
+                  <DraftProposalCard item={item} />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
+          <ProjectCarouselDots
+            count={draftProposalSnapCount}
+            activeIndex={activeDraftProposalSnap}
+            onSelect={(index) => draftProposalCarouselApi?.scrollTo(index)}
+            ariaLabel="Draft proposals carousel pagination"
+            getDotLabel={(index) => `Go to draft proposal ${index + 1}`}
+          />
+        </div>
+      ) : isMobile ? (
+        <DraftProposalCard item={draftProposalRows[0]} />
+      ) : (
+        <DraftProposalListPanel draftProposalRows={draftProposalRows} />
+      )}
+    </section>
+  );
+};
 
 const ProjectCarouselControls = ({
   onPrevious,
   onNext,
   canGoPrevious,
   canGoNext,
+  previousLabel = "Show previous active projects",
+  nextLabel = "Show next active projects",
 }) => (
   <div className="flex items-center gap-2">
     <button
       type="button"
       onClick={onPrevious}
       disabled={!canGoPrevious}
-      aria-label="Show previous active projects"
+      aria-label={previousLabel}
       className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-white/35"
     >
       <ChevronLeft className="size-4" />
@@ -407,13 +571,50 @@ const ProjectCarouselControls = ({
       type="button"
       onClick={onNext}
       disabled={!canGoNext}
-      aria-label="Show next active projects"
+      aria-label={nextLabel}
       className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-white/35"
     >
       <ChevronRight className="size-4" />
     </button>
   </div>
 );
+
+const ProjectCarouselDots = ({
+  count,
+  activeIndex,
+  onSelect,
+  ariaLabel = "Active projects carousel pagination",
+  getDotLabel,
+}) => {
+  if (count <= 1) return null;
+
+  return (
+    <div
+      className="mt-2.5 flex items-center justify-center gap-2"
+      aria-label={ariaLabel}
+    >
+      {Array.from({ length: count }, (_, index) => {
+        const isActive = index === activeIndex;
+
+        return (
+          <button
+            key={`active-project-dot-${index}`}
+            type="button"
+            onClick={() => onSelect(index)}
+            aria-label={typeof getDotLabel === "function" ? getDotLabel(index) : `Go to active projects slide ${index + 1}`}
+            aria-pressed={isActive}
+            className={cn(
+              "h-2.5 rounded-full transition-all duration-200",
+              isActive
+                ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-2.5 bg-white/[0.14] hover:bg-white/[0.28]",
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+};
 
 const ProjectRedirectCard = ({ item, className }) => (
   <DashboardPanel
@@ -463,8 +664,36 @@ const ProjectRedirectCard = ({ item, className }) => (
   </DashboardPanel>
 );
 
-const ActivityRow = ({ item }) => {
+const ActivityRow = ({ item, compact = false }) => {
   const Icon = activityIconMap[item.iconKey] || FolderKanban;
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={item.onClick}
+        className="flex w-full items-start gap-4 rounded-[18px] px-3 py-3 text-left transition-colors hover:bg-white/[0.02]"
+      >
+        <div
+          className={cn(
+            "mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-full",
+            activityToneMap[item.tone] || activityToneMap.slate,
+          )}
+        >
+          <Icon className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[1.05rem] font-semibold leading-tight text-white">
+            {item.title}
+          </p>
+          <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
+            {item.subtitle}
+          </p>
+          <span className="mt-3 block text-xs text-muted-foreground">{item.timeLabel}</span>
+        </div>
+      </button>
+    );
+  }
 
   return (
     <button
@@ -491,99 +720,196 @@ const ActivityRow = ({ item }) => {
   );
 };
 
-const DraftProposalRow = ({ item }) => (
-  <div className="flex flex-col gap-4 border-b border-white/[0.05] px-4 py-4 last:border-b-0 sm:px-5 sm:py-5 md:flex-row md:items-center md:justify-between">
-    <div className="min-w-0">
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="truncate text-lg font-medium text-white">{item.title}</p>
-        <span
-          className={cn(
-            "px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]",
-            draftToneMap[item.tagTone] || draftToneMap.amber,
-          )}
+const RecentActivitySection = ({ recentActivities, onOpenViewProjects }) => {
+  const isMobile = useIsMobile();
+  const [showAllRecentActivities, setShowAllRecentActivities] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isMobile) {
+      setShowAllRecentActivities(false);
+    }
+  }, [isMobile]);
+
+  const hasOverflow = recentActivities.length > MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT;
+  const visibleActivities =
+    isMobile && !showAllRecentActivities
+      ? recentActivities.slice(0, MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT)
+      : recentActivities;
+  const remainingActivityCount = Math.max(
+    0,
+    recentActivities.length - MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT,
+  );
+
+  return (
+    <section className="w-full min-w-0">
+      <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
+        <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+          Recent Activity
+        </h2>
+        <button
+          type="button"
+          onClick={onOpenViewProjects}
+          className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[#ffc107] transition-colors hover:text-[#ffd54f]"
         >
-          {item.tag}
-        </span>
+          View All
+        </button>
+      </div>
+
+      <DashboardPanel className="overflow-hidden bg-card">
+        {recentActivities.length === 0 ? (
+          <div className="px-5 py-6 text-sm text-[#8f96a3] sm:px-6">
+            No recent activity yet.
+          </div>
+        ) : isMobile ? (
+          <div className="px-3 pb-3 pt-3">
+            <div className="space-y-1">
+              {visibleActivities.map((item) => (
+                <ActivityRow key={item.id} item={item} compact />
+              ))}
+            </div>
+
+            {hasOverflow ? (
+              <div className="px-2 pt-4">
+                <div className="h-px bg-white/[0.08]" />
+                <button
+                  type="button"
+                  onClick={() => setShowAllRecentActivities((current) => !current)}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#cbd5e1] transition-colors hover:text-white"
+                  aria-expanded={showAllRecentActivities}
+                >
+                  <span>
+                    {showAllRecentActivities
+                      ? "Show Less"
+                      : `View ${remainingActivityCount} More`}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "size-4 transition-transform duration-200",
+                      showAllRecentActivities ? "rotate-180" : "rotate-0",
+                    )}
+                  />
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div>
+            {recentActivities.map((item) => (
+              <ActivityRow key={item.id} item={item} />
+            ))}
+          </div>
+        )}
+      </DashboardPanel>
+    </section>
+  );
+};
+
+const DraftProposalRow = ({ item }) => (
+  <div className="grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end">
+    <div className="min-w-0 w-full">
+      <p className="min-w-0 truncate text-[1.4rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.55rem]">
+        {item.title}
+      </p>
+
+      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
+        <div className={draftProposalDetailBlockClassName}>
+          <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
+            Service
+          </p>
+          <p className="mt-3 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            {item.tag}
+          </p>
+        </div>
+
+        <div className={draftProposalDetailBlockClassName}>
+          <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
+            Budget
+          </p>
+          <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            {item.budget}
+          </p>
+        </div>
       </div>
     </div>
 
-    <div className="flex flex-wrap items-center gap-3 md:flex-nowrap md:gap-4">
-      <span className="min-w-0 text-left text-base font-medium text-[#f1f5f9] sm:text-[1.1rem] md:min-w-[112px] md:text-right">
-        {item.budget}
-      </span>
-
+    <div className="flex w-full flex-col gap-2.5 lg:h-[76px] lg:items-stretch lg:gap-2">
       <button
         type="button"
         onClick={item.onSend}
-        className="inline-flex min-w-[144px] items-center justify-center rounded-full bg-[#ffc107] px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f] md:min-w-0"
+        className={cn(
+          draftProposalActionButtonClassName,
+          "bg-[#ffc107] text-black hover:bg-[#ffd54f] lg:h-auto lg:flex-1",
+        )}
       >
         Send Proposal
       </button>
 
-      <Link
-        to="/client/proposal?tab=draft"
-        className="inline-flex min-w-[144px] items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#f2f2f2] md:min-w-0"
-      >
-        View Details
-      </Link>
-
-      <button
-        type="button"
-        onClick={item.onDelete}
-        className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-white"
-        aria-label={`Delete ${item.title}`}
-      >
-        <Trash2 className="size-4" />
-      </button>
-    </div>
-  </div>
-);
-
-const AcceptedFreelancerRow = ({ item }) => (
-  <div className="flex items-start gap-3.5">
-    <Avatar className="mt-0.5 size-10 shrink-0 border border-white/10 shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
-      <AvatarImage src={item.avatar} alt={item.name} />
-      <AvatarFallback className="bg-[#1e293b] text-sm text-white">
-        {item.initial}
-      </AvatarFallback>
-    </Avatar>
-
-    <div className="grid min-w-0 flex-1 grid-cols-1 gap-y-3 sm:max-w-[320px] sm:grid-cols-[minmax(0,1fr)_96px] sm:grid-rows-[auto_auto] sm:gap-x-2 sm:gap-y-0">
-      <div className="min-w-0 sm:col-start-1 sm:row-start-1">
-        <p className="min-w-0 truncate text-[1.08rem] font-semibold leading-[1.05] tracking-[-0.03em] text-white">
-          {item.name}
-        </p>
-        <p className="mt-0 min-w-0 truncate text-[12px] leading-none text-muted-foreground">
-          {item.role}
-        </p>
-      </div>
-
-      <div className="flex w-full gap-2 sm:col-start-2 sm:row-span-2 sm:flex-col sm:justify-end sm:self-stretch">
+      <div className="grid grid-cols-[minmax(0,1fr)_44px] gap-2.5 lg:h-auto lg:flex-1 lg:gap-2">
         <button
           type="button"
           onClick={item.onView}
-          className="inline-flex h-8 flex-1 items-center justify-center rounded-[8px] border border-white/[0.08] bg-card px-3 text-[12px] font-semibold text-white transition-colors hover:bg-white/[0.04] sm:h-7 sm:flex-none"
+          className={cn(
+            draftProposalActionButtonClassName,
+            `${draftProposalSurfaceToneClassName} text-white hover:bg-white/[0.05] lg:h-full`,
+          )}
         >
-          {item.viewLabel || "View"}
+          View Details
         </button>
+
         <button
           type="button"
-          onClick={item.onMessage}
-          className="inline-flex h-8 flex-1 items-center justify-center rounded-[8px] bg-white px-3 text-[11px] font-bold uppercase tracking-[0.01em] text-black transition-colors hover:bg-[#f2f2f2] sm:h-7 sm:flex-none"
+          onClick={item.onDelete}
+          className={cn(
+            draftProposalActionButtonClassName,
+            `${draftProposalSurfaceToneClassName} px-0 text-muted-foreground hover:bg-white/[0.05] hover:text-white lg:h-full`,
+          )}
+          aria-label={`Delete ${item.title}`}
         >
-          MESSAGE
+          <Trash2 className="size-4 text-current" />
         </button>
-      </div>
-
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] leading-none text-muted-foreground sm:col-start-1 sm:row-start-2 sm:flex-nowrap sm:items-end sm:self-end">
-        <FolderKanban className="size-[12px] shrink-0 text-[#64748b]" />
-        <span className="min-w-0 truncate text-white">{item.projectLabel}</span>
-        <span className="shrink-0 text-[#64748b]">&bull;</span>
-        <span className="truncate">{item.activityLabel}</span>
       </div>
     </div>
   </div>
 );
+
+const AcceptedFreelancerRow = ({ item, onOpenMessages }) => {
+  const handleMessageClick = item.onMessage || onOpenMessages;
+
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 sm:gap-4">
+      <Avatar className="size-11 shrink-0 border border-white/10 shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
+        <AvatarImage src={item.avatar} alt={item.name} />
+        <AvatarFallback className="bg-[#1e293b] text-sm text-white">
+          {item.initial}
+        </AvatarFallback>
+      </Avatar>
+
+      <div className="min-w-0">
+        <p className="truncate text-[1.08rem] font-semibold leading-tight tracking-[-0.03em] text-white">
+          {item.name}
+        </p>
+        <p className="mt-0.5 truncate text-[0.94rem] leading-tight text-[#b3b3b3]">
+          {item.role}
+        </p>
+
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 text-[13px] leading-none text-muted-foreground">
+          <FolderKanban className="size-[12px] shrink-0 text-[#7a7f89]" />
+          <span className="min-w-0 truncate">{item.projectLabel}</span>
+          <span className="shrink-0 text-[#7a7f89]">&bull;</span>
+          <span className="truncate">{item.activityLabel}</span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleMessageClick}
+        className="inline-flex h-10 min-w-[94px] shrink-0 items-center justify-center rounded-[8px] bg-white px-4 text-[13px] font-medium uppercase tracking-[0.01em] text-black transition-colors hover:bg-[#f2f2f2]"
+      >
+        MESSAGE
+      </button>
+    </div>
+  );
+};
 
 const ProjectProgressLockedCard = ({ project, onViewProject }) => (
   <Card className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-accent text-white shadow-none backdrop-blur-[10px]">
@@ -644,536 +970,687 @@ const ProjectProgressLockedCard = ({ project, onViewProject }) => (
   </Card>
 );
 
-const projectProgressChartConfig = {
-  progress: {
-    label: "Progress",
-    color: "#facc15",
+const projectProgressSeriesPalette = [
+  { color: "#ffd400" },
+  { color: "#7e70e8" },
+  { color: "#f3a2cb" },
+  { color: "#37d39a" },
+  { color: "#6ea8ff" },
+  { color: "#ff9d57" },
+];
+
+const projectProgressCurveTemplates = [
+  [0, 0.08, 0.3, 0.52, 0.74, 1],
+  [0, 0.5, 0.24, 0.42, 0.62, 0.76],
+  [0, 0.14, 0.11, 0.3, 0.6, 0.82],
+  [0, 0.16, 0.34, 0.55, 0.73, 0.94],
+  [0, 0.32, 0.54, 0.66, 0.79, 0.91],
+  [0, 0.11, 0.27, 0.49, 0.71, 0.88],
+];
+
+const projectProgressFilterPresets = {
+  weekly: {
+    label: "Weekly",
+    offsets: [-6, -4, -2, 0, 2, 4, 6],
+  },
+  monthly: {
+    label: "Monthly",
+    offsets: [-21, -17, -14, -10, -6, 0, 6, 14],
+  },
+  custom: {
+    label: "Custom",
   },
 };
 
-const formatWholePercentage = (value) => `${Math.round(Number(value) || 0)}%`;
+const projectProgressFullDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
 
-const ProjectProgressTooltip = ({ active, payload }) => {
-  const point = payload?.[0]?.payload;
+const projectProgressShortDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+});
 
-  if (!active || !point) {
-    return null;
+const clampProjectProgressValue = (value, minimum, maximum) =>
+  Math.min(Math.max(value, minimum), maximum);
+
+const addDaysToProjectProgressDate = (date, days) => {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+};
+
+const formatProjectProgressFullDate = (date) => projectProgressFullDateFormatter.format(date);
+
+const formatProjectProgressShortDate = (date) => projectProgressShortDateFormatter.format(date);
+
+const formatProjectProgressStageValue = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return "phase-1";
+
+  const roundedValue = Math.round(numericValue);
+  return Math.abs(numericValue - roundedValue) < 0.05
+    ? `phase-${roundedValue}`
+    : `phase-${numericValue.toFixed(1)}`;
+};
+
+const buildProjectProgressTimelineFromOffsets = (todayDate, offsets) =>
+  offsets.map((offset) => {
+    const date = addDaysToProjectProgressDate(todayDate, offset);
+    return {
+      label: formatProjectProgressShortDate(date),
+      fullLabel: formatProjectProgressFullDate(date),
+      isToday: offset === 0,
+    };
+  });
+
+const normalizeProjectProgressDate = (value) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+};
+
+const buildProjectProgressCustomTimeline = (todayDate, customRange) => {
+  const normalizedStart = normalizeProjectProgressDate(customRange?.from);
+  const normalizedEnd = normalizeProjectProgressDate(customRange?.to);
+
+  if (!normalizedStart || !normalizedEnd) {
+    return buildProjectProgressTimelineFromOffsets(
+      todayDate,
+      projectProgressFilterPresets.monthly.offsets,
+    );
   }
 
-  const isTaskPoint = point.pointType === "task";
-  const isPaymentPoint = point.pointType === "payment";
-  const isStartPoint = point.pointType === "start";
-  const eyebrow = isTaskPoint
-    ? point.isCurrent
-      ? "Current task"
-      : "Completed task"
-    : isPaymentPoint
-      ? "Client payment paid"
-    : isStartPoint
-      ? "Phase start"
-    : point.isCurrent
-      ? "Current phase"
-      : point.isCompleted
-        ? "Completed phase"
-        : "Upcoming phase";
-  const detailLabel = isTaskPoint
-    ? point.taskSequenceLabel || point.taskSummary
-    : isPaymentPoint
-      ? point.paymentAmountLabel || point.paymentSummary || "Client payment received"
-      : isStartPoint
-        ? point.startSummary || "Project begins here"
-      : point.taskSummary;
+  const startTime = Math.min(normalizedStart.getTime(), normalizedEnd.getTime());
+  const endTime = Math.max(normalizedStart.getTime(), normalizedEnd.getTime());
+  const totalDays = Math.max(1, Math.round((endTime - startTime) / (1000 * 60 * 60 * 24)));
+  const tickCount = Math.min(totalDays + 1, 8);
+  const todayTime = normalizeProjectProgressDate(todayDate)?.getTime() ?? 0;
+  let todayIndex = -1;
+  let closestTodayDistance = Number.POSITIVE_INFINITY;
 
-  return (
-    <div className="w-[min(72vw,196px)] rounded-[18px] border border-white/[0.08] bg-[#232323]/95 px-3 py-2.5 text-white shadow-[0_14px_30px_rgba(0,0,0,0.34)] backdrop-blur-md sm:min-w-[220px] sm:rounded-[20px] sm:px-4 sm:py-3 sm:shadow-[0_18px_40px_rgba(0,0,0,0.4)]">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8f96a3] sm:text-[11px] sm:tracking-[0.16em]">
-        {eyebrow}
-      </p>
-      <p className="mt-1.5 text-sm font-semibold leading-[1.2] text-white sm:mt-2 sm:text-base">
-        {isTaskPoint
-          ? point.taskLabel
-          : isPaymentPoint
-            ? point.paymentLabel
-            : isStartPoint
-              ? point.startLabel || "Phase start"
-              : point.phaseFullLabel}
-      </p>
-      <p className="mt-1 text-[11px] leading-4 text-[#94a3b8] sm:text-xs">
-        {point.phaseFullLabel}
-      </p>
-      <div className="mt-2.5 flex flex-wrap items-end gap-x-1.5 gap-y-1 sm:mt-3 sm:gap-2">
-        <span className="text-xl font-semibold leading-none text-[#facc15] sm:text-2xl">
-          {formatWholePercentage(point.progressValue)}
-        </span>
-        <span className="pb-0.5 text-xs leading-4 text-[#cbd5e1] sm:pb-1 sm:text-sm">
-          {detailLabel}
-        </span>
-      </div>
-      {point.taskPreview && !isTaskPoint && !isPaymentPoint ? (
-        <p className="mt-2.5 text-[11px] leading-4 text-[#94a3b8] sm:mt-3 sm:text-xs sm:leading-5">
-          Focus: {point.taskPreview}
-        </p>
-      ) : null}
-    </div>
+  const timeline = Array.from({ length: tickCount }, (_, index) => {
+    const ratio = tickCount === 1 ? 0 : index / Math.max(tickCount - 1, 1);
+    const nextTime = startTime + (endTime - startTime) * ratio;
+    const date = normalizeProjectProgressDate(new Date(nextTime));
+    const distance = Math.abs((date?.getTime() ?? 0) - todayTime);
+
+    if (todayTime >= startTime && todayTime <= endTime && distance < closestTodayDistance) {
+      todayIndex = index;
+      closestTodayDistance = distance;
+    }
+
+    return {
+      label: formatProjectProgressShortDate(date),
+      fullLabel: formatProjectProgressFullDate(date),
+      isToday: false,
+    };
+  });
+
+  if (todayIndex >= 0) {
+    timeline[todayIndex] = {
+      ...timeline[todayIndex],
+      isToday: true,
+    };
+  }
+
+  return timeline;
+};
+
+const buildProjectProgressTimeline = ({ todayDate, filterMode, customRange }) => {
+  if (filterMode === "custom") {
+    return buildProjectProgressCustomTimeline(todayDate, customRange);
+  }
+
+  const preset = projectProgressFilterPresets[filterMode] || projectProgressFilterPresets.monthly;
+  return buildProjectProgressTimelineFromOffsets(todayDate, preset.offsets);
+};
+
+const formatProjectProgressTriggerLabel = ({ filterMode, customRange, todayDate }) => {
+  if (filterMode === "weekly") {
+    const startDate = addDaysToProjectProgressDate(todayDate, -6);
+    return `${formatProjectProgressShortDate(startDate)} - ${formatProjectProgressShortDate(todayDate)}`;
+  }
+
+  if (filterMode === "monthly") {
+    const startDate = addDaysToProjectProgressDate(todayDate, -29);
+    return `${formatProjectProgressShortDate(startDate)} - ${formatProjectProgressShortDate(todayDate)}`;
+  }
+
+  const normalizedStart = normalizeProjectProgressDate(customRange?.from);
+  const normalizedEnd = normalizeProjectProgressDate(customRange?.to);
+
+  if (normalizedStart && normalizedEnd) {
+    return `${formatProjectProgressShortDate(normalizedStart)} - ${formatProjectProgressShortDate(normalizedEnd)}`;
+  }
+
+  return "Custom Range";
+};
+
+const resolveProjectProgressCurveValue = (curveTemplate, ratio) => {
+  if (!Array.isArray(curveTemplate) || curveTemplate.length === 0) {
+    return ratio;
+  }
+
+  if (curveTemplate.length === 1 || ratio <= 0) {
+    return curveTemplate[0];
+  }
+
+  if (ratio >= 1) {
+    return curveTemplate[curveTemplate.length - 1];
+  }
+
+  const scaledIndex = ratio * (curveTemplate.length - 1);
+  const lowerIndex = Math.floor(scaledIndex);
+  const upperIndex = Math.min(curveTemplate.length - 1, Math.ceil(scaledIndex));
+  const interpolationProgress = scaledIndex - lowerIndex;
+  const lowerValue = curveTemplate[lowerIndex];
+  const upperValue = curveTemplate[upperIndex];
+
+  return lowerValue + (upperValue - lowerValue) * interpolationProgress;
+};
+
+const resolveProjectProgressStageLevel = (project) => {
+  const phases = Array.isArray(project?.phases) ? project.phases : [];
+  const phaseCount = Math.max(phases.length, 4);
+  const currentProgress = clampProjectProgressValue(
+    Number(project?.progressValue || 0),
+    0,
+    100,
+  );
+
+  if (currentProgress >= 100) {
+    return phaseCount;
+  }
+
+  const activePhaseIndex = clampProjectProgressValue(
+    Number.isFinite(Number(project?.currentPhaseIndex))
+      ? Number(project.currentPhaseIndex)
+      : Number.isFinite(Number(project?.highlightIndex))
+        ? Number(project.highlightIndex)
+        : 0,
+    0,
+    Math.max(phaseCount - 1, 0),
+  );
+  const previousTarget = activePhaseIndex > 0
+    ? clampProjectProgressValue(
+        Number(
+          phases[activePhaseIndex - 1]?.targetValue ??
+            phases[activePhaseIndex - 1]?.value ??
+            0,
+        ),
+        0,
+        100,
+      )
+    : 0;
+  const activeTarget = Math.max(
+    previousTarget + 1,
+    clampProjectProgressValue(
+      Number(phases[activePhaseIndex]?.targetValue ?? phases[activePhaseIndex]?.value ?? 100),
+      0,
+      100,
+    ),
+    currentProgress,
+  );
+  const progressWithinPhase = activeTarget > previousTarget
+    ? clampProjectProgressValue(
+        (currentProgress - previousTarget) / (activeTarget - previousTarget),
+        0,
+        1,
+      )
+    : activePhaseIndex >= phaseCount - 1
+      ? 1
+      : 0;
+
+  return clampProjectProgressValue(
+    activePhaseIndex + 1 + progressWithinPhase,
+    1,
+    phaseCount,
   );
 };
 
-const ProjectProgressXAxisTick = ({ x, y, payload, phaseLookup }) => {
-  const phase = phaseLookup.get(Number(payload.value));
+const resolveProjectProgressVisibleMarkerTypes = (project, pointCount, lastVisibleIndex) => {
+  const markers = Array.from({ length: pointCount }, () => null);
 
-  if (!phase) {
+  if (pointCount <= 0 || lastVisibleIndex <= 0) {
+    return markers;
+  }
+
+  const phases = Array.isArray(project?.phases) ? project.phases : [];
+  const phaseCount = Math.max(phases.length, 4);
+  const activePhaseIndex = clampProjectProgressValue(
+    Number.isFinite(Number(project?.currentPhaseIndex))
+      ? Number(project.currentPhaseIndex)
+      : Number.isFinite(Number(project?.highlightIndex))
+        ? Number(project.highlightIndex)
+        : 0,
+    0,
+    Math.max(phaseCount - 1, 0),
+  );
+  const visiblePhaseCount = Math.max(1, Math.min(phaseCount, activePhaseIndex + 1));
+  const phaseIndexes = new Set();
+
+  for (let phaseNumber = 1; phaseNumber <= visiblePhaseCount; phaseNumber += 1) {
+    const mappedIndex = Math.max(
+      1,
+      Math.min(lastVisibleIndex, Math.round((phaseNumber / visiblePhaseCount) * lastVisibleIndex)),
+    );
+    phaseIndexes.add(mappedIndex);
+  }
+
+  const visibleTaskCount = phases
+    .slice(0, visiblePhaseCount)
+    .reduce((count, phase, phaseIndex) => {
+      const steps = Array.isArray(phase?.steps) ? phase.steps : [];
+      const visibleSteps = steps.filter((step) => {
+        const stepState = String(step?.state || "").toLowerCase();
+        if (phaseIndex < activePhaseIndex) {
+          return stepState !== "pending";
+        }
+
+        return (
+          stepState === "completed" || stepState === "current" || stepState === "in_progress"
+        );
+      });
+
+      return count + visibleSteps.length;
+    }, 0);
+
+  const availableTaskIndexes = [];
+  for (let index = 1; index < lastVisibleIndex; index += 1) {
+    if (!phaseIndexes.has(index)) {
+      availableTaskIndexes.push(index);
+    }
+  }
+
+  const renderedTaskCount = Math.min(visibleTaskCount, availableTaskIndexes.length);
+
+  for (let taskNumber = 0; taskNumber < renderedTaskCount; taskNumber += 1) {
+    const slotIndex = Math.round(
+      ((taskNumber + 1) * (availableTaskIndexes.length + 1)) / (renderedTaskCount + 1),
+    ) - 1;
+    const markerIndex = availableTaskIndexes[
+      Math.max(0, Math.min(slotIndex, availableTaskIndexes.length - 1))
+    ];
+
+    markers[markerIndex] = "task";
+  }
+
+  phaseIndexes.forEach((index) => {
+    markers[index] = "phase";
+  });
+
+  return markers;
+};
+
+const ProjectProgressTodayLabel = ({ viewBox }) => {
+  const x = Number(viewBox?.x);
+  const y = Number(viewBox?.y);
+
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
     return null;
   }
 
-  const titleColor = phase.isCurrent
-    ? "#f3f4f6"
-    : phase.isCompleted
-      ? "#d4d4d4"
-      : "#8b95a5";
-  const summaryColor = phase.isCurrent
-    ? "#facc15"
-    : phase.isCompleted
-      ? "#94a3b8"
-      : "#6b7280";
-
   return (
     <g transform={`translate(${x},${y})`}>
-      <text x={0} y={14} textAnchor="middle" fill={titleColor} fontSize="11" fontWeight="600">
-        <tspan x="0">{phase.phaseLabel}</tspan>
-        <tspan x="0" dy="20" fill={summaryColor} fontSize="10" fontWeight="500">
-          {phase.taskSummary}
-        </tspan>
+      <rect x={-24} y={8} width={48} height={20} rx={4} fill="#ffd400" />
+      <text
+        x={0}
+        y={22}
+        textAnchor="middle"
+        fill="#171717"
+        fontSize="10"
+        fontWeight="700"
+      >
+        TODAY
       </text>
     </g>
   );
 };
 
-const ProjectProgressAreaDot = ({ cx, cy, payload, compact = false }) => {
-  if (
-    !Number.isFinite(payload?.progressValue) ||
-    !Number.isFinite(cx) ||
-    !Number.isFinite(cy)
-  ) {
+const ProjectProgressHighlightDot = ({ cx, cy, payload }) => {
+  if (!payload?.isToday || !Number.isFinite(cx) || !Number.isFinite(cy)) {
     return null;
   }
 
-  const isTaskPoint = payload.pointType === "task";
-  const isPaymentPoint = payload.pointType === "payment";
-  const isStartPoint = payload.pointType === "start";
-  const radius = isPaymentPoint
-    ? compact ? 4.5 : 5
-    : isStartPoint
-      ? compact ? 3.5 : 4
-    : isTaskPoint
-      ? payload.isCurrent ? (compact ? 3.75 : 4.5) : compact ? 2.5 : 3.25
-      : payload.isCurrent ? (compact ? 7 : 8) : compact ? 5 : 5.5;
-  const fillColor = isPaymentPoint
-    ? "transparent"
-    : isStartPoint
-      ? "#f3f4f6"
-    : isTaskPoint
-      ? payload.isCurrent
-        ? "#facc15"
-        : "rgba(250,204,21,0.88)"
-      : payload.isCurrent
-        ? "#facc15"
-        : "#f3f4f6";
-  const strokeColor = isPaymentPoint
-    ? "#facc15"
-    : isStartPoint
-      ? "#232323"
-    : isTaskPoint
-      ? "#232323"
-      : payload.isCurrent ? "#232323" : "rgba(250,204,21,0.55)";
-  const strokeWidth = isPaymentPoint
-    ? 2.25
-    : isStartPoint
-      ? 1.75
-    : isTaskPoint
-      ? payload.isCurrent ? 1.75 : 1.25
-      : payload.isCurrent ? 3 : 2;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={18} fill="rgba(255,212,0,0.1)" />
+      <circle cx={cx} cy={cy} r={12} fill="rgba(255,212,0,0.14)" />
+      <circle cx={cx} cy={cy} r={8} fill="#ffd400" stroke="#26211f" strokeWidth={4} />
+    </g>
+  );
+};
+
+const ProjectProgressSeriesDot = ({
+  cx,
+  cy,
+  payload,
+  color,
+  markerTypeKey,
+  highlightToday = false,
+  compact = false,
+}) => {
+  const markerType = payload?.[markerTypeKey];
+
+  if (!markerType || !Number.isFinite(cx) || !Number.isFinite(cy)) {
+    return null;
+  }
+
+  const isToday = Boolean(payload?.isToday);
+
+  if (markerType === "task") {
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={compact ? 2.4 : 2.9}
+        fill={color}
+        stroke="#171717"
+        strokeWidth={1.2}
+      />
+    );
+  }
+
+  if (highlightToday && isToday) {
+    return <ProjectProgressHighlightDot cx={cx} cy={cy} payload={payload} />;
+  }
 
   return (
     <circle
       cx={cx}
       cy={cy}
-      r={radius}
-      fill={fillColor}
-      stroke={strokeColor}
-      strokeWidth={strokeWidth}
+      r={compact ? 4.4 : 5.4}
+      fill={color}
+      stroke="#171717"
+      strokeWidth={compact ? 2.1 : 2.6}
     />
+  );
+};
+
+const ProjectProgressTooltip = ({ active, payload, label, seriesMetaMap }) => {
+  const visiblePayload = Array.isArray(payload)
+    ? payload.filter((entry) => Number.isFinite(Number(entry?.value)))
+    : [];
+  const point = visiblePayload[0]?.payload;
+
+  if (!active || visiblePayload.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="min-w-[188px] rounded-[18px] border border-white/[0.08] bg-[#232323]/96 px-4 py-3 text-white shadow-[0_18px_40px_rgba(0,0,0,0.42)] backdrop-blur-md">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8f96a3]">
+        Progress Snapshot
+      </p>
+      <p className="mt-1.5 text-sm font-semibold text-white">{point?.fullLabel || label}</p>
+
+      <div className="mt-3 space-y-2.5">
+        {visiblePayload.map((entry) => {
+          const meta = seriesMetaMap.get(entry.dataKey);
+
+          return (
+            <div key={entry.dataKey} className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  className="size-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: meta?.color || entry.color }}
+                />
+                <span className="truncate text-xs font-medium text-[#d4d4d4]">
+                  {meta?.label || entry.name}
+                </span>
+              </div>
+              <span className="shrink-0 text-xs font-semibold text-white">
+                {formatProjectProgressStageValue(entry.value)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 };
 
 const ProjectProgressChartCard = ({
   project,
+  visibleProjects,
+  isOverallView,
+  filterMode,
+  customDateRange,
   onViewProject,
 }) => {
   const isMobile = useIsMobile();
-  const chartStartX = isMobile ? -1 : -0.45;
-  const paymentPointEpsilon = 0.003;
-  const normalizedPhases = React.useMemo(() => {
-    const sourcePhases = Array.isArray(project?.phases) ? project.phases : [];
-
-    if (sourcePhases.length === 0) {
-      return [{ label: "Phase 1", value: 0, subLabel: "Current phase" }];
-    }
-
-    return sourcePhases.map((phase, index) => {
-      const numericValue = Number(phase?.value);
-      const value = Number.isFinite(numericValue)
-        ? Math.max(0, Math.min(100, numericValue))
-        : 0;
-
-      return {
-        ...phase,
-        label: phase?.label || `Phase ${index + 1}`,
-        value,
-        targetValue: Math.max(
-          value,
-          Number.isFinite(Number(phase?.targetValue))
-            ? Math.max(0, Math.min(100, Number(phase.targetValue)))
-            : value,
-        ),
-      };
-    });
-  }, [project?.phases]);
-
-  const activePhaseIndex = Math.min(
-    Number.isFinite(project?.currentPhaseIndex)
-      ? project.currentPhaseIndex
-      : project?.highlightIndex || 0,
-    Math.max(normalizedPhases.length - 1, 0),
+  const today = React.useMemo(() => new Date(), []);
+  const timeline = React.useMemo(
+    () =>
+      buildProjectProgressTimeline({
+        todayDate: today,
+        filterMode,
+        customRange: customDateRange,
+      }),
+    [customDateRange, filterMode, today],
+  );
+  const resolvedProjects = React.useMemo(
+    () => (Array.isArray(visibleProjects) ? visibleProjects.filter(Boolean) : []),
+    [visibleProjects],
   );
 
-  const { chartData, phaseLookup, chartMaxX } = React.useMemo(() => {
-    const nextChartData = [
-      {
-        pointId: "progress-start",
-        pointType: "start",
-        phasePosition: chartStartX,
-        progressValue: 0,
-        phaseFullLabel: normalizedPhases[0]?.label || "Phase 1",
-        startLabel: `${normalizedPhases[0]?.label || "Phase 1"} start`,
-        startSummary: "Project begins here",
-      },
-    ];
-    const nextPhaseLookup = new Map();
-    const paymentCheckpointMap = new Map();
-    let maxPhasePosition = Math.max(normalizedPhases.length - 1, 0);
-
-    (Array.isArray(project?.paymentCheckpoints) ? project.paymentCheckpoints : []).forEach(
-      (checkpoint) => {
-        const gateKey = Math.max(0, Number(checkpoint?.dueAfterCompletedPhases || 0));
-        const existing = paymentCheckpointMap.get(gateKey) || [];
-        existing.push(checkpoint);
-        paymentCheckpointMap.set(gateKey, existing);
-      },
-    );
-
-    const appendPaymentPoints = ({
-      gateKey,
-      phaseLabel,
-      fallbackProgressValue,
-    }) => {
-      const checkpoints = paymentCheckpointMap.get(gateKey) || [];
-      checkpoints.forEach((checkpoint, checkpointIndex) => {
-        const gateAnchorPosition = gateKey === 0 ? chartStartX : Math.max(gateKey - 1, 0);
-        const phasePosition =
-          gateAnchorPosition + (checkpointIndex > 0 ? checkpointIndex * paymentPointEpsilon : 0);
-
-        nextChartData.push({
-          pointId: checkpoint?.id || `payment-${gateKey}-${checkpointIndex}`,
-          pointType: "payment",
-          phasePosition,
-          progressValue: Number.isFinite(Number(checkpoint?.progressValue))
-            ? Number(checkpoint.progressValue)
-            : fallbackProgressValue,
-          phaseFullLabel: checkpoint?.phaseFullLabel || phaseLabel,
-          paymentLabel: checkpoint?.label || `Client payment ${checkpointIndex + 1}`,
-          paymentAmountLabel: checkpoint?.amountLabel || "",
-          paymentSummary: checkpoint?.percentageLabel || "Client payment received",
-          isCompleted: true,
-          isCurrent: false,
-        });
-
-        maxPhasePosition = Math.max(maxPhasePosition, phasePosition);
-      });
-    };
-
-    appendPaymentPoints({
-      gateKey: 0,
-      phaseLabel: "Before project start",
-      fallbackProgressValue: 0,
-    });
-
-    normalizedPhases.forEach((phase, index) => {
-      const steps = Array.isArray(phase?.steps) ? phase.steps : [];
-      const totalTasks = steps.length;
-      const completedSteps = steps.filter((step) => step?.state === "completed");
-      const currentSteps = steps.filter(
-        (step) => step?.state === "current" || step?.state === "in_progress",
-      );
-      const completedTasks = completedSteps.length;
-      const currentTasks = currentSteps.length;
-      const achievedTasks = Math.min(totalTasks, completedTasks + currentTasks);
-      const previousPhase = nextPhaseLookup.get(index - 1);
-      const previousProgress = index === 0 ? 0 : previousPhase?.targetValue ?? 0;
-      const targetValue = Math.max(
-        Number(phase?.targetValue ?? phase?.value ?? 0),
-        previousProgress,
-      );
-      const rawProgressValue = Math.max(Number(phase?.value || 0), previousProgress);
-      const taskDrivenProgress =
-        totalTasks > 0
-          ? previousProgress + ((targetValue - previousProgress) * achievedTasks) / totalTasks
-          : rawProgressValue;
-      const progressValue = index > activePhaseIndex
-        ? null
-        : index === activePhaseIndex
-          ? Math.max(previousProgress, Math.min(targetValue, taskDrivenProgress))
-          : targetValue;
-      const displayedTasksDone = index === activePhaseIndex ? achievedTasks : completedTasks;
-      const taskSummary =
-        totalTasks > 0
-          ? `${Math.min(displayedTasksDone, totalTasks)}/${totalTasks} tasks done`
-          : truncatePhaseSubLabel(phase?.subLabel, 26) || "No tasks yet";
-      const taskPreview =
-        steps.find((step) => step?.state === "current" || step?.state === "in_progress")?.title ||
-        steps.find((step) => step?.state === "pending")?.title ||
-        "";
-      const segmentStartX = index === 0 ? chartStartX : index - 1;
-      const segmentWidth = index === 0 ? 0 - chartStartX : 1;
-      const phaseTargetSpan = Math.max(targetValue - previousProgress, 0);
-      const phaseRatio = phaseTargetSpan > 0 && Number.isFinite(progressValue)
-        ? Math.min(Math.max((progressValue - previousProgress) / phaseTargetSpan, 0), 1)
-        : 0;
-      const phasePosition = index === activePhaseIndex
-        ? segmentStartX + segmentWidth * phaseRatio
-        : index;
-
-      const chartPoint = {
-        phaseKey: `phase-${index}`,
-        phaseLabel: truncatePhaseLabel(phase?.label, 24) || `Phase ${index + 1}`,
-        phaseFullLabel: phase?.label || `Phase ${index + 1}`,
-        phaseIndex: index,
-        phasePosition,
-        progressValue,
-        targetValue,
-        totalTasks,
-        completedTasks: Math.min(displayedTasksDone, totalTasks),
-        currentTasks,
-        taskSummary,
-        taskPreview,
-        pointType: "phase",
-        isCompleted: index < activePhaseIndex,
-        isCurrent: index === activePhaseIndex,
-      };
-
-      nextPhaseLookup.set(index, chartPoint);
-
-      if (!Number.isFinite(progressValue)) {
-        return;
-      }
-
-      const visibleSteps =
-        index < activePhaseIndex
-          ? completedSteps
-          : [...completedSteps, ...currentSteps];
-      const visibleSegmentWidth = Math.max(phasePosition - segmentStartX, 0);
-      const taskSpan = Math.max(progressValue - previousProgress, 0);
-
-      visibleSteps.forEach((step, stepIndex) => {
-        const fraction = (stepIndex + 1) / (visibleSteps.length + 1);
-        const taskSequence = Math.min(
-          Number(step?.sequence || stepIndex + 1),
-          Math.max(totalTasks, 1),
-        );
-        nextChartData.push({
-          pointId: `${chartPoint.phaseKey}-task-${step?.id || stepIndex}`,
-          pointType: "task",
-          phaseKey: chartPoint.phaseKey,
-          phaseIndex: index,
-          phasePosition: segmentStartX + visibleSegmentWidth * fraction,
-          phaseLabel: chartPoint.phaseLabel,
-          phaseFullLabel: chartPoint.phaseFullLabel,
-          taskLabel: step?.title || `Task ${stepIndex + 1}`,
-          taskSequenceLabel:
-            totalTasks > 0 ? `Task ${taskSequence} of ${totalTasks}` : `Task ${taskSequence}`,
-          taskSummary:
-            totalTasks > 0
-              ? `${Math.min(taskSequence, totalTasks)}/${totalTasks} tasks done`
-              : "",
-          taskPreview: chartPoint.taskPreview,
-          progressValue:
-            taskSpan === 0
-              ? progressValue
-              : previousProgress + taskSpan * fraction,
-          isCompleted: step?.state === "completed",
-          isCurrent: step?.state === "current" || step?.state === "in_progress",
-        });
-
-        maxPhasePosition = Math.max(
-          maxPhasePosition,
-          segmentStartX + visibleSegmentWidth * fraction,
-        );
-      });
-
-      nextChartData.push({
-        ...chartPoint,
-        pointId: chartPoint.phaseKey,
-      });
-
-      maxPhasePosition = Math.max(maxPhasePosition, phasePosition);
-      appendPaymentPoints({
-        gateKey: index + 1,
-        phaseLabel: chartPoint.phaseFullLabel,
-        fallbackProgressValue: targetValue,
-      });
-    });
-
-    const pointTypeOrder = {
-      start: 0,
-      task: 1,
-      phase: 2,
-      payment: 3,
-    };
-
-    nextChartData.sort((leftPoint, rightPoint) => {
-      if (leftPoint.phasePosition !== rightPoint.phasePosition) {
-        return leftPoint.phasePosition - rightPoint.phasePosition;
-      }
-
-      return (pointTypeOrder[leftPoint.pointType] ?? 99) -
-        (pointTypeOrder[rightPoint.pointType] ?? 99);
-    });
-
-    return {
-      chartData: nextChartData,
-      chartMaxX: maxPhasePosition,
-      phaseLookup: nextPhaseLookup,
-    };
-  }, [
-    activePhaseIndex,
-    chartStartX,
-    normalizedPhases,
-    paymentPointEpsilon,
-    project?.paymentCheckpoints,
-  ]);
-
-  const progressGradientId = React.useId().replace(/:/g, "");
-  const progressFillId = `project-progress-fill-${progressGradientId}`;
-
-  if (project?.isProgressLocked) {
+  if (!isOverallView && project?.isProgressLocked) {
     return <ProjectProgressLockedCard project={project} onViewProject={onViewProject} />;
   }
 
+  if (resolvedProjects.length === 0) {
+    if (project?.isProgressLocked) {
+      return <ProjectProgressLockedCard project={project} onViewProject={onViewProject} />;
+    }
+
+    return (
+      <DashboardPanel className="min-h-[320px] p-6 sm:p-8">
+        <div className="flex min-h-[240px] items-center justify-center text-center">
+          <div className="max-w-md">
+            <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+              Progress timeline is not ready yet
+            </p>
+            <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+              Once an active project starts unlocking progress, the line chart will appear here.
+            </p>
+          </div>
+        </div>
+      </DashboardPanel>
+    );
+  }
+
+  const isSingleSeries = resolvedProjects.length === 1;
+  const todayIndex = timeline.findIndex((entry) => entry.isToday);
+  const lastVisibleIndex = todayIndex >= 0 ? todayIndex : Math.max(timeline.length - 1, 0);
+  const seriesMeta = resolvedProjects.map((entry, index) => {
+    const palette =
+      projectProgressSeriesPalette[index % projectProgressSeriesPalette.length] ||
+      projectProgressSeriesPalette[0];
+    const curveTemplate = isSingleSeries
+      ? projectProgressCurveTemplates[0]
+      : projectProgressCurveTemplates[index % projectProgressCurveTemplates.length] ||
+        projectProgressCurveTemplates[0];
+    const finalStageLevel = resolveProjectProgressStageLevel(entry);
+    const markerTypes = resolveProjectProgressVisibleMarkerTypes(
+      entry,
+      timeline.length,
+      lastVisibleIndex,
+    );
+    const values = timeline.map((point, pointIndex) => {
+      if (todayIndex >= 0 && pointIndex > lastVisibleIndex) {
+        return null;
+      }
+
+      if (pointIndex === 0) {
+        return 1;
+      }
+
+      const curveRatio =
+        lastVisibleIndex <= 0 ? 1 : pointIndex / Math.max(lastVisibleIndex, 1);
+      const curveFactor = resolveProjectProgressCurveValue(curveTemplate, curveRatio);
+      return Number((1 + (finalStageLevel - 1) * curveFactor).toFixed(3));
+    });
+
+    return {
+      key: `project-series-${index}`,
+      color: palette.color,
+      label: entry.label,
+      markerTypes,
+      values,
+    };
+  });
+
+  const chartConfig = seriesMeta.reduce((config, entry) => {
+    config[entry.key] = {
+      label: entry.label,
+      color: entry.color,
+    };
+    return config;
+  }, {});
+
+  const chartData = timeline.map((point, index) => {
+    const row = {
+      label: point.label,
+      fullLabel: point.fullLabel,
+      isToday: point.isToday,
+    };
+
+    seriesMeta.forEach((entry) => {
+      row[entry.key] = entry.values[index];
+      row[`${entry.key}Marker`] = entry.markerTypes[index];
+    });
+
+    return row;
+  });
+
+  const seriesMetaMap = new Map(seriesMeta.map((entry) => [entry.key, entry]));
+  const phaseAxisMax = Math.max(
+    4,
+    Math.ceil(
+      Math.max(
+        4,
+        ...seriesMeta.flatMap((entry) =>
+          entry.values.filter((value) => Number.isFinite(Number(value))),
+        ),
+      ),
+    ),
+  );
+  const todayLabel = todayIndex >= 0 ? chartData[todayIndex]?.label : null;
+
   return (
-    <Card className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-accent text-white shadow-none backdrop-blur-[10px]">
-      <CardContent className="px-3 pb-2 pt-4 sm:px-6 sm:pb-3 sm:pt-5">
-        <p className={cn("mb-3 text-[11px] font-medium text-[#8f96a3] lg:hidden", isMobile && "hidden")}>
-          Swipe horizontally to view the full timeline.
-        </p>
-        <div className={cn(
-          !isMobile && "overflow-x-auto pb-2 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]",
-        )}>
-          <div className={cn(!isMobile && "min-w-[720px] md:min-w-[860px] lg:min-w-0")}>
+    <Card className="overflow-hidden rounded-[32px] border border-white/[0.06] bg-card text-white shadow-[0_30px_90px_-28px_rgba(0,0,0,0.95)]">
+      <CardContent className="px-4 pb-6 pt-4 sm:px-8 sm:pb-8 sm:pt-8">
+        <div className="overflow-x-auto pb-2 [scrollbar-color:rgba(255,255,255,0.14)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.12]">
+          <div className="min-w-[720px] lg:min-w-0">
             <ChartContainer
-              config={projectProgressChartConfig}
+              config={chartConfig}
               className={cn(
-                "w-full aspect-auto [&_.recharts-cartesian-axis-tick_text]:fill-[#8f96a3]",
-                isMobile ? "h-[320px]" : "h-[328px] sm:h-[368px] lg:h-[410px]",
+                "w-full aspect-auto [&_.recharts-cartesian-axis-tick_text]:fill-[#8e877c]",
+                isMobile ? "h-[340px]" : "h-[440px] xl:h-[500px]",
               )}
             >
-              <AreaChart
+              <LineChart
                 accessibilityLayer
                 data={chartData}
                 margin={{
-                  top: 20,
-                  right: isMobile ? 6 : 24,
-                  left: isMobile ? 0 : 4,
-                  bottom: isMobile ? 8 : 12,
+                  top: 42,
+                  right: isMobile ? 10 : 18,
+                  left: isMobile ? 4 : 8,
+                  bottom: 12,
                 }}
               >
-                <defs>
-                  <linearGradient id={progressFillId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-progress)" stopOpacity={0.45} />
-                    <stop offset="95%" stopColor="var(--color-progress)" stopOpacity={0.06} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
+                <CartesianGrid
+                  vertical={false}
+                  stroke="rgba(255,255,255,0.07)"
+                  strokeDasharray="4 6"
+                />
                 <XAxis
-                  type="number"
-                  dataKey="phasePosition"
-                  domain={[chartStartX, Math.max(chartMaxX, normalizedPhases.length - 1, 0)]}
-                  ticks={normalizedPhases.map((_, index) => index)}
+                  dataKey="label"
                   tickLine={false}
                   axisLine={false}
-                  interval={0}
-                  height={isMobile ? 14 : 58}
-                  tickMargin={isMobile ? 0 : 14}
-                  tick={isMobile
-                    ? false
-                    : (props) => (
-                      <ProjectProgressXAxisTick
-                        {...props}
-                        phaseLookup={phaseLookup}
-                      />
-                    )}
+                  tickMargin={18}
+                  tick={{ fill: "#8e877c", fontSize: isMobile ? 10 : 12, fontWeight: 500 }}
                 />
                 <YAxis
-                  domain={[0, 100]}
-                  ticks={[0, 20, 40, 60, 80, 100]}
+                  type="number"
+                  domain={[0.7, phaseAxisMax + 0.3]}
+                  ticks={Array.from({ length: phaseAxisMax }, (_, index) => index + 1)}
+                  tickFormatter={(value) => `phase-${value}`}
                   tickLine={false}
                   axisLine={false}
-                  width={isMobile ? 38 : 56}
-                  tickMargin={10}
-                  tickFormatter={(value) => formatWholePercentage(value)}
-                  tick={{ fill: "#a3a3a3", fontSize: isMobile ? 10 : 12 }}
+                  width={isMobile ? 54 : 68}
+                  tickMargin={16}
+                  tick={{ fill: "#8e877c", fontSize: isMobile ? 10 : 12, fontWeight: 600 }}
                 />
+                {todayLabel ? (
+                  <ReferenceLine
+                    x={todayLabel}
+                    stroke="rgba(255,212,0,0.48)"
+                    strokeWidth={1.5}
+                    strokeDasharray="5 5"
+                    ifOverflow="extendDomain"
+                    label={<ProjectProgressTodayLabel />}
+                  />
+                ) : null}
                 <ChartTooltip
                   cursor={false}
-                  content={<ProjectProgressTooltip />}
+                  content={<ProjectProgressTooltip seriesMetaMap={seriesMetaMap} />}
                 />
-                <Area
-                  dataKey="progressValue"
-                  type="linear"
-                  fill={`url(#${progressFillId})`}
-                  fillOpacity={1}
-                  connectNulls={false}
-                  stroke="var(--color-progress)"
-                  strokeWidth={4}
-                  dot={<ProjectProgressAreaDot compact={isMobile} />}
-                  activeDot={{
-                    r: isMobile ? 7 : 9,
-                    fill: "#facc15",
-                    stroke: "#232323",
-                    strokeWidth: isMobile ? 2.5 : 3,
-                  }}
-                />
-              </AreaChart>
+                {seriesMeta.map((entry, index) => (
+                  <Line
+                    key={entry.key}
+                    type="natural"
+                    dataKey={entry.key}
+                    stroke={entry.color}
+                    strokeWidth={index === 0 ? 3.5 : 3}
+                    dot={(props) => (
+                      <ProjectProgressSeriesDot
+                        {...props}
+                        color={entry.color}
+                        compact={isMobile}
+                        markerTypeKey={`${entry.key}Marker`}
+                        highlightToday={index === 0}
+                      />
+                    )}
+                    activeDot={false}
+                    connectNulls={false}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{
+                      filter:
+                        index === 0 ? "drop-shadow(0 0 6px rgba(255,212,0,0.38))" : "none",
+                    }}
+                  />
+                ))}
+              </LineChart>
             </ChartContainer>
           </div>
         </div>
-      </CardContent>
 
-      <CardFooter className="flex flex-col items-start gap-4 border-t border-white/[0.05] px-4 py-5 text-[#d4d4d4] sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
-        <Badge
-          variant="outline"
-          className="gap-3 border-0 bg-transparent px-0 py-0 text-xs font-medium text-[#d4d4d4] shadow-none sm:text-sm"
-        >
-          <span aria-hidden="true" className="size-3 rounded-full bg-[#facc15]" />
-          Phase start, task, and payment checkpoints
-        </Badge>
-        <button
-          type="button"
-          onClick={() => onViewProject?.(project.id)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto"
-        >
-          View Project
-          <ChevronRight className="size-4 stroke-[2]" />
-        </button>
-      </CardFooter>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          {seriesMeta.map((entry) => (
+            <div
+              key={entry.key}
+              className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/[0.06] px-4 py-2 text-[12px] font-medium text-[#d7d2ca]"
+            >
+              <span
+                className="size-2 rounded-full"
+                style={{
+                  backgroundColor: entry.color,
+                  boxShadow:
+                    entry.key === seriesMeta[0]?.key
+                      ? `0 0 10px ${entry.color}`
+                      : "none",
+                }}
+              />
+              <span className="max-w-[110px] truncate sm:max-w-[150px]">{entry.label}</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
     </Card>
   );
 };
@@ -1187,83 +1664,215 @@ const ProjectProgressSection = ({
     () => (Array.isArray(progressProjects) ? progressProjects : []),
     [progressProjects],
   );
-  const [activeProjectId, setActiveProjectId] = React.useState("");
+  const [selectedProjectView, setSelectedProjectView] = React.useState("overall");
+  const today = React.useMemo(() => new Date(), []);
+  const [dateFilterMode, setDateFilterMode] = React.useState("monthly");
+  const [customDateRange, setCustomDateRange] = React.useState(() => ({
+    from: addDaysToProjectProgressDate(new Date(), -14),
+    to: new Date(),
+  }));
+  const [isDateFilterOpen, setIsDateFilterOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!projects.length) {
-      setActiveProjectId("");
+      setSelectedProjectView("overall");
       return;
     }
 
-    setActiveProjectId((currentProjectId) =>
-      projects.some((project) => project.id === currentProjectId)
-        ? currentProjectId
-        : projects[0]?.id || "",
-    );
+    setSelectedProjectView((currentValue) => {
+      if (currentValue === "overall") {
+        return currentValue;
+      }
+
+      return projects.some((project) => String(project?.id) === String(currentValue))
+        ? currentValue
+        : "overall";
+    });
   }, [projects]);
 
   const activeProject =
-    projects.find((project) => project.id === activeProjectId) || projects[0];
-  const triggerProjectLabel = activeProject?.label || "Projects";
+    selectedProjectView === "overall"
+      ? projects[0]
+      : projects.find((project) => String(project?.id) === String(selectedProjectView)) ||
+        projects[0];
+  const isOverallView = selectedProjectView === "overall";
+  const visibleProjects = isOverallView
+    ? projects
+    : activeProject
+      ? [activeProject]
+      : [];
+  const triggerProjectLabel = isOverallView
+    ? "Overall Project"
+    : activeProject?.label || "Overall Project";
+  const dateTriggerLabel = formatProjectProgressTriggerLabel({
+    filterMode: dateFilterMode,
+    customRange: customDateRange,
+    todayDate: today,
+  });
+
   return (
     <section className="mt-14 sm:mt-16">
-      <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
-          <h2 className="text-[clamp(1.9rem,8vw,3rem)] font-semibold tracking-[-0.05em] text-white">
-            Project Progress
-          </h2>
-        </div>
+      <div className="mb-4 flex flex-col gap-4 sm:mb-5 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <h2 className="min-w-0 text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+          Project Progress
+        </h2>
 
         {projects.length > 0 ? (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-11 w-full items-center justify-between gap-3 rounded-full border border-white/[0.08] bg-accent px-4 text-sm font-semibold text-white transition-colors hover:border-white/[0.14] hover:bg-white/[0.03] sm:h-12 sm:px-5 md:min-w-[220px] md:w-auto"
-                aria-label="Open projects menu"
-              >
-                <span className="max-w-[10rem] truncate">{triggerProjectLabel}</span>
-                <ChevronDown className="size-4 text-[#8f96a3]" />
-              </button>
-            </DropdownMenuTrigger>
+          <div className="flex flex-wrap items-center gap-3">
+            <Popover open={isDateFilterOpen} onOpenChange={setIsDateFilterOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.06] bg-card px-4 text-sm font-medium text-[#d7d2ca] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.12] hover:bg-white/[0.04] sm:h-12 sm:px-5"
+                  aria-label="Open date range filter"
+                >
+                  <CalendarDays className="size-4 shrink-0 text-[#b8afa2]" />
+                  <span className="max-w-[10.5rem] truncate text-left sm:max-w-[12.5rem]">
+                    {dateTriggerLabel}
+                  </span>
+                  <ChevronDown className="size-4 shrink-0 text-[#8f96a3]" />
+                </button>
+              </PopoverTrigger>
 
-            <DropdownMenuContent
-              align="end"
-              sideOffset={10}
-              className="w-[min(100vw-2rem,280px)] rounded-[22px] border border-white/[0.08] bg-[#232323] p-2 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
-            >
-              <DropdownMenuLabel className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
-                Select Project
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
-
-              <DropdownMenuRadioGroup
-                value={activeProjectId}
-                onValueChange={setActiveProjectId}
+              <PopoverContent
+                align="end"
+                sideOffset={10}
+                className="w-[min(100vw-2rem,360px)] rounded-[24px] border border-white/[0.08] bg-[#232323] p-4 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
               >
-                {projects.map((project) => (
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+                      Date Filter
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-[#d7d2ca]">
+                      Choose the chart range
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  {Object.entries(projectProgressFilterPresets).map(([key, option]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        setDateFilterMode(key);
+                        if (key !== "custom") {
+                          setIsDateFilterOpen(false);
+                        }
+                      }}
+                      className={cn(
+                        "inline-flex h-10 items-center justify-center rounded-[12px] border px-3 text-sm font-semibold transition-colors",
+                        dateFilterMode === key
+                          ? "border-[#ffd400]/40 bg-[#ffd400]/14 text-[#ffd400]"
+                          : "border-white/[0.08] bg-white/[0.03] text-[#d7d2ca] hover:bg-white/[0.05]",
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                {dateFilterMode === "custom" ? (
+                  <div className="mt-4 overflow-hidden rounded-[20px] border border-white/[0.08] bg-card/40">
+                    <Calendar
+                      mode="range"
+                      numberOfMonths={1}
+                      selected={customDateRange}
+                      defaultMonth={customDateRange?.from || today}
+                      onSelect={(range) => {
+                        setCustomDateRange(range || { from: undefined, to: undefined });
+                        if (range?.from && range?.to) {
+                          setIsDateFilterOpen(false);
+                        }
+                      }}
+                      className="w-full"
+                      classNames={{
+                        root: "w-full",
+                        months: "w-full",
+                        month: "w-full space-y-4",
+                        caption_label: "text-sm font-semibold text-white",
+                        nav_button:
+                          "border border-white/[0.08] bg-white/[0.03] text-white hover:bg-white/[0.06]",
+                        weekday:
+                          "text-[11px] font-medium uppercase tracking-[0.16em] text-[#8f96a3]",
+                        day: "text-sm text-[#d7d2ca]",
+                        today: "bg-white/[0.08] text-white rounded-md",
+                        outside: "text-[#5f6671]",
+                        disabled: "text-[#5f6671] opacity-50",
+                      }}
+                    />
+                  </div>
+                ) : null}
+              </PopoverContent>
+            </Popover>
+
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-11 items-center justify-between gap-3 rounded-full border border-white/[0.06] bg-card px-4 text-sm font-semibold text-[#d7d2ca] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.12] hover:bg-white/[0.04] sm:h-12 sm:min-w-[170px] sm:px-5"
+                  aria-label="Open project progress menu"
+                >
+                  <span className="max-w-[11rem] truncate text-left">{triggerProjectLabel}</span>
+                  <ChevronDown className="size-4 text-[#8f96a3]" />
+                </button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent
+                align="end"
+                sideOffset={10}
+                className="w-[min(100vw-2rem,280px)] rounded-[22px] border border-white/[0.08] bg-[#232323] p-2 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
+              >
+                <DropdownMenuLabel className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+                  View Progress
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
+
+                <DropdownMenuRadioGroup
+                  value={selectedProjectView}
+                  onValueChange={setSelectedProjectView}
+                >
                   <DropdownMenuRadioItem
-                    key={project.id}
-                    value={project.id}
+                    value="overall"
                     className="rounded-[16px] px-3 py-3 pl-3 text-white transition-colors hover:bg-white/[0.04] focus:bg-white/[0.06] focus:text-white data-[state=checked]:bg-white/[0.06] [&>span:first-child]:hidden"
                   >
                     <span className="truncate text-sm font-semibold text-white">
-                      {project.label}
+                      Overall Project
                     </span>
                   </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+
+                  {projects.map((entry) => (
+                    <DropdownMenuRadioItem
+                      key={entry.id}
+                      value={String(entry.id)}
+                      className="rounded-[16px] px-3 py-3 pl-3 text-white transition-colors hover:bg-white/[0.04] focus:bg-white/[0.06] focus:text-white data-[state=checked]:bg-white/[0.06] [&>span:first-child]:hidden"
+                    >
+                      <span className="truncate text-sm font-semibold text-white">
+                        {entry.label}
+                      </span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         ) : null}
       </div>
 
       {projects.length > 0 ? (
-        <div className="mt-3">
-          <ProjectProgressChartCard project={activeProject} onViewProject={onViewProject} />
+        <div>
+          <ProjectProgressChartCard
+            project={activeProject}
+            visibleProjects={visibleProjects}
+            isOverallView={isOverallView}
+            filterMode={dateFilterMode}
+            customDateRange={customDateRange}
+            onViewProject={onViewProject}
+          />
         </div>
       ) : (
-        <DashboardPanel className="mt-3 min-h-[220px] p-5 sm:p-8">
+        <DashboardPanel className="min-h-[220px] p-5 sm:p-8">
           <div className="flex min-h-[140px] items-center justify-center text-center sm:min-h-[170px]">
             <div className="max-w-md">
               <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-[#cbd5e1]">
@@ -1323,6 +1932,8 @@ const ClientDashboardShell = ({
   const [projectCarouselApi, setProjectCarouselApi] = React.useState(null);
   const [canGoToPreviousProjects, setCanGoToPreviousProjects] = React.useState(false);
   const [canGoToNextProjects, setCanGoToNextProjects] = React.useState(false);
+  const [projectCarouselSnapCount, setProjectCarouselSnapCount] = React.useState(0);
+  const [activeProjectSnap, setActiveProjectSnap] = React.useState(0);
   const projectRedirectCards = React.useMemo(() => {
     if (showcaseItems.length === 0 || shouldUseProjectCarousel) {
       return [];
@@ -1369,12 +1980,16 @@ const ClientDashboardShell = ({
     if (!projectCarouselApi || !shouldUseProjectCarousel) {
       setCanGoToPreviousProjects(false);
       setCanGoToNextProjects(false);
+      setProjectCarouselSnapCount(0);
+      setActiveProjectSnap(0);
       return undefined;
     }
 
     const syncProjectCarouselState = () => {
       setCanGoToPreviousProjects(projectCarouselApi.canScrollPrev());
       setCanGoToNextProjects(projectCarouselApi.canScrollNext());
+      setProjectCarouselSnapCount(projectCarouselApi.scrollSnapList().length);
+      setActiveProjectSnap(projectCarouselApi.selectedScrollSnap());
     };
 
     syncProjectCarouselState();
@@ -1414,7 +2029,9 @@ const ClientDashboardShell = ({
               <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
                 {hero.greeting}, {hero.firstName}
               </h1>
-              <p className="mt-2 text-sm text-muted-foreground sm:mt-1">{hero.description}</p>
+              {hero.description ? (
+                <p className="mt-2 text-sm text-muted-foreground sm:mt-1">{hero.description}</p>
+              ) : null}
             </div>
             <p className="hidden text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:block">
               {hero.dateLabel}
@@ -1428,16 +2045,15 @@ const ClientDashboardShell = ({
           </section>
 
           {!isProjectsLoading && showcaseItems.length === 0 ? (
-            <section className="mt-14">
-              <DraftProposalsPanel
-                draftProposalRows={draftProposalRows}
-                onOpenQuickProject={onOpenQuickProject}
-              />
-            </section>
+            <DraftProposalsSection
+              draftProposalRows={draftProposalRows}
+              onOpenQuickProject={onOpenQuickProject}
+              className="mt-14"
+            />
           ) : null}
 
           <section className="mt-14">
-          <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
@@ -1470,33 +2086,40 @@ const ClientDashboardShell = ({
             ) : showcaseItems.length > 0 ? (
               <>
                 {shouldUseProjectCarousel ? (
-                  <Carousel
-                    setApi={setProjectCarouselApi}
-                    opts={{
-                      align: "start",
-                      containScroll: "trimSnaps",
-                      slidesToScroll: 1,
-                      duration: 34,
-                    }}
-                    className="w-full"
-                  >
-                    <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
-                      {showcaseItems.map((item) => (
-                        <CarouselItem
-                          key={item.id}
-                          className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
-                        >
-                          <ProjectProposalCard
-                            project={item}
-                            onPay={onPayRunningProject}
-                            isPaying={runningProjectProcessingId === item.id}
-                            replaceSectionBadgeWithStatus
-                            className={activeProjectCardClassName}
-                          />
-                        </CarouselItem>
-                      ))}
-                    </CarouselContent>
-                  </Carousel>
+                  <div className="w-full">
+                    <Carousel
+                      setApi={setProjectCarouselApi}
+                      opts={{
+                        align: "start",
+                        containScroll: "trimSnaps",
+                        slidesToScroll: 1,
+                        duration: 34,
+                      }}
+                      className="w-full"
+                    >
+                      <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                        {showcaseItems.map((item) => (
+                          <CarouselItem
+                            key={item.id}
+                            className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
+                          >
+                            <ProjectProposalCard
+                              project={item}
+                              onPay={onPayRunningProject}
+                              isPaying={runningProjectProcessingId === item.id}
+                              replaceSectionBadgeWithStatus
+                              className={activeProjectCardClassName}
+                            />
+                          </CarouselItem>
+                        ))}
+                      </CarouselContent>
+                    </Carousel>
+                    <ProjectCarouselDots
+                      count={projectCarouselSnapCount}
+                      activeIndex={activeProjectSnap}
+                      onSelect={(index) => projectCarouselApi?.scrollTo(index)}
+                    />
+                  </div>
                 ) : (
                     <div className="grid items-start gap-5 sm:gap-6 xl:gap-7 md:grid-cols-2 xl:grid-cols-3">
                       {showcaseItems.map((item) => (
@@ -1534,71 +2157,77 @@ const ClientDashboardShell = ({
           </section>
 
           <section className="mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
-            <div className="flex flex-col gap-5 sm:gap-6 xl:gap-7">
+            <div className="min-w-0 flex flex-col gap-5 sm:gap-6 xl:gap-7">
               {!isProjectsLoading && showcaseItems.length > 0 ? (
-                <DraftProposalsPanel
+                <DraftProposalsSection
                   draftProposalRows={draftProposalRows}
                   onOpenQuickProject={onOpenQuickProject}
                 />
               ) : null}
-              <DashboardPanel className="overflow-hidden bg-card">
-                <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
-                  <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
-                    Recent Activity
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={onOpenViewProjects}
-                    className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[#ffc107] transition-colors hover:text-[#ffd54f]"
-                  >
-                    View All
-                  </button>
-                </div>
-                <div>
-                  {recentActivities.map((item) => (
-                    <ActivityRow key={item.id} item={item} />
-                  ))}
-                </div>
-              </DashboardPanel>
+              <RecentActivitySection
+                recentActivities={recentActivities}
+                onOpenViewProjects={onOpenViewProjects}
+              />
             </div>
 
             <div className="grid gap-5 sm:gap-6 xl:gap-7">
-              <DashboardPanel className="w-full overflow-hidden rounded-[20px] bg-card px-4 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-7">
-                <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.6rem]">
-                  Active Project Chats
-                </h2>
-
-                {acceptedFreelancers.length === 0 ? (
-                  <div className="flex min-h-[220px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[260px] sm:py-10">
-                    <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-14">
-                      <MessageSquareText className="size-6" />
-                    </div>
-                    <p className="mt-5 text-sm text-white">No active project chats yet</p>
-                    <p className="mt-2 max-w-[220px] text-xs text-[#8f8f8f]">
-                      Chat shortcuts appear here once a project becomes active and messaging is unlocked.
-                    </p>
+              <section className="w-full min-w-0">
+                <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
+                  <div className="min-w-0">
+                    <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+                      Active Chats
+                    </h2>
                   </div>
-                ) : (
-                  <>
-                    <div className="mt-6 space-y-6 sm:mt-8 sm:space-y-[30px]">
-                      {acceptedFreelancers.map((item) => (
-                        <AcceptedFreelancerRow key={item.id} item={item} />
-                      ))}
-                    </div>
+                </div>
 
-                    <button
-                      type="button"
-                      onClick={onOpenMessages}
-                      className="mt-9 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-white"
-                    >
-                      <span>
-                        Open Messages ({acceptedFreelancersCount || acceptedFreelancers.length})
-                      </span>
-                      <ChevronRight className="size-[15px] stroke-[1.75]" />
-                    </button>
-                  </>
-                )}
-              </DashboardPanel>
+                <DashboardPanel className="w-full overflow-hidden bg-card px-5 pb-5 pt-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:pb-6 sm:pt-6">
+
+                  {acceptedFreelancers.length === 0 ? (
+                    <div className="flex min-h-[220px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[260px] sm:py-10">
+                      <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-14">
+                        <MessageSquareText className="size-6" />
+                      </div>
+                      <p className="mt-5 text-sm text-white">No active project chats yet</p>
+                      <p className="mt-2 max-w-[220px] text-xs text-[#8f8f8f]">
+                        Chat shortcuts appear here once a project becomes active and messaging is unlocked.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mt-5 sm:mt-6">
+                        {acceptedFreelancers.map((item, index) => (
+                          <div
+                            key={item.id}
+                            className={cn(
+                              "py-5",
+                              index === 0 ? "pt-0" : "",
+                              index === acceptedFreelancers.length - 1
+                                ? "pb-0"
+                                : "border-b border-white/[0.08]",
+                            )}
+                          >
+                            <AcceptedFreelancerRow
+                              item={item}
+                              onOpenMessages={onOpenMessages}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={onOpenMessages}
+                        className="mt-5 flex w-full items-center justify-center gap-2 border-t border-white/[0.08] pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-[#d6d6d6] transition-colors hover:text-white"
+                      >
+                        <span>
+                          Open Messages ({acceptedFreelancersCount || acceptedFreelancers.length})
+                        </span>
+                        <ChevronRight className="size-[15px] stroke-[1.75]" />
+                      </button>
+                    </>
+                  )}
+                </DashboardPanel>
+              </section>
             </div>
           </section>
 

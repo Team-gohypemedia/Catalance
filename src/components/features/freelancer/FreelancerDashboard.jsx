@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Gavel from "lucide-react/dist/esm/icons/gavel";
 import Video from "lucide-react/dist/esm/icons/video";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import CreditCard from "lucide-react/dist/esm/icons/credit-card";
+import FolderKanban from "lucide-react/dist/esm/icons/folder-kanban";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
@@ -9,6 +12,7 @@ import Clock from "lucide-react/dist/esm/icons/clock";
 import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 import { getSession } from "@/shared/lib/auth-storage";
@@ -51,6 +55,8 @@ import {
   collectEducationEntriesFromProfileDetails,
 } from "@/components/features/freelancer/profile/freelancerProfileUtils";
 import { cn } from "@/shared/lib/utils";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
+import { toast } from "sonner";
 
 // ========== Phase Building Helper Functions (from ClientProjects) ==========
 const toTaskIdArray = (value) => {
@@ -788,12 +794,7 @@ const ACTIVITY_TONE_STYLES = {
   },
 };
 
-const PENDING_PROPOSAL_TONE_STYLES = {
-  amber: "bg-[#40310a] text-[#ffc107]",
-  blue: "bg-[#19345d] text-[#60a5fa]",
-  green: "bg-[#163822] text-[#34d399]",
-  violet: "bg-[#3d2459] text-[#c084fc]",
-};
+const FREELANCER_MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT = 2;
 
 const formatDashboardActivityTime = (value) => {
   if (!value) return "Now";
@@ -817,6 +818,18 @@ const formatDashboardActivityTime = (value) => {
 
 const FREELANCER_DASHBOARD_PANEL_CLASSNAME =
   "overflow-hidden rounded-[24px] border border-white/[0.08] bg-card";
+
+const freelancerPendingProposalSurfaceToneClassName =
+  "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+
+const freelancerPendingProposalDetailBlockClassName =
+  `flex min-w-0 flex-col rounded-[14px] ${freelancerPendingProposalSurfaceToneClassName} p-4 lg:h-[76px]`;
+
+const freelancerPendingProposalActionButtonClassName =
+  "inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-[10px] px-4 text-sm font-semibold transition-colors";
+
+const freelancerCompactEarningsSurfaceClassName =
+  "rounded-[20px] border border-white/[0.06] bg-white/[0.03] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-5 sm:py-5";
 
 const freelancerDashboardCurrencyFormatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -906,30 +919,69 @@ const FreelancerDashboardSkeletonBlock = ({ className }) => (
   <Skeleton className={cn(freelancerDashboardSkeletonClassName, className)} />
 );
 
-const FreelancerMetricCardsSkeleton = () => (
-  <section className="mt-2 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
-    {[0, 1, 2, 3].map((item) => (
-      <FreelancerDashboardPanel
-        key={`freelancer-metric-skeleton-${item}`}
-        className={cn("p-3.5 sm:p-5", item >= 2 && "col-span-2 xl:col-span-1")}
-      >
-        <div className="space-y-3 sm:space-y-4">
-          <div className="flex items-start justify-between gap-2 sm:gap-3">
-            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-              <FreelancerDashboardSkeletonBlock className="size-8 rounded-lg sm:size-9" />
-              <FreelancerDashboardSkeletonBlock className="h-3 w-16 rounded-full sm:h-3.5 sm:w-24" />
-            </div>
-            <FreelancerDashboardSkeletonBlock className="size-7 rounded-lg sm:size-8" />
+const freelancerMetricSkeletonItems = [
+  { id: "active-projects", hasControl: false },
+  { id: "completed-projects", hasControl: false },
+  { id: "pending-proposals", hasControl: false },
+  { id: "total-earnings", hasControl: true },
+];
+
+const FreelancerMetricCardSkeleton = ({ item }) => {
+  const shouldSpanFullWidth = item.id === "pending-proposals" || item.id === "total-earnings";
+
+  return (
+    <FreelancerDashboardPanel
+      className={cn(
+        "group relative min-h-[136px] border border-transparent bg-card px-3.5 py-4 sm:min-h-[110px] sm:p-5",
+        shouldSpanFullWidth && "col-span-2 xl:col-span-1",
+      )}
+    >
+      <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
+        {item.hasControl ? (
+          <div className="flex w-full items-center justify-between">
+            <span className="size-10 shrink-0" aria-hidden="true" />
+            <FreelancerDashboardSkeletonBlock className="size-10 rounded-[16px]" />
+            <FreelancerDashboardSkeletonBlock className="size-10 rounded-[16px]" />
           </div>
-          <FreelancerDashboardSkeletonBlock className="h-8 w-16 rounded-full sm:h-9 sm:w-24" />
+        ) : (
+          <FreelancerDashboardSkeletonBlock className="size-10 rounded-[16px]" />
+        )}
+        <FreelancerDashboardSkeletonBlock className="mt-4 h-8 w-16 rounded-full" />
+        <FreelancerDashboardSkeletonBlock className="mt-3 h-3 w-24 rounded-full" />
+      </div>
+
+      <div className="hidden h-full flex-col gap-2.5 sm:flex sm:gap-3">
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 items-start gap-2 sm:items-center sm:gap-3">
+            <FreelancerDashboardSkeletonBlock className="size-9 shrink-0 rounded-lg" />
+            <FreelancerDashboardSkeletonBlock className="h-4 w-32 rounded-full" />
+          </div>
+          {item.hasControl ? (
+            <FreelancerDashboardSkeletonBlock className="size-9 shrink-0 rounded-lg" />
+          ) : null}
         </div>
-      </FreelancerDashboardPanel>
+
+        <div className="mt-auto flex min-w-0 items-end gap-1.5 sm:gap-2">
+          <FreelancerDashboardSkeletonBlock className="h-8 w-20 rounded-full" />
+        </div>
+      </div>
+    </FreelancerDashboardPanel>
+  );
+};
+
+const FreelancerMetricCardsSkeleton = () => (
+  <section className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+    {freelancerMetricSkeletonItems.map((item) => (
+      <FreelancerMetricCardSkeleton
+        key={`freelancer-metric-skeleton-${item.id}`}
+        item={item}
+      />
     ))}
   </section>
 );
 
 const FreelancerActiveProjectsSkeleton = () => (
-  <section className="mt-14">
+  <section>
     <div className="mb-6 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3">
         <FreelancerDashboardSkeletonBlock className="h-8 w-44 rounded-full" />
@@ -950,68 +1002,207 @@ const FreelancerActiveProjectsSkeleton = () => (
 );
 
 const FreelancerPendingProposalsSkeleton = () => (
-  <FreelancerDashboardPanel>
-    <div className="px-4 py-4 sm:px-6 sm:py-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <FreelancerDashboardSkeletonBlock className="h-8 w-48 rounded-full" />
-          <FreelancerDashboardSkeletonBlock className="mt-2 h-4 w-72 rounded-full" />
-        </div>
-        <FreelancerDashboardSkeletonBlock className="h-4 w-16 rounded-full" />
-      </div>
+  <section className="w-full min-w-0">
+    <div className="mb-4 flex items-center gap-4 sm:mb-5">
+      <FreelancerDashboardSkeletonBlock className="h-8 w-52 rounded-full" />
     </div>
 
-    {[0, 1, 2].map((item) => (
-      <div
-        key={`freelancer-pending-proposal-skeleton-${item}`}
-        className="border-t border-white/[0.05] px-4 py-4 sm:px-6 sm:py-5"
-      >
-        <div className="flex flex-col gap-3">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5">
-              <FreelancerDashboardSkeletonBlock className="h-6 w-36 rounded-full" />
-              <FreelancerDashboardSkeletonBlock className="h-5 w-20 rounded-full" />
-            </div>
-            <FreelancerDashboardSkeletonBlock className="h-4 w-24 rounded-full" />
-          </div>
+    <FreelancerDashboardPanel className="overflow-hidden bg-card">
+      <div className="divide-y divide-white/[0.06]">
+        {[0, 1, 2].map((item) => (
+          <div
+            key={`freelancer-pending-proposal-skeleton-${item}`}
+            className="px-4 py-5 sm:px-6 sm:py-6"
+          >
+            <div className="grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_184px] lg:items-end">
+              <div className="min-w-0">
+                <FreelancerDashboardSkeletonBlock className="h-8 w-44 rounded-full" />
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <FreelancerDashboardSkeletonBlock className="h-6 w-28 rounded-full" />
-            <FreelancerDashboardSkeletonBlock className="h-10 w-32 rounded-full" />
+                <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
+                  <div className={freelancerPendingProposalDetailBlockClassName}>
+                    <FreelancerDashboardSkeletonBlock className="h-3 w-20 rounded-full" />
+                    <FreelancerDashboardSkeletonBlock className="mt-3 h-6 w-24 rounded-full" />
+                  </div>
+
+                  <div className={freelancerPendingProposalDetailBlockClassName}>
+                    <FreelancerDashboardSkeletonBlock className="h-3 w-16 rounded-full" />
+                    <FreelancerDashboardSkeletonBlock className="mt-3 h-6 w-28 rounded-full" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex w-full flex-col gap-2.5 lg:h-[76px] lg:items-end lg:justify-end lg:gap-2">
+                <FreelancerDashboardSkeletonBlock className="h-11 w-full rounded-[10px] lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1" />
+                <FreelancerDashboardSkeletonBlock className="h-11 w-full rounded-[10px] lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1" />
+              </div>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
-    ))}
-  </FreelancerDashboardPanel>
+    </FreelancerDashboardPanel>
+  </section>
 );
 
 const FreelancerRecentActivitySkeleton = () => (
-  <FreelancerDashboardPanel>
-    <div className="flex items-center justify-between border-b border-white/[0.05] px-4 py-4 sm:px-6 sm:py-5">
+  <section className="w-full min-w-0">
+    <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
       <FreelancerDashboardSkeletonBlock className="h-8 w-44 rounded-full" />
       <FreelancerDashboardSkeletonBlock className="h-4 w-16 rounded-full" />
     </div>
 
-    {[0, 1, 2, 3].map((item) => (
-      <div
-        key={`freelancer-activity-skeleton-${item}`}
-        className="flex items-center justify-between gap-4 border-b border-white/[0.05] px-4 py-4 last:border-b-0 sm:px-6"
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <FreelancerDashboardSkeletonBlock className="size-8 rounded-full" />
-          <div className="space-y-2">
-            <FreelancerDashboardSkeletonBlock className="h-4 w-40 rounded-full" />
-            <FreelancerDashboardSkeletonBlock className="h-3 w-56 rounded-full" />
+    <FreelancerDashboardPanel className="overflow-hidden bg-card">
+      {[0, 1, 2, 3].map((item) => (
+        <div
+          key={`freelancer-activity-skeleton-${item}`}
+          className="flex flex-col gap-3 px-4 py-4 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
+        >
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <FreelancerDashboardSkeletonBlock className="size-9 rounded-full sm:size-10" />
+            <div className="min-w-0 space-y-2">
+              <FreelancerDashboardSkeletonBlock className="h-4 w-40 rounded-full" />
+              <FreelancerDashboardSkeletonBlock className="h-3 w-56 rounded-full" />
+            </div>
           </div>
+          <FreelancerDashboardSkeletonBlock className="h-3 w-12 rounded-full" />
         </div>
-        <FreelancerDashboardSkeletonBlock className="h-3 w-12 rounded-full" />
-      </div>
-    ))}
-  </FreelancerDashboardPanel>
+      ))}
+    </FreelancerDashboardPanel>
+  </section>
 );
 
+const FreelancerActivityRow = ({ item, compact = false }) => {
+  const Icon = item.icon || FolderKanban;
+  const tone = ACTIVITY_TONE_STYLES[item.tone] || ACTIVITY_TONE_STYLES.slate;
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={item.onClick}
+        className="flex w-full items-start gap-4 rounded-[18px] px-3 py-3 text-left transition-colors hover:bg-white/[0.02]"
+      >
+        <div className={cn("mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-full", tone.icon)}>
+          <Icon className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[1.05rem] font-semibold leading-tight text-white">
+            {item.title}
+          </p>
+          <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
+            {item.subtitle}
+          </p>
+          <span className="mt-3 block text-xs text-muted-foreground">{item.timeLabel}</span>
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={item.onClick}
+      className="flex w-full flex-col gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.02] sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
+    >
+      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-full sm:size-10", tone.icon)}>
+          <Icon className="size-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-white">{item.title}</p>
+          <p className="text-xs leading-5 text-muted-foreground sm:truncate">{item.subtitle}</p>
+        </div>
+      </div>
+      <span className="pl-12 text-xs text-muted-foreground sm:pl-13 lg:pl-0">{item.timeLabel}</span>
+    </button>
+  );
+};
+
+const FreelancerRecentActivitySection = ({ recentActivities, onOpenViewAll }) => {
+  const isMobile = useIsMobile();
+  const [showAllRecentActivities, setShowAllRecentActivities] = useState(false);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setShowAllRecentActivities(false);
+    }
+  }, [isMobile]);
+
+  const hasOverflow = recentActivities.length > FREELANCER_MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT;
+  const visibleActivities =
+    isMobile && !showAllRecentActivities
+      ? recentActivities.slice(0, FREELANCER_MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT)
+      : recentActivities;
+  const remainingActivityCount = Math.max(
+    0,
+    recentActivities.length - FREELANCER_MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT,
+  );
+
+  return (
+    <section className="w-full min-w-0">
+      <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
+        <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+          Recent Activity
+        </h2>
+        <button
+          type="button"
+          onClick={onOpenViewAll}
+          className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[#ffc107] transition-colors hover:text-[#ffd54f]"
+        >
+          View All
+        </button>
+      </div>
+
+      <FreelancerDashboardPanel className="overflow-hidden bg-card">
+        {recentActivities.length === 0 ? (
+          <div className="px-5 py-6 text-sm text-[#8f96a3] sm:px-6">
+            No recent activity yet.
+          </div>
+        ) : isMobile ? (
+          <div className="px-3 pb-3 pt-3">
+            <div className="space-y-1">
+              {visibleActivities.map((item) => (
+                <FreelancerActivityRow key={item.id} item={item} compact />
+              ))}
+            </div>
+
+            {hasOverflow ? (
+              <div className="px-2 pt-4">
+                <div className="h-px bg-white/[0.08]" />
+                <button
+                  type="button"
+                  onClick={() => setShowAllRecentActivities((current) => !current)}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#cbd5e1] transition-colors hover:text-white"
+                  aria-expanded={showAllRecentActivities}
+                >
+                  <span>
+                    {showAllRecentActivities
+                      ? "Show Less"
+                      : `View ${remainingActivityCount} More`}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "size-4 transition-transform duration-200",
+                      showAllRecentActivities ? "rotate-180" : "rotate-0",
+                    )}
+                  />
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div>
+            {recentActivities.map((item) => (
+              <FreelancerActivityRow key={item.id} item={item} />
+            ))}
+          </div>
+        )}
+      </FreelancerDashboardPanel>
+    </section>
+  );
+};
+
 const FreelancerProfileCompletionSkeleton = () => (
-  <section className="mt-5">
+  <section>
     <FreelancerDashboardPanel className="p-4 sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <FreelancerDashboardSkeletonBlock className="h-8 w-[26rem] max-w-full rounded-full" />
@@ -1026,33 +1217,110 @@ const FreelancerProfileCompletionSkeleton = () => (
 );
 
 const FreelancerChatsSkeleton = () => (
-  <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
-    <FreelancerDashboardSkeletonBlock className="h-8 w-52 rounded-full" />
-    <FreelancerDashboardSkeletonBlock className="mt-3 h-4 w-56 rounded-full" />
-    <FreelancerDashboardSkeletonBlock className="mt-2 h-4 w-40 rounded-full" />
-    <div className="mt-6 space-y-4 sm:mt-8">
-      {[0, 1].map((item) => (
-        <div key={`freelancer-chat-skeleton-${item}`} className="rounded-[18px] bg-white/[0.03] px-3.5 py-3.5">
-          <div className="flex items-start gap-3">
-            <FreelancerDashboardSkeletonBlock className="size-10 rounded-full" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <FreelancerDashboardSkeletonBlock className="h-5 w-36 rounded-full" />
-                <FreelancerDashboardSkeletonBlock className="h-3 w-12 rounded-full" />
+  <section className="w-full min-w-0">
+    <div className="mb-4 sm:mb-5">
+      <FreelancerDashboardSkeletonBlock className="h-8 w-40 rounded-full" />
+    </div>
+    <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
+      <div className="space-y-4 sm:space-y-5">
+        {[0, 1].map((item) => (
+          <div key={`freelancer-chat-skeleton-${item}`} className="rounded-[18px] bg-white/[0.03] px-3.5 py-3.5">
+            <div className="flex items-start gap-3">
+              <FreelancerDashboardSkeletonBlock className="size-10 rounded-full" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <FreelancerDashboardSkeletonBlock className="h-5 w-36 rounded-full" />
+                  <FreelancerDashboardSkeletonBlock className="h-3 w-12 rounded-full" />
+                </div>
+                <FreelancerDashboardSkeletonBlock className="h-4 w-full rounded-full" />
+                <FreelancerDashboardSkeletonBlock className="h-4 w-2/3 rounded-full" />
               </div>
-              <FreelancerDashboardSkeletonBlock className="h-4 w-full rounded-full" />
-              <FreelancerDashboardSkeletonBlock className="h-4 w-2/3 rounded-full" />
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+      <FreelancerDashboardSkeletonBlock className="mt-8 h-4 w-40 rounded-full" />
+    </FreelancerDashboardPanel>
+  </section>
+);
+
+const FreelancerCompactEarningsSummarySkeleton = () => (
+  <section className="w-full min-w-0">
+    <div className="mb-4 sm:mb-5">
+      <FreelancerDashboardSkeletonBlock className="h-8 w-28 rounded-full" />
     </div>
-    <FreelancerDashboardSkeletonBlock className="mt-8 h-4 w-40 rounded-full" />
-  </FreelancerDashboardPanel>
+    <FreelancerDashboardPanel className="overflow-hidden bg-card p-3.5 sm:p-4">
+
+      <div className="space-y-3.5 sm:space-y-4">
+        {[0, 1].map((item) => (
+          <div
+            key={`freelancer-compact-earnings-skeleton-${item}`}
+            className={freelancerCompactEarningsSurfaceClassName}
+          >
+            <FreelancerDashboardSkeletonBlock className="h-3 w-20 rounded-full" />
+            <FreelancerDashboardSkeletonBlock className="mt-3.5 h-7 w-32 rounded-full" />
+            <FreelancerDashboardSkeletonBlock className="mt-2.5 h-4 w-40 rounded-full" />
+            <FreelancerDashboardSkeletonBlock className="mt-4 h-4 w-28 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </FreelancerDashboardPanel>
+  </section>
+);
+
+const FreelancerCompactEarningsSummary = ({
+  receivedAmount,
+  pendingAmount,
+  momentumLabel,
+  nextPayoutLabel,
+}) => (
+  <section className="w-full min-w-0">
+    <div className="mb-4 sm:mb-5">
+      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+        Earnings
+      </h2>
+    </div>
+    <FreelancerDashboardPanel className="overflow-hidden bg-card p-3.5 sm:p-4">
+
+      <div className="space-y-3.5 sm:space-y-4">
+        <div className={freelancerCompactEarningsSurfaceClassName}>
+          <p className="text-[0.72rem] uppercase tracking-[0.18em] text-muted-foreground">
+            Received
+          </p>
+          <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] text-white sm:text-[1.8rem]">
+            {receivedAmount}
+          </p>
+          <p className="mt-2.5 text-sm text-muted-foreground">
+            Cleared freelancer earnings
+          </p>
+          <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <TrendingUp className="size-3.5" />
+            <span>{momentumLabel}</span>
+          </div>
+        </div>
+
+        <div className={freelancerCompactEarningsSurfaceClassName}>
+          <p className="text-[0.72rem] uppercase tracking-[0.18em] text-muted-foreground">
+            Pending
+          </p>
+          <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] text-white sm:text-[1.8rem]">
+            {pendingAmount}
+          </p>
+          <p className="mt-2.5 text-sm text-muted-foreground">
+            Expected from active projects
+          </p>
+          <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <Clock className="size-3.5" />
+            <span>{nextPayoutLabel}</span>
+          </div>
+        </div>
+      </div>
+    </FreelancerDashboardPanel>
+  </section>
 );
 
 const FreelancerEarningsSkeleton = () => (
-  <section className="mt-5">
+  <section>
     <FreelancerDashboardPanel className="overflow-hidden p-0">
       <div className="border-b border-white/[0.05] px-4 py-5 sm:px-6 lg:px-7">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1131,49 +1399,88 @@ const FreelancerMetricCard = ({
   ariaLabel,
   control,
   className = "",
-}) => (
-  <article
-    className={`group flex min-h-[96px] flex-col rounded-[24px] border border-transparent bg-card p-3.5 transition-colors hover:border-[#facc15]/70 sm:min-h-[110px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
-    onClick={onClick}
-    role={onClick ? "button" : undefined}
-    aria-label={ariaLabel}
-  >
-    <div className="flex h-full flex-col gap-2.5 sm:gap-3">
-      <div className="flex items-start justify-between gap-2 sm:gap-3">
-        <div className="flex min-w-0 items-start gap-2 sm:items-center sm:gap-3">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground sm:size-9">
-            <Icon className="size-3.5 sm:size-4" />
+}) => {
+  const handleKeyDown = (event) => {
+    if (typeof onClick !== "function") return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+    }
+  };
+  const renderDesktopControl = () => (control ? <div className="shrink-0">{control}</div> : null);
+
+  return (
+    <article
+      className={`group relative flex min-h-[136px] flex-col rounded-[24px] border border-transparent bg-card px-3.5 py-4 transition-colors hover:border-[#facc15]/70 sm:min-h-[110px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={ariaLabel}
+    >
+      <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
+        {control ? (
+          <div className="flex w-full items-center justify-between">
+            <span className="size-10 shrink-0 sm:size-14" aria-hidden="true" />
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
+              <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
+            </div>
+            <div className="shrink-0">{control}</div>
           </div>
-          <p className="line-clamp-2 text-[10px] font-medium uppercase leading-4 tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.12em]">
-            {title}
-          </p>
-        </div>
-        {control}
-      </div>
-      <div className="mt-auto flex min-w-0 items-end gap-1.5 sm:gap-2">
-        <p className="shrink-0 text-[1.35rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-[#facc15] sm:text-[1.75rem]">
+        ) : (
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
+            <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
+          </div>
+        )}
+        <p className="mt-4 shrink-0 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-white transition-colors group-hover:text-[#facc15] sm:mt-6 sm:text-[3rem]">
           {value}
         </p>
+        <p className="mt-3 text-center text-[8px] font-medium uppercase tracking-[0.14em] text-muted-foreground sm:mt-4 sm:text-[11px] sm:tracking-[0.2em]">
+          {title}
+        </p>
         {detail ? (
-          <p className="min-w-0 truncate text-[11px] leading-4 text-[#6b7280] sm:text-xs">{detail}</p>
+          <p className="mt-2 min-w-0 text-xs leading-5 text-[#6b7280]">{detail}</p>
         ) : null}
       </div>
-    </div>
-  </article>
-);
+      <div className="hidden h-full flex-col gap-2.5 sm:flex sm:gap-3">
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 items-start gap-2 sm:items-center sm:gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground/75">
+              <Icon className="size-4 text-muted-foreground/75" />
+            </div>
+            <p className="line-clamp-2 text-[11px] font-medium uppercase leading-4 tracking-[0.12em] text-muted-foreground">
+              {title}
+            </p>
+          </div>
+          {renderDesktopControl()}
+        </div>
+        <div className="mt-auto flex min-w-0 items-end gap-1.5 sm:gap-2">
+          <p className="shrink-0 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-[#facc15]">
+            {value}
+          </p>
+          {detail ? (
+            <p className="min-w-0 truncate text-xs leading-4 text-[#6b7280]">{detail}</p>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+};
 
 const FreelancerProjectCarouselControls = ({
   onPrevious,
   onNext,
   canGoPrevious,
   canGoNext,
+  previousLabel = "Show previous active freelancer projects",
+  nextLabel = "Show next active freelancer projects",
 }) => (
   <div className="flex items-center gap-2">
     <button
       type="button"
       onClick={onPrevious}
       disabled={!canGoPrevious}
-      aria-label="Show previous active freelancer projects"
+      aria-label={previousLabel}
       className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-white/35"
     >
       <ChevronLeft className="size-4" />
@@ -1183,13 +1490,239 @@ const FreelancerProjectCarouselControls = ({
       type="button"
       onClick={onNext}
       disabled={!canGoNext}
-      aria-label="Show next active freelancer projects"
+      aria-label={nextLabel}
       className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-white/35"
     >
       <ChevronRight className="size-4" />
     </button>
   </div>
 );
+
+const FreelancerCarouselDots = ({
+  count,
+  activeIndex,
+  onSelect,
+  ariaLabel,
+  getDotLabel,
+}) => {
+  if (count <= 1) return null;
+
+  return (
+    <div className="mt-2.5 flex items-center justify-center gap-2" aria-label={ariaLabel}>
+      {Array.from({ length: count }, (_, index) => {
+        const isActive = index === activeIndex;
+
+        return (
+          <button
+            key={`freelancer-carousel-dot-${index}`}
+            type="button"
+            onClick={() => onSelect(index)}
+            aria-label={getDotLabel(index)}
+            aria-pressed={isActive}
+            className={cn(
+              "h-2.5 rounded-full transition-all duration-200",
+              isActive
+                ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-2.5 bg-white/[0.14] hover:bg-white/[0.28]",
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
+const FreelancerPendingProposalRow = ({ item }) => (
+  <div className="grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_184px] lg:items-end">
+    <div className="min-w-0 w-full">
+      <p className="min-w-0 truncate text-[1.4rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.55rem]">
+        {item.title}
+      </p>
+
+      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
+        <div className={freelancerPendingProposalDetailBlockClassName}>
+          <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
+            Received
+          </p>
+          <p className="mt-3 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            {item.updatedAt || "Just now"}
+          </p>
+        </div>
+
+        <div className={freelancerPendingProposalDetailBlockClassName}>
+          <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
+            Budget
+          </p>
+          <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            {item.budget}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex w-full flex-col gap-2.5 lg:h-[76px] lg:items-end lg:justify-end lg:gap-2">
+      <button
+        type="button"
+        onClick={item.onView}
+        disabled={item.isAccepting}
+        className={cn(
+          freelancerPendingProposalActionButtonClassName,
+          "bg-[#ffc107] text-black hover:bg-[#ffd54f] lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
+          item.isAccepting && "cursor-not-allowed opacity-60",
+        )}
+      >
+        View Details
+      </button>
+
+      <button
+        type="button"
+        onClick={item.onAccept}
+        disabled={item.isAccepting}
+        className={cn(
+          freelancerPendingProposalActionButtonClassName,
+          "bg-[#23d18b] text-[#07150f] hover:bg-[#34d399] lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
+          item.isAccepting && "cursor-not-allowed opacity-60",
+        )}
+      >
+        {item.isAccepting ? "Accepting..." : "Accept Proposal"}
+      </button>
+    </div>
+  </div>
+);
+
+const FreelancerPendingProposalCard = ({ item }) => (
+  <article className="flex h-auto w-full max-w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[28px] border border-white/[0.06] bg-card p-4 transition-transform duration-200 hover:-translate-y-1 sm:p-5 xl:p-6">
+    <FreelancerPendingProposalRow item={item} />
+  </article>
+);
+
+const FreelancerPendingProposalListPanel = ({ pendingProposalRows }) => (
+  <FreelancerDashboardPanel className="overflow-hidden bg-card">
+    <div className="divide-y divide-white/[0.06]">
+      {pendingProposalRows.map((item) => (
+        <div key={item.id} className="px-4 py-5 sm:px-6 sm:py-6">
+          <FreelancerPendingProposalRow item={item} />
+        </div>
+      ))}
+    </div>
+  </FreelancerDashboardPanel>
+);
+
+const FreelancerPendingProposalsSection = ({
+  pendingProposalRows,
+  onOpenAll,
+  className = "",
+}) => {
+  const isMobile = useIsMobile();
+  const shouldUsePendingProposalCarousel = isMobile && pendingProposalRows.length > 1;
+  const [pendingProposalCarouselApi, setPendingProposalCarouselApi] = useState(null);
+  const [canGoToPreviousPendingProposal, setCanGoToPreviousPendingProposal] = useState(false);
+  const [canGoToNextPendingProposal, setCanGoToNextPendingProposal] = useState(false);
+  const [pendingProposalSnapCount, setPendingProposalSnapCount] = useState(0);
+  const [activePendingProposalSnap, setActivePendingProposalSnap] = useState(0);
+
+  useEffect(() => {
+    if (!pendingProposalCarouselApi || !shouldUsePendingProposalCarousel) {
+      setCanGoToPreviousPendingProposal(false);
+      setCanGoToNextPendingProposal(false);
+      setPendingProposalSnapCount(0);
+      setActivePendingProposalSnap(0);
+      return undefined;
+    }
+
+    const syncPendingProposalCarouselState = () => {
+      setCanGoToPreviousPendingProposal(pendingProposalCarouselApi.canScrollPrev());
+      setCanGoToNextPendingProposal(pendingProposalCarouselApi.canScrollNext());
+      setPendingProposalSnapCount(pendingProposalCarouselApi.scrollSnapList().length);
+      setActivePendingProposalSnap(pendingProposalCarouselApi.selectedScrollSnap());
+    };
+
+    syncPendingProposalCarouselState();
+    pendingProposalCarouselApi.on("select", syncPendingProposalCarouselState);
+    pendingProposalCarouselApi.on("reInit", syncPendingProposalCarouselState);
+
+    return () => {
+      pendingProposalCarouselApi.off("select", syncPendingProposalCarouselState);
+      pendingProposalCarouselApi.off("reInit", syncPendingProposalCarouselState);
+    };
+  }, [pendingProposalCarouselApi, shouldUsePendingProposalCarousel]);
+
+  return (
+    <section className={cn("w-full min-w-0", className)}>
+      <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
+        <div className="min-w-0">
+          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+            Pending Proposals
+          </h2>
+        </div>
+
+        {shouldUsePendingProposalCarousel ? (
+          <FreelancerProjectCarouselControls
+            onPrevious={() => pendingProposalCarouselApi?.scrollPrev()}
+            onNext={() => pendingProposalCarouselApi?.scrollNext()}
+            canGoPrevious={canGoToPreviousPendingProposal}
+            canGoNext={canGoToNextPendingProposal}
+            previousLabel="Show previous pending proposal"
+            nextLabel="Show next pending proposal"
+          />
+        ) : null}
+      </div>
+
+      {pendingProposalRows.length === 0 ? (
+        <FreelancerDashboardPanel className="overflow-hidden bg-card">
+          <div className="flex min-h-[240px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[320px] sm:px-6 sm:py-12">
+            <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground sm:size-16">
+              <ClipboardList className="size-6 sm:size-7" />
+            </div>
+            <p className="mt-6 text-base font-medium text-white">No pending proposals</p>
+            <p className="mt-2 max-w-[320px] text-sm text-muted-foreground">
+              New proposal requests from clients will appear here.
+            </p>
+            <button
+              type="button"
+              onClick={onOpenAll}
+              className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f] sm:min-w-0"
+            >
+              View Proposals
+            </button>
+          </div>
+        </FreelancerDashboardPanel>
+      ) : shouldUsePendingProposalCarousel ? (
+        <div className="w-full min-w-0">
+          <Carousel
+            setApi={setPendingProposalCarouselApi}
+            opts={{
+              align: "start",
+              containScroll: "trimSnaps",
+              slidesToScroll: 1,
+              duration: 34,
+            }}
+            className="w-full"
+          >
+            <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+              {pendingProposalRows.map((item) => (
+                <CarouselItem key={item.id} className="basis-full pl-[2px] pr-[2px] pt-1">
+                  <FreelancerPendingProposalCard item={item} />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
+          <FreelancerCarouselDots
+            count={pendingProposalSnapCount}
+            activeIndex={activePendingProposalSnap}
+            onSelect={(index) => pendingProposalCarouselApi?.scrollTo(index)}
+            ariaLabel="Pending proposals carousel pagination"
+            getDotLabel={(index) => `Go to pending proposal ${index + 1}`}
+          />
+        </div>
+      ) : isMobile ? (
+        <FreelancerPendingProposalCard item={pendingProposalRows[0]} />
+      ) : (
+        <FreelancerPendingProposalListPanel pendingProposalRows={pendingProposalRows} />
+      )}
+    </section>
+  );
+};
 
 const FreelancerProjectRedirectCard = ({ item, className }) => (
   <div
@@ -1248,9 +1781,12 @@ export const DashboardContent = ({ _roleOverride }) => {
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [showPendingPaymentsStat, setShowPendingPaymentsStat] = useState(false);
+  const [pendingProposalActionId, setPendingProposalActionId] = useState(null);
   const [projectCarouselApi, setProjectCarouselApi] = useState(null);
   const [canGoToPreviousProjects, setCanGoToPreviousProjects] = useState(false);
   const [canGoToNextProjects, setCanGoToNextProjects] = useState(false);
+  const [projectCarouselSnapCount, setProjectCarouselSnapCount] = useState(0);
+  const [activeProjectSnap, setActiveProjectSnap] = useState(0);
   const [profileCompletion, setProfileCompletion] = useState({
     percent: 0,
     message: "Loading profile completion...",
@@ -1753,6 +2289,91 @@ export const DashboardContent = ({ _roleOverride }) => {
       }).format(dashboardClock),
     [dashboardClock],
   );
+  const handleAcceptPendingProposal = useCallback(
+    async (proposal) => {
+      const proposalId = String(proposal?.id || "").trim();
+      if (!proposalId) {
+        toast.error("Proposal id is missing.");
+        return;
+      }
+
+      setPendingProposalActionId(proposalId);
+
+      try {
+        const response = await authFetch(`/proposals/${proposalId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "ACCEPTED" }),
+        });
+
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => null);
+          throw new Error(errorPayload?.message || `Status update failed (${response.status})`);
+        }
+
+        setMetrics((previous) => {
+          const normalizedAcceptedProposal = {
+            ...proposal,
+            status: "ACCEPTED",
+          };
+          const pendingProposals = previous.pendingProposals.filter(
+            (item) => String(item?.id || "") !== proposalId,
+          );
+          const acceptedByProject = new Map();
+
+          [...previous.acceptedProposals, normalizedAcceptedProposal].forEach((item) => {
+            const key = resolveProjectFingerprint(item);
+            if (key && !acceptedByProject.has(key)) {
+              acceptedByProject.set(key, item);
+            }
+          });
+
+          const acceptedProposals = Array.from(acceptedByProject.values());
+          let activeProjects = 0;
+          let completedProjects = 0;
+          let totalReceived = 0;
+          let totalPending = 0;
+
+          acceptedProposals.forEach((item) => {
+            const proposalAmount = Number(item?.amount) || 0;
+            const isCompleted = isProposalCompletedForDashboard(item);
+
+            if (isCompleted) {
+              completedProjects += 1;
+              totalReceived += proposalAmount;
+              return;
+            }
+
+            activeProjects += 1;
+            totalPending += proposalAmount;
+          });
+
+          const receivedEarnings = Math.round(totalReceived * 0.7);
+          const pendingEarnings = Math.round(totalPending * 0.7);
+
+          return {
+            ...previous,
+            activeProjects,
+            completedProjects,
+            proposalsReceived: pendingProposals.length,
+            acceptedProposals,
+            pendingProposals,
+            earnings: receivedEarnings + pendingEarnings,
+            receivedEarnings,
+            pendingEarnings,
+          };
+        });
+
+        toast.success("Proposal accepted");
+      } catch (error) {
+        console.error("Pending proposal accept error:", error);
+        toast.error(error?.message || "Could not accept proposal");
+      } finally {
+        setPendingProposalActionId(null);
+      }
+    },
+    [authFetch],
+  );
   const pendingProposalRows = useMemo(
     () =>
       metrics.pendingProposals.slice(0, 4).map((proposal, index) => {
@@ -1762,19 +2383,24 @@ export const DashboardContent = ({ _roleOverride }) => {
           proposal?.project?.title ||
           "Untitled proposal";
         const requestTime = formatDashboardActivityTime(proposal?.updatedAt || proposal?.createdAt);
-        const toneCycle = ["amber", "blue", "green", "violet"];
 
         return {
           id: proposal?.id || `pending-proposal-${index}`,
           title,
-          tag: "Pending",
-          tagTone: toneCycle[index % toneCycle.length],
           updatedAt: requestTime,
           budget: formatFreelancerDashboardCurrency(Number(proposal?.amount) || 0),
           projectId: proposal?.project?.id,
+          onView: () => {
+            const query = proposal?.project?.id
+              ? `?projectId=${encodeURIComponent(proposal.project.id)}`
+              : "";
+            navigate(`/freelancer/proposals${query}`);
+          },
+          onAccept: () => handleAcceptPendingProposal(proposal),
+          isAccepting: pendingProposalActionId === String(proposal?.id || ""),
         };
       }),
-    [metrics.pendingProposals]
+    [handleAcceptPendingProposal, metrics.pendingProposals, navigate, pendingProposalActionId]
   );
 
   const recentChatUpdates = useMemo(
@@ -1930,12 +2556,16 @@ export const DashboardContent = ({ _roleOverride }) => {
     if (!projectCarouselApi || !shouldUseProjectCarousel) {
       setCanGoToPreviousProjects(false);
       setCanGoToNextProjects(false);
+      setProjectCarouselSnapCount(0);
+      setActiveProjectSnap(0);
       return undefined;
     }
 
     const syncProjectCarouselState = () => {
       setCanGoToPreviousProjects(projectCarouselApi.canScrollPrev());
       setCanGoToNextProjects(projectCarouselApi.canScrollNext());
+      setProjectCarouselSnapCount(projectCarouselApi.scrollSnapList().length);
+      setActiveProjectSnap(projectCarouselApi.selectedScrollSnap());
     };
 
     syncProjectCarouselState();
@@ -2027,6 +2657,38 @@ export const DashboardContent = ({ _roleOverride }) => {
     }));
   }, [metrics.acceptedProposals]);
 
+  const earningsMomentumSummary = useMemo(() => {
+    const series = earningsTrendData.map((item) => Number(item?.value) || 0);
+    const current = series[series.length - 1] || 0;
+    const previous = series[series.length - 2] || 0;
+
+    if (current <= 0 && previous <= 0) {
+      return {
+        label: "Tracking this month",
+        toneClassName: "text-[#ffc107]",
+      };
+    }
+
+    if (previous <= 0) {
+      return {
+        label: "First payout this month",
+        toneClassName: "text-[#ffc107]",
+      };
+    }
+
+    const delta = ((current - previous) / previous) * 100;
+    const roundedDelta = Math.abs(delta);
+    const formattedDelta =
+      roundedDelta >= 100
+        ? roundedDelta.toFixed(0)
+        : roundedDelta.toFixed(1).replace(/\.0$/, "");
+
+    return {
+      label: `${delta >= 0 ? "+" : "-"}${formattedDelta}% this month`,
+      toneClassName: delta >= 0 ? "text-[#ffc107]" : "text-rose-300",
+    };
+  }, [earningsTrendData]);
+
   const pendingPayoutRows = useMemo(() => {
     return metrics.acceptedProposals
       .filter((proposal) => !isProposalCompletedForDashboard(proposal))
@@ -2062,6 +2724,50 @@ export const DashboardContent = ({ _roleOverride }) => {
         };
       });
   }, [metrics.acceptedProposals, resolveProjectProgress]);
+
+  const nextPayoutSummaryLabel = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const candidateDates = metrics.acceptedProposals
+      .filter((proposal) => !isProposalCompletedForDashboard(proposal))
+      .map((proposal) => {
+        const project = proposal?.project || {};
+        const nextInstallment =
+          project?.paymentPlan?.nextDueInstallment || proposal?.paymentPlan?.nextDueInstallment || null;
+
+        return (
+          nextInstallment?.dueDate ||
+          nextInstallment?.date ||
+          project?.deadline ||
+          null
+        );
+      })
+      .map((value) => {
+        const parsed = value ? new Date(value) : null;
+        return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
+      })
+      .filter(Boolean)
+      .sort((left, right) => left - right);
+
+    const nextDate = candidateDates.find((date) => date >= today) || null;
+    if (nextDate) {
+      const diffDays = Math.max(
+        0,
+        Math.ceil((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+      );
+
+      if (diffDays === 0) return "Next payout expected today";
+      if (diffDays === 1) return "Next payout in 1 day";
+      return `Next payout in ${diffDays} days`;
+    }
+
+    if (metrics.pendingEarnings > 0) {
+      return "Pending payout is being tracked";
+    }
+
+    return "No pending payouts right now";
+  }, [metrics.acceptedProposals, metrics.pendingEarnings]);
 
   const receivedPayoutRows = useMemo(() => {
     return metrics.acceptedProposals
@@ -2192,9 +2898,6 @@ export const DashboardContent = ({ _roleOverride }) => {
               <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
                 {greeting}, {firstName}
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Here&apos;s a summary of your freelance business.
-              </p>
             </div>
             <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
               {dashboardDateLabel}
@@ -2204,31 +2907,31 @@ export const DashboardContent = ({ _roleOverride }) => {
           {metricsLoading ? (
             <FreelancerMetricCardsSkeleton />
           ) : (
-            <section className="mt-2 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+            <section className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
               <FreelancerMetricCard
-                icon={Sparkles}
+                icon={FolderKanban}
                 title="Active Projects"
-                value={metrics.activeProjects}
+                value={String(metrics.activeProjects).padStart(2, "0")}
                 onClick={() => navigate("/freelancer/project?view=ongoing")}
                 aria-label="Open active projects"
               />
               <FreelancerMetricCard
-                icon={MessageSquare}
+                icon={CheckCircle2}
                 title="Completed Projects"
-                value={metrics.completedProjects}
+                value={String(metrics.completedProjects).padStart(2, "0")}
                 onClick={() => navigate("/freelancer/project?view=completed")}
                 aria-label="Open completed projects"
               />
               <FreelancerMetricCard
-                icon={Clock}
+                icon={ClipboardList}
                 title="Pending Proposals"
-                value={metrics.pendingProposals.length}
+                value={String(metrics.pendingProposals.length).padStart(2, "0")}
                 onClick={() => navigate("/freelancer/proposals?tab=pending")}
                 aria-label="Open pending proposals"
                 className="col-span-2 xl:col-span-1"
               />
               <FreelancerMetricCard
-                icon={showPendingPaymentsStat ? Clock : TrendingUp}
+                icon={CreditCard}
                 title={showPendingPaymentsStat ? "Pending Payments" : "Total Earnings"}
                 value={
                   showPendingPaymentsStat
@@ -2245,10 +2948,13 @@ export const DashboardContent = ({ _roleOverride }) => {
                       event.stopPropagation();
                       setShowPendingPaymentsStat((previous) => !previous);
                     }}
-                    className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#9ca3af] transition-colors hover:bg-white/[0.12] hover:text-[#facc15] sm:size-8"
+                    onKeyDown={(event) => {
+                      event.stopPropagation();
+                    }}
+                    className="inline-flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-[#facc15] sm:size-9 sm:rounded-lg"
                     aria-label={showPendingPaymentsStat ? "Show total earnings" : "Show pending payments"}
                   >
-                    <Repeat2 className="size-3.5 sm:size-4" />
+                    <Repeat2 className="size-4 text-muted-foreground/75" />
                   </button>
                 }
               />
@@ -2258,7 +2964,7 @@ export const DashboardContent = ({ _roleOverride }) => {
           {showProfileCompletionSkeleton ? (
             <FreelancerProfileCompletionSkeleton />
           ) : (
-            <section className="mt-5">
+            <section>
               <FreelancerDashboardPanel className="p-4 sm:p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <h2 className="min-w-0 text-[1.2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white sm:text-[1.35rem] lg:text-[1.55rem]">
@@ -2293,7 +2999,7 @@ export const DashboardContent = ({ _roleOverride }) => {
           {metricsLoading ? (
             <FreelancerActiveProjectsSkeleton />
           ) : (
-          <section className="mt-14">
+          <section>
             <div className="mb-6 flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
@@ -2330,31 +3036,40 @@ export const DashboardContent = ({ _roleOverride }) => {
                 </div>
               </FreelancerDashboardPanel>
             ) : shouldUseProjectCarousel ? (
-              <Carousel
-                setApi={setProjectCarouselApi}
-                opts={{
-                  align: "start",
-                  containScroll: "trimSnaps",
-                  slidesToScroll: 1,
-                  duration: 34,
-                }}
-                className="w-full"
-              >
-                <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
-                  {runningProjectCards.map((projectCard) => (
-                    <CarouselItem
-                      key={projectCard.id}
-                      className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
-                    >
-                      <ProjectProposalCard
-                        project={projectCard}
-                        replaceSectionBadgeWithStatus
-                        className={activeProjectCardClassName}
-                      />
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-              </Carousel>
+              <div className="w-full">
+                <Carousel
+                  setApi={setProjectCarouselApi}
+                  opts={{
+                    align: "start",
+                    containScroll: "trimSnaps",
+                    slidesToScroll: 1,
+                    duration: 34,
+                  }}
+                  className="w-full"
+                >
+                  <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                    {runningProjectCards.map((projectCard) => (
+                      <CarouselItem
+                        key={projectCard.id}
+                        className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
+                      >
+                        <ProjectProposalCard
+                          project={projectCard}
+                          replaceSectionBadgeWithStatus
+                          className={activeProjectCardClassName}
+                        />
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                </Carousel>
+                <FreelancerCarouselDots
+                  count={projectCarouselSnapCount}
+                  activeIndex={activeProjectSnap}
+                  onSelect={(index) => projectCarouselApi?.scrollTo(index)}
+                  ariaLabel="Active projects carousel pagination"
+                  getDotLabel={(index) => `Go to active project ${index + 1}`}
+                />
+              </div>
             ) : (
               <div className="grid items-start gap-5 sm:gap-6 xl:gap-7 md:grid-cols-2 xl:grid-cols-3">
                   {runningProjectCards.map((projectCard) => (
@@ -2377,217 +3092,110 @@ export const DashboardContent = ({ _roleOverride }) => {
           </section>
           )}
 
-          <section className="mt-4 grid items-start grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <section className="grid items-start grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
             <div className="space-y-5">
               {metricsLoading ? (
                 <FreelancerPendingProposalsSkeleton />
               ) : (
-              <FreelancerDashboardPanel>
-              <div className="px-4 py-4 sm:px-6 sm:py-5">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
-                      Pending Proposals
-                    </h2>
-                  </div>
-                  <Button
-                    variant="link"
-                    className="h-auto justify-start p-0 text-xs font-semibold uppercase tracking-[0.14em] text-[#ffc107] hover:text-[#ffd54f] sm:justify-end"
-                    onClick={() => navigate("/freelancer/proposals")}
-                  >
-                    View All
-                  </Button>
-                </div>
-              </div>
-
-              {pendingProposalRows.length === 0 ? (
-                <div className="flex flex-col items-center justify-center px-5 py-10 text-center sm:px-6 sm:py-12">
-                  <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground sm:size-16">
-                    <ClipboardList className="size-6 sm:size-7" />
-                  </div>
-                  <p className="mt-5 text-base font-medium text-white">No pending proposals</p>
-                  <p className="mt-2 max-w-[320px] text-sm text-muted-foreground">
-                    New proposal requests from clients will appear here.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/freelancer/proposals")}
-                    className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f] sm:min-w-0"
-                  >
-                    View Proposals
-                  </button>
-                </div>
-              ) : (
-                pendingProposalRows.map((item) => (
-                  <div
-                    key={item.id}
-                    className="border-t border-white/[0.05] px-4 py-4 first:border-t-0 sm:px-6 sm:py-5"
-                  >
-                    <div className="flex flex-col gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <p className="min-w-0 truncate text-[1.05rem] font-semibold text-white">{item.title}</p>
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
-                            PENDING_PROPOSAL_TONE_STYLES[item.tagTone] || PENDING_PROPOSAL_TONE_STYLES.amber
-                          }`}
-                        >
-                          {item.tag}
-                        </span>
-                      </div>
-                      {item.updatedAt ? (
-                        <p className="mt-1.5 text-sm text-[#94a3b8]">Received {item.updatedAt}</p>
-                      ) : null}
-                    </div>
-
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-base font-medium text-[#f1f5f9] sm:text-[1.1rem]">
-                        {item.budget}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const query = item.projectId ? `?projectId=${encodeURIComponent(item.projectId)}` : "";
-                          navigate(`/freelancer/proposals${query}`);
-                        }}
-                        className="inline-flex min-w-[144px] items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#f2f2f2] sm:min-w-0"
-                      >
-                        View Details
-                      </button>
-                    </div>
-                    </div>
-                  </div>
-                ))
-              )}
-              </FreelancerDashboardPanel>
+                <FreelancerPendingProposalsSection
+                  pendingProposalRows={pendingProposalRows}
+                  onOpenAll={() => navigate("/freelancer/proposals")}
+                />
               )}
 
               {metricsLoading ? (
                 <FreelancerRecentActivitySkeleton />
               ) : (
-              <FreelancerDashboardPanel>
-              <div className="flex items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
-                <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
-                  Recent Activity
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => navigate("/freelancer/proposals")}
-                  className="text-xs font-bold uppercase tracking-[0.18em] text-[#ffc107] transition-colors hover:text-[#ffd54f]"
-                >
-                  View All
-                </button>
-              </div>
-
-              <div>
-                {(activityItems.length > 0 ? activityItems.slice(0, 4) : []).map((item) => {
-                  const Icon = item.icon;
-                  const tone = ACTIVITY_TONE_STYLES[item.tone] || ACTIVITY_TONE_STYLES.slate;
-
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={item.onClick}
-                      className="flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.04] sm:px-6"
-                    >
-                      <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${tone.icon}`}>
-                        <Icon className="h-3.5 w-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate text-sm font-semibold text-zinc-100">{item.title}</p>
-                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${tone.badge}`}>
-                                {item.badge}
-                              </span>
-                            </div>
-                            <p className="mt-1 text-xs leading-5 text-muted-foreground sm:line-clamp-1">{item.subtitle}</p>
-                          </div>
-                          <span className="shrink-0 text-[11px] text-muted-foreground">{item.timeLabel}</span>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-
-                {activityItems.length === 0 ? (
-                  <p className="px-6 py-4 text-sm text-zinc-400">No activity yet.</p>
-                ) : null}
-              </div>
-              </FreelancerDashboardPanel>
+                <FreelancerRecentActivitySection
+                  recentActivities={activityItems}
+                  onOpenViewAll={() => navigate("/freelancer/proposals")}
+                />
               )}
             </div>
 
             <div className="grid content-start items-start gap-5 self-start">
               {metricsLoading ? (
-                <FreelancerChatsSkeleton />
-              ) : (
-              <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
-              <h3 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.6rem]">
-                Active Project Chats
-              </h3>
-              {previewMessages.length === 0 ? (
-                <div className="flex min-h-[220px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[260px] sm:py-10">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-14">
-                    <MessageSquare className="size-6" />
-                  </div>
-                  <p className="mt-5 text-sm text-white">No active project chats yet</p>
-                  <p className="mt-2 max-w-[220px] text-xs text-[#8f8f8f]">
-                    Chat shortcuts appear here once a project becomes active and messaging is unlocked.
-                  </p>
-                </div>
+                <>
+                  <FreelancerChatsSkeleton />
+                  <FreelancerCompactEarningsSummarySkeleton />
+                </>
               ) : (
                 <>
-                <ul className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
-                  {previewMessages.map((message) => (
-                    <li
-                      key={message.id}
-                      className="rounded-[18px] bg-white/[0.03] px-3.5 py-3.5"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#272a31] text-[11px] font-bold text-zinc-100">
-                          {message.initial}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="truncate text-sm font-semibold text-zinc-100">
-                                  {message.senderName}
-                                </p>
-                                {message.projectLabel ? (
-                                  <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[#94a3b8]">
-                                    {message.projectLabel}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <p className="mt-2 text-sm leading-5 text-zinc-200">
-                                {message.previewText}
-                              </p>
-                            </div>
-                            <span className="shrink-0 text-[11px] text-muted-foreground">
-                              {message.timeLabel}
-                            </span>
+                  <section className="w-full min-w-0">
+                    <div className="mb-4 sm:mb-5">
+                      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+                        Active Chats
+                      </h2>
+                    </div>
+                    <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
+                      {previewMessages.length === 0 ? (
+                        <div className="flex min-h-[220px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[260px] sm:py-10">
+                          <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-14">
+                            <MessageSquare className="size-6" />
                           </div>
+                          <p className="mt-5 text-sm text-white">No active project chats yet</p>
+                          <p className="mt-2 max-w-[220px] text-xs text-[#8f8f8f]">
+                            Chat shortcuts appear here once a project becomes active and messaging is unlocked.
+                          </p>
                         </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => navigate("/freelancer/messages")}
-                  className="mt-8 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-[#8f8f8f] transition-colors hover:text-white"
-                >
-                  <span>Open Messages ({previewMessages.length})</span>
-                  <ChevronRight className="size-[15px] stroke-[1.75]" />
-                </button>
+                      ) : (
+                        <>
+                          <ul className="space-y-4 sm:space-y-5">
+                            {previewMessages.map((message) => (
+                              <li
+                                key={message.id}
+                                className="rounded-[18px] bg-white/[0.03] px-3.5 py-3.5"
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#272a31] text-[11px] font-bold text-zinc-100">
+                                    {message.initial}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                      <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <p className="truncate text-sm font-semibold text-zinc-100">
+                                            {message.senderName}
+                                          </p>
+                                          {message.projectLabel ? (
+                                            <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[#94a3b8]">
+                                              {message.projectLabel}
+                                            </span>
+                                          ) : null}
+                                        </div>
+                                        <p className="mt-2 text-sm leading-5 text-zinc-200">
+                                          {message.previewText}
+                                        </p>
+                                      </div>
+                                      <span className="shrink-0 text-[11px] text-muted-foreground">
+                                        {message.timeLabel}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                          <button
+                            type="button"
+                            onClick={() => navigate("/freelancer/messages")}
+                            className="mt-8 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-[#8f8f8f] transition-colors hover:text-white"
+                          >
+                            <span>Open Messages ({previewMessages.length})</span>
+                            <ChevronRight className="size-[15px] stroke-[1.75]" />
+                          </button>
+                        </>
+                      )}
+                    </FreelancerDashboardPanel>
+                  </section>
+
+                  <FreelancerCompactEarningsSummary
+                    receivedAmount={formatFreelancerDashboardCurrency(metrics.receivedEarnings)}
+                    pendingAmount={formatFreelancerDashboardCurrency(metrics.pendingEarnings)}
+                    momentumLabel={earningsMomentumSummary.label}
+                    nextPayoutLabel={nextPayoutSummaryLabel}
+                  />
                 </>
-              )}
-              </FreelancerDashboardPanel>
               )}
             </div>
           </section>
@@ -2595,7 +3203,7 @@ export const DashboardContent = ({ _roleOverride }) => {
           {metricsLoading ? (
             <FreelancerEarningsSkeleton />
           ) : (
-          <section className="mt-5">
+          <section>
             <FreelancerDashboardPanel className="overflow-hidden p-0">
               <div className="border-b border-white/[0.05] px-4 py-5 sm:px-6 lg:px-7">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
