@@ -197,7 +197,7 @@ const BrandMark = () => (
       <img
         src={logo}
         alt=""
-        className="h-5 w-5 object-contain"
+        className="h-7 w-7 object-contain"
       />
     </div>
     <span className="text-base font-bold tracking-[-0.5px] text-white">
