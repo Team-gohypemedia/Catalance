@@ -427,14 +427,14 @@ const ProposalRowCard = ({
             {isPendingProposal ? (
               <div className="grid grid-cols-2 gap-3">
                 <Button
-                  className="h-11 rounded-[18px] border border-emerald-700 bg-emerald-700 px-6 text-sm font-semibold text-white shadow-none hover:bg-emerald-600"
+                  className="h-11 rounded-[18px] border border-emerald-600 bg-transparent px-6 text-sm font-semibold text-emerald-400 shadow-none hover:bg-emerald-500/10 hover:text-emerald-300"
                   onClick={() => onAccept(proposal.id)}
                   disabled={isProcessing}
                 >
                   {isProcessing ? "Accepting..." : "Accept"}
                 </Button>
                 <Button
-                  className="h-11 rounded-[18px] border border-red-800 bg-red-800 px-6 text-sm font-semibold text-white shadow-none hover:bg-red-700"
+                  className="h-11 rounded-[18px] border border-red-700 bg-transparent px-6 text-sm font-semibold text-red-400 shadow-none hover:bg-red-500/10 hover:text-red-300"
                   onClick={() => onReject(proposal)}
                   disabled={isProcessing}
                 >
@@ -460,17 +460,23 @@ const ProposalCardsCarousel = ({
   const [proposalCarouselApi, setProposalCarouselApi] = useState(null);
   const [canGoToPreviousProposal, setCanGoToPreviousProposal] = useState(false);
   const [canGoToNextProposal, setCanGoToNextProposal] = useState(false);
+  const [proposalCarouselSnapCount, setProposalCarouselSnapCount] = useState(0);
+  const [activeProposalSnap, setActiveProposalSnap] = useState(0);
 
   useEffect(() => {
     if (!proposalCarouselApi) {
       setCanGoToPreviousProposal(false);
       setCanGoToNextProposal(false);
+      setProposalCarouselSnapCount(0);
+      setActiveProposalSnap(0);
       return undefined;
     }
 
     const syncProposalCarouselState = () => {
       setCanGoToPreviousProposal(proposalCarouselApi.canScrollPrev());
       setCanGoToNextProposal(proposalCarouselApi.canScrollNext());
+      setProposalCarouselSnapCount(proposalCarouselApi.scrollSnapList().length);
+      setActiveProposalSnap(proposalCarouselApi.selectedScrollSnap());
     };
 
     syncProposalCarouselState();
@@ -492,84 +498,123 @@ const ProposalCardsCarousel = ({
     "size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
 
   return (
-    <Carousel
-      className="w-full"
-      setApi={setProposalCarouselApi}
-      opts={{
-        align: "start",
-        containScroll: "trimSnaps",
-      }}
-    >
-      {shouldShowProposalCarouselControls ? (
-        <>
-          <div className="mb-5 hidden justify-end gap-2 md:flex">
+    <div className="w-full">
+      <Carousel
+        className="w-full"
+        setApi={setProposalCarouselApi}
+        opts={{
+          align: "start",
+          containScroll: "trimSnaps",
+        }}
+      >
+        {shouldShowProposalCarouselControls ? (
+          <>
+            <div className="mb-5 hidden justify-end gap-2 md:flex">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className={proposalCarouselDesktopControlClassName}
+                onClick={() => proposalCarouselApi?.scrollPrev()}
+                disabled={!canGoToPreviousProposal}
+                aria-label="Show previous proposal"
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className={proposalCarouselDesktopControlClassName}
+                onClick={() => proposalCarouselApi?.scrollNext()}
+                disabled={!canGoToNextProposal}
+                aria-label="Show next proposal"
+              >
+                <ChevronRight className="size-5" />
+              </Button>
+            </div>
+
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className={proposalCarouselDesktopControlClassName}
+              className={`absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
               onClick={() => proposalCarouselApi?.scrollPrev()}
               disabled={!canGoToPreviousProposal}
               aria-label="Show previous proposal"
             >
-              <ChevronLeft className="size-5" />
+              <ChevronLeft className="size-4" />
             </Button>
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className={proposalCarouselDesktopControlClassName}
+              className={`absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
               onClick={() => proposalCarouselApi?.scrollNext()}
               disabled={!canGoToNextProposal}
               aria-label="Show next proposal"
             >
-              <ChevronRight className="size-5" />
+              <ChevronRight className="size-4" />
             </Button>
-          </div>
+          </>
+        ) : null}
 
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className={`absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
-            onClick={() => proposalCarouselApi?.scrollPrev()}
-            disabled={!canGoToPreviousProposal}
-            aria-label="Show previous proposal"
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className={`absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
-            onClick={() => proposalCarouselApi?.scrollNext()}
-            disabled={!canGoToNextProposal}
-            aria-label="Show next proposal"
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </>
-      ) : null}
+        <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform]">
+          {proposals.map((proposal) => (
+            <CarouselItem
+              key={proposal.id}
+              className="pl-0 basis-full md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)] xl:basis-[calc((100%-3.75rem)/4)]"
+            >
+              <ProposalRowCard
+                proposal={proposal}
+                onOpen={onOpen}
+                onDelete={onDelete}
+                onAccept={onAccept}
+                onReject={onReject}
+                processingId={processingId}
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
 
-      <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform]">
-        {proposals.map((proposal) => (
-          <CarouselItem
-            key={proposal.id}
-            className="pl-0 basis-full md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)] xl:basis-[calc((100%-3.75rem)/4)]"
-          >
-            <ProposalRowCard
-              proposal={proposal}
-              onOpen={onOpen}
-              onDelete={onDelete}
-              onAccept={onAccept}
-              onReject={onReject}
-              processingId={processingId}
-            />
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-    </Carousel>
+      <FreelancerProposalCarouselDots
+        count={proposalCarouselSnapCount}
+        activeIndex={activeProposalSnap}
+        onSelect={(index) => proposalCarouselApi?.scrollTo(index)}
+      />
+    </div>
+  );
+};
+
+const FreelancerProposalCarouselDots = ({ count, activeIndex, onSelect }) => {
+  if (count <= 1) return null;
+
+  return (
+    <div
+      className="mt-2.5 flex items-center justify-center gap-2"
+      aria-label="Proposals carousel pagination"
+    >
+      {Array.from({ length: count }, (_, index) => {
+        const isActive = index === activeIndex;
+
+        return (
+          <button
+            key={`freelancer-proposal-carousel-dot-${index}`}
+            type="button"
+            onClick={() => onSelect(index)}
+            aria-label={`Go to proposal ${index + 1}`}
+            aria-pressed={isActive}
+            className={cn(
+              "h-2.5 rounded-full transition-all duration-200",
+              isActive
+                ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-2.5 bg-white/[0.14] hover:bg-white/[0.28]",
+            )}
+          />
+        );
+      })}
+    </div>
   );
 };
 
@@ -825,7 +870,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                 <div className="flex justify-start lg:justify-end">
                   <TabsList className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-background p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                     {[
-                      { value: "pending", label: "Pending Approval" },
+                      { value: "pending", label: "Received Proposals" },
                       { value: "rejected", label: "Rejected" },
                     ].map((item) => (
                       <TabsTrigger
@@ -1037,7 +1082,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                       Back
                     </Button>
                     <Button
-                      className="border border-red-800 bg-red-800 text-white shadow-none hover:bg-red-700"
+                      className="border border-red-700 bg-transparent text-red-400 shadow-none hover:bg-red-500/10 hover:text-red-300"
                       onClick={handleConfirmReject}
                       disabled={processingId === selectedProposal.id}
                     >
@@ -1049,14 +1094,14 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                 ) : (
                   <>
                     <Button
-                      className="border border-red-800 bg-red-800 text-white shadow-none hover:bg-red-700"
+                      className="border border-red-700 bg-transparent text-red-400 shadow-none hover:bg-red-500/10 hover:text-red-300"
                       onClick={() => setIsRejectReasonStep(true)}
                       disabled={processingId === selectedProposal.id}
                     >
                       Reject
                     </Button>
                     <Button
-                      className="border border-emerald-700 bg-emerald-700 text-white shadow-none hover:bg-emerald-600"
+                      className="border border-emerald-600 bg-transparent text-emerald-400 shadow-none hover:bg-emerald-500/10 hover:text-emerald-300"
                       onClick={() => {
                         handleStatusChange(selectedProposal.id, "accepted");
                         setSelectedProposal(null);

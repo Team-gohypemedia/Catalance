@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Bell from "lucide-react/dist/esm/icons/bell";
+import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import Eye from "lucide-react/dist/esm/icons/eye";
@@ -26,8 +28,6 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel";
 import {
   Dialog,
@@ -1356,7 +1356,7 @@ const ProposalRowCard = ({
   return (
     <Card className={cn("h-full w-full overflow-hidden shadow-none", proposalPanelClassName)}>
       <CardContent className="p-0">
-        <div className="flex h-full flex-col gap-6 px-6 py-6 sm:px-8 sm:py-8">
+        <div className="flex h-full flex-col gap-6 p-4 sm:p-5 xl:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
@@ -1388,9 +1388,9 @@ const ProposalRowCard = ({
             ) : null}
           </div>
 
-          <div className="space-y-6">
-            <div className="space-y-2.5">
-              <h3 className="min-h-[4.5rem] max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <h3 className="max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
                 {cardTitle}
               </h3>
               {showRejectionReason ? (
@@ -1523,41 +1523,169 @@ const ClientProposalCardsCarousel = ({
   processingPaymentProposalId,
   sendingProposalId,
 }) => {
+  const [proposalCarouselApi, setProposalCarouselApi] = useState(null);
+  const [canGoToPreviousProposal, setCanGoToPreviousProposal] = useState(false);
+  const [canGoToNextProposal, setCanGoToNextProposal] = useState(false);
+  const [proposalCarouselSnapCount, setProposalCarouselSnapCount] = useState(0);
+  const [activeProposalSnap, setActiveProposalSnap] = useState(0);
+
+  useEffect(() => {
+    if (!proposalCarouselApi) {
+      setCanGoToPreviousProposal(false);
+      setCanGoToNextProposal(false);
+      setProposalCarouselSnapCount(0);
+      setActiveProposalSnap(0);
+      return undefined;
+    }
+
+    const syncProposalCarouselState = () => {
+      setCanGoToPreviousProposal(proposalCarouselApi.canScrollPrev());
+      setCanGoToNextProposal(proposalCarouselApi.canScrollNext());
+      setProposalCarouselSnapCount(proposalCarouselApi.scrollSnapList().length);
+      setActiveProposalSnap(proposalCarouselApi.selectedScrollSnap());
+    };
+
+    syncProposalCarouselState();
+    proposalCarouselApi.on("select", syncProposalCarouselState);
+    proposalCarouselApi.on("reInit", syncProposalCarouselState);
+
+    return () => {
+      proposalCarouselApi.off("select", syncProposalCarouselState);
+      proposalCarouselApi.off("reInit", syncProposalCarouselState);
+    };
+  }, [proposalCarouselApi]);
+
   if (!proposals.length) return null;
 
-  return (
-    <Carousel
-      className="w-full"
-      opts={{
-        align: "start",
-        containScroll: "trimSnaps",
-      }}
-    >
-      <div className="mb-5 flex justify-end gap-2">
-        <CarouselPrevious className="static !left-auto !right-auto size-11 translate-y-0 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground disabled:[&_svg]:text-muted-foreground [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-foreground" />
-        <CarouselNext className="static !left-auto !right-auto size-11 translate-y-0 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground disabled:[&_svg]:text-muted-foreground [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-foreground" />
-      </div>
+  const shouldShowDesktopProposalCarouselControls = proposals.length > 4;
+  const shouldShowMobileProposalCarouselControls = proposals.length > 1;
+  const proposalCarouselDesktopControlClassName =
+    "size-11 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
+  const proposalCarouselMobileControlClassName =
+    "size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
 
-      <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform]">
-        {proposals.map((proposal) => (
-          <CarouselItem
-            key={proposal.id}
-            className="pl-0 basis-full md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)] xl:basis-[calc((100%-3.75rem)/4)]"
-          >
-            <ProposalRowCard
-              proposal={proposal}
-              onDelete={onDelete}
-              onOpen={onOpen}
-              onPay={onPay}
-              onSend={onSend}
-              onViewFreelancers={onViewFreelancers}
-              isPaying={processingPaymentProposalId === proposal.id}
-              isSending={sendingProposalId === proposal.id}
-            />
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-    </Carousel>
+  return (
+    <div className="w-full">
+      <Carousel
+        className="w-full"
+        setApi={setProposalCarouselApi}
+        opts={{
+          align: "start",
+          containScroll: "trimSnaps",
+        }}
+      >
+        {shouldShowDesktopProposalCarouselControls ? (
+          <div className="mb-5 hidden justify-end gap-2 md:flex">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={proposalCarouselDesktopControlClassName}
+              onClick={() => proposalCarouselApi?.scrollPrev()}
+              disabled={!canGoToPreviousProposal}
+              aria-label="Show previous proposal"
+            >
+              <ChevronLeft className="size-5" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={proposalCarouselDesktopControlClassName}
+              onClick={() => proposalCarouselApi?.scrollNext()}
+              disabled={!canGoToNextProposal}
+              aria-label="Show next proposal"
+            >
+              <ChevronRight className="size-5" />
+            </Button>
+          </div>
+        ) : null}
+
+        {shouldShowMobileProposalCarouselControls ? (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={`absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
+              onClick={() => proposalCarouselApi?.scrollPrev()}
+              disabled={!canGoToPreviousProposal}
+              aria-label="Show previous proposal"
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={`absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
+              onClick={() => proposalCarouselApi?.scrollNext()}
+              disabled={!canGoToNextProposal}
+              aria-label="Show next proposal"
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </>
+        ) : null}
+
+        <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform]">
+          {proposals.map((proposal) => (
+            <CarouselItem
+              key={proposal.id}
+              className="pl-0 basis-full md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)] xl:basis-[calc((100%-3.75rem)/4)]"
+            >
+              <ProposalRowCard
+                proposal={proposal}
+                onDelete={onDelete}
+                onOpen={onOpen}
+                onPay={onPay}
+                onSend={onSend}
+                onViewFreelancers={onViewFreelancers}
+                isPaying={processingPaymentProposalId === proposal.id}
+                isSending={sendingProposalId === proposal.id}
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+
+      <ClientProposalCarouselDots
+        count={proposalCarouselSnapCount}
+        activeIndex={activeProposalSnap}
+        onSelect={(index) => proposalCarouselApi?.scrollTo(index)}
+      />
+    </div>
+  );
+};
+
+const ClientProposalCarouselDots = ({ count, activeIndex, onSelect }) => {
+  if (count <= 1) return null;
+
+  return (
+    <div
+      className="mt-2.5 flex items-center justify-center gap-2"
+      aria-label="Proposals carousel pagination"
+    >
+      {Array.from({ length: count }, (_, index) => {
+        const isActive = index === activeIndex;
+
+        return (
+          <button
+            key={`client-proposal-carousel-dot-${index}`}
+            type="button"
+            onClick={() => onSelect(index)}
+            aria-label={`Go to proposal ${index + 1}`}
+            aria-pressed={isActive}
+            className={cn(
+              "h-2.5 rounded-full transition-all duration-200",
+              isActive
+                ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-2.5 bg-white/[0.14] hover:bg-white/[0.28]",
+            )}
+          />
+        );
+      })}
+    </div>
   );
 };
 
@@ -3249,7 +3377,7 @@ const ClientProposalContent = () => {
           >
             <ClientPageHeader
               title="Project Proposals"
-              description="Manage your draft, pending, and rejected proposals. Keep your potential collaborations moving."
+              dateLabel={false}
               actions={
                 <TabsList className="inline-flex h-auto w-full max-w-[24rem] flex-nowrap items-stretch justify-between gap-1 rounded-[32px] border border-border bg-background p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                   {[

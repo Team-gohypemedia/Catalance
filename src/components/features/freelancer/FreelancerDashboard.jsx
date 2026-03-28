@@ -1580,7 +1580,7 @@ const FreelancerPendingProposalRow = ({ item }) => (
         disabled={item.isAccepting}
         className={cn(
           freelancerPendingProposalActionButtonClassName,
-          "border border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-600 lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
+          "border border-emerald-600 bg-transparent text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
           item.isAccepting && "cursor-not-allowed opacity-60",
         )}
       >
@@ -2894,14 +2894,14 @@ export const DashboardContent = ({ _roleOverride }) => {
           ) : null}
 
           <section className="mt-1 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0">
+            <p className="order-1 text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:order-2">
+              {dashboardDateLabel}
+            </p>
+            <div className="order-2 min-w-0 lg:order-1">
               <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
                 {greeting}, {firstName}
               </h1>
             </div>
-            <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
-              {dashboardDateLabel}
-            </p>
           </section>
 
           {metricsLoading ? (
