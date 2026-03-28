@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
@@ -24,8 +26,6 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -323,7 +323,7 @@ const ProposalRowCard = ({
       )}
     >
       <CardContent className="p-0">
-        <div className="flex h-full flex-col gap-6 px-6 py-6 sm:px-8 sm:py-8">
+        <div className="flex h-full flex-col gap-6 p-4 sm:p-5 xl:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
@@ -357,9 +357,9 @@ const ProposalRowCard = ({
             ) : null}
           </div>
 
-          <div className="space-y-6">
-            <div className="space-y-2.5">
-              <h3 className="min-h-[4.5rem] max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <h3 className="max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
                 {displayTitle}
               </h3>
               {showRejectionReason ? (
@@ -427,14 +427,14 @@ const ProposalRowCard = ({
             {isPendingProposal ? (
               <div className="grid grid-cols-2 gap-3">
                 <Button
-                  className="h-11 rounded-[18px] border border-emerald-500/30 bg-emerald-500/10 px-6 text-sm font-semibold text-emerald-400 shadow-none hover:bg-emerald-500/15"
+                  className="h-11 rounded-[18px] border border-emerald-700 bg-emerald-700 px-6 text-sm font-semibold text-white shadow-none hover:bg-emerald-600"
                   onClick={() => onAccept(proposal.id)}
                   disabled={isProcessing}
                 >
                   {isProcessing ? "Accepting..." : "Accept"}
                 </Button>
                 <Button
-                  className="h-11 rounded-[18px] border border-destructive/30 bg-transparent px-6 text-sm font-semibold text-destructive shadow-none hover:bg-destructive/10"
+                  className="h-11 rounded-[18px] border border-red-800 bg-red-800 px-6 text-sm font-semibold text-white shadow-none hover:bg-red-700"
                   onClick={() => onReject(proposal)}
                   disabled={isProcessing}
                 >
@@ -457,20 +457,100 @@ const ProposalCardsCarousel = ({
   onReject,
   processingId,
 }) => {
+  const [proposalCarouselApi, setProposalCarouselApi] = useState(null);
+  const [canGoToPreviousProposal, setCanGoToPreviousProposal] = useState(false);
+  const [canGoToNextProposal, setCanGoToNextProposal] = useState(false);
+
+  useEffect(() => {
+    if (!proposalCarouselApi) {
+      setCanGoToPreviousProposal(false);
+      setCanGoToNextProposal(false);
+      return undefined;
+    }
+
+    const syncProposalCarouselState = () => {
+      setCanGoToPreviousProposal(proposalCarouselApi.canScrollPrev());
+      setCanGoToNextProposal(proposalCarouselApi.canScrollNext());
+    };
+
+    syncProposalCarouselState();
+    proposalCarouselApi.on("select", syncProposalCarouselState);
+    proposalCarouselApi.on("reInit", syncProposalCarouselState);
+
+    return () => {
+      proposalCarouselApi.off("select", syncProposalCarouselState);
+      proposalCarouselApi.off("reInit", syncProposalCarouselState);
+    };
+  }, [proposalCarouselApi]);
+
   if (!proposals.length) return null;
+
+  const shouldShowProposalCarouselControls = proposals.length > 4;
+  const proposalCarouselDesktopControlClassName =
+    "size-11 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
+  const proposalCarouselMobileControlClassName =
+    "size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
 
   return (
     <Carousel
       className="w-full"
+      setApi={setProposalCarouselApi}
       opts={{
         align: "start",
         containScroll: "trimSnaps",
       }}
     >
-      <div className="mb-5 flex justify-end gap-2">
-        <CarouselPrevious className="static !left-auto !right-auto size-11 translate-y-0 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground disabled:[&_svg]:text-muted-foreground [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-foreground" />
-        <CarouselNext className="static !left-auto !right-auto size-11 translate-y-0 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground disabled:[&_svg]:text-muted-foreground [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-foreground" />
-      </div>
+      {shouldShowProposalCarouselControls ? (
+        <>
+          <div className="mb-5 hidden justify-end gap-2 md:flex">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={proposalCarouselDesktopControlClassName}
+              onClick={() => proposalCarouselApi?.scrollPrev()}
+              disabled={!canGoToPreviousProposal}
+              aria-label="Show previous proposal"
+            >
+              <ChevronLeft className="size-5" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={proposalCarouselDesktopControlClassName}
+              onClick={() => proposalCarouselApi?.scrollNext()}
+              disabled={!canGoToNextProposal}
+              aria-label="Show next proposal"
+            >
+              <ChevronRight className="size-5" />
+            </Button>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={`absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
+            onClick={() => proposalCarouselApi?.scrollPrev()}
+            disabled={!canGoToPreviousProposal}
+            aria-label="Show previous proposal"
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={`absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
+            onClick={() => proposalCarouselApi?.scrollNext()}
+            disabled={!canGoToNextProposal}
+            aria-label="Show next proposal"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        </>
+      ) : null}
 
       <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform]">
         {proposals.map((proposal) => (
@@ -734,16 +814,12 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
             onValueChange={setActiveTab}
             className="w-full space-y-8"
           >
-            <section className="space-y-4">
+            <section>
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                   <h2 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-foreground">
                     My Proposals
                   </h2>
-                  <p className="mt-2 max-w-[34rem] text-sm text-muted-foreground">
-                    Track proposals waiting for your approval and keep a record of
-                    the ones you rejected.
-                  </p>
                 </div>
 
                 <div className="flex justify-start lg:justify-end">
@@ -766,7 +842,6 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                   </TabsList>
                 </div>
               </div>
-
             </section>
 
             {["pending", "rejected"].map((tabValue) => (
@@ -962,7 +1037,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                       Back
                     </Button>
                     <Button
-                      variant="destructive"
+                      className="border border-red-800 bg-red-800 text-white shadow-none hover:bg-red-700"
                       onClick={handleConfirmReject}
                       disabled={processingId === selectedProposal.id}
                     >
@@ -974,14 +1049,14 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                 ) : (
                   <>
                     <Button
-                      variant="destructive"
+                      className="border border-red-800 bg-red-800 text-white shadow-none hover:bg-red-700"
                       onClick={() => setIsRejectReasonStep(true)}
                       disabled={processingId === selectedProposal.id}
                     >
                       Reject
                     </Button>
                     <Button
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      className="border border-emerald-700 bg-emerald-700 text-white shadow-none hover:bg-emerald-600"
                       onClick={() => {
                         handleStatusChange(selectedProposal.id, "accepted");
                         setSelectedProposal(null);

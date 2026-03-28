@@ -1580,7 +1580,7 @@ const FreelancerPendingProposalRow = ({ item }) => (
         disabled={item.isAccepting}
         className={cn(
           freelancerPendingProposalActionButtonClassName,
-          "bg-[#23d18b] text-[#07150f] hover:bg-[#34d399] lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
+          "border border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-600 lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
           item.isAccepting && "cursor-not-allowed opacity-60",
         )}
       >
