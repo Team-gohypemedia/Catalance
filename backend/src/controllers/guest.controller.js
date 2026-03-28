@@ -989,6 +989,13 @@ const normalizeOptionComparableText = (value = "") =>
         .replace(/\s+/g, " ")
         .trim();
 
+const normalizeTextToken = (value = "") =>
+    String(value || "")
+        .toLowerCase()
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
 const uniqueTextValues = (values = []) =>
     Array.from(
         new Set(
@@ -997,6 +1004,239 @@ const uniqueTextValues = (values = []) =>
                 .filter(Boolean)
         )
     );
+
+const splitAdminDirectiveList = (value = "") => {
+    const source = String(value || "").trim();
+    if (!source) return [];
+    const splitter = source.includes("|")
+        ? /\s*\|\s*/g
+        : /\s*(?:;|,)\s*/g;
+    return uniqueTextValues(source.split(splitter));
+};
+
+const dedupeAdminOptionMappings = (mappings = []) => {
+    const seen = new Set();
+    const deduped = [];
+
+    for (const entry of Array.isArray(mappings) ? mappings : []) {
+        const source = String(entry?.source || "").trim();
+        const target = String(entry?.target || "").trim();
+        if (!source || !target) continue;
+
+        const key = `${normalizeTextToken(source)}=>${normalizeTextToken(target)}`;
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        deduped.push({ source, target });
+    }
+
+    return deduped;
+};
+
+const parseAdminOptionMappings = (value = "") => {
+    const source = String(value || "").trim();
+    if (!source) return [];
+
+    const rawEntries = (source.includes("|") ? source.split("|") : source.split(";"))
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean);
+
+    return dedupeAdminOptionMappings(
+        rawEntries.map((entry) => {
+            const match = entry.match(/^(.+?)(?:=>|->)(.+)$/);
+            if (!match) return null;
+            return {
+                source: String(match[1] || "").trim(),
+                target: String(match[2] || "").trim(),
+            };
+        }).filter(Boolean)
+    );
+};
+
+const parseAdminControlText = (value = "") => {
+    const lines = String(value || "").replace(/\r/g, "").split("\n");
+    const contextLines = [];
+    const prioritizeOptions = [];
+    const responseRules = [];
+    const validationRules = [];
+    const optionMappings = [];
+    let recommendedOption = "";
+
+    for (const rawLine of lines) {
+        const line = String(rawLine || "").trim();
+        if (!line) continue;
+
+        const match = line.match(/^@?([a-z][a-z0-9_ -]{1,40})\s*:\s*(.+)$/i);
+        if (!match) {
+            contextLines.push(line);
+            continue;
+        }
+
+        const key = normalizeTextToken(match[1]).replace(/\s+/g, "_");
+        const directiveValue = String(match[2] || "").trim();
+        if (!directiveValue) continue;
+
+        if ([
+            "prioritize",
+            "priority",
+            "prioritize_options",
+            "priority_options",
+            "options_priority",
+        ].includes(key)) {
+            prioritizeOptions.push(...splitAdminDirectiveList(directiveValue));
+            continue;
+        }
+
+        if ([
+            "recommend",
+            "recommended",
+            "recommend_option",
+            "recommended_option",
+            "preferred_option",
+            "prefer",
+        ].includes(key)) {
+            recommendedOption = splitAdminDirectiveList(directiveValue)[0] || directiveValue;
+            continue;
+        }
+
+        if ([
+            "reply",
+            "response",
+            "reply_rule",
+            "response_rule",
+            "tone",
+            "assistant",
+        ].includes(key)) {
+            responseRules.push(directiveValue);
+            continue;
+        }
+
+        if ([
+            "validate",
+            "validation",
+            "input",
+            "user_input",
+            "accept",
+            "acceptance",
+        ].includes(key)) {
+            validationRules.push(directiveValue);
+            continue;
+        }
+
+        if ([
+            "map",
+            "alias",
+            "aliases",
+            "option_map",
+            "accept_map",
+        ].includes(key)) {
+            optionMappings.push(...parseAdminOptionMappings(directiveValue));
+            continue;
+        }
+
+        contextLines.push(line);
+    }
+
+    return {
+        rawText: String(value || "").trim(),
+        contextText: contextLines.join("\n").trim(),
+        prioritizeOptions: uniqueTextValues(prioritizeOptions),
+        recommendedOption: String(recommendedOption || "").trim(),
+        responseRules: uniqueTextValues(responseRules),
+        validationRules: uniqueTextValues(validationRules),
+        optionMappings: dedupeAdminOptionMappings(optionMappings),
+    };
+};
+
+const mergeAdminControls = (...controlSets) => {
+    const controls = (Array.isArray(controlSets) ? controlSets : [])
+        .filter((entry) => entry && typeof entry === "object");
+
+    const contextLines = controls
+        .flatMap((entry) => String(entry?.contextText || "").replace(/\r/g, "").split("\n"))
+        .map((line) => String(line || "").trim())
+        .filter(Boolean);
+
+    return {
+        rawText: uniqueTextValues(controls.map((entry) => entry?.rawText || "")).join("\n"),
+        contextText: uniqueTextValues(contextLines).join("\n"),
+        prioritizeOptions: uniqueTextValues(
+            controls.flatMap((entry) => Array.isArray(entry?.prioritizeOptions) ? entry.prioritizeOptions : [])
+        ),
+        recommendedOption: controls
+            .map((entry) => String(entry?.recommendedOption || "").trim())
+            .find(Boolean) || "",
+        responseRules: uniqueTextValues(
+            controls.flatMap((entry) => Array.isArray(entry?.responseRules) ? entry.responseRules : [])
+        ),
+        validationRules: uniqueTextValues(
+            controls.flatMap((entry) => Array.isArray(entry?.validationRules) ? entry.validationRules : [])
+        ),
+        optionMappings: dedupeAdminOptionMappings(
+            controls.flatMap((entry) => Array.isArray(entry?.optionMappings) ? entry.optionMappings : [])
+        ),
+    };
+};
+
+const getQuestionAdminControls = (question = {}, servicePrompt = "") =>
+    mergeAdminControls(
+        parseAdminControlText(question?.subtitle || ""),
+        parseAdminControlText(servicePrompt || "")
+    );
+
+const buildAdminControlSummaryText = (controls = {}) => {
+    const parts = [];
+    const contextText = String(controls?.contextText || "").replace(/\s+/g, " ").trim();
+    if (contextText) parts.push(contextText);
+    if (Array.isArray(controls?.prioritizeOptions) && controls.prioritizeOptions.length > 0) {
+        parts.push(`prioritize ${controls.prioritizeOptions.join(", ")}`);
+    }
+    if (controls?.recommendedOption) {
+        parts.push(`prefer ${controls.recommendedOption}`);
+    }
+    if (Array.isArray(controls?.validationRules) && controls.validationRules.length > 0) {
+        parts.push(...controls.validationRules);
+    }
+    if (Array.isArray(controls?.optionMappings) && controls.optionMappings.length > 0) {
+        parts.push(
+            `map ${controls.optionMappings.map((entry) => `${entry.source} -> ${entry.target}`).join(", ")}`
+        );
+    }
+    if (Array.isArray(controls?.responseRules) && controls.responseRules.length > 0) {
+        parts.push(...controls.responseRules);
+    }
+    return parts.join(" | ").trim();
+};
+
+const buildAdminPromptSection = (controls = {}, title = "Admin Controls") => {
+    const rows = [];
+    const contextText = String(controls?.contextText || "").trim();
+    if (contextText) {
+        rows.push(`- Context: ${contextText.replace(/\n+/g, " | ")}`);
+    }
+    if (Array.isArray(controls?.prioritizeOptions) && controls.prioritizeOptions.length > 0) {
+        rows.push(`- Prioritize options in this order when they fit: ${controls.prioritizeOptions.join(" | ")}`);
+    }
+    if (controls?.recommendedOption) {
+        rows.push(`- Preferred option when making a recommendation: ${controls.recommendedOption}`);
+    }
+    if (Array.isArray(controls?.responseRules) && controls.responseRules.length > 0) {
+        for (const rule of controls.responseRules) {
+            rows.push(`- Response rule: ${rule}`);
+        }
+    }
+    if (Array.isArray(controls?.validationRules) && controls.validationRules.length > 0) {
+        for (const rule of controls.validationRules) {
+            rows.push(`- Validation rule: ${rule}`);
+        }
+    }
+    if (Array.isArray(controls?.optionMappings) && controls.optionMappings.length > 0) {
+        for (const mapping of controls.optionMappings) {
+            rows.push(`- Option mapping alias: "${mapping.source}" => "${mapping.target}"`);
+        }
+    }
+
+    return `${title}:\n${rows.length > 0 ? rows.join("\n") : "- None"}`;
+};
 
 const normalizeOptionObject = (option = {}, { fallbackLabel = "", fallbackValue = "" } = {}) => {
     const rawLabel = typeof option === "string"
@@ -1029,6 +1269,77 @@ const normalizeOptionObject = (option = {}, { fallbackLabel = "", fallbackValue 
     };
 };
 
+const getAdminComparableTokensForOption = (option = {}) =>
+    uniqueTextValues([
+        option?.label,
+        option?.value,
+        option?.canonicalLabel,
+        option?.canonicalValue,
+        ...(Array.isArray(option?.aliases) ? option.aliases : []),
+    ])
+        .map((entry) => normalizeTextToken(entry))
+        .filter(Boolean);
+
+const optionMatchesAdminTokenExactly = (option = {}, token = "") => {
+    const normalizedToken = normalizeTextToken(token);
+    if (!normalizedToken) return false;
+    return getAdminComparableTokensForOption(option).some((alias) => alias === normalizedToken);
+};
+
+const findOptionIndexByAdminToken = (options = [], token = "") => {
+    const normalizedToken = normalizeTextToken(token);
+    if (!normalizedToken) return -1;
+
+    const exactIndex = (Array.isArray(options) ? options : []).findIndex((option) =>
+        getAdminComparableTokensForOption(option).some((alias) => alias === normalizedToken)
+    );
+    if (exactIndex >= 0) return exactIndex;
+
+    return (Array.isArray(options) ? options : []).findIndex((option) =>
+        getAdminComparableTokensForOption(option).some((alias) =>
+            alias.includes(normalizedToken) || normalizedToken.includes(alias)
+        )
+    );
+};
+
+const applyAdminControlsToOptions = (options = [], controls = {}) => {
+    const normalizedOptions = (Array.isArray(options) ? options : [])
+        .map((option) => normalizeOptionObject(option))
+        .filter(Boolean)
+        .map((option) => {
+            const mappedAliases = (Array.isArray(controls?.optionMappings) ? controls.optionMappings : [])
+                .filter((entry) => optionMatchesAdminTokenExactly(option, entry?.target || ""))
+                .map((entry) => entry.source);
+
+            if (mappedAliases.length === 0) return option;
+
+            return normalizeOptionObject({
+                ...option,
+                aliases: uniqueTextValues([...(option.aliases || []), ...mappedAliases]),
+            });
+        });
+
+    const orderedTokens = uniqueTextValues([
+        controls?.recommendedOption || "",
+        ...(Array.isArray(controls?.prioritizeOptions) ? controls.prioritizeOptions : []),
+    ]);
+
+    if (orderedTokens.length === 0) {
+        return normalizedOptions;
+    }
+
+    const remaining = [...normalizedOptions];
+    const prioritized = [];
+
+    for (const token of orderedTokens) {
+        const index = findOptionIndexByAdminToken(remaining, token);
+        if (index < 0) continue;
+        prioritized.push(remaining.splice(index, 1)[0]);
+    }
+
+    return [...prioritized, ...remaining];
+};
+
 const getRuntimeOptionsByQuestionSlug = (sessionAnswers = {}) => {
     const runtimeOptions =
         sessionAnswers?.uiState?.[RUNTIME_OPTIONS_STATE_KEY];
@@ -1049,11 +1360,12 @@ const getRuntimeOptionsByQuestionSlug = (sessionAnswers = {}) => {
     }, {});
 };
 
-const getCanonicalQuestionOptions = (question = {}) => {
+const getCanonicalQuestionOptions = (question = {}, controls = null) => {
     if (!Array.isArray(question?.options)) return [];
-    return question.options
-        .map((option) => normalizeOptionObject(option))
-        .filter(Boolean);
+    const adminControls = controls && typeof controls === "object"
+        ? controls
+        : getQuestionAdminControls(question);
+    return applyAdminControlsToOptions(question.options, adminControls);
 };
 
 const mergeUniqueOptionsByValue = (...optionLists) => {
@@ -1077,6 +1389,7 @@ const mergeUniqueOptionsByValue = (...optionLists) => {
 };
 
 const getDisplayedQuestionOptions = (question = {}, runtimeOptionsByQuestionSlug = {}) => {
+    const adminControls = getQuestionAdminControls(question);
     const runtimeOptions = question?.slug
         ? runtimeOptionsByQuestionSlug?.[question.slug]
         : null;
@@ -1085,10 +1398,10 @@ const getDisplayedQuestionOptions = (question = {}, runtimeOptionsByQuestionSlug
         : [];
 
     if (normalizedRuntimeOptions.length > 0) {
-        return normalizedRuntimeOptions;
+        return applyAdminControlsToOptions(normalizedRuntimeOptions, adminControls);
     }
 
-    return getCanonicalQuestionOptions(question);
+    return getCanonicalQuestionOptions(question, adminControls);
 };
 
 const getAcceptedQuestionOptions = (question = {}, runtimeOptionsByQuestionSlug = {}) =>
@@ -1728,13 +2041,6 @@ const parseValidationResponse = (rawMessage) => {
     };
 };
 
-const normalizeTextToken = (value = "") =>
-    String(value || "")
-        .toLowerCase()
-        .replace(/[_-]+/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
 const hasAnswerValue = (value) => {
     if (value === null || value === undefined) return false;
     if (Array.isArray(value)) return value.some((item) => normalizeTextToken(item));
@@ -1977,10 +2283,12 @@ const buildContextualSuggestionMessage = ({
     question = {},
     answersBySlug = {},
     serviceName = "",
+    servicePrompt = "",
     runtimeOptionsByQuestionSlug = {}
 }) => {
     const questionText = String(question?.text || "Could you please confirm this?");
     const optionLabels = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug);
+    const adminControls = getQuestionAdminControls(question, servicePrompt);
     const normalizedQuestion = normalizeTextToken(questionText);
     const combinedContext = Object.values(answersBySlug || {})
         .map((value) => String(value || ""))
@@ -1998,8 +2306,17 @@ const buildContextualSuggestionMessage = ({
 
     let recommendation = "";
     let reason = "";
+    const adminPreferredOption = applyAdminControlsToOptions(
+        getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug),
+        adminControls
+    )[0]?.label || "";
 
-    if (/platform|android|ios/.test(normalizedQuestion)) {
+    if (adminPreferredOption) {
+        recommendation = adminPreferredOption;
+        reason = "because this aligns with the admin-configured preferred flow for this question.";
+    }
+
+    if (!recommendation && /platform|android|ios/.test(normalizedQuestion)) {
         const frameworkAnswer = normalizeTextToken(
             getAnswerBySlugPattern(
                 answersBySlug,
@@ -2020,7 +2337,7 @@ const buildContextualSuggestionMessage = ({
             recommendation = pickOptionLabelByPatterns(optionLabels, [/both|cross|android.*ios|ios.*android/]) || optionLabels[0];
             reason = "to maximize reach during early growth.";
         }
-    } else if (/who will use|user role|users/.test(normalizedQuestion)) {
+    } else if (!recommendation && /who will use|user role|users/.test(normalizedQuestion)) {
         if (/vendor|seller|marketplace|multi/.test(normalizedContext)) {
             recommendation = pickOptionLabelByPatterns(optionLabels, [/vendor|seller|marketplace/]);
             reason = "because your app flow includes listing and transactions between users.";
@@ -2031,12 +2348,12 @@ const buildContextualSuggestionMessage = ({
             recommendation = pickOptionLabelByPatterns(optionLabels, [/customer/]) || optionLabels[0];
             reason = "to keep MVP scope focused and faster to launch.";
         }
-    } else if (/design style|branding|look/.test(normalizedQuestion)) {
+    } else if (!recommendation && /design style|branding|look/.test(normalizedQuestion)) {
         recommendation = optionLabels[0];
         reason = "as a safe starting point based on typical startup MVP launches.";
-    } else if (/budget/.test(normalizedQuestion)) {
+    } else if (!recommendation && /budget/.test(normalizedQuestion)) {
         return `I can suggest a realistic range, but I still need your final budget to continue.\n\n${questionText}`;
-    } else {
+    } else if (!recommendation) {
         recommendation = optionLabels[0];
         reason = "based on the details you've already shared.";
     }
@@ -2143,7 +2460,7 @@ const buildSavedResponseContextLines = (answersBySlug = {}, questions = [], runt
                 runtimeOptionsByQuestionSlug
             ) || stringifyAnswerForContext(answerValue);
             if (!answerText) return null;
-            const subtitle = String(question?.subtitle || "").trim();
+            const subtitle = buildAdminControlSummaryText(getQuestionAdminControls(question));
             return subtitle
                 ? `- ${question.text}: ${answerText} (intent: ${subtitle})`
                 : `- ${question.text}: ${answerText}`;
@@ -2156,7 +2473,7 @@ const buildQuestionSubtitleMapLines = (questions = []) =>
     (Array.isArray(questions) ? questions : [])
         .map((question) => {
             const slug = String(question?.slug || "").trim();
-            const subtitle = String(question?.subtitle || "").trim();
+            const subtitle = buildAdminControlSummaryText(getQuestionAdminControls(question));
             if (!slug || !subtitle) return null;
             return `- ${slug}: ${subtitle}`;
         })
@@ -2320,12 +2637,14 @@ const isCatchAllOption = (option = {}) =>
 
 const buildRuntimeOptionSelectionPrompt = ({
     serviceName = "",
+    servicePrompt = "",
     question = {},
     answersByQuestionText = {},
     answersBySlug = {},
     allQuestions = []
 }) => {
-    const canonicalOptions = getCanonicalQuestionOptions(question).map((option) => ({
+    const adminControls = getQuestionAdminControls(question, servicePrompt);
+    const canonicalOptions = getCanonicalQuestionOptions(question, adminControls).map((option) => ({
         value: option.value,
         label: option.canonicalLabel || option.label,
     }));
@@ -2334,6 +2653,7 @@ const buildRuntimeOptionSelectionPrompt = ({
         answersBySlug,
         allQuestions
     );
+    const questionContext = buildAdminControlSummaryText(adminControls);
 
     return `
 You are selecting the best UI options for one questionnaire step.
@@ -2341,12 +2661,14 @@ You are selecting the best UI options for one questionnaire step.
 Service: ${JSON.stringify(serviceName)}
 Question: ${JSON.stringify(String(question?.text || ""))}
 Question type: ${JSON.stringify(String(question?.type || "input"))}
-Question context: ${JSON.stringify(String(question?.subtitle || "").trim() || "none")}
+Question context: ${JSON.stringify(questionContext || "none")}
 Confirmed user context:
 ${answersContext || "- none yet"}
 
 Saved AI memory:
 ${savedResponseContext || "- none yet"}
+
+${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when relevant)")}
 
 Canonical option pool:
 ${JSON.stringify(canonicalOptions)}
@@ -2361,6 +2683,8 @@ Task:
 7. Avoid options that are clearly irrelevant based on the confirmed context.
 8. Keep labels short, user-facing, and natural.
 9. If context is weak, keep the broadest sensible choices instead of over-filtering.
+10. If Admin Controls define option priority or a preferred recommendation, keep those options visible and place them first whenever they still fit the user context.
+11. If Admin Controls define mapping aliases, treat those aliases as valid clues for which option matters.
 
 Return strict JSON only:
 {
@@ -2373,13 +2697,15 @@ Return strict JSON only:
 
 const generateRuntimeOptionsForQuestion = async ({
     serviceName = "",
+    servicePrompt = "",
     question = {},
     answersByQuestionText = {},
     answersBySlug = {},
     allQuestions = []
 }) => {
     const questionType = normalizeTextToken(question?.type || "input");
-    const canonicalOptions = getCanonicalQuestionOptions(question);
+    const adminControls = getQuestionAdminControls(question, servicePrompt);
+    const canonicalOptions = getCanonicalQuestionOptions(question, adminControls);
     if (!OPTION_QUESTION_TYPES.has(questionType) || canonicalOptions.length === 0) {
         return [];
     }
@@ -2390,6 +2716,7 @@ const generateRuntimeOptionsForQuestion = async ({
 
     const prompt = buildRuntimeOptionSelectionPrompt({
         serviceName,
+        servicePrompt,
         question,
         answersByQuestionText,
         answersBySlug,
@@ -2440,7 +2767,10 @@ const generateRuntimeOptionsForQuestion = async ({
 
         const merged = mergeUniqueOptionsByValue(selectedOptions);
         const catchAllOptions = canonicalOptions.filter((option) => isCatchAllOption(option));
-        const finalOptions = mergeUniqueOptionsByValue(merged, catchAllOptions);
+        const finalOptions = applyAdminControlsToOptions(
+            mergeUniqueOptionsByValue(merged, catchAllOptions),
+            adminControls
+        );
 
         if (finalOptions.length === 0) {
             return canonicalOptions;
@@ -2470,6 +2800,8 @@ const buildAiGuidedQuestionMessage = async ({
     const nextQuestionText = String(nextQuestion?.text || "").trim();
     if (!nextQuestionText) return "";
 
+    const currentQuestionAdminControls = getQuestionAdminControls(currentQuestion, servicePrompt);
+    const nextQuestionAdminControls = getQuestionAdminControls(nextQuestion, servicePrompt);
     const optionLabelsText = buildOptionLabelsText(nextQuestion, runtimeOptionsByQuestionSlug);
     const hasOptions = getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug).length > 0;
     const answeredCount = Object.values(answersBySlug || {}).filter((value) => hasAnswerValue(value)).length;
@@ -2486,8 +2818,8 @@ const buildAiGuidedQuestionMessage = async ({
         runtimeOptionsByQuestionSlug
     );
     const subtitleMapContext = buildQuestionSubtitleMapLines(allQuestions);
-    const currentQuestionSubtitle = String(currentQuestion?.subtitle || "").trim();
-    const nextQuestionSubtitle = String(nextQuestion?.subtitle || "").trim();
+    const currentQuestionSubtitle = buildAdminControlSummaryText(currentQuestionAdminControls);
+    const nextQuestionSubtitle = buildAdminControlSummaryText(nextQuestionAdminControls);
     const guidanceHints = bridgeSegments
         .map((item) => String(item || "").trim())
         .filter(Boolean)
@@ -2586,7 +2918,9 @@ You are writing one assistant message in a guided questionnaire.
 
 Service: "${serviceName}"
 Service-Specific AI Instructions:
-${servicePrompt || "None"}
+${parseAdminControlText(servicePrompt || "").contextText || "None"}
+
+${buildAdminPromptSection(nextQuestionAdminControls, "Admin Controls (highest priority when relevant)")}
 
 User last message: ${JSON.stringify(userLastMessage)}
 Question just answered: ${JSON.stringify(String(currentQuestion?.text || ""))}
@@ -2630,6 +2964,8 @@ ${responseLengthRule}
 - Do not say "type below" or ask for free-text when options are present.
 - Use internal question context and saved AI memory as guidance only; never expose them verbatim.
 - Read and use subtitle (AI context) for each relevant question when forming guidance.
+- Treat Admin Controls as higher-priority steering than generic style rules whenever they apply to this question.
+- If Admin Controls prioritize options or set a preferred option, keep that ordering and recommendation unless it clearly conflicts with confirmed user context.
 ${postFifthRuleBlock}
 - Keep under ${isOpeningIntakeQuestion ? 50 : 150} words.
 
@@ -2661,6 +2997,7 @@ ${outputFormatBlock}
                 question: nextQuestion,
                 answersBySlug,
                 serviceName,
+                servicePrompt,
                 runtimeOptionsByQuestionSlug
             });
             const contextualRecommendation = extractCurrentRecommendationLine(contextualSuggestionDraft);
@@ -3188,14 +3525,13 @@ const extractAnswersFromMessage = async ({ serviceName = "", message = "", quest
         slug: q.slug,
         question: q.text,
         type: q.type || "text",
-        subtitle: String(q?.subtitle || "").trim(),
+        subtitle: buildAdminControlSummaryText(getQuestionAdminControls(q)),
         saveResponse: Boolean(q?.saveResponse),
-        options: Array.isArray(q.options)
-            ? q.options.map((opt) => ({
-                value: typeof opt === "string" ? opt : (opt?.value ?? ""),
-                label: typeof opt === "string" ? opt : (opt?.label ?? "")
-            }))
-            : []
+        options: getCanonicalQuestionOptions(q).map((opt) => ({
+            value: opt?.value ?? "",
+            label: opt?.label ?? "",
+            aliases: Array.isArray(opt?.aliases) ? opt.aliases : [],
+        }))
     }));
 
     const extractorPrompt = `
@@ -3208,6 +3544,7 @@ Questionnaire: ${JSON.stringify(compactQuestions)}
 Rules:
 - Return answers that are explicitly stated or clearly implied by the user's message.
 - For option-based questions, if the user's meaning clearly matches one option, return that exact option label as the answer.
+- Use any provided option aliases when they clearly map the user's wording to an option.
 - If a question is not clearly answered, skip it.
 - Do not force a match when multiple options seem plausible.
 - Keep free-text answers short and close to what the user said.
@@ -3248,14 +3585,13 @@ const extractAnswersFromConversation = async ({ serviceName = "", history = [], 
         slug: q.slug,
         question: q.text,
         type: q.type || "text",
-        subtitle: String(q?.subtitle || "").trim(),
+        subtitle: buildAdminControlSummaryText(getQuestionAdminControls(q)),
         saveResponse: Boolean(q?.saveResponse),
-        options: Array.isArray(q.options)
-            ? q.options.map((opt) => ({
-                value: typeof opt === "string" ? opt : (opt?.value ?? ""),
-                label: typeof opt === "string" ? opt : (opt?.label ?? "")
-            }))
-            : []
+        options: getCanonicalQuestionOptions(q).map((opt) => ({
+            value: opt?.value ?? "",
+            label: opt?.label ?? "",
+            aliases: Array.isArray(opt?.aliases) ? opt.aliases : [],
+        }))
     }));
 
     const transcript = history
@@ -3275,6 +3611,7 @@ Rules:
 - Return answers only from USER messages.
 - If one user message answers multiple questions, return all matched questions.
 - For option-based questions, if the user's wording clearly maps to one option, return that exact option label.
+- Use any provided option aliases when they clearly map the user's wording to an option.
 - You may use semantic understanding to match a user's wording to the correct question or option when it is clearly implied.
 - Do not force uncertain matches.
 - Prefer concise answer text.
@@ -3451,11 +3788,20 @@ const buildCurrentQuestionValidationPrompt = ({
     attachmentInferredAnswer = "",
     lastAssistantMessage = "",
     validationResponseRules = "",
-}) => `
+}) => {
+    const adminControls = mergeAdminControls(
+        parseAdminControlText(currentQuestionSubtitle || ""),
+        parseAdminControlText(servicePrompt || "")
+    );
+    const currentQuestionContext = buildAdminControlSummaryText(adminControls);
+
+    return `
             You are a friendly, professional assistant guiding a user through a questionnaire for a "${serviceName}" service.
             
             Service-Specific AI Instructions:
-            ${servicePrompt || "None"}
+            ${parseAdminControlText(servicePrompt || "").contextText || "None"}
+
+            ${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when relevant)")}
             
             Current Question Asked: "${currentQuestionText}"
             Current Question Options: ${JSON.stringify(currentQuestionOptions)}
@@ -3463,7 +3809,7 @@ const buildCurrentQuestionValidationPrompt = ({
             Valid Canonical Option Pool: ${JSON.stringify(currentQuestionCanonicalOptions)}
             Known Context From Earlier Answers: ${JSON.stringify(knownContextByQuestion)}
             Saved AI Memory Context: ${JSON.stringify(savedResponseContext || "None")}
-            Current Question Internal Context: ${JSON.stringify(currentQuestionSubtitle || "None")}
+            Current Question Internal Context: ${JSON.stringify(currentQuestionContext || "None")}
             Last Assistant Message Shown To User: ${JSON.stringify(lastAssistantMessage || "None")}
             User's Answer: "${userMessageText}"
             Attachment Context: ${attachmentContextText ? JSON.stringify(attachmentContextText) : '"None"'}
@@ -3492,6 +3838,7 @@ const buildCurrentQuestionValidationPrompt = ({
             - In general, if the user's answer logically provides the requested information in their own words for any question, treat it as VALID.
             - Treat "Current Question Options" as the options currently shown to the user.
             - Treat "Valid Canonical Option Pool" as additional valid matches the user may mention even if not shown.
+            - If Admin Controls define mapping aliases or acceptance rules, honor them whenever the user's meaning is clear.
             - If you re-list choices to the user, use only "Current Question Options" and present them as examples/guidance, not as the only acceptable answers unless the question explicitly says that.
             - Otherwise -> VALID.
 
@@ -3508,6 +3855,7 @@ ${validationResponseRules}
             }
             Do not use markdown formatting, code fences, or bold text.
         `;
+};
 
 const buildServiceStartState = async ({
     service,
@@ -3519,6 +3867,7 @@ const buildServiceStartState = async ({
     if (firstQuestionDefinition?.slug) {
         const runtimeOptions = await generateRuntimeOptionsForQuestion({
             serviceName: service.name,
+            servicePrompt: service.aiPrompt || "",
             question: firstQuestionDefinition,
             answersByQuestionText: {},
             answersBySlug: {},
@@ -3536,6 +3885,7 @@ const buildServiceStartState = async ({
     const aiFirstQuestion = firstQuestionDefinition
         ? await buildAiGuidedQuestionMessage({
             serviceName: service.name,
+            servicePrompt: service.aiPrompt || "",
             userLastMessage: "",
             currentQuestion: {},
             nextQuestion: firstQuestionDefinition,
@@ -3549,9 +3899,10 @@ const buildServiceStartState = async ({
         })
         : "";
     const isNameFirstQuestion = NAME_QUESTION_REGEX.test(String(firstQuestionDefinition?.text || ""));
-    const firstQuestion = isNameFirstQuestion
-        ? buildServiceAwareOpeningMessage(service.name)
-        : (aiFirstQuestion || firstQuestionDefinition?.text || "How can I help you regarding this service?");
+    const firstQuestion = aiFirstQuestion
+        || (isNameFirstQuestion
+            ? buildServiceAwareOpeningMessage(service.name)
+            : (firstQuestionDefinition?.text || "How can I help you regarding this service?"));
 
     const answersPayload = buildPersistedAnswersPayload(
         {},
@@ -3925,9 +4276,12 @@ export const guestChat = asyncHandler(async (req, res) => {
         if (correctionNextStep < questions.length) {
             const correctionNextQuestion = questions[correctionNextStep];
             const runtimeOptions = await generateRuntimeOptionsForQuestion({
-                serviceName: service.name, question: correctionNextQuestion,
+                serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
+                question: correctionNextQuestion,
                 answersByQuestionText: correctedPayload.byQuestionText,
-                answersBySlug: correctedAnswersBySlug, allQuestions: questions
+                answersBySlug: correctedAnswersBySlug,
+                allQuestions: questions
             });
             if (correctionNextQuestion?.slug && runtimeOptions.length > 0) {
                 correctedRuntimeOptionsByQuestionSlug[correctionNextQuestion.slug] = runtimeOptions;
@@ -4815,6 +5169,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     if (nextStep < questions.length) {
         const runtimeOptions = await generateRuntimeOptionsForQuestion({
             serviceName: service.name,
+            servicePrompt: service.aiPrompt || "",
             question: questions[nextStep],
             answersByQuestionText: persistedAnswers.byQuestionText,
             answersBySlug: updatedAnswersBySlug,
@@ -5072,9 +5427,25 @@ export const getGuestAdvice = asyncHandler(async (req, res) => {
                     { slug: resolvedServiceId },
                     { id: resolvedServiceId }
                 ]
-            }
+            },
+            include: {
+                questions: {
+                    orderBy: { order: "asc" }
+                }
+            },
         });
     }
+
+    const resolvedCurrentQuestion =
+        Array.isArray(service?.questions)
+            ? service.questions.find((entry) => String(entry?.text || "").trim() === String(currentQuestion || "").trim())
+                || service.questions[Number.isInteger(session?.currentStep) ? session.currentStep : -1]
+                || null
+            : null;
+    const adviceAdminControls = getQuestionAdminControls(resolvedCurrentQuestion, service?.aiPrompt || "");
+    const adviceQuestionContext =
+        buildAdminControlSummaryText(adviceAdminControls)
+        || String(assistantContext || "").trim();
 
     const answersByQuestionText =
         session?.answers?.byQuestionText && typeof session.answers.byQuestionText === "object"
@@ -5152,10 +5523,10 @@ Also, provide a short placeholder text (starting with "e.g. ") that acts as a hi
 You are a friendly, conversational AI assistant directly helping a user fill out a questionnaire for their "${service?.name || serviceId || 'digital'}" project.
 
 Service-Specific AI Instructions:
-${service?.aiPrompt || "None"}
+${parseAdminControlText(service?.aiPrompt || "").contextText || "None"}
 
 Current Question: "${currentQuestion || ''}"
-Current Question Context: "${assistantContext || ''}"
+Current Question Context: "${adviceQuestionContext || ''}"
 User Trigger / Selected Option: "${option || 'Not sure'}"
 Visible Options: ${visibleOptions.length > 0 ? visibleOptions.join(" | ") : "None"}
 Service Minimum Budget: ${minimumBudgetText || "None"}
@@ -5167,7 +5538,12 @@ ${confirmedAnswersContext || "- none yet"}
 Recent Session Messages:
 ${recentSessionContext || "- none yet"}
 
+${buildAdminPromptSection(adviceAdminControls, "Admin Controls (highest priority when relevant)")}
+
 ${taskBlock}
+
+- Treat Admin Controls as higher-priority steering than generic phrasing when they apply.
+- If Admin Controls set a preferred option or option priority, follow that when it still fits the user's known context.
 
 Return ONLY a raw JSON object (with double quotes) with this structure:
 {
@@ -5204,16 +5580,36 @@ Do not use markdown formatting, code fences, or bold text.`;
     res.json({
         success: true,
         notice: isRecommendationMode
-            ? "I have a quick recommendation for this question. You can use it as-is or adjust it."
+            ? (() => {
+                const visibleOptionObjects = visibleOptions.map((label) => ({ label, value: label }));
+                const preferredIndex = findOptionIndexByAdminToken(
+                    visibleOptionObjects,
+                    adviceAdminControls.recommendedOption || adviceAdminControls.prioritizeOptions?.[0] || ""
+                );
+                const preferredOption = preferredIndex >= 0 ? visibleOptions[preferredIndex] : "";
+                return preferredOption
+                    ? `Recommended: ${preferredOption}. This matches the admin-configured preferred flow for this question.`
+                    : "I have a quick recommendation for this question. You can use it as-is or adjust it.";
+            })()
             : `Got it. Tell me what you have in mind for ${option || 'this'}.`,
         placeholder: isRecommendationMode
-            ? "e.g. use the suggested option or tweak it"
+            ? (() => {
+                const preferredIndex = findOptionIndexByAdminToken(
+                    visibleOptions.map((label) => ({ label, value: label })),
+                    adviceAdminControls.recommendedOption || adviceAdminControls.prioritizeOptions?.[0] || ""
+                );
+                return preferredIndex >= 0
+                    ? `e.g. ${visibleOptions[preferredIndex]}`
+                    : "e.g. use the suggested option or tweak it";
+            })()
             : "Tell me a bit more..."
     });
 });
 
 export const __testables = {
+    applyAdminControlsToOptions,
     applyExtractedAnswerUpdates,
+    buildAdminControlSummaryText,
     buildCurrentQuestionValidationPrompt,
     buildSupplementalBudgetExtractions,
     buildLockedServiceReply,
@@ -5224,6 +5620,7 @@ export const __testables = {
     getPostProposalBudgetFollowupAction,
     getDisplayedQuestionOptions,
     getBudgetMinimumValidationResult,
+    getQuestionAdminControls,
     getSemanticDependentIndexesForChanges,
     getQuestionIdentityType,
     getMostRecentMessageContentByRole,
@@ -5232,5 +5629,6 @@ export const __testables = {
     getRuntimeOptionsByQuestionSlug,
     mergeExtractedAnswers,
     normalizeAnswerForQuestion,
+    parseAdminControlText,
     toChronologicalGuestHistory,
 };

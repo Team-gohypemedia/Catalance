@@ -3,6 +3,7 @@ import AdminLayout from "./AdminLayout";
 import { AdminTopBar } from "./AdminTopBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -571,14 +572,16 @@ const AdminServiceQuestions = () => {
 
                                 <div className="space-y-2">
                                     <Label htmlFor="q-subtitle">Subtitle (AI Context)</Label>
-                                    <Input
+                                    <Textarea
                                         id="q-subtitle"
                                         value={formData.subtitle}
                                         onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                                        placeholder="e.g. Asking for budget in USD to determine project scale."
-                                        className="text-sm text-muted-foreground"
+                                        placeholder={"Intent for this question.\n@prioritize: Android and iOS | Android only | iOS only\n@recommend: Android and iOS\n@map: both => Android and iOS; cross platform => Android and iOS"}
+                                        className="min-h-28 resize-y text-sm text-muted-foreground font-mono"
                                     />
-                                    <p className="text-[10px] text-muted-foreground">This context is hidden from user but visible to AI.</p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        Hidden from the user. Optional directives: <code>@prioritize:</code>, <code>@recommend:</code>, <code>@reply:</code>, <code>@validate:</code>, <code>@map:</code>.
+                                    </p>
                                 </div>
 
                                 <div className="flex flex-col gap-2 pb-2">
