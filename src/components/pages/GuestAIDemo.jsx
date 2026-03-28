@@ -304,6 +304,115 @@ const parseMessageContentWithAttachments = (content = '', explicitAttachments = 
     };
 };
 
+const THINKING_STAGES = [
+    {
+        key: 'understand',
+        label: 'Understanding your request',
+        detail: 'Reviewing your answer, recent context, and any saved service rules.',
+        startMs: 0,
+    },
+    {
+        key: 'rules',
+        label: 'Checking service rules',
+        detail: 'Applying admin instructions, option priorities, and validation hints.',
+        startMs: 900,
+    },
+    {
+        key: 'flow',
+        label: 'Selecting the next step',
+        detail: 'Working out the right question flow and the best next prompt.',
+        startMs: 1900,
+    },
+    {
+        key: 'reply',
+        label: 'Writing the reply',
+        detail: 'Preparing the final assistant message for this turn.',
+        startMs: 3200,
+    },
+];
+
+const getNowTimestamp = () =>
+    typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now();
+
+const getThinkingStageIndex = (elapsedMs = 0) => {
+    let stageIndex = 0;
+    for (let index = 0; index < THINKING_STAGES.length; index += 1) {
+        if (elapsedMs >= THINKING_STAGES[index].startMs) {
+            stageIndex = index;
+        }
+    }
+    return stageIndex;
+};
+
+const buildThinkingState = (elapsedMs = 0) => {
+    const stageIndex = getThinkingStageIndex(elapsedMs);
+    return {
+        elapsedMs,
+        stageIndex,
+        stage: THINKING_STAGES[stageIndex],
+        completedStages: THINKING_STAGES.slice(0, stageIndex + 1),
+    };
+};
+
+const buildThinkingMeta = (durationMs = 0) => {
+    const state = buildThinkingState(durationMs);
+    return {
+        durationMs,
+        finalStageLabel: state.stage?.label || 'Completed',
+        completedStageLabels: state.completedStages.map((entry) => entry.label),
+    };
+};
+
+const formatThinkingDuration = (durationMs = 0) => {
+    const safeDuration = Math.max(0, Number(durationMs || 0));
+    if (safeDuration < 1000) return `${Math.round(safeDuration)}ms`;
+    if (safeDuration < 10000) return `${(safeDuration / 1000).toFixed(1)}s`;
+    return `${Math.round(safeDuration / 1000)}s`;
+};
+
+const buildThinkingMetaKey = (message = {}) =>
+    `${String(message?.role || '')}::${String(message?.content || '').trim()}`;
+
+const mergeMessagesWithThinkingMeta = (
+    incomingMessages = [],
+    existingMessages = [],
+    latestThinkingMeta = null
+) => {
+    const metaQueues = new Map();
+
+    (Array.isArray(existingMessages) ? existingMessages : []).forEach((message) => {
+        if (!message?.thinkingMeta) return;
+        const key = buildThinkingMetaKey(message);
+        const queue = metaQueues.get(key) || [];
+        queue.push(message.thinkingMeta);
+        metaQueues.set(key, queue);
+    });
+
+    const merged = (Array.isArray(incomingMessages) ? incomingMessages : []).map((message) => {
+        const key = buildThinkingMetaKey(message);
+        const queue = metaQueues.get(key);
+        if (queue?.length) {
+            return { ...message, thinkingMeta: queue.shift() };
+        }
+        return { ...message };
+    });
+
+    if (latestThinkingMeta) {
+        for (let index = merged.length - 1; index >= 0; index -= 1) {
+            if (merged[index]?.role !== 'assistant') continue;
+            merged[index] = {
+                ...merged[index],
+                thinkingMeta: latestThinkingMeta,
+            };
+            break;
+        }
+    }
+
+    return merged;
+};
+
 const toPreviewText = (messages = []) => {
     const source = [...messages].reverse();
     for (const message of source) {
@@ -1305,11 +1414,13 @@ const GuestAIDemo = () => {
     const [loadingHistoryId, setLoadingHistoryId] = useState(null);
     const [pendingAttachments, setPendingAttachments] = useState([]);
     const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+    const [thinkingState, setThinkingState] = useState(null);
 
     const scrollRef = useRef(null);
     const inputRef = useRef(null);
     const attachmentInputRef = useRef(null);
     const recognitionRef = useRef(null);
+    const thinkingIntervalRef = useRef(null);
     const dismissedAutoHelperKeysRef = useRef(new Set());
     const speechBaseInputRef = useRef("");
     const speechFinalRef = useRef("");
@@ -1334,6 +1445,34 @@ const GuestAIDemo = () => {
     const refreshGeneratedProposals = useCallback(() => {
         setGeneratedProposals(readStoredGeneratedProposals(user?.id));
     }, [user?.id]);
+
+    const stopThinkingTrace = useCallback(() => {
+        if (thinkingIntervalRef.current) {
+            window.clearInterval(thinkingIntervalRef.current);
+            thinkingIntervalRef.current = null;
+        }
+        setThinkingState(null);
+    }, []);
+
+    const startThinkingTrace = useCallback((startedAt = getNowTimestamp()) => {
+        if (thinkingIntervalRef.current) {
+            window.clearInterval(thinkingIntervalRef.current);
+        }
+
+        const updateThinkingState = () => {
+            const elapsedMs = Math.max(0, getNowTimestamp() - startedAt);
+            setThinkingState(buildThinkingState(elapsedMs));
+        };
+
+        updateThinkingState();
+        thinkingIntervalRef.current = window.setInterval(updateThinkingState, 120);
+    }, []);
+
+    useEffect(() => () => {
+        if (thinkingIntervalRef.current) {
+            window.clearInterval(thinkingIntervalRef.current);
+        }
+    }, []);
 
     const toggleSidebarSize = useCallback(() => {
         setSidebarSize((previous) => {
@@ -2165,7 +2304,9 @@ const GuestAIDemo = () => {
         }
 
         try {
+            const requestStartedAt = getNowTimestamp();
             setIsTyping(true);
+            startThinkingTrace(requestStartedAt);
             setIsUploadingAttachment(hasAttachments);
 
             const uploadedAttachments = hasAttachments
@@ -2198,6 +2339,9 @@ const GuestAIDemo = () => {
                 })
             });
             const data = unwrapPayload(response);
+            const completedThinkingMeta = buildThinkingMeta(
+                Math.max(0, getNowTimestamp() - requestStartedAt)
+            );
             const responseServiceId = data?.serviceMeta?.serviceId || '';
             const responseServiceName = data?.serviceMeta?.serviceName || '';
             let activeService = selectedService;
@@ -2218,10 +2362,19 @@ const GuestAIDemo = () => {
             }
 
             if (data?.history) {
-                setMessages(data.history);
-                persistCurrentSessionSummary(data.history, activeService);
+                const nextHistory = mergeMessagesWithThinkingMeta(
+                    data.history,
+                    messages,
+                    completedThinkingMeta
+                );
+                setMessages(nextHistory);
+                persistCurrentSessionSummary(nextHistory, activeService);
             } else if (typeof data?.message === 'string' && data.message.trim()) {
-                const aiMsg = { role: 'assistant', content: data.message };
+                const aiMsg = {
+                    role: 'assistant',
+                    content: data.message,
+                    thinkingMeta: completedThinkingMeta,
+                };
                 setMessages(prev => [...prev, aiMsg]);
                 persistCurrentSessionSummary([...messages, userMsg, aiMsg], activeService);
             } else {
@@ -2235,6 +2388,7 @@ const GuestAIDemo = () => {
             console.error('[GuestAIDemo] Failed to send message:', error);
             toast.error(error?.message || "Failed to send message");
         } finally {
+            stopThinkingTrace();
             setIsTyping(false);
             setIsUploadingAttachment(false);
         }
@@ -2826,6 +2980,9 @@ const GuestAIDemo = () => {
                             const messageKey = `${msg.role}-${idx}`;
                             const isLatestAssistantMessage = msg.role === 'assistant' && idx === messages.length - 1;
                             const shouldEnableOptionClick = isLatestAssistantMessage && !isTyping && hasOptionInput;
+                            const thinkingMeta = Number.isFinite(Number(msg?.thinkingMeta?.durationMs))
+                                ? msg.thinkingMeta
+                                : null;
 
                             return msg.role === 'user' ? (
                                 /* ── USER message: right-aligned bubble ── */
@@ -2916,6 +3073,11 @@ const GuestAIDemo = () => {
                                                 />
                                             </div>
                                         )}
+                                        {thinkingMeta && (
+                                            <div className={`mt-2 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                Responded in {formatThinkingDuration(thinkingMeta.durationMs)}
+                                            </div>
+                                        )}
                                     </div>
                                 </motion.div>
                             );
@@ -2930,10 +3092,27 @@ const GuestAIDemo = () => {
                                 <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-black/5'}`}>
                                     <img src={cataLogo} alt="AI logo" className="h-5 w-5 object-contain" />
                                 </div>
-                                <div className="flex min-h-[2rem] items-center gap-1.5 opacity-60">
-                                    <div className={`h-1.5 w-1.5 animate-bounce rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} style={{ animationDelay: '0ms' }} />
-                                    <div className={`h-1.5 w-1.5 animate-bounce rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} style={{ animationDelay: '140ms' }} />
-                                    <div className={`h-1.5 w-1.5 animate-bounce rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} style={{ animationDelay: '280ms' }} />
+                                <div className="flex-1 min-w-0 max-w-[85%]">
+                                    <div className={`flex min-h-[2rem] items-center gap-2 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                        <div className="flex shrink-0 items-center gap-1.5 opacity-70">
+                                            <div className={`h-1.5 w-1.5 animate-bounce rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} style={{ animationDelay: '0ms' }} />
+                                            <div className={`h-1.5 w-1.5 animate-bounce rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} style={{ animationDelay: '140ms' }} />
+                                            <div className={`h-1.5 w-1.5 animate-bounce rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} style={{ animationDelay: '280ms' }} />
+                                        </div>
+                                        <motion.span
+                                            key={thinkingState?.stage?.key || THINKING_STAGES[0].key}
+                                            initial={{ opacity: 0, y: 4 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.18, ease: 'easeOut' }}
+                                            className={`min-w-0 truncate text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}
+                                        >
+                                            {thinkingState?.stage?.label || THINKING_STAGES[0].label}
+                                        </motion.span>
+                                        <span className={`shrink-0 text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>•</span>
+                                        <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            {formatThinkingDuration(thinkingState?.elapsedMs || 0)}
+                                        </span>
+                                    </div>
                                 </div>
                             </motion.div>
                         )}
