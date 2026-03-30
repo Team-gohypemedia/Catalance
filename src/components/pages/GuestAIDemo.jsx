@@ -39,7 +39,8 @@ import {
     Image as ImageIcon,
     FileText,
     Trash2,
-    Globe
+    Globe,
+    MessageSquarePlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -404,6 +405,84 @@ const parseMessageContentWithAttachments = (content = '', explicitAttachments = 
         text: textLines.join('\n').trim(),
         attachments: allAttachments,
         urls: allUrls,
+    };
+};
+
+const isImageAttachment = (attachment = {}) => {
+    const type = String(attachment?.type || '').toLowerCase();
+    const name = String(attachment?.name || '').toLowerCase();
+    return type.startsWith('image/')
+        || /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(name);
+};
+
+const buildAttachmentKindLabel = (attachment = {}) => {
+    if (isImageAttachment(attachment)) return 'Image';
+
+    const extension = String(attachment?.name || '').split('.').pop();
+    if (extension && extension !== String(attachment?.name || '')) {
+        return extension.toUpperCase();
+    }
+
+    const mimeType = String(attachment?.type || '').trim();
+    if (mimeType) {
+        const mimeLabel = mimeType.includes('/') ? mimeType.split('/').pop() : mimeType;
+        return mimeLabel.replace(/[-_]+/g, ' ').toUpperCase();
+    }
+
+    return 'File';
+};
+
+const extractSharedResourcesFromMessages = (messages = []) => {
+    const source = Array.isArray(messages) ? messages : [];
+    const urlSeen = new Set();
+    const attachmentSeen = new Set();
+    const urls = [];
+    const attachments = [];
+
+    for (let index = source.length - 1; index >= 0; index -= 1) {
+        const message = source[index];
+        if (message?.role !== 'user') continue;
+
+        const parsed = parseMessageContentWithAttachments(
+            message?.content || '',
+            message?.attachments || []
+        );
+
+        parsed.urls.forEach((entry, entryIndex) => {
+            const normalizedUrl = normalizeSharedUrl(entry?.url || '');
+            if (!normalizedUrl || urlSeen.has(normalizedUrl)) return;
+
+            urlSeen.add(normalizedUrl);
+            urls.push({
+                id: `url-${index}-${entryIndex}`,
+                url: normalizedUrl,
+                label: buildSharedUrlLabel(entry?.label || normalizedUrl),
+            });
+        });
+
+        parsed.attachments.forEach((attachment, entryIndex) => {
+            const url = String(attachment?.url || '').trim();
+            const name = String(attachment?.name || 'Attachment').trim() || 'Attachment';
+            const size = Number(attachment?.size || 0);
+            const key = `${url}|${name}|${size}`;
+            if (!url || attachmentSeen.has(key)) return;
+
+            attachmentSeen.add(key);
+            attachments.push({
+                id: `attachment-${index}-${entryIndex}`,
+                url,
+                name,
+                type: String(attachment?.type || ''),
+                size: Number.isFinite(size) ? size : 0,
+                isImage: isImageAttachment(attachment),
+                kindLabel: buildAttachmentKindLabel(attachment),
+            });
+        });
+    }
+
+    return {
+        urls,
+        attachments,
     };
 };
 
@@ -1743,6 +1822,8 @@ const GuestAIDemo = () => {
     const [pendingAttachments, setPendingAttachments] = useState([]);
     const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
     const [thinkingState, setThinkingState] = useState(null);
+    const [isProposalsModalOpen, setIsProposalsModalOpen] = useState(false);
+    const [activeResourceLibrary, setActiveResourceLibrary] = useState(null);
 
     const scrollRef = useRef(null);
     const inputRef = useRef(null);
@@ -1761,6 +1842,23 @@ const GuestAIDemo = () => {
     const hasOptionInput = Array.isArray(inputConfig.options) && inputConfig.options.length > 0;
     const shouldShowTextInput = true;
     const visiblePreviousChats = previousChats.filter((chat) => chat?.sessionId);
+    const { urls: sharedLinks, attachments: sharedAttachments } = extractSharedResourcesFromMessages(messages);
+    const activeResourceLibraryConfig = activeResourceLibrary === 'links'
+        ? {
+            title: 'Saved Links',
+            icon: Globe,
+            items: sharedLinks,
+            emptyMessage: 'No links shared in this chat yet.',
+        }
+        : activeResourceLibrary === 'files'
+            ? {
+                title: 'Shared Files & Media',
+                icon: FileText,
+                items: sharedAttachments,
+                emptyMessage: 'No files or images shared in this chat yet.',
+            }
+            : null;
+    const ActiveResourceLibraryIcon = activeResourceLibraryConfig?.icon || FileText;
     const isUserLoggedIn = Boolean(isAuthenticated && user);
     const userPrefillName = [user?.fullName, user?.name]
         .map((value) => String(value || '').trim())
@@ -2795,6 +2893,7 @@ const GuestAIDemo = () => {
         setSelectedOptions([]);
         setPendingOptionFollowup(null);
         setInputConfig({ type: 'text', options: [] });
+        setActiveResourceLibrary(null);
     };
 
     const handleOpenProposalPreview = (proposal) => {
@@ -2807,6 +2906,14 @@ const GuestAIDemo = () => {
 
     const handleCloseProposalPreview = () => {
         setSelectedProposalPreview(null);
+    };
+
+    const handleOpenResourceLibrary = (libraryType) => {
+        setActiveResourceLibrary(libraryType);
+    };
+
+    const handleCloseResourceLibrary = () => {
+        setActiveResourceLibrary(null);
     };
 
     const handleDeletePreviousChat = (event, chatMeta) => {
@@ -3179,14 +3286,24 @@ const GuestAIDemo = () => {
                 </div>
 
                 {/* ── Back to services ── */}
-                <div className={`px-3 pb-2 ${isDark ? 'border-b border-white/[0.06]' : 'border-b border-slate-100'}`}>
+                <div className={`px-3 pb-2 flex gap-1.5 ${isDark ? 'border-b border-white/[0.06]' : 'border-b border-slate-100'}`}>
                     <button
                         type="button"
                         onClick={handleBackToServices}
-                        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                        title="Back to services"
                     >
                         <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-                        Back to services
+                        Back
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => selectedService && handleServiceSelect(selectedService)}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${isDark ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                        title="Start a new chat"
+                    >
+                        <MessageSquarePlus className="h-3.5 w-3.5 shrink-0" />
+                        New Chat
                     </button>
                 </div>
 
@@ -3194,42 +3311,156 @@ const GuestAIDemo = () => {
                 <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-3">
 
                     {/* ── Proposals section ── */}
-                    <div className="mb-1 px-4">
-                        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Proposals{generatedProposals.length > 0 ? ` · ${generatedProposals.length}` : ''}
-                        </p>
+                    <div className="mb-1 px-3">
+                        <button
+                            type="button"
+                            onClick={() => setIsProposalsModalOpen(true)}
+                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                        >
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-50 text-amber-600'}`}>
+                                <Sparkles className="h-3 w-3" />
+                            </div>
+                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                                Proposals
+                            </span>
+                            {generatedProposals.length > 0 && (
+                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-primary/25 text-primary' : 'bg-amber-100 text-amber-700'}`}>
+                                    {generatedProposals.length}
+                                </span>
+                            )}
+                        </button>
                     </div>
-                    {generatedProposals.length === 0 ? (
-                        <div className="px-4 pb-3">
-                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>No proposals yet.</p>
+
+                    {/* ── Divider ── */}
+                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
+
+                    {/* ── Saved links section ── */}
+                    <div className="mb-1 px-3">
+                        <button
+                            type="button"
+                            onClick={() => handleOpenResourceLibrary('links')}
+                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                        >
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                <Globe className="h-3 w-3" />
+                            </div>
+                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                                Saved Links
+                            </span>
+                            <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                {sharedLinks.length}
+                            </span>
+                        </button>
+                    </div>
+
+                    <div className="mb-1 px-3">
+                        <button
+                            type="button"
+                            onClick={() => handleOpenResourceLibrary('files')}
+                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                        >
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                <FileText className="h-3 w-3" />
+                            </div>
+                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                                Shared Files & Media
+                            </span>
+                            <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                {sharedAttachments.length}
+                            </span>
+                        </button>
+                    </div>
+
+                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
+
+                    <div className="hidden">
+                    <div className="mb-1 px-4">
+                        <div className="flex items-center justify-between gap-2">
+                            <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Saved links
+                            </p>
+                            {sharedLinks.length > 0 && (
+                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                    {sharedLinks.length}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    {sharedLinks.length === 0 ? (
+                        <div className="px-4">
+                            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Links shared in this chat will appear here.</p>
                         </div>
                     ) : (
-                        <div className="mb-2 space-y-0.5 px-2">
-                            {generatedProposals.map((proposal, index) => (
-                                <button
-                                    key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
-                                    type="button"
-                                    onClick={() => handleOpenProposalPreview(proposal)}
-                                    className={`group flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-                                    title="Open proposal"
+                        <div className="space-y-1 px-2">
+                            {sharedLinks.map((linkEntry) => (
+                                <a
+                                    key={linkEntry.id}
+                                    href={linkEntry.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
                                 >
-                                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-50 text-amber-600'}`}>
-                                        <Sparkles className="h-3 w-3" />
+                                    <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                                        <Globe className="h-3.5 w-3.5" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'}`}>
-                                            {proposal.projectTitle || 'AI Proposal'}
+                                        <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                            {linkEntry.label}
                                         </p>
-                                        {(proposal.budget || proposal.timeline) && (
-                                            <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                {[proposal.budget, proposal.timeline].filter(Boolean).join(' · ')}
-                                            </p>
-                                        )}
+                                        <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            {linkEntry.url}
+                                        </p>
                                     </div>
-                                    <span className={`shrink-0 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                        {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
-                                    </span>
-                                </button>
+                                </a>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ── Divider ── */}
+                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
+
+                    {/* ── Shared files/media section ── */}
+                    <div className="mb-1 px-4">
+                        <div className="flex items-center justify-between gap-2">
+                            <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Shared files & media
+                            </p>
+                            {sharedAttachments.length > 0 && (
+                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                    {sharedAttachments.length}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    {sharedAttachments.length === 0 ? (
+                        <div className="px-4">
+                            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Documents, PDFs, and images you upload will appear here.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-1 px-2">
+                            {sharedAttachments.map((attachment) => (
+                                <a
+                                    key={attachment.id}
+                                    href={attachment.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                                >
+                                    <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                                        {attachment.isImage
+                                            ? <ImageIcon className="h-3.5 w-3.5" />
+                                            : <FileText className="h-3.5 w-3.5" />
+                                        }
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                            {attachment.name}
+                                        </p>
+                                        <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            {[attachment.kindLabel, formatBytes(attachment.size)].filter(Boolean).join(' • ')}
+                                        </p>
+                                    </div>
+                                </a>
                             ))}
                         </div>
                     )}
@@ -3238,8 +3469,9 @@ const GuestAIDemo = () => {
                     <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
 
                     {/* ── Previous chats section ── */}
+                    </div>
                     <div className="mb-1 px-4">
-                        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
                             Recent chats
                         </p>
                     </div>
@@ -3412,12 +3644,14 @@ const GuestAIDemo = () => {
                                         )}
                                         {/* text bubble */}
                                         {messageContent && (
-                                            <div className={`rounded-3xl px-5 py-3 text-[15px] leading-relaxed whitespace-pre-wrap break-words ${
+                                            <div className={`rounded-3xl px-5 py-3 text-[15px] leading-relaxed break-words ${
                                                 isDark
                                                     ? 'bg-[#2F2F2F] text-white'
                                                     : 'bg-[#F0F0F0] text-slate-900'
                                             }`}>
-                                                {messageContent}
+                                                <div className={`prose prose-sm max-w-none prose-p:my-0 prose-strong:font-semibold ${isDark ? 'prose-invert' : ''}`}>
+                                                    <ReactMarkdown>{messageContent}</ReactMarkdown>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -3537,7 +3771,203 @@ const GuestAIDemo = () => {
                 )}
             </section>
 
-            {selectedProposalPreview && (
+            {isProposalsModalOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6"
+                    onClick={() => setIsProposalsModalOpen(false)}
+                >
+                    <div
+                        className={`max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl flex flex-col ${isDark
+                            ? 'border-white/15 bg-[#0d0d0f]'
+                            : 'border-slate-300/80 bg-white'
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className={`flex items-center justify-between border-b px-5 py-4 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                            <div className="flex items-center gap-2.5">
+                                <Sparkles className="h-4 w-4 text-primary" />
+                                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                    Your AI Proposals
+                                </h3>
+                                {generatedProposals.length > 0 && (
+                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-100 text-amber-700'}`}>
+                                        {generatedProposals.length}
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsProposalsModalOpen(false)}
+                                className={`rounded-full p-2 transition-colors ${isDark ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                                aria-label="Close proposals"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {generatedProposals.length === 0 ? (
+                                <div className="flex h-40 flex-col items-center justify-center gap-3 text-center">
+                                    <Sparkles className={`h-8 w-8 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        No proposals yet. Chat with CATA AI to generate one.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {generatedProposals.map((proposal, index) => (
+                                        <button
+                                            key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
+                                            type="button"
+                                            onClick={() => {
+                                                setIsProposalsModalOpen(false);
+                                                handleOpenProposalPreview(proposal);
+                                            }}
+                                            className={`group flex w-full items-start gap-4 rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 ${isDark ? 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
+                                        >
+                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-100 text-amber-600'}`}>
+                                                <Sparkles className="h-5 w-5" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className={`font-semibold ${isDark ? 'text-slate-100 group-hover:text-white' : 'text-slate-800 group-hover:text-slate-900'}`}>
+                                                    {proposal.projectTitle || 'AI Proposal'}
+                                                </p>
+                                                {(proposal.budget || proposal.timeline) && (
+                                                    <p className={`mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {[
+                                                            proposal.budget && `Budget: ${proposal.budget}`,
+                                                            proposal.timeline && `Timeline: ${proposal.timeline}`,
+                                                        ].filter(Boolean).join(' ?? ')}
+                                                    </p>
+                                                )}
+                                                <p className={`mt-1.5 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
+                                                </p>
+                                            </div>
+                                            <svg
+                                                className={`mt-1 h-4 w-4 shrink-0 opacity-40 transition-opacity group-hover:opacity-80 ${isDark ? 'text-white' : 'text-slate-800'}`}
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                            >
+                                                <path d="m9 18 6-6-6-6"/>
+                                            </svg>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeResourceLibraryConfig && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6"
+                    onClick={handleCloseResourceLibrary}
+                >
+                    <div
+                        className={`max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl flex flex-col ${isDark
+                            ? 'border-white/15 bg-[#0d0d0f]'
+                            : 'border-slate-300/80 bg-white'
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className={`flex items-center justify-between border-b px-5 py-4 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                            <div className="flex items-center gap-2.5">
+                                <ActiveResourceLibraryIcon className={`h-4 w-4 ${isDark ? 'text-white' : 'text-slate-800'}`} />
+                                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                    {activeResourceLibraryConfig.title}
+                                </h3>
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                    {activeResourceLibraryConfig.items.length}
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleCloseResourceLibrary}
+                                className={`rounded-full p-2 transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                                aria-label="Close resource library"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {activeResourceLibraryConfig.items.length === 0 ? (
+                                <div className="flex h-40 flex-col items-center justify-center gap-3 text-center">
+                                    <ActiveResourceLibraryIcon className={`h-8 w-8 ${isDark ? 'text-slate-500' : 'text-slate-300'}`} />
+                                    <p className={`text-sm ${isDark ? 'text-white' : 'text-slate-500'}`}>
+                                        {activeResourceLibraryConfig.emptyMessage}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {activeResourceLibrary === 'links'
+                                        ? sharedLinks.map((linkEntry) => (
+                                            <a
+                                                key={linkEntry.id}
+                                                href={linkEntry.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`group flex w-full items-start gap-4 rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 ${isDark ? 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
+                                            >
+                                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                    <Globe className="h-5 w-5" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className={`font-semibold ${isDark ? 'text-white' : 'text-slate-800 group-hover:text-slate-900'}`}>
+                                                        {linkEntry.label}
+                                                    </p>
+                                                    <p className={`mt-1 text-xs break-all ${isDark ? 'text-slate-200' : 'text-slate-500'}`}>
+                                                        {linkEntry.url}
+                                                    </p>
+                                                </div>
+                                                <svg
+                                                    className={`mt-1 h-4 w-4 shrink-0 opacity-40 transition-opacity group-hover:opacity-80 ${isDark ? 'text-white' : 'text-slate-800'}`}
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                                >
+                                                    <path d="m9 18 6-6-6-6"/>
+                                                </svg>
+                                            </a>
+                                        ))
+                                        : sharedAttachments.map((attachment) => (
+                                            <a
+                                                key={attachment.id}
+                                                href={attachment.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`group flex w-full items-start gap-4 rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 ${isDark ? 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
+                                            >
+                                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                    {attachment.isImage
+                                                        ? <ImageIcon className="h-5 w-5" />
+                                                        : <FileText className="h-5 w-5" />
+                                                    }
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className={`font-semibold ${isDark ? 'text-white' : 'text-slate-800 group-hover:text-slate-900'}`}>
+                                                        {attachment.name}
+                                                    </p>
+                                                    <p className={`mt-1 text-xs ${isDark ? 'text-slate-200' : 'text-slate-500'}`}>
+                                                        {[attachment.kindLabel, formatBytes(attachment.size)].filter(Boolean).join(' • ')}
+                                                    </p>
+                                                </div>
+                                                <svg
+                                                    className={`mt-1 h-4 w-4 shrink-0 opacity-40 transition-opacity group-hover:opacity-80 ${isDark ? 'text-white' : 'text-slate-800'}`}
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                                >
+                                                    <path d="m9 18 6-6-6-6"/>
+                                                </svg>
+                                            </a>
+                                        ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+                        {selectedProposalPreview && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6">
                     <div className={`max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-2xl border shadow-2xl ${isDark
                         ? 'border-white/15 bg-[#0d0d0f]'
