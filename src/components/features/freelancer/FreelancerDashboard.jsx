@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Gavel from "lucide-react/dist/esm/icons/gavel";
 import Video from "lucide-react/dist/esm/icons/video";
@@ -823,7 +823,7 @@ const freelancerPendingProposalSurfaceToneClassName =
   "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 
 const freelancerPendingProposalDetailBlockClassName =
-  `flex min-w-0 flex-col rounded-[14px] ${freelancerPendingProposalSurfaceToneClassName} p-4 lg:h-[76px]`;
+  `flex min-w-0 flex-col rounded-[14px] ${freelancerPendingProposalSurfaceToneClassName} px-4 py-3 sm:px-5 sm:py-3.5 lg:min-h-[84px]`;
 
 const freelancerPendingProposalActionButtonClassName =
   "inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-[10px] px-4 text-sm font-semibold transition-colors";
@@ -1535,17 +1535,17 @@ const FreelancerCarouselDots = ({
 const FreelancerPendingProposalRow = ({ item }) => (
   <div className="grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_184px] lg:items-end">
     <div className="min-w-0 w-full">
-      <p className="min-w-0 truncate text-[1.4rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.55rem]">
+      <p className="min-w-0 truncate text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
         {item.title}
       </p>
 
-      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3 sm:gap-3">
         <div className={freelancerPendingProposalDetailBlockClassName}>
           <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
-            Received
+            Service
           </p>
-          <p className="mt-3 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
-            {item.updatedAt || "Just now"}
+          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            {item.service}
           </p>
         </div>
 
@@ -1553,8 +1553,17 @@ const FreelancerPendingProposalRow = ({ item }) => (
           <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
             Budget
           </p>
-          <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+          <p className="mt-2.5 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
             {item.budget}
+          </p>
+        </div>
+
+        <div className={freelancerPendingProposalDetailBlockClassName}>
+          <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
+            Received
+          </p>
+          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            {item.updatedAt || "Just now"}
           </p>
         </div>
       </div>
@@ -1724,53 +1733,43 @@ const FreelancerPendingProposalsSection = ({
   );
 };
 
-const FreelancerProjectRedirectCard = ({ item, className }) => (
-  <div
-    className={cn(
-      "flex flex-col overflow-hidden rounded-[28px] border border-white/[0.06] bg-card p-4 sm:p-5 xl:p-6",
-      className,
-    )}
-  >
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 sm:gap-3">
-        <div className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border border-white/[0.08] bg-white/[0.06] text-[#d4d4d8] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:h-8 sm:w-8">
-          <item.Icon className="size-3.5 sm:size-4" strokeWidth={1.85} />
-        </div>
-        <span className="inline-flex h-7 items-center rounded-[8px] bg-white/[0.06] px-2.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#23d18b] sm:h-8 sm:px-3 sm:text-[11px] sm:tracking-[0.22em]">
-          {item.eyebrow}
-        </span>
-      </div>
+const FreelancerProjectRedirectCard = ({ item, className }) => {
+  const isProposalPipelineCard = item.id === "proposal-pipeline";
 
-      <h3 className="mt-5 text-[clamp(1.5rem,5vw,2.05rem)] font-semibold leading-[1.04] tracking-[-0.04em] text-white">
-        {item.title}
-      </h3>
-      <p className="mt-3 max-w-[28ch] text-sm leading-6 text-[#8f96a3] line-clamp-3">
-        {item.description}
-      </p>
-
-      <div className="mt-6 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]">
-        {item.highlights.map((highlight) => (
-          <div
-            key={highlight}
-            className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.035] px-3.5 py-2.5 text-sm text-[#e5e7eb] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-          >
-            <span aria-hidden="true" className="size-2 rounded-full bg-[#ffc107]" />
-            <span className="line-clamp-1">{highlight}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    <button
-      type="button"
-      onClick={item.onClick}
-      className="mt-6 inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-[16px] bg-[#ffc107] px-5 py-3.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+  return (
+    <div
+      className={cn(
+        "flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[28px] border border-white/[0.06] bg-card p-4 sm:p-5 xl:p-6",
+        className,
+      )}
     >
-      <span>{item.actionLabel}</span>
-      <ChevronRight className="size-4" />
-    </button>
-  </div>
-);
+      <div className="flex flex-1 flex-col items-center text-center">
+        <h3 className="text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
+          {item.title}
+        </h3>
+
+        <div className="flex w-full flex-1 items-center justify-center">
+          <button
+            type="button"
+            aria-label={item.title}
+            onClick={item.onClick}
+            className="inline-flex h-[104px] w-[104px] items-center justify-center rounded-[14px] border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/28"
+          >
+            <item.Icon className="size-10" strokeWidth={2} />
+          </button>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={item.onClick}
+        className="inline-flex h-[58px] w-full shrink-0 items-center justify-center rounded-[14px] bg-[#f5cd05] px-6 text-[1.02rem] font-bold uppercase tracking-[0.04em] text-black transition-colors hover:bg-[#ffdd4f]"
+      >
+        {String(item.actionLabel || "Action").toUpperCase()}
+      </button>
+    </div>
+  );
+};
 
 export const DashboardContent = ({ _roleOverride }) => {
   const isMobile = useIsMobile();
@@ -1788,6 +1787,8 @@ export const DashboardContent = ({ _roleOverride }) => {
   const [canGoToNextProjects, setCanGoToNextProjects] = useState(false);
   const [projectCarouselSnapCount, setProjectCarouselSnapCount] = useState(0);
   const [activeProjectSnap, setActiveProjectSnap] = useState(0);
+  const [mobileProjectCardHeight, setMobileProjectCardHeight] = useState(0);
+  const projectCardRefs = useRef({});
   const [profileCompletion, setProfileCompletion] = useState({
     percent: 0,
     message: "Loading profile completion...",
@@ -1875,6 +1876,8 @@ export const DashboardContent = ({ _roleOverride }) => {
     Math.min(100, Number(profileCompletion.percent) || 0)
   );
   const showProfileCompletionSkeleton = metricsLoading || profileCompletion.isLoading;
+  const shouldShowProfileCompletionPanel =
+    showProfileCompletionSkeleton || profileCompletionPercent < 100;
   const profileCompletionComplete = profileCompletionPercent >= 90;
   const activeWorkspaceKey = useMemo(() => {
     if (location.pathname.startsWith("/freelancer/proposals")) return "proposals";
@@ -2378,6 +2381,7 @@ export const DashboardContent = ({ _roleOverride }) => {
   const pendingProposalRows = useMemo(
     () =>
       metrics.pendingProposals.slice(0, 4).map((proposal, index) => {
+        const serviceType = resolveFreelancerProjectServiceType(proposal?.project || {}, proposal);
         const title =
           proposal?.project?.businessName ||
           proposal?.project?.companyName ||
@@ -2387,9 +2391,10 @@ export const DashboardContent = ({ _roleOverride }) => {
 
         return {
           id: proposal?.id || `pending-proposal-${index}`,
-          title,
+          title: toDisplayTitleCase(title),
           updatedAt: requestTime,
           budget: formatFreelancerDashboardCurrency(Number(proposal?.amount) || 0),
+          service: serviceType ? toDisplayTitleCase(serviceType) : "General Service",
           projectId: proposal?.project?.id,
           onView: () => {
             const query = proposal?.project?.id
@@ -2517,15 +2522,11 @@ export const DashboardContent = ({ _roleOverride }) => {
       }),
     [metrics.acceptedProposals, resolveProjectProgress]
   );
-  const shouldUseProjectCarousel = isMobile ? runningProjectCards.length > 1 : runningProjectCards.length > 3;
-  const activeProjectCardClassName = "w-full";
-  const activeProjectRedirectCardClassName = "w-full md:min-h-[506px]";
+  const shouldUseProjectCarousel = true;
+  const activeProjectCardClassName = "w-full md:min-h-[506px]";
+  const activeProjectRedirectCardClassName = "w-full h-full md:min-h-[506px]";
   const freelancerProjectRedirectCards = useMemo(() => {
-    if (runningProjectCards.length === 0 || shouldUseProjectCarousel) {
-      return [];
-    }
-
-    const candidates = [
+    return [
       {
         id: "proposal-pipeline",
         Icon: ClipboardList,
@@ -2549,9 +2550,64 @@ export const DashboardContent = ({ _roleOverride }) => {
         onClick: () => navigate("/freelancer/messages"),
       },
     ];
+  }, [navigate]);
 
-    return candidates.slice(0, Math.max(0, 3 - runningProjectCards.length));
-  }, [navigate, runningProjectCards.length, shouldUseProjectCarousel]);
+  useEffect(() => {
+    if (!isMobile || !shouldUseProjectCarousel) {
+      setMobileProjectCardHeight(0);
+      return undefined;
+    }
+
+    let frameId = 0;
+    const measureProjectCardHeights = () => {
+      const heights = Object.values(projectCardRefs.current)
+        .map((card) => card?.getBoundingClientRect().height || 0)
+        .filter((height) => height > 0);
+
+      if (heights.length === 0) {
+        setMobileProjectCardHeight(0);
+        return;
+      }
+
+      const maxHeight = Math.ceil(Math.max(...heights));
+      setMobileProjectCardHeight((currentHeight) =>
+        currentHeight === maxHeight ? currentHeight : maxHeight,
+      );
+    };
+
+    const scheduleMeasure = () => {
+      if (typeof window === "undefined") {
+        return;
+      }
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(measureProjectCardHeights);
+    };
+
+    scheduleMeasure();
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            scheduleMeasure();
+          })
+        : null;
+
+    Object.values(projectCardRefs.current).forEach((card) => {
+      if (card && resizeObserver) {
+        resizeObserver.observe(card);
+      }
+    });
+
+    window.addEventListener("resize", scheduleMeasure);
+
+    return () => {
+      window.removeEventListener("resize", scheduleMeasure);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [isMobile, shouldUseProjectCarousel, runningProjectCards.length]);
 
   useEffect(() => {
     if (!projectCarouselApi || !shouldUseProjectCarousel) {
@@ -2962,40 +3018,42 @@ export const DashboardContent = ({ _roleOverride }) => {
             </section>
           )}
 
-          {showProfileCompletionSkeleton ? (
-            <FreelancerProfileCompletionSkeleton />
-          ) : (
-            <section>
-              <FreelancerDashboardPanel className="p-4 sm:p-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <h2 className="min-w-0 text-[1.2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white sm:text-[1.35rem] lg:text-[1.55rem]">
-                    {profileCompletionComplete
-                      ? "Your Catalance profile is ready"
-                      : "Finish setting up your Catalance profile"}
-                  </h2>
+          {shouldShowProfileCompletionPanel ? (
+            showProfileCompletionSkeleton ? (
+              <FreelancerProfileCompletionSkeleton />
+            ) : (
+              <section>
+                <FreelancerDashboardPanel className="p-4 sm:p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <h2 className="min-w-0 text-[1.2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white sm:text-[1.35rem] lg:text-[1.55rem]">
+                      {profileCompletionComplete
+                        ? "Your Catalance profile is ready"
+                        : "Finish setting up your Catalance profile"}
+                    </h2>
 
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:w-auto lg:justify-end lg:gap-4">
-                    <span className="text-sm font-bold text-[#facc15]">
-                      {profileCompletionPercent}% Complete
-                    </span>
-                    <Button
-                      className="h-10 w-full rounded-full bg-[#facc15] px-5 text-xs font-semibold text-black hover:bg-[#ffd54f] sm:w-auto"
-                      onClick={() => navigate("/freelancer/profile")}
-                    >
-                      {profileCompletionComplete ? "Open Profile" : "Finish Setup"}
-                    </Button>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:w-auto lg:justify-end lg:gap-4">
+                      <span className="text-sm font-bold text-[#facc15]">
+                        {profileCompletionPercent}% Complete
+                      </span>
+                      <Button
+                        className="h-10 w-full rounded-full bg-[#facc15] px-5 text-xs font-semibold text-black hover:bg-[#ffd54f] sm:w-auto"
+                        onClick={() => navigate("/freelancer/profile")}
+                      >
+                        {profileCompletionComplete ? "Open Profile" : "Finish Setup"}
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.08]">
-                  <div
-                    className="h-full rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.96),rgba(255,255,255,0.72))] transition-all duration-700"
-                    style={{ width: `${profileCompletionPercent}%` }}
-                  />
-                </div>
-              </FreelancerDashboardPanel>
-            </section>
-          )}
+                  <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+                    <div
+                      className="h-full rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.96),rgba(255,255,255,0.72))] transition-all duration-700"
+                      style={{ width: `${profileCompletionPercent}%` }}
+                    />
+                  </div>
+                </FreelancerDashboardPanel>
+              </section>
+            )
+          ) : null}
 
           {metricsLoading ? (
             <FreelancerActiveProjectsSkeleton />
@@ -3054,11 +3112,36 @@ export const DashboardContent = ({ _roleOverride }) => {
                         key={projectCard.id}
                         className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
                       >
-                        <ProjectProposalCard
-                          project={projectCard}
-                          replaceSectionBadgeWithStatus
-                          className={activeProjectCardClassName}
-                        />
+                        <div
+                          ref={(node) => {
+                            projectCardRefs.current[projectCard.id] = node;
+                          }}
+                        >
+                          <ProjectProposalCard
+                            project={projectCard}
+                            replaceSectionBadgeWithStatus
+                            className={activeProjectCardClassName}
+                          />
+                        </div>
+                      </CarouselItem>
+                    ))}
+                    {freelancerProjectRedirectCards.map((item) => (
+                      <CarouselItem
+                        key={item.id}
+                        className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
+                      >
+                        <div
+                          style={
+                            isMobile && mobileProjectCardHeight > 0
+                              ? { height: `${mobileProjectCardHeight}px` }
+                              : undefined
+                          }
+                        >
+                          <FreelancerProjectRedirectCard
+                            item={item}
+                            className={activeProjectRedirectCardClassName}
+                          />
+                        </div>
                       </CarouselItem>
                     ))}
                   </CarouselContent>
@@ -3109,7 +3192,11 @@ export const DashboardContent = ({ _roleOverride }) => {
               ) : (
                 <FreelancerRecentActivitySection
                   recentActivities={activityItems}
-                  onOpenViewAll={() => navigate("/freelancer/proposals")}
+                  onOpenViewAll={() => {
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(new CustomEvent("freelancer-notifications:open"));
+                    }
+                  }}
                 />
               )}
             </div>

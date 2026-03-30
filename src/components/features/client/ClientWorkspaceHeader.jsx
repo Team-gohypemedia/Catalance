@@ -6,6 +6,7 @@ import Menu from "lucide-react/dist/esm/icons/menu";
 import X from "lucide-react/dist/esm/icons/x";
 import { Link, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
@@ -16,6 +17,10 @@ import {
   Sheet,
   SheetClose,
   SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import logo from "@/assets/logos/logo.svg";
@@ -221,6 +226,48 @@ const DefaultNotificationPopoverButton = ({
 
   const unreadCount = unreadCountProp ?? contextUnreadCount;
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleOpenNotificationsSheet = () => {
+      setOpen(true);
+    };
+
+    window.addEventListener("client-notifications:open", handleOpenNotificationsSheet);
+
+    return () => {
+      window.removeEventListener("client-notifications:open", handleOpenNotificationsSheet);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") {
+      return undefined;
+    }
+
+    const { body, documentElement } = document;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    const previousHtmlOverscrollBehavior = documentElement.style.overscrollBehavior;
+    const previousOverflow = body.style.overflow;
+    const previousOverscrollBehavior = body.style.overscrollBehavior;
+
+    if (open) {
+      documentElement.style.overflow = "hidden";
+      documentElement.style.overscrollBehavior = "none";
+      body.style.overflow = "hidden";
+      body.style.overscrollBehavior = "none";
+    }
+
+    return () => {
+      documentElement.style.overflow = previousHtmlOverflow;
+      documentElement.style.overscrollBehavior = previousHtmlOverscrollBehavior;
+      body.style.overflow = previousOverflow;
+      body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, [open]);
+
   const handleNotificationClick = (notification) => {
     if (!notification?.id) return;
 
@@ -265,74 +312,122 @@ const DefaultNotificationPopoverButton = ({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={false}>
-      <PopoverTrigger
-        className="relative flex size-9 items-center justify-center text-[#94a3b8] transition-colors hover:text-white"
-        aria-label="Open notifications"
-      >
-        <Bell className="size-4.5" />
-        {unreadCount > 0 ? (
-          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
-        ) : null}
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={10}
-        className="w-[22rem] border border-border bg-[#171718] p-0 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
-      >
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h4 className="text-sm font-semibold">Notifications</h4>
+    <>
+      {open ? (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[3px]"
+          onClick={() => setOpen(false)}
+          onWheel={(event) => event.preventDefault()}
+          onTouchMove={(event) => event.preventDefault()}
+          aria-hidden="true"
+        />
+      ) : null}
+      <Sheet open={open} onOpenChange={setOpen} modal={false}>
+      <SheetTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="relative size-9 rounded-full text-[#94a3b8] transition-colors hover:bg-white/5 hover:text-white"
+          aria-label="Open notifications"
+        >
+          <Bell className="size-4.5" />
           {unreadCount > 0 ? (
-            <button
-              type="button"
-              className="text-xs font-medium text-primary transition hover:text-primary/80"
-              onClick={() => {
-                void markAllAsRead();
-              }}
-            >
-              Mark all as read
-            </button>
+            <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
           ) : null}
-        </div>
-        <ScrollArea className="h-72">
-          {notifications.length === 0 ? (
-            <div className="flex h-full min-h-52 flex-col items-center justify-center gap-2 px-6 text-center text-[#7e8392]">
-              <Bell className="h-8 w-8 opacity-40" />
-              <p className="text-sm">No notifications yet</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-white/6">
-              {notifications.slice(0, 20).map((notification) => (
-                <button
-                  key={notification.id}
+        </Button>
+      </SheetTrigger>
+      <SheetContent
+        side="right"
+        className="z-50 w-full max-w-[22rem] border-l border-border bg-[#171718] p-0 text-white sm:max-w-[24rem]"
+      >
+        <div className="flex h-full flex-col">
+          <SheetHeader className="border-b border-border px-4 py-3 pr-12">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <SheetTitle className="text-sm font-semibold text-white">Notifications</SheetTitle>
+                <SheetDescription className="mt-1 text-xs text-[#8f96a3]">
+                  Stay updated with project, proposal, and message activity.
+                </SheetDescription>
+              </div>
+              {unreadCount > 0 ? (
+                <Button
                   type="button"
-                  onClick={() => handleNotificationClick(notification)}
-                  className={cn(
-                    "flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-white/5",
-                    !notification.read && "bg-primary/5",
-                  )}
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto shrink-0 p-0 text-xs font-medium text-primary transition hover:bg-transparent hover:text-primary/80"
+                  onClick={() => {
+                    void markAllAsRead();
+                  }}
                 >
-                  <div
-                    className={cn(
-                      "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                      !notification.read ? "bg-primary" : "bg-white/15",
-                    )}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">
-                      {notification.title}
-                    </p>
-                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#8f96a3]">
-                      {notification.message}
-                    </p>
-                  </div>
-                </button>
-              ))}
+                  Mark all as read
+                </Button>
+              ) : null}
             </div>
-          )}
-        </ScrollArea>
-      </PopoverContent>
-    </Popover>
+          </SheetHeader>
+          <ScrollArea className="flex-1">
+            {notifications.length === 0 ? (
+              <div className="flex h-full min-h-52 flex-col items-center justify-center gap-2 px-6 text-center text-[#7e8392]">
+                <Bell className="h-8 w-8 opacity-40" />
+                <p className="text-sm">No notifications yet</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/6">
+                {notifications.slice(0, 20).map((notification) => {
+                  const notificationTime = notification?.updatedAt || notification?.createdAt;
+                  const formattedTime = notificationTime
+                    ? new Date(notificationTime).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    : null;
+
+                  return (
+                    <button
+                      key={notification.id}
+                      type="button"
+                      onClick={() => handleNotificationClick(notification)}
+                      className={cn(
+                        "flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-white/5",
+                        !notification.read && "bg-primary/5",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                          !notification.read ? "bg-primary" : "bg-white/15",
+                        )}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white whitespace-normal break-words">
+                          {notification.title}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-[#8f96a3] whitespace-normal break-words">
+                          {notification.message}
+                        </p>
+                        {formattedTime ? (
+                          <p className="mt-1 text-[11px] text-[#6b7280]">{formattedTime}</p>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+          <SheetFooter className="border-t border-border p-3">
+            <SheetClose asChild>
+              <Button type="button" variant="outline" className="w-full">
+                Close
+              </Button>
+            </SheetClose>
+          </SheetFooter>
+        </div>
+      </SheetContent>
+      </Sheet>
+    </>
   );
 };
 

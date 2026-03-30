@@ -11,11 +11,13 @@ import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import FolderKanban from "lucide-react/dist/esm/icons/folder-kanban";
 import MessageSquareText from "lucide-react/dist/esm/icons/message-square-text";
+import Plus from "lucide-react/dist/esm/icons/plus";
 import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
 import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Users from "lucide-react/dist/esm/icons/users";
+import Wallet from "lucide-react/dist/esm/icons/wallet";
 import { useNavigate } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -60,12 +62,14 @@ const activityIconMap = {
   project: FolderKanban,
   message: MessageSquareText,
   milestone: Sparkles,
+  budget: Wallet,
   success: CheckCircle2,
 };
 
 const activityToneMap = {
   blue: "bg-[#1f3558]/65 text-[#6ea8ff]",
   amber: "bg-[#3b2d0a] text-[#ffc107]",
+  warning: "bg-[#3b2d0a] text-[#ffc107]",
   green: "bg-[#102e24] text-[#23d18b]",
   violet: "bg-[#33204c] text-[#c084fc]",
   slate: "bg-[#273142] text-[#94a3b8]",
@@ -616,56 +620,108 @@ const ProjectCarouselDots = ({
   );
 };
 
-const ProjectRedirectCard = ({ item, className }) => (
-  <DashboardPanel
-    className={cn(
-      "flex flex-col overflow-hidden bg-card p-4 sm:p-5 xl:p-6",
-      className,
-    )}
-  >
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 sm:gap-3">
-        <div className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border border-white/[0.08] bg-white/[0.06] text-[#d4d4d8] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:h-8 sm:w-8">
-          <item.Icon className="size-3.5 sm:size-4" strokeWidth={1.85} />
-        </div>
-        <span className="inline-flex h-7 items-center rounded-[8px] bg-white/[0.06] px-2.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#23d18b] sm:h-8 sm:px-3 sm:text-[11px] sm:tracking-[0.22em]">
-          {item.eyebrow}
-        </span>
-      </div>
+const ProjectRedirectCard = ({ item, className }) => {
+  const isStartProjectCard = item.id === "start-project";
+  const isBrowseMarketplaceCard = item.id === "browse-marketplace";
 
-      <h3 className="mt-5 text-[clamp(1.5rem,5vw,2.05rem)] font-semibold leading-[1.04] tracking-[-0.04em] text-white">
-        {item.title}
-      </h3>
-      <p className="mt-3 max-w-[28ch] text-sm leading-6 text-[#8f96a3] line-clamp-3">
-        {item.description}
-      </p>
+  if (isStartProjectCard || isBrowseMarketplaceCard) {
+    const heading = isStartProjectCard ? "Create New Proposal" : item.title;
+    const ctaLabel = isStartProjectCard
+      ? "START NEW PROJECT"
+      : String(item.actionLabel || "Browse Marketplace").toUpperCase();
 
-      <div className="mt-6 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]">
-        {item.highlights.map((highlight) => (
-          <div
-            key={highlight}
-            className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.035] px-3.5 py-2.5 text-sm text-[#e5e7eb] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-          >
-            <span aria-hidden="true" className="size-2 rounded-full bg-[#ffc107]" />
-            <span className="line-clamp-1">{highlight}</span>
+    return (
+      <DashboardPanel
+        className={cn(
+          "flex min-h-[320px] flex-col justify-between overflow-hidden bg-card p-4 sm:p-5 xl:p-6",
+          className,
+        )}
+      >
+        <div className="flex flex-1 flex-col items-center text-center">
+          <h3 className="text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
+            {heading}
+          </h3>
+
+          <div className="flex w-full flex-1 items-center justify-center">
+            <button
+              type="button"
+              aria-label={isStartProjectCard ? "Create new proposal" : "Browse marketplace"}
+              onClick={item.onClick}
+              className="inline-flex h-[104px] w-[104px] items-center justify-center rounded-[14px] border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/28"
+            >
+              {isStartProjectCard ? (
+                <Plus className="size-10" strokeWidth={2.6} />
+              ) : (
+                <Users className="size-10" strokeWidth={2} />
+              )}
+            </button>
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
 
-    <button
-      type="button"
-      onClick={item.onClick}
-      className="mt-6 inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-[16px] bg-[#ffc107] px-5 py-3.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+        <button
+          type="button"
+          onClick={item.onClick}
+          className="inline-flex h-[58px] w-full shrink-0 items-center justify-center rounded-[14px] bg-[#f5cd05] px-6 text-[1.02rem] font-bold uppercase tracking-[0.04em] text-black transition-colors hover:bg-[#ffdd4f]"
+        >
+          {ctaLabel}
+        </button>
+      </DashboardPanel>
+    );
+  }
+
+  return (
+    <DashboardPanel
+      className={cn(
+        "flex flex-col overflow-hidden bg-card p-4 sm:p-5 xl:p-6",
+        className,
+      )}
     >
-      <span>{item.actionLabel}</span>
-      <ChevronRight className="size-4" />
-    </button>
-  </DashboardPanel>
-);
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border border-white/[0.08] bg-white/[0.06] text-[#d4d4d8] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:h-8 sm:w-8">
+            <item.Icon className="size-3.5 sm:size-4" strokeWidth={1.85} />
+          </div>
+          <span className="inline-flex h-7 items-center rounded-[8px] bg-white/[0.06] px-2.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#23d18b] sm:h-8 sm:px-3 sm:text-[11px] sm:tracking-[0.22em]">
+            {item.eyebrow}
+          </span>
+        </div>
+
+        <h3 className="mt-5 text-[clamp(1.5rem,5vw,2.05rem)] font-semibold leading-[1.04] tracking-[-0.04em] text-white">
+          {item.title}
+        </h3>
+        <p className="mt-3 max-w-[28ch] text-sm leading-6 text-[#8f96a3] line-clamp-3">
+          {item.description}
+        </p>
+
+        <div className="mt-6 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]">
+          {item.highlights.map((highlight) => (
+            <div
+              key={highlight}
+              className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.035] px-3.5 py-2.5 text-sm text-[#e5e7eb] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+            >
+              <span aria-hidden="true" className="size-2 rounded-full bg-[#ffc107]" />
+              <span className="line-clamp-1">{highlight}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={item.onClick}
+        className="mt-6 inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-[16px] bg-[#ffc107] px-5 py-3.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+      >
+        <span>{item.actionLabel}</span>
+        <ChevronRight className="size-4" />
+      </button>
+    </DashboardPanel>
+  );
+};
 
 const ActivityRow = ({ item, compact = false }) => {
   const Icon = activityIconMap[item.iconKey] || FolderKanban;
+  const hasAction = typeof item.onAction === "function";
+  const actionLabel = item.actionLabel || "View";
 
   if (compact) {
     return (
@@ -689,6 +745,18 @@ const ActivityRow = ({ item, compact = false }) => {
           <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
             {item.subtitle}
           </p>
+          {hasAction ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                item.onAction();
+              }}
+              className="mt-3 inline-flex h-8 items-center justify-center rounded-[8px] bg-[#ffc107] px-3 text-xs font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+            >
+              {actionLabel}
+            </button>
+          ) : null}
           <span className="mt-3 block text-xs text-muted-foreground">{item.timeLabel}</span>
         </div>
       </button>
@@ -715,12 +783,30 @@ const ActivityRow = ({ item, compact = false }) => {
           <p className="text-xs leading-5 text-muted-foreground sm:truncate">{item.subtitle}</p>
         </div>
       </div>
-      <span className="pl-12 text-xs text-muted-foreground sm:pl-13 lg:pl-0">{item.timeLabel}</span>
+      <div className="flex items-center gap-3 pl-12 sm:pl-13 lg:pl-0">
+        {hasAction ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              item.onAction();
+            }}
+            className="inline-flex h-8 items-center justify-center rounded-[8px] bg-[#ffc107] px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-black transition-colors hover:bg-[#ffd54f]"
+          >
+            {actionLabel}
+          </button>
+        ) : null}
+        <span className="text-xs text-muted-foreground">{item.timeLabel}</span>
+      </div>
     </button>
   );
 };
 
-const RecentActivitySection = ({ recentActivities, onOpenViewProjects }) => {
+const RecentActivitySection = ({
+  recentActivities,
+  onOpenViewProjects,
+  onOpenNotifications,
+}) => {
   const isMobile = useIsMobile();
   const [showAllRecentActivities, setShowAllRecentActivities] = React.useState(false);
 
@@ -748,7 +834,11 @@ const RecentActivitySection = ({ recentActivities, onOpenViewProjects }) => {
         </h2>
         <button
           type="button"
-          onClick={onOpenViewProjects}
+          onClick={
+            typeof onOpenNotifications === "function"
+              ? onOpenNotifications
+              : onOpenViewProjects
+          }
           className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[#ffc107] transition-colors hover:text-[#ffd54f]"
         >
           View All
@@ -1932,52 +2022,53 @@ const ClientDashboardShell = ({
   const isMobile = useIsMobile();
   const shouldUseProjectCarousel = isMobile ? showcaseItems.length > 1 : showcaseItems.length > 3;
   const activeProjectCardClassName = "w-full";
-  const activeProjectRedirectCardClassName = "w-full md:min-h-[506px]";
+  const activeProjectRedirectCardClassName = "w-full h-full md:min-h-[506px]";
   const [projectCarouselApi, setProjectCarouselApi] = React.useState(null);
   const [canGoToPreviousProjects, setCanGoToPreviousProjects] = React.useState(false);
   const [canGoToNextProjects, setCanGoToNextProjects] = React.useState(false);
   const [projectCarouselSnapCount, setProjectCarouselSnapCount] = React.useState(0);
   const [activeProjectSnap, setActiveProjectSnap] = React.useState(0);
-  const projectRedirectCards = React.useMemo(() => {
-    if (showcaseItems.length === 0 || shouldUseProjectCarousel) {
-      return [];
+  const [mobileProjectCardHeight, setMobileProjectCardHeight] = React.useState(0);
+  const projectCardRefs = React.useRef({});
+  const handleOpenNotificationSheet = React.useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
     }
+    window.dispatchEvent(new CustomEvent("client-notifications:open"));
+  }, []);
+  const projectRedirectCards = React.useMemo(() => {
+    const handleStartProject =
+      typeof onOpenQuickProject === "function" ? onOpenQuickProject : () => {};
+    const handleBrowseMarketplace =
+      typeof onOpenHireFreelancer === "function" ? onOpenHireFreelancer : () => {};
 
-    const candidates = [
-      typeof onOpenQuickProject === "function"
-        ? {
-            id: "start-project",
-            Icon: Sparkles,
-            eyebrow: "Project Pipeline",
-            title: "Start another project",
-            description:
-              "Launch a fresh brief, define the scope, and keep your delivery pipeline active.",
-            highlights: ["Create a new proposal", "Set budget and timeline", "Invite the right talent"],
-            actionLabel: "Start New Project",
-            onClick: onOpenQuickProject,
-          }
-        : null,
-      typeof onOpenHireFreelancer === "function"
-        ? {
-            id: "browse-marketplace",
-            Icon: Users,
-            eyebrow: "Talent Marketplace",
-            title: "Find your next specialist",
-            description:
-              "Browse verified freelancers and open the next engagement when you are ready.",
-            highlights: ["Explore verified talent", "Compare specialists fast", "Add another active project"],
-            actionLabel: "Browse Marketplace",
-            onClick: onOpenHireFreelancer,
-          }
-        : null,
-    ].filter(Boolean);
-
-    return candidates.slice(0, Math.max(0, 3 - showcaseItems.length));
+    return [
+      {
+        id: "start-project",
+        Icon: Sparkles,
+        eyebrow: "Project Pipeline",
+        title: "Start another project",
+        description:
+          "Launch a fresh brief, define the scope, and keep your delivery pipeline active.",
+        highlights: ["Create a new proposal", "Set budget and timeline", "Invite the right talent"],
+        actionLabel: "Start New Project",
+        onClick: handleStartProject,
+      },
+      {
+        id: "browse-marketplace",
+        Icon: Users,
+        eyebrow: "Talent Marketplace",
+        title: "Find your next specialist",
+        description:
+          "Browse verified freelancers and open the next engagement when you are ready.",
+        highlights: ["Explore verified talent", "Compare specialists fast", "Add another active project"],
+        actionLabel: "Browse Marketplace",
+        onClick: handleBrowseMarketplace,
+      },
+    ];
   }, [
     onOpenHireFreelancer,
     onOpenQuickProject,
-    shouldUseProjectCarousel,
-    showcaseItems.length,
   ]);
 
   React.useEffect(() => {
@@ -2005,6 +2096,63 @@ const ClientDashboardShell = ({
       projectCarouselApi.off("reInit", syncProjectCarouselState);
     };
   }, [projectCarouselApi, shouldUseProjectCarousel]);
+
+  React.useEffect(() => {
+    if (!isMobile || !shouldUseProjectCarousel) {
+      setMobileProjectCardHeight(0);
+      return undefined;
+    }
+
+    let frameId = 0;
+    const measureProjectCardHeights = () => {
+      const heights = Object.values(projectCardRefs.current)
+        .map((card) => card?.getBoundingClientRect().height || 0)
+        .filter((height) => height > 0);
+
+      if (heights.length === 0) {
+        setMobileProjectCardHeight(0);
+        return;
+      }
+
+      const maxHeight = Math.ceil(Math.max(...heights));
+      setMobileProjectCardHeight((currentHeight) =>
+        currentHeight === maxHeight ? currentHeight : maxHeight,
+      );
+    };
+
+    const scheduleMeasure = () => {
+      if (typeof window === "undefined") {
+        return;
+      }
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(measureProjectCardHeights);
+    };
+
+    scheduleMeasure();
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            scheduleMeasure();
+          })
+        : null;
+
+    Object.values(projectCardRefs.current).forEach((card) => {
+      if (card && resizeObserver) {
+        resizeObserver.observe(card);
+      }
+    });
+
+    window.addEventListener("resize", scheduleMeasure);
+
+    return () => {
+      window.removeEventListener("resize", scheduleMeasure);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [isMobile, shouldUseProjectCarousel, showcaseItems.length]);
 
   return (
     <div className="min-h-screen bg-background text-[#f1f5f9]">
@@ -2107,13 +2255,38 @@ const ClientDashboardShell = ({
                             key={item.id}
                             className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
                           >
-                            <ProjectProposalCard
-                              project={item}
-                              onPay={onPayRunningProject}
-                              isPaying={runningProjectProcessingId === item.id}
-                              replaceSectionBadgeWithStatus
-                              className={activeProjectCardClassName}
-                            />
+                            <div
+                              ref={(node) => {
+                                projectCardRefs.current[item.id] = node;
+                              }}
+                            >
+                              <ProjectProposalCard
+                                project={item}
+                                onPay={onPayRunningProject}
+                                isPaying={runningProjectProcessingId === item.id}
+                                replaceSectionBadgeWithStatus
+                                className={activeProjectCardClassName}
+                              />
+                            </div>
+                          </CarouselItem>
+                        ))}
+                        {projectRedirectCards.map((item) => (
+                          <CarouselItem
+                            key={item.id}
+                            className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
+                          >
+                            <div
+                              style={
+                                isMobile && mobileProjectCardHeight > 0
+                                  ? { height: `${mobileProjectCardHeight}px` }
+                                  : undefined
+                              }
+                            >
+                              <ProjectRedirectCard
+                                item={item}
+                                className={activeProjectRedirectCardClassName}
+                              />
+                            </div>
                           </CarouselItem>
                         ))}
                       </CarouselContent>
@@ -2158,6 +2331,7 @@ const ClientDashboardShell = ({
                 </div>
               </DashboardPanel>
             )}
+
           </section>
 
           <section className="mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -2171,6 +2345,7 @@ const ClientDashboardShell = ({
               <RecentActivitySection
                 recentActivities={recentActivities}
                 onOpenViewProjects={onOpenViewProjects}
+                onOpenNotifications={handleOpenNotificationSheet}
               />
             </div>
 

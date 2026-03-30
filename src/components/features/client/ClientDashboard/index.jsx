@@ -1060,7 +1060,7 @@ const scheduleIdleTask = (callback, timeout = 400) => {
 const ClientDashboardContent = () => {
   const [sessionUser, setSessionUser] = useState(null);
   const { authFetch } = useAuth();
-  const { notifications, unreadCount } = useNotifications();
+  const { notifications, unreadCount, markAsRead } = useNotifications();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const storageKeys = useMemo(
@@ -1093,6 +1093,7 @@ const ClientDashboardContent = () => {
   const [budgetProject, setBudgetProject] = useState(null);
   const [newBudget, setNewBudget] = useState("");
   const [isUpdatingBudget, setIsUpdatingBudget] = useState(false);
+  const [budgetUpdateActivities, setBudgetUpdateActivities] = useState([]);
 
   // Budget Reminder Popup State (for login)
   const [showBudgetReminder, setShowBudgetReminder] = useState(false);
@@ -2289,6 +2290,41 @@ const ClientDashboardContent = () => {
         );
       }
 
+      setBudgetUpdateActivities((previous) => [
+        {
+          id: `activity-budget-updated-${String(budgetProject?.id || "project")}-${Date.now()}`,
+          iconKey: "proposal",
+          tone: "green",
+          title: "Proposal Budget Increased",
+          subtitle: `Budget for "${budgetProject?.title || "this proposal"}" was updated to ${formatINR(budgetValue)}.`,
+          timeLabel: "Now",
+          onClick: () =>
+            navigate(
+              budgetProject?.id
+                ? `/client/project/${encodeURIComponent(budgetProject.id)}`
+                : "/client/proposal",
+            ),
+        },
+        ...previous,
+      ].slice(0, 4));
+
+      // Mark matching budget suggestion notifications as resolved so CTA disappears.
+      const relatedBudgetSuggestions = (Array.isArray(notifications) ? notifications : []).filter(
+        (notification) =>
+          !notification?.read &&
+          String(notification?.type || "").toLowerCase() === "budget_suggestion" &&
+          String(notification?.data?.projectId || "") === String(budgetProject?.id || ""),
+      );
+
+      if (relatedBudgetSuggestions.length > 0) {
+        await Promise.allSettled(
+          relatedBudgetSuggestions
+            .map((notification) => notification?.id)
+            .filter(Boolean)
+            .map((notificationId) => markAsRead(notificationId)),
+        );
+      }
+
       setShowIncreaseBudget(false);
       setBudgetProject(null);
       setNewBudget("");
@@ -2935,6 +2971,46 @@ const ClientDashboardContent = () => {
             };
           }
 
+          if (type === "budget_suggestion") {
+            const projectId = notification?.data?.projectId;
+            const projectTitle = notification?.data?.projectTitle || notification?.data?.businessName || "your project";
+            const isResolved = Boolean(notification?.read);
+            return {
+              id: notification?.id || `notification-budget-${index}`,
+              iconKey: "budget",
+              tone: "warning",
+              title: notification?.title || "Consider Increasing Budget",
+              subtitle: notification?.message || `Your proposal for "${projectTitle}" has been pending for over 24 hours. Consider increasing your budget to attract freelancers.`,
+              timeLabel: formatDashboardRelativeTime(createdAt),
+              onClick: () => {
+                if (isResolved) {
+                  navigate("/client/proposal");
+                  return;
+                }
+                // Find the project and open increase budget dialog
+                const project = uniqueProjects.find((p) => p.id === projectId);
+                if (project) {
+                  setBudgetProject(project);
+                  setShowIncreaseBudget(true);
+                } else {
+                  navigate("/client/proposal");
+                }
+              },
+              actionLabel: isResolved ? undefined : "Increase Budget",
+              onAction: isResolved
+                ? undefined
+                : () => {
+                    const project = uniqueProjects.find((p) => p.id === projectId);
+                    if (project) {
+                      setBudgetProject(project);
+                      setShowIncreaseBudget(true);
+                    } else {
+                      navigate("/client/proposal");
+                    }
+                  },
+            };
+          }
+
           if (
             type === "task_completed" ||
             type === "task_verified" ||
@@ -2969,8 +3045,13 @@ const ClientDashboardContent = () => {
         })
       : [];
 
-    if (fromNotifications.length > 0) {
-      return fromNotifications;
+    const activityFeedFromNotifications = [
+      ...budgetUpdateActivities,
+      ...fromNotifications,
+    ].slice(0, 4);
+
+    if (activityFeedFromNotifications.length > 0) {
+      return activityFeedFromNotifications;
     }
 
     const fallback = [];
@@ -3053,8 +3134,16 @@ const ClientDashboardContent = () => {
       });
     }
 
-    return fallback.slice(0, 4);
-  }, [dashboardProjectSummary, freelancers, navigate, notifications, savedProposal]);
+    return [...budgetUpdateActivities, ...fallback].slice(0, 4);
+  }, [
+    budgetUpdateActivities,
+    dashboardProjectSummary,
+    freelancers,
+    navigate,
+    notifications,
+    savedProposal,
+    uniqueProjects,
+  ]);
 
   const showcaseItems = useMemo(() => {
     return normalizeClientProjects(dashboardProjectSummary.acceptedProjectsForShowcase)

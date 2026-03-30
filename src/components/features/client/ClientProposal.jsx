@@ -4,9 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Bell from "lucide-react/dist/esm/icons/bell";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
-import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
-import Eye from "lucide-react/dist/esm/icons/eye";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Layers3 from "lucide-react/dist/esm/icons/layers-3";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -69,6 +67,7 @@ const PROPOSAL_BLOCKED_STATUSES = new Set(["pending", "accepted", "sent"]);
 const CLOSED_PROJECT_STATUSES = new Set(["completed", "paused"]);
 const DRAFT_PROJECT_STATUSES = new Set(["draft", "local_draft"]);
 const HIDDEN_REJECTION_REASON_KEYS = new Set(["system_awarded_to_another"]);
+const GENERIC_PROPOSAL_CATEGORIES = new Set(["project", "general"]);
 
 const statusColors = {
   draft: "border-sky-400/30 bg-sky-500/10 text-sky-200",
@@ -87,7 +86,9 @@ const statusLabels = {
 };
 
 const proposalPanelClassName =
-  "rounded-[32px] border border-border bg-card";
+  "rounded-[28px] border border-white/[0.06] bg-card";
+const clientProposalMetricBlockClassName =
+  "rounded-[14px] border border-white/[0.06] bg-card p-3 sm:p-3.5";
 
 const proposalCardStatusClasses = {
   draft: "border-border bg-transparent text-muted-foreground",
@@ -1325,18 +1326,27 @@ const ProposalRowCard = ({
 }) => {
   const details = extractProposalDetails(proposal);
   const isDraft = proposal.status === "draft";
-  const canSendToFreelancers = isDraft && !proposal.requiresPayment && onSend;
+  const canSendToFreelancers =
+    Boolean(onSend) &&
+    !proposal.requiresPayment &&
+    (isDraft || proposal.status === "pending" || proposal.status === "sent");
   const showPrimaryAction = canSendToFreelancers || Boolean(proposal.requiresPayment && onPay);
   const businessName = resolveProposalBusinessName(proposal);
   const displayBusinessName = businessName ? toDisplayTitleCase(businessName) : "";
   const projectName = resolveProposalProjectName(proposal);
   const serviceLabel = resolveProposalServiceLabel(proposal);
+  const proposalServiceType = useMemo(() => {
+    const normalizedServiceType = String(serviceLabel || "").trim();
+    if (!normalizedServiceType) return "";
+    if (GENERIC_PROPOSAL_CATEGORIES.has(normalizedServiceType.toLowerCase())) return "";
+    return toDisplayTitleCase(normalizedServiceType);
+  }, [serviceLabel]);
   const cardTitle = displayBusinessName || projectName || serviceLabel || "Proposal";
   const freelancerRecipients = getProposalFreelancerRecipients(proposal);
   const canViewFreelancerDetails =
     freelancerRecipients.length > 0 && Boolean(onViewFreelancers);
   const canDeleteProposal =
-    Boolean(onDelete) && !proposal.requiresPayment && !proposal.isGroupedPending;
+    Boolean(onDelete) && !proposal.requiresPayment;
   const rejectionReasonText = shouldHideRejectedProposal(proposal)
     ? ""
     : getFirstNonEmptyText(proposal.rejectionReason);
@@ -1357,24 +1367,21 @@ const ProposalRowCard = ({
     <Card className={cn("h-full w-full overflow-hidden shadow-none", proposalPanelClassName)}>
       <CardContent className="p-0">
         <div className="flex h-full flex-col gap-6 p-4 sm:p-5 xl:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "rounded-full border bg-transparent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
-                    proposalCardStatusClasses[proposal.status] ||
-                      proposalCardStatusClasses.pending,
-                  )}
-                >
-                  {statusLabels[proposal.status] || "Pending"}
-                </Badge>
-                <span className="normal-case tracking-[0.08em] text-muted-foreground">
-                  {proposal.submittedDate}
-                </span>
-              </div>
-            </div>
+          <div className="flex items-center justify-between gap-4">
+            <Badge
+              variant="outline"
+              className={cn(
+                "rounded-full border bg-transparent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
+                proposalCardStatusClasses[proposal.status] ||
+                  proposalCardStatusClasses.pending,
+              )}
+            >
+              {statusLabels[proposal.status] || "Pending"}
+            </Badge>
+
+            <span className="ml-auto whitespace-nowrap text-[11px] font-medium normal-case tracking-[0.08em] text-muted-foreground">
+              {proposal.submittedDate}
+            </span>
 
             {canDeleteProposal ? (
               <Button
@@ -1393,6 +1400,11 @@ const ProposalRowCard = ({
               <h3 className="max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
                 {cardTitle}
               </h3>
+              {proposalServiceType ? (
+                <p className="mt-1 text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {proposalServiceType}
+                </p>
+              ) : null}
               {showRejectionReason ? (
                 <div className="max-w-[24rem] space-y-1.5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-destructive/80">
@@ -1408,22 +1420,21 @@ const ProposalRowCard = ({
               ) : null}
             </div>
 
-            <div className="grid grid-cols-2 gap-5">
-              <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-3">
+              <div className={clientProposalMetricBlockClassName}>
                 <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Agreed Amount
+                  Budget
                 </p>
-                <div className="text-[2rem] font-semibold leading-none tracking-[-0.04em] text-primary sm:text-[2.15rem]">
+                <div className="mt-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
                   {details.budget}
                 </div>
               </div>
 
-              <div className="space-y-2.5">
+              <div className={clientProposalMetricBlockClassName}>
                 <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Delivery
+                  Timeline
                 </p>
-                <div className="inline-flex items-center gap-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
-                  <Clock3 className="h-4 w-4 text-muted-foreground" />
+                <div className="mt-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
                   {details.delivery}
                 </div>
               </div>
@@ -1471,15 +1482,14 @@ const ProposalRowCard = ({
             {showPrimaryAction ? (
               <div className="grid grid-cols-2 gap-3">
               <Button
-                  className="h-11 rounded-[18px] border border-border bg-background/35 px-6 text-sm font-semibold text-foreground shadow-none hover:bg-background"
+                  className="h-11 rounded-[14px] border border-border bg-background/35 px-6 text-sm font-semibold text-foreground shadow-none hover:bg-background"
                   onClick={() => onOpen?.(proposal)}
                 >
-                  <Eye className="mr-2 h-4 w-4" />
                   View Details
                 </Button>
 
                 <Button
-                  className="h-11 rounded-[18px] bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
+                  className="h-11 rounded-[14px] bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
                   onClick={() => {
                     if (canSendToFreelancers) {
                       onSend?.(proposal);
@@ -1500,7 +1510,7 @@ const ProposalRowCard = ({
               </div>
             ) : (
               <Button
-                className="h-14 rounded-[20px] bg-primary px-6 text-base font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
+                className="h-14 rounded-[14px] bg-primary px-6 text-base font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
                 onClick={() => onOpen?.(proposal)}
               >
                 View Details
@@ -1557,8 +1567,30 @@ const ClientProposalCardsCarousel = ({
 
   if (!proposals.length) return null;
 
+  const shouldUseProposalCarousel = proposals.length > 4;
+
+  if (!shouldUseProposalCarousel) {
+    return (
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {proposals.map((proposal) => (
+          <ProposalRowCard
+            key={proposal.id}
+            proposal={proposal}
+            onDelete={onDelete}
+            onOpen={onOpen}
+            onPay={onPay}
+            onSend={onSend}
+            onViewFreelancers={onViewFreelancers}
+            isPaying={processingPaymentProposalId === proposal.id}
+            isSending={sendingProposalId === proposal.id}
+          />
+        ))}
+      </div>
+    );
+  }
+
   const shouldShowDesktopProposalCarouselControls = proposals.length > 4;
-  const shouldShowMobileProposalCarouselControls = proposals.length > 1;
+  const shouldShowMobileProposalCarouselControls = proposals.length > 4;
   const proposalCarouselDesktopControlClassName =
     "size-11 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
   const proposalCarouselMobileControlClassName =
@@ -2387,6 +2419,64 @@ const ClientProposalContent = () => {
       }
 
       try {
+        if (proposal?.isGroupedPending) {
+          const inviteeProposalIds = [
+            ...new Set(
+              getProposalFreelancerRecipients(proposal)
+                .filter((invitee) => canUnsendProposalInvitee(invitee))
+                .map((invitee) => invitee?.proposalId)
+                .filter(Boolean),
+            ),
+          ];
+
+          if (!inviteeProposalIds.length) {
+            throw new Error("Unable to delete this grouped proposal.");
+          }
+
+          const deleteResults = await Promise.allSettled(
+            inviteeProposalIds.map(async (proposalId) => {
+              const response = await authFetch(`/proposals/${proposalId}`, {
+                method: "DELETE",
+              });
+              const payload = await response.json().catch(() => null);
+              if (!response.ok) {
+                throw new Error(payload?.message || "Unable to delete proposal.");
+              }
+              return proposalId;
+            }),
+          );
+
+          const deletedProposalIds = deleteResults
+            .filter((result) => result.status === "fulfilled")
+            .map((result) => result.value);
+
+          if (!deletedProposalIds.length) {
+            throw new Error("Unable to delete proposal right now.");
+          }
+
+          setProposals((prev) =>
+            prev.filter((item) => !deletedProposalIds.includes(item.id)),
+          );
+          setActiveProposal((current) =>
+            deletedProposalIds.includes(current?.id) ? null : current,
+          );
+          setSelectedProposalForSend((current) =>
+            deletedProposalIds.includes(current?.id) ? null : current,
+          );
+          if (activeProposal?.id && deletedProposalIds.includes(activeProposal.id)) {
+            setIsViewing(false);
+          }
+
+          const allDeleted = deletedProposalIds.length === inviteeProposalIds.length;
+          toast.success(
+            allDeleted
+              ? "Proposal deleted."
+              : `${deletedProposalIds.length} proposals deleted.`,
+          );
+          await fetchProposals();
+          return;
+        }
+
         const response = await authFetch(`/proposals/${proposal.id}`, {
           method: "DELETE",
         });
@@ -2398,11 +2488,11 @@ const ClientProposalContent = () => {
         );
         if (activeProposal?.id === proposal.id) setIsViewing(false);
         toast.success("Proposal deleted.");
-      } catch {
-        toast.error("Unable to delete proposal right now.");
+      } catch (error) {
+        toast.error(error?.message || "Unable to delete proposal right now.");
       }
     },
-    [activeProposal?.id, authFetch, user?.id],
+    [activeProposal?.id, authFetch, fetchProposals, user?.id],
   );
 
   const handleOpenFreelancerDetails = useCallback((proposal) => {
@@ -3049,13 +3139,16 @@ const ClientProposalContent = () => {
         const hasAcceptedProposal = projectKey
           ? acceptedProjectKeys.has(projectKey)
           : false;
+        const draftKey = getProposalDraftGroupKey(proposal);
+        const hasSentFreelancersForDraft =
+          draftKey && (sentFreelancersByDraftKey.get(draftKey) || []).length > 0;
 
         if (proposal.status === "accepted") {
           return;
         }
 
         if (proposal.status === "draft") {
-          if (!hasAcceptedProposal) {
+          if (!hasAcceptedProposal && !hasSentFreelancersForDraft) {
             pushDraftOnce(proposal, { preferSavedDraft: true });
           }
           return;
@@ -3069,13 +3162,6 @@ const ClientProposalContent = () => {
         }
 
         pushPendingOnce(proposal);
-
-        if (!hasAcceptedProposal) {
-          pushDraftOnce({
-            ...proposal,
-            status: "draft",
-          });
-        }
       });
 
       return groupedBuckets;
@@ -3431,8 +3517,10 @@ const ClientProposalContent = () => {
                   onOpen={handleOpenProposal}
                   onDelete={handleDelete}
                   onPay={handleApproveAndPay}
+                  onSend={openFreelancerSelection}
                   onViewFreelancers={handleOpenFreelancerDetails}
                   processingPaymentProposalId={processingPaymentProposalId}
+                  sendingProposalId={sendingProposalId}
                 />
               ) : (
                 <EmptyStateCard
@@ -3906,9 +3994,7 @@ const ClientProposalContent = () => {
                 </Button>
               ) : null}
 
-              {activeProposal &&
-              !activeProposal.requiresPayment &&
-              !activeProposal.isGroupedPending ? (
+              {activeProposal && !activeProposal.requiresPayment ? (
                 <Button
                   variant="ghost"
                   className="h-11 rounded-full px-3 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300"

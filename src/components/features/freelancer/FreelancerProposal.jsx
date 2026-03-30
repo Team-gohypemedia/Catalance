@@ -7,7 +7,6 @@ import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
-import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,7 +52,9 @@ const REJECTION_REASON_OPTIONS = [
 const CUSTOM_REJECTION_REASON_KEY = "custom";
 const GENERIC_PROPOSAL_CATEGORIES = new Set(["project", "general"]);
 const freelancerProposalPanelClassName =
-  "rounded-[32px] border border-border bg-card";
+  "rounded-[28px] border border-white/[0.06] bg-card";
+const freelancerProposalMetricBlockClassName =
+  "rounded-[14px] border border-white/[0.06] bg-card p-3 sm:p-3.5";
 const freelancerProposalStatusClasses = {
   pending: "border-primary/35 bg-transparent text-primary",
   received: "border-primary/35 bg-transparent text-primary",
@@ -92,6 +93,22 @@ const resolveProposalBusinessName = (proposal = {}) =>
     proposal?.businessName,
     proposal?.companyName,
     proposal?.brandName,
+  );
+
+const resolveProposalServiceType = (proposal = {}) =>
+  getFirstNonEmptyText(
+    proposal?.project?.serviceType,
+    proposal?.project?.service,
+    proposal?.project?.serviceName,
+    proposal?.project?.serviceKey,
+    proposal?.project?.category,
+    proposal?.serviceType,
+    proposal?.service,
+    proposal?.serviceName,
+    proposal?.serviceKey,
+    proposal?.category,
+    proposal?.project?.sourceTitle,
+    proposal?.project?.templateTitle,
   );
 
 /**
@@ -257,6 +274,7 @@ const mapApiProposal = (proposal = {}) => {
     id: proposal.id,
     title: proposal.project?.title || proposal.title || "Proposal",
     businessName: resolveProposalBusinessName(proposal),
+    serviceType: resolveProposalServiceType(proposal),
     category: proposal.project?.description
       ? "Project"
       : proposal.category || "General",
@@ -283,7 +301,6 @@ const mapApiProposal = (proposal = {}) => {
 const ProposalRowCard = ({
   proposal,
   onOpen,
-  onDelete,
   onAccept,
   onReject,
   processingId,
@@ -295,19 +312,22 @@ const ProposalRowCard = ({
   );
   const isPendingProposal = proposal.status === "pending";
   const isProcessing = processingId === proposal.id;
-  const canDeleteProposal = typeof onDelete === "function" && proposal.status !== "accepted";
   const rejectionReasonText = String(proposal.rejectionReason || "").trim();
   const showRejectionReason = proposal.status === "rejected" && Boolean(rejectionReasonText);
-  const serviceLabel = useMemo(() => {
-    const normalizedCategory = String(proposal.category || "").trim();
-    if (!normalizedCategory) return "";
-    if (GENERIC_PROPOSAL_CATEGORIES.has(normalizedCategory.toLowerCase())) return "";
-    return normalizedCategory;
-  }, [proposal.category]);
+  const proposalServiceType = useMemo(() => {
+    const normalizedServiceType = String(
+      proposal.serviceType || proposal.category || "",
+    ).trim();
+
+    if (!normalizedServiceType) return "";
+    if (GENERIC_PROPOSAL_CATEGORIES.has(normalizedServiceType.toLowerCase())) return "";
+
+    return toDisplayTitleCase(normalizedServiceType);
+  }, [proposal.serviceType, proposal.category]);
   const displayTitle = String(
     (proposal.businessName ? toDisplayTitleCase(proposal.businessName) : "") ||
       proposal.title ||
-      serviceLabel ||
+      proposalServiceType ||
       "Proposal",
   ).trim();
   const clientInitials = String(proposal.clientName || "Client")
@@ -325,35 +345,21 @@ const ProposalRowCard = ({
       <CardContent className="p-0">
         <div className="flex h-full flex-col gap-6 p-4 sm:p-5 xl:p-6">
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "rounded-full border bg-transparent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
-                    freelancerProposalStatusClasses[proposal.status] ||
-                      freelancerProposalStatusClasses.pending,
-                  )}
-                >
-                  {config.label}
-                </Badge>
-                {proposal.submittedDate ? (
-                  <span className="normal-case tracking-[0.08em] text-muted-foreground">
-                    {proposal.submittedDate}
-                  </span>
-                ) : null}
-              </div>
-            </div>
+            <Badge
+              variant="outline"
+              className={cn(
+                "rounded-full border bg-transparent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
+                freelancerProposalStatusClasses[proposal.status] ||
+                  freelancerProposalStatusClasses.pending,
+              )}
+            >
+              {config.label}
+            </Badge>
 
-            {canDeleteProposal ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
-                onClick={() => onDelete(proposal.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+            {proposal.submittedDate ? (
+              <span className="ml-auto whitespace-nowrap text-[11px] font-medium normal-case tracking-[0.08em] text-muted-foreground">
+                {proposal.submittedDate}
+              </span>
             ) : null}
           </div>
 
@@ -362,6 +368,11 @@ const ProposalRowCard = ({
               <h3 className="max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
                 {displayTitle}
               </h3>
+              {proposalServiceType ? (
+                <p className="mt-1 text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {proposalServiceType}
+                </p>
+              ) : null}
               {showRejectionReason ? (
                 <div className="max-w-[24rem] space-y-1.5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-destructive/80">
@@ -394,22 +405,21 @@ const ProposalRowCard = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-5">
-              <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-3">
+              <div className={freelancerProposalMetricBlockClassName}>
                 <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Agreed Amount
+                  Budget
                 </p>
-                <div className="text-[2rem] font-semibold leading-none tracking-[-0.04em] text-primary sm:text-[2.15rem]">
+                <div className="mt-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
                   {budget}
                 </div>
               </div>
 
-              <div className="space-y-2.5">
+              <div className={freelancerProposalMetricBlockClassName}>
                 <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Delivery
+                  Timeline
                 </p>
-                <div className="inline-flex items-center gap-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
+                <div className="mt-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
                   <span className="capitalize">{timeline}</span>
                 </div>
               </div>
@@ -452,7 +462,6 @@ const ProposalRowCard = ({
 const ProposalCardsCarousel = ({
   proposals,
   onOpen,
-  onDelete,
   onAccept,
   onReject,
   processingId,
@@ -568,7 +577,6 @@ const ProposalCardsCarousel = ({
               <ProposalRowCard
                 proposal={proposal}
                 onOpen={onOpen}
-                onDelete={onDelete}
                 onAccept={onAccept}
                 onReject={onReject}
                 processingId={processingId}
@@ -670,21 +678,6 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
       if (hasProposalUpdate) fetchProposals();
     }
   }, [notifications, fetchProposals]);
-
-  const handleDelete = useCallback(
-    async (id) => {
-      try {
-        await authFetch(`/proposals/${id}`, { method: "DELETE" });
-        setProposals((prev) => prev.filter((p) => p.id !== id));
-        toast.success("Proposal deleted");
-        if (selectedProposal?.id === id) setSelectedProposal(null);
-      } catch (error) {
-        console.error("Delete failed:", error);
-        toast.error("Could not delete proposal");
-      }
-    },
-    [authFetch, selectedProposal]
-  );
 
   const resetRejectReasonState = useCallback(() => {
     setIsRejectReasonStep(false);
@@ -905,14 +898,28 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                       ))}
                     </div>
                   ) : tabItems.length > 0 ? (
-                    <ProposalCardsCarousel
-                      proposals={tabItems}
-                      onOpen={setSelectedProposal}
-                      onDelete={handleDelete}
-                      onAccept={(id) => handleStatusChange(id, "accepted")}
-                      onReject={handleOpenRejectFlow}
-                      processingId={processingId}
-                    />
+                    tabItems.length > 4 ? (
+                      <ProposalCardsCarousel
+                        proposals={tabItems}
+                        onOpen={setSelectedProposal}
+                        onAccept={(id) => handleStatusChange(id, "accepted")}
+                        onReject={handleOpenRejectFlow}
+                        processingId={processingId}
+                      />
+                    ) : (
+                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                        {tabItems.map((proposal) => (
+                          <ProposalRowCard
+                            key={proposal.id}
+                            proposal={proposal}
+                            onOpen={setSelectedProposal}
+                            onAccept={(id) => handleStatusChange(id, "accepted")}
+                            onReject={handleOpenRejectFlow}
+                            processingId={processingId}
+                          />
+                        ))}
+                      </div>
+                    )
                   ) : (
                     <div className="rounded-3xl border border-dashed border-border/70 bg-card/40 px-6 py-14 text-center">
                       <h3 className="text-lg font-semibold text-foreground">

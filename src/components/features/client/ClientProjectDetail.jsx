@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Circle from "lucide-react/dist/esm/icons/circle";
+import Clock from "lucide-react/dist/esm/icons/clock";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import Star from "lucide-react/dist/esm/icons/star";
 import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
@@ -114,9 +115,14 @@ const projectPanelClassName =
 const projectInsetPanelClassName =
   "rounded-[20px] border border-white/[0.08] bg-[#111111] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
 const projectSectionEyebrowClassName =
-  "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]";
+  "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
 const projectDetailFieldNames = [
+  "Client Name",
+  "Business Name",
+  "Company Name",
+  "Brand Name",
   "Service",
+  "Service Type",
   "Project",
   "Client",
   "Website type",
@@ -124,13 +130,16 @@ const projectDetailFieldNames = [
   "Website Build Type",
   "Tech stack",
   "Pages",
+  "Page Count",
   "Timeline",
   "Launch Timeline",
   "Budget",
   "Next Steps",
   "Summary",
   "Project Overview",
+  "Primary Objectives",
   "Deliverables",
+  "Features/Deliverables Included",
   "Pages & Features",
   "Core pages",
   "Core pages included",
@@ -351,7 +360,7 @@ const FreelancerInfoCard = ({ freelancer, project }) => {
               )}
             </div>
             {freelancer.jobTitle && (
-              <span className="text-sm text-[#8f96a3]">
+              <span className="text-sm text-muted-foreground">
                 {freelancer.jobTitle}
               </span>
             )}
@@ -387,7 +396,7 @@ const FreelancerAboutCard = ({ freelancer, project }) => {
             <span className="truncate">Project Link</span>
           </a>
         ) : (
-          <div className="flex items-center gap-2 text-sm text-[#8f96a3]">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Link2 className="h-4 w-4 shrink-0" />
             No project link
           </div>
@@ -1571,6 +1580,7 @@ const ProjectDashboard = () => {
     const description = String(project?.description || "").trim();
     const extractField = (fieldName) => readProjectDetailField(description, fieldName);
     const service =
+      extractField("Service Type") ||
       extractField("Service") ||
       extractField("Website type") ||
       project?.title ||
@@ -1633,20 +1643,71 @@ const ProjectDashboard = () => {
             ) || ""
         : "");
 
+    const businessName =
+      extractField("Business Name") ||
+      extractField("Company Name") ||
+      extractField("Brand Name") ||
+      extractField("Client Name") ||
+      "";
+
+    const excludedLower = [
+      "freelancer",
+      "freelancer name",
+      "service",
+      "service type",
+      "service name",
+      "project",
+      "projects",
+      "client",
+      "client name",
+      "business name",
+      "company name",
+      "brand name",
+      "summary",
+      "project overview",
+      "primary objectives",
+      "timeline",
+      "launch timeline",
+    ];
+
+    const topItems = [];
+    const normalItems = [];
+    const seenVals = new Set();
+
+    for (const field of projectDetailFieldNames) {
+      if (excludedLower.includes(field.toLowerCase())) continue;
+      const val = extractField(field);
+      if (val && !seenVals.has(val.toLowerCase())) {
+        const item = { label: field, value: val };
+        const isList = val.includes(" - ") || val.match(/^[-•]\s/m);
+        if (isList) {
+          topItems.push(item);
+        } else {
+          normalItems.push(item);
+        }
+        seenVals.add(val.toLowerCase());
+      }
+    }
+
+    const websiteDetails = [...topItems, ...normalItems];
+
+    // fallback if absolutely empty
+    if (websiteDetails.length === 0 && (websiteType || designStyle || frontend || backend)) {
+      websiteDetails.push(
+        { label: "Category", value: websiteType || "Not specified" },
+        { label: "Visual Style", value: designStyle || "Not specified" },
+        { label: "Frontend", value: frontend || techStack || "Not specified" },
+        { label: "Backend", value: backend || "Not specified" }
+      );
+    }
+
     return {
       service,
       teammateName,
       timeline,
       overview,
-      websiteDetails: [
-        { label: "Website Type", value: websiteType || "Not specified" },
-        { label: "Pages", value: pageSummary },
-        { label: "Design Style", value: designStyle || "Not specified" },
-        { label: "Freelancer", value: teammateName },
-        { label: "Frontend", value: frontend || techStack || "Not specified" },
-        { label: "Backend", value: backend || "Not specified" },
-        { label: "Database", value: database || "Not specified" },
-      ],
+      businessName,
+      websiteDetails,
       pageTags: allPages,
     };
   }, [freelancer, project]);
@@ -2194,9 +2255,8 @@ const ProjectDashboard = () => {
     }
   }, [authFetch, canMarkProjectCompleted, isCompletingProject, project?.id, syncProjectState]);
 
-  const pageTitle = project?.title
-    ? `Project: ${project.title}`
-    : "Project Dashboard";
+  const pageTitle = projectDetailSnapshot.businessName
+    || (project?.title ? `Project: ${project.title}` : "Project Dashboard");
 
   // Show skeleton while loading
   if (isLoading) {
@@ -2239,11 +2299,6 @@ const ProjectDashboard = () => {
               <h1 className="text-[clamp(1.85rem,4vw,2.75rem)] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
                 {pageTitle}
               </h1>
-              <p className="text-sm text-[#8f96a3]">
-                {isLoading
-                  ? "Loading project details..."
-                  : "Track project progress, approvals, and billing in one place."}
-              </p>
               {!isLoading && (
                 <p className="text-xs text-[#717784]">
                   {activeProjectManager
@@ -2291,10 +2346,12 @@ const ProjectDashboard = () => {
             </div>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-3">
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
             {[
-              { label: "Service Type", value: projectDetailSnapshot.service },
-              { label: "Freelancer", value: projectDetailSnapshot.teammateName },
+              { label: "Service", value: projectDetailSnapshot.service },
               { label: "Timeline", value: projectDetailSnapshot.timeline },
             ].map((item) => (
               <div key={item.label} className={`${projectInsetPanelClassName} min-w-0`}>
@@ -2306,18 +2363,22 @@ const ProjectDashboard = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-            <div className="space-y-4">
               <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
                   <CardTitle className={projectSectionEyebrowClassName}>
-                    Overview
+                    <span className="inline-flex items-center gap-2 align-middle">
+                      <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
+                        <span className="absolute inset-0 rounded-full bg-[#10b981]/10" />
+                        <span className="absolute inset-0 rounded-full bg-[#10b981]/20 animate-ping" />
+                        <span className="relative block size-[6px] rounded-full bg-[#10b981]" />
+                      </span>
+                      <span>Overview</span>
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="flex items-start gap-3 rounded-[18px] border border-amber-500/15 bg-amber-500/5 px-4 py-4">
-                    <span className="mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_6px_rgba(255,193,7,0.08)]" />
-                    <p className="text-sm leading-7 text-[#d4d4d8]">
+                  <div className="px-2 py-1">
+                    <p className="text-sm leading-7 text-[#d4d4d8] text-justify">
                       {projectDetailSnapshot.overview ||
                         "Project scope, priorities, and delivery context will appear here once the brief is fully structured."}
                     </p>
@@ -2328,24 +2389,54 @@ const ProjectDashboard = () => {
               <Card className={projectPanelClassName}>
                 <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
                   <CardTitle className={projectSectionEyebrowClassName}>
-                    Website Details
+                    Project Details
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {projectDetailSnapshot.websiteDetails.map((item) => (
-                      <div
-                        key={item.label}
-                        className={`${projectInsetPanelClassName} min-h-[90px] min-w-0 px-4 py-3.5 sm:px-5 sm:py-4`}
-                      >
-                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
-                          {item.label}
-                        </p>
-                        <p className="mt-3 break-words text-sm font-medium leading-6 text-white">
-                          {item.value || "Not specified"}
-                        </p>
-                      </div>
-                    ))}
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    {projectDetailSnapshot.websiteDetails.map((item) => {
+                      const val = item.value || "Not specified";
+                      const isList = val.includes(" - ") || val.match(/^[-•]\s/m);
+                      return (
+                        <div
+                          key={item.label}
+                          className={`min-h-[70px] min-w-0 border-l border-white/[0.08] pl-4 flex flex-col justify-start py-1 ${
+                            isList ? "sm:col-span-2" : ""
+                          }`}
+                        >
+                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            {item.label}
+                          </p>
+                          {(() => {
+                            if (isList) {
+                              const listItems = val
+                                .split(/\s+-\s+|\r?\n/)
+                                .map((s) => s.replace(/^[-•]\s*/, "").trim())
+                                .filter(Boolean);
+
+                              if (listItems.length > 1) {
+                                return (
+                                  <ul className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2 list-none pl-0">
+                                    {listItems.map((li, i) => (
+                                      <li key={i} className="relative pl-[1.125rem] text-sm font-medium leading-relaxed text-white">
+                                        <span className="absolute left-0 top-[0.6rem] h-1 w-1 rounded-full bg-white/40" />
+                                        {li}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                );
+                              }
+                            }
+
+                            return (
+                              <p className="mt-1.5 break-words text-sm font-medium leading-6 text-white whitespace-pre-wrap">
+                                {val}
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      );
+                    })}
                   </div>
                   {projectDetailSnapshot.pageTags.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
@@ -2363,102 +2454,83 @@ const ProjectDashboard = () => {
               </Card>
 
               <Card className={projectPanelClassName}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-5 px-6">
+                  <CardTitle className={projectSectionEyebrowClassName}>
                     Project Progress
                   </CardTitle>
-                  <span className="text-lg font-semibold text-amber-500">
+                  <span className="text-[1.1rem] font-semibold text-yellow-400">
                     {Math.round(overallProgress)}% Complete
                   </span>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="relative">
-                    <div className="h-2 overflow-hidden rounded-full bg-white/[0.12]">
+                <CardContent className="space-y-8 px-6 pb-6 pt-0">
+                  <div className="relative pt-2">
+                    <div className="h-[6px] w-full overflow-hidden rounded-full bg-white/[0.06]">
                       <div
-                        className="h-full rounded-full transition-all duration-300 bg-linear-to-r from-amber-500 via-yellow-400 to-amber-400"
+                        className="h-full rounded-full bg-yellow-400 transition-all duration-300"
                         style={{ width: `${overallProgress}%` }}
                       />
                     </div>
                     <div
-                      className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-white/70 bg-white shadow-md transition-all duration-300"
-                      style={{ left: `calc(${overallProgress}% - 8px)` }}
+                      className="absolute top-1/2 h-3.5 w-3.5 -translate-y-[calc(50%-4px)] rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all duration-300"
+                      style={{ left: `calc(${overallProgress}% - 7px)` }}
                     />
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {Array.from({ length: 4 }).map((_, index) => {
                       const phase = derivedPhases[index];
                       const isCompleted = phase?.status === "completed";
                       const isActive = phase?.status === "in-progress";
+                      const isPending = !isCompleted && !isActive;
+
                       return (
                         <div
                           key={phase?.id || `phase-${index}`}
-                          className={`p-4 rounded-lg border-l-4 ${
+                          className={`flex flex-col justify-between rounded-[20px] p-5 transition-all ${
                             isCompleted
-                              ? "border-l-emerald-500 bg-emerald-500/10"
+                              ? "bg-[#111111] shadow-[inset_2px_0_0_0_#10b981]"
                               : isActive
-                              ? "border-l-amber-500 bg-amber-500/10"
-                              : "border-l-transparent bg-white/[0.03]"
+                              ? "bg-[#111111]"
+                              : "bg-[#111111]/40"
                           }`}
                         >
+                          <div>
+                            <div
+                              className={`text-[0.68rem] font-bold uppercase tracking-[0.15em] mb-2 ${
+                                isPending ? "text-muted-foreground/50" : "text-muted-foreground"
+                              }`}
+                            >
+                              Phase {index + 1}
+                            </div>
+                            <div
+                              className={`text-[15px] font-semibold leading-[1.4] mb-4 ${
+                                isPending ? "text-white/40" : "text-white/95"
+                              }`}
+                            >
+                              {phase?.name || "Phase"}
+                            </div>
+                          </div>
                           <div
-                            className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                            className={`flex items-center gap-2 text-[13px] font-semibold ${
                               isCompleted
-                                ? "text-emerald-300"
+                                ? "text-emerald-500"
                                 : isActive
-                                ? "text-amber-300"
-                                : "text-[#7f8794]"
+                                ? "text-[#f59e0b]"
+                                : "text-muted-foreground/40"
                             }`}
                           >
-                            Phase {index + 1}
-                          </div>
-                          <div className="mb-1 text-sm font-semibold text-white">
-                            {phase?.name || "Phase"}
-                          </div>
-                          <div
-                            className={`text-xs flex items-center gap-1.5 ${
-                              isCompleted
-                                ? "text-emerald-300"
-                                : isActive
-                                ? "text-amber-300"
-                                : "text-[#7f8794]"
-                            }`}
-                          >
-                            {isCompleted && (
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            )}
-                            {isActive && (
-                              <Circle className="w-3.5 h-3.5 fill-current" />
-                            )}
+                            {isCompleted && <CheckCircle2 className="h-4 w-4" />}
+                            {isActive && <Clock className="h-4 w-4" />}
                             {isCompleted
                               ? "Completed"
                               : isActive
-                              ? "Active"
+                              ? "In progress"
                               : "Pending"}
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                </CardContent>
-              </Card>
-              <Card className={projectPanelClassName}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
-                    Project Description
-                  </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setDetailOpen(true)}
-                    aria-label="View full project details"
-                  >
-                    <Info className="h-4 w-4" />
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {renderProjectDescription({ showExtended: false })}
                 </CardContent>
               </Card>
 
@@ -2812,11 +2884,11 @@ const ProjectDashboard = () => {
 
               {/* Project Chat - First */}
               <Card className={`${projectPanelClassName} flex h-96 flex-col`}>
-                <CardHeader className="border-b border-border/60">
-                  <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
+                <CardHeader className="border-b border-border/60 space-y-0.5 pb-4">
+                  <CardTitle className={projectSectionEyebrowClassName}>
                     Project Chat
                   </CardTitle>
-                  <CardDescription className="text-[#8b94a1]">
+                  <CardDescription className="text-muted-foreground text-xs">
                     Ask questions and share documents
                   </CardDescription>
                 </CardHeader>
@@ -3166,7 +3238,7 @@ const ProjectDashboard = () => {
                       {paymentPlan.installments.map((installment) => (
                         <div
                           key={installment.sequence}
-                          className="flex items-center justify-between rounded-lg border border-border/60 bg-background/50 px-3 py-3"
+                          className="flex items-center justify-between rounded-lg border border-border/60 bg-transparent px-3 py-3"
                         >
                           <div>
                             <p className="text-sm font-semibold text-foreground">
@@ -3225,7 +3297,7 @@ const ProjectDashboard = () => {
                       All scheduled client payments are complete.
                     </div>
                   ) : paymentPlan ? (
-                    <div className="rounded-lg border border-border/60 bg-background/50 p-3 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-border/60 bg-transparent p-3 text-sm text-muted-foreground">
                       No payment is due right now. The next installment will unlock automatically when its phase gate is complete.
                     </div>
                   ) : null}

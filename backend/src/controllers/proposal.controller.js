@@ -307,6 +307,33 @@ export const updateProposal = asyncHandler(async (req, res) => {
     },
   });
 
+  const amountChanged =
+    Object.prototype.hasOwnProperty.call(updates, "amount") &&
+    Number(updates.amount) !== Number(proposal.amount);
+
+  if (isOwner && amountChanged && updatedProposal?.freelancerId) {
+    try {
+      await sendNotificationToUser(updatedProposal.freelancerId, {
+        audience: "freelancer",
+        type: "proposal",
+        title: "Budget Increased",
+        message: `Your proposal for "${updatedProposal?.project?.title || "this project"}" now has a higher budget.`,
+        data: {
+          projectId: updatedProposal?.project?.id || proposal?.projectId || null,
+          proposalId: updatedProposal?.id || proposalId,
+          previousAmount: Number(proposal.amount) || 0,
+          updatedAmount: Number(updates.amount) || 0,
+        },
+      });
+    } catch (notificationError) {
+      console.error("Failed to send budget increase notification to freelancer", {
+        proposalId,
+        freelancerId: updatedProposal?.freelancerId,
+        error: notificationError,
+      });
+    }
+  }
+
   res.json({ data: updatedProposal });
 });
 
