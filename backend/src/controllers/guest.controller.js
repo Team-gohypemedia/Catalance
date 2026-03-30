@@ -2584,6 +2584,188 @@ const getQuestionIdentityType = (question = {}) => {
     return "other";
 };
 
+const RESERVED_PLATFORM_BRAND_NAMES = ["Catalance"];
+const WELL_KNOWN_COMPANY_BRAND_NAMES = [
+    "Google",
+    "Apple",
+    "Microsoft",
+    "Amazon",
+    "Meta",
+    "Facebook",
+    "Instagram",
+    "WhatsApp",
+    "Netflix",
+    "Spotify",
+    "Uber",
+    "Airbnb",
+    "Tesla",
+    "NVIDIA",
+    "OpenAI",
+    "Spinny",
+    "Tata",
+    "Reliance",
+    "Infosys",
+    "Wipro",
+    "Zoho",
+    "Flipkart",
+    "Myntra",
+    "Zomato",
+    "Swiggy",
+    "Paytm",
+    "PhonePe",
+    "Mahindra",
+    "Adani",
+];
+const BUSINESS_ENTITY_SUFFIX_REGEX = /\b(incorporated|inc|llc|ltd|limited|private|pvt|corp|corporation|company|co|plc)\b/g;
+const BRAND_AFFILIATION_DENIAL_REGEX = /^(?:no|nope|nah|not really|i am not|i'm not|im not|we are not|we're not|not part of the team|not with them|not affiliated|just inspired by|similar to)\b/;
+const BRAND_ROLE_KEYWORD_REGEX = /\b(founder|co founder|cofounder|owner|ceo|cto|cfo|coo|cmo|manager|lead|head|director|developer|designer|engineer|marketer|marketing|sales|operations|operator|product|consultant|strategist|producer|analyst|employee|intern|partner|recruiter)\b/;
+const BRAND_ROLE_ACTION_REGEX = /\b(i|we)\s+(run|lead|manage|handle|own|founded|founded it|co founded|cofounded|operate)\b/;
+const BRAND_AFFILIATION_ONLY_REGEX = /\b(i am|i'm|im|we are|we're|part of the team|with the team|from the team|on the team|i work there|we work there|i work at|we work at|i work for|we work for|i am with|i'm with|we are with|we're with)\b/;
+const BRAND_AFFILIATION_ACK_REGEX = /^(?:yes|yeah|yep|yup|sure|okay|ok|correct|right)\b/;
+
+const normalizeBrandCandidate = (value = "") =>
+    String(value || "")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^\w\s]/g, " ")
+        .replace(BUSINESS_ENTITY_SUFFIX_REGEX, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+const BRAND_MATCHERS = WELL_KNOWN_COMPANY_BRAND_NAMES
+    .map((canonicalName) => ({
+        canonicalName,
+        key: normalizeBrandCandidate(canonicalName),
+    }))
+    .sort((left, right) => right.key.length - left.key.length);
+
+const RESERVED_BRAND_MATCHERS = RESERVED_PLATFORM_BRAND_NAMES
+    .map((canonicalName) => ({
+        canonicalName,
+        key: normalizeBrandCandidate(canonicalName),
+    }))
+    .sort((left, right) => right.key.length - left.key.length);
+
+const containsWholeBrandCandidate = (normalizedMessage = "", brandKey = "") =>
+    Boolean(
+        normalizedMessage
+        && brandKey
+        && (
+            normalizedMessage === brandKey
+            || normalizedMessage.startsWith(`${brandKey} `)
+            || normalizedMessage.endsWith(` ${brandKey}`)
+            || normalizedMessage.includes(` ${brandKey} `)
+        )
+    );
+
+const findReservedPlatformBrandMatch = (value = "") => {
+    const normalizedMessage = normalizeBrandCandidate(value);
+    if (!normalizedMessage) return null;
+    return RESERVED_BRAND_MATCHERS.find(({ key }) => containsWholeBrandCandidate(normalizedMessage, key)) || null;
+};
+
+const findKnownEstablishedBrandMatch = (value = "") => {
+    const normalizedMessage = normalizeBrandCandidate(value);
+    if (!normalizedMessage) return null;
+    return BRAND_MATCHERS.find(({ key }) => containsWholeBrandCandidate(normalizedMessage, key)) || null;
+};
+
+const parseKnownBrandAffiliationResponse = (value = "") => {
+    const normalized = normalizeTextToken(value);
+    if (!normalized) return "needs_more_detail";
+    if (BRAND_AFFILIATION_DENIAL_REGEX.test(normalized)) return "denied";
+    if (
+        BRAND_ROLE_KEYWORD_REGEX.test(normalized)
+        || BRAND_ROLE_ACTION_REGEX.test(normalized)
+        || /\bmy role is\b/.test(normalized)
+    ) {
+        return "confirmed";
+    }
+    if (
+        BRAND_AFFILIATION_ONLY_REGEX.test(normalized)
+        || BRAND_AFFILIATION_ACK_REGEX.test(normalized)
+    ) {
+        return "needs_more_detail";
+    }
+    return "needs_more_detail";
+};
+
+const looksLikeStandaloneBusinessName = (value = "") => {
+    const trimmed = String(value || "").trim();
+    const normalized = normalizeTextToken(trimmed);
+    if (!trimmed || !normalized) return false;
+    if (trimmed.length > 80 || normalized.split(" ").length > 6) return false;
+    if (/[?]/.test(trimmed)) return false;
+    if (
+        BRAND_AFFILIATION_DENIAL_REGEX.test(normalized)
+        || BRAND_AFFILIATION_ONLY_REGEX.test(normalized)
+        || BRAND_AFFILIATION_ACK_REGEX.test(normalized)
+        || BRAND_ROLE_KEYWORD_REGEX.test(normalized)
+        || BRAND_ROLE_ACTION_REGEX.test(normalized)
+    ) {
+        return false;
+    }
+    return /[a-z]/i.test(trimmed);
+};
+
+const getBusinessNameValidationGuardAction = ({
+    question = {},
+    userMessage = "",
+    pendingState = null,
+} = {}) => {
+    if (getQuestionIdentityType(question) !== "business_name") {
+        return { type: "none", brandName: "" };
+    }
+
+    const trimmedMessage = String(userMessage || "").trim();
+    const pendingBrandName = String(pendingState?.brandName || "").trim();
+    const pendingQuestionSlug = String(pendingState?.questionSlug || "").trim();
+
+    if (pendingBrandName && pendingQuestionSlug && pendingQuestionSlug === String(question?.slug || "").trim()) {
+        if (looksLikeStandaloneBusinessName(trimmedMessage)) {
+            return {
+                type: "restart_with_new_brand_name",
+                brandName: pendingBrandName,
+                replacementBrandName: trimmedMessage,
+            };
+        }
+
+        const affiliationStatus = parseKnownBrandAffiliationResponse(trimmedMessage);
+        if (affiliationStatus === "confirmed") {
+            return { type: "accept_pending_brand", brandName: pendingBrandName };
+        }
+        if (affiliationStatus === "denied") {
+            return { type: "deny_pending_brand", brandName: pendingBrandName };
+        }
+        return { type: "ask_pending_brand_role", brandName: pendingBrandName };
+    }
+
+    const reservedBrandMatch = findReservedPlatformBrandMatch(trimmedMessage);
+    if (reservedBrandMatch) {
+        return {
+            type: "reserved_platform_brand",
+            brandName: reservedBrandMatch.canonicalName,
+        };
+    }
+
+    const knownBrandMatch = findKnownEstablishedBrandMatch(trimmedMessage);
+    if (!knownBrandMatch) {
+        return { type: "none", brandName: "" };
+    }
+
+    if (parseKnownBrandAffiliationResponse(trimmedMessage) === "confirmed") {
+        return {
+            type: "accept_known_brand",
+            brandName: knownBrandMatch.canonicalName,
+        };
+    }
+
+    return {
+        type: "ask_known_brand_affiliation",
+        brandName: knownBrandMatch.canonicalName,
+    };
+};
+
 const normalizeSessionPrefillName = (value = "") =>
     String(value || "")
         .replace(/\s+/g, " ")
@@ -3571,6 +3753,207 @@ ${outputFormatBlock}
     }
 };
 
+const getBusinessNameGuardScenarioConfig = ({ scenario = "", brandName = "" } = {}) => {
+    const cleanBrandName = String(brandName || "").trim();
+
+    switch (scenario) {
+        case "reserved_platform_brand":
+            return {
+                scenarioLabel: "reserved platform brand redirect",
+                requiredFollowupQuestion: "Could you share your project or brand name?",
+                scenarioInstructions: cleanBrandName
+                    ? `${cleanBrandName} is already in use on this platform, so redirect the user to share their own project or brand name.`
+                    : "The submitted brand name is already in use on this platform, so redirect the user to share their own project or brand name.",
+                fallbackMessage: buildFriendlyMessage(
+                    "Could you share your project or brand name?",
+                    cleanBrandName
+                        ? `${cleanBrandName} is already in use here.`
+                        : "That name is already in use here."
+                ),
+            };
+        case "ask_known_brand_affiliation":
+            return {
+                scenarioLabel: "known brand affiliation check",
+                requiredFollowupQuestion: "Are you part of the team? What's your role there?",
+                scenarioInstructions: cleanBrandName
+                    ? `The user mentioned the known company ${cleanBrandName}. Respond naturally and verify whether they are part of that team, then ask their role there.`
+                    : "The user mentioned a known company name. Respond naturally and verify whether they are part of that team, then ask their role there.",
+                fallbackMessage: buildFriendlyMessage(
+                    "Are you part of the team? What's your role there?",
+                    cleanBrandName
+                        ? `${cleanBrandName} is a well-known company.`
+                        : "That sounds like a well-known company."
+                ),
+            };
+        case "ask_pending_brand_role":
+            return {
+                scenarioLabel: "known brand role clarification",
+                requiredFollowupQuestion: "What's your role there?",
+                scenarioInstructions: cleanBrandName
+                    ? `The user already confirmed they may be connected to ${cleanBrandName}, but their role is still unclear. Ask specifically for their role there.`
+                    : "The user may be connected to a known company, but their role is still unclear. Ask specifically for their role there.",
+                fallbackMessage: buildFriendlyMessage(
+                    "What's your role there?",
+                    "Got it."
+                ),
+            };
+        case "deny_pending_brand":
+            return {
+                scenarioLabel: "known brand ownership denied redirect",
+                requiredFollowupQuestion: "Could you share your project or brand name?",
+                scenarioInstructions: cleanBrandName
+                    ? `The user is not part of ${cleanBrandName}, so redirect them to share the project or brand name they actually want to use.`
+                    : "The user is not part of the mentioned company, so redirect them to share the project or brand name they actually want to use.",
+                fallbackMessage: buildFriendlyMessage(
+                    "Could you share your project or brand name?",
+                    "Understood."
+                ),
+            };
+        default:
+            return {
+                scenarioLabel: "brand name clarification",
+                requiredFollowupQuestion: "Could you share your project or brand name?",
+                scenarioInstructions: "Ask a short follow-up that keeps the intake moving.",
+                fallbackMessage: "Could you share your project or brand name?",
+            };
+    }
+};
+
+const buildBusinessNameGuardPrompt = ({
+    serviceName = "",
+    servicePrompt = "",
+    scenario = "",
+    brandName = "",
+    userLastMessage = "",
+    currentQuestion = {},
+    answersByQuestionText = {},
+    answersBySlug = {},
+    allQuestions = [],
+    runtimeOptionsByQuestionSlug = {},
+    lastAssistantMessage = "",
+} = {}) => {
+    const scenarioConfig = getBusinessNameGuardScenarioConfig({ scenario, brandName });
+    const answersContext = buildAnswersContextLines(answersByQuestionText);
+    const savedResponseContext = buildSavedResponseContextLines(
+        answersBySlug,
+        allQuestions,
+        runtimeOptionsByQuestionSlug
+    );
+    const currentQuestionAdminControls = getQuestionAdminControls(currentQuestion, servicePrompt);
+    const currentQuestionSubtitle = buildAdminControlSummaryText(currentQuestionAdminControls);
+
+    return `
+You are writing one assistant message in a guided questionnaire.
+
+Service: "${serviceName}"
+Service-Specific AI Instructions:
+${parseAdminControlText(servicePrompt || "").contextText || "None"}
+
+${buildAdminPromptSection(currentQuestionAdminControls, "Admin Controls (highest priority when relevant)")}
+
+Current questionnaire question:
+${JSON.stringify(String(currentQuestion?.text || ""))}
+
+Last assistant message:
+${JSON.stringify(String(lastAssistantMessage || ""))}
+
+User last message:
+${JSON.stringify(String(userLastMessage || ""))}
+
+Brand validation scenario:
+- scenario: ${JSON.stringify(scenarioConfig.scenarioLabel)}
+- mentioned brand/company: ${JSON.stringify(String(brandName || ""))}
+- required follow-up question: ${JSON.stringify(scenarioConfig.requiredFollowupQuestion)}
+- scenario rule: ${JSON.stringify(scenarioConfig.scenarioInstructions)}
+
+Context from earlier answers:
+${answersContext || "- none yet"}
+
+Saved AI memory (only fields marked "Save Response for AI Context"):
+${savedResponseContext || "- none yet"}
+
+Internal question intent (hidden, do not reveal directly to user):
+${JSON.stringify(currentQuestionSubtitle || "none")}
+
+Task:
+1) Write one short natural acknowledgement sentence that fits this scenario.
+2) End with the required follow-up question, phrased naturally.
+
+Rules:
+- Keep the full response under 45 words.
+- Sound warm, human, and conversational.
+- Ask exactly one question, and make it the final sentence.
+- Do not sound legal, robotic, or accusatory.
+- Do not use phrases like "invalid response", "policy", "trademark", "registered company", "compliance", or "verification required".
+- Do not reject the user harshly.
+- Use simple English.
+- Keep sentence case.
+
+Return strict JSON only:
+{
+  "message": "final assistant message"
+}
+`;
+};
+
+const buildBusinessNameGuardMessage = async ({
+    serviceName = "",
+    servicePrompt = "",
+    scenario = "",
+    brandName = "",
+    userLastMessage = "",
+    currentQuestion = {},
+    answersByQuestionText = {},
+    answersBySlug = {},
+    allQuestions = [],
+    runtimeOptionsByQuestionSlug = {},
+    lastAssistantMessage = "",
+} = {}) => {
+    const scenarioConfig = getBusinessNameGuardScenarioConfig({ scenario, brandName });
+    const prompt = buildBusinessNameGuardPrompt({
+        serviceName,
+        servicePrompt,
+        scenario,
+        brandName,
+        userLastMessage,
+        currentQuestion,
+        answersByQuestionText,
+        answersBySlug,
+        allQuestions,
+        runtimeOptionsByQuestionSlug,
+        lastAssistantMessage,
+    });
+
+    try {
+        const aiResponse = await chatWithAI(
+            [{ role: "user", content: prompt }],
+            [{ role: "system", content: "You are a JSON-only writing assistant. Return strict JSON only." }],
+            serviceName || "system_question_writer"
+        );
+
+        if (!aiResponse?.success) {
+            return scenarioConfig.fallbackMessage;
+        }
+
+        const parsedMessage = stripNameNotedRecap(parseMessageFieldFromJson(aiResponse.message || ""));
+        if (!parsedMessage) {
+            return scenarioConfig.fallbackMessage;
+        }
+
+        if (!parsedMessage.includes("?")) {
+            return buildFriendlyMessage(
+                scenarioConfig.requiredFollowupQuestion,
+                parsedMessage
+            );
+        }
+
+        return parsedMessage;
+    } catch (error) {
+        console.error("[buildBusinessNameGuardMessage] Fatal error:", error);
+        return scenarioConfig.fallbackMessage;
+    }
+};
+
 const checkMeaningfulChangeWithAI = async ({ questionText, oldAnswer, newAnswer }) => {
     const prompt = `
 You are an AI assistant helping a user build a project. The user had previously answered this question:
@@ -4322,7 +4705,10 @@ const buildCurrentQuestionValidationPrompt = ({
             - In that case, set "normalizedAnswer" to the exact recommended option label or value from the current option pool.
             - Only use recommendation acceptance when the assistant's recommendation is explicit and unambiguous. If the assistant did not clearly recommend one option, do not guess.
             - If the user explicitly names another option or changes direction, follow the user's latest intent instead of the earlier recommendation.
-            - **REGISTERED COMPANY NAME CHECK**: If the Current Question asks for a company or brand name, and the user's answer is a well-known registered or famous company name (e.g., Google, Apple, Microsoft, Amazon, Catalance, or any other widely known brand), you MUST treat it as INVALID. The response \`message\` MUST politely state that the name is already registered and in use for this type of service in their region, and ask them to provide a different name.
+            - **COMPANY NAME CHECK**: If the Current Question asks for a company or brand name and the user answers "Catalance" (or a direct Catalance variant), treat it as INVALID and politely ask for their own project or brand name.
+            - If the user mentions another well-known or established company name, do NOT automatically reject it.
+            - If their team affiliation and role are already clear, you may treat that company name as VALID.
+            - Otherwise, respond conversationally by asking whether they are part of the team and what their role is.
             - CRITICAL UNIVERSAL PREDICTION: You are a smart AI. If the user's answer (for ANY question) contains specific keywords or details that logically imply they belong to one of the options (e.g. naming "Elementor" making WordPress obvious), you MUST immediately accept it as VALID.
             - UNSUPPORTED PLATFORMS: If the user requests a fundamentally unsupported platform or tool that conflicts with all available options (e.g., asking for Webflow, Framer, Wix, or Squarespace when the only options are WordPress, Shopify, or Custom React/Node Development), do NOT forcibly map it to "Custom Development". Instead, treat it as an INFO_REQUEST. Your response \`message\` should politely explain that we primarily specialize in the listed technologies, briefly explain how one of our options (like Custom Development or WordPress) might still achieve their design goals, and ask which of our supported options they would like to explore so we can align the project correctly.
             - Do not be pedantic or rigid. Do NOT force them to pick the literal option or repeat themselves.
@@ -5188,6 +5574,11 @@ export const guestChat = asyncHandler(async (req, res) => {
     let aiResponseContent = "";
 
     if (currentStep < questions.length) {
+        const pendingBrandOwnershipState =
+            session.answers?.pendingBrandOwnershipState
+            && typeof session.answers.pendingBrandOwnershipState === "object"
+                ? session.answers.pendingBrandOwnershipState
+                : null;
         const currentQuestionText = currentQuestion?.text || "";
         const currentQuestionOptions = getQuestionOptionLabels(
             currentQuestion,
@@ -5251,62 +5642,314 @@ export const guestChat = asyncHandler(async (req, res) => {
             console.log(`\n--- [AI Context Loaded] ---\nService: ${service.name}\nPrompt: ${service.aiPrompt}\n---------------------------\n`);
         }
 
-        const validationPrompt = buildCurrentQuestionValidationPrompt({
-            serviceName: service.name,
-            servicePrompt: service.aiPrompt || "",
-            currentQuestionText,
-            currentQuestionOptions,
-            currentQuestionNumberedOptions,
-            currentQuestionCanonicalOptions,
-            knownContextByQuestion,
-            savedResponseContext,
-            currentQuestionSubtitle,
-            userMessageText,
-            attachmentContextText,
-            urlContextText,
-            attachmentInferredAnswer,
-            lastAssistantMessage,
-            validationResponseRules: `${validationResponseRules}\n${minimumBudgetValidationRule}`.trim(),
+        const businessNameGuardAction = getBusinessNameValidationGuardAction({
+            question: currentQuestion,
+            userMessage: userMessageText,
+            pendingState: pendingBrandOwnershipState,
         });
 
-        // We use a separate AI call for validation. 
-        const validationResponse = await chatWithAI(
-            [{ role: "user", content: validationPrompt }],
-            [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
-            "system_validator"
-        );
+        if (businessNameGuardAction.type === "reserved_platform_brand") {
+            const nextAnswers = { ...(session.answers || {}) };
+            delete nextAnswers.pendingBrandOwnershipState;
 
-        if (validationResponse.success) {
-            console.log(`[Validation Raw]:`, validationResponse.message);
-            const parsedValidation = parseValidationResponse(validationResponse.message);
-            if (parsedValidation) {
-                validationResult = parsedValidation;
-                aiResponseContent = parsedValidation.message;
+            const reservedBrandMessage = await buildBusinessNameGuardMessage({
+                serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
+                scenario: "reserved_platform_brand",
+                brandName: businessNameGuardAction.brandName,
+                userLastMessage: userMessageText,
+                currentQuestion,
+                answersByQuestionText: knownContextByQuestion,
+                answersBySlug: existingAnswersBySlug,
+                allQuestions: questions,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                lastAssistantMessage,
+            });
 
-                // If validator derived a concrete answer from attachment context, use it
-                // so the questionnaire step advances instead of re-asking the same question.
-                const normalizedAnswerFromValidation = clipAttachmentText(
-                    parsedValidation?.normalizedAnswer || "",
-                    180
-                );
-                if (
-                    validationResult.isValid &&
-                    !normalizeTextToken(userMessageText) &&
-                    normalizeTextToken(normalizedAnswerFromValidation)
-                ) {
-                    userMessageText = normalizedAnswerFromValidation;
-                    attachmentInferredAnswer = normalizedAnswerFromValidation;
-                    console.log(
-                        `[Validation Normalized Answer] using "${userMessageText}" for "${currentQuestion?.slug || "current-question"}"`
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "user",
+                    content: persistedUserMessageContent,
+                },
+            });
+            await prisma.aiGuestSession.update({
+                where: { id: sessionId },
+                data: { answers: nextAnswers },
+            });
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "assistant",
+                    content: reservedBrandMessage,
+                },
+            });
+
+            const sessionReload = await prisma.aiGuestSession.findUnique({
+                where: { id: sessionId },
+                include: { messages: { orderBy: { createdAt: "asc" } } },
+            });
+
+            return res.json({
+                success: true,
+                message: reservedBrandMessage,
+                inputConfig: {
+                    type: currentQuestion?.type || "text",
+                    options: getDisplayedQuestionOptions(
+                        currentQuestion,
+                        sessionRuntimeOptionsByQuestionSlug
+                    )
+                },
+                history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+            });
+        }
+
+        if (businessNameGuardAction.type === "ask_known_brand_affiliation") {
+            const nextAnswers = { ...(session.answers || {}) };
+            nextAnswers.pendingBrandOwnershipState = {
+                questionSlug: currentQuestion?.slug || "",
+                brandName: businessNameGuardAction.brandName,
+            };
+
+            const followupMessage = await buildBusinessNameGuardMessage({
+                serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
+                scenario: "ask_known_brand_affiliation",
+                brandName: businessNameGuardAction.brandName,
+                userLastMessage: userMessageText,
+                currentQuestion,
+                answersByQuestionText: knownContextByQuestion,
+                answersBySlug: existingAnswersBySlug,
+                allQuestions: questions,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                lastAssistantMessage,
+            });
+
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "user",
+                    content: persistedUserMessageContent,
+                },
+            });
+            await prisma.aiGuestSession.update({
+                where: { id: sessionId },
+                data: { answers: nextAnswers },
+            });
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "assistant",
+                    content: followupMessage,
+                },
+            });
+
+            const sessionReload = await prisma.aiGuestSession.findUnique({
+                where: { id: sessionId },
+                include: { messages: { orderBy: { createdAt: "asc" } } },
+            });
+
+            return res.json({
+                success: true,
+                message: followupMessage,
+                inputConfig: {
+                    type: currentQuestion?.type || "text",
+                    options: getDisplayedQuestionOptions(
+                        currentQuestion,
+                        sessionRuntimeOptionsByQuestionSlug
+                    )
+                },
+                history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+            });
+        }
+
+        if (businessNameGuardAction.type === "ask_pending_brand_role") {
+            const followupMessage = await buildBusinessNameGuardMessage({
+                serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
+                scenario: "ask_pending_brand_role",
+                brandName: businessNameGuardAction.brandName,
+                userLastMessage: userMessageText,
+                currentQuestion,
+                answersByQuestionText: knownContextByQuestion,
+                answersBySlug: existingAnswersBySlug,
+                allQuestions: questions,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                lastAssistantMessage,
+            });
+
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "user",
+                    content: persistedUserMessageContent,
+                },
+            });
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "assistant",
+                    content: followupMessage,
+                },
+            });
+
+            const sessionReload = await prisma.aiGuestSession.findUnique({
+                where: { id: sessionId },
+                include: { messages: { orderBy: { createdAt: "asc" } } },
+            });
+
+            return res.json({
+                success: true,
+                message: followupMessage,
+                inputConfig: {
+                    type: currentQuestion?.type || "text",
+                    options: getDisplayedQuestionOptions(
+                        currentQuestion,
+                        sessionRuntimeOptionsByQuestionSlug
+                    )
+                },
+                history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+            });
+        }
+
+        if (businessNameGuardAction.type === "deny_pending_brand") {
+            const nextAnswers = { ...(session.answers || {}) };
+            delete nextAnswers.pendingBrandOwnershipState;
+
+            const followupMessage = await buildBusinessNameGuardMessage({
+                serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
+                scenario: "deny_pending_brand",
+                brandName: businessNameGuardAction.brandName,
+                userLastMessage: userMessageText,
+                currentQuestion,
+                answersByQuestionText: knownContextByQuestion,
+                answersBySlug: existingAnswersBySlug,
+                allQuestions: questions,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                lastAssistantMessage,
+            });
+
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "user",
+                    content: persistedUserMessageContent,
+                },
+            });
+            await prisma.aiGuestSession.update({
+                where: { id: sessionId },
+                data: { answers: nextAnswers },
+            });
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "assistant",
+                    content: followupMessage,
+                },
+            });
+
+            const sessionReload = await prisma.aiGuestSession.findUnique({
+                where: { id: sessionId },
+                include: { messages: { orderBy: { createdAt: "asc" } } },
+            });
+
+            return res.json({
+                success: true,
+                message: followupMessage,
+                inputConfig: {
+                    type: currentQuestion?.type || "text",
+                    options: getDisplayedQuestionOptions(
+                        currentQuestion,
+                        sessionRuntimeOptionsByQuestionSlug
+                    )
+                },
+                history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+            });
+        }
+
+        if (businessNameGuardAction.type === "restart_with_new_brand_name") {
+            userMessageText = businessNameGuardAction.replacementBrandName || userMessageText;
+            session.answers = { ...(session.answers || {}) };
+            delete session.answers.pendingBrandOwnershipState;
+        } else if (businessNameGuardAction.type === "accept_pending_brand") {
+            validationResult = {
+                isValid: true,
+                status: "valid_answer",
+                message: "Thanks for clarifying.",
+                normalizedAnswer: businessNameGuardAction.brandName,
+            };
+            aiResponseContent = validationResult.message;
+            session.answers = { ...(session.answers || {}) };
+            delete session.answers.pendingBrandOwnershipState;
+        } else if (businessNameGuardAction.type === "accept_known_brand") {
+            validationResult = {
+                isValid: true,
+                status: "valid_answer",
+                message: "Thanks for sharing that.",
+                normalizedAnswer: businessNameGuardAction.brandName,
+            };
+            aiResponseContent = validationResult.message;
+        }
+
+        if (!validationResult) {
+            const validationPrompt = buildCurrentQuestionValidationPrompt({
+                serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
+                currentQuestionText,
+                currentQuestionOptions,
+                currentQuestionNumberedOptions,
+                currentQuestionCanonicalOptions,
+                knownContextByQuestion,
+                savedResponseContext,
+                currentQuestionSubtitle,
+                userMessageText,
+                attachmentContextText,
+                urlContextText,
+                attachmentInferredAnswer,
+                lastAssistantMessage,
+                validationResponseRules: `${validationResponseRules}\n${minimumBudgetValidationRule}`.trim(),
+            });
+
+            // We use a separate AI call for validation.
+            const validationResponse = await chatWithAI(
+                [{ role: "user", content: validationPrompt }],
+                [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
+                "system_validator"
+            );
+
+            if (validationResponse.success) {
+                console.log(`[Validation Raw]:`, validationResponse.message);
+                const parsedValidation = parseValidationResponse(validationResponse.message);
+                if (parsedValidation) {
+                    validationResult = parsedValidation;
+                    aiResponseContent = parsedValidation.message;
+
+                    // If validator derived a concrete answer from attachment context, use it
+                    // so the questionnaire step advances instead of re-asking the same question.
+                    const normalizedAnswerFromValidation = clipAttachmentText(
+                        parsedValidation?.normalizedAnswer || "",
+                        180
                     );
-                }
+                    if (
+                        validationResult.isValid &&
+                        !normalizeTextToken(userMessageText) &&
+                        normalizeTextToken(normalizedAnswerFromValidation)
+                    ) {
+                        userMessageText = normalizedAnswerFromValidation;
+                        attachmentInferredAnswer = normalizedAnswerFromValidation;
+                        console.log(
+                            `[Validation Normalized Answer] using "${userMessageText}" for "${currentQuestion?.slug || "current-question"}"`
+                        );
+                    }
 
-                console.log(`[Validation Parsed]:`, parsedValidation);
+                    console.log(`[Validation Parsed]:`, parsedValidation);
+                } else {
+                    console.warn("[Validation] Could not parse structured validator output");
+                }
             } else {
-                console.warn("[Validation] Could not parse structured validator output");
+                console.warn("[Validation] AI request failed");
             }
-        } else {
-            console.warn("[Validation] AI request failed");
         }
 
         if (!validationResult) {
@@ -6196,6 +6839,7 @@ export const __testables = {
     applyAdminControlsToOptions,
     applyExtractedAnswerUpdates,
     buildAdminControlSummaryText,
+    buildBusinessNameGuardPrompt,
     buildCurrentQuestionValidationPrompt,
     buildSessionStartPrefill,
     buildSupplementalBudgetExtractions,
@@ -6204,6 +6848,7 @@ export const __testables = {
     buildQuestionDisplayAnswer,
     findExtractedBudgetMinimumViolation,
     findBudgetMinimumViolationChange,
+    getBusinessNameValidationGuardAction,
     normalizeAdviceVisibleOptions,
     normalizeGuestAdvicePayload,
     getPostProposalBudgetFollowupAction,
@@ -6218,6 +6863,7 @@ export const __testables = {
     getRuntimeOptionsByQuestionSlug,
     mergeExtractedAnswers,
     normalizeAnswerForQuestion,
+    parseKnownBrandAffiliationResponse,
     parseAdminControlText,
     toChronologicalGuestHistory,
 };

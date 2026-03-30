@@ -7,6 +7,7 @@ const {
   applyAdminControlsToOptions,
   applyExtractedAnswerUpdates,
   buildAdminControlSummaryText,
+  buildBusinessNameGuardPrompt,
   buildCurrentQuestionValidationPrompt,
   buildLockedServiceReply,
   buildPersistedAnswersPayload,
@@ -15,6 +16,7 @@ const {
   buildQuestionDisplayAnswer,
   findExtractedBudgetMinimumViolation,
   findBudgetMinimumViolationChange,
+  getBusinessNameValidationGuardAction,
   getDisplayedQuestionOptions,
   getBudgetMinimumValidationResult,
   normalizeAdviceVisibleOptions,
@@ -28,6 +30,7 @@ const {
   isBudgetQuestion,
   mergeExtractedAnswers,
   normalizeAnswerForQuestion,
+  parseKnownBrandAffiliationResponse,
   parseAdminControlText,
   toChronologicalGuestHistory,
 } = __testables;
@@ -391,6 +394,124 @@ test("classifies personal-name and business-name questions separately", () => {
     getQuestionIdentityType({ slug: "company_name", text: "What is your company or brand name?" }),
     "business_name",
   );
+});
+
+test("asks for team affiliation when a known company name is used as the brand", () => {
+  const action = getBusinessNameValidationGuardAction({
+    question: { slug: "company_name", text: "What is your company or brand name?" },
+    userMessage: "google",
+  });
+
+  assert.equal(action.type, "ask_known_brand_affiliation");
+  assert.equal(action.brandName, "Google");
+});
+
+test("redirects Catalance brand answers instead of accepting them", () => {
+  const action = getBusinessNameValidationGuardAction({
+    question: { slug: "company_name", text: "What is your company or brand name?" },
+    userMessage: "Catalance",
+  });
+
+  assert.equal(action.type, "reserved_platform_brand");
+  assert.equal(action.brandName, "Catalance");
+});
+
+test("accepts a known company name when the user already shared their role", () => {
+  const action = getBusinessNameValidationGuardAction({
+    question: { slug: "company_name", text: "What is your company or brand name?" },
+    userMessage: "Spinny - I lead marketing there",
+  });
+
+  assert.equal(action.type, "accept_known_brand");
+  assert.equal(action.brandName, "Spinny");
+});
+
+test("keeps a known-brand follow-up pending until the user shares a role", () => {
+  const question = { slug: "company_name", text: "What is your company or brand name?" };
+  const pendingState = {
+    questionSlug: "company_name",
+    brandName: "Google",
+  };
+
+  assert.equal(
+    getBusinessNameValidationGuardAction({
+      question,
+      userMessage: "yes",
+      pendingState,
+    }).type,
+    "ask_pending_brand_role",
+  );
+
+  assert.equal(
+    getBusinessNameValidationGuardAction({
+      question,
+      userMessage: "I am the product manager there",
+      pendingState,
+    }).type,
+    "accept_pending_brand",
+  );
+
+  assert.equal(
+    getBusinessNameValidationGuardAction({
+      question,
+      userMessage: "no",
+      pendingState,
+    }).type,
+    "deny_pending_brand",
+  );
+});
+
+test("parses role-bearing brand affiliation replies as confirmed", () => {
+  assert.equal(parseKnownBrandAffiliationResponse("I am the founder"), "confirmed");
+  assert.equal(parseKnownBrandAffiliationResponse("yes"), "needs_more_detail");
+  assert.equal(parseKnownBrandAffiliationResponse("no"), "denied");
+});
+
+test("validation prompt no longer hard-rejects every famous brand name", () => {
+  const prompt = buildCurrentQuestionValidationPrompt({
+    serviceName: "Web Development",
+    servicePrompt: "",
+    currentQuestionText: "What is your company or brand name?",
+    currentQuestionOptions: [],
+    currentQuestionNumberedOptions: [],
+    currentQuestionCanonicalOptions: [],
+    knownContextByQuestion: {},
+    savedResponseContext: "",
+    currentQuestionContext: "",
+    lastAssistantMessage: "",
+    userMessageText: "Google",
+    attachmentContextText: "",
+    urlContextText: "",
+    attachmentInferredAnswer: "",
+    validationResponseRules: "Keep the response brief.",
+  });
+
+  assert.match(prompt, /Catalance.*project or brand name/i);
+  assert.match(prompt, /do NOT automatically reject/i);
+});
+
+test("builds an AI-writing prompt for business-name guard replies", () => {
+  const prompt = buildBusinessNameGuardPrompt({
+    serviceName: "Web Development",
+    servicePrompt: "",
+    scenario: "ask_known_brand_affiliation",
+    brandName: "Google",
+    userLastMessage: "google",
+    currentQuestion: { slug: "company_name", text: "What is your company or brand name?" },
+    answersByQuestionText: { "What is your name?": "Ravindra" },
+    answersBySlug: { client_name: "Ravindra" },
+    allQuestions: [
+      { slug: "client_name", text: "What is your name?" },
+      { slug: "company_name", text: "What is your company or brand name?" },
+    ],
+    runtimeOptionsByQuestionSlug: {},
+    lastAssistantMessage: "What is your company or brand name?",
+  });
+
+  assert.match(prompt, /writing one assistant message/i);
+  assert.match(prompt, /known brand affiliation check/i);
+  assert.match(prompt, /Are you part of the team\? What's your role there\?/i);
+  assert.match(prompt, /Return strict JSON only/i);
 });
 
 test("does not backfill a personal-name field from a business-name answer", () => {
