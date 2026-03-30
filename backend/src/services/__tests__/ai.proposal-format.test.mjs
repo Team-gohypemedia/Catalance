@@ -14,6 +14,7 @@ const { __testables } = await import("../ai.service.js");
 const {
   normalizeProposalMarkdown,
   normalizeProposalBudgetValue,
+  normalizeProposalTimelineValue,
   normalizeNumericFieldValue,
 } = __testables;
 
@@ -156,11 +157,53 @@ Budget: INR 15000
   );
   assert.match(normalized, /^- Launch the store quickly$/m);
   assert.match(normalized, /^- Custom Shopify theme$/m);
-  assert.match(normalized, /^Launch Timeline: Asap$/m);
+  assert.match(normalized, /^Launch Timeline: 4 weeks$/m);
   assert.match(normalized, /^Budget: INR 15,000$/m);
+});
+
+test("keeps delivery timeline separate from video duration and collapses ranges to one value", () => {
+  const normalized = normalizeProposalMarkdown({
+    markdown: `
+Client Name: Developers Gohype
+Business Name: Cleclo
+Service Type: 3d Animation/CGI Videos
+Project Overview: Create ad creative videos for a clothing brand.
+Primary Objectives:
+- Create high impact paid ad visuals
+Features/Deliverables Included:
+- Two CGI advertisement videos
+- 15-30 second runtime per video
+Launch Timeline: 1-2 weeks
+Budget: INR 15,000 per video
+    `,
+    proposalContext: {
+      clientName: "Developers Gohype",
+      companyName: "Cleclo",
+      serviceName: "3d Animation/CGI Videos",
+      serviceQuestionAnswers: [
+        {
+          slug: "duration",
+          question: "What duration do you prefer for the CGI video?",
+          answer: "15-30 seconds"
+        },
+        {
+          slug: "delivery_timeline",
+          question: "What is your preferred delivery timeline for the CGI video?",
+          answer: "1-2 weeks"
+        }
+      ]
+    },
+    selectedServiceName: "3d Animation/CGI Videos"
+  });
+
+  assert.match(normalized, /^Launch Timeline: 2 weeks$/m);
+  assert.doesNotMatch(normalized, /^Launch Timeline: 15-30 seconds$/m);
 });
 
 test("normalizes standalone numeric helpers", () => {
   assert.equal(normalizeNumericFieldValue("seven pages"), "7");
   assert.equal(normalizeProposalBudgetValue("twenty five thousand"), "INR 25,000");
+  assert.equal(normalizeProposalTimelineValue("1-2 weeks", "creative"), "2 weeks");
+  assert.equal(normalizeProposalTimelineValue("ASAP", "web"), "4 weeks");
+  assert.equal(normalizeProposalTimelineValue("15-30 seconds", "creative"), "");
 });

@@ -401,11 +401,11 @@ const getServiceDefinition = (serviceName = "") => {
 
 const RANGE_SEPARATOR_PATTERN = "[-–—]";
 const TIME_RANGE_REGEX = new RegExp(
-  `\\d+(?:\\s*${RANGE_SEPARATOR_PATTERN}\\s*\\d+)?\\s*(?:second|minute|hour|day|week|month)s?`,
+  `\\d+(?:\\s*${RANGE_SEPARATOR_PATTERN}\\s*\\d+)?\\s*(?:day|week|month)s?`,
   "i"
 );
 const TIMELINE_QUESTION_REGEX =
-  /timeline|when.*launch|deadline|how soon|when.*need|when would you like|how long|duration|campaign|turnaround/i;
+  /timeline|when.*launch|deadline|how soon|when.*need|when would you like|turnaround|delivery/i;
 const PRICING_LEVEL_QUESTION_REGEX =
   /pricing level|budget level|pricing tier|budget tier|level best matches/i;
 
@@ -415,7 +415,7 @@ const extractTimelineValue = (text = "") => {
   if (durationMatch) {
     return durationMatch[0].replace(/\s+/g, " ").trim();
   }
-  if (/asap|urgent|immediately|as soon as possible/i.test(text)) return "ASAP";
+  if (/asap|urgent|immediately|as soon as possible/i.test(text)) return "Urgent";
   if (/flexible|no rush|whenever/i.test(text)) return "Flexible";
 
   const keywordMatch = text.match(
@@ -2233,6 +2233,7 @@ Cross-check proposal fields against serviceQuestionAnswers before finalizing out
 Never leave an included field blank.
 Never use placeholder text such as "Not specified", "Pending confirmation", "To be finalized", "TBD", "TBA", "N/A", or "Unknown".
 If launch timeline is missing, generate a single realistic recommended timeline (e.g. "6 weeks") based on the scope and service type. NEVER write a range.
+Launch Timeline must always use a single concrete value in days, weeks, or months. Never use seconds, minutes, hours, ASAP, urgent, flexible, or any range.
 If budget or pricing is missing, generate a single realistic recommended budget amount in INR based on the scope and service type. NEVER write a budget range.
 If design, build, technology, hosting, engagement, or similar delivery fields are missing, choose practical recommended values that fit the stated requirements.
 Present inferred values directly and professionally inside the field value, not as a question and not as a disclaimer.
@@ -2300,6 +2301,7 @@ CRITICAL INSTRUCTIONS:
 - If proposal_context contains a confirmed structured Launch Timeline, use that exact value. Only fall back to chat_history when no structured timeline is present.
 - If proposal_context contains a confirmed structured Budget, use that exact value. Only fall back to chat_history when no structured budget is present.
 - NEVER use ranges anywhere in the proposal — not for budget, timeline, page count, or any other field. Always commit to a single definitive value.
+- Launch Timeline must never repeat video duration or runtime. Keep runtime under deliverables and keep Launch Timeline as one concrete delivery value in days, weeks, or months only.
 - If the user mentions specific technologies (Flutter, React Native, Node.js, Python, React.js dashboard, etc.), preserve them explicitly in the proposal.
 - Preserve confirmed requirements, but complete any missing proposal fields with sensible recommendations aligned to the user's goals.
 - Use concise, professional, business-ready language.
@@ -2457,7 +2459,13 @@ const resolveProposalServiceCategory = (value = "") => {
   const normalized = normalizeServiceText(String(value || ""));
   if (!normalized) return "";
   if (normalized.includes("web") || normalized.includes("website")) return "web";
-  if (normalized.includes("creative") || normalized.includes("design")) return "creative";
+  if (
+    normalized.includes("creative")
+    || normalized.includes("design")
+    || normalized.includes("animation")
+    || normalized.includes("cgi")
+    || normalized.includes("video")
+  ) return "creative";
   if (normalized.includes("brand")) return "branding";
   if (normalized.includes("seo")) return "seo";
   if (normalized.includes("app") || normalized.includes("mobile")) return "app";
@@ -2751,7 +2759,9 @@ const detectBudgetSuffix = (value = "", service = null) => {
 
 const STRUCTURED_BUDGET_FIELD_REGEX = /\b(budget|investment|price|cost|spend)\b/i;
 const STRUCTURED_TIMELINE_FIELD_REGEX =
-  /\b(timeline|launch|delivery|deadline|when do you want|how soon|how quickly|duration)\b/i;
+  /\b(timeline|launch|delivery|deadline|when do you want|how soon|how quickly|turnaround|completed)\b/i;
+const STRUCTURED_DURATION_ONLY_FIELD_REGEX =
+  /\b(video duration|campaign duration|ad duration|reel duration|clip duration|duration)\b/i;
 
 const getStructuredProposalFieldValue = (
   proposalContext = {},
@@ -2773,6 +2783,7 @@ const getStructuredProposalFieldValue = (
   for (const entry of serviceQuestionAnswers) {
     const signal = `${entry?.slug || ""} ${entry?.question || ""}`.trim();
     if (!matcher.test(signal)) continue;
+    if (kind === "timeline" && STRUCTURED_DURATION_ONLY_FIELD_REGEX.test(signal)) continue;
     const answer = cleanProposalTextValue(entry?.answer || "");
     if (answer) return answer;
   }
@@ -2781,6 +2792,7 @@ const getStructuredProposalFieldValue = (
   if (questionnaireAnswers && typeof questionnaireAnswers === "object") {
     for (const [key, value] of Object.entries(questionnaireAnswers)) {
       if (!matcher.test(String(key || ""))) continue;
+      if (kind === "timeline" && STRUCTURED_DURATION_ONLY_FIELD_REGEX.test(String(key || ""))) continue;
       const cleanedValue = cleanProposalTextValue(value || "");
       if (cleanedValue) return cleanedValue;
     }
@@ -2790,6 +2802,7 @@ const getStructuredProposalFieldValue = (
   if (questionnaireAnswersBySlug && typeof questionnaireAnswersBySlug === "object") {
     for (const [key, value] of Object.entries(questionnaireAnswersBySlug)) {
       if (!matcher.test(String(key || ""))) continue;
+      if (kind === "timeline" && STRUCTURED_DURATION_ONLY_FIELD_REGEX.test(String(key || ""))) continue;
       const cleanedValue = cleanProposalTextValue(value || "");
       if (cleanedValue) return cleanedValue;
     }
@@ -2876,6 +2889,112 @@ const buildProposalTimelineFallback = (serviceCategory = "") => {
     default:
       return "6 weeks";
   }
+};
+
+const buildProposalConcreteTimelineFromKeyword = (value = "", serviceCategory = "") => {
+  const source = String(value || "").toLowerCase();
+  const category = String(serviceCategory || "").toLowerCase();
+
+  if (/flexible|no rush|whenever/.test(source)) {
+    switch (category) {
+      case "creative":
+        return "1 month";
+      case "seo":
+        return "3 months";
+      case "app":
+        return "4 months";
+      case "web":
+        return "2 months";
+      default:
+        return "2 months";
+    }
+  }
+
+  if (/urgent|asap|immediately|fast turnaround/.test(source)) {
+    switch (category) {
+      case "creative":
+        return "1 week";
+      case "seo":
+        return "1 month";
+      case "app":
+        return "8 weeks";
+      case "web":
+        return "4 weeks";
+      default:
+        return "4 weeks";
+    }
+  }
+
+  if (/standard timeline/.test(source)) {
+    return buildProposalTimelineFallback(serviceCategory);
+  }
+
+  return "";
+};
+
+const formatProposalTimelineUnit = (count, rawUnit = "") => {
+  const numeric = Number(count);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "";
+
+  const normalizedUnit = String(rawUnit || "").toLowerCase();
+  let unit = "weeks";
+
+  if (normalizedUnit.startsWith("day")) {
+    unit = numeric === 1 ? "day" : "days";
+  } else if (normalizedUnit.startsWith("month")) {
+    unit = numeric === 1 ? "month" : "months";
+  } else {
+    unit = numeric === 1 ? "week" : "weeks";
+  }
+
+  return `${numeric} ${unit}`;
+};
+
+const normalizeProposalTimelineValue = (value = "", serviceCategory = "") => {
+  const source = cleanProposalTextValue(value);
+  if (!source) {
+    return "";
+  }
+
+  const keywordValue = buildProposalConcreteTimelineFromKeyword(source, serviceCategory);
+  if (keywordValue) {
+    return keywordValue;
+  }
+
+  const normalizedSource = source
+    .replace(/[â€“â€”]/g, "-")
+    .replace(/\bto\b/gi, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const numericRangeMatch = normalizedSource.match(
+    /(\d[\d,]*)(?:\s*-\s*(\d[\d,]*))?\s*(day|days|week|weeks|month|months)\b/i
+  );
+  if (numericRangeMatch) {
+    const firstValue = Number.parseInt(String(numericRangeMatch[1] || "").replace(/,/g, ""), 10);
+    const secondValue = numericRangeMatch[2]
+      ? Number.parseInt(String(numericRangeMatch[2] || "").replace(/,/g, ""), 10)
+      : null;
+    const chosenValue =
+      Number.isFinite(secondValue) && secondValue > 0 ? secondValue : firstValue;
+    const formatted = formatProposalTimelineUnit(chosenValue, numericRangeMatch[3]);
+    if (formatted) return formatted;
+  }
+
+  const unitMatch = normalizedSource.match(/\b(day|days|week|weeks|month|months)\b/i);
+  if (unitMatch) {
+    const numericWordValue = extractNumberWordsValue(normalizedSource);
+    if (Number.isFinite(numericWordValue) && numericWordValue > 0) {
+      const formatted = formatProposalTimelineUnit(numericWordValue, unitMatch[1]);
+      if (formatted) return formatted;
+    }
+  }
+
+  if (/\b(second|seconds|minute|minutes|hour|hours)\b/i.test(normalizedSource)) {
+    return "";
+  }
+
+  return "";
 };
 
 const getLatestTimelineFromHistory = (history = []) => {
@@ -2993,13 +3112,22 @@ const buildProposalFieldEntry = ({
       };
     }
     case "Launch Timeline":
+      for (const candidate of [
+        structuredTimelineValue,
+        contextValue,
+        sectionValue,
+        getLatestTimelineFromHistory(chatHistory)
+      ]) {
+        const normalizedTimeline = normalizeProposalTimelineValue(candidate, serviceCategory);
+        if (normalizedTimeline) {
+          return {
+            value: normalizedTimeline,
+            items: []
+          };
+        }
+      }
       return {
-        value:
-          structuredTimelineValue ||
-          contextValue ||
-          sectionValue ||
-          getLatestTimelineFromHistory(chatHistory) ||
-          buildProposalTimelineFallback(serviceCategory),
+        value: buildProposalTimelineFallback(serviceCategory),
         items: []
       };
     case "Budget":
@@ -3258,6 +3386,7 @@ Put each field label on its own line. Never combine two field labels or headings
 Keep the same proposal structure and return markdown only.
 Convert numeric words into digits for numeric-only fields.
 Budget must always be numeric with currency.
+Launch Timeline must always use one concrete value in days, weeks, or months only. Never use seconds, minutes, hours, ASAP, urgent, flexible, or a range.
 Use sentence case for every field value, paragraph, and bullet item.
 NEVER use the words "suggest", "suggested", or "suggestion" anywhere in the proposal. Present all inferred recommendations as definitive expert decisions.`;
 
@@ -3845,6 +3974,7 @@ export const __testables = {
   buildUserInputGuardMessage,
   normalizeProposalMarkdown,
   normalizeProposalBudgetValue,
+  normalizeProposalTimelineValue,
   normalizeNumericFieldValue
 };
 
