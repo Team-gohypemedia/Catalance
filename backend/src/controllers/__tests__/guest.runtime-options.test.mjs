@@ -7,15 +7,20 @@ const {
   applyAdminControlsToOptions,
   applyExtractedAnswerUpdates,
   buildAdminControlSummaryText,
+  buildBusinessNameGuardPrompt,
   buildCurrentQuestionValidationPrompt,
   buildLockedServiceReply,
   buildPersistedAnswersPayload,
+  buildSessionStartPrefill,
   buildSupplementalBudgetExtractions,
   buildQuestionDisplayAnswer,
   findExtractedBudgetMinimumViolation,
   findBudgetMinimumViolationChange,
+  getBusinessNameValidationGuardAction,
   getDisplayedQuestionOptions,
   getBudgetMinimumValidationResult,
+  normalizeAdviceVisibleOptions,
+  normalizeGuestAdvicePayload,
   getQuestionAdminControls,
   getQuestionIdentityType,
   getMostRecentMessageContentByRole,
@@ -25,6 +30,7 @@ const {
   isBudgetQuestion,
   mergeExtractedAnswers,
   normalizeAnswerForQuestion,
+  parseKnownBrandAffiliationResponse,
   parseAdminControlText,
   toChronologicalGuestHistory,
 } = __testables;
@@ -86,6 +92,59 @@ test("builds displayed answers from runtime option labels", () => {
     getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug)[0].label,
     "Fast Next.js build"
   );
+});
+
+test("normalizes popup advice options from numbered chat option objects", () => {
+  const options = normalizeAdviceVisibleOptions([
+    { number: 1, text: "Shopify (recommended for online stores)" },
+    { number: 2, text: "WordPress (with WooCommerce)" },
+    { number: 4, text: "Not sure - need suggestion" },
+  ]);
+
+  assert.deepEqual(
+    options.map((option) => option.label),
+    [
+      "Shopify (recommended for online stores)",
+      "WordPress (with WooCommerce)",
+      "Not sure - need suggestion",
+    ]
+  );
+});
+
+test("maps AI recommendation text back to the exact visible option label", () => {
+  const visibleOptionObjects = normalizeAdviceVisibleOptions([
+    { number: 1, text: "Shopify (recommended for online stores)" },
+    { number: 2, text: "WordPress (with WooCommerce)" },
+  ]);
+
+  const payload = normalizeGuestAdvicePayload({
+    payload: {
+      notice: "Recommended: Shopify. It gives you fast performance and strong SEO.",
+      placeholder: "e.g. Shopify",
+      recommendedAnswer: "Shopify",
+    },
+    isRecommendationMode: true,
+    visibleOptionObjects,
+  });
+
+  assert.equal(payload.recommendedAnswer, "Shopify (recommended for online stores)");
+  assert.equal(payload.notice, "Recommended: Shopify. It gives you fast performance and strong SEO.");
+});
+
+test("keeps binary recommendation answers hidden from visible helper copy", () => {
+  const payload = normalizeGuestAdvicePayload({
+    payload: {
+      notice: "Recommended: Yes. This keeps the launch scope aligned with the stronger flow.",
+      placeholder: "e.g. Yes",
+      recommendedAnswer: "Yes",
+    },
+    isRecommendationMode: true,
+  });
+
+  assert.equal(payload.recommendedAnswer, "Yes");
+  assert.match(payload.notice, /^Recommended direction:/);
+  assert.doesNotMatch(payload.notice, /^Recommended:\s*(yes|no)\b/i);
+  assert.notEqual(payload.placeholder.toLowerCase(), "e.g. yes");
 });
 
 test("reorders displayed options from question-level admin priority directives", () => {
@@ -152,6 +211,60 @@ test("merges service and question admin controls with question overrides first",
     { source: "cross platform", target: "Android and iOS" },
   ]);
   assert.match(buildAdminControlSummaryText(controls), /prefer Android and iOS/i);
+});
+
+test("prefills the first personal-name question from a logged-in user name", () => {
+  const questions = [
+    {
+      slug: "company_name",
+      text: "What is your company name?",
+      type: "input",
+    },
+    {
+      slug: "client_name",
+      text: "What is your name?",
+      type: "input",
+    },
+    {
+      slug: "contact_name",
+      text: "What is the contact name for this project?",
+      type: "input",
+    },
+  ];
+
+  assert.deepEqual(
+    buildSessionStartPrefill({
+      questions,
+      prefillName: "  Ravindra    Kumar  ",
+    }),
+    {
+      answersBySlug: { client_name: "Ravindra Kumar" },
+      acknowledgedQuestion: questions[1],
+      acknowledgedAnswer: "Ravindra Kumar",
+    }
+  );
+});
+
+test("does not prefill when the service has no personal-name question", () => {
+  const questions = [
+    {
+      slug: "company_name",
+      text: "What is your company name?",
+      type: "input",
+    },
+  ];
+
+  assert.deepEqual(
+    buildSessionStartPrefill({
+      questions,
+      prefillName: "Ravindra",
+    }),
+    {
+      answersBySlug: {},
+      acknowledgedQuestion: null,
+      acknowledgedAnswer: "",
+    }
+  );
 });
 
 test("parses admin control directives from free-text fields", () => {
@@ -281,6 +394,124 @@ test("classifies personal-name and business-name questions separately", () => {
     getQuestionIdentityType({ slug: "company_name", text: "What is your company or brand name?" }),
     "business_name",
   );
+});
+
+test("asks for team affiliation when a known company name is used as the brand", () => {
+  const action = getBusinessNameValidationGuardAction({
+    question: { slug: "company_name", text: "What is your company or brand name?" },
+    userMessage: "google",
+  });
+
+  assert.equal(action.type, "ask_known_brand_affiliation");
+  assert.equal(action.brandName, "Google");
+});
+
+test("redirects Catalance brand answers instead of accepting them", () => {
+  const action = getBusinessNameValidationGuardAction({
+    question: { slug: "company_name", text: "What is your company or brand name?" },
+    userMessage: "Catalance",
+  });
+
+  assert.equal(action.type, "reserved_platform_brand");
+  assert.equal(action.brandName, "Catalance");
+});
+
+test("accepts a known company name when the user already shared their role", () => {
+  const action = getBusinessNameValidationGuardAction({
+    question: { slug: "company_name", text: "What is your company or brand name?" },
+    userMessage: "Spinny - I lead marketing there",
+  });
+
+  assert.equal(action.type, "accept_known_brand");
+  assert.equal(action.brandName, "Spinny");
+});
+
+test("keeps a known-brand follow-up pending until the user shares a role", () => {
+  const question = { slug: "company_name", text: "What is your company or brand name?" };
+  const pendingState = {
+    questionSlug: "company_name",
+    brandName: "Google",
+  };
+
+  assert.equal(
+    getBusinessNameValidationGuardAction({
+      question,
+      userMessage: "yes",
+      pendingState,
+    }).type,
+    "ask_pending_brand_role",
+  );
+
+  assert.equal(
+    getBusinessNameValidationGuardAction({
+      question,
+      userMessage: "I am the product manager there",
+      pendingState,
+    }).type,
+    "accept_pending_brand",
+  );
+
+  assert.equal(
+    getBusinessNameValidationGuardAction({
+      question,
+      userMessage: "no",
+      pendingState,
+    }).type,
+    "deny_pending_brand",
+  );
+});
+
+test("parses role-bearing brand affiliation replies as confirmed", () => {
+  assert.equal(parseKnownBrandAffiliationResponse("I am the founder"), "confirmed");
+  assert.equal(parseKnownBrandAffiliationResponse("yes"), "needs_more_detail");
+  assert.equal(parseKnownBrandAffiliationResponse("no"), "denied");
+});
+
+test("validation prompt no longer hard-rejects every famous brand name", () => {
+  const prompt = buildCurrentQuestionValidationPrompt({
+    serviceName: "Web Development",
+    servicePrompt: "",
+    currentQuestionText: "What is your company or brand name?",
+    currentQuestionOptions: [],
+    currentQuestionNumberedOptions: [],
+    currentQuestionCanonicalOptions: [],
+    knownContextByQuestion: {},
+    savedResponseContext: "",
+    currentQuestionContext: "",
+    lastAssistantMessage: "",
+    userMessageText: "Google",
+    attachmentContextText: "",
+    urlContextText: "",
+    attachmentInferredAnswer: "",
+    validationResponseRules: "Keep the response brief.",
+  });
+
+  assert.match(prompt, /Catalance.*project or brand name/i);
+  assert.match(prompt, /do NOT automatically reject/i);
+});
+
+test("builds an AI-writing prompt for business-name guard replies", () => {
+  const prompt = buildBusinessNameGuardPrompt({
+    serviceName: "Web Development",
+    servicePrompt: "",
+    scenario: "ask_known_brand_affiliation",
+    brandName: "Google",
+    userLastMessage: "google",
+    currentQuestion: { slug: "company_name", text: "What is your company or brand name?" },
+    answersByQuestionText: { "What is your name?": "Ravindra" },
+    answersBySlug: { client_name: "Ravindra" },
+    allQuestions: [
+      { slug: "client_name", text: "What is your name?" },
+      { slug: "company_name", text: "What is your company or brand name?" },
+    ],
+    runtimeOptionsByQuestionSlug: {},
+    lastAssistantMessage: "What is your company or brand name?",
+  });
+
+  assert.match(prompt, /writing one assistant message/i);
+  assert.match(prompt, /known brand affiliation check/i);
+  assert.match(prompt, /Are you part of the team\? What's your role there\?/i);
+  assert.match(prompt, /Return strict JSON only/i);
 });
 
 test("does not backfill a personal-name field from a business-name answer", () => {

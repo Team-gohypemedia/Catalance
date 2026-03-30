@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildProjectFreelancerMatchingSeed,
   buildProjectProposalJson,
   extractProjectProposalFields,
 } from "../../../../src/shared/lib/project-proposal-fields.js";
@@ -137,4 +138,51 @@ Budget: INR 10,000 per month
         && section.items.includes("Increase organic traffic"),
     ),
   );
+});
+
+test("buildProjectFreelancerMatchingSeed builds hidden freelancer matching data from proposal context", () => {
+  const proposalContent = `
+Client Name: Ravindra
+Business Name: cleclo
+Service Type: Web Development
+Project Overview: Build a conversion-focused Shopify storefront for a clothing brand with lead capture and product management.
+Primary Objectives:
+- Increase qualified online sales
+- Launch a polished branded store quickly
+Features/Deliverables Included:
+- Custom storefront design
+- Product catalog setup
+- Admin dashboard
+Launch Timeline: 6 weeks
+Budget: INR 80,000
+Website Type: E-commerce store
+Design Style: Premium and modern
+Website Build Type: Shopify
+Frontend Framework: Next.js
+Backend Technology: Node.js
+Database: PostgreSQL
+Hosting: Vercel
+Page Count: 8 pages
+  `;
+
+  const result = buildProjectFreelancerMatchingSeed({
+    title: "cleclo commerce launch",
+    proposalContent,
+    serviceKey: "web-development",
+  });
+
+  assert.equal(result.version, 1);
+  assert.equal(result.visibility, "internal");
+  assert.equal(result.project.serviceKey, "web-development");
+  assert.equal(result.project.serviceType, "Web Development");
+  assert.equal(result.project.businessName, "cleclo");
+  assert.equal(result.matchingQuery.category, "web-development");
+  assert.equal(result.matchingQuery.minBudget, 80000);
+  assert.equal(result.matchingQuery.maxBudget, 80000);
+  assert.ok(result.fitProfile.requiredSkills.includes("Next.js"));
+  assert.ok(result.fitProfile.requiredSkills.includes("Node.js"));
+  assert.ok(result.fitProfile.requiredSkills.includes("PostgreSQL"));
+  assert.ok(result.fitProfile.requiredSkills.includes("Vercel"));
+  assert.ok(result.fitProfile.deliverables.includes("Admin dashboard"));
+  assert.ok(result.screening.mustHaveQuestions.length > 0);
 });

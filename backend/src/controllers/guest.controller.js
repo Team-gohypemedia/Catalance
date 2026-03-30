@@ -22,6 +22,7 @@ const AGENT_IDENTITY_REGEX =
     /\b(what(?:'s| is)\s+your\s+name|your\s+name\??|who\s+are\s+you|are\s+you\s+(?:an?\s+)?(?:ai|bot|human))\b/i;
 const GRATITUDE_REGEX = /\b(thanks|thank you|thx|ty)\b/i;
 const ATTACHMENT_REFERENCE_REGEX = /\b(pdf|document|doc|file|attachment|uploaded|upload|proposal|brochure|resume|deck|sheet)\b/i;
+const URL_REFERENCE_REGEX = /\b(url|link|website|site|webpage|page|reference)\b/i;
 const EXTRACTION_CONFIDENCE_MIN = 0.7;
 const EXTRACTION_CONFIDENCE_UPDATE_MIN = 0.86;
 const FRIENDLY_BRIDGES = [
@@ -31,15 +32,21 @@ const FRIENDLY_BRIDGES = [
     "Nice, I noted that."
 ];
 const ATTACHMENT_TOKEN_REGEX = /^\[\[ATTACHMENT\]\]([^|]+)\|([^|]+)\|([^|]*)\|(\d+)$/;
+const URL_TOKEN_REGEX = /^\[\[URL\]\]([^|]+)\|([^|]*)$/;
 const MAX_ATTACHMENT_ANALYSIS_COUNT = 3;
 const MAX_SINGLE_ATTACHMENT_TEXT_CHARS = 4000;
 const MAX_ATTACHMENT_CONTEXT_CHARS = 9000;
+const MAX_URL_ANALYSIS_COUNT = 2;
+const MAX_URL_CONTEXT_CHARS = 5000;
 const MAX_VISION_IMAGE_BYTES = 4 * 1024 * 1024;
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const METADATA_USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 const IMAGE_FILE_REGEX = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
 const PDF_FILE_REGEX = /\.pdf$/i;
 const DOCX_FILE_REGEX = /\.docx$/i;
 const TEXT_FILE_REGEX = /\.(txt|md|csv|json|xml|yaml|yml)$/i;
+const URL_CANDIDATE_REGEX = /(?:https?:\/\/|www\.)[^\s<>"']+/gi;
 let pdfJsModulePromise = null;
 let mammothModulePromise = null;
 
@@ -110,15 +117,137 @@ const parseJsonObjectFromRaw = (raw = "") => {
     return null;
 };
 
+const trimLikelyUrlTrailingPunctuation = (value = "") => {
+    const attempts = [];
+    let current = String(value || "").trim();
+    if (!current) return attempts;
+    attempts.push(current);
+    while (/[),.;!?]$/.test(current)) {
+        current = current.slice(0, -1).trim();
+        if (!current) break;
+        attempts.push(current);
+    }
+    return attempts;
+};
+
+const isPrivateIpv4Hostname = (hostname = "") =>
+    /^(10|127)\.\d{1,3}\.\d{1,3}\.\d{1,3}$/i.test(hostname)
+    || /^192\.168\.\d{1,3}\.\d{1,3}$/i.test(hostname)
+    || /^169\.254\.\d{1,3}\.\d{1,3}$/i.test(hostname)
+    || /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/i.test(hostname);
+
+const isBlockedSharedUrlHost = (hostname = "") => {
+    const normalizedHostname = String(hostname || "").trim().toLowerCase();
+    if (!normalizedHostname) return true;
+    if (env.NODE_ENV !== "production") return false;
+    return normalizedHostname === "localhost"
+        || normalizedHostname === "0.0.0.0"
+        || normalizedHostname === "::1"
+        || normalizedHostname.endsWith(".local")
+        || isPrivateIpv4Hostname(normalizedHostname);
+};
+
+const normalizeSharedUrl = (value = "") => {
+    const attempts = trimLikelyUrlTrailingPunctuation(value);
+    for (const source of attempts) {
+        const withProtocol = /^https?:\/\//i.test(source) ? source : `https://${source}`;
+
+        try {
+            const parsed = new URL(withProtocol);
+            if (!["http:", "https:"].includes(parsed.protocol)) continue;
+            if (isBlockedSharedUrlHost(parsed.hostname)) continue;
+            return parsed.toString();
+        } catch {
+            // Try the next normalized candidate.
+        }
+    }
+    return "";
+};
+
+const buildSharedUrlLabel = (value = "") => {
+    try {
+        const parsed = new URL(value);
+        const hostname = parsed.hostname.replace(/^www\./i, "");
+        const path = parsed.pathname && parsed.pathname !== "/"
+            ? parsed.pathname.replace(/\/$/, "")
+            : "";
+        return `${hostname}${path}` || hostname || value;
+    } catch {
+        return String(value || "").trim() || "Shared URL";
+    }
+};
+
+const parseUrlToken = (line = "") => {
+    const match = String(line || "").trim().match(URL_TOKEN_REGEX);
+    if (!match) return null;
+
+    const normalizedUrl = normalizeSharedUrl(safeDecodeURIComponent(match[1] || ""));
+    if (!normalizedUrl) return null;
+
+    const providedLabel = normalizeAttachmentDisplayText(safeDecodeURIComponent(match[2] || ""));
+    return {
+        url: normalizedUrl,
+        label: providedLabel || buildSharedUrlLabel(normalizedUrl),
+    };
+};
+
+const dedupeSharedUrls = (entries = []) => {
+    const seen = new Set();
+    const rows = [];
+
+    for (const entry of Array.isArray(entries) ? entries : []) {
+        const normalizedUrl = normalizeSharedUrl(entry?.url || "");
+        if (!normalizedUrl || seen.has(normalizedUrl)) continue;
+        seen.add(normalizedUrl);
+        rows.push({
+            url: normalizedUrl,
+            label: normalizeAttachmentDisplayText(entry?.label || "") || buildSharedUrlLabel(normalizedUrl),
+        });
+    }
+
+    return rows;
+};
+
+const extractUrlsFromPlainText = (messageText = "") => {
+    const extracted = [];
+    const strippedText = String(messageText || "")
+        .replace(/\r/g, "")
+        .split("\n")
+        .map((line) => line.replace(URL_CANDIDATE_REGEX, (match) => {
+            const normalizedUrl = normalizeSharedUrl(match);
+            if (!normalizedUrl) return match;
+            extracted.push({
+                url: normalizedUrl,
+                label: buildSharedUrlLabel(normalizedUrl),
+            });
+            return " ";
+        }))
+        .map((line) => line.replace(/\s{2,}/g, " ").trim())
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+    return {
+        plainText: strippedText,
+        urls: dedupeSharedUrls(extracted),
+    };
+};
+
 const parseAttachmentTokensFromMessage = (messageText = "") => {
     const lines = String(messageText || "").replace(/\r/g, "").split("\n");
     const attachments = [];
+    const urls = [];
     const plainLines = [];
 
     for (const rawLine of lines) {
         const line = String(rawLine || "").trim();
         const match = line.match(ATTACHMENT_TOKEN_REGEX);
         if (!match) {
+            const parsedUrl = parseUrlToken(line);
+            if (parsedUrl) {
+                urls.push(parsedUrl);
+                continue;
+            }
             plainLines.push(rawLine);
             continue;
         }
@@ -137,9 +266,12 @@ const parseAttachmentTokensFromMessage = (messageText = "") => {
         });
     }
 
+    const extractedUrls = extractUrlsFromPlainText(plainLines.join("\n"));
+
     return {
-        plainText: plainLines.join("\n").trim(),
+        plainText: extractedUrls.plainText,
         attachments,
+        urls: dedupeSharedUrls([...urls, ...extractedUrls.urls]),
     };
 };
 
@@ -152,6 +284,21 @@ const getMostRecentAttachmentsFromMessages = (messages = []) => {
         const parsed = parseAttachmentTokensFromMessage(String(message?.content || ""));
         if (parsed.attachments.length > 0) {
             return parsed.attachments;
+        }
+    }
+
+    return [];
+};
+
+const getMostRecentUrlsFromMessages = (messages = []) => {
+    if (!Array.isArray(messages) || messages.length === 0) return [];
+
+    for (let idx = messages.length - 1; idx >= 0; idx -= 1) {
+        const message = messages[idx];
+        if (String(message?.role || "").toLowerCase() !== "user") continue;
+        const parsed = parseAttachmentTokensFromMessage(String(message?.content || ""));
+        if (parsed.urls.length > 0) {
+            return parsed.urls;
         }
     }
 
@@ -184,6 +331,157 @@ const clipAttachmentText = (text = "", limit = MAX_SINGLE_ATTACHMENT_TEXT_CHARS)
         .replace(/\n{3,}/g, "\n\n")
         .trim()
         .slice(0, Math.max(0, limit));
+
+const decodeBasicHtmlEntities = (value = "") =>
+    String(value || "")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;|&apos;/gi, "'")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">");
+
+const extractMetaContentFromHtml = (html = "", key = "") => {
+    const escapedKey = String(key || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!escapedKey) return "";
+    const regex = new RegExp(
+        `<meta[^>]+(?:property|name)=["']${escapedKey}["'][^>]+content=["']([^"']+)["']|` +
+        `<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escapedKey}["']`,
+        "i"
+    );
+    const match = String(html || "").match(regex);
+    return decodeBasicHtmlEntities(match ? String(match[1] || match[2] || "").trim() : "");
+};
+
+const extractHeadingFromHtml = (html = "", tag = "h1") => {
+    const match = String(html || "").match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+    if (!match) return "";
+    return clipAttachmentText(
+        decodeBasicHtmlEntities(
+            String(match[1] || "")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/\s+/g, " ")
+                .trim()
+        ),
+        220
+    );
+};
+
+const extractReadableTextFromHtml = (html = "") =>
+    clipAttachmentText(
+        decodeBasicHtmlEntities(
+            String(html || "")
+                .replace(/<script[\s\S]*?<\/script>/gi, " ")
+                .replace(/<style[\s\S]*?<\/style>/gi, " ")
+                .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+                .replace(/<!--[\s\S]*?-->/g, " ")
+                .replace(/<br\s*\/?>/gi, "\n")
+                .replace(/<\/(p|div|section|article|main|header|footer|li|h1|h2|h3)>/gi, "\n")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/[ \t]+\n/g, "\n")
+                .replace(/\n{3,}/g, "\n\n")
+                .replace(/[ \t]{2,}/g, " ")
+                .trim()
+        ),
+        1600
+    );
+
+const extractUrlContext = async ({ urlEntry = {}, index = 0 }) => {
+    const normalizedUrl = normalizeSharedUrl(urlEntry?.url || "");
+    const descriptorLabel = normalizeAttachmentDisplayText(urlEntry?.label || "") || buildSharedUrlLabel(normalizedUrl || urlEntry?.url || "");
+    const descriptor = `[Shared URL ${index + 1}] ${descriptorLabel}`;
+
+    if (!normalizedUrl) {
+        return {
+            descriptor,
+            extractedContext: "URL shared, but it is not a supported public HTTP/HTTPS link.",
+            summary: `I received the URL for ${descriptorLabel}, but I could not open it as a public website.`,
+        };
+    }
+
+    try {
+        const response = await fetch(normalizedUrl, {
+            headers: {
+                "User-Agent": METADATA_USER_AGENT,
+                Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5",
+            },
+            signal: AbortSignal.timeout(15000),
+        });
+
+        const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+        const body = await response.text().catch(() => "");
+
+        if (!body.trim()) {
+            return {
+                descriptor,
+                extractedContext: "URL shared, but the page returned no readable content.",
+                summary: `I opened ${descriptorLabel}, but it did not return readable content.`,
+            };
+        }
+
+        const title = extractMetaContentFromHtml(body, "og:title")
+            || extractMetaContentFromHtml(body, "twitter:title")
+            || decodeBasicHtmlEntities((body.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || "").trim());
+        const description = extractMetaContentFromHtml(body, "og:description")
+            || extractMetaContentFromHtml(body, "twitter:description")
+            || extractMetaContentFromHtml(body, "description");
+        const heading = extractHeadingFromHtml(body, "h1");
+        const visibleText = extractReadableTextFromHtml(body);
+
+        const extractedContext = [
+            `URL: ${normalizedUrl}`,
+            title ? `Page title: ${title}` : "",
+            description ? `Meta description: ${description}` : "",
+            heading ? `Main heading: ${heading}` : "",
+            visibleText ? `Visible text excerpt:\n${visibleText}` : "",
+            !/html|text\//i.test(contentType) ? `Detected content type: ${contentType || "unknown"}` : "",
+        ]
+            .filter(Boolean)
+            .join("\n");
+
+        const summaryText = description || heading || visibleText || title;
+
+        return {
+            descriptor,
+            extractedContext: extractedContext || "URL shared, but only minimal metadata was available.",
+            summary: summaryText
+                ? `I checked ${descriptorLabel}. ${clipAttachmentText(summaryText, 220)}`
+                : `I checked ${descriptorLabel}, but the site exposed only limited metadata.`,
+        };
+    } catch (error) {
+        return {
+            descriptor,
+            extractedContext: `URL shared, but the page could not be read automatically. Reason: ${error?.message || "Unknown error"}`,
+            summary: `I received ${descriptorLabel}, but I could not read the page automatically yet.`,
+        };
+    }
+};
+
+const buildUrlContextBlock = async ({ urls = [] }) => {
+    if (!Array.isArray(urls) || urls.length === 0) {
+        return { contextText: "", insightNote: "" };
+    }
+
+    const limitedUrls = urls.slice(0, MAX_URL_ANALYSIS_COUNT);
+    const insights = [];
+    for (let index = 0; index < limitedUrls.length; index += 1) {
+        insights.push(await extractUrlContext({ urlEntry: limitedUrls[index], index }));
+    }
+
+    return {
+        contextText: clipAttachmentText(
+            insights
+                .map((insight) => `${insight.descriptor}\n${insight.extractedContext}`.trim())
+                .join("\n\n"),
+            MAX_URL_CONTEXT_CHARS
+        ),
+        insightNote: insights
+            .map((insight) => String(insight?.summary || "").trim())
+            .filter(Boolean)
+            .slice(0, 1)
+            .join(" "),
+    };
+};
 
 const isImageAttachment = (attachment = {}) =>
     String(attachment?.type || "").startsWith("image/")
@@ -1448,6 +1746,151 @@ const getComparableOptionAliases = (option = {}) =>
             .filter(Boolean)
     );
 
+const HELPER_OPTION_TRIGGER_REGEX = /\b(not sure|other|suggest|recommend|advice|help)\b/i;
+const BINARY_RECOMMENDATION_ANSWER_REGEX = /^(yes|no)$/i;
+
+const normalizeAdviceVisibleOptions = (currentOptions = [], currentQuestion = null) => {
+    const requestOptions = (Array.isArray(currentOptions) ? currentOptions : [])
+        .map((optionEntry) => normalizeOptionObject(optionEntry, {
+            fallbackLabel: optionEntry && typeof optionEntry === "object" ? optionEntry.text || "" : "",
+            fallbackValue: optionEntry && typeof optionEntry === "object" ? optionEntry.text || "" : "",
+        }))
+        .filter(Boolean);
+
+    if (requestOptions.length > 0) {
+        return requestOptions;
+    }
+
+    return currentQuestion
+        ? getDisplayedQuestionOptions(currentQuestion, {})
+        : [];
+};
+
+const getPreferredAdviceOptionLabel = (visibleOptionObjects = [], adviceAdminControls = {}) => {
+    const normalizedOptions = Array.isArray(visibleOptionObjects) ? visibleOptionObjects : [];
+    if (normalizedOptions.length === 0) return "";
+
+    const inlineRecommendedOption = normalizedOptions.find((option) =>
+        /\brecommend(?:ed)?\b/i.test(String(option?.label || option?.value || ""))
+    );
+    if (inlineRecommendedOption) {
+        return String(
+            inlineRecommendedOption?.label
+            || inlineRecommendedOption?.value
+            || inlineRecommendedOption?.canonicalLabel
+            || inlineRecommendedOption?.canonicalValue
+            || ""
+        ).trim();
+    }
+
+    const adminPreferredIndex = findOptionIndexByAdminToken(
+        normalizedOptions,
+        adviceAdminControls.recommendedOption || adviceAdminControls.prioritizeOptions?.[0] || ""
+    );
+    if (adminPreferredIndex >= 0) {
+        return String(
+            normalizedOptions[adminPreferredIndex]?.label
+            || normalizedOptions[adminPreferredIndex]?.value
+            || normalizedOptions[adminPreferredIndex]?.canonicalLabel
+            || normalizedOptions[adminPreferredIndex]?.canonicalValue
+            || ""
+        ).trim();
+    }
+
+    const firstConcreteOption = normalizedOptions.find((option) =>
+        !HELPER_OPTION_TRIGGER_REGEX.test(String(option?.label || option?.value || ""))
+    );
+
+    return String(
+        firstConcreteOption?.label
+        || firstConcreteOption?.value
+        || firstConcreteOption?.canonicalLabel
+        || firstConcreteOption?.canonicalValue
+        || ""
+    ).trim();
+};
+
+const resolveAdviceRecommendedAnswer = ({
+    payload = {},
+    visibleOptionObjects = [],
+    fallbackRecommendedAnswer = "",
+}) => {
+    const requestedAnswer = String(payload?.recommendedAnswer || "").trim();
+    const noticeText = String(payload?.notice || "").trim();
+    const normalizedVisibleOptions = Array.isArray(visibleOptionObjects) ? visibleOptionObjects : [];
+
+    if (normalizedVisibleOptions.length > 0) {
+        const optionMatch =
+            findMatchingOptionsFromText(requestedAnswer, normalizedVisibleOptions)[0]
+            || findMatchingOptionsFromText(noticeText, normalizedVisibleOptions)[0]
+            || findMatchingOptionsFromText(fallbackRecommendedAnswer, normalizedVisibleOptions)[0];
+
+        if (optionMatch) {
+            return String(
+                optionMatch?.label
+                || optionMatch?.value
+                || optionMatch?.canonicalLabel
+                || optionMatch?.canonicalValue
+                || ""
+            ).trim();
+        }
+    }
+
+    return requestedAnswer || String(fallbackRecommendedAnswer || "").trim();
+};
+
+const normalizeGuestAdvicePayload = ({
+    payload = {},
+    isRecommendationMode = false,
+    visibleOptionObjects = [],
+    fallbackRecommendedAnswer = "",
+}) => {
+    const rawNotice = String(payload?.notice || "").trim();
+    const rawPlaceholder = String(payload?.placeholder || "").trim();
+
+    if (!isRecommendationMode) {
+        return {
+            notice: rawNotice,
+            placeholder: rawPlaceholder,
+            recommendedAnswer: "",
+        };
+    }
+
+    const recommendedAnswer = resolveAdviceRecommendedAnswer({
+        payload,
+        visibleOptionObjects,
+        fallbackRecommendedAnswer,
+    });
+    const notice = rawNotice || (recommendedAnswer ? `Recommended: ${recommendedAnswer}.` : "");
+    const placeholder = rawPlaceholder || (recommendedAnswer ? `e.g. ${recommendedAnswer}` : "e.g. go with the recommended direction");
+
+    if (!BINARY_RECOMMENDATION_ANSWER_REGEX.test(recommendedAnswer)) {
+        return {
+            notice,
+            placeholder,
+            recommendedAnswer,
+        };
+    }
+
+    const compactReason = notice
+        .replace(/^recommended:\s*/i, "")
+        .replace(/^(yes|no)\b[:.!-\s]*/i, "")
+        .trim();
+    const positiveBinary = normalizeTextToken(recommendedAnswer) === "yes";
+
+    return {
+        notice: `Recommended direction: ${compactReason || (positiveBinary
+            ? "This fits the stronger path for the project right now."
+            : "This keeps the first version focused on the core project flow.")}`,
+        placeholder: rawPlaceholder && !/^e\.g\.\s*(yes|no)\s*$/i.test(rawPlaceholder)
+            ? rawPlaceholder
+            : (positiveBinary
+                ? "e.g. go ahead with the recommended direction"
+                : "e.g. skip this in the first version"),
+        recommendedAnswer,
+    };
+};
+
 const comparablePhraseContainsWholeWords = (source = "", target = "") => {
     const sourceWords = normalizeOptionComparableText(source).split(/\s+/).filter(Boolean);
     const targetWords = normalizeOptionComparableText(target).split(/\s+/).filter(Boolean);
@@ -2139,6 +2582,238 @@ const getQuestionIdentityType = (question = {}) => {
     }
 
     return "other";
+};
+
+const RESERVED_PLATFORM_BRAND_NAMES = ["Catalance"];
+const WELL_KNOWN_COMPANY_BRAND_NAMES = [
+    "Google",
+    "Apple",
+    "Microsoft",
+    "Amazon",
+    "Meta",
+    "Facebook",
+    "Instagram",
+    "WhatsApp",
+    "Netflix",
+    "Spotify",
+    "Uber",
+    "Airbnb",
+    "Tesla",
+    "NVIDIA",
+    "OpenAI",
+    "Spinny",
+    "Tata",
+    "Reliance",
+    "Infosys",
+    "Wipro",
+    "Zoho",
+    "Flipkart",
+    "Myntra",
+    "Zomato",
+    "Swiggy",
+    "Paytm",
+    "PhonePe",
+    "Mahindra",
+    "Adani",
+];
+const BUSINESS_ENTITY_SUFFIX_REGEX = /\b(incorporated|inc|llc|ltd|limited|private|pvt|corp|corporation|company|co|plc)\b/g;
+const BRAND_AFFILIATION_DENIAL_REGEX = /^(?:no|nope|nah|not really|i am not|i'm not|im not|we are not|we're not|not part of the team|not with them|not affiliated|just inspired by|similar to)\b/;
+const BRAND_ROLE_KEYWORD_REGEX = /\b(founder|co founder|cofounder|owner|ceo|cto|cfo|coo|cmo|manager|lead|head|director|developer|designer|engineer|marketer|marketing|sales|operations|operator|product|consultant|strategist|producer|analyst|employee|intern|partner|recruiter)\b/;
+const BRAND_ROLE_ACTION_REGEX = /\b(i|we)\s+(run|lead|manage|handle|own|founded|founded it|co founded|cofounded|operate)\b/;
+const BRAND_AFFILIATION_ONLY_REGEX = /\b(i am|i'm|im|we are|we're|part of the team|with the team|from the team|on the team|i work there|we work there|i work at|we work at|i work for|we work for|i am with|i'm with|we are with|we're with)\b/;
+const BRAND_AFFILIATION_ACK_REGEX = /^(?:yes|yeah|yep|yup|sure|okay|ok|correct|right)\b/;
+
+const normalizeBrandCandidate = (value = "") =>
+    String(value || "")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^\w\s]/g, " ")
+        .replace(BUSINESS_ENTITY_SUFFIX_REGEX, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+const BRAND_MATCHERS = WELL_KNOWN_COMPANY_BRAND_NAMES
+    .map((canonicalName) => ({
+        canonicalName,
+        key: normalizeBrandCandidate(canonicalName),
+    }))
+    .sort((left, right) => right.key.length - left.key.length);
+
+const RESERVED_BRAND_MATCHERS = RESERVED_PLATFORM_BRAND_NAMES
+    .map((canonicalName) => ({
+        canonicalName,
+        key: normalizeBrandCandidate(canonicalName),
+    }))
+    .sort((left, right) => right.key.length - left.key.length);
+
+const containsWholeBrandCandidate = (normalizedMessage = "", brandKey = "") =>
+    Boolean(
+        normalizedMessage
+        && brandKey
+        && (
+            normalizedMessage === brandKey
+            || normalizedMessage.startsWith(`${brandKey} `)
+            || normalizedMessage.endsWith(` ${brandKey}`)
+            || normalizedMessage.includes(` ${brandKey} `)
+        )
+    );
+
+const findReservedPlatformBrandMatch = (value = "") => {
+    const normalizedMessage = normalizeBrandCandidate(value);
+    if (!normalizedMessage) return null;
+    return RESERVED_BRAND_MATCHERS.find(({ key }) => containsWholeBrandCandidate(normalizedMessage, key)) || null;
+};
+
+const findKnownEstablishedBrandMatch = (value = "") => {
+    const normalizedMessage = normalizeBrandCandidate(value);
+    if (!normalizedMessage) return null;
+    return BRAND_MATCHERS.find(({ key }) => containsWholeBrandCandidate(normalizedMessage, key)) || null;
+};
+
+const parseKnownBrandAffiliationResponse = (value = "") => {
+    const normalized = normalizeTextToken(value);
+    if (!normalized) return "needs_more_detail";
+    if (BRAND_AFFILIATION_DENIAL_REGEX.test(normalized)) return "denied";
+    if (
+        BRAND_ROLE_KEYWORD_REGEX.test(normalized)
+        || BRAND_ROLE_ACTION_REGEX.test(normalized)
+        || /\bmy role is\b/.test(normalized)
+    ) {
+        return "confirmed";
+    }
+    if (
+        BRAND_AFFILIATION_ONLY_REGEX.test(normalized)
+        || BRAND_AFFILIATION_ACK_REGEX.test(normalized)
+    ) {
+        return "needs_more_detail";
+    }
+    return "needs_more_detail";
+};
+
+const looksLikeStandaloneBusinessName = (value = "") => {
+    const trimmed = String(value || "").trim();
+    const normalized = normalizeTextToken(trimmed);
+    if (!trimmed || !normalized) return false;
+    if (trimmed.length > 80 || normalized.split(" ").length > 6) return false;
+    if (/[?]/.test(trimmed)) return false;
+    if (
+        BRAND_AFFILIATION_DENIAL_REGEX.test(normalized)
+        || BRAND_AFFILIATION_ONLY_REGEX.test(normalized)
+        || BRAND_AFFILIATION_ACK_REGEX.test(normalized)
+        || BRAND_ROLE_KEYWORD_REGEX.test(normalized)
+        || BRAND_ROLE_ACTION_REGEX.test(normalized)
+    ) {
+        return false;
+    }
+    return /[a-z]/i.test(trimmed);
+};
+
+const getBusinessNameValidationGuardAction = ({
+    question = {},
+    userMessage = "",
+    pendingState = null,
+} = {}) => {
+    if (getQuestionIdentityType(question) !== "business_name") {
+        return { type: "none", brandName: "" };
+    }
+
+    const trimmedMessage = String(userMessage || "").trim();
+    const pendingBrandName = String(pendingState?.brandName || "").trim();
+    const pendingQuestionSlug = String(pendingState?.questionSlug || "").trim();
+
+    if (pendingBrandName && pendingQuestionSlug && pendingQuestionSlug === String(question?.slug || "").trim()) {
+        if (looksLikeStandaloneBusinessName(trimmedMessage)) {
+            return {
+                type: "restart_with_new_brand_name",
+                brandName: pendingBrandName,
+                replacementBrandName: trimmedMessage,
+            };
+        }
+
+        const affiliationStatus = parseKnownBrandAffiliationResponse(trimmedMessage);
+        if (affiliationStatus === "confirmed") {
+            return { type: "accept_pending_brand", brandName: pendingBrandName };
+        }
+        if (affiliationStatus === "denied") {
+            return { type: "deny_pending_brand", brandName: pendingBrandName };
+        }
+        return { type: "ask_pending_brand_role", brandName: pendingBrandName };
+    }
+
+    const reservedBrandMatch = findReservedPlatformBrandMatch(trimmedMessage);
+    if (reservedBrandMatch) {
+        return {
+            type: "reserved_platform_brand",
+            brandName: reservedBrandMatch.canonicalName,
+        };
+    }
+
+    const knownBrandMatch = findKnownEstablishedBrandMatch(trimmedMessage);
+    if (!knownBrandMatch) {
+        return { type: "none", brandName: "" };
+    }
+
+    if (parseKnownBrandAffiliationResponse(trimmedMessage) === "confirmed") {
+        return {
+            type: "accept_known_brand",
+            brandName: knownBrandMatch.canonicalName,
+        };
+    }
+
+    return {
+        type: "ask_known_brand_affiliation",
+        brandName: knownBrandMatch.canonicalName,
+    };
+};
+
+const normalizeSessionPrefillName = (value = "") =>
+    String(value || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120)
+        .trim();
+
+const buildSessionStartPrefill = ({
+    questions = [],
+    prefillName = ""
+} = {}) => {
+    const normalizedName = normalizeSessionPrefillName(prefillName);
+    if (!normalizedName || !Array.isArray(questions) || questions.length === 0) {
+        return {
+            answersBySlug: {},
+            acknowledgedQuestion: null,
+            acknowledgedAnswer: ""
+        };
+    }
+
+    const targetQuestion = questions.find(
+        (question) => question?.slug && getQuestionIdentityType(question) === "person_name"
+    );
+
+    if (!targetQuestion?.slug) {
+        return {
+            answersBySlug: {},
+            acknowledgedQuestion: null,
+            acknowledgedAnswer: ""
+        };
+    }
+
+    return {
+        answersBySlug: { [targetQuestion.slug]: normalizedName },
+        acknowledgedQuestion: targetQuestion,
+        acknowledgedAnswer: normalizedName
+    };
+};
+
+const buildSessionStartPrefillBridge = ({
+    acknowledgedQuestion = null,
+    acknowledgedAnswer = ""
+} = {}) => {
+    if (getQuestionIdentityType(acknowledgedQuestion) !== "person_name") return "";
+    if (!hasAnswerValue(acknowledgedAnswer)) return "";
+
+    const firstName = String(acknowledgedAnswer).trim().split(/\s+/)[0];
+    return firstName ? `Nice to meet you, ${firstName}.` : "";
 };
 
 const matchesLogicRule = (answerValue, rule = {}) => {
@@ -3078,6 +3753,207 @@ ${outputFormatBlock}
     }
 };
 
+const getBusinessNameGuardScenarioConfig = ({ scenario = "", brandName = "" } = {}) => {
+    const cleanBrandName = String(brandName || "").trim();
+
+    switch (scenario) {
+        case "reserved_platform_brand":
+            return {
+                scenarioLabel: "reserved platform brand redirect",
+                requiredFollowupQuestion: "Could you share your project or brand name?",
+                scenarioInstructions: cleanBrandName
+                    ? `${cleanBrandName} is already in use on this platform, so redirect the user to share their own project or brand name.`
+                    : "The submitted brand name is already in use on this platform, so redirect the user to share their own project or brand name.",
+                fallbackMessage: buildFriendlyMessage(
+                    "Could you share your project or brand name?",
+                    cleanBrandName
+                        ? `${cleanBrandName} is already in use here.`
+                        : "That name is already in use here."
+                ),
+            };
+        case "ask_known_brand_affiliation":
+            return {
+                scenarioLabel: "known brand affiliation check",
+                requiredFollowupQuestion: "Are you part of the team? What's your role there?",
+                scenarioInstructions: cleanBrandName
+                    ? `The user mentioned the known company ${cleanBrandName}. Respond naturally and verify whether they are part of that team, then ask their role there.`
+                    : "The user mentioned a known company name. Respond naturally and verify whether they are part of that team, then ask their role there.",
+                fallbackMessage: buildFriendlyMessage(
+                    "Are you part of the team? What's your role there?",
+                    cleanBrandName
+                        ? `${cleanBrandName} is a well-known company.`
+                        : "That sounds like a well-known company."
+                ),
+            };
+        case "ask_pending_brand_role":
+            return {
+                scenarioLabel: "known brand role clarification",
+                requiredFollowupQuestion: "What's your role there?",
+                scenarioInstructions: cleanBrandName
+                    ? `The user already confirmed they may be connected to ${cleanBrandName}, but their role is still unclear. Ask specifically for their role there.`
+                    : "The user may be connected to a known company, but their role is still unclear. Ask specifically for their role there.",
+                fallbackMessage: buildFriendlyMessage(
+                    "What's your role there?",
+                    "Got it."
+                ),
+            };
+        case "deny_pending_brand":
+            return {
+                scenarioLabel: "known brand ownership denied redirect",
+                requiredFollowupQuestion: "Could you share your project or brand name?",
+                scenarioInstructions: cleanBrandName
+                    ? `The user is not part of ${cleanBrandName}, so redirect them to share the project or brand name they actually want to use.`
+                    : "The user is not part of the mentioned company, so redirect them to share the project or brand name they actually want to use.",
+                fallbackMessage: buildFriendlyMessage(
+                    "Could you share your project or brand name?",
+                    "Understood."
+                ),
+            };
+        default:
+            return {
+                scenarioLabel: "brand name clarification",
+                requiredFollowupQuestion: "Could you share your project or brand name?",
+                scenarioInstructions: "Ask a short follow-up that keeps the intake moving.",
+                fallbackMessage: "Could you share your project or brand name?",
+            };
+    }
+};
+
+const buildBusinessNameGuardPrompt = ({
+    serviceName = "",
+    servicePrompt = "",
+    scenario = "",
+    brandName = "",
+    userLastMessage = "",
+    currentQuestion = {},
+    answersByQuestionText = {},
+    answersBySlug = {},
+    allQuestions = [],
+    runtimeOptionsByQuestionSlug = {},
+    lastAssistantMessage = "",
+} = {}) => {
+    const scenarioConfig = getBusinessNameGuardScenarioConfig({ scenario, brandName });
+    const answersContext = buildAnswersContextLines(answersByQuestionText);
+    const savedResponseContext = buildSavedResponseContextLines(
+        answersBySlug,
+        allQuestions,
+        runtimeOptionsByQuestionSlug
+    );
+    const currentQuestionAdminControls = getQuestionAdminControls(currentQuestion, servicePrompt);
+    const currentQuestionSubtitle = buildAdminControlSummaryText(currentQuestionAdminControls);
+
+    return `
+You are writing one assistant message in a guided questionnaire.
+
+Service: "${serviceName}"
+Service-Specific AI Instructions:
+${parseAdminControlText(servicePrompt || "").contextText || "None"}
+
+${buildAdminPromptSection(currentQuestionAdminControls, "Admin Controls (highest priority when relevant)")}
+
+Current questionnaire question:
+${JSON.stringify(String(currentQuestion?.text || ""))}
+
+Last assistant message:
+${JSON.stringify(String(lastAssistantMessage || ""))}
+
+User last message:
+${JSON.stringify(String(userLastMessage || ""))}
+
+Brand validation scenario:
+- scenario: ${JSON.stringify(scenarioConfig.scenarioLabel)}
+- mentioned brand/company: ${JSON.stringify(String(brandName || ""))}
+- required follow-up question: ${JSON.stringify(scenarioConfig.requiredFollowupQuestion)}
+- scenario rule: ${JSON.stringify(scenarioConfig.scenarioInstructions)}
+
+Context from earlier answers:
+${answersContext || "- none yet"}
+
+Saved AI memory (only fields marked "Save Response for AI Context"):
+${savedResponseContext || "- none yet"}
+
+Internal question intent (hidden, do not reveal directly to user):
+${JSON.stringify(currentQuestionSubtitle || "none")}
+
+Task:
+1) Write one short natural acknowledgement sentence that fits this scenario.
+2) End with the required follow-up question, phrased naturally.
+
+Rules:
+- Keep the full response under 45 words.
+- Sound warm, human, and conversational.
+- Ask exactly one question, and make it the final sentence.
+- Do not sound legal, robotic, or accusatory.
+- Do not use phrases like "invalid response", "policy", "trademark", "registered company", "compliance", or "verification required".
+- Do not reject the user harshly.
+- Use simple English.
+- Keep sentence case.
+
+Return strict JSON only:
+{
+  "message": "final assistant message"
+}
+`;
+};
+
+const buildBusinessNameGuardMessage = async ({
+    serviceName = "",
+    servicePrompt = "",
+    scenario = "",
+    brandName = "",
+    userLastMessage = "",
+    currentQuestion = {},
+    answersByQuestionText = {},
+    answersBySlug = {},
+    allQuestions = [],
+    runtimeOptionsByQuestionSlug = {},
+    lastAssistantMessage = "",
+} = {}) => {
+    const scenarioConfig = getBusinessNameGuardScenarioConfig({ scenario, brandName });
+    const prompt = buildBusinessNameGuardPrompt({
+        serviceName,
+        servicePrompt,
+        scenario,
+        brandName,
+        userLastMessage,
+        currentQuestion,
+        answersByQuestionText,
+        answersBySlug,
+        allQuestions,
+        runtimeOptionsByQuestionSlug,
+        lastAssistantMessage,
+    });
+
+    try {
+        const aiResponse = await chatWithAI(
+            [{ role: "user", content: prompt }],
+            [{ role: "system", content: "You are a JSON-only writing assistant. Return strict JSON only." }],
+            serviceName || "system_question_writer"
+        );
+
+        if (!aiResponse?.success) {
+            return scenarioConfig.fallbackMessage;
+        }
+
+        const parsedMessage = stripNameNotedRecap(parseMessageFieldFromJson(aiResponse.message || ""));
+        if (!parsedMessage) {
+            return scenarioConfig.fallbackMessage;
+        }
+
+        if (!parsedMessage.includes("?")) {
+            return buildFriendlyMessage(
+                scenarioConfig.requiredFollowupQuestion,
+                parsedMessage
+            );
+        }
+
+        return parsedMessage;
+    } catch (error) {
+        console.error("[buildBusinessNameGuardMessage] Fatal error:", error);
+        return scenarioConfig.fallbackMessage;
+    }
+};
+
 const checkMeaningfulChangeWithAI = async ({ questionText, oldAnswer, newAnswer }) => {
     const prompt = `
 You are an AI assistant helping a user build a project. The user had previously answered this question:
@@ -3785,6 +4661,7 @@ const buildCurrentQuestionValidationPrompt = ({
     currentQuestionSubtitle = "",
     userMessageText = "",
     attachmentContextText = "",
+    urlContextText = "",
     attachmentInferredAnswer = "",
     lastAssistantMessage = "",
     validationResponseRules = "",
@@ -3813,6 +4690,7 @@ const buildCurrentQuestionValidationPrompt = ({
             Last Assistant Message Shown To User: ${JSON.stringify(lastAssistantMessage || "None")}
             User's Answer: "${userMessageText}"
             Attachment Context: ${attachmentContextText ? JSON.stringify(attachmentContextText) : '"None"'}
+            URL Context: ${urlContextText ? JSON.stringify(urlContextText) : '"None"'}
             Attachment-Inferred Answer: "${attachmentInferredAnswer || ""}"
             
             Task:
@@ -3820,14 +4698,17 @@ const buildCurrentQuestionValidationPrompt = ({
             - If it's a greeting (hi, hello) but the question expects details -> INVALID.
             - If it's irrelevant/gibberish -> INVALID.
             - If the user is asking an informational side-question (e.g., "what is Flutter?", "which is best for me?") instead of directly answering the current question -> INFO_REQUEST.
-            - If direct text is empty but attachment context clearly answers the current question, treat as VALID.
+            - If direct text is empty but attachment context or URL context clearly answers the current question, treat as VALID.
             - If the user replies with a numbered choice such as "1", "2", "option 3", or "go with 2", interpret it using the 1-based order from "Current Question Options" / "Current Question Numbered Options".
             - If the user's message contains a number as part of a descriptive answer (for example "1 month", "2-4 weeks", "10 pages"), do NOT assume it is a menu selection unless the wording clearly shows they are choosing by option number.
             - If the Current Question has options, and the Last Assistant Message clearly recommends exactly one current option, and the user now gives brief agreement or approval instead of repeating the option, treat that as VALID.
             - In that case, set "normalizedAnswer" to the exact recommended option label or value from the current option pool.
             - Only use recommendation acceptance when the assistant's recommendation is explicit and unambiguous. If the assistant did not clearly recommend one option, do not guess.
             - If the user explicitly names another option or changes direction, follow the user's latest intent instead of the earlier recommendation.
-            - **REGISTERED COMPANY NAME CHECK**: If the Current Question asks for a company or brand name, and the user's answer is a well-known registered or famous company name (e.g., Google, Apple, Microsoft, Amazon, Catalance, or any other widely known brand), you MUST treat it as INVALID. The response \`message\` MUST politely state that the name is already registered and in use for this type of service in their region, and ask them to provide a different name.
+            - **COMPANY NAME CHECK**: If the Current Question asks for a company or brand name and the user answers "Catalance" (or a direct Catalance variant), treat it as INVALID and politely ask for their own project or brand name.
+            - If the user mentions another well-known or established company name, do NOT automatically reject it.
+            - If their team affiliation and role are already clear, you may treat that company name as VALID.
+            - Otherwise, respond conversationally by asking whether they are part of the team and what their role is.
             - CRITICAL UNIVERSAL PREDICTION: You are a smart AI. If the user's answer (for ANY question) contains specific keywords or details that logically imply they belong to one of the options (e.g. naming "Elementor" making WordPress obvious), you MUST immediately accept it as VALID.
             - UNSUPPORTED PLATFORMS: If the user requests a fundamentally unsupported platform or tool that conflicts with all available options (e.g., asking for Webflow, Framer, Wix, or Squarespace when the only options are WordPress, Shopify, or Custom React/Node Development), do NOT forcibly map it to "Custom Development". Instead, treat it as an INFO_REQUEST. Your response \`message\` should politely explain that we primarily specialize in the listed technologies, briefly explain how one of our options (like Custom Development or WordPress) might still achieve their design goals, and ask which of our supported options they would like to explore so we can align the project correctly.
             - Do not be pedantic or rigid. Do NOT force them to pick the literal option or repeat themselves.
@@ -3860,64 +4741,107 @@ ${validationResponseRules}
 const buildServiceStartState = async ({
     service,
     existingPayload = {},
+    prefilledAnswersBySlug = {},
+    startContext = {},
 }) => {
-    const firstQuestionDefinition = service?.questions?.[0];
+    let initialAnswersBySlug = Object.entries(prefilledAnswersBySlug || {}).reduce((acc, [slug, value]) => {
+        if (slug && hasAnswerValue(value)) {
+            acc[slug] = value;
+        }
+        return acc;
+    }, {});
+    let activeStartContext = startContext;
+    let currentStep = findNextUnansweredStep(service.questions, initialAnswersBySlug);
+
+    // Avoid auto-completing an entire questionnaire before the first visible message.
+    if (currentStep >= service.questions.length && Object.keys(initialAnswersBySlug).length > 0) {
+        initialAnswersBySlug = {};
+        activeStartContext = {};
+        currentStep = 0;
+    }
+
+    const firstQuestionDefinition = service?.questions?.[currentStep];
     const runtimeOptionsByQuestionSlug = {};
+    let answersPayload = buildPersistedAnswersPayload(
+        initialAnswersBySlug,
+        service.questions,
+        { existingPayload }
+    );
 
     if (firstQuestionDefinition?.slug) {
         const runtimeOptions = await generateRuntimeOptionsForQuestion({
             serviceName: service.name,
             servicePrompt: service.aiPrompt || "",
             question: firstQuestionDefinition,
-            answersByQuestionText: {},
-            answersBySlug: {},
+            answersByQuestionText: answersPayload.byQuestionText,
+            answersBySlug: answersPayload.bySlug,
             allQuestions: service.questions
         });
         if (runtimeOptions.length > 0) {
             runtimeOptionsByQuestionSlug[firstQuestionDefinition.slug] = runtimeOptions;
         }
+        answersPayload = buildPersistedAnswersPayload(
+            initialAnswersBySlug,
+            service.questions,
+            {
+                runtimeOptionsByQuestionSlug,
+                existingPayload
+            }
+        );
     }
 
     const firstQuestionConfig = {
         type: firstQuestionDefinition?.type || "text",
         options: getDisplayedQuestionOptions(firstQuestionDefinition, runtimeOptionsByQuestionSlug)
     };
+    const startPrefillBridge = buildSessionStartPrefillBridge(activeStartContext);
     const aiFirstQuestion = firstQuestionDefinition
         ? await buildAiGuidedQuestionMessage({
             serviceName: service.name,
             servicePrompt: service.aiPrompt || "",
-            userLastMessage: "",
-            currentQuestion: {},
+            userLastMessage: startPrefillBridge ? String(activeStartContext?.acknowledgedAnswer || "") : "",
+            currentQuestion: startPrefillBridge ? activeStartContext?.acknowledgedQuestion || {} : {},
             nextQuestion: firstQuestionDefinition,
-            answersByQuestionText: {},
-            answersBySlug: {},
+            answersByQuestionText: answersPayload.byQuestionText,
+            answersBySlug: answersPayload.bySlug,
             allQuestions: service.questions,
             runtimeOptionsByQuestionSlug,
             sideReply: "",
-            bridgeSegments: [],
-            isInitial: true
+            bridgeSegments: startPrefillBridge ? [startPrefillBridge] : [],
+            isInitial: !startPrefillBridge
         })
         : "";
     const isNameFirstQuestion = NAME_QUESTION_REGEX.test(String(firstQuestionDefinition?.text || ""));
+    const firstQuestionFallbackPrompt = firstQuestionDefinition
+        ? (
+            getQuestionOptionLabels(firstQuestionDefinition, runtimeOptionsByQuestionSlug).length > 0
+                ? formatQuestionWithOptions(firstQuestionDefinition, runtimeOptionsByQuestionSlug)
+                : (firstQuestionDefinition.text || "How can I help you regarding this service?")
+        )
+        : `How can I help you regarding ${service?.name || "this service"}?`;
     const firstQuestion = aiFirstQuestion
-        || (isNameFirstQuestion
-            ? buildServiceAwareOpeningMessage(service.name)
-            : (firstQuestionDefinition?.text || "How can I help you regarding this service?"));
-
-    const answersPayload = buildPersistedAnswersPayload(
-        {},
-        service.questions,
-        {
-            runtimeOptionsByQuestionSlug,
-            existingPayload
-        }
-    );
+        || (startPrefillBridge
+            ? buildFriendlyMessage(
+                firstQuestionFallbackPrompt,
+                combineInlineMessages(
+                    startPrefillBridge,
+                    buildPersonalizedQuestionBridge({
+                        nextQuestionText: firstQuestionDefinition?.text || "",
+                        answersByQuestionText: answersPayload.byQuestionText,
+                        serviceName: service.name
+                    })
+                )
+            )
+            : (isNameFirstQuestion
+                ? buildServiceAwareOpeningMessage(service.name)
+                : firstQuestionFallbackPrompt));
 
     return {
         answersPayload,
         firstQuestion,
         firstQuestionConfig,
-        runtimeOptionsByQuestionSlug
+        runtimeOptionsByQuestionSlug,
+        currentStep
     };
 };
 
@@ -4033,7 +4957,7 @@ const generateProposalResponseForSession = async ({
 // @route   POST /api/guest/start
 // @access  Public
 export const startGuestSession = asyncHandler(async (req, res) => {
-    const { serviceId } = req.body; // Can be slug or ID
+    const { serviceId, prefillName = "" } = req.body; // Can be slug or ID
 
     if (!serviceId) {
         throw new AppError("Service ID is required", 400);
@@ -4060,12 +4984,19 @@ export const startGuestSession = asyncHandler(async (req, res) => {
     }
 
     const startedAt = new Date().toISOString();
+    const sessionStartPrefill = buildSessionStartPrefill({
+        questions: service.questions,
+        prefillName
+    });
     const {
         answersPayload,
         firstQuestion,
         firstQuestionConfig,
+        currentStep,
     } = await buildServiceStartState({
         service,
+        prefilledAnswersBySlug: sessionStartPrefill.answersBySlug,
+        startContext: sessionStartPrefill,
         existingPayload: {
             uiState: {
                 [ACTIVE_SERVICE_STARTED_AT_KEY]: startedAt
@@ -4077,7 +5008,7 @@ export const startGuestSession = asyncHandler(async (req, res) => {
     const session = await prisma.aiGuestSession.create({
         data: {
             serviceId: service.slug, // Store slug for consistency
-            currentStep: 0,
+            currentStep,
             answers: answersPayload,
         },
     });
@@ -4117,11 +5048,12 @@ export const guestChat = asyncHandler(async (req, res) => {
     const safeMessageText = messageText.toString().trim();
     const persistedUserMessageContent = safeMessageText || trimmedMessageText;
     const uploadedAttachments = parsedIncomingMessage.attachments;
+    const sharedUrls = parsedIncomingMessage.urls;
 
     console.log(`\n--- [Guest Chat] Session: ${sessionId} ---`);
     console.log(`[User]: ${safeMessageText || message}`);
 
-    if (!sessionId || (!trimmedMessageText && incomingArray.length === 0 && uploadedAttachments.length === 0)) {
+    if (!sessionId || (!trimmedMessageText && incomingArray.length === 0 && uploadedAttachments.length === 0 && sharedUrls.length === 0)) {
         throw new AppError("Session ID and message are required", 400);
     }
 
@@ -4510,16 +5442,27 @@ export const guestChat = asyncHandler(async (req, res) => {
     const rememberedAttachments = uploadedAttachments.length > 0
         ? []
         : getMostRecentAttachmentsFromMessages(session.messages);
+    const rememberedUrls = sharedUrls.length > 0
+        ? []
+        : getMostRecentUrlsFromMessages(session.messages);
     const activeAttachments = uploadedAttachments.length > 0
         ? uploadedAttachments
         : rememberedAttachments;
+    const activeUrls = sharedUrls.length > 0
+        ? sharedUrls
+        : rememberedUrls;
     const isReferencingStoredAttachment = uploadedAttachments.length === 0
         && activeAttachments.length > 0
         && ATTACHMENT_REFERENCE_REGEX.test(`${userMessageText} ${safeMessageText}`.trim());
+    const isReferencingStoredUrl = sharedUrls.length === 0
+        && activeUrls.length > 0
+        && URL_REFERENCE_REGEX.test(`${userMessageText} ${safeMessageText}`.trim());
 
     let attachmentContextText = "";
     let attachmentInferredAnswer = "";
     let attachmentInsightNote = "";
+    let urlContextText = "";
+    let urlInsightNote = "";
     if (activeAttachments.length > 0) {
         attachmentContextText = await buildAttachmentContextBlock({
             attachments: activeAttachments,
@@ -4549,10 +5492,22 @@ export const guestChat = asyncHandler(async (req, res) => {
         }
     }
 
+    if (activeUrls.length > 0 && (sharedUrls.length > 0 || isReferencingStoredUrl)) {
+        const urlContext = await buildUrlContextBlock({ urls: activeUrls });
+        urlContextText = urlContext.contextText;
+        urlInsightNote = urlContext.insightNote;
+        if (urlInsightNote) {
+            console.log(`[URL Insight] ${urlInsightNote}`);
+        }
+    }
+
     const userMessageForReasoning = [
         userMessageText,
         attachmentContextText
             ? `Attachment context from uploaded files:\n${attachmentContextText}`
+            : "",
+        urlContextText
+            ? `Website context from shared URLs:\n${urlContextText}`
             : "",
     ]
         .filter(Boolean)
@@ -4619,6 +5574,11 @@ export const guestChat = asyncHandler(async (req, res) => {
     let aiResponseContent = "";
 
     if (currentStep < questions.length) {
+        const pendingBrandOwnershipState =
+            session.answers?.pendingBrandOwnershipState
+            && typeof session.answers.pendingBrandOwnershipState === "object"
+                ? session.answers.pendingBrandOwnershipState
+                : null;
         const currentQuestionText = currentQuestion?.text || "";
         const currentQuestionOptions = getQuestionOptionLabels(
             currentQuestion,
@@ -4682,61 +5642,314 @@ export const guestChat = asyncHandler(async (req, res) => {
             console.log(`\n--- [AI Context Loaded] ---\nService: ${service.name}\nPrompt: ${service.aiPrompt}\n---------------------------\n`);
         }
 
-        const validationPrompt = buildCurrentQuestionValidationPrompt({
-            serviceName: service.name,
-            servicePrompt: service.aiPrompt || "",
-            currentQuestionText,
-            currentQuestionOptions,
-            currentQuestionNumberedOptions,
-            currentQuestionCanonicalOptions,
-            knownContextByQuestion,
-            savedResponseContext,
-            currentQuestionSubtitle,
-            userMessageText,
-            attachmentContextText,
-            attachmentInferredAnswer,
-            lastAssistantMessage,
-            validationResponseRules: `${validationResponseRules}\n${minimumBudgetValidationRule}`.trim(),
+        const businessNameGuardAction = getBusinessNameValidationGuardAction({
+            question: currentQuestion,
+            userMessage: userMessageText,
+            pendingState: pendingBrandOwnershipState,
         });
 
-        // We use a separate AI call for validation. 
-        const validationResponse = await chatWithAI(
-            [{ role: "user", content: validationPrompt }],
-            [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
-            "system_validator"
-        );
+        if (businessNameGuardAction.type === "reserved_platform_brand") {
+            const nextAnswers = { ...(session.answers || {}) };
+            delete nextAnswers.pendingBrandOwnershipState;
 
-        if (validationResponse.success) {
-            console.log(`[Validation Raw]:`, validationResponse.message);
-            const parsedValidation = parseValidationResponse(validationResponse.message);
-            if (parsedValidation) {
-                validationResult = parsedValidation;
-                aiResponseContent = parsedValidation.message;
+            const reservedBrandMessage = await buildBusinessNameGuardMessage({
+                serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
+                scenario: "reserved_platform_brand",
+                brandName: businessNameGuardAction.brandName,
+                userLastMessage: userMessageText,
+                currentQuestion,
+                answersByQuestionText: knownContextByQuestion,
+                answersBySlug: existingAnswersBySlug,
+                allQuestions: questions,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                lastAssistantMessage,
+            });
 
-                // If validator derived a concrete answer from attachment context, use it
-                // so the questionnaire step advances instead of re-asking the same question.
-                const normalizedAnswerFromValidation = clipAttachmentText(
-                    parsedValidation?.normalizedAnswer || "",
-                    180
-                );
-                if (
-                    validationResult.isValid &&
-                    !normalizeTextToken(userMessageText) &&
-                    normalizeTextToken(normalizedAnswerFromValidation)
-                ) {
-                    userMessageText = normalizedAnswerFromValidation;
-                    attachmentInferredAnswer = normalizedAnswerFromValidation;
-                    console.log(
-                        `[Validation Normalized Answer] using "${userMessageText}" for "${currentQuestion?.slug || "current-question"}"`
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "user",
+                    content: persistedUserMessageContent,
+                },
+            });
+            await prisma.aiGuestSession.update({
+                where: { id: sessionId },
+                data: { answers: nextAnswers },
+            });
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "assistant",
+                    content: reservedBrandMessage,
+                },
+            });
+
+            const sessionReload = await prisma.aiGuestSession.findUnique({
+                where: { id: sessionId },
+                include: { messages: { orderBy: { createdAt: "asc" } } },
+            });
+
+            return res.json({
+                success: true,
+                message: reservedBrandMessage,
+                inputConfig: {
+                    type: currentQuestion?.type || "text",
+                    options: getDisplayedQuestionOptions(
+                        currentQuestion,
+                        sessionRuntimeOptionsByQuestionSlug
+                    )
+                },
+                history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+            });
+        }
+
+        if (businessNameGuardAction.type === "ask_known_brand_affiliation") {
+            const nextAnswers = { ...(session.answers || {}) };
+            nextAnswers.pendingBrandOwnershipState = {
+                questionSlug: currentQuestion?.slug || "",
+                brandName: businessNameGuardAction.brandName,
+            };
+
+            const followupMessage = await buildBusinessNameGuardMessage({
+                serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
+                scenario: "ask_known_brand_affiliation",
+                brandName: businessNameGuardAction.brandName,
+                userLastMessage: userMessageText,
+                currentQuestion,
+                answersByQuestionText: knownContextByQuestion,
+                answersBySlug: existingAnswersBySlug,
+                allQuestions: questions,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                lastAssistantMessage,
+            });
+
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "user",
+                    content: persistedUserMessageContent,
+                },
+            });
+            await prisma.aiGuestSession.update({
+                where: { id: sessionId },
+                data: { answers: nextAnswers },
+            });
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "assistant",
+                    content: followupMessage,
+                },
+            });
+
+            const sessionReload = await prisma.aiGuestSession.findUnique({
+                where: { id: sessionId },
+                include: { messages: { orderBy: { createdAt: "asc" } } },
+            });
+
+            return res.json({
+                success: true,
+                message: followupMessage,
+                inputConfig: {
+                    type: currentQuestion?.type || "text",
+                    options: getDisplayedQuestionOptions(
+                        currentQuestion,
+                        sessionRuntimeOptionsByQuestionSlug
+                    )
+                },
+                history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+            });
+        }
+
+        if (businessNameGuardAction.type === "ask_pending_brand_role") {
+            const followupMessage = await buildBusinessNameGuardMessage({
+                serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
+                scenario: "ask_pending_brand_role",
+                brandName: businessNameGuardAction.brandName,
+                userLastMessage: userMessageText,
+                currentQuestion,
+                answersByQuestionText: knownContextByQuestion,
+                answersBySlug: existingAnswersBySlug,
+                allQuestions: questions,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                lastAssistantMessage,
+            });
+
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "user",
+                    content: persistedUserMessageContent,
+                },
+            });
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "assistant",
+                    content: followupMessage,
+                },
+            });
+
+            const sessionReload = await prisma.aiGuestSession.findUnique({
+                where: { id: sessionId },
+                include: { messages: { orderBy: { createdAt: "asc" } } },
+            });
+
+            return res.json({
+                success: true,
+                message: followupMessage,
+                inputConfig: {
+                    type: currentQuestion?.type || "text",
+                    options: getDisplayedQuestionOptions(
+                        currentQuestion,
+                        sessionRuntimeOptionsByQuestionSlug
+                    )
+                },
+                history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+            });
+        }
+
+        if (businessNameGuardAction.type === "deny_pending_brand") {
+            const nextAnswers = { ...(session.answers || {}) };
+            delete nextAnswers.pendingBrandOwnershipState;
+
+            const followupMessage = await buildBusinessNameGuardMessage({
+                serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
+                scenario: "deny_pending_brand",
+                brandName: businessNameGuardAction.brandName,
+                userLastMessage: userMessageText,
+                currentQuestion,
+                answersByQuestionText: knownContextByQuestion,
+                answersBySlug: existingAnswersBySlug,
+                allQuestions: questions,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                lastAssistantMessage,
+            });
+
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "user",
+                    content: persistedUserMessageContent,
+                },
+            });
+            await prisma.aiGuestSession.update({
+                where: { id: sessionId },
+                data: { answers: nextAnswers },
+            });
+            await prisma.aiGuestMessage.create({
+                data: {
+                    sessionId,
+                    role: "assistant",
+                    content: followupMessage,
+                },
+            });
+
+            const sessionReload = await prisma.aiGuestSession.findUnique({
+                where: { id: sessionId },
+                include: { messages: { orderBy: { createdAt: "asc" } } },
+            });
+
+            return res.json({
+                success: true,
+                message: followupMessage,
+                inputConfig: {
+                    type: currentQuestion?.type || "text",
+                    options: getDisplayedQuestionOptions(
+                        currentQuestion,
+                        sessionRuntimeOptionsByQuestionSlug
+                    )
+                },
+                history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+            });
+        }
+
+        if (businessNameGuardAction.type === "restart_with_new_brand_name") {
+            userMessageText = businessNameGuardAction.replacementBrandName || userMessageText;
+            session.answers = { ...(session.answers || {}) };
+            delete session.answers.pendingBrandOwnershipState;
+        } else if (businessNameGuardAction.type === "accept_pending_brand") {
+            validationResult = {
+                isValid: true,
+                status: "valid_answer",
+                message: "Thanks for clarifying.",
+                normalizedAnswer: businessNameGuardAction.brandName,
+            };
+            aiResponseContent = validationResult.message;
+            session.answers = { ...(session.answers || {}) };
+            delete session.answers.pendingBrandOwnershipState;
+        } else if (businessNameGuardAction.type === "accept_known_brand") {
+            validationResult = {
+                isValid: true,
+                status: "valid_answer",
+                message: "Thanks for sharing that.",
+                normalizedAnswer: businessNameGuardAction.brandName,
+            };
+            aiResponseContent = validationResult.message;
+        }
+
+        if (!validationResult) {
+            const validationPrompt = buildCurrentQuestionValidationPrompt({
+                serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
+                currentQuestionText,
+                currentQuestionOptions,
+                currentQuestionNumberedOptions,
+                currentQuestionCanonicalOptions,
+                knownContextByQuestion,
+                savedResponseContext,
+                currentQuestionSubtitle,
+                userMessageText,
+                attachmentContextText,
+                urlContextText,
+                attachmentInferredAnswer,
+                lastAssistantMessage,
+                validationResponseRules: `${validationResponseRules}\n${minimumBudgetValidationRule}`.trim(),
+            });
+
+            // We use a separate AI call for validation.
+            const validationResponse = await chatWithAI(
+                [{ role: "user", content: validationPrompt }],
+                [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
+                "system_validator"
+            );
+
+            if (validationResponse.success) {
+                console.log(`[Validation Raw]:`, validationResponse.message);
+                const parsedValidation = parseValidationResponse(validationResponse.message);
+                if (parsedValidation) {
+                    validationResult = parsedValidation;
+                    aiResponseContent = parsedValidation.message;
+
+                    // If validator derived a concrete answer from attachment context, use it
+                    // so the questionnaire step advances instead of re-asking the same question.
+                    const normalizedAnswerFromValidation = clipAttachmentText(
+                        parsedValidation?.normalizedAnswer || "",
+                        180
                     );
-                }
+                    if (
+                        validationResult.isValid &&
+                        !normalizeTextToken(userMessageText) &&
+                        normalizeTextToken(normalizedAnswerFromValidation)
+                    ) {
+                        userMessageText = normalizedAnswerFromValidation;
+                        attachmentInferredAnswer = normalizedAnswerFromValidation;
+                        console.log(
+                            `[Validation Normalized Answer] using "${userMessageText}" for "${currentQuestion?.slug || "current-question"}"`
+                        );
+                    }
 
-                console.log(`[Validation Parsed]:`, parsedValidation);
+                    console.log(`[Validation Parsed]:`, parsedValidation);
+                } else {
+                    console.warn("[Validation] Could not parse structured validator output");
+                }
             } else {
-                console.warn("[Validation] Could not parse structured validator output");
+                console.warn("[Validation] AI request failed");
             }
-        } else {
-            console.warn("[Validation] AI request failed");
         }
 
         if (!validationResult) {
@@ -4963,7 +6176,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 ? ""
                 : buildQuickReplyHint(currentQuestion, sessionRuntimeOptionsByQuestionSlug);
             const feedbackMsg = stripNameNotedRecap(
-                [sideReply, capturedFutureNote, attachmentInsightNote, feedbackCore, quickReplyHint]
+                [sideReply, capturedFutureNote, attachmentInsightNote, urlInsightNote, feedbackCore, quickReplyHint]
                     .map((part) => String(part || "").trim())
                     .filter(Boolean)
                     .join("\n\n")
@@ -5242,6 +6455,15 @@ export const guestChat = asyncHandler(async (req, res) => {
             }
         }
 
+        if (urlInsightNote) {
+            const alreadyIncluded = bridgeSegments.some((segment) =>
+                containsNormalizedText(segment, urlInsightNote)
+            );
+            if (!alreadyIncluded) {
+                bridgeSegments.unshift(urlInsightNote);
+            }
+        }
+
         if (autoCapturedAnswerSlugs.length > 0) {
             bridgeSegments.push("I have already captured some details from your previous message.");
         }
@@ -5469,17 +6691,19 @@ export const getGuestAdvice = asyncHandler(async (req, res) => {
         })
         .join("\n");
 
-    const visibleOptions = Array.isArray(currentOptions)
-        ? currentOptions
-            .map((optionEntry) => {
-                if (typeof optionEntry === "string") return optionEntry.trim();
-                if (optionEntry && typeof optionEntry === "object") {
-                    return String(optionEntry.label || optionEntry.value || "").trim();
-                }
-                return "";
-            })
-            .filter(Boolean)
-        : [];
+    const visibleOptionObjects = normalizeAdviceVisibleOptions(currentOptions, resolvedCurrentQuestion);
+    const visibleOptions = visibleOptionObjects
+        .map((optionEntry) => String(
+            optionEntry?.label
+            || optionEntry?.value
+            || optionEntry?.canonicalLabel
+            || optionEntry?.canonicalValue
+            || ""
+        ).trim())
+        .filter(Boolean);
+    const fallbackRecommendedAnswer = isRecommendationMode
+        ? getPreferredAdviceOptionLabel(visibleOptionObjects, adviceAdminControls)
+        : "";
 
     const recentSessionContext = Array.isArray(session?.messages)
         ? session.messages
@@ -5502,13 +6726,15 @@ Give a VERY SHORT, highly personalized recommendation (1-2 sentences maximum).
 Do NOT ask the user for more information.
 Do NOT give neutral guidance.
 Do NOT say "tell me", "share", "what feels comfortable", "what sounds best", "you can mention", or anything similar.
-Your notice MUST directly recommend the best answer for this user right now and MUST start with "Recommended:".
-If visible options exist, choose exactly ONE option from the visible options and write it exactly as shown.
+Your notice MUST directly recommend the best answer for this user right now.
+You MUST also set "recommendedAnswer" to the exact final answer the user can send.
+If visible options exist, choose exactly ONE option from the visible options and set "recommendedAnswer" to that exact option text.
+If the best answer is a binary yes/no choice, keep "recommendedAnswer" as the exact option but do NOT write a bare "Yes" or "No" in the notice or placeholder. Phrase the recommendation as a direct direction with one short reason.
 If this is a timeline question without fixed options, recommend one concrete timeline the user can send directly.
 If this is a budget question without fixed options, recommend one concrete budget figure or a narrow range the user can send directly.
 ${minimumBudgetText ? `Never recommend a budget below ${minimumBudgetText}.` : ""}
 After the recommendation, add one short reason tied to their project.
-The placeholder must mirror the recommended final answer only and start with "e.g. ".
+The placeholder must start with "e.g. " and should hint at the recommended final answer naturally.
 `
         : `
 Task:
@@ -5548,8 +6774,10 @@ ${taskBlock}
 Return ONLY a raw JSON object (with double quotes) with this structure:
 {
     "notice": string,
-    "placeholder": string
+    "placeholder": string,
+    "recommendedAnswer": string
 }
+When this is not a recommendation request, set "recommendedAnswer" to an empty string.
 Do not use markdown formatting, code fences, or bold text.`;
 
     try {
@@ -5560,49 +6788,50 @@ Do not use markdown formatting, code fences, or bold text.`;
         );
 
         if (adviceResponse.success) {
-            const rawMsg = adviceResponse.message || "";
-            const firstBrace = rawMsg.indexOf('{');
-            const lastBrace = rawMsg.lastIndexOf('}');
-            const cleanJson = (firstBrace >= 0 && lastBrace >= firstBrace) 
-                ? rawMsg.substring(firstBrace, lastBrace + 1)
-                : rawMsg;
-            const parsed = JSON.parse(cleanJson.replace(/\*\*/g, ""));
+            const parsed = parseJsonObjectFromRaw(adviceResponse.message || "") || {};
+            const normalizedPayload = normalizeGuestAdvicePayload({
+                payload: parsed,
+                isRecommendationMode,
+                visibleOptionObjects,
+                fallbackRecommendedAnswer,
+            });
             return res.json({
                 success: true,
-                notice: parsed.notice,
-                placeholder: parsed.placeholder
+                notice: normalizedPayload.notice,
+                placeholder: normalizedPayload.placeholder,
+                recommendedAnswer: normalizedPayload.recommendedAnswer,
             });
         }
     } catch (e) {
         console.warn("Failed to generate guest advice", e);
     }
 
+    const fallbackPayload = isRecommendationMode
+        ? normalizeGuestAdvicePayload({
+            payload: {
+                notice: fallbackRecommendedAnswer
+                    ? `Recommended: ${fallbackRecommendedAnswer}. This matches the preferred flow for this question.`
+                    : "Recommended direction: use the strongest fit for this step based on your project direction.",
+                placeholder: fallbackRecommendedAnswer
+                    ? `e.g. ${fallbackRecommendedAnswer}`
+                    : "e.g. go with the recommended direction",
+                recommendedAnswer: fallbackRecommendedAnswer,
+            },
+            isRecommendationMode: true,
+            visibleOptionObjects,
+            fallbackRecommendedAnswer,
+        })
+        : {
+            notice: `Got it. Tell me what you have in mind for ${option || 'this'}.`,
+            placeholder: "Tell me a bit more...",
+            recommendedAnswer: "",
+        };
+
     res.json({
         success: true,
-        notice: isRecommendationMode
-            ? (() => {
-                const visibleOptionObjects = visibleOptions.map((label) => ({ label, value: label }));
-                const preferredIndex = findOptionIndexByAdminToken(
-                    visibleOptionObjects,
-                    adviceAdminControls.recommendedOption || adviceAdminControls.prioritizeOptions?.[0] || ""
-                );
-                const preferredOption = preferredIndex >= 0 ? visibleOptions[preferredIndex] : "";
-                return preferredOption
-                    ? `Recommended: ${preferredOption}. This matches the admin-configured preferred flow for this question.`
-                    : "I have a quick recommendation for this question. You can use it as-is or adjust it.";
-            })()
-            : `Got it. Tell me what you have in mind for ${option || 'this'}.`,
-        placeholder: isRecommendationMode
-            ? (() => {
-                const preferredIndex = findOptionIndexByAdminToken(
-                    visibleOptions.map((label) => ({ label, value: label })),
-                    adviceAdminControls.recommendedOption || adviceAdminControls.prioritizeOptions?.[0] || ""
-                );
-                return preferredIndex >= 0
-                    ? `e.g. ${visibleOptions[preferredIndex]}`
-                    : "e.g. use the suggested option or tweak it";
-            })()
-            : "Tell me a bit more..."
+        notice: fallbackPayload.notice,
+        placeholder: fallbackPayload.placeholder,
+        recommendedAnswer: fallbackPayload.recommendedAnswer,
     });
 });
 
@@ -5610,13 +6839,18 @@ export const __testables = {
     applyAdminControlsToOptions,
     applyExtractedAnswerUpdates,
     buildAdminControlSummaryText,
+    buildBusinessNameGuardPrompt,
     buildCurrentQuestionValidationPrompt,
+    buildSessionStartPrefill,
     buildSupplementalBudgetExtractions,
     buildLockedServiceReply,
     buildPersistedAnswersPayload,
     buildQuestionDisplayAnswer,
     findExtractedBudgetMinimumViolation,
     findBudgetMinimumViolationChange,
+    getBusinessNameValidationGuardAction,
+    normalizeAdviceVisibleOptions,
+    normalizeGuestAdvicePayload,
     getPostProposalBudgetFollowupAction,
     getDisplayedQuestionOptions,
     getBudgetMinimumValidationResult,
@@ -5629,6 +6863,7 @@ export const __testables = {
     getRuntimeOptionsByQuestionSlug,
     mergeExtractedAnswers,
     normalizeAnswerForQuestion,
+    parseKnownBrandAffiliationResponse,
     parseAdminControlText,
     toChronologicalGuestHistory,
 };

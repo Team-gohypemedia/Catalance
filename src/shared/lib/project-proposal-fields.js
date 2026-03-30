@@ -303,3 +303,355 @@ export const buildProjectProposalJson = (payload = {}) => {
     sections,
   };
 };
+
+const splitMatchingValue = (value = "") =>
+  String(value || "")
+    .split(/\r?\n|;|,(?=\s*[A-Za-z0-9])|\/(?=\s*[A-Za-z0-9])|\band\b|&/i)
+    .map((item) => cleanProposalText(item))
+    .filter(Boolean);
+
+const normalizeMatchingList = (value) => {
+  if (Array.isArray(value)) {
+    return uniqueItems(
+      value.flatMap((entry) =>
+        typeof entry === "string" ? splitMatchingValue(entry) : cleanProposalText(entry),
+      ),
+    );
+  }
+
+  if (typeof value === "string") {
+    return uniqueItems(splitMatchingValue(value));
+  }
+
+  return [];
+};
+
+const normalizeSectionKey = (value = "") => normalizeFieldLabel(value);
+
+const findSectionByLabels = (sections = [], labels = []) => {
+  const normalizedLabels = labels.map((label) => normalizeSectionKey(label));
+  return (Array.isArray(sections) ? sections : []).find((section) => {
+    const sectionKey = normalizeSectionKey(section?.label || section?.key || "");
+    return normalizedLabels.some(
+      (label) => sectionKey === label || sectionKey.includes(label) || label.includes(sectionKey),
+    );
+  }) || null;
+};
+
+const getSectionItems = (section = null) => {
+  if (!section || typeof section !== "object") return [];
+  if (Array.isArray(section.items) && section.items.length > 0) {
+    return uniqueItems(section.items);
+  }
+
+  return normalizeMatchingList(section.value);
+};
+
+const parseBudgetRange = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return { minBudget: null, maxBudget: null, budgetSummary: "" };
+  }
+
+  const budgetSummary = cleanProposalText(value);
+  if (!budgetSummary) {
+    return { minBudget: null, maxBudget: null, budgetSummary: "" };
+  }
+
+  const numericMatches = budgetSummary.match(/\d[\d,]*/g) || [];
+  const numbers = numericMatches
+    .map((entry) => Number(String(entry).replace(/,/g, "")))
+    .filter((entry) => Number.isFinite(entry));
+
+  if (numbers.length === 0) {
+    return { minBudget: null, maxBudget: null, budgetSummary };
+  }
+
+  const [first, second] = numbers;
+  if (Number.isFinite(second)) {
+    return {
+      minBudget: Math.min(first, second),
+      maxBudget: Math.max(first, second),
+      budgetSummary,
+    };
+  }
+
+  return {
+    minBudget: first,
+    maxBudget: first,
+    budgetSummary,
+  };
+};
+
+const inferProjectComplexity = ({
+  requiredSkills = [],
+  deliverables = [],
+  primaryObjectives = [],
+  pageCount = "",
+}) => {
+  const pageCountMatch = String(pageCount || "").match(/\d+/);
+  const pageTotal = pageCountMatch ? Number(pageCountMatch[0]) : 0;
+  const weightedScope =
+    requiredSkills.length * 1.2
+    + deliverables.length
+    + primaryObjectives.length * 0.8
+    + (pageTotal >= 12 ? 3 : pageTotal >= 6 ? 2 : pageTotal >= 1 ? 1 : 0);
+
+  if (weightedScope >= 10) return "High";
+  if (weightedScope >= 6) return "Medium";
+  return "Low";
+};
+
+const inferSeniorityProfile = ({
+  complexity = "Medium",
+  engagementModel = "",
+  timeline = "",
+}) => {
+  const engagement = cleanProposalText(engagementModel).toLowerCase();
+  const normalizedTimeline = cleanProposalText(timeline).toLowerCase();
+  const urgentTimeline =
+    /\basap\b|\burgent\b|\bimmediate\b/.test(normalizedTimeline)
+    || /\b[1-3]\s*(day|days|week|weeks)\b/.test(normalizedTimeline);
+
+  if (complexity === "High" || urgentTimeline) {
+    return {
+      seniorityLevel: "Senior",
+      experienceLevel: "5+ years",
+    };
+  }
+
+  if (/retainer|ongoing|monthly/.test(engagement)) {
+    return {
+      seniorityLevel: "Mid-senior",
+      experienceLevel: "4+ years",
+    };
+  }
+
+  return {
+    seniorityLevel: "Mid-level",
+    experienceLevel: "3+ years",
+  };
+};
+
+const inferAvailabilityExpectation = ({ timeline = "", engagementModel = "" }) => {
+  const normalizedTimeline = cleanProposalText(timeline).toLowerCase();
+  const normalizedEngagement = cleanProposalText(engagementModel).toLowerCase();
+
+  if (
+    /\basap\b|\burgent\b|\bimmediate\b/.test(normalizedTimeline)
+    || /\b[1-3]\s*(day|days|week|weeks)\b/.test(normalizedTimeline)
+  ) {
+    return "Fast turnaround with regular working-day responsiveness.";
+  }
+
+  if (/retainer|ongoing|monthly/.test(normalizedEngagement)) {
+    return "Consistent weekly availability for an ongoing engagement.";
+  }
+
+  return "Stable availability across the planned delivery timeline.";
+};
+
+const buildScreeningQuestions = ({
+  requiredSkills = [],
+  deliverables = [],
+  timeline = "",
+  budgetSummary = "",
+  targetAudience = "",
+}) => {
+  const mustHaveQuestions = uniqueItems([
+    ...requiredSkills.slice(0, 3).map(
+      (skill) => `Can you show relevant project work where you handled ${skill}?`,
+    ),
+    ...deliverables.slice(0, 2).map(
+      (item) => `How would you approach delivering ${String(item || "").toLowerCase()} for this scope?`,
+    ),
+  ]).slice(0, 5);
+
+  const niceToHaveQuestions = uniqueItems([
+    timeline ? `Can you commit to the ${cleanProposalText(timeline).toLowerCase()} timeline?` : "",
+    budgetSummary ? `Can you work within ${budgetSummary}?` : "",
+    targetAudience
+      ? `Have you handled projects for ${cleanProposalText(targetAudience).toLowerCase()} before?`
+      : "",
+  ]).slice(0, 4);
+
+  const exclusionSignals = uniqueItems([
+    requiredSkills.length ? "No credible overlap with the required skills." : "",
+    timeline ? `Cannot support the ${cleanProposalText(timeline).toLowerCase()} delivery timeline.` : "",
+    budgetSummary ? `Budget expectations conflict with ${budgetSummary}.` : "",
+  ]).slice(0, 4);
+
+  return {
+    mustHaveQuestions,
+    niceToHaveQuestions,
+    exclusionSignals,
+  };
+};
+
+export const buildProjectFreelancerMatchingSeed = (payload = {}) => {
+  const proposalJson =
+    payload?.proposalJson && typeof payload.proposalJson === "object"
+      ? payload.proposalJson
+      : buildProjectProposalJson(payload);
+  const extractedFields = extractProjectProposalFields({
+    ...payload,
+    proposalContent:
+      payload?.proposalContent
+      || proposalJson?.proposalContent
+      || payload?.description
+      || "",
+  });
+  const sections = Array.isArray(proposalJson?.sections) ? proposalJson.sections : [];
+
+  const techStackSection = findSectionByLabels(sections, [
+    "Tech Stack",
+    "Technology Stack",
+    "Technologies",
+    "Tools",
+  ]);
+
+  const requiredSkills = uniqueItems([
+    ...normalizeMatchingList(getSectionItems(techStackSection)),
+    ...normalizeMatchingList(extractedFields.frontendFramework),
+    ...normalizeMatchingList(extractedFields.backendTechnology),
+    ...normalizeMatchingList(extractedFields.databaseType),
+    ...normalizeMatchingList(extractedFields.hosting),
+    ...normalizeMatchingList(extractedFields.websiteBuildType),
+    ...normalizeMatchingList(extractedFields.platformRequirements),
+  ]).slice(0, 12);
+
+  const deliverables = uniqueItems([
+    ...normalizeMatchingList(extractedFields.featuresDeliverables),
+    ...normalizeMatchingList(extractedFields.brandDeliverables),
+    ...normalizeMatchingList(extractedFields.appFeatures),
+  ]).slice(0, 14);
+
+  const serviceSpecializations = uniqueItems([
+    extractedFields.serviceType,
+    extractedFields.websiteType,
+    extractedFields.websiteBuildType,
+    extractedFields.creativeType,
+    extractedFields.appType,
+    extractedFields.businessCategory,
+    extractedFields.designStyle,
+  ]).slice(0, 10);
+
+  const industriesOrNiches = uniqueItems([
+    extractedFields.businessCategory,
+    extractedFields.targetAudience,
+    ...normalizeMatchingList(extractedFields.targetLocations),
+  ]).slice(0, 10);
+
+  const targetAudienceList = uniqueItems(
+    extractedFields.targetAudience ? [extractedFields.targetAudience] : [],
+  );
+  const targetLocations = normalizeMatchingList(extractedFields.targetLocations).slice(0, 10);
+  const seoGoals = normalizeMatchingList(extractedFields.seoGoals).slice(0, 10);
+  const primaryObjectives = normalizeMatchingList(extractedFields.primaryObjectives).slice(0, 10);
+  const platformRequirements = normalizeMatchingList(extractedFields.platformRequirements).slice(0, 10);
+
+  const budgetSummary =
+    cleanProposalText(extractedFields.budgetSummary)
+    || cleanProposalText(payload?.budgetSummary)
+    || cleanProposalText(payload?.budget);
+  const { minBudget, maxBudget } = parseBudgetRange(budgetSummary);
+
+  const summary =
+    cleanProposalText(extractedFields.projectOverview)
+    || cleanProposalText(payload?.description)
+    || cleanProposalText(proposalJson?.proposalContent)
+    || "";
+  const complexity = inferProjectComplexity({
+    requiredSkills,
+    deliverables,
+    primaryObjectives,
+    pageCount: extractedFields.pageCount,
+  });
+  const { seniorityLevel, experienceLevel } = inferSeniorityProfile({
+    complexity,
+    engagementModel: extractedFields.engagementModel,
+    timeline: extractedFields.timeline,
+  });
+  const availabilityExpectation = inferAvailabilityExpectation({
+    timeline: extractedFields.timeline,
+    engagementModel: extractedFields.engagementModel,
+  });
+  const screening = buildScreeningQuestions({
+    requiredSkills,
+    deliverables,
+    timeline: extractedFields.timeline,
+    budgetSummary,
+    targetAudience: extractedFields.targetAudience,
+  });
+  const title = cleanProposalText(payload?.title || proposalJson?.title || "");
+  const serviceKey = cleanProposalText(payload?.serviceKey || extractedFields.serviceKey || proposalJson?.serviceKey || "");
+  const serviceType = cleanProposalText(
+    extractedFields.serviceType || payload?.serviceType || payload?.serviceName || payload?.service || "",
+  );
+
+  if (
+    !title
+    && !summary
+    && !serviceKey
+    && !serviceType
+    && requiredSkills.length === 0
+    && deliverables.length === 0
+  ) {
+    return null;
+  }
+
+  return {
+    version: 1,
+    visibility: "internal",
+    source: "proposal-seed",
+    project: {
+      title: title || null,
+      serviceKey: serviceKey || null,
+      serviceType: serviceType || null,
+      clientName: cleanProposalText(extractedFields.clientName || payload?.clientName || "") || null,
+      businessName: cleanProposalText(extractedFields.businessName || payload?.businessName || "") || null,
+      summary: summary || null,
+      budgetSummary: budgetSummary || null,
+      timeline: cleanProposalText(extractedFields.timeline || extractedFields.duration || "") || null,
+      engagementModel: cleanProposalText(extractedFields.engagementModel || "") || null,
+      complexity,
+    },
+    matchingQuery: {
+      category: serviceKey || null,
+      searchTerm: summary || serviceType || title || null,
+      techStack: requiredSkills,
+      serviceSpecializations,
+      industriesOrNiches,
+      minBudget,
+      maxBudget,
+    },
+    fitProfile: {
+      requiredSkills,
+      preferredSkills: uniqueItems([
+        cleanProposalText(extractedFields.designStyle || ""),
+        cleanProposalText(extractedFields.hosting || ""),
+        cleanProposalText(extractedFields.targetAudience || ""),
+      ]).slice(0, 8),
+      deliverables,
+      primaryObjectives,
+      targetAudience: targetAudienceList,
+      targetLocations,
+      seoGoals,
+      platformRequirements,
+      seniorityLevel,
+      experienceLevel,
+      availabilityExpectation,
+      communicationNeeds: uniqueItems([
+        targetAudienceList.length
+          ? `Comfortable serving ${targetAudienceList.join(", ").toLowerCase()}.`
+          : "",
+        targetLocations.length
+          ? `Aligned with the target market in ${targetLocations.join(", ")}.`
+          : "",
+        cleanProposalText(extractedFields.engagementModel || "")
+          ? `Can support a ${cleanProposalText(extractedFields.engagementModel).toLowerCase()} collaboration model.`
+          : "",
+      ]).slice(0, 6),
+    },
+    screening,
+  };
+};

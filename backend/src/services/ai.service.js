@@ -4,6 +4,7 @@ import { dirname, join } from "path";
 import { env } from "../config/env.js";
 import { prisma, prismaInitError } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
+import { buildProjectFreelancerMatchingSeed } from "../../../src/shared/lib/project-proposal-fields.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -400,11 +401,11 @@ const getServiceDefinition = (serviceName = "") => {
 
 const RANGE_SEPARATOR_PATTERN = "[-–—]";
 const TIME_RANGE_REGEX = new RegExp(
-  `\\d+(?:\\s*${RANGE_SEPARATOR_PATTERN}\\s*\\d+)?\\s*(?:second|minute|hour|day|week|month)s?`,
+  `\\d+(?:\\s*${RANGE_SEPARATOR_PATTERN}\\s*\\d+)?\\s*(?:day|week|month)s?`,
   "i"
 );
 const TIMELINE_QUESTION_REGEX =
-  /timeline|when.*launch|deadline|how soon|when.*need|when would you like|how long|duration|campaign|turnaround/i;
+  /timeline|when.*launch|deadline|how soon|when.*need|when would you like|turnaround|delivery/i;
 const PRICING_LEVEL_QUESTION_REGEX =
   /pricing level|budget level|pricing tier|budget tier|level best matches/i;
 
@@ -414,7 +415,7 @@ const extractTimelineValue = (text = "") => {
   if (durationMatch) {
     return durationMatch[0].replace(/\s+/g, " ").trim();
   }
-  if (/asap|urgent|immediately|as soon as possible/i.test(text)) return "ASAP";
+  if (/asap|urgent|immediately|as soon as possible/i.test(text)) return "Urgent";
   if (/flexible|no rush|whenever/i.test(text)) return "Flexible";
 
   const keywordMatch = text.match(
@@ -2232,6 +2233,7 @@ Cross-check proposal fields against serviceQuestionAnswers before finalizing out
 Never leave an included field blank.
 Never use placeholder text such as "Not specified", "Pending confirmation", "To be finalized", "TBD", "TBA", "N/A", or "Unknown".
 If launch timeline is missing, generate a single realistic recommended timeline (e.g. "6 weeks") based on the scope and service type. NEVER write a range.
+Launch Timeline must always use a single concrete value in days, weeks, or months. Never use seconds, minutes, hours, ASAP, urgent, flexible, or any range.
 If budget or pricing is missing, generate a single realistic recommended budget amount in INR based on the scope and service type. NEVER write a budget range.
 If design, build, technology, hosting, engagement, or similar delivery fields are missing, choose practical recommended values that fit the stated requirements.
 Present inferred values directly and professionally inside the field value, not as a question and not as a disclaimer.
@@ -2299,12 +2301,14 @@ CRITICAL INSTRUCTIONS:
 - If proposal_context contains a confirmed structured Launch Timeline, use that exact value. Only fall back to chat_history when no structured timeline is present.
 - If proposal_context contains a confirmed structured Budget, use that exact value. Only fall back to chat_history when no structured budget is present.
 - NEVER use ranges anywhere in the proposal — not for budget, timeline, page count, or any other field. Always commit to a single definitive value.
+- Launch Timeline must never repeat video duration or runtime. Keep runtime under deliverables and keep Launch Timeline as one concrete delivery value in days, weeks, or months only.
 - If the user mentions specific technologies (Flutter, React Native, Node.js, Python, React.js dashboard, etc.), preserve them explicitly in the proposal.
 - Preserve confirmed requirements, but complete any missing proposal fields with sensible recommendations aligned to the user's goals.
 - Use concise, professional, business-ready language.
 - Use bullet list items for objectives, features, and deliverables.
 - The Project Overview should be a well-written paragraph summarizing the entire project scope.
 - Never let a numeric value appear under the wrong field label.
+- Use sentence case for every field value, paragraph, and bullet item. Do not output all lowercase or all uppercase field content.
 - NEVER use the words "suggest", "suggested", or "suggestion" anywhere in the proposal. Present all inferred recommendations as definitive expert decisions.
 `;
 
@@ -2455,7 +2459,13 @@ const resolveProposalServiceCategory = (value = "") => {
   const normalized = normalizeServiceText(String(value || ""));
   if (!normalized) return "";
   if (normalized.includes("web") || normalized.includes("website")) return "web";
-  if (normalized.includes("creative") || normalized.includes("design")) return "creative";
+  if (
+    normalized.includes("creative")
+    || normalized.includes("design")
+    || normalized.includes("animation")
+    || normalized.includes("cgi")
+    || normalized.includes("video")
+  ) return "creative";
   if (normalized.includes("brand")) return "branding";
   if (normalized.includes("seo")) return "seo";
   if (normalized.includes("app") || normalized.includes("mobile")) return "app";
@@ -2511,6 +2521,106 @@ const normalizeProposalFieldKey = (value = "") =>
     .trim()
     .toLowerCase();
 
+const escapeRegExp = (value = "") =>
+  String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const PROPOSAL_SENTENCE_CASE_TOKEN_MAP = new Map([
+  ["ai", "AI"],
+  ["api", "API"],
+  ["aws", "AWS"],
+  ["b2b", "B2B"],
+  ["b2c", "B2C"],
+  ["crm", "CRM"],
+  ["erp", "ERP"],
+  ["firebase", "Firebase"],
+  ["flutter", "Flutter"],
+  ["inr", "INR"],
+  ["ios", "iOS"],
+  ["mongodb", "MongoDB"],
+  ["mysql", "MySQL"],
+  ["netlify", "Netlify"],
+  ["next.js", "Next.js"],
+  ["nextjs", "Next.js"],
+  ["node.js", "Node.js"],
+  ["nodejs", "Node.js"],
+  ["postgresql", "PostgreSQL"],
+  ["react", "React"],
+  ["react.js", "React.js"],
+  ["saas", "SaaS"],
+  ["seo", "SEO"],
+  ["shopify", "Shopify"],
+  ["sql", "SQL"],
+  ["supabase", "Supabase"],
+  ["ui", "UI"],
+  ["ux", "UX"],
+  ["vercel", "Vercel"],
+  ["whatsapp", "WhatsApp"],
+  ["woocommerce", "WooCommerce"],
+  ["wordpress", "WordPress"]
+]);
+
+const applyProposalSentenceCaseTokenOverrides = (value = "") => {
+  let normalized = String(value || "");
+  for (const [source, target] of PROPOSAL_SENTENCE_CASE_TOKEN_MAP.entries()) {
+    normalized = normalized.replace(
+      new RegExp(`\\b${escapeRegExp(source)}\\b`, "gi"),
+      target
+    );
+  }
+  return normalized;
+};
+
+const formatProposalSentenceCaseToken = (token = "", capitalize = false) => {
+  const raw = String(token || "");
+  const key = raw.toLowerCase();
+  if (PROPOSAL_SENTENCE_CASE_TOKEN_MAP.has(key)) {
+    return PROPOSAL_SENTENCE_CASE_TOKEN_MAP.get(key);
+  }
+
+  // Keep already-authored mixed-case words like "Acme" or "WooCommerce".
+  if (/[A-Z].*[a-z]/.test(raw) || /[a-z].*[A-Z]/.test(raw)) {
+    return raw;
+  }
+
+  const lowered = raw.toLowerCase();
+  return capitalize
+    ? `${lowered.charAt(0).toUpperCase()}${lowered.slice(1)}`
+    : lowered;
+};
+
+const applyProposalSentenceCase = (value = "") => {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+
+  const cased = normalized
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => {
+      let capitalized = false;
+      return sentence.replace(/\S+/g, (token) => {
+        if (!/[A-Za-z]/.test(token)) {
+          if (/[0-9]/.test(token)) {
+            capitalized = true;
+          }
+          return token;
+        }
+
+        const prefixMatch = token.match(/^[^A-Za-z0-9]+/);
+        const suffixMatch = token.match(/[^A-Za-z0-9]+$/);
+        const prefix = prefixMatch?.[0] || "";
+        const suffix = suffixMatch?.[0] || "";
+        const core = token.slice(prefix.length, token.length - suffix.length);
+        if (!core) return token;
+
+        const nextCore = formatProposalSentenceCaseToken(core, !capitalized);
+        capitalized = true;
+        return `${prefix}${nextCore}${suffix}`;
+      });
+    })
+    .join(" ");
+
+  return applyProposalSentenceCaseTokenOverrides(cased);
+};
+
 const cleanProposalTextValue = (value = "") => {
   const normalized = String(value || "")
     .replace(/\*+/g, "")
@@ -2518,7 +2628,7 @@ const cleanProposalTextValue = (value = "") => {
     .replace(/\s+/g, " ")
     .trim();
   if (!normalized || PROPOSAL_PLACEHOLDER_REGEX.test(normalized)) return "";
-  return normalized;
+  return applyProposalSentenceCase(normalized);
 };
 
 const cleanProposalListItems = (items = []) =>
@@ -2649,7 +2759,9 @@ const detectBudgetSuffix = (value = "", service = null) => {
 
 const STRUCTURED_BUDGET_FIELD_REGEX = /\b(budget|investment|price|cost|spend)\b/i;
 const STRUCTURED_TIMELINE_FIELD_REGEX =
-  /\b(timeline|launch|delivery|deadline|when do you want|how soon|how quickly|duration)\b/i;
+  /\b(timeline|launch|delivery|deadline|when do you want|how soon|how quickly|turnaround|completed)\b/i;
+const STRUCTURED_DURATION_ONLY_FIELD_REGEX =
+  /\b(video duration|campaign duration|ad duration|reel duration|clip duration|duration)\b/i;
 
 const getStructuredProposalFieldValue = (
   proposalContext = {},
@@ -2671,6 +2783,7 @@ const getStructuredProposalFieldValue = (
   for (const entry of serviceQuestionAnswers) {
     const signal = `${entry?.slug || ""} ${entry?.question || ""}`.trim();
     if (!matcher.test(signal)) continue;
+    if (kind === "timeline" && STRUCTURED_DURATION_ONLY_FIELD_REGEX.test(signal)) continue;
     const answer = cleanProposalTextValue(entry?.answer || "");
     if (answer) return answer;
   }
@@ -2679,6 +2792,7 @@ const getStructuredProposalFieldValue = (
   if (questionnaireAnswers && typeof questionnaireAnswers === "object") {
     for (const [key, value] of Object.entries(questionnaireAnswers)) {
       if (!matcher.test(String(key || ""))) continue;
+      if (kind === "timeline" && STRUCTURED_DURATION_ONLY_FIELD_REGEX.test(String(key || ""))) continue;
       const cleanedValue = cleanProposalTextValue(value || "");
       if (cleanedValue) return cleanedValue;
     }
@@ -2688,6 +2802,7 @@ const getStructuredProposalFieldValue = (
   if (questionnaireAnswersBySlug && typeof questionnaireAnswersBySlug === "object") {
     for (const [key, value] of Object.entries(questionnaireAnswersBySlug)) {
       if (!matcher.test(String(key || ""))) continue;
+      if (kind === "timeline" && STRUCTURED_DURATION_ONLY_FIELD_REGEX.test(String(key || ""))) continue;
       const cleanedValue = cleanProposalTextValue(value || "");
       if (cleanedValue) return cleanedValue;
     }
@@ -2774,6 +2889,112 @@ const buildProposalTimelineFallback = (serviceCategory = "") => {
     default:
       return "6 weeks";
   }
+};
+
+const buildProposalConcreteTimelineFromKeyword = (value = "", serviceCategory = "") => {
+  const source = String(value || "").toLowerCase();
+  const category = String(serviceCategory || "").toLowerCase();
+
+  if (/flexible|no rush|whenever/.test(source)) {
+    switch (category) {
+      case "creative":
+        return "1 month";
+      case "seo":
+        return "3 months";
+      case "app":
+        return "4 months";
+      case "web":
+        return "2 months";
+      default:
+        return "2 months";
+    }
+  }
+
+  if (/urgent|asap|immediately|fast turnaround/.test(source)) {
+    switch (category) {
+      case "creative":
+        return "1 week";
+      case "seo":
+        return "1 month";
+      case "app":
+        return "8 weeks";
+      case "web":
+        return "4 weeks";
+      default:
+        return "4 weeks";
+    }
+  }
+
+  if (/standard timeline/.test(source)) {
+    return buildProposalTimelineFallback(serviceCategory);
+  }
+
+  return "";
+};
+
+const formatProposalTimelineUnit = (count, rawUnit = "") => {
+  const numeric = Number(count);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "";
+
+  const normalizedUnit = String(rawUnit || "").toLowerCase();
+  let unit = "weeks";
+
+  if (normalizedUnit.startsWith("day")) {
+    unit = numeric === 1 ? "day" : "days";
+  } else if (normalizedUnit.startsWith("month")) {
+    unit = numeric === 1 ? "month" : "months";
+  } else {
+    unit = numeric === 1 ? "week" : "weeks";
+  }
+
+  return `${numeric} ${unit}`;
+};
+
+const normalizeProposalTimelineValue = (value = "", serviceCategory = "") => {
+  const source = cleanProposalTextValue(value);
+  if (!source) {
+    return "";
+  }
+
+  const keywordValue = buildProposalConcreteTimelineFromKeyword(source, serviceCategory);
+  if (keywordValue) {
+    return keywordValue;
+  }
+
+  const normalizedSource = source
+    .replace(/[â€“â€”]/g, "-")
+    .replace(/\bto\b/gi, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const numericRangeMatch = normalizedSource.match(
+    /(\d[\d,]*)(?:\s*-\s*(\d[\d,]*))?\s*(day|days|week|weeks|month|months)\b/i
+  );
+  if (numericRangeMatch) {
+    const firstValue = Number.parseInt(String(numericRangeMatch[1] || "").replace(/,/g, ""), 10);
+    const secondValue = numericRangeMatch[2]
+      ? Number.parseInt(String(numericRangeMatch[2] || "").replace(/,/g, ""), 10)
+      : null;
+    const chosenValue =
+      Number.isFinite(secondValue) && secondValue > 0 ? secondValue : firstValue;
+    const formatted = formatProposalTimelineUnit(chosenValue, numericRangeMatch[3]);
+    if (formatted) return formatted;
+  }
+
+  const unitMatch = normalizedSource.match(/\b(day|days|week|weeks|month|months)\b/i);
+  if (unitMatch) {
+    const numericWordValue = extractNumberWordsValue(normalizedSource);
+    if (Number.isFinite(numericWordValue) && numericWordValue > 0) {
+      const formatted = formatProposalTimelineUnit(numericWordValue, unitMatch[1]);
+      if (formatted) return formatted;
+    }
+  }
+
+  if (/\b(second|seconds|minute|minutes|hour|hours)\b/i.test(normalizedSource)) {
+    return "";
+  }
+
+  return "";
 };
 
 const getLatestTimelineFromHistory = (history = []) => {
@@ -2891,13 +3112,22 @@ const buildProposalFieldEntry = ({
       };
     }
     case "Launch Timeline":
+      for (const candidate of [
+        structuredTimelineValue,
+        contextValue,
+        sectionValue,
+        getLatestTimelineFromHistory(chatHistory)
+      ]) {
+        const normalizedTimeline = normalizeProposalTimelineValue(candidate, serviceCategory);
+        if (normalizedTimeline) {
+          return {
+            value: normalizedTimeline,
+            items: []
+          };
+        }
+      }
       return {
-        value:
-          structuredTimelineValue ||
-          contextValue ||
-          sectionValue ||
-          getLatestTimelineFromHistory(chatHistory) ||
-          buildProposalTimelineFallback(serviceCategory),
+        value: buildProposalTimelineFallback(serviceCategory),
         items: []
       };
     case "Budget":
@@ -3156,6 +3386,8 @@ Put each field label on its own line. Never combine two field labels or headings
 Keep the same proposal structure and return markdown only.
 Convert numeric words into digits for numeric-only fields.
 Budget must always be numeric with currency.
+Launch Timeline must always use one concrete value in days, weeks, or months only. Never use seconds, minutes, hours, ASAP, urgent, flexible, or a range.
+Use sentence case for every field value, paragraph, and bullet item.
 NEVER use the words "suggest", "suggested", or "suggestion" anywhere in the proposal. Present all inferred recommendations as definitive expert decisions.`;
 
 const buildProposalRepairUserPrompt = ({
@@ -3165,6 +3397,309 @@ const buildProposalRepairUserPrompt = ({
   missingFields = []
 } = {}) =>
   `proposal_context:\n${JSON.stringify(proposalContext, null, 2)}\n\nchat_history:\n${JSON.stringify(chatHistory, null, 2)}\n\ndraft_proposal:\n${draftProposal}\n\nmissing_or_invalid_fields:\n${JSON.stringify(missingFields, null, 2)}`;
+
+const parseJsonObjectFromRaw = (raw = "") => {
+  const source = String(raw || "").trim();
+  if (!source) return null;
+
+  const firstBrace = source.indexOf("{");
+  const lastBrace = source.lastIndexOf("}");
+  const extracted =
+    firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace
+      ? source.slice(firstBrace, lastBrace + 1)
+      : source;
+
+  const candidates = [
+    extracted,
+    extracted.replace(/\*\*/g, ""),
+    extracted
+      .replace(/^\s*```(?:json)?\s*/i, "")
+      .replace(/\s*```\s*$/i, "")
+      .trim(),
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate.startsWith("{") || !candidate.endsWith("}")) continue;
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // Try the next normalization candidate.
+    }
+  }
+
+  return null;
+};
+
+const normalizeMatchingText = (value = "") =>
+  value !== null && value !== undefined && typeof value !== "object"
+    ? String(value || "")
+      .replace(/\s+/g, " ")
+      .trim()
+    : "";
+
+const toUniqueTextList = (...values) => {
+  const seen = new Set();
+  const items = [];
+
+  const push = (rawValue) => {
+    const value = normalizeMatchingText(rawValue);
+    if (!value) return;
+    const key = value.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    items.push(value);
+  };
+
+  values.flat().forEach((value) => {
+    if (Array.isArray(value)) {
+      value.forEach(push);
+      return;
+    }
+
+    push(value);
+  });
+
+  return items;
+};
+
+const asPlainObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : {};
+
+const normalizeMatchingBudgetValue = (value, fallback = null) => {
+  if (value === null || value === undefined || value === "") {
+    return fallback ?? null;
+  }
+
+  const direct = Number(value);
+  if (Number.isFinite(direct)) {
+    return Math.round(direct);
+  }
+
+  const digits = String(value).match(/\d[\d,]*/g);
+  if (!digits?.length) {
+    return fallback ?? null;
+  }
+
+  const parsed = Number(String(digits[0]).replace(/,/g, ""));
+  return Number.isFinite(parsed) ? Math.round(parsed) : fallback ?? null;
+};
+
+const normalizeFreelancerMatchingJson = (rawValue = null, fallbackValue = null) => {
+  const fallback = asPlainObject(fallbackValue);
+  const candidate = asPlainObject(rawValue);
+
+  if (!Object.keys(candidate).length && !Object.keys(fallback).length) {
+    return null;
+  }
+
+  const fallbackProject = asPlainObject(fallback.project);
+  const candidateProject = asPlainObject(candidate.project);
+  const fallbackQuery = asPlainObject(fallback.matchingQuery);
+  const candidateQuery = asPlainObject(candidate.matchingQuery);
+  const fallbackFitProfile = asPlainObject(fallback.fitProfile);
+  const candidateFitProfile = asPlainObject(candidate.fitProfile);
+  const fallbackScreening = asPlainObject(fallback.screening);
+  const candidateScreening = asPlainObject(candidate.screening);
+
+  return {
+    version: 1,
+    visibility: "internal",
+    source: Object.keys(candidate).length ? "ai" : normalizeMatchingText(fallback.source) || "fallback",
+    generatedAt: new Date().toISOString(),
+    project: {
+      title: normalizeMatchingText(candidateProject.title) || normalizeMatchingText(fallbackProject.title) || null,
+      serviceKey:
+        normalizeMatchingText(candidateProject.serviceKey)
+        || normalizeMatchingText(fallbackProject.serviceKey)
+        || null,
+      serviceType:
+        normalizeMatchingText(candidateProject.serviceType)
+        || normalizeMatchingText(fallbackProject.serviceType)
+        || null,
+      clientName:
+        normalizeMatchingText(candidateProject.clientName)
+        || normalizeMatchingText(fallbackProject.clientName)
+        || null,
+      businessName:
+        normalizeMatchingText(candidateProject.businessName)
+        || normalizeMatchingText(fallbackProject.businessName)
+        || null,
+      summary:
+        normalizeMatchingText(candidateProject.summary)
+        || normalizeMatchingText(fallbackProject.summary)
+        || null,
+      budgetSummary:
+        normalizeMatchingText(candidateProject.budgetSummary)
+        || normalizeMatchingText(fallbackProject.budgetSummary)
+        || null,
+      timeline:
+        normalizeMatchingText(candidateProject.timeline)
+        || normalizeMatchingText(fallbackProject.timeline)
+        || null,
+      engagementModel:
+        normalizeMatchingText(candidateProject.engagementModel)
+        || normalizeMatchingText(fallbackProject.engagementModel)
+        || null,
+      complexity:
+        normalizeMatchingText(candidateProject.complexity)
+        || normalizeMatchingText(fallbackProject.complexity)
+        || null,
+    },
+    matchingQuery: {
+      category:
+        normalizeMatchingText(candidateQuery.category)
+        || normalizeMatchingText(fallbackQuery.category)
+        || null,
+      searchTerm:
+        normalizeMatchingText(candidateQuery.searchTerm)
+        || normalizeMatchingText(fallbackQuery.searchTerm)
+        || null,
+      techStack: toUniqueTextList(candidateQuery.techStack, fallbackQuery.techStack).slice(0, 14),
+      serviceSpecializations: toUniqueTextList(
+        candidateQuery.serviceSpecializations,
+        fallbackQuery.serviceSpecializations,
+      ).slice(0, 12),
+      industriesOrNiches: toUniqueTextList(
+        candidateQuery.industriesOrNiches,
+        fallbackQuery.industriesOrNiches,
+      ).slice(0, 12),
+      minBudget: normalizeMatchingBudgetValue(candidateQuery.minBudget, fallbackQuery.minBudget),
+      maxBudget: normalizeMatchingBudgetValue(candidateQuery.maxBudget, fallbackQuery.maxBudget),
+    },
+    fitProfile: {
+      requiredSkills: toUniqueTextList(
+        candidateFitProfile.requiredSkills,
+        fallbackFitProfile.requiredSkills,
+      ).slice(0, 14),
+      preferredSkills: toUniqueTextList(
+        candidateFitProfile.preferredSkills,
+        fallbackFitProfile.preferredSkills,
+      ).slice(0, 12),
+      deliverables: toUniqueTextList(
+        candidateFitProfile.deliverables,
+        fallbackFitProfile.deliverables,
+      ).slice(0, 16),
+      primaryObjectives: toUniqueTextList(
+        candidateFitProfile.primaryObjectives,
+        fallbackFitProfile.primaryObjectives,
+      ).slice(0, 12),
+      targetAudience: toUniqueTextList(
+        candidateFitProfile.targetAudience,
+        fallbackFitProfile.targetAudience,
+      ).slice(0, 8),
+      targetLocations: toUniqueTextList(
+        candidateFitProfile.targetLocations,
+        fallbackFitProfile.targetLocations,
+      ).slice(0, 12),
+      seoGoals: toUniqueTextList(candidateFitProfile.seoGoals, fallbackFitProfile.seoGoals).slice(0, 12),
+      platformRequirements: toUniqueTextList(
+        candidateFitProfile.platformRequirements,
+        fallbackFitProfile.platformRequirements,
+      ).slice(0, 12),
+      seniorityLevel:
+        normalizeMatchingText(candidateFitProfile.seniorityLevel)
+        || normalizeMatchingText(fallbackFitProfile.seniorityLevel)
+        || null,
+      experienceLevel:
+        normalizeMatchingText(candidateFitProfile.experienceLevel)
+        || normalizeMatchingText(fallbackFitProfile.experienceLevel)
+        || null,
+      availabilityExpectation:
+        normalizeMatchingText(candidateFitProfile.availabilityExpectation)
+        || normalizeMatchingText(fallbackFitProfile.availabilityExpectation)
+        || null,
+      communicationNeeds: toUniqueTextList(
+        candidateFitProfile.communicationNeeds,
+        fallbackFitProfile.communicationNeeds,
+      ).slice(0, 10),
+    },
+    screening: {
+      mustHaveQuestions: toUniqueTextList(
+        candidateScreening.mustHaveQuestions,
+        fallbackScreening.mustHaveQuestions,
+      ).slice(0, 6),
+      niceToHaveQuestions: toUniqueTextList(
+        candidateScreening.niceToHaveQuestions,
+        fallbackScreening.niceToHaveQuestions,
+      ).slice(0, 6),
+      exclusionSignals: toUniqueTextList(
+        candidateScreening.exclusionSignals,
+        fallbackScreening.exclusionSignals,
+      ).slice(0, 6),
+    },
+  };
+};
+
+const buildFreelancerMatchingSystemPrompt = (servicePrompt = "") => `You create internal freelancer-matching JSON for a digital services agency.
+
+Service-specific context:
+${servicePrompt || "None"}
+
+Use only proposal_context and chat_history as grounding context.
+This output is hidden from the user and is used internally to help rank and shortlist the best freelancer for a project.
+Preserve confirmed client inputs exactly, but if a useful matching field is missing, infer the best-fit professional recommendation from the proposal context, service type, scope, deliverables, timeline, and budget.
+Never use placeholders such as "TBD", "Not specified", "Unknown", or "N/A".
+Return strict JSON only.
+Do not include markdown, code fences, commentary, or prose outside JSON.
+Use this exact shape:
+{
+  "project": {
+    "title": "",
+    "serviceKey": "",
+    "serviceType": "",
+    "clientName": "",
+    "businessName": "",
+    "summary": "",
+    "budgetSummary": "",
+    "timeline": "",
+    "engagementModel": "",
+    "complexity": ""
+  },
+  "matchingQuery": {
+    "category": "",
+    "searchTerm": "",
+    "techStack": [],
+    "serviceSpecializations": [],
+    "industriesOrNiches": [],
+    "minBudget": null,
+    "maxBudget": null
+  },
+  "fitProfile": {
+    "requiredSkills": [],
+    "preferredSkills": [],
+    "deliverables": [],
+    "primaryObjectives": [],
+    "targetAudience": [],
+    "targetLocations": [],
+    "seoGoals": [],
+    "platformRequirements": [],
+    "seniorityLevel": "",
+    "experienceLevel": "",
+    "availabilityExpectation": "",
+    "communicationNeeds": []
+  },
+  "screening": {
+    "mustHaveQuestions": [],
+    "niceToHaveQuestions": [],
+    "exclusionSignals": []
+  }
+}
+
+Quality rules:
+- Keep arrays concise, specific, and deduplicated.
+- Put technologies in techStack and requiredSkills, not inside long sentences.
+- Use a strong internal searchTerm for marketplace/freelancer retrieval.
+- minBudget and maxBudget must be numbers or null.
+- Focus on signals that help identify the best-fit freelancer, not on writing sales copy.`;
+
+const buildFreelancerMatchingUserPrompt = ({
+  proposalContext = {},
+  chatHistory = [],
+} = {}) =>
+  `proposal_context:\n${JSON.stringify(proposalContext, null, 2)}\n\nchat_history:\n${JSON.stringify(chatHistory, null, 2)}`;
 
 export const generateProposalMarkdown = async (
   proposalContext = {},
@@ -3257,6 +3792,60 @@ export const generateProposalMarkdown = async (
     chatHistory: historyPayload,
     selectedServiceName
   });
+};
+
+export const generateFreelancerMatchingJson = async (
+  proposalContext = {},
+  chatHistory = [],
+  selectedServiceName = "",
+  servicePrompt = ""
+) => {
+  await ensureServicesCatalogLoaded();
+
+  const contextPayload =
+    proposalContext && typeof proposalContext === "object"
+      ? { ...proposalContext }
+      : {};
+  if (selectedServiceName && !contextPayload.serviceType) {
+    contextPayload.serviceType = selectedServiceName;
+  }
+
+  const historyPayload = Array.isArray(chatHistory) ? chatHistory : [];
+  const fallback = buildProjectFreelancerMatchingSeed(contextPayload);
+  if (!fallback) {
+    return null;
+  }
+
+  const apiKey = env.OPENROUTER_API_KEY?.trim();
+  if (!apiKey) {
+    return normalizeFreelancerMatchingJson(null, fallback);
+  }
+
+  try {
+    const { data } = await requestOpenRouterCompletion({
+      apiKey,
+      title: "Catalance Freelancer Matching Generator",
+      messages: [
+        { role: "system", content: buildFreelancerMatchingSystemPrompt(servicePrompt) },
+        {
+          role: "user",
+          content: buildFreelancerMatchingUserPrompt({
+            proposalContext: contextPayload,
+            chatHistory: historyPayload,
+          }),
+        },
+      ],
+      temperature: 0.2,
+      maxTokens: 1400,
+    });
+
+    const rawContent = data?.choices?.[0]?.message?.content || "";
+    const parsed = parseJsonObjectFromRaw(rawContent);
+    return normalizeFreelancerMatchingJson(parsed, fallback);
+  } catch (error) {
+    console.warn("[Proposal] Freelancer matching JSON fallback used:", error?.message || error);
+    return normalizeFreelancerMatchingJson(null, fallback);
+  }
 };
 
 export const chatWithAI = async (
@@ -3385,6 +3974,7 @@ export const __testables = {
   buildUserInputGuardMessage,
   normalizeProposalMarkdown,
   normalizeProposalBudgetValue,
+  normalizeProposalTimelineValue,
   normalizeNumericFieldValue
 };
 

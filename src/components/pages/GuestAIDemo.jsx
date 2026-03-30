@@ -38,7 +38,9 @@ import {
     X,
     Image as ImageIcon,
     FileText,
-    Trash2
+    Trash2,
+    Globe,
+    MessageSquarePlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -68,6 +70,8 @@ const { primaryKey: GUEST_CHAT_SIDEBAR_SIZE_KEY } =
 const MAX_PREVIOUS_CHAT_ITEMS = 30;
 const ATTACHMENT_TOKEN_PREFIX = '[[ATTACHMENT]]';
 const ATTACHMENT_TOKEN_REGEX = /^\[\[ATTACHMENT\]\]([^|]+)\|([^|]+)\|([^|]*)\|(\d+)$/;
+const URL_TOKEN_PREFIX = '[[URL]]';
+const URL_TOKEN_REGEX = /^\[\[URL\]\]([^|]+)\|([^|]*)$/;
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const CHAT_FILE_ACCEPT = 'image/*,.pdf,.doc,.docx,.txt,.zip';
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
@@ -255,6 +259,75 @@ const buildAttachmentToken = (attachment = {}) => {
     return `${ATTACHMENT_TOKEN_PREFIX}${name}|${url}|${type}|${size}`;
 };
 
+const normalizeSharedUrl = (value = '') => {
+    const source = String(value || '').trim();
+    if (!source) return '';
+
+    const attempts = [source];
+    while (/[),.;!?]$/.test(attempts[attempts.length - 1] || '')) {
+        attempts.push(attempts[attempts.length - 1].slice(0, -1));
+    }
+
+    for (const attempt of attempts) {
+        const candidate = String(attempt || '').trim();
+        if (!candidate) continue;
+        const withProtocol = /^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`;
+        try {
+            const parsed = new URL(withProtocol);
+            if (!['http:', 'https:'].includes(parsed.protocol)) continue;
+            return parsed.toString();
+        } catch {
+            // Try the next normalized candidate.
+        }
+    }
+
+    return '';
+};
+
+const buildSharedUrlLabel = (value = '') => {
+    try {
+        const parsed = new URL(value);
+        const hostname = parsed.hostname.replace(/^www\./i, '');
+        const path = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.replace(/\/$/, '') : '';
+        return `${hostname}${path}` || hostname || value;
+    } catch {
+        return String(value || '').trim();
+    }
+};
+
+const extractSharedUrlsFromText = (value = '') => {
+    const seen = new Set();
+    const urls = [];
+    const text = String(value || '')
+        .replace(/\r/g, '')
+        .split('\n')
+        .map((line) => line.replace(/(?:https?:\/\/|www\.)[^\s<>"']+/gi, (match) => {
+            const normalized = normalizeSharedUrl(match);
+            if (!normalized) return match;
+            if (!seen.has(normalized)) {
+                seen.add(normalized);
+                urls.push({
+                    url: normalized,
+                    label: buildSharedUrlLabel(normalized),
+                });
+            }
+            return ' ';
+        }))
+        .map((line) => line.replace(/\s{2,}/g, ' ').trim())
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+    return { text, urls };
+};
+
+const buildUrlToken = (urlEntry = {}) => {
+    const normalizedUrl = normalizeSharedUrl(urlEntry.url || '');
+    if (!normalizedUrl) return '';
+    const label = buildSharedUrlLabel(urlEntry.label || normalizedUrl);
+    return `${URL_TOKEN_PREFIX}${encodeURIComponent(normalizedUrl)}|${encodeURIComponent(label)}`;
+};
+
 const parseAttachmentToken = (line = '') => {
     const match = String(line || '').trim().match(ATTACHMENT_TOKEN_REGEX);
     if (!match) return null;
@@ -274,8 +347,23 @@ const parseAttachmentToken = (line = '') => {
     };
 };
 
+const parseUrlToken = (line = '') => {
+    const match = String(line || '').trim().match(URL_TOKEN_REGEX);
+    if (!match) return null;
+
+    const url = normalizeSharedUrl(decodeURIComponent(match[1] || ''));
+    const label = decodeURIComponent(match[2] || '');
+    if (!url) return null;
+
+    return {
+        url,
+        label: label || buildSharedUrlLabel(url),
+    };
+};
+
 const parseMessageContentWithAttachments = (content = '', explicitAttachments = []) => {
     const parsedAttachments = [];
+    const parsedUrls = [];
     const textLines = [];
     const contentLines = String(content || '').replace(/\r/g, '').split('\n');
 
@@ -285,22 +373,116 @@ const parseMessageContentWithAttachments = (content = '', explicitAttachments = 
             parsedAttachments.push(parsed);
             return;
         }
+        const parsedUrl = parseUrlToken(rawLine);
+        if (parsedUrl) {
+            parsedUrls.push(parsedUrl);
+            return;
+        }
         textLines.push(rawLine);
     });
 
-    const seen = new Set();
+    const attachmentSeen = new Set();
     const allAttachments = [...(Array.isArray(explicitAttachments) ? explicitAttachments : []), ...parsedAttachments]
         .filter((attachment) => attachment?.url)
         .filter((attachment) => {
             const key = `${attachment.url}|${attachment.name || ''}|${attachment.size || 0}`;
-            if (seen.has(key)) return false;
-            seen.add(key);
+            if (attachmentSeen.has(key)) return false;
+            attachmentSeen.add(key);
+            return true;
+        });
+
+    const urlSeen = new Set();
+    const allUrls = parsedUrls
+        .filter((entry) => entry?.url)
+        .filter((entry) => {
+            const key = String(entry.url || '').trim();
+            if (!key || urlSeen.has(key)) return false;
+            urlSeen.add(key);
             return true;
         });
 
     return {
         text: textLines.join('\n').trim(),
         attachments: allAttachments,
+        urls: allUrls,
+    };
+};
+
+const isImageAttachment = (attachment = {}) => {
+    const type = String(attachment?.type || '').toLowerCase();
+    const name = String(attachment?.name || '').toLowerCase();
+    return type.startsWith('image/')
+        || /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(name);
+};
+
+const buildAttachmentKindLabel = (attachment = {}) => {
+    if (isImageAttachment(attachment)) return 'Image';
+
+    const extension = String(attachment?.name || '').split('.').pop();
+    if (extension && extension !== String(attachment?.name || '')) {
+        return extension.toUpperCase();
+    }
+
+    const mimeType = String(attachment?.type || '').trim();
+    if (mimeType) {
+        const mimeLabel = mimeType.includes('/') ? mimeType.split('/').pop() : mimeType;
+        return mimeLabel.replace(/[-_]+/g, ' ').toUpperCase();
+    }
+
+    return 'File';
+};
+
+const extractSharedResourcesFromMessages = (messages = []) => {
+    const source = Array.isArray(messages) ? messages : [];
+    const urlSeen = new Set();
+    const attachmentSeen = new Set();
+    const urls = [];
+    const attachments = [];
+
+    for (let index = source.length - 1; index >= 0; index -= 1) {
+        const message = source[index];
+        if (message?.role !== 'user') continue;
+
+        const parsed = parseMessageContentWithAttachments(
+            message?.content || '',
+            message?.attachments || []
+        );
+
+        parsed.urls.forEach((entry, entryIndex) => {
+            const normalizedUrl = normalizeSharedUrl(entry?.url || '');
+            if (!normalizedUrl || urlSeen.has(normalizedUrl)) return;
+
+            urlSeen.add(normalizedUrl);
+            urls.push({
+                id: `url-${index}-${entryIndex}`,
+                url: normalizedUrl,
+                label: buildSharedUrlLabel(entry?.label || normalizedUrl),
+            });
+        });
+
+        parsed.attachments.forEach((attachment, entryIndex) => {
+            const url = String(attachment?.url || '').trim();
+            const name = String(attachment?.name || 'Attachment').trim() || 'Attachment';
+            const size = Number(attachment?.size || 0);
+            const key = `${url}|${name}|${size}`;
+            if (!url || attachmentSeen.has(key)) return;
+
+            attachmentSeen.add(key);
+            attachments.push({
+                id: `attachment-${index}-${entryIndex}`,
+                url,
+                name,
+                type: String(attachment?.type || ''),
+                size: Number.isFinite(size) ? size : 0,
+                isImage: isImageAttachment(attachment),
+                kindLabel: buildAttachmentKindLabel(attachment),
+            });
+        });
+    }
+
+    return {
+        urls,
+        attachments,
     };
 };
 
@@ -418,6 +600,9 @@ const toPreviewText = (messages = []) => {
     for (const message of source) {
         const parsed = parseMessageContentWithAttachments(message?.content || '', message?.attachments || []);
         if (parsed.text) return truncateText(parsed.text, 90);
+        if (parsed.urls.length > 0) {
+            return `Shared ${parsed.urls[0].label || 'link'}`;
+        }
         if (parsed.attachments.length > 0) {
             return `Shared ${parsed.attachments[0].name || 'attachment'}`;
         }
@@ -591,6 +776,56 @@ const OPTION_PROMPT_CUE_REGEX = /\b(choose|select|pick|prefer|options?|choice|ch
 const FREEFORM_FOLLOWUP_OPTION_REGEX = /\b(not sure|other|suggest|recommend|advice|help)\b/i;
 const AUTO_HELPER_QUESTION_REGEX = /\b(budget|price|pricing|cost|timeline|ready|launch|deadline|when would you like|when do you want|how soon)\b/i;
 const AUTO_RECOMMEND_OPTION_VALUE = 'Recommend best option';
+const RECOMMENDATION_ACCEPTANCE_PATTERNS = [
+    /\b(?:ok|okay|sure|perfect|great|fine|nice|cool)\b/i,
+    /\b(?:sounds good|sounds great|works for me|that works|makes sense)\b/i,
+    /\b(?:go with (?:that|it|this)|go ahead|use (?:that|it|this)|pick (?:that|it|this)|choose (?:that|it|this))\b/i,
+    /\b(?:let(?:s| us) do (?:that|it|this)|proceed with (?:that|it|this)|continue with (?:that|it|this))\b/i,
+    /\b(?:recommended (?:one|option)|best option)\b/i,
+];
+const RECOMMENDATION_ACCEPTANCE_BLOCKERS_REGEX = /\b(?:no|nope|nah|not|don't|do not|instead|different|another|else|change|question|why|how|what|which|but)\b/i;
+const RECOMMENDATION_ACCEPTANCE_FILLER_WORDS = new Set([
+    'accept',
+    'accepted',
+    'agree',
+    'agreed',
+    'ahead',
+    'alright',
+    'best',
+    'choose',
+    'continue',
+    'cool',
+    'do',
+    'exactly',
+    'fine',
+    'go',
+    'good',
+    'great',
+    'it',
+    'lets',
+    'me',
+    'nice',
+    'ok',
+    'okay',
+    'one',
+    'option',
+    'perfect',
+    'pick',
+    'please',
+    'proceed',
+    'recommendation',
+    'recommended',
+    'right',
+    'selection',
+    'sounds',
+    'sure',
+    'that',
+    'this',
+    'use',
+    'with',
+    'work',
+    'works',
+]);
 
 const repairBrokenTechTokens = (text = "") =>
     String(text || "")
@@ -968,6 +1203,83 @@ const normalizeHelperIntentText = (value = '') =>
         .replace(/\s+/g, ' ')
         .trim();
 
+const extractOptionTextValue = (option = null) => {
+    if (typeof option === 'string') return option;
+    if (!option || typeof option !== 'object') return '';
+    return String(option.label || option.value || option.text || '').trim();
+};
+
+const isLikelyRecommendationAcceptance = (value = '') => {
+    const normalized = normalizeHelperIntentText(value);
+    if (!normalized) return false;
+    if (RECOMMENDATION_ACCEPTANCE_BLOCKERS_REGEX.test(normalized)) return false;
+    if (RECOMMENDATION_ACCEPTANCE_PATTERNS.some((pattern) => pattern.test(normalized))) return true;
+
+    const tokens = normalized.split(/\s+/).filter(Boolean);
+    return tokens.length > 0
+        && tokens.length <= 8
+        && tokens.every((token) => RECOMMENDATION_ACCEPTANCE_FILLER_WORDS.has(token));
+};
+
+const collectKnownOptionPhrases = (...optionGroups) =>
+    Array.from(
+        new Set(
+            optionGroups
+                .flatMap((group) => (Array.isArray(group) ? group : []))
+                .map((entry) => normalizeHelperIntentText(extractOptionTextValue(entry)))
+                .filter((entry) => entry.length >= 3)
+        )
+    );
+
+const messageMentionsKnownOption = (message = '', ...optionGroups) => {
+    const normalizedMessage = normalizeHelperIntentText(message);
+    if (!normalizedMessage) return false;
+
+    return collectKnownOptionPhrases(...optionGroups).some((phrase) => {
+        const optionPattern = new RegExp(`(^|\\s)${escapeRegExp(phrase).replace(/\s+/g, '\\s+')}($|\\s)`, 'i');
+        return optionPattern.test(normalizedMessage);
+    });
+};
+
+const resolvePendingRecommendedAnswer = ({
+    pendingFollowup = null,
+    notice = '',
+    placeholder = '',
+}) => {
+    const explicitRecommendation = String(pendingFollowup?.recommendedAnswer || '').trim();
+    if (explicitRecommendation) return explicitRecommendation;
+
+    const placeholderMatch = String(placeholder || '').trim().match(/^e\.g\.\s*(.+)$/i);
+    const placeholderValue = placeholderMatch?.[1]?.trim() || '';
+    if (
+        placeholderValue
+        && !/\b(?:recommended|suggested|best fit|direction)\b/i.test(normalizeHelperIntentText(placeholderValue))
+    ) {
+        return placeholderValue;
+    }
+
+    const noticeMatch = String(notice || '').trim().match(/^Recommended:\s*(.+?)(?:\.\s|$)/i);
+    const noticeValue = noticeMatch?.[1]?.trim() || '';
+    if (
+        noticeValue
+        && !/\b(?:recommended|suggested|best fit|direction)\b/i.test(normalizeHelperIntentText(noticeValue))
+    ) {
+        return noticeValue;
+    }
+
+    return '';
+};
+
+const pickRecommendedChatOption = (options = []) => {
+    const optionTexts = (Array.isArray(options) ? options : [])
+        .map((option) => stripMarkdownDecorators(extractOptionTextValue(option)))
+        .filter(Boolean);
+
+    return optionTexts.find((text) => /\brecommend(?:ed)?\b/i.test(text))
+        || optionTexts.find((text) => !FREEFORM_FOLLOWUP_OPTION_REGEX.test(normalizeHelperIntentText(text)))
+        || '';
+};
+
 const buildHistoryPersonalizationLead = (historyContext = '') => {
     const normalized = normalizeHelperIntentText(historyContext);
     if (!normalized) return '';
@@ -1186,6 +1498,101 @@ const PROPOSAL_INLINE_FIELD_LABELS = [
     'Budget',
 ];
 
+const PROPOSAL_DISPLAY_TOKEN_MAP = new Map([
+    ['ai', 'AI'],
+    ['api', 'API'],
+    ['aws', 'AWS'],
+    ['b2b', 'B2B'],
+    ['b2c', 'B2C'],
+    ['crm', 'CRM'],
+    ['erp', 'ERP'],
+    ['firebase', 'Firebase'],
+    ['flutter', 'Flutter'],
+    ['inr', 'INR'],
+    ['ios', 'iOS'],
+    ['mongodb', 'MongoDB'],
+    ['mysql', 'MySQL'],
+    ['netlify', 'Netlify'],
+    ['next.js', 'Next.js'],
+    ['nextjs', 'Next.js'],
+    ['node.js', 'Node.js'],
+    ['nodejs', 'Node.js'],
+    ['postgresql', 'PostgreSQL'],
+    ['react', 'React'],
+    ['react.js', 'React.js'],
+    ['saas', 'SaaS'],
+    ['seo', 'SEO'],
+    ['shopify', 'Shopify'],
+    ['sql', 'SQL'],
+    ['supabase', 'Supabase'],
+    ['ui', 'UI'],
+    ['ux', 'UX'],
+    ['vercel', 'Vercel'],
+    ['whatsapp', 'WhatsApp'],
+    ['woocommerce', 'WooCommerce'],
+    ['wordpress', 'WordPress'],
+]);
+
+const applyProposalDisplayTokenOverrides = (value = '') => {
+    let normalized = String(value || '');
+    for (const [source, target] of PROPOSAL_DISPLAY_TOKEN_MAP.entries()) {
+        normalized = normalized.replace(new RegExp(`\\b${escapeRegExp(source)}\\b`, 'gi'), target);
+    }
+    return normalized;
+};
+
+const formatProposalDisplaySentenceCaseToken = (token = '', capitalize = false) => {
+    const raw = String(token || '');
+    const key = raw.toLowerCase();
+    if (PROPOSAL_DISPLAY_TOKEN_MAP.has(key)) {
+        return PROPOSAL_DISPLAY_TOKEN_MAP.get(key);
+    }
+
+    if (/[A-Z].*[a-z]/.test(raw) || /[a-z].*[A-Z]/.test(raw)) {
+        return raw;
+    }
+
+    const lowered = raw.toLowerCase();
+    return capitalize
+        ? `${lowered.charAt(0).toUpperCase()}${lowered.slice(1)}`
+        : lowered;
+};
+
+const formatProposalDisplaySentenceCase = (value = '') => {
+    const normalized = stripMarkdownDecorators(String(value || ''))
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!normalized) return '';
+
+    const cased = normalized
+        .split(/(?<=[.!?])\s+/)
+        .map((sentence) => {
+            let capitalized = false;
+            return sentence.replace(/\S+/g, (token) => {
+                if (!/[A-Za-z]/.test(token)) {
+                    if (/[0-9]/.test(token)) {
+                        capitalized = true;
+                    }
+                    return token;
+                }
+
+                const prefixMatch = token.match(/^[^A-Za-z0-9]+/);
+                const suffixMatch = token.match(/[^A-Za-z0-9]+$/);
+                const prefix = prefixMatch?.[0] || '';
+                const suffix = suffixMatch?.[0] || '';
+                const core = token.slice(prefix.length, token.length - suffix.length);
+                if (!core) return token;
+
+                const nextCore = formatProposalDisplaySentenceCaseToken(core, !capitalized);
+                capitalized = true;
+                return `${prefix}${nextCore}${suffix}`;
+            });
+        })
+        .join(' ');
+
+    return applyProposalDisplayTokenOverrides(cased);
+};
+
 const normalizeProposalPreviewContent = (content = '') => {
     let normalized = normalizeMarkdownContent(content).replace(/\r/g, '');
 
@@ -1243,7 +1650,7 @@ const parseProposalContent = (content = '') => {
 
         const bulletMatch = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/);
         if (bulletMatch) {
-            const bulletText = stripMarkdownDecorators(bulletMatch[1]);
+            const bulletText = formatProposalDisplaySentenceCase(bulletMatch[1]);
             if (!activeSection) {
                 activeSection = ensureProposalSection(sectionsMap, 'Details');
             }
@@ -1254,7 +1661,7 @@ const parseProposalContent = (content = '') => {
         const keyValueMatch = line.match(/^([^:]{2,80}):\s*(.*)$/);
         if (keyValueMatch) {
             const rawKey = stripMarkdownDecorators(keyValueMatch[1]);
-            const value = stripMarkdownDecorators(keyValueMatch[2] || '');
+            const value = formatProposalDisplaySentenceCase(keyValueMatch[2] || '');
             const normalizedKey = normalizeProposalKey(rawKey);
             const metaFieldKey = PROPOSAL_META_KEY_MAP[normalizedKey];
 
@@ -1274,7 +1681,7 @@ const parseProposalContent = (content = '') => {
         if (!activeSection) {
             activeSection = ensureProposalSection(sectionsMap, 'Details');
         }
-        activeSection.lines.push(stripMarkdownDecorators(line));
+        activeSection.lines.push(formatProposalDisplaySentenceCase(line));
     }
 
     const sections = Array.from(sectionsMap.values())
@@ -1415,6 +1822,8 @@ const GuestAIDemo = () => {
     const [pendingAttachments, setPendingAttachments] = useState([]);
     const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
     const [thinkingState, setThinkingState] = useState(null);
+    const [isProposalsModalOpen, setIsProposalsModalOpen] = useState(false);
+    const [activeResourceLibrary, setActiveResourceLibrary] = useState(null);
 
     const scrollRef = useRef(null);
     const inputRef = useRef(null);
@@ -1433,8 +1842,28 @@ const GuestAIDemo = () => {
     const hasOptionInput = Array.isArray(inputConfig.options) && inputConfig.options.length > 0;
     const shouldShowTextInput = true;
     const visiblePreviousChats = previousChats.filter((chat) => chat?.sessionId);
+    const { urls: sharedLinks, attachments: sharedAttachments } = extractSharedResourcesFromMessages(messages);
+    const activeResourceLibraryConfig = activeResourceLibrary === 'links'
+        ? {
+            title: 'Saved Links',
+            icon: Globe,
+            items: sharedLinks,
+            emptyMessage: 'No links shared in this chat yet.',
+        }
+        : activeResourceLibrary === 'files'
+            ? {
+                title: 'Shared Files & Media',
+                icon: FileText,
+                items: sharedAttachments,
+                emptyMessage: 'No files or images shared in this chat yet.',
+            }
+            : null;
+    const ActiveResourceLibraryIcon = activeResourceLibraryConfig?.icon || FileText;
     const isUserLoggedIn = Boolean(isAuthenticated && user);
-    const userDisplayName = user?.fullName || user?.name || "Logged-in user";
+    const userPrefillName = [user?.fullName, user?.name]
+        .map((value) => String(value || '').trim())
+        .find(Boolean) || '';
+    const userDisplayName = userPrefillName || "Logged-in user";
     const userDisplayEmail = user?.email || "";
     const userAvatar = user?.avatar || user?.profileImage || user?.image || "";
 
@@ -1592,12 +2021,17 @@ const GuestAIDemo = () => {
             historyContext: recentUserContext,
         })
         : { notice: '', placeholder: 'Message CATA AI...' };
-    const contextualPendingOptionNotice = pendingOptionFollowup?.loadingAdvice
-        ? ((pendingOptionFollowup?.autoSuggestion || isNotSureFollowup) ? "Asking AI for a recommendation..." : "Asking AI for advice...")
-        : (pendingOptionFollowup?.notice || contextualPendingOptionHelperCopy.notice || pendingOptionNotice);
-    const contextualPendingOptionPlaceholder = pendingOptionFollowup?.loadingAdvice
-        ? "Please wait..."
-        : (pendingOptionFollowup?.placeholder || contextualPendingOptionHelperCopy.placeholder || pendingOptionPlaceholder);
+    const contextualPendingOptionNotice = stripMarkdownDecorators(
+        pendingOptionFollowup?.loadingAdvice
+            ? ((pendingOptionFollowup?.autoSuggestion || isNotSureFollowup) ? "Asking AI for a recommendation..." : "Asking AI for advice...")
+            : (pendingOptionFollowup?.notice || contextualPendingOptionHelperCopy.notice || pendingOptionNotice)
+    );
+    const contextualPendingOptionPlaceholder = stripMarkdownDecorators(pendingOptionFollowup?.loadingAdvice ? "Please wait..." : (pendingOptionFollowup?.placeholder || contextualPendingOptionHelperCopy.placeholder || pendingOptionPlaceholder));
+    const pendingRecommendedAnswer = resolvePendingRecommendedAnswer({
+        pendingFollowup: pendingOptionFollowup,
+        notice: contextualPendingOptionNotice,
+        placeholder: contextualPendingOptionPlaceholder,
+    });
     const shouldAutoRecommendQuestion = !latestAssistantIsProposal
         && Boolean(latestAssistantPrompt.questionText)
         && shouldAutoRecommendCurrentQuestion({
@@ -1644,11 +2078,31 @@ const GuestAIDemo = () => {
     const fetchOptionAdvice = useCallback(async (optionValue, extraContext = {}) => {
         const isRecommendationRequest = extraContext.mode === 'auto_question_recommendation'
             || /\b(not sure|other|suggest|recommend|advice|help)\b/i.test(String(optionValue || ''));
+        const currentQ = extraContext.questionText ?? latestAssistantPrompt.questionText;
+        const questionContext = extraContext.assistantContext ?? latestAssistantPrompt.contextText;
+        const currentOptions = Array.isArray(extraContext.currentOptions)
+            ? extraContext.currentOptions
+            : latestAssistantPrompt.options;
+        const localRecommendedAnswer = isRecommendationRequest
+            ? pickRecommendedChatOption(currentOptions)
+            : '';
         const fallbackNotice = isRecommendationRequest
-            ? 'Recommended: use the best-fit answer for this step based on your current project direction.'
+            ? (
+                /^(yes|no)$/i.test(stripMarkdownDecorators(localRecommendedAnswer))
+                    ? 'Recommended direction: use the strongest fit for this step based on your current project direction.'
+                    : (localRecommendedAnswer
+                        ? `Recommended: ${stripMarkdownDecorators(localRecommendedAnswer)}. This is the strongest fit based on your current project direction.`
+                        : 'Recommended direction: use the strongest fit for this step based on your current project direction.')
+            )
             : `Got it. ${stripMarkdownDecorators(optionValue)}.`;
         const fallbackPlaceholder = isRecommendationRequest
-            ? 'e.g. use the recommended answer...'
+            ? (
+                /^(yes|no)$/i.test(stripMarkdownDecorators(localRecommendedAnswer))
+                    ? 'e.g. go with the recommended direction'
+                    : (localRecommendedAnswer
+                        ? `e.g. ${stripMarkdownDecorators(localRecommendedAnswer)}`
+                        : 'e.g. go with the recommended direction')
+            )
             : 'Tell me a bit more...';
 
         try {
@@ -1657,11 +2111,6 @@ const GuestAIDemo = () => {
                 .slice(-4)
                 .map((msg) => msg?.content)
                 .join(' ');
-            const currentQ = extraContext.questionText ?? latestAssistantPrompt.questionText;
-            const questionContext = extraContext.assistantContext ?? latestAssistantPrompt.contextText;
-            const currentOptions = Array.isArray(extraContext.currentOptions)
-                ? extraContext.currentOptions
-                : latestAssistantPrompt.options;
 
             const response = await request('/guest/advice', {
                 method: 'POST',
@@ -1685,8 +2134,9 @@ const GuestAIDemo = () => {
                 return {
                     ...current,
                     loadingAdvice: false,
-                    notice: data?.notice || fallbackNotice,
-                    placeholder: data?.placeholder || fallbackPlaceholder
+                    notice: stripMarkdownDecorators(data?.notice || fallbackNotice),
+                    placeholder: stripMarkdownDecorators(data?.placeholder || fallbackPlaceholder),
+                    recommendedAnswer: stripMarkdownDecorators(String(data?.recommendedAnswer || localRecommendedAnswer || '').trim()),
                 };
             });
         } catch {
@@ -1698,8 +2148,9 @@ const GuestAIDemo = () => {
                 return {
                     ...current,
                     loadingAdvice: false,
-                    notice: fallbackNotice,
-                    placeholder: fallbackPlaceholder,
+                    notice: stripMarkdownDecorators(fallbackNotice),
+                    placeholder: stripMarkdownDecorators(fallbackPlaceholder),
+                    recommendedAnswer: stripMarkdownDecorators(String(current?.recommendedAnswer || localRecommendedAnswer || '').trim()),
                 };
             });
         }
@@ -2224,7 +2675,10 @@ const GuestAIDemo = () => {
             const response = await request('/guest/start', {
                 method: 'POST',
                 timeout: 120000,
-                body: JSON.stringify({ serviceId: service.slug || service.id })
+                body: JSON.stringify({
+                    serviceId: service.slug || service.id,
+                    ...(userPrefillName ? { prefillName: userPrefillName } : {})
+                })
             });
             const data = unwrapPayload(response);
 
@@ -2262,7 +2716,15 @@ const GuestAIDemo = () => {
 
         if (!ignorePendingOptionFollowup && pendingOptionValue) {
             const detailText = String(input || '').trim();
-            if (!detailText) {
+            const acceptsPendingRecommendation = Boolean(
+                pendingRecommendedAnswer
+                && detailText
+                && isLikelyRecommendationAcceptance(detailText)
+                && !messageMentionsKnownOption(detailText, inputConfig.options, latestAssistantPrompt.options)
+            );
+            const followupReply = acceptsPendingRecommendation ? pendingRecommendedAnswer : detailText;
+
+            if (!followupReply) {
                 toast.info(`Add a short detail for "${pendingOptionLabel}" before sending.`);
                 focusMessageInput();
                 return;
@@ -2272,11 +2734,14 @@ const GuestAIDemo = () => {
                 const mergedSelections = contentToSend
                     .filter(Boolean)
                     .map(String)
-                    .filter((value) => normalizeOptionToken(value) !== normalizeOptionToken(pendingOptionValue));
+                    .filter((value) =>
+                        normalizeOptionToken(value) !== normalizeOptionToken(pendingOptionValue)
+                        && normalizeOptionToken(value) !== normalizeOptionToken(followupReply)
+                    );
 
-                contentToSend = [...mergedSelections, detailText];
+                contentToSend = [...mergedSelections, followupReply];
             } else {
-                contentToSend = detailText;
+                contentToSend = followupReply;
             }
         }
 
@@ -2288,10 +2753,13 @@ const GuestAIDemo = () => {
             ? normalizedArray.join(', ')
             : String(contentToSend ?? '');
         const trimmedTextPayload = textPayload.trim();
+        const extractedSharedUrls = extractSharedUrlsFromText(trimmedTextPayload);
+        const normalizedTextPayload = extractedSharedUrls.text.trim();
+        const hasSharedUrls = extractedSharedUrls.urls.length > 0;
         const hasAttachments = pendingAttachments.length > 0;
 
-        if ((!trimmedTextPayload && !hasAttachments) || !sessionId || isTyping || isUploadingAttachment) return;
-        if (isArrayPayload && normalizedArray.length === 0 && !hasAttachments) return;
+        if ((!trimmedTextPayload && !hasAttachments && !hasSharedUrls) || !sessionId || isTyping || isUploadingAttachment) return;
+        if (isArrayPayload && normalizedArray.length === 0 && !hasAttachments && !hasSharedUrls) return;
 
         if (isListening && recognitionRef.current) {
             suppressSpeechCommitRef.current = true;
@@ -2313,8 +2781,11 @@ const GuestAIDemo = () => {
                 ? await Promise.all(pendingAttachments.map((file) => uploadGuestAttachment(file)))
                 : [];
 
+            const serializedUrls = extractedSharedUrls.urls
+                .map((urlEntry) => buildUrlToken(urlEntry))
+                .filter(Boolean);
             const serializedAttachments = uploadedAttachments.map((attachment) => buildAttachmentToken(attachment));
-            const composedContent = [trimmedTextPayload, serializedAttachments.join('\n')]
+            const composedContent = [normalizedTextPayload, serializedUrls.join('\n'), serializedAttachments.join('\n')]
                 .filter(Boolean)
                 .join('\n')
                 .trim();
@@ -2333,7 +2804,7 @@ const GuestAIDemo = () => {
                 timeout: 120000,
                 body: JSON.stringify({
                     sessionId,
-                    message: isArrayPayload && serializedAttachments.length === 0
+                    message: isArrayPayload && serializedAttachments.length === 0 && serializedUrls.length === 0
                         ? normalizedArray
                         : composedContent
                 })
@@ -2422,6 +2893,7 @@ const GuestAIDemo = () => {
         setSelectedOptions([]);
         setPendingOptionFollowup(null);
         setInputConfig({ type: 'text', options: [] });
+        setActiveResourceLibrary(null);
     };
 
     const handleOpenProposalPreview = (proposal) => {
@@ -2434,6 +2906,14 @@ const GuestAIDemo = () => {
 
     const handleCloseProposalPreview = () => {
         setSelectedProposalPreview(null);
+    };
+
+    const handleOpenResourceLibrary = (libraryType) => {
+        setActiveResourceLibrary(libraryType);
+    };
+
+    const handleCloseResourceLibrary = () => {
+        setActiveResourceLibrary(null);
     };
 
     const handleDeletePreviousChat = (event, chatMeta) => {
@@ -2784,7 +3264,7 @@ const GuestAIDemo = () => {
             )}
 
             {/* Sidebar drawer — slides in from left as fixed overlay */}
-            <aside className={`fixed left-0 z-40 flex flex-col w-72 shadow-2xl transition-transform duration-300 ease-in-out ${isSidebarCompact ? '-translate-x-full' : 'translate-x-0'} ${isDark ? 'bg-[#171717] border-r border-white/[0.06]' : 'bg-white border-r border-slate-200'}`} style={{top:'64px',bottom:0}}>
+            <aside className={`fixed left-0 top-16 bottom-0 z-40 flex flex-col w-72 shadow-2xl transition-transform duration-300 ease-in-out lg:top-20 ${isSidebarCompact ? '-translate-x-full' : 'translate-x-0'} ${isDark ? 'bg-[#171717] border-r border-white/[0.06]' : 'bg-white border-r border-slate-200'}`}>
                 {/* ── Sidebar header ── */}
                 <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -2806,57 +3286,181 @@ const GuestAIDemo = () => {
                 </div>
 
                 {/* ── Back to services ── */}
-                <div className={`px-3 pb-2 ${isDark ? 'border-b border-white/[0.06]' : 'border-b border-slate-100'}`}>
+                <div className={`px-3 pb-2 flex gap-1.5 ${isDark ? 'border-b border-white/[0.06]' : 'border-b border-slate-100'}`}>
                     <button
                         type="button"
                         onClick={handleBackToServices}
-                        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                        title="Back to services"
                     >
                         <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-                        Back to services
+                        Back
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => selectedService && handleServiceSelect(selectedService)}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${isDark ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                        title="Start a new chat"
+                    >
+                        <MessageSquarePlus className="h-3.5 w-3.5 shrink-0" />
+                        New Chat
                     </button>
                 </div>
 
                 {/* ── Scrollable content ── */}
-                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-3">
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
                     {/* ── Proposals section ── */}
-                    <div className="mb-1 px-4">
-                        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Proposals{generatedProposals.length > 0 ? ` · ${generatedProposals.length}` : ''}
-                        </p>
+                    <div className="mb-1 px-3">
+                        <button
+                            type="button"
+                            onClick={() => setIsProposalsModalOpen(true)}
+                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                        >
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-50 text-amber-600'}`}>
+                                <Sparkles className="h-3 w-3" />
+                            </div>
+                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                                Proposals
+                            </span>
+                            {generatedProposals.length > 0 && (
+                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-primary/25 text-primary' : 'bg-amber-100 text-amber-700'}`}>
+                                    {generatedProposals.length}
+                                </span>
+                            )}
+                        </button>
                     </div>
-                    {generatedProposals.length === 0 ? (
-                        <div className="px-4 pb-3">
-                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>No proposals yet.</p>
+
+                    {/* ── Divider ── */}
+                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
+
+                    {/* ── Saved links section ── */}
+                    <div className="mb-1 px-3">
+                        <button
+                            type="button"
+                            onClick={() => handleOpenResourceLibrary('links')}
+                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                        >
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                <Globe className="h-3 w-3" />
+                            </div>
+                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                                Saved Links
+                            </span>
+                            <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                {sharedLinks.length}
+                            </span>
+                        </button>
+                    </div>
+
+                    <div className="mb-1 px-3">
+                        <button
+                            type="button"
+                            onClick={() => handleOpenResourceLibrary('files')}
+                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                        >
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                <FileText className="h-3 w-3" />
+                            </div>
+                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                                Shared Files & Media
+                            </span>
+                            <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                {sharedAttachments.length}
+                            </span>
+                        </button>
+                    </div>
+
+                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
+
+                    <div className="hidden">
+                    <div className="mb-1 px-4">
+                        <div className="flex items-center justify-between gap-2">
+                            <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Saved links
+                            </p>
+                            {sharedLinks.length > 0 && (
+                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                    {sharedLinks.length}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    {sharedLinks.length === 0 ? (
+                        <div className="px-4">
+                            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Links shared in this chat will appear here.</p>
                         </div>
                     ) : (
-                        <div className="mb-2 space-y-0.5 px-2">
-                            {generatedProposals.map((proposal, index) => (
-                                <button
-                                    key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
-                                    type="button"
-                                    onClick={() => handleOpenProposalPreview(proposal)}
-                                    className={`group flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-                                    title="Open proposal"
+                        <div className="space-y-1 px-2">
+                            {sharedLinks.map((linkEntry) => (
+                                <a
+                                    key={linkEntry.id}
+                                    href={linkEntry.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
                                 >
-                                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-50 text-amber-600'}`}>
-                                        <Sparkles className="h-3 w-3" />
+                                    <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                                        <Globe className="h-3.5 w-3.5" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'}`}>
-                                            {proposal.projectTitle || 'AI Proposal'}
+                                        <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                            {linkEntry.label}
                                         </p>
-                                        {(proposal.budget || proposal.timeline) && (
-                                            <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                {[proposal.budget, proposal.timeline].filter(Boolean).join(' · ')}
-                                            </p>
-                                        )}
+                                        <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            {linkEntry.url}
+                                        </p>
                                     </div>
-                                    <span className={`shrink-0 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                        {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
-                                    </span>
-                                </button>
+                                </a>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ── Divider ── */}
+                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
+
+                    {/* ── Shared files/media section ── */}
+                    <div className="mb-1 px-4">
+                        <div className="flex items-center justify-between gap-2">
+                            <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Shared files & media
+                            </p>
+                            {sharedAttachments.length > 0 && (
+                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                    {sharedAttachments.length}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    {sharedAttachments.length === 0 ? (
+                        <div className="px-4">
+                            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Documents, PDFs, and images you upload will appear here.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-1 px-2">
+                            {sharedAttachments.map((attachment) => (
+                                <a
+                                    key={attachment.id}
+                                    href={attachment.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                                >
+                                    <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                                        {attachment.isImage
+                                            ? <ImageIcon className="h-3.5 w-3.5" />
+                                            : <FileText className="h-3.5 w-3.5" />
+                                        }
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                            {attachment.name}
+                                        </p>
+                                        <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            {[attachment.kindLabel, formatBytes(attachment.size)].filter(Boolean).join(' • ')}
+                                        </p>
+                                    </div>
+                                </a>
                             ))}
                         </div>
                     )}
@@ -2865,8 +3469,9 @@ const GuestAIDemo = () => {
                     <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
 
                     {/* ── Previous chats section ── */}
+                    </div>
                     <div className="mb-1 px-4">
-                        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
                             Recent chats
                         </p>
                     </div>
@@ -2972,7 +3577,7 @@ const GuestAIDemo = () => {
                 <ScrollArea ref={scrollRef} className={`w-full transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''} ${isInitialScreen ? 'flex flex-col' : 'flex-1 min-h-0 pt-4'}`}>
                     <div className={`mx-auto flex w-full max-w-4xl flex-col space-y-8 px-5 lg:px-8 ${isInitialScreen ? 'pt-8' : 'pt-4 pb-52'}`}>
                         {messages.map((msg, idx) => {
-                            const { text: messageContent, attachments: messageAttachments } = parseMessageContentWithAttachments(
+                            const { text: messageContent, attachments: messageAttachments, urls: messageUrls } = parseMessageContentWithAttachments(
                                 msg.content,
                                 msg.attachments
                             );
@@ -2993,6 +3598,32 @@ const GuestAIDemo = () => {
                                     className="flex w-full justify-end"
                                 >
                                     <div className="flex max-w-[75%] flex-col items-end gap-2">
+                                        {messageUrls.length > 0 && (
+                                            <div className="flex flex-wrap justify-end gap-2">
+                                                {messageUrls.map((urlEntry, urlIdx) => (
+                                                    <a
+                                                        key={`${urlEntry.url}-${urlIdx}`}
+                                                        href={urlEntry.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className={`max-w-[320px] rounded-2xl border px-3.5 py-2.5 text-left ${isDark ? 'border-white/10 bg-white/5 text-slate-200' : 'border-black/5 bg-slate-100 text-slate-700'}`}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <Globe className="h-4 w-4 shrink-0 opacity-70" />
+                                                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${isDark ? 'bg-white/10 text-slate-300' : 'bg-black/5 text-slate-500'}`}>
+                                                                URL
+                                                            </span>
+                                                            <span className="min-w-0 truncate text-xs font-medium">
+                                                                {urlEntry.label || 'Shared link'}
+                                                            </span>
+                                                        </div>
+                                                        <p className={`mt-1 truncate text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                            {urlEntry.url}
+                                                        </p>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
                                         {/* attachments above bubble */}
                                         {messageAttachments.length > 0 && (
                                             <div className="flex flex-wrap justify-end gap-2">
@@ -3013,12 +3644,14 @@ const GuestAIDemo = () => {
                                         )}
                                         {/* text bubble */}
                                         {messageContent && (
-                                            <div className={`rounded-3xl px-5 py-3 text-[15px] leading-relaxed whitespace-pre-wrap break-words ${
+                                            <div className={`rounded-3xl px-5 py-3 text-[15px] leading-relaxed break-words ${
                                                 isDark
                                                     ? 'bg-[#2F2F2F] text-white'
                                                     : 'bg-[#F0F0F0] text-slate-900'
                                             }`}>
-                                                {messageContent}
+                                                <div className={`prose prose-sm max-w-none prose-p:my-0 prose-strong:font-semibold ${isDark ? 'prose-invert' : ''}`}>
+                                                    <ReactMarkdown>{messageContent}</ReactMarkdown>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -3138,7 +3771,203 @@ const GuestAIDemo = () => {
                 )}
             </section>
 
-            {selectedProposalPreview && (
+            {isProposalsModalOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6"
+                    onClick={() => setIsProposalsModalOpen(false)}
+                >
+                    <div
+                        className={`max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl flex flex-col ${isDark
+                            ? 'border-white/15 bg-[#0d0d0f]'
+                            : 'border-slate-300/80 bg-white'
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className={`flex items-center justify-between border-b px-5 py-4 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                            <div className="flex items-center gap-2.5">
+                                <Sparkles className="h-4 w-4 text-primary" />
+                                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                    Your AI Proposals
+                                </h3>
+                                {generatedProposals.length > 0 && (
+                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-100 text-amber-700'}`}>
+                                        {generatedProposals.length}
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsProposalsModalOpen(false)}
+                                className={`rounded-full p-2 transition-colors ${isDark ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                                aria-label="Close proposals"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {generatedProposals.length === 0 ? (
+                                <div className="flex h-40 flex-col items-center justify-center gap-3 text-center">
+                                    <Sparkles className={`h-8 w-8 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        No proposals yet. Chat with CATA AI to generate one.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {generatedProposals.map((proposal, index) => (
+                                        <button
+                                            key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
+                                            type="button"
+                                            onClick={() => {
+                                                setIsProposalsModalOpen(false);
+                                                handleOpenProposalPreview(proposal);
+                                            }}
+                                            className={`group flex w-full items-start gap-4 rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 ${isDark ? 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
+                                        >
+                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-100 text-amber-600'}`}>
+                                                <Sparkles className="h-5 w-5" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className={`font-semibold ${isDark ? 'text-slate-100 group-hover:text-white' : 'text-slate-800 group-hover:text-slate-900'}`}>
+                                                    {proposal.projectTitle || 'AI Proposal'}
+                                                </p>
+                                                {(proposal.budget || proposal.timeline) && (
+                                                    <p className={`mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {[
+                                                            proposal.budget && `Budget: ${proposal.budget}`,
+                                                            proposal.timeline && `Timeline: ${proposal.timeline}`,
+                                                        ].filter(Boolean).join(' ?? ')}
+                                                    </p>
+                                                )}
+                                                <p className={`mt-1.5 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
+                                                </p>
+                                            </div>
+                                            <svg
+                                                className={`mt-1 h-4 w-4 shrink-0 opacity-40 transition-opacity group-hover:opacity-80 ${isDark ? 'text-white' : 'text-slate-800'}`}
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                            >
+                                                <path d="m9 18 6-6-6-6"/>
+                                            </svg>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeResourceLibraryConfig && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6"
+                    onClick={handleCloseResourceLibrary}
+                >
+                    <div
+                        className={`max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl flex flex-col ${isDark
+                            ? 'border-white/15 bg-[#0d0d0f]'
+                            : 'border-slate-300/80 bg-white'
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className={`flex items-center justify-between border-b px-5 py-4 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                            <div className="flex items-center gap-2.5">
+                                <ActiveResourceLibraryIcon className={`h-4 w-4 ${isDark ? 'text-white' : 'text-slate-800'}`} />
+                                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                    {activeResourceLibraryConfig.title}
+                                </h3>
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                    {activeResourceLibraryConfig.items.length}
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleCloseResourceLibrary}
+                                className={`rounded-full p-2 transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                                aria-label="Close resource library"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {activeResourceLibraryConfig.items.length === 0 ? (
+                                <div className="flex h-40 flex-col items-center justify-center gap-3 text-center">
+                                    <ActiveResourceLibraryIcon className={`h-8 w-8 ${isDark ? 'text-slate-500' : 'text-slate-300'}`} />
+                                    <p className={`text-sm ${isDark ? 'text-white' : 'text-slate-500'}`}>
+                                        {activeResourceLibraryConfig.emptyMessage}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {activeResourceLibrary === 'links'
+                                        ? sharedLinks.map((linkEntry) => (
+                                            <a
+                                                key={linkEntry.id}
+                                                href={linkEntry.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`group flex w-full items-start gap-4 rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 ${isDark ? 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
+                                            >
+                                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                    <Globe className="h-5 w-5" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className={`font-semibold ${isDark ? 'text-white' : 'text-slate-800 group-hover:text-slate-900'}`}>
+                                                        {linkEntry.label}
+                                                    </p>
+                                                    <p className={`mt-1 text-xs break-all ${isDark ? 'text-slate-200' : 'text-slate-500'}`}>
+                                                        {linkEntry.url}
+                                                    </p>
+                                                </div>
+                                                <svg
+                                                    className={`mt-1 h-4 w-4 shrink-0 opacity-40 transition-opacity group-hover:opacity-80 ${isDark ? 'text-white' : 'text-slate-800'}`}
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                                >
+                                                    <path d="m9 18 6-6-6-6"/>
+                                                </svg>
+                                            </a>
+                                        ))
+                                        : sharedAttachments.map((attachment) => (
+                                            <a
+                                                key={attachment.id}
+                                                href={attachment.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`group flex w-full items-start gap-4 rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 ${isDark ? 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
+                                            >
+                                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                    {attachment.isImage
+                                                        ? <ImageIcon className="h-5 w-5" />
+                                                        : <FileText className="h-5 w-5" />
+                                                    }
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className={`font-semibold ${isDark ? 'text-white' : 'text-slate-800 group-hover:text-slate-900'}`}>
+                                                        {attachment.name}
+                                                    </p>
+                                                    <p className={`mt-1 text-xs ${isDark ? 'text-slate-200' : 'text-slate-500'}`}>
+                                                        {[attachment.kindLabel, formatBytes(attachment.size)].filter(Boolean).join(' • ')}
+                                                    </p>
+                                                </div>
+                                                <svg
+                                                    className={`mt-1 h-4 w-4 shrink-0 opacity-40 transition-opacity group-hover:opacity-80 ${isDark ? 'text-white' : 'text-slate-800'}`}
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                                >
+                                                    <path d="m9 18 6-6-6-6"/>
+                                                </svg>
+                                            </a>
+                                        ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+                        {selectedProposalPreview && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6">
                     <div className={`max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-2xl border shadow-2xl ${isDark
                         ? 'border-white/15 bg-[#0d0d0f]'
