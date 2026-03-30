@@ -4,6 +4,7 @@ import { dirname, join } from "path";
 import { env } from "../config/env.js";
 import { prisma, prismaInitError } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
+import { buildProjectFreelancerMatchingSeed } from "../../../src/shared/lib/project-proposal-fields.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -3268,6 +3269,309 @@ const buildProposalRepairUserPrompt = ({
 } = {}) =>
   `proposal_context:\n${JSON.stringify(proposalContext, null, 2)}\n\nchat_history:\n${JSON.stringify(chatHistory, null, 2)}\n\ndraft_proposal:\n${draftProposal}\n\nmissing_or_invalid_fields:\n${JSON.stringify(missingFields, null, 2)}`;
 
+const parseJsonObjectFromRaw = (raw = "") => {
+  const source = String(raw || "").trim();
+  if (!source) return null;
+
+  const firstBrace = source.indexOf("{");
+  const lastBrace = source.lastIndexOf("}");
+  const extracted =
+    firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace
+      ? source.slice(firstBrace, lastBrace + 1)
+      : source;
+
+  const candidates = [
+    extracted,
+    extracted.replace(/\*\*/g, ""),
+    extracted
+      .replace(/^\s*```(?:json)?\s*/i, "")
+      .replace(/\s*```\s*$/i, "")
+      .trim(),
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate.startsWith("{") || !candidate.endsWith("}")) continue;
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // Try the next normalization candidate.
+    }
+  }
+
+  return null;
+};
+
+const normalizeMatchingText = (value = "") =>
+  value !== null && value !== undefined && typeof value !== "object"
+    ? String(value || "")
+      .replace(/\s+/g, " ")
+      .trim()
+    : "";
+
+const toUniqueTextList = (...values) => {
+  const seen = new Set();
+  const items = [];
+
+  const push = (rawValue) => {
+    const value = normalizeMatchingText(rawValue);
+    if (!value) return;
+    const key = value.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    items.push(value);
+  };
+
+  values.flat().forEach((value) => {
+    if (Array.isArray(value)) {
+      value.forEach(push);
+      return;
+    }
+
+    push(value);
+  });
+
+  return items;
+};
+
+const asPlainObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : {};
+
+const normalizeMatchingBudgetValue = (value, fallback = null) => {
+  if (value === null || value === undefined || value === "") {
+    return fallback ?? null;
+  }
+
+  const direct = Number(value);
+  if (Number.isFinite(direct)) {
+    return Math.round(direct);
+  }
+
+  const digits = String(value).match(/\d[\d,]*/g);
+  if (!digits?.length) {
+    return fallback ?? null;
+  }
+
+  const parsed = Number(String(digits[0]).replace(/,/g, ""));
+  return Number.isFinite(parsed) ? Math.round(parsed) : fallback ?? null;
+};
+
+const normalizeFreelancerMatchingJson = (rawValue = null, fallbackValue = null) => {
+  const fallback = asPlainObject(fallbackValue);
+  const candidate = asPlainObject(rawValue);
+
+  if (!Object.keys(candidate).length && !Object.keys(fallback).length) {
+    return null;
+  }
+
+  const fallbackProject = asPlainObject(fallback.project);
+  const candidateProject = asPlainObject(candidate.project);
+  const fallbackQuery = asPlainObject(fallback.matchingQuery);
+  const candidateQuery = asPlainObject(candidate.matchingQuery);
+  const fallbackFitProfile = asPlainObject(fallback.fitProfile);
+  const candidateFitProfile = asPlainObject(candidate.fitProfile);
+  const fallbackScreening = asPlainObject(fallback.screening);
+  const candidateScreening = asPlainObject(candidate.screening);
+
+  return {
+    version: 1,
+    visibility: "internal",
+    source: Object.keys(candidate).length ? "ai" : normalizeMatchingText(fallback.source) || "fallback",
+    generatedAt: new Date().toISOString(),
+    project: {
+      title: normalizeMatchingText(candidateProject.title) || normalizeMatchingText(fallbackProject.title) || null,
+      serviceKey:
+        normalizeMatchingText(candidateProject.serviceKey)
+        || normalizeMatchingText(fallbackProject.serviceKey)
+        || null,
+      serviceType:
+        normalizeMatchingText(candidateProject.serviceType)
+        || normalizeMatchingText(fallbackProject.serviceType)
+        || null,
+      clientName:
+        normalizeMatchingText(candidateProject.clientName)
+        || normalizeMatchingText(fallbackProject.clientName)
+        || null,
+      businessName:
+        normalizeMatchingText(candidateProject.businessName)
+        || normalizeMatchingText(fallbackProject.businessName)
+        || null,
+      summary:
+        normalizeMatchingText(candidateProject.summary)
+        || normalizeMatchingText(fallbackProject.summary)
+        || null,
+      budgetSummary:
+        normalizeMatchingText(candidateProject.budgetSummary)
+        || normalizeMatchingText(fallbackProject.budgetSummary)
+        || null,
+      timeline:
+        normalizeMatchingText(candidateProject.timeline)
+        || normalizeMatchingText(fallbackProject.timeline)
+        || null,
+      engagementModel:
+        normalizeMatchingText(candidateProject.engagementModel)
+        || normalizeMatchingText(fallbackProject.engagementModel)
+        || null,
+      complexity:
+        normalizeMatchingText(candidateProject.complexity)
+        || normalizeMatchingText(fallbackProject.complexity)
+        || null,
+    },
+    matchingQuery: {
+      category:
+        normalizeMatchingText(candidateQuery.category)
+        || normalizeMatchingText(fallbackQuery.category)
+        || null,
+      searchTerm:
+        normalizeMatchingText(candidateQuery.searchTerm)
+        || normalizeMatchingText(fallbackQuery.searchTerm)
+        || null,
+      techStack: toUniqueTextList(candidateQuery.techStack, fallbackQuery.techStack).slice(0, 14),
+      serviceSpecializations: toUniqueTextList(
+        candidateQuery.serviceSpecializations,
+        fallbackQuery.serviceSpecializations,
+      ).slice(0, 12),
+      industriesOrNiches: toUniqueTextList(
+        candidateQuery.industriesOrNiches,
+        fallbackQuery.industriesOrNiches,
+      ).slice(0, 12),
+      minBudget: normalizeMatchingBudgetValue(candidateQuery.minBudget, fallbackQuery.minBudget),
+      maxBudget: normalizeMatchingBudgetValue(candidateQuery.maxBudget, fallbackQuery.maxBudget),
+    },
+    fitProfile: {
+      requiredSkills: toUniqueTextList(
+        candidateFitProfile.requiredSkills,
+        fallbackFitProfile.requiredSkills,
+      ).slice(0, 14),
+      preferredSkills: toUniqueTextList(
+        candidateFitProfile.preferredSkills,
+        fallbackFitProfile.preferredSkills,
+      ).slice(0, 12),
+      deliverables: toUniqueTextList(
+        candidateFitProfile.deliverables,
+        fallbackFitProfile.deliverables,
+      ).slice(0, 16),
+      primaryObjectives: toUniqueTextList(
+        candidateFitProfile.primaryObjectives,
+        fallbackFitProfile.primaryObjectives,
+      ).slice(0, 12),
+      targetAudience: toUniqueTextList(
+        candidateFitProfile.targetAudience,
+        fallbackFitProfile.targetAudience,
+      ).slice(0, 8),
+      targetLocations: toUniqueTextList(
+        candidateFitProfile.targetLocations,
+        fallbackFitProfile.targetLocations,
+      ).slice(0, 12),
+      seoGoals: toUniqueTextList(candidateFitProfile.seoGoals, fallbackFitProfile.seoGoals).slice(0, 12),
+      platformRequirements: toUniqueTextList(
+        candidateFitProfile.platformRequirements,
+        fallbackFitProfile.platformRequirements,
+      ).slice(0, 12),
+      seniorityLevel:
+        normalizeMatchingText(candidateFitProfile.seniorityLevel)
+        || normalizeMatchingText(fallbackFitProfile.seniorityLevel)
+        || null,
+      experienceLevel:
+        normalizeMatchingText(candidateFitProfile.experienceLevel)
+        || normalizeMatchingText(fallbackFitProfile.experienceLevel)
+        || null,
+      availabilityExpectation:
+        normalizeMatchingText(candidateFitProfile.availabilityExpectation)
+        || normalizeMatchingText(fallbackFitProfile.availabilityExpectation)
+        || null,
+      communicationNeeds: toUniqueTextList(
+        candidateFitProfile.communicationNeeds,
+        fallbackFitProfile.communicationNeeds,
+      ).slice(0, 10),
+    },
+    screening: {
+      mustHaveQuestions: toUniqueTextList(
+        candidateScreening.mustHaveQuestions,
+        fallbackScreening.mustHaveQuestions,
+      ).slice(0, 6),
+      niceToHaveQuestions: toUniqueTextList(
+        candidateScreening.niceToHaveQuestions,
+        fallbackScreening.niceToHaveQuestions,
+      ).slice(0, 6),
+      exclusionSignals: toUniqueTextList(
+        candidateScreening.exclusionSignals,
+        fallbackScreening.exclusionSignals,
+      ).slice(0, 6),
+    },
+  };
+};
+
+const buildFreelancerMatchingSystemPrompt = (servicePrompt = "") => `You create internal freelancer-matching JSON for a digital services agency.
+
+Service-specific context:
+${servicePrompt || "None"}
+
+Use only proposal_context and chat_history as grounding context.
+This output is hidden from the user and is used internally to help rank and shortlist the best freelancer for a project.
+Preserve confirmed client inputs exactly, but if a useful matching field is missing, infer the best-fit professional recommendation from the proposal context, service type, scope, deliverables, timeline, and budget.
+Never use placeholders such as "TBD", "Not specified", "Unknown", or "N/A".
+Return strict JSON only.
+Do not include markdown, code fences, commentary, or prose outside JSON.
+Use this exact shape:
+{
+  "project": {
+    "title": "",
+    "serviceKey": "",
+    "serviceType": "",
+    "clientName": "",
+    "businessName": "",
+    "summary": "",
+    "budgetSummary": "",
+    "timeline": "",
+    "engagementModel": "",
+    "complexity": ""
+  },
+  "matchingQuery": {
+    "category": "",
+    "searchTerm": "",
+    "techStack": [],
+    "serviceSpecializations": [],
+    "industriesOrNiches": [],
+    "minBudget": null,
+    "maxBudget": null
+  },
+  "fitProfile": {
+    "requiredSkills": [],
+    "preferredSkills": [],
+    "deliverables": [],
+    "primaryObjectives": [],
+    "targetAudience": [],
+    "targetLocations": [],
+    "seoGoals": [],
+    "platformRequirements": [],
+    "seniorityLevel": "",
+    "experienceLevel": "",
+    "availabilityExpectation": "",
+    "communicationNeeds": []
+  },
+  "screening": {
+    "mustHaveQuestions": [],
+    "niceToHaveQuestions": [],
+    "exclusionSignals": []
+  }
+}
+
+Quality rules:
+- Keep arrays concise, specific, and deduplicated.
+- Put technologies in techStack and requiredSkills, not inside long sentences.
+- Use a strong internal searchTerm for marketplace/freelancer retrieval.
+- minBudget and maxBudget must be numbers or null.
+- Focus on signals that help identify the best-fit freelancer, not on writing sales copy.`;
+
+const buildFreelancerMatchingUserPrompt = ({
+  proposalContext = {},
+  chatHistory = [],
+} = {}) =>
+  `proposal_context:\n${JSON.stringify(proposalContext, null, 2)}\n\nchat_history:\n${JSON.stringify(chatHistory, null, 2)}`;
+
 export const generateProposalMarkdown = async (
   proposalContext = {},
   chatHistory = [],
@@ -3359,6 +3663,60 @@ export const generateProposalMarkdown = async (
     chatHistory: historyPayload,
     selectedServiceName
   });
+};
+
+export const generateFreelancerMatchingJson = async (
+  proposalContext = {},
+  chatHistory = [],
+  selectedServiceName = "",
+  servicePrompt = ""
+) => {
+  await ensureServicesCatalogLoaded();
+
+  const contextPayload =
+    proposalContext && typeof proposalContext === "object"
+      ? { ...proposalContext }
+      : {};
+  if (selectedServiceName && !contextPayload.serviceType) {
+    contextPayload.serviceType = selectedServiceName;
+  }
+
+  const historyPayload = Array.isArray(chatHistory) ? chatHistory : [];
+  const fallback = buildProjectFreelancerMatchingSeed(contextPayload);
+  if (!fallback) {
+    return null;
+  }
+
+  const apiKey = env.OPENROUTER_API_KEY?.trim();
+  if (!apiKey) {
+    return normalizeFreelancerMatchingJson(null, fallback);
+  }
+
+  try {
+    const { data } = await requestOpenRouterCompletion({
+      apiKey,
+      title: "Catalance Freelancer Matching Generator",
+      messages: [
+        { role: "system", content: buildFreelancerMatchingSystemPrompt(servicePrompt) },
+        {
+          role: "user",
+          content: buildFreelancerMatchingUserPrompt({
+            proposalContext: contextPayload,
+            chatHistory: historyPayload,
+          }),
+        },
+      ],
+      temperature: 0.2,
+      maxTokens: 1400,
+    });
+
+    const rawContent = data?.choices?.[0]?.message?.content || "";
+    const parsed = parseJsonObjectFromRaw(rawContent);
+    return normalizeFreelancerMatchingJson(parsed, fallback);
+  } catch (error) {
+    console.warn("[Proposal] Freelancer matching JSON fallback used:", error?.message || error);
+    return normalizeFreelancerMatchingJson(null, fallback);
+  }
 };
 
 export const chatWithAI = async (

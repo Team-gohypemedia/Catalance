@@ -192,6 +192,7 @@ model Project {
   budget                   Int?
   proposalContent          String?       @db.Text
   proposalJson             Json?
+  freelancerMatchingJson   Json?
   serviceKey               String?
   clientName               String?
   businessName             String?

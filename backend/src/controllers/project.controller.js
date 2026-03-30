@@ -17,6 +17,7 @@ import {
   PROJECT_PROPOSAL_TEXT_FIELDS,
   extractProjectProposalFields,
 } from "../../../src/shared/lib/project-proposal-fields.js";
+import { generateFreelancerMatchingJson } from "../services/ai.service.js";
 import crypto from "crypto";
 
 const MAX_INT = 2147483647; // PostgreSQL INT4 upper bound
@@ -243,6 +244,103 @@ const buildProjectProposalData = (input = {}, { fallback = null, preserveFallbac
   return proposalData;
 };
 
+const hasMeaningfulValue = (value) => {
+  if (value === null || value === undefined) return false;
+  if (Array.isArray(value)) return value.some((entry) => hasMeaningfulValue(entry));
+  if (typeof value === "object") return Object.values(value).some((entry) => hasMeaningfulValue(entry));
+  if (typeof value === "number") return Number.isFinite(value);
+  return String(value).trim().length > 0;
+};
+
+const buildProjectFreelancerMatchingContext = ({
+  input = {},
+  proposalData = null,
+  fallback = null,
+} = {}) => {
+  const baseProposalData =
+    proposalData && typeof proposalData === "object" ? proposalData : {};
+  const mergedPayload = fallback
+    ? { ...fallback, ...input, ...baseProposalData }
+    : { ...input, ...baseProposalData };
+  const budgetSource = hasOwnField(input, "budget")
+    ? input.budget
+    : hasOwnField(baseProposalData, "budget")
+      ? baseProposalData.budget
+      : fallback?.budget;
+
+  return {
+    ...mergedPayload,
+    title: normalizeProjectProposalText(mergedPayload.title),
+    description: normalizeProjectProposalText(
+      mergedPayload.description
+      || baseProposalData.projectOverview
+      || baseProposalData.proposalContent
+      || fallback?.description
+      || "",
+    ),
+    budget: normalizeBudget(budgetSource),
+    proposalContent: normalizeProjectProposalText(
+      baseProposalData.proposalContent
+      || mergedPayload.proposalContent
+      || fallback?.proposalContent
+      || "",
+    ),
+    proposalJson:
+      baseProposalData.proposalJson
+      || mergedPayload.proposalJson
+      || buildProjectProposalJson(mergedPayload),
+    serviceKey: normalizeProjectProposalText(mergedPayload.serviceKey),
+    serviceType: normalizeProjectProposalText(
+      baseProposalData.serviceType
+      || mergedPayload.serviceType
+      || mergedPayload.serviceName
+      || mergedPayload.service
+      || "",
+    ),
+  };
+};
+
+const hasFreelancerMatchingSource = (context = {}) =>
+  hasMeaningfulValue(context?.title)
+  || hasMeaningfulValue(context?.description)
+  || hasMeaningfulValue(context?.proposalContent)
+  || hasMeaningfulValue(context?.serviceKey)
+  || hasMeaningfulValue(context?.serviceType)
+  || PROJECT_PROPOSAL_FIELD_KEYS.some((field) => hasMeaningfulValue(context?.[field]))
+  || hasMeaningfulValue(context?.proposalJson);
+
+const buildProjectFreelancerMatchingData = async (
+  input = {},
+  { fallback = null, proposalData = null, preserveFallback = false } = {},
+) => {
+  const matchingContext = buildProjectFreelancerMatchingContext({
+    input,
+    proposalData,
+    fallback,
+  });
+
+  if (!hasFreelancerMatchingSource(matchingContext)) {
+    return preserveFallback && fallback && hasOwnField(fallback, "freelancerMatchingJson")
+      ? { freelancerMatchingJson: fallback.freelancerMatchingJson }
+      : {};
+  }
+
+  const freelancerMatchingJson = await generateFreelancerMatchingJson(
+    matchingContext,
+    [],
+    matchingContext.serviceType || "",
+    "",
+  );
+
+  if (freelancerMatchingJson) {
+    return { freelancerMatchingJson };
+  }
+
+  return preserveFallback && fallback && hasOwnField(fallback, "freelancerMatchingJson")
+    ? { freelancerMatchingJson: fallback.freelancerMatchingJson }
+    : {};
+};
+
 const flattenFreelancerProfile = (freelancer = null) => {
   if (!freelancer || typeof freelancer !== "object") return freelancer;
   const profile =
@@ -290,6 +388,7 @@ const hydrateProjectForResponse = (project) => {
   if (!project || typeof project !== "object") return project;
   const safeProject = { ...project };
   delete safeProject.internalReviews;
+  delete safeProject.freelancerMatchingJson;
 
   return attachProjectPaymentPlan({
     ...safeProject,
@@ -534,6 +633,9 @@ export const createProject = asyncHandler(async (req, res) => {
 
   const { title, description, budget, status, proposal } = req.body;
   const structuredProposalData = buildProjectProposalData(req.body);
+  const freelancerMatchingData = await buildProjectFreelancerMatchingData(req.body, {
+    proposalData: structuredProposalData,
+  });
 
   console.log("Looking for an available Project Manager...");
   const projectManager = await findLeastLoadedActiveProjectManager();
@@ -545,6 +647,7 @@ export const createProject = asyncHandler(async (req, res) => {
       description,
       budget: normalizeBudget(budget),
       ...structuredProposalData,
+      ...freelancerMatchingData,
       status: status || "DRAFT",
       progress: 0,
       ownerId: userId,
@@ -570,7 +673,7 @@ export const createProject = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     data: {
-      project,
+      project: hydrateProjectForResponse(project),
       proposal: createdProposal,
     },
   });
@@ -845,6 +948,11 @@ export const updateProject = asyncHandler(async (req, res) => {
       || hasOwnField(updates, "serviceKey")
       || PROJECT_PROPOSAL_FIELD_KEYS.some((field) => hasOwnField(updates, field));
 
+    const shouldRefreshFreelancerMatching =
+      shouldRefreshProposalFields
+      || hasOwnField(updates, "title")
+      || hasOwnField(updates, "budget");
+
     if (shouldRefreshProposalFields) {
       Object.assign(
         sanitizedUpdates,
@@ -852,6 +960,23 @@ export const updateProject = asyncHandler(async (req, res) => {
           fallback: existing,
           preserveFallback: true,
         }),
+      );
+    }
+
+    if (shouldRefreshFreelancerMatching) {
+      Object.assign(
+        sanitizedUpdates,
+        await buildProjectFreelancerMatchingData(
+          {
+            ...updates,
+            ...sanitizedUpdates,
+          },
+          {
+            fallback: existing,
+            proposalData: shouldRefreshProposalFields ? sanitizedUpdates : null,
+            preserveFallback: true,
+          },
+        ),
       );
     }
 
