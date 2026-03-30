@@ -2021,12 +2021,12 @@ const GuestAIDemo = () => {
             historyContext: recentUserContext,
         })
         : { notice: '', placeholder: 'Message CATA AI...' };
-    const contextualPendingOptionNotice = pendingOptionFollowup?.loadingAdvice
-        ? ((pendingOptionFollowup?.autoSuggestion || isNotSureFollowup) ? "Asking AI for a recommendation..." : "Asking AI for advice...")
-        : (pendingOptionFollowup?.notice || contextualPendingOptionHelperCopy.notice || pendingOptionNotice);
-    const contextualPendingOptionPlaceholder = pendingOptionFollowup?.loadingAdvice
-        ? "Please wait..."
-        : (pendingOptionFollowup?.placeholder || contextualPendingOptionHelperCopy.placeholder || pendingOptionPlaceholder);
+    const contextualPendingOptionNotice = stripMarkdownDecorators(
+        pendingOptionFollowup?.loadingAdvice
+            ? ((pendingOptionFollowup?.autoSuggestion || isNotSureFollowup) ? "Asking AI for a recommendation..." : "Asking AI for advice...")
+            : (pendingOptionFollowup?.notice || contextualPendingOptionHelperCopy.notice || pendingOptionNotice)
+    );
+    const contextualPendingOptionPlaceholder = stripMarkdownDecorators(pendingOptionFollowup?.loadingAdvice ? "Please wait..." : (pendingOptionFollowup?.placeholder || contextualPendingOptionHelperCopy.placeholder || pendingOptionPlaceholder));
     const pendingRecommendedAnswer = resolvePendingRecommendedAnswer({
         pendingFollowup: pendingOptionFollowup,
         notice: contextualPendingOptionNotice,
@@ -2134,9 +2134,9 @@ const GuestAIDemo = () => {
                 return {
                     ...current,
                     loadingAdvice: false,
-                    notice: data?.notice || fallbackNotice,
-                    placeholder: data?.placeholder || fallbackPlaceholder,
-                    recommendedAnswer: String(data?.recommendedAnswer || localRecommendedAnswer || '').trim(),
+                    notice: stripMarkdownDecorators(data?.notice || fallbackNotice),
+                    placeholder: stripMarkdownDecorators(data?.placeholder || fallbackPlaceholder),
+                    recommendedAnswer: stripMarkdownDecorators(String(data?.recommendedAnswer || localRecommendedAnswer || '').trim()),
                 };
             });
         } catch {
@@ -2148,9 +2148,9 @@ const GuestAIDemo = () => {
                 return {
                     ...current,
                     loadingAdvice: false,
-                    notice: fallbackNotice,
-                    placeholder: fallbackPlaceholder,
-                    recommendedAnswer: String(current?.recommendedAnswer || localRecommendedAnswer || '').trim(),
+                    notice: stripMarkdownDecorators(fallbackNotice),
+                    placeholder: stripMarkdownDecorators(fallbackPlaceholder),
+                    recommendedAnswer: stripMarkdownDecorators(String(current?.recommendedAnswer || localRecommendedAnswer || '').trim()),
                 };
             });
         }
@@ -3308,7 +3308,7 @@ const GuestAIDemo = () => {
                 </div>
 
                 {/* ── Scrollable content ── */}
-                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-3">
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
                     {/* ── Proposals section ── */}
                     <div className="mb-1 px-3">
