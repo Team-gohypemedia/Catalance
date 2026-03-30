@@ -116,6 +116,7 @@ const projectInsetPanelClassName =
   "rounded-[20px] border border-white/[0.08] bg-[#111111] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
 const projectSectionEyebrowClassName =
   "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
+const projectSectionSubheadingClassName = "text-white";
 const projectDetailFieldNames = [
   "Client Name",
   "Business Name",
@@ -409,9 +410,9 @@ const FreelancerAboutCard = ({ freelancer, project }) => {
           );
           const summary = summaryMatch
             ? summaryMatch[1]
-                .replace(/^[\s-]+/, "")
-                .replace(/[\s-]+$/, "")
-                .trim()
+              .replace(/^[\s-]+/, "")
+              .replace(/[\s-]+$/, "")
+              .trim()
             : null;
           return summary ? (
             <div className="border-t border-white/[0.06] pt-3">
@@ -677,9 +678,9 @@ const ProjectDashboard = () => {
     );
     const summary = summaryMatch
       ? summaryMatch[1]
-          .replace(/^[\s-]+/, "")
-          .replace(/[\s-]+$/, "")
-          .trim()
+        .replace(/^[\s-]+/, "")
+        .replace(/[\s-]+$/, "")
+        .trim()
       : null;
 
     const deliverables = [];
@@ -703,12 +704,12 @@ const ProjectDashboard = () => {
       { label: "Timeline", value: timeline },
       ...(showExtended
         ? [
-            { label: "Budget", value: budget },
-            { label: "Hosting", value: hosting },
-            { label: "Domain", value: domain },
-            { label: "Integrations", value: integrations },
-            { label: "Deployment", value: deployment },
-          ]
+          { label: "Budget", value: budget },
+          { label: "Hosting", value: hosting },
+          { label: "Domain", value: domain },
+          { label: "Integrations", value: integrations },
+          { label: "Deployment", value: deployment },
+        ]
         : []),
     ].filter((f) => f.value);
 
@@ -913,7 +914,7 @@ const ProjectDashboard = () => {
         setReportOpen(false);
         toast.success(
           payload?.message ||
-            "Your request has been sent to the Project Catalyst. The Project Manager will review it and handle the freelancer change."
+          "Your request has been sent to the Project Catalyst. The Project Manager will review it and handle the freelancer change."
         );
       } catch (error) {
         console.error("Failed to request freelancer change:", error);
@@ -1031,11 +1032,11 @@ const ProjectDashboard = () => {
     setProject((prev) =>
       prev
         ? {
-            ...prev,
-            progress: newProgress,
-            completedTasks: completedArr,
-            verifiedTasks: verifiedArr,
-          }
+          ...prev,
+          progress: newProgress,
+          completedTasks: completedArr,
+          verifiedTasks: verifiedArr,
+        }
         : prev
     );
     completedTaskIdsRef.current = nextCompletedTaskIds;
@@ -1081,11 +1082,11 @@ const ProjectDashboard = () => {
         setProject((prev) =>
           prev
             ? {
-                ...prev,
-                progress: previousProgress,
-                completedTasks: previousCompletedArr,
-                verifiedTasks: previousVerifiedArr,
-              }
+              ...prev,
+              progress: previousProgress,
+              completedTasks: previousCompletedArr,
+              verifiedTasks: previousVerifiedArr,
+            }
             : prev
         );
         completedTaskIdsRef.current = previousCompletedTaskIds;
@@ -1243,9 +1244,8 @@ const ProjectDashboard = () => {
       );
       let serviceKey = `project:${project?.id || projectId}`;
       if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
-        serviceKey = `CHAT:${project?.id || projectId}:${user.id}:${
-          acceptedProposal.freelancerId
-        }`;
+        serviceKey = `CHAT:${project?.id || projectId}:${user.id}:${acceptedProposal.freelancerId
+          }`;
       }
 
       await authFetch(`/chat/conversations/${conversationId}/messages`, {
@@ -1328,9 +1328,8 @@ const ProjectDashboard = () => {
         );
         let serviceKey = `project:${project?.id || projectId}`;
         if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
-          serviceKey = `CHAT:${project?.id || projectId}:${user.id}:${
-            acceptedProposal.freelancerId
-          }`;
+          serviceKey = `CHAT:${project?.id || projectId}:${user.id}:${acceptedProposal.freelancerId
+            }`;
         }
 
         await authFetch(`/chat/conversations/${conversationId}/messages`, {
@@ -1593,6 +1592,9 @@ const ProjectDashboard = () => {
       extractField("Timeline") ||
       extractField("Launch Timeline") ||
       "Not set";
+    const budget =
+      extractField("Budget") ||
+      (totalBudget > 0 ? formatINR(totalBudget) : "Not set");
     const websiteType =
       extractField("Website type") ||
       extractField("Website Type") ||
@@ -1621,7 +1623,7 @@ const ProjectDashboard = () => {
     );
     const additionalPages = parseProjectDetailList(
       extractField("Additional pages/features") ||
-        extractField("Additional pages"),
+      extractField("Additional pages"),
     );
     const pagesField = extractField("Pages");
     const allPages = [...corePages, ...additionalPages];
@@ -1632,15 +1634,15 @@ const ProjectDashboard = () => {
       summary ||
       (description
         ? description
-            .split(/\r?\n/)
-            .map((line) => line.trim())
-            .find(
-              (line) =>
-                line &&
-                !projectDetailFieldNames.some((field) =>
-                  line.toLowerCase().startsWith(`${field.toLowerCase()}:`),
-                ),
-            ) || ""
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .find(
+            (line) =>
+              line &&
+              !projectDetailFieldNames.some((field) =>
+                line.toLowerCase().startsWith(`${field.toLowerCase()}:`),
+              ),
+          ) || ""
         : "");
 
     const businessName =
@@ -1666,6 +1668,7 @@ const ProjectDashboard = () => {
       "summary",
       "project overview",
       "primary objectives",
+      "budget",
       "timeline",
       "launch timeline",
     ];
@@ -1704,13 +1707,14 @@ const ProjectDashboard = () => {
     return {
       service,
       teammateName,
+      budget,
       timeline,
       overview,
       businessName,
       websiteDetails,
       pageTags: allPages,
     };
-  }, [freelancer, project]);
+  }, [freelancer, project, totalBudget]);
 
   const reviewDeferStorageKey = useMemo(
     () =>
@@ -1950,12 +1954,12 @@ const ProjectDashboard = () => {
     () =>
       paymentPlan
         ? {
-            ...paymentPlan,
-            nextDueInstallment: verificationDueInstallment,
-          }
+          ...paymentPlan,
+          nextDueInstallment: verificationDueInstallment,
+        }
         : {
-            nextDueInstallment: verificationDueInstallment,
-          },
+          nextDueInstallment: verificationDueInstallment,
+        },
     [paymentPlan, verificationDueInstallment]
   );
 
@@ -2013,12 +2017,11 @@ const ProjectDashboard = () => {
         lockReason: isHistoricalLock
           ? "This phase is locked because the next phase has already started."
           : isPaymentLocked
-          ? `Complete ${
-              verificationDueInstallment?.label || "the pending milestone payment"
+            ? `Complete ${verificationDueInstallment?.label || "the pending milestone payment"
             } before verifying tasks in later phases.`
-          : isPhaseSequenceLocked
-          ? "Complete the previous phase before changing tasks here."
-          : null,
+            : isPhaseSequenceLocked
+              ? "Complete the previous phase before changing tasks here."
+              : null,
         lockedInstallment: isPaymentLocked ? verificationDueInstallment : null,
       };
     });
@@ -2293,1143 +2296,1139 @@ const ProjectDashboard = () => {
           />
 
           <main className="flex-1 space-y-5 pb-10 pt-4 sm:space-y-6 sm:pb-12 sm:pt-6">
-          <div className="w-full max-w-full mx-auto space-y-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-1.5">
-              <h1 className="text-[clamp(1.85rem,4vw,2.75rem)] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
-                {pageTitle}
-              </h1>
-              {!isLoading && (
-                <p className="text-xs text-[#717784]">
-                  {activeProjectManager
-                    ? `Project Catalyst: ${activeProjectManager.fullName}`
-                    : "Project Catalyst: Not assigned yet"}
-                </p>
-              )}
-            </div>
-            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:self-start">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="h-9 rounded-full bg-primary px-4 text-primary-foreground hover:bg-primary/90"
-                      onClick={() =>
-                        openCatalystDialog(CATALYST_REQUEST_TYPES.GENERAL)
-                      }
-                    >
-                      <Headset className="mr-0.5 h-4 w-4" />
-                      Catalyst
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Project Catalyst</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <ProjectNotepad projectId={project?.id || projectId} />
-            </div>
-          </div>
-
-          {/* Book Appointment Dialog */}
-          <BookAppointment
-            isOpen={bookAppointmentOpen}
-            onClose={() => setBookAppointmentOpen(false)}
-            projectId={project?.id || projectId}
-            projectTitle={project?.title}
-          />
-          {!isLoading && !project && (
-            <div className="rounded-lg border border-border/60 bg-accent/40 px-4 py-3 text-sm text-muted-foreground">
-              No project data found for this link. Showing sample progress so
-              you can preview the layout.
-            </div>
-          )}
-
-
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-            <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              { label: "Service", value: projectDetailSnapshot.service },
-              { label: "Timeline", value: projectDetailSnapshot.timeline },
-            ].map((item) => (
-              <div key={item.label} className={`${projectInsetPanelClassName} min-w-0`}>
-                <p className={projectSectionEyebrowClassName}>{item.label}</p>
-                <p className="mt-3 break-words text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
-                  {item.value || "Not specified"}
-                </p>
-              </div>
-            ))}
-          </div>
-
-              <Card className={projectPanelClassName}>
-                <CardHeader className="pb-3">
-                  <CardTitle className={projectSectionEyebrowClassName}>
-                    <span className="inline-flex items-center gap-2 align-middle">
-                      <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
-                        <span className="absolute inset-0 rounded-full bg-[#10b981]/10" />
-                        <span className="absolute inset-0 rounded-full bg-[#10b981]/20 animate-ping" />
-                        <span className="relative block size-[6px] rounded-full bg-[#10b981]" />
-                      </span>
-                      <span>Overview</span>
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="px-2 py-1">
-                    <p className="text-sm leading-7 text-[#d4d4d8] text-justify">
-                      {projectDetailSnapshot.overview ||
-                        "Project scope, priorities, and delivery context will appear here once the brief is fully structured."}
+            <div className="w-full max-w-full mx-auto space-y-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-1.5">
+                  <h1 className="text-[clamp(1.85rem,4vw,2.75rem)] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
+                    {pageTitle}
+                  </h1>
+                  {!isLoading && (
+                    <p className="text-xs text-[#717784]">
+                      {activeProjectManager
+                        ? `Project Catalyst: ${activeProjectManager.fullName}`
+                        : "Project Catalyst: Not assigned yet"}
                     </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className={projectPanelClassName}>
-                <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
-                  <CardTitle className={projectSectionEyebrowClassName}>
-                    Project Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    {projectDetailSnapshot.websiteDetails.map((item) => {
-                      const val = item.value || "Not specified";
-                      const isList = val.includes(" - ") || val.match(/^[-•]\s/m);
-                      return (
-                        <div
-                          key={item.label}
-                          className={`min-h-[70px] min-w-0 border-l border-white/[0.08] pl-4 flex flex-col justify-start py-1 ${
-                            isList ? "sm:col-span-2" : ""
-                          }`}
+                  )}
+                </div>
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:self-start">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="h-9 rounded-full bg-primary px-4 text-primary-foreground hover:bg-primary/90"
+                          onClick={() =>
+                            openCatalystDialog(CATALYST_REQUEST_TYPES.GENERAL)
+                          }
                         >
-                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                            {item.label}
-                          </p>
-                          {(() => {
-                            if (isList) {
-                              const listItems = val
-                                .split(/\s+-\s+|\r?\n/)
-                                .map((s) => s.replace(/^[-•]\s*/, "").trim())
-                                .filter(Boolean);
+                          <Headset className="mr-0.5 h-4 w-4" />
+                          Catalyst
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Project Catalyst</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <ProjectNotepad projectId={project?.id || projectId} />
+                </div>
+              </div>
 
-                              if (listItems.length > 1) {
-                                return (
-                                  <ul className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2 list-none pl-0">
-                                    {listItems.map((li, i) => (
-                                      <li key={i} className="relative pl-[1.125rem] text-sm font-medium leading-relaxed text-white">
-                                        <span className="absolute left-0 top-[0.6rem] h-1 w-1 rounded-full bg-white/40" />
-                                        {li}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                );
-                              }
-                            }
+              {/* Book Appointment Dialog */}
+              <BookAppointment
+                isOpen={bookAppointmentOpen}
+                onClose={() => setBookAppointmentOpen(false)}
+                projectId={project?.id || projectId}
+                projectTitle={project?.title}
+              />
+              {!isLoading && !project && (
+                <div className="rounded-lg border border-border/60 bg-accent/40 px-4 py-3 text-sm text-muted-foreground">
+                  No project data found for this link. Showing sample progress so
+                  you can preview the layout.
+                </div>
+              )}
 
-                            return (
-                              <p className="mt-1.5 break-words text-sm font-medium leading-6 text-white whitespace-pre-wrap">
-                                {val}
-                              </p>
-                            );
-                          })()}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {projectDetailSnapshot.pageTags.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {projectDetailSnapshot.pageTags.map((page) => (
-                        <span
-                          key={page}
-                          className="inline-flex items-center rounded-full border border-white/[0.08] bg-[#111111] px-3 py-1 text-[11px] font-medium text-[#cfd3da]"
-                        >
-                          {page}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
 
-              <Card className={projectPanelClassName}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-5 px-6">
-                  <CardTitle className={projectSectionEyebrowClassName}>
-                    Project Progress
-                  </CardTitle>
-                  <span className="text-[1.1rem] font-semibold text-yellow-400">
-                    {Math.round(overallProgress)}% Complete
-                  </span>
-                </CardHeader>
-                <CardContent className="space-y-8 px-6 pb-6 pt-0">
-                  <div className="relative pt-2">
-                    <div className="h-[6px] w-full overflow-hidden rounded-full bg-white/[0.06]">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {[
+                      { label: "Service", value: projectDetailSnapshot.service },
+                      { label: "Budget", value: projectDetailSnapshot.budget },
+                      { label: "Timeline", value: projectDetailSnapshot.timeline },
+                    ].map((item) => (
                       <div
-                        className="h-full rounded-full bg-yellow-400 transition-all duration-300"
-                        style={{ width: `${overallProgress}%` }}
-                      />
-                    </div>
-                    <div
-                      className="absolute top-1/2 h-3.5 w-3.5 -translate-y-[calc(50%-4px)] rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all duration-300"
-                      style={{ left: `calc(${overallProgress}% - 7px)` }}
-                    />
+                        key={item.label}
+                        className={`${projectInsetPanelClassName} min-w-0 bg-[#171717]`}
+                      >
+                        <p className={projectSectionEyebrowClassName}>{item.label}</p>
+                        <p className="mt-3 break-words text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
+                          {item.value || "Not specified"}
+                        </p>
+                      </div>
+                    ))}
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {Array.from({ length: 4 }).map((_, index) => {
-                      const phase = derivedPhases[index];
-                      const isCompleted = phase?.status === "completed";
-                      const isActive = phase?.status === "in-progress";
-                      const isPending = !isCompleted && !isActive;
+                  <Card className={projectPanelClassName}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className={projectSectionEyebrowClassName}>
+                        <span className="inline-flex items-center gap-2 align-middle">
+                          <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
+                            <span className="absolute inset-0 rounded-full bg-[#10b981]/10" />
+                            <span className="absolute inset-0 rounded-full bg-[#10b981]/20 animate-ping" />
+                            <span className="relative block size-[6px] rounded-full bg-[#10b981]" />
+                          </span>
+                          <span>Overview</span>
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="px-2 py-1">
+                        <p className="text-sm leading-7 text-[#d4d4d8] text-justify">
+                          {projectDetailSnapshot.overview ||
+                            "Project scope, priorities, and delivery context will appear here once the brief is fully structured."}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                      return (
-                        <div
-                          key={phase?.id || `phase-${index}`}
-                          className={`flex flex-col justify-between rounded-[20px] p-5 transition-all ${
-                            isCompleted
-                              ? "bg-[#111111] shadow-[inset_2px_0_0_0_#10b981]"
-                              : isActive
-                              ? "bg-[#111111]"
-                              : "bg-[#111111]/40"
-                          }`}
-                        >
-                          <div>
+                  <Card className={projectPanelClassName}>
+                    <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
+                      <CardTitle className={projectSectionEyebrowClassName}>
+                        Project Details
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        {projectDetailSnapshot.websiteDetails.map((item) => {
+                          const val = item.value || "Not specified";
+                          const isList = val.includes(" - ") || val.match(/^[-•]\s/m);
+                          return (
                             <div
-                              className={`text-[0.68rem] font-bold uppercase tracking-[0.15em] mb-2 ${
-                                isPending ? "text-muted-foreground/50" : "text-muted-foreground"
-                              }`}
+                              key={item.label}
+                              className={`min-h-[70px] min-w-0 border-l border-white/[0.08] pl-4 flex flex-col justify-start py-1 ${isList ? "sm:col-span-2" : ""
+                                }`}
                             >
-                              Phase {index + 1}
+                              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                {item.label}
+                              </p>
+                              {(() => {
+                                if (isList) {
+                                  const listItems = val
+                                    .split(/\s+-\s+|\r?\n/)
+                                    .map((s) => s.replace(/^[-•]\s*/, "").trim())
+                                    .filter(Boolean);
+
+                                  if (listItems.length > 1) {
+                                    return (
+                                      <ul className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2 list-none pl-0">
+                                        {listItems.map((li, i) => (
+                                          <li key={i} className="relative pl-[1.125rem] text-sm font-medium leading-relaxed text-white">
+                                            <span className="absolute left-0 top-[0.6rem] h-1 w-1 rounded-full bg-white/40" />
+                                            {li}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    );
+                                  }
+                                }
+
+                                return (
+                                  <p className="mt-1.5 break-words text-sm font-medium leading-6 text-white whitespace-pre-wrap">
+                                    {val}
+                                  </p>
+                                );
+                              })()}
                             </div>
-                            <div
-                              className={`text-[15px] font-semibold leading-[1.4] mb-4 ${
-                                isPending ? "text-white/40" : "text-white/95"
-                              }`}
+                          );
+                        })}
+                      </div>
+                      {projectDetailSnapshot.pageTags.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {projectDetailSnapshot.pageTags.map((page) => (
+                            <span
+                              key={page}
+                              className="inline-flex items-center rounded-full border border-white/[0.08] bg-[#111111] px-3 py-1 text-[11px] font-medium text-[#cfd3da]"
                             >
-                              {phase?.name || "Phase"}
-                            </div>
-                          </div>
+                              {page}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </CardContent>
+                  </Card>
+
+                  <Card className={projectPanelClassName}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-5 px-6">
+                      <CardTitle className={projectSectionEyebrowClassName}>
+                        Project Progress
+                      </CardTitle>
+                      <span className="text-[1.1rem] font-semibold text-yellow-400">
+                        {Math.round(overallProgress)}% Complete
+                      </span>
+                    </CardHeader>
+                    <CardContent className="space-y-8 px-6 pb-6 pt-0">
+                      <div className="relative pt-2">
+                        <div className="h-[6px] w-full overflow-hidden rounded-full bg-white/[0.06]">
                           <div
-                            className={`flex items-center gap-2 text-[13px] font-semibold ${
-                              isCompleted
-                                ? "text-emerald-500"
-                                : isActive
-                                ? "text-[#f59e0b]"
-                                : "text-muted-foreground/40"
-                            }`}
-                          >
-                            {isCompleted && <CheckCircle2 className="h-4 w-4" />}
-                            {isActive && <Clock className="h-4 w-4" />}
-                            {isCompleted
-                              ? "Completed"
-                              : isActive
-                              ? "In progress"
-                              : "Pending"}
+                            className="h-full rounded-full bg-yellow-400 transition-all duration-300"
+                            style={{ width: `${overallProgress}%` }}
+                          />
+                        </div>
+                        <div
+                          className="absolute top-1/2 h-3.5 w-3.5 -translate-y-[calc(50%-4px)] rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all duration-300"
+                          style={{ left: `calc(${overallProgress}% - 7px)` }}
+                        />
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {Array.from({ length: 4 }).map((_, index) => {
+                          const phase = derivedPhases[index];
+                          const isCompleted = phase?.status === "completed";
+                          const isActive = phase?.status === "in-progress";
+                          const isPending = !isCompleted && !isActive;
+
+                          return (
+                            <div
+                              key={phase?.id || `phase-${index}`}
+                              className={`flex flex-col justify-between rounded-[20px] p-5 transition-all ${isCompleted
+                                  ? "bg-[#111111] shadow-[inset_2px_0_0_0_#10b981]"
+                                  : isActive
+                                    ? "bg-[#111111]"
+                                    : "bg-[#111111]/40"
+                                }`}
+                            >
+                              <div>
+                                <div
+                                  className={`text-[0.68rem] font-bold uppercase tracking-[0.15em] mb-2 ${isPending ? "text-muted-foreground/50" : "text-muted-foreground"
+                                    }`}
+                                >
+                                  Phase {index + 1}
+                                </div>
+                                <div
+                                  className={`text-[15px] font-semibold leading-[1.4] mb-4 ${isPending ? "text-white/40" : "text-white/95"
+                                    }`}
+                                >
+                                  {phase?.name || "Phase"}
+                                </div>
+                              </div>
+                              <div
+                                className={`flex items-center gap-2 text-[13px] font-semibold ${isCompleted
+                                    ? "text-emerald-500"
+                                    : isActive
+                                      ? "text-[#f59e0b]"
+                                      : "text-muted-foreground/40"
+                                  }`}
+                              >
+                                {isCompleted && <CheckCircle2 className="h-4 w-4" />}
+                                {isActive && <Clock className="h-4 w-4" />}
+                                {isCompleted
+                                  ? "Completed"
+                                  : isActive
+                                    ? "In progress"
+                                    : "Pending"}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* All Tasks Grouped by Phase - Accordion */}
+                  <Card className={projectPanelClassName}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className={projectSectionEyebrowClassName}>
+                        Project Tasks
+                      </CardTitle>
+                      <CardDescription className={projectSectionSubheadingClassName}>
+                        {derivedTasks.filter((t) => t.verified).length} of{" "}
+                        {derivedTasks.length} tasks verified
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      {canMarkProjectCompleted ? (
+                        <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+                          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                                Final Step
+                              </p>
+                              <p className="mt-1 text-sm text-foreground">
+                                All phases are verified. Mark this project as completed to lock further changes.
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              className="h-8 px-3 sm:self-end"
+                              onClick={handleMarkProjectCompleted}
+                              disabled={isCompletingProject}
+                            >
+                              {isCompletingProject ? (
+                                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                              )}
+                              {isCompletingProject ? "Saving" : "Mark Project Completed"}
+                            </Button>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
+                      ) : null}
 
-              {/* All Tasks Grouped by Phase - Accordion */}
-              <Card className={projectPanelClassName}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
-                    Project Tasks
-                  </CardTitle>
-                  <CardDescription className="text-[#8b94a1]">
-                    {derivedTasks.filter((t) => t.verified).length} of{" "}
-                    {derivedTasks.length} tasks verified
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  {canMarkProjectCompleted ? (
-                    <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
-                            Final Step
-                          </p>
-                          <p className="mt-1 text-sm text-foreground">
-                            All phases are verified. Mark this project as completed to lock further changes.
-                          </p>
+                      {isInitialPaymentDue ? (
+                        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-400">
+                                Payment Required Before Phase 1
+                              </p>
+                              <p className="mt-1 text-sm text-foreground">
+                                {dueInstallment?.label || "Initial project payment"} is due to unlock
+                                Phase 1 tasks.
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={handlePayDueInstallment}
+                              disabled={isProcessingInstallment}
+                              className="h-8 px-3 sm:self-end"
+                            >
+                              {isProcessingInstallment ? (
+                                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <CreditCard className="mr-1 h-3.5 w-3.5" />
+                              )}
+                              {isProcessingInstallment
+                                ? "Processing"
+                                : `Pay ${dueInstallment?.percentage || ""}%`}
+                            </Button>
+                          </div>
                         </div>
-                        <Button
-                          size="sm"
-                          className="h-8 px-3 sm:self-end"
-                          onClick={handleMarkProjectCompleted}
-                          disabled={isCompletingProject}
-                        >
-                          {isCompletingProject ? (
-                            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                          )}
-                          {isCompletingProject ? "Saving" : "Mark Project Completed"}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
+                      ) : null}
 
-                  {isInitialPaymentDue ? (
-                    <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-400">
-                            Payment Required Before Phase 1
-                          </p>
-                          <p className="mt-1 text-sm text-foreground">
-                            {dueInstallment?.label || "Initial project payment"} is due to unlock
-                            Phase 1 tasks.
-                          </p>
+                      {isInitialPaymentPaid ? (
+                        <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+                          <div className="flex items-start gap-2.5">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                                Initial Payment Confirmed
+                              </p>
+                              <p className="mt-1 text-sm text-foreground">
+                                {initialInstallment?.label || "Initial 20% payment"} is completed. Phase
+                                1 is unlocked.
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={handlePayDueInstallment}
-                          disabled={isProcessingInstallment}
-                          className="h-8 px-3 sm:self-end"
-                        >
-                          {isProcessingInstallment ? (
-                            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <CreditCard className="mr-1 h-3.5 w-3.5" />
-                          )}
-                          {isProcessingInstallment
-                            ? "Processing"
-                            : `Pay ${dueInstallment?.percentage || ""}%`}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
+                      ) : null}
 
-                  {isInitialPaymentPaid ? (
-                    <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
-                      <div className="flex items-start gap-2.5">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
-                            Initial Payment Confirmed
-                          </p>
-                          <p className="mt-1 text-sm text-foreground">
-                            {initialInstallment?.label || "Initial 20% payment"} is completed. Phase
-                            1 is unlocked.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
+                      <Accordion
+                        type="single"
+                        collapsible
+                        defaultValue={currentActivePhase?.id}
+                        className="w-full"
+                      >
+                        {tasksByPhase.map((phaseGroup) => {
+                          const phaseInstallments =
+                            phaseGateInstallmentsByPhase[String(phaseGroup.phaseId)] || [];
+                          const shouldShowPhaseMilestones =
+                            phaseGroup.phaseStatus === "completed" &&
+                            phaseInstallments.length > 0;
 
-                  <Accordion
-                    type="single"
-                    collapsible
-                    defaultValue={currentActivePhase?.id}
-                    className="w-full"
-                  >
-                    {tasksByPhase.map((phaseGroup) => {
-                      const phaseInstallments =
-                        phaseGateInstallmentsByPhase[String(phaseGroup.phaseId)] || [];
-                      const shouldShowPhaseMilestones =
-                        phaseGroup.phaseStatus === "completed" &&
-                        phaseInstallments.length > 0;
-
-        return (
-          <React.Fragment key={phaseGroup.phaseId}>
-                          <AccordionItem
-                            value={phaseGroup.phaseId}
-                            className="border-border/60"
-                          >
-                            <AccordionTrigger className="hover:no-underline py-3">
-                              <div className="flex items-center gap-3 flex-1">
-                                {getPhaseIcon(phaseGroup.phaseStatus)}
-                                <div className="flex-1 text-left">
-                                  <div className="font-semibold text-sm text-foreground">
-                                    Phase {phaseGroup.phaseId}:{" "}
-                                    {phaseGroup.phaseName}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {
-                                      phaseGroup.tasks.filter((t) => t.verified)
-                                        .length
-                                    }{" "}
-                                    of {phaseGroup.tasks.length} verified
-                                  </div>
-                                </div>
-                                <Badge
-                                  variant={
-                                    phaseGroup.phaseStatus === "completed"
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  className={
-                                    phaseGroup.phaseStatus === "completed"
-                                      ? "bg-emerald-500 text-white"
-                                      : ""
-                                  }
-                                >
-                                  {phaseGroup.phaseStatus === "completed"
-                                    ? "Completed"
-                                    : phaseGroup.phaseStatus === "in-progress"
-                                    ? "In Progress"
-                                    : "Pending"}
-                                </Badge>
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              <div className="space-y-2 pt-2">
-                                {phaseGroup.tasks.map((task) => {
-                                  const isTaskVerificationPending =
-                                    verifyingTaskIds.has(task.uniqueKey);
-
-                                  return (
-                                    <div
-                                      key={task.uniqueKey}
-                                      className={`flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card transition-colors ${
-                                        phaseGroup.isLocked || isProjectCompleted
-                                          ? "opacity-50 pointer-events-none bg-muted/50"
-                                          : "hover:bg-accent/60 cursor-pointer"
-                                      }`}
-                                      onClick={(e) =>
-                                        !phaseGroup.isLocked &&
-                                        !isProjectCompleted &&
-                                        handleTaskClick(e, task.uniqueKey)
+                          return (
+                            <React.Fragment key={phaseGroup.phaseId}>
+                              <AccordionItem
+                                value={phaseGroup.phaseId}
+                                className="border-border/60"
+                              >
+                                <AccordionTrigger className="hover:no-underline py-3">
+                                  <div className="flex items-center gap-3 flex-1">
+                                    {getPhaseIcon(phaseGroup.phaseStatus)}
+                                    <div className="flex-1 text-left">
+                                      <div className="font-semibold text-sm text-foreground">
+                                        Phase {phaseGroup.phaseId}:{" "}
+                                        {phaseGroup.phaseName}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {
+                                          phaseGroup.tasks.filter((t) => t.verified)
+                                            .length
+                                        }{" "}
+                                        of {phaseGroup.tasks.length} verified
+                                      </div>
+                                    </div>
+                                    <Badge
+                                      variant={
+                                        phaseGroup.phaseStatus === "completed"
+                                          ? "default"
+                                          : "outline"
+                                      }
+                                      className={
+                                        phaseGroup.phaseStatus === "completed"
+                                          ? "bg-emerald-500 text-white"
+                                          : ""
                                       }
                                     >
-                                      {task.status === "completed" ? (
-                                        <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                                      ) : (
-                                        <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
-                                      )}
-                                      <span
-                                        className={`flex-1 text-sm ${
-                                          task.status === "completed"
-                                            ? "line-through text-muted-foreground"
-                                            : "text-foreground"
-                                        }`}
-                                      >
-                                        {task.title}
-                                        {phaseGroup.isLocked && (
-                                          <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
-                                            {phaseGroup.isPaymentLocked
-                                              ? "(Payment required)"
-                                              : phaseGroup.isHistoricalLock
-                                              ? "(Locked after next phase started)"
-                                              : "(Locked)"}
-                                          </span>
-                                        )}
-                                      </span>
-                                      {task.status === "completed" && (
-                                        <Button
-                                          size="sm"
-                                          variant={
-                                            task.verified ? "default" : "outline"
-                                          }
-                                          disabled={
-                                            phaseGroup.isLocked ||
-                                            isProjectCompleted ||
-                                            isTaskVerificationPending
-                                          }
-                                          className={`h-7 px-3 text-xs transition-all ${
-                                            task.verified
-                                              ? "bg-emerald-500 hover:bg-emerald-600 text-white border-transparent"
-                                              : "border-primary text-primary hover:bg-primary/10"
-                                          }`}
+                                      {phaseGroup.phaseStatus === "completed"
+                                        ? "Completed"
+                                        : phaseGroup.phaseStatus === "in-progress"
+                                          ? "In Progress"
+                                          : "Pending"}
+                                    </Badge>
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  <div className="space-y-2 pt-2">
+                                    {phaseGroup.tasks.map((task) => {
+                                      const isTaskVerificationPending =
+                                        verifyingTaskIds.has(task.uniqueKey);
+
+                                      return (
+                                        <div
+                                          key={task.uniqueKey}
+                                          className={`flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card transition-colors ${phaseGroup.isLocked || isProjectCompleted
+                                              ? "opacity-50 pointer-events-none bg-muted/50"
+                                              : "hover:bg-accent/60 cursor-pointer"
+                                            }`}
                                           onClick={(e) =>
                                             !phaseGroup.isLocked &&
-                                            promptVerifyTask(
-                                              e,
-                                              task.uniqueKey,
-                                              task.title,
-                                              task.verified
-                                            )
+                                            !isProjectCompleted &&
+                                            handleTaskClick(e, task.uniqueKey)
                                           }
                                         >
-                                          {isTaskVerificationPending ? (
-                                            <>
-                                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                                              Saving
-                                            </>
-                                          ) : task.verified ? (
-                                            "Verified"
+                                          {task.status === "completed" ? (
+                                            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                                           ) : (
-                                            "Verify"
+                                            <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
                                           )}
-                                        </Button>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </AccordionContent>
-                          </AccordionItem>
-
-                          {shouldShowPhaseMilestones ? (
-                            <div className="mt-4 space-y-3 border-b border-border/60 pb-4">
-                              {phaseInstallments.map((installment) => {
-                                const isDueNow = Boolean(installment?.isDue);
-                                const isPaid = Boolean(installment?.isPaid);
-                                const canPayInstallment =
-                                  isDueNow &&
-                                  dueInstallment?.sequence === installment.sequence;
-                                const milestoneStatusLabel = isPaid
-                                  ? "Paid"
-                                  : isDueNow
-                                  ? "Due now"
-                                  : "Scheduled";
-
-                                return (
-                                  <div
-                                    key={`installment-${phaseGroup.phaseId}-${installment.sequence}`}
-                                    className={cn(
-                                      "rounded-xl border px-3.5 py-2 transition-colors",
-                                      isPaid
-                                        ? "border-emerald-500/20 bg-accent/85"
-                                        : isDueNow
-                                        ? "border-emerald-500/30 bg-accent/90"
-                                        : "border-border/60 bg-accent/65"
-                                    )}
-                                  >
-                                    <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                                      <div className="flex items-start gap-2 sm:items-center">
-                                        <div
-                                          className={cn(
-                                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
-                                            isPaid || isDueNow
-                                              ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-400"
-                                              : "border-border/60 bg-background/70 text-muted-foreground"
-                                          )}
-                                        >
-                                          <CreditCard className="h-3 w-3" />
-                                        </div>
-                                        <div className="min-w-0 flex-1 space-y-0">
-                                          <div className="flex flex-wrap items-center gap-2">
-                                            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                                              Payment Milestone
-                                            </p>
-                                          </div>
-                                          <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                                            <p className="text-sm font-semibold leading-tight text-foreground sm:text-[15px]">
-                                              {installment.label}
-                                            </p>
-                                            <span className="inline-flex items-center rounded-full border border-border/50 bg-background/50 px-2 py-0 text-[10px] font-medium leading-5 text-muted-foreground">
-                                              {installment.percentage}% of project budget
-                                            </span>
-                                          </div>
-                                          <p className="pt-0.5 text-xs leading-snug text-muted-foreground sm:text-[13px]">
-                                            {installment.dueLabel ||
-                                              "This payment unlocks once the phase is fully completed."}
-                                          </p>
-                                        </div>
-                                        <Badge
-                                          variant={isDueNow ? "secondary" : "outline"}
-                                          className={cn(
-                                            "mt-0.5 shrink-0 self-start sm:mt-0 sm:self-center",
-                                            isPaid
-                                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
-                                              : isDueNow
-                                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                                              : "border-border/60 bg-background/70 text-muted-foreground"
-                                          )}
-                                        >
-                                          {milestoneStatusLabel}
-                                        </Badge>
-                                      </div>
-
-                                      <div className="flex flex-col gap-1 sm:min-w-[118px] sm:border-l sm:border-border/50 sm:pl-3 sm:items-end">
-                                        <div className="text-left sm:text-right">
-                                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                                            Amount
-                                          </p>
-                                          <p className="text-base font-semibold leading-tight text-foreground sm:text-[17px]">
-                                            {formatINR(installment.amount || 0)}
-                                          </p>
-                                        </div>
-
-                                        {canPayInstallment ? (
-                                          <Button
-                                            size="sm"
-                                            className="h-7 w-fit px-2.5 text-[11px] sm:self-end"
-                                            onClick={handlePayDueInstallment}
-                                            disabled={isProcessingInstallment}
+                                          <span
+                                            className={`flex-1 text-sm ${task.status === "completed"
+                                                ? "line-through text-muted-foreground"
+                                                : "text-foreground"
+                                              }`}
                                           >
-                                            {isProcessingInstallment ? (
-                                              <Loader2 className="h-3 w-3 animate-spin" />
-                                            ) : (
-                                              <CreditCard className="h-3 w-3" />
+                                            {task.title}
+                                            {phaseGroup.isLocked && (
+                                              <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
+                                                {phaseGroup.isPaymentLocked
+                                                  ? "(Payment required)"
+                                                  : phaseGroup.isHistoricalLock
+                                                    ? "(Locked after next phase started)"
+                                                    : "(Locked)"}
+                                              </span>
                                             )}
-                                            {isProcessingInstallment
-                                              ? "Processing"
-                                              : `Pay ${installment.percentage}%`}
-                                          </Button>
-                                        ) : null}
-                                      </div>
-                                    </div>
+                                          </span>
+                                          {task.status === "completed" && (
+                                            <Button
+                                              size="sm"
+                                              variant={
+                                                task.verified ? "default" : "outline"
+                                              }
+                                              disabled={
+                                                phaseGroup.isLocked ||
+                                                isProjectCompleted ||
+                                                isTaskVerificationPending
+                                              }
+                                              className={`h-7 px-3 text-xs transition-all ${task.verified
+                                                  ? "bg-emerald-500 hover:bg-emerald-600 text-white border-transparent"
+                                                  : "border-primary text-primary hover:bg-primary/10"
+                                                }`}
+                                              onClick={(e) =>
+                                                !phaseGroup.isLocked &&
+                                                promptVerifyTask(
+                                                  e,
+                                                  task.uniqueKey,
+                                                  task.title,
+                                                  task.verified
+                                                )
+                                              }
+                                            >
+                                              {isTaskVerificationPending ? (
+                                                <>
+                                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                                  Saving
+                                                </>
+                                              ) : task.verified ? (
+                                                "Verified"
+                                              ) : (
+                                                "Verify"
+                                              )}
+                                            </Button>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
                                   </div>
-                                );
-                              })}
-                            </div>
-                          ) : null}
-                        </React.Fragment>
-                      );
-                    })}
-                  </Accordion>
-                </CardContent>
-              </Card>
-            </div>
+                                </AccordionContent>
+                              </AccordionItem>
 
-            <div className="space-y-4">
-              <FreelancerInfoCard freelancer={freelancer} project={project} />
+                              {shouldShowPhaseMilestones ? (
+                                <div className="mt-4 space-y-3 border-b border-border/60 pb-4">
+                                  {phaseInstallments.map((installment) => {
+                                    const isDueNow = Boolean(installment?.isDue);
+                                    const isPaid = Boolean(installment?.isPaid);
+                                    const canPayInstallment =
+                                      isDueNow &&
+                                      dueInstallment?.sequence === installment.sequence;
+                                    const milestoneStatusLabel = isPaid
+                                      ? "Paid"
+                                      : isDueNow
+                                        ? "Due now"
+                                        : "Scheduled";
 
-              {/* Project Chat - First */}
-              <Card className={`${projectPanelClassName} flex h-96 flex-col`}>
-                <CardHeader className="border-b border-border/60 space-y-0.5 pb-4">
-                  <CardTitle className={projectSectionEyebrowClassName}>
-                    Project Chat
-                  </CardTitle>
-                  <CardDescription className="text-muted-foreground text-xs">
-                    Ask questions and share documents
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto space-y-3 py-4">
-                  {messages.map((message, index) => {
-                    const isSelf = message.sender === "user";
-                    const isAssistant = message.sender === "assistant";
-                    const align =
-                      isAssistant || !isSelf ? "justify-start" : "justify-end";
+                                    return (
+                                      <div
+                                        key={`installment-${phaseGroup.phaseId}-${installment.sequence}`}
+                                        className={cn(
+                                          "rounded-xl border px-3.5 py-2 transition-colors",
+                                          isPaid
+                                            ? "border-emerald-500/20 bg-accent/85"
+                                            : isDueNow
+                                              ? "border-emerald-500/30 bg-accent/90"
+                                              : "border-border/60 bg-accent/65"
+                                        )}
+                                      >
+                                        <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                                          <div className="flex items-start gap-2 sm:items-center">
+                                            <div
+                                              className={cn(
+                                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
+                                                isPaid || isDueNow
+                                                  ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-400"
+                                                  : "border-border/60 bg-background/70 text-muted-foreground"
+                                              )}
+                                            >
+                                              <CreditCard className="h-3 w-3" />
+                                            </div>
+                                            <div className="min-w-0 flex-1 space-y-0">
+                                              <div className="flex flex-wrap items-center gap-2">
+                                                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                                                  Payment Milestone
+                                                </p>
+                                              </div>
+                                              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                                <p className="text-sm font-semibold leading-tight text-foreground sm:text-[15px]">
+                                                  {installment.label}
+                                                </p>
+                                                <span className="inline-flex items-center rounded-full border border-border/50 bg-background/50 px-2 py-0 text-[10px] font-medium leading-5 text-muted-foreground">
+                                                  {installment.percentage}% of project budget
+                                                </span>
+                                              </div>
+                                              <p className="pt-0.5 text-xs leading-snug text-muted-foreground sm:text-[13px]">
+                                                {installment.dueLabel ||
+                                                  "This payment unlocks once the phase is fully completed."}
+                                              </p>
+                                            </div>
+                                            <Badge
+                                              variant={isDueNow ? "secondary" : "outline"}
+                                              className={cn(
+                                                "mt-0.5 shrink-0 self-start sm:mt-0 sm:self-center",
+                                                isPaid
+                                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                                                  : isDueNow
+                                                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                                                    : "border-border/60 bg-background/70 text-muted-foreground"
+                                              )}
+                                            >
+                                              {milestoneStatusLabel}
+                                            </Badge>
+                                          </div>
 
-                    const prevMessage = messages[index - 1];
-                    const currentDate = message.createdAt
-                      ? new Date(message.createdAt)
-                      : new Date();
-                    const prevDate = prevMessage?.createdAt
-                      ? new Date(prevMessage.createdAt)
-                      : null;
-                    const showDateDivider =
-                      !prevDate || !isSameDay(currentDate, prevDate);
+                                          <div className="flex flex-col gap-1 sm:min-w-[118px] sm:border-l sm:border-border/50 sm:pl-3 sm:items-end">
+                                            <div className="text-left sm:text-right">
+                                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                                                Amount
+                                              </p>
+                                              <p className="text-base font-semibold leading-tight text-foreground sm:text-[17px]">
+                                                {formatINR(installment.amount || 0)}
+                                              </p>
+                                            </div>
 
-                    return (
-                      <React.Fragment key={message.id || index}>
-                        {showDateDivider && (
-                          <div className="flex justify-center my-4">
-                            <span className="bg-muted/40 px-3 py-1 rounded-full text-[10px] uppercase font-medium tracking-wide text-muted-foreground/70">
-                              {isToday(currentDate)
-                                ? "Today"
-                                : isYesterday(currentDate)
-                                ? "Yesterday"
-                                : format(currentDate, "MMMM d, yyyy")}
-                            </span>
-                          </div>
-                        )}
-                        <div className={`flex ${align}`}>
-                          <div
-                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col overflow-hidden ${
-                              isSelf
-                                ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm"
-                                : "bg-muted text-foreground rounded-tl-sm border border-border/60"
-                            }`}
-                          >
-                            {message.sender === "other" &&
-                              message.senderName && (
-                                <span className="text-[10px] opacity-70 mb-1 block">
-                                  {message.senderName}
+                                            {canPayInstallment ? (
+                                              <Button
+                                                size="sm"
+                                                className="h-7 w-fit px-2.5 text-[11px] sm:self-end"
+                                                onClick={handlePayDueInstallment}
+                                                disabled={isProcessingInstallment}
+                                              >
+                                                {isProcessingInstallment ? (
+                                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                                ) : (
+                                                  <CreditCard className="h-3 w-3" />
+                                                )}
+                                                {isProcessingInstallment
+                                                  ? "Processing"
+                                                  : `Pay ${installment.percentage}%`}
+                                              </Button>
+                                            ) : null}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : null}
+                            </React.Fragment>
+                          );
+                        })}
+                      </Accordion>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="space-y-4">
+                  <FreelancerInfoCard freelancer={freelancer} project={project} />
+
+                  {/* Project Chat - First */}
+                  <Card className={`${projectPanelClassName} flex h-96 flex-col`}>
+                    <CardHeader className="border-b border-border/60 space-y-0.5 pb-4">
+                      <CardTitle className={projectSectionEyebrowClassName}>
+                        Project Chat
+                      </CardTitle>
+                      <CardDescription
+                        className={cn(projectSectionSubheadingClassName, "text-xs")}
+                      >
+                        Ask questions and share documents
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 overflow-y-auto space-y-3 py-4">
+                      {messages.map((message, index) => {
+                        const isSelf = message.sender === "user";
+                        const isAssistant = message.sender === "assistant";
+                        const align =
+                          isAssistant || !isSelf ? "justify-start" : "justify-end";
+
+                        const prevMessage = messages[index - 1];
+                        const currentDate = message.createdAt
+                          ? new Date(message.createdAt)
+                          : new Date();
+                        const prevDate = prevMessage?.createdAt
+                          ? new Date(prevMessage.createdAt)
+                          : null;
+                        const showDateDivider =
+                          !prevDate || !isSameDay(currentDate, prevDate);
+
+                        return (
+                          <React.Fragment key={message.id || index}>
+                            {showDateDivider && (
+                              <div className="flex justify-center my-4">
+                                <span className="bg-muted/40 px-3 py-1 rounded-full text-[10px] uppercase font-medium tracking-wide text-muted-foreground/70">
+                                  {isToday(currentDate)
+                                    ? "Today"
+                                    : isYesterday(currentDate)
+                                      ? "Yesterday"
+                                      : format(currentDate, "MMMM d, yyyy")}
                                 </span>
-                              )}
-
-                            {message.text && (
-                              <p className="leading-relaxed whitespace-pre-wrap wrap-break-word">
-                                {message.text}
-                              </p>
-                            )}
-
-                            {message.attachment && (
-                              <div className="mt-2">
-                                {message.attachment.type?.startsWith(
-                                  "image/"
-                                ) ||
-                                message.attachment.url?.match(
-                                  /\.(jpg|jpeg|png|gif|webp)$/i
-                                ) ? (
-                                  <a
-                                    href={message.attachment.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block"
-                                  >
-                                    <img
-                                      src={message.attachment.url}
-                                      alt={
-                                        message.attachment.name || "Attachment"
-                                      }
-                                      className="max-w-45 max-h-45 rounded-lg object-cover"
-                                    />
-                                  </a>
-                                ) : (
-                                  <a
-                                    href={message.attachment.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`flex items-center gap-2 p-2 rounded-lg bg-background/20 hover:bg-background/30 transition-colors ${
-                                      !isSelf
-                                        ? "border border-border/50 bg-background/50"
-                                        : ""
-                                    }`}
-                                  >
-                                    <FileText className="h-4 w-4 shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium truncate max-w-35">
-                                        {message.attachment.name || "File"}
-                                      </p>
-                                    </div>
-                                  </a>
-                                )}
                               </div>
                             )}
-
-                            <div className="flex items-center gap-1 self-end mt-1 justify-end">
-                              <span className="text-[10px] opacity-70 whitespace-nowrap">
-                                {format(currentDate, "h:mm a")}
-                              </span>
-                              {isSelf && (
-                                <span className="ml-1 opacity-90">
-                                  {message.readAt ? (
-                                    <CheckCheck className="h-3 w-3" />
-                                  ) : (
-                                    <Check className="h-3 w-3" />
-                                  )}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </React.Fragment>
-                    );
-                  })}
-                </CardContent>
-                <div className="border-t border-border/60 p-3 space-y-2">
-                  {isChatLockedUntilPayment ? (
-                    <div className="w-full rounded-md border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                      Pending your payment. Messages will start after the initial 20% payment.
-                    </div>
-                  ) : null}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={
-                        isChatLockedUntilPayment
-                          ? "Complete payment to unlock chat"
-                          : "Type your message..."
-                      }
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyPress={(e) =>
-                        e.key === "Enter" && handleSendMessage()
-                      }
-                      className="h-9 text-sm bg-muted border-border/60"
-                      disabled={isChatLockedUntilPayment || isSending}
-                    />
-                    <Button
-                      onClick={() => fileInputRef.current?.click()}
-                      size="sm"
-                      variant="outline"
-                      className="h-9 w-9 p-0 border-border/60"
-                      title="Upload document"
-                      disabled={isChatLockedUntilPayment || isSending}
-                    >
-                      <Upload className="w-4 h-4" />
-                    </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                      accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
-                    />
-                    <Button
-                      onClick={handleSendMessage}
-                      size="sm"
-                      variant="default"
-                      className="h-9 w-9 p-0"
-                      disabled={isChatLockedUntilPayment || isSending}
-                    >
-                      <Send className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Documents - Second */}
-              <Card className={projectPanelClassName}>
-                <CardHeader className="pb-3">
-                  <CardTitle className={projectSectionEyebrowClassName}>
-                    Project Documents
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 pt-0">
-                  {docs.length > 0 ? (
-                    docs.map((doc, idx) => {
-                      const fileSize = formatAttachmentSize(doc.size) || doc.size;
-                      return (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-3 rounded-[16px] border border-white/[0.06] bg-[#111111] px-3 py-3 text-sm"
-                        >
-                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                            <FileText className="h-4 w-4 text-primary" />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-white">
-                              {doc.name}
-                            </p>
-                            <p className="mt-1 text-xs text-[#8f96a3]">
-                              {fileSize || "File"}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-sm text-[#8f96a3]">
-                      No documents attached yet. Upload project documentation
-                      here.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className={projectPanelClassName}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
-                    Deliverables Approval
-                  </CardTitle>
-                  <CardDescription className="text-[#8b94a1]">
-                    Review freelancer submissions and approve or request revisions.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {deliverableQueue.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No deliverables submitted yet. Uploaded project files will appear here.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {deliverableQueue.map((deliverable) => (
-                        <div
-                          key={deliverable.id}
-                          className="rounded-lg border border-border/60 bg-background/30 p-3 space-y-2"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">
-                                {deliverable.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {deliverable.size || "File"}
-                              </p>
-                            </div>
-                            <Badge
-                              variant="outline"
-                              className={
-                                deliverable.status === "approved"
-                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
-                                  : deliverable.status === "revision_requested"
-                                  ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
-                                  : "border-border/60"
-                              }
-                            >
-                              {deliverable.status === "approved"
-                                ? "Approved"
-                                : deliverable.status === "revision_requested"
-                                ? "Revision Requested"
-                                : "Pending Review"}
-                            </Badge>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {deliverable.url ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 px-2 text-xs"
-                                asChild
+                            <div className={`flex ${align}`}>
+                              <div
+                                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col overflow-hidden ${isSelf
+                                    ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm"
+                                    : "bg-muted text-foreground rounded-tl-sm border border-border/60"
+                                  }`}
                               >
-                                <a href={deliverable.url} target="_blank" rel="noopener noreferrer">
-                                  Open
-                                </a>
-                              </Button>
-                            ) : null}
-                            <Button
-                              size="sm"
-                              className="h-8 text-xs"
-                              disabled={reviewingDeliverableId === deliverable.id}
-                              onClick={() =>
-                                handleDeliverableDecision(deliverable.id, "approved")
-                              }
-                            >
-                              {reviewingDeliverableId === deliverable.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : null}
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              disabled={reviewingDeliverableId === deliverable.id}
-                              onClick={() =>
-                                handleDeliverableDecision(
-                                  deliverable.id,
-                                  "revision_requested"
-                                )
-                              }
-                            >
-                              Request Revisions
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                                {message.sender === "other" &&
+                                  message.senderName && (
+                                    <span className="text-[10px] opacity-70 mb-1 block">
+                                      {message.senderName}
+                                    </span>
+                                  )}
 
-              {/* Budget Summary - Third */}
-              <Card className={projectPanelClassName}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
-                    <IndianRupee className="w-4 h-4" />
-                    Budget Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
-                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
-                    <span>Total Budget</span>
-                    <span className="font-semibold text-foreground">
-                      ₹{totalBudget.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pb-2 border-b border-border/60">
-                    <span>Spent</span>
-                    <span className="font-semibold text-emerald-600">
-                      ₹{spentBudget.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Remaining</span>
-                    <span className="font-semibold text-foreground">
-                      ₹{remainingBudget.toLocaleString()}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className={projectPanelClassName}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
-                    <CreditCard className="w-4 h-4" />
-                    Billing Roadmap
-                  </CardTitle>
-                  <CardDescription className="text-[#8b94a1]">
-                    20% to start, 40% after phase 2, and the final 40% after phase 4.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {Array.isArray(paymentPlan?.installments) && paymentPlan.installments.length > 0 ? (
-                    <div className="space-y-2">
-                      {paymentPlan.installments.map((installment) => (
-                        <div
-                          key={installment.sequence}
-                          className="flex items-center justify-between rounded-lg border border-border/60 bg-transparent px-3 py-3"
-                        >
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">
-                              {installment.label}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {installment.percentage}% of project budget
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-foreground">
-                              INR {Number(installment.amount || 0).toLocaleString()}
-                            </p>
-                            <Badge variant={installment.isDue ? "secondary" : "outline"}>
-                              {installment.isPaid
-                                ? "Paid"
-                                : installment.isDue
-                                ? "Due now"
-                                : "Scheduled"}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Payment schedule will appear once a proposal is accepted.
-                    </p>
-                  )}
-
-                  {dueInstallment ? (
-                    <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
-                      <p className="text-sm font-semibold text-foreground">
-                        Current payment due: {dueInstallment.label}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Pay {dueInstallment.percentage}% now to keep the project billing on schedule.
-                      </p>
-                      <Button
-                        className="mt-3 w-full gap-2"
-                        disabled={isProcessingInstallment}
-                        onClick={handlePayDueInstallment}
-                      >
-                        {isProcessingInstallment ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <CreditCard className="h-4 w-4" />
-                        )}
-                        {isProcessingInstallment
-                          ? "Processing..."
-                          : `Pay ${dueInstallment.percentage}%`}
-                      </Button>
-                    </div>
-                  ) : paymentPlan?.isFullyPaid ? (
-                    <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400">
-                      All scheduled client payments are complete.
-                    </div>
-                  ) : paymentPlan ? (
-                    <div className="rounded-lg border border-border/60 bg-transparent p-3 text-sm text-muted-foreground">
-                      No payment is due right now. The next installment will unlock automatically when its phase gate is complete.
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
-
-              {shouldCollectFreelancerReview ? (
-                <Card className={projectPanelClassName}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
-                      Freelancer Review
-                    </CardTitle>
-                    <CardDescription className="text-[#8b94a1]">
-                      {existingFreelancerReview
-                        ? "Thanks for sharing your feedback for this completed project."
-                        : "Project completed. Please rate your freelancer experience."}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {existingFreelancerReview ? (
-                      <>
-                        <div className="flex items-center gap-1.5">
-                          {Array.from({ length: 5 }).map((_, index) => {
-                            const filled = index < Number(existingFreelancerReview.rating || 0);
-                            return (
-                              <Star
-                                key={`reviewed-star-${index + 1}`}
-                                className={cn(
-                                  "h-4 w-4",
-                                  filled
-                                    ? "fill-amber-400 text-amber-400"
-                                    : "text-muted-foreground"
+                                {message.text && (
+                                  <p className="leading-relaxed whitespace-pre-wrap wrap-break-word">
+                                    {message.text}
+                                  </p>
                                 )}
-                              />
-                            );
-                          })}
-                          <span className="ml-1 text-xs text-muted-foreground">
-                            {Number(existingFreelancerReview.rating || 0)} / 5
-                          </span>
-                        </div>
-                        <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-sm text-foreground">
-                          {existingFreelancerReview.comment}
-                        </div>
-                      </>
-                    ) : shouldShowFreelancerReviewPrompt ? (
-                      <>
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Your rating
-                          </p>
-                          <div className="mt-2 flex items-center gap-1">
-                            {Array.from({ length: 5 }).map((_, index) => {
-                              const value = index + 1;
-                              const selected = value <= reviewRating;
 
-                              return (
-                                <button
-                                  key={`pending-review-star-${value}`}
-                                  type="button"
-                                  onClick={() => setReviewRating(value)}
-                                  className="rounded p-0.5 transition-transform hover:scale-105"
-                                  aria-label={`Rate ${value} star${value > 1 ? "s" : ""}`}
+                                {message.attachment && (
+                                  <div className="mt-2">
+                                    {message.attachment.type?.startsWith(
+                                      "image/"
+                                    ) ||
+                                      message.attachment.url?.match(
+                                        /\.(jpg|jpeg|png|gif|webp)$/i
+                                      ) ? (
+                                      <a
+                                        href={message.attachment.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block"
+                                      >
+                                        <img
+                                          src={message.attachment.url}
+                                          alt={
+                                            message.attachment.name || "Attachment"
+                                          }
+                                          className="max-w-45 max-h-45 rounded-lg object-cover"
+                                        />
+                                      </a>
+                                    ) : (
+                                      <a
+                                        href={message.attachment.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`flex items-center gap-2 p-2 rounded-lg bg-background/20 hover:bg-background/30 transition-colors ${!isSelf
+                                            ? "border border-border/50 bg-background/50"
+                                            : ""
+                                          }`}
+                                      >
+                                        <FileText className="h-4 w-4 shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-medium truncate max-w-35">
+                                            {message.attachment.name || "File"}
+                                          </p>
+                                        </div>
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div className="flex items-center gap-1 self-end mt-1 justify-end">
+                                  <span className="text-[10px] opacity-70 whitespace-nowrap">
+                                    {format(currentDate, "h:mm a")}
+                                  </span>
+                                  {isSelf && (
+                                    <span className="ml-1 opacity-90">
+                                      {message.readAt ? (
+                                        <CheckCheck className="h-3 w-3" />
+                                      ) : (
+                                        <Check className="h-3 w-3" />
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </React.Fragment>
+                        );
+                      })}
+                    </CardContent>
+                    <div className="border-t border-border/60 p-3 space-y-2">
+                      {isChatLockedUntilPayment ? (
+                        <div className="w-full rounded-md border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                          Pending your payment. Messages will start after the initial 20% payment.
+                        </div>
+                      ) : null}
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder={
+                            isChatLockedUntilPayment
+                              ? "Complete payment to unlock chat"
+                              : "Type your message..."
+                          }
+                          value={input}
+                          onChange={(e) => setInput(e.target.value)}
+                          onKeyPress={(e) =>
+                            e.key === "Enter" && handleSendMessage()
+                          }
+                          className="h-9 text-sm bg-muted border-border/60"
+                          disabled={isChatLockedUntilPayment || isSending}
+                        />
+                        <Button
+                          onClick={() => fileInputRef.current?.click()}
+                          size="sm"
+                          variant="outline"
+                          className="h-9 w-9 p-0 border-border/60"
+                          title="Upload document"
+                          disabled={isChatLockedUntilPayment || isSending}
+                        >
+                          <Upload className="w-4 h-4" />
+                        </Button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                        />
+                        <Button
+                          onClick={handleSendMessage}
+                          size="sm"
+                          variant="default"
+                          className="h-9 w-9 p-0"
+                          disabled={isChatLockedUntilPayment || isSending}
+                        >
+                          <Send className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Documents - Second */}
+                  <Card className={projectPanelClassName}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className={projectSectionEyebrowClassName}>
+                        Project Documents
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 pt-0">
+                      {docs.length > 0 ? (
+                        docs.map((doc, idx) => {
+                          const fileSize = formatAttachmentSize(doc.size) || doc.size;
+                          return (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-3 rounded-[16px] border border-white/[0.06] bg-[#111111] px-3 py-3 text-sm"
+                            >
+                              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                                <FileText className="h-4 w-4 text-primary" />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-white">
+                                  {doc.name}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {fileSize || "File"}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-sm text-white">
+                          No documents attached yet. Upload project documentation
+                          here.
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card className={projectPanelClassName}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className={projectSectionEyebrowClassName}>
+                        Deliverables Approval
+                      </CardTitle>
+                      <CardDescription className={projectSectionSubheadingClassName}>
+                        Review freelancer submissions and approve or request revisions.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {deliverableQueue.length === 0 ? (
+                        <p className="text-sm text-white">
+                          No deliverables submitted yet. Uploaded project files will appear here.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {deliverableQueue.map((deliverable) => (
+                            <div
+                              key={deliverable.id}
+                              className="rounded-lg border border-border/60 bg-background/30 p-3 space-y-2"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-foreground">
+                                    {deliverable.name}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {deliverable.size || "File"}
+                                  </p>
+                                </div>
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    deliverable.status === "approved"
+                                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                                      : deliverable.status === "revision_requested"
+                                        ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
+                                        : "border-border/60"
+                                  }
                                 >
+                                  {deliverable.status === "approved"
+                                    ? "Approved"
+                                    : deliverable.status === "revision_requested"
+                                      ? "Revision Requested"
+                                      : "Pending Review"}
+                                </Badge>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {deliverable.url ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 px-2 text-xs"
+                                    asChild
+                                  >
+                                    <a href={deliverable.url} target="_blank" rel="noopener noreferrer">
+                                      Open
+                                    </a>
+                                  </Button>
+                                ) : null}
+                                <Button
+                                  size="sm"
+                                  className="h-8 text-xs"
+                                  disabled={reviewingDeliverableId === deliverable.id}
+                                  onClick={() =>
+                                    handleDeliverableDecision(deliverable.id, "approved")
+                                  }
+                                >
+                                  {reviewingDeliverableId === deliverable.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : null}
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 text-xs"
+                                  disabled={reviewingDeliverableId === deliverable.id}
+                                  onClick={() =>
+                                    handleDeliverableDecision(
+                                      deliverable.id,
+                                      "revision_requested"
+                                    )
+                                  }
+                                >
+                                  Request Revisions
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Budget Summary - Third */}
+                  <Card className={projectPanelClassName}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className={cn(projectSectionEyebrowClassName, "flex items-center gap-2")}>
+                        <IndianRupee className="w-4 h-4" />
+                        Budget Summary
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm text-white">
+                      <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                        <span>Total Budget</span>
+                        <span className="font-semibold text-foreground">
+                          ₹{totalBudget.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                        <span>Spent</span>
+                        <span className="font-semibold text-emerald-600">
+                          ₹{spentBudget.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Remaining</span>
+                        <span className="font-semibold text-foreground">
+                          ₹{remainingBudget.toLocaleString()}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className={projectPanelClassName}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className={cn(projectSectionEyebrowClassName, "flex items-center gap-2")}>
+                        <CreditCard className="w-4 h-4" />
+                        Billing Roadmap
+                      </CardTitle>
+                      <CardDescription className={projectSectionSubheadingClassName}>
+                        20% to start, 40% after phase 2, and the final 40% after phase 4.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {Array.isArray(paymentPlan?.installments) && paymentPlan.installments.length > 0 ? (
+                        <div className="space-y-2">
+                          {paymentPlan.installments.map((installment) => (
+                            <div
+                              key={installment.sequence}
+                              className="flex items-center justify-between rounded-lg border border-border/60 bg-transparent px-3 py-3"
+                            >
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">
+                                  {installment.label}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {installment.percentage}% of project budget
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-semibold text-foreground">
+                                  INR {Number(installment.amount || 0).toLocaleString()}
+                                </p>
+                                <Badge variant={installment.isDue ? "secondary" : "outline"}>
+                                  {installment.isPaid
+                                    ? "Paid"
+                                    : installment.isDue
+                                      ? "Due now"
+                                      : "Scheduled"}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Payment schedule will appear once a proposal is accepted.
+                        </p>
+                      )}
+
+                      {dueInstallment ? (
+                        <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
+                          <p className="text-sm font-semibold text-foreground">
+                            Current payment due: {dueInstallment.label}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Pay {dueInstallment.percentage}% now to keep the project billing on schedule.
+                          </p>
+                          <Button
+                            className="mt-3 w-full gap-2"
+                            disabled={isProcessingInstallment}
+                            onClick={handlePayDueInstallment}
+                          >
+                            {isProcessingInstallment ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CreditCard className="h-4 w-4" />
+                            )}
+                            {isProcessingInstallment
+                              ? "Processing..."
+                              : `Pay ${dueInstallment.percentage}%`}
+                          </Button>
+                        </div>
+                      ) : paymentPlan?.isFullyPaid ? (
+                        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400">
+                          All scheduled client payments are complete.
+                        </div>
+                      ) : paymentPlan ? (
+                        <div className="rounded-lg border border-border/60 bg-transparent p-3 text-sm text-muted-foreground">
+                          No payment is due right now. The next installment will unlock automatically when its phase gate is complete.
+                        </div>
+                      ) : null}
+                    </CardContent>
+                  </Card>
+
+                  {shouldCollectFreelancerReview ? (
+                    <Card className={projectPanelClassName}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className={projectSectionEyebrowClassName}>
+                          Freelancer Review
+                        </CardTitle>
+                        <CardDescription className={projectSectionSubheadingClassName}>
+                          {existingFreelancerReview
+                            ? "Thanks for sharing your feedback for this completed project."
+                            : "Project completed. Please rate your freelancer experience."}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {existingFreelancerReview ? (
+                          <>
+                            <div className="flex items-center gap-1.5">
+                              {Array.from({ length: 5 }).map((_, index) => {
+                                const filled = index < Number(existingFreelancerReview.rating || 0);
+                                return (
                                   <Star
+                                    key={`reviewed-star-${index + 1}`}
                                     className={cn(
-                                      "h-5 w-5",
-                                      selected
+                                      "h-4 w-4",
+                                      filled
                                         ? "fill-amber-400 text-amber-400"
                                         : "text-muted-foreground"
                                     )}
                                   />
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Your feedback
-                          </p>
-                          <Textarea
-                            className="mt-2"
-                            rows={4}
-                            placeholder="Share a quick feedback for the freelancer..."
-                            value={reviewComment}
-                            onChange={(event) => setReviewComment(event.target.value)}
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            className="flex-1"
-                            onClick={handleSubmitFreelancerReview}
-                            disabled={isSubmittingFreelancerReview}
-                          >
-                            {isSubmittingFreelancerReview ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : null}
-                            {isSubmittingFreelancerReview ? "Submitting" : "Submit Review"}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={handleDeferFreelancerReview}
-                            disabled={isSubmittingFreelancerReview}
-                          >
-                            Not now
-                          </Button>
-                        </div>
-                      </>
-                    ) : shouldShowFreelancerReviewReminder ? (
-                      <div className="rounded-lg border border-border/60 bg-background/50 p-3">
-                        <p className="text-sm font-semibold text-foreground">
-                          Review pending
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          You can submit your freelancer review anytime from this project section.
-                        </p>
-                        <Button
-                          className="mt-3 w-full"
-                          variant="outline"
-                          onClick={() => setReviewDeferredState(false)}
-                        >
-                          Review now
-                        </Button>
-                      </div>
-                    ) : null}
-                  </CardContent>
-                </Card>
-              ) : null}
+                                );
+                              })}
+                              <span className="ml-1 text-xs text-muted-foreground">
+                                {Number(existingFreelancerReview.rating || 0)} / 5
+                              </span>
+                            </div>
+                            <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-sm text-foreground">
+                              {existingFreelancerReview.comment}
+                            </div>
+                          </>
+                        ) : shouldShowFreelancerReviewPrompt ? (
+                          <>
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Your rating
+                              </p>
+                              <div className="mt-2 flex items-center gap-1">
+                                {Array.from({ length: 5 }).map((_, index) => {
+                                  const value = index + 1;
+                                  const selected = value <= reviewRating;
 
+                                  return (
+                                    <button
+                                      key={`pending-review-star-${value}`}
+                                      type="button"
+                                      onClick={() => setReviewRating(value)}
+                                      className="rounded p-0.5 transition-transform hover:scale-105"
+                                      aria-label={`Rate ${value} star${value > 1 ? "s" : ""}`}
+                                    >
+                                      <Star
+                                        className={cn(
+                                          "h-5 w-5",
+                                          selected
+                                            ? "fill-amber-400 text-amber-400"
+                                            : "text-muted-foreground"
+                                        )}
+                                      />
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Your feedback
+                              </p>
+                              <Textarea
+                                className="mt-2"
+                                rows={4}
+                                placeholder="Share a quick feedback for the freelancer..."
+                                value={reviewComment}
+                                onChange={(event) => setReviewComment(event.target.value)}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                className="flex-1"
+                                onClick={handleSubmitFreelancerReview}
+                                disabled={isSubmittingFreelancerReview}
+                              >
+                                {isSubmittingFreelancerReview ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : null}
+                                {isSubmittingFreelancerReview ? "Submitting" : "Submit Review"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={handleDeferFreelancerReview}
+                                disabled={isSubmittingFreelancerReview}
+                              >
+                                Not now
+                              </Button>
+                            </div>
+                          </>
+                        ) : shouldShowFreelancerReviewReminder ? (
+                          <div className="rounded-lg border border-border/60 bg-background/50 p-3">
+                            <p className="text-sm font-semibold text-foreground">
+                              Review pending
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              You can submit your freelancer review anytime from this project section.
+                            </p>
+                            <Button
+                              className="mt-3 w-full"
+                              variant="outline"
+                              onClick={() => setReviewDeferredState(false)}
+                            >
+                              Review now
+                            </Button>
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  ) : null}
+
+                </div>
+              </div>
             </div>
-          </div>
-          </div>
 
             <ClientDashboardFooter variant="workspace" />
           </main>
