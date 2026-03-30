@@ -10,12 +10,15 @@ const {
   buildCurrentQuestionValidationPrompt,
   buildLockedServiceReply,
   buildPersistedAnswersPayload,
+  buildSessionStartPrefill,
   buildSupplementalBudgetExtractions,
   buildQuestionDisplayAnswer,
   findExtractedBudgetMinimumViolation,
   findBudgetMinimumViolationChange,
   getDisplayedQuestionOptions,
   getBudgetMinimumValidationResult,
+  normalizeAdviceVisibleOptions,
+  normalizeGuestAdvicePayload,
   getQuestionAdminControls,
   getQuestionIdentityType,
   getMostRecentMessageContentByRole,
@@ -88,6 +91,59 @@ test("builds displayed answers from runtime option labels", () => {
   );
 });
 
+test("normalizes popup advice options from numbered chat option objects", () => {
+  const options = normalizeAdviceVisibleOptions([
+    { number: 1, text: "Shopify (recommended for online stores)" },
+    { number: 2, text: "WordPress (with WooCommerce)" },
+    { number: 4, text: "Not sure - need suggestion" },
+  ]);
+
+  assert.deepEqual(
+    options.map((option) => option.label),
+    [
+      "Shopify (recommended for online stores)",
+      "WordPress (with WooCommerce)",
+      "Not sure - need suggestion",
+    ]
+  );
+});
+
+test("maps AI recommendation text back to the exact visible option label", () => {
+  const visibleOptionObjects = normalizeAdviceVisibleOptions([
+    { number: 1, text: "Shopify (recommended for online stores)" },
+    { number: 2, text: "WordPress (with WooCommerce)" },
+  ]);
+
+  const payload = normalizeGuestAdvicePayload({
+    payload: {
+      notice: "Recommended: Shopify. It gives you fast performance and strong SEO.",
+      placeholder: "e.g. Shopify",
+      recommendedAnswer: "Shopify",
+    },
+    isRecommendationMode: true,
+    visibleOptionObjects,
+  });
+
+  assert.equal(payload.recommendedAnswer, "Shopify (recommended for online stores)");
+  assert.equal(payload.notice, "Recommended: Shopify. It gives you fast performance and strong SEO.");
+});
+
+test("keeps binary recommendation answers hidden from visible helper copy", () => {
+  const payload = normalizeGuestAdvicePayload({
+    payload: {
+      notice: "Recommended: Yes. This keeps the launch scope aligned with the stronger flow.",
+      placeholder: "e.g. Yes",
+      recommendedAnswer: "Yes",
+    },
+    isRecommendationMode: true,
+  });
+
+  assert.equal(payload.recommendedAnswer, "Yes");
+  assert.match(payload.notice, /^Recommended direction:/);
+  assert.doesNotMatch(payload.notice, /^Recommended:\s*(yes|no)\b/i);
+  assert.notEqual(payload.placeholder.toLowerCase(), "e.g. yes");
+});
+
 test("reorders displayed options from question-level admin priority directives", () => {
   const prioritizedQuestion = {
     slug: "platform",
@@ -152,6 +208,60 @@ test("merges service and question admin controls with question overrides first",
     { source: "cross platform", target: "Android and iOS" },
   ]);
   assert.match(buildAdminControlSummaryText(controls), /prefer Android and iOS/i);
+});
+
+test("prefills the first personal-name question from a logged-in user name", () => {
+  const questions = [
+    {
+      slug: "company_name",
+      text: "What is your company name?",
+      type: "input",
+    },
+    {
+      slug: "client_name",
+      text: "What is your name?",
+      type: "input",
+    },
+    {
+      slug: "contact_name",
+      text: "What is the contact name for this project?",
+      type: "input",
+    },
+  ];
+
+  assert.deepEqual(
+    buildSessionStartPrefill({
+      questions,
+      prefillName: "  Ravindra    Kumar  ",
+    }),
+    {
+      answersBySlug: { client_name: "Ravindra Kumar" },
+      acknowledgedQuestion: questions[1],
+      acknowledgedAnswer: "Ravindra Kumar",
+    }
+  );
+});
+
+test("does not prefill when the service has no personal-name question", () => {
+  const questions = [
+    {
+      slug: "company_name",
+      text: "What is your company name?",
+      type: "input",
+    },
+  ];
+
+  assert.deepEqual(
+    buildSessionStartPrefill({
+      questions,
+      prefillName: "Ravindra",
+    }),
+    {
+      answersBySlug: {},
+      acknowledgedQuestion: null,
+      acknowledgedAnswer: "",
+    }
+  );
 });
 
 test("parses admin control directives from free-text fields", () => {

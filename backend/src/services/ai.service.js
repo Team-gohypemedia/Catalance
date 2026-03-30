@@ -2305,6 +2305,7 @@ CRITICAL INSTRUCTIONS:
 - Use bullet list items for objectives, features, and deliverables.
 - The Project Overview should be a well-written paragraph summarizing the entire project scope.
 - Never let a numeric value appear under the wrong field label.
+- Use sentence case for every field value, paragraph, and bullet item. Do not output all lowercase or all uppercase field content.
 - NEVER use the words "suggest", "suggested", or "suggestion" anywhere in the proposal. Present all inferred recommendations as definitive expert decisions.
 `;
 
@@ -2511,6 +2512,106 @@ const normalizeProposalFieldKey = (value = "") =>
     .trim()
     .toLowerCase();
 
+const escapeRegExp = (value = "") =>
+  String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const PROPOSAL_SENTENCE_CASE_TOKEN_MAP = new Map([
+  ["ai", "AI"],
+  ["api", "API"],
+  ["aws", "AWS"],
+  ["b2b", "B2B"],
+  ["b2c", "B2C"],
+  ["crm", "CRM"],
+  ["erp", "ERP"],
+  ["firebase", "Firebase"],
+  ["flutter", "Flutter"],
+  ["inr", "INR"],
+  ["ios", "iOS"],
+  ["mongodb", "MongoDB"],
+  ["mysql", "MySQL"],
+  ["netlify", "Netlify"],
+  ["next.js", "Next.js"],
+  ["nextjs", "Next.js"],
+  ["node.js", "Node.js"],
+  ["nodejs", "Node.js"],
+  ["postgresql", "PostgreSQL"],
+  ["react", "React"],
+  ["react.js", "React.js"],
+  ["saas", "SaaS"],
+  ["seo", "SEO"],
+  ["shopify", "Shopify"],
+  ["sql", "SQL"],
+  ["supabase", "Supabase"],
+  ["ui", "UI"],
+  ["ux", "UX"],
+  ["vercel", "Vercel"],
+  ["whatsapp", "WhatsApp"],
+  ["woocommerce", "WooCommerce"],
+  ["wordpress", "WordPress"]
+]);
+
+const applyProposalSentenceCaseTokenOverrides = (value = "") => {
+  let normalized = String(value || "");
+  for (const [source, target] of PROPOSAL_SENTENCE_CASE_TOKEN_MAP.entries()) {
+    normalized = normalized.replace(
+      new RegExp(`\\b${escapeRegExp(source)}\\b`, "gi"),
+      target
+    );
+  }
+  return normalized;
+};
+
+const formatProposalSentenceCaseToken = (token = "", capitalize = false) => {
+  const raw = String(token || "");
+  const key = raw.toLowerCase();
+  if (PROPOSAL_SENTENCE_CASE_TOKEN_MAP.has(key)) {
+    return PROPOSAL_SENTENCE_CASE_TOKEN_MAP.get(key);
+  }
+
+  // Keep already-authored mixed-case words like "Acme" or "WooCommerce".
+  if (/[A-Z].*[a-z]/.test(raw) || /[a-z].*[A-Z]/.test(raw)) {
+    return raw;
+  }
+
+  const lowered = raw.toLowerCase();
+  return capitalize
+    ? `${lowered.charAt(0).toUpperCase()}${lowered.slice(1)}`
+    : lowered;
+};
+
+const applyProposalSentenceCase = (value = "") => {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+
+  const cased = normalized
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => {
+      let capitalized = false;
+      return sentence.replace(/\S+/g, (token) => {
+        if (!/[A-Za-z]/.test(token)) {
+          if (/[0-9]/.test(token)) {
+            capitalized = true;
+          }
+          return token;
+        }
+
+        const prefixMatch = token.match(/^[^A-Za-z0-9]+/);
+        const suffixMatch = token.match(/[^A-Za-z0-9]+$/);
+        const prefix = prefixMatch?.[0] || "";
+        const suffix = suffixMatch?.[0] || "";
+        const core = token.slice(prefix.length, token.length - suffix.length);
+        if (!core) return token;
+
+        const nextCore = formatProposalSentenceCaseToken(core, !capitalized);
+        capitalized = true;
+        return `${prefix}${nextCore}${suffix}`;
+      });
+    })
+    .join(" ");
+
+  return applyProposalSentenceCaseTokenOverrides(cased);
+};
+
 const cleanProposalTextValue = (value = "") => {
   const normalized = String(value || "")
     .replace(/\*+/g, "")
@@ -2518,7 +2619,7 @@ const cleanProposalTextValue = (value = "") => {
     .replace(/\s+/g, " ")
     .trim();
   if (!normalized || PROPOSAL_PLACEHOLDER_REGEX.test(normalized)) return "";
-  return normalized;
+  return applyProposalSentenceCase(normalized);
 };
 
 const cleanProposalListItems = (items = []) =>
@@ -3156,6 +3257,7 @@ Put each field label on its own line. Never combine two field labels or headings
 Keep the same proposal structure and return markdown only.
 Convert numeric words into digits for numeric-only fields.
 Budget must always be numeric with currency.
+Use sentence case for every field value, paragraph, and bullet item.
 NEVER use the words "suggest", "suggested", or "suggestion" anywhere in the proposal. Present all inferred recommendations as definitive expert decisions.`;
 
 const buildProposalRepairUserPrompt = ({

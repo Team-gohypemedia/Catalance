@@ -22,6 +22,7 @@ const AGENT_IDENTITY_REGEX =
     /\b(what(?:'s| is)\s+your\s+name|your\s+name\??|who\s+are\s+you|are\s+you\s+(?:an?\s+)?(?:ai|bot|human))\b/i;
 const GRATITUDE_REGEX = /\b(thanks|thank you|thx|ty)\b/i;
 const ATTACHMENT_REFERENCE_REGEX = /\b(pdf|document|doc|file|attachment|uploaded|upload|proposal|brochure|resume|deck|sheet)\b/i;
+const URL_REFERENCE_REGEX = /\b(url|link|website|site|webpage|page|reference)\b/i;
 const EXTRACTION_CONFIDENCE_MIN = 0.7;
 const EXTRACTION_CONFIDENCE_UPDATE_MIN = 0.86;
 const FRIENDLY_BRIDGES = [
@@ -31,15 +32,21 @@ const FRIENDLY_BRIDGES = [
     "Nice, I noted that."
 ];
 const ATTACHMENT_TOKEN_REGEX = /^\[\[ATTACHMENT\]\]([^|]+)\|([^|]+)\|([^|]*)\|(\d+)$/;
+const URL_TOKEN_REGEX = /^\[\[URL\]\]([^|]+)\|([^|]*)$/;
 const MAX_ATTACHMENT_ANALYSIS_COUNT = 3;
 const MAX_SINGLE_ATTACHMENT_TEXT_CHARS = 4000;
 const MAX_ATTACHMENT_CONTEXT_CHARS = 9000;
+const MAX_URL_ANALYSIS_COUNT = 2;
+const MAX_URL_CONTEXT_CHARS = 5000;
 const MAX_VISION_IMAGE_BYTES = 4 * 1024 * 1024;
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const METADATA_USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 const IMAGE_FILE_REGEX = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
 const PDF_FILE_REGEX = /\.pdf$/i;
 const DOCX_FILE_REGEX = /\.docx$/i;
 const TEXT_FILE_REGEX = /\.(txt|md|csv|json|xml|yaml|yml)$/i;
+const URL_CANDIDATE_REGEX = /(?:https?:\/\/|www\.)[^\s<>"']+/gi;
 let pdfJsModulePromise = null;
 let mammothModulePromise = null;
 
@@ -110,15 +117,137 @@ const parseJsonObjectFromRaw = (raw = "") => {
     return null;
 };
 
+const trimLikelyUrlTrailingPunctuation = (value = "") => {
+    const attempts = [];
+    let current = String(value || "").trim();
+    if (!current) return attempts;
+    attempts.push(current);
+    while (/[),.;!?]$/.test(current)) {
+        current = current.slice(0, -1).trim();
+        if (!current) break;
+        attempts.push(current);
+    }
+    return attempts;
+};
+
+const isPrivateIpv4Hostname = (hostname = "") =>
+    /^(10|127)\.\d{1,3}\.\d{1,3}\.\d{1,3}$/i.test(hostname)
+    || /^192\.168\.\d{1,3}\.\d{1,3}$/i.test(hostname)
+    || /^169\.254\.\d{1,3}\.\d{1,3}$/i.test(hostname)
+    || /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/i.test(hostname);
+
+const isBlockedSharedUrlHost = (hostname = "") => {
+    const normalizedHostname = String(hostname || "").trim().toLowerCase();
+    if (!normalizedHostname) return true;
+    if (env.NODE_ENV !== "production") return false;
+    return normalizedHostname === "localhost"
+        || normalizedHostname === "0.0.0.0"
+        || normalizedHostname === "::1"
+        || normalizedHostname.endsWith(".local")
+        || isPrivateIpv4Hostname(normalizedHostname);
+};
+
+const normalizeSharedUrl = (value = "") => {
+    const attempts = trimLikelyUrlTrailingPunctuation(value);
+    for (const source of attempts) {
+        const withProtocol = /^https?:\/\//i.test(source) ? source : `https://${source}`;
+
+        try {
+            const parsed = new URL(withProtocol);
+            if (!["http:", "https:"].includes(parsed.protocol)) continue;
+            if (isBlockedSharedUrlHost(parsed.hostname)) continue;
+            return parsed.toString();
+        } catch {
+            // Try the next normalized candidate.
+        }
+    }
+    return "";
+};
+
+const buildSharedUrlLabel = (value = "") => {
+    try {
+        const parsed = new URL(value);
+        const hostname = parsed.hostname.replace(/^www\./i, "");
+        const path = parsed.pathname && parsed.pathname !== "/"
+            ? parsed.pathname.replace(/\/$/, "")
+            : "";
+        return `${hostname}${path}` || hostname || value;
+    } catch {
+        return String(value || "").trim() || "Shared URL";
+    }
+};
+
+const parseUrlToken = (line = "") => {
+    const match = String(line || "").trim().match(URL_TOKEN_REGEX);
+    if (!match) return null;
+
+    const normalizedUrl = normalizeSharedUrl(safeDecodeURIComponent(match[1] || ""));
+    if (!normalizedUrl) return null;
+
+    const providedLabel = normalizeAttachmentDisplayText(safeDecodeURIComponent(match[2] || ""));
+    return {
+        url: normalizedUrl,
+        label: providedLabel || buildSharedUrlLabel(normalizedUrl),
+    };
+};
+
+const dedupeSharedUrls = (entries = []) => {
+    const seen = new Set();
+    const rows = [];
+
+    for (const entry of Array.isArray(entries) ? entries : []) {
+        const normalizedUrl = normalizeSharedUrl(entry?.url || "");
+        if (!normalizedUrl || seen.has(normalizedUrl)) continue;
+        seen.add(normalizedUrl);
+        rows.push({
+            url: normalizedUrl,
+            label: normalizeAttachmentDisplayText(entry?.label || "") || buildSharedUrlLabel(normalizedUrl),
+        });
+    }
+
+    return rows;
+};
+
+const extractUrlsFromPlainText = (messageText = "") => {
+    const extracted = [];
+    const strippedText = String(messageText || "")
+        .replace(/\r/g, "")
+        .split("\n")
+        .map((line) => line.replace(URL_CANDIDATE_REGEX, (match) => {
+            const normalizedUrl = normalizeSharedUrl(match);
+            if (!normalizedUrl) return match;
+            extracted.push({
+                url: normalizedUrl,
+                label: buildSharedUrlLabel(normalizedUrl),
+            });
+            return " ";
+        }))
+        .map((line) => line.replace(/\s{2,}/g, " ").trim())
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+    return {
+        plainText: strippedText,
+        urls: dedupeSharedUrls(extracted),
+    };
+};
+
 const parseAttachmentTokensFromMessage = (messageText = "") => {
     const lines = String(messageText || "").replace(/\r/g, "").split("\n");
     const attachments = [];
+    const urls = [];
     const plainLines = [];
 
     for (const rawLine of lines) {
         const line = String(rawLine || "").trim();
         const match = line.match(ATTACHMENT_TOKEN_REGEX);
         if (!match) {
+            const parsedUrl = parseUrlToken(line);
+            if (parsedUrl) {
+                urls.push(parsedUrl);
+                continue;
+            }
             plainLines.push(rawLine);
             continue;
         }
@@ -137,9 +266,12 @@ const parseAttachmentTokensFromMessage = (messageText = "") => {
         });
     }
 
+    const extractedUrls = extractUrlsFromPlainText(plainLines.join("\n"));
+
     return {
-        plainText: plainLines.join("\n").trim(),
+        plainText: extractedUrls.plainText,
         attachments,
+        urls: dedupeSharedUrls([...urls, ...extractedUrls.urls]),
     };
 };
 
@@ -152,6 +284,21 @@ const getMostRecentAttachmentsFromMessages = (messages = []) => {
         const parsed = parseAttachmentTokensFromMessage(String(message?.content || ""));
         if (parsed.attachments.length > 0) {
             return parsed.attachments;
+        }
+    }
+
+    return [];
+};
+
+const getMostRecentUrlsFromMessages = (messages = []) => {
+    if (!Array.isArray(messages) || messages.length === 0) return [];
+
+    for (let idx = messages.length - 1; idx >= 0; idx -= 1) {
+        const message = messages[idx];
+        if (String(message?.role || "").toLowerCase() !== "user") continue;
+        const parsed = parseAttachmentTokensFromMessage(String(message?.content || ""));
+        if (parsed.urls.length > 0) {
+            return parsed.urls;
         }
     }
 
@@ -184,6 +331,157 @@ const clipAttachmentText = (text = "", limit = MAX_SINGLE_ATTACHMENT_TEXT_CHARS)
         .replace(/\n{3,}/g, "\n\n")
         .trim()
         .slice(0, Math.max(0, limit));
+
+const decodeBasicHtmlEntities = (value = "") =>
+    String(value || "")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;|&apos;/gi, "'")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">");
+
+const extractMetaContentFromHtml = (html = "", key = "") => {
+    const escapedKey = String(key || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!escapedKey) return "";
+    const regex = new RegExp(
+        `<meta[^>]+(?:property|name)=["']${escapedKey}["'][^>]+content=["']([^"']+)["']|` +
+        `<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escapedKey}["']`,
+        "i"
+    );
+    const match = String(html || "").match(regex);
+    return decodeBasicHtmlEntities(match ? String(match[1] || match[2] || "").trim() : "");
+};
+
+const extractHeadingFromHtml = (html = "", tag = "h1") => {
+    const match = String(html || "").match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+    if (!match) return "";
+    return clipAttachmentText(
+        decodeBasicHtmlEntities(
+            String(match[1] || "")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/\s+/g, " ")
+                .trim()
+        ),
+        220
+    );
+};
+
+const extractReadableTextFromHtml = (html = "") =>
+    clipAttachmentText(
+        decodeBasicHtmlEntities(
+            String(html || "")
+                .replace(/<script[\s\S]*?<\/script>/gi, " ")
+                .replace(/<style[\s\S]*?<\/style>/gi, " ")
+                .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+                .replace(/<!--[\s\S]*?-->/g, " ")
+                .replace(/<br\s*\/?>/gi, "\n")
+                .replace(/<\/(p|div|section|article|main|header|footer|li|h1|h2|h3)>/gi, "\n")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/[ \t]+\n/g, "\n")
+                .replace(/\n{3,}/g, "\n\n")
+                .replace(/[ \t]{2,}/g, " ")
+                .trim()
+        ),
+        1600
+    );
+
+const extractUrlContext = async ({ urlEntry = {}, index = 0 }) => {
+    const normalizedUrl = normalizeSharedUrl(urlEntry?.url || "");
+    const descriptorLabel = normalizeAttachmentDisplayText(urlEntry?.label || "") || buildSharedUrlLabel(normalizedUrl || urlEntry?.url || "");
+    const descriptor = `[Shared URL ${index + 1}] ${descriptorLabel}`;
+
+    if (!normalizedUrl) {
+        return {
+            descriptor,
+            extractedContext: "URL shared, but it is not a supported public HTTP/HTTPS link.",
+            summary: `I received the URL for ${descriptorLabel}, but I could not open it as a public website.`,
+        };
+    }
+
+    try {
+        const response = await fetch(normalizedUrl, {
+            headers: {
+                "User-Agent": METADATA_USER_AGENT,
+                Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5",
+            },
+            signal: AbortSignal.timeout(15000),
+        });
+
+        const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+        const body = await response.text().catch(() => "");
+
+        if (!body.trim()) {
+            return {
+                descriptor,
+                extractedContext: "URL shared, but the page returned no readable content.",
+                summary: `I opened ${descriptorLabel}, but it did not return readable content.`,
+            };
+        }
+
+        const title = extractMetaContentFromHtml(body, "og:title")
+            || extractMetaContentFromHtml(body, "twitter:title")
+            || decodeBasicHtmlEntities((body.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || "").trim());
+        const description = extractMetaContentFromHtml(body, "og:description")
+            || extractMetaContentFromHtml(body, "twitter:description")
+            || extractMetaContentFromHtml(body, "description");
+        const heading = extractHeadingFromHtml(body, "h1");
+        const visibleText = extractReadableTextFromHtml(body);
+
+        const extractedContext = [
+            `URL: ${normalizedUrl}`,
+            title ? `Page title: ${title}` : "",
+            description ? `Meta description: ${description}` : "",
+            heading ? `Main heading: ${heading}` : "",
+            visibleText ? `Visible text excerpt:\n${visibleText}` : "",
+            !/html|text\//i.test(contentType) ? `Detected content type: ${contentType || "unknown"}` : "",
+        ]
+            .filter(Boolean)
+            .join("\n");
+
+        const summaryText = description || heading || visibleText || title;
+
+        return {
+            descriptor,
+            extractedContext: extractedContext || "URL shared, but only minimal metadata was available.",
+            summary: summaryText
+                ? `I checked ${descriptorLabel}. ${clipAttachmentText(summaryText, 220)}`
+                : `I checked ${descriptorLabel}, but the site exposed only limited metadata.`,
+        };
+    } catch (error) {
+        return {
+            descriptor,
+            extractedContext: `URL shared, but the page could not be read automatically. Reason: ${error?.message || "Unknown error"}`,
+            summary: `I received ${descriptorLabel}, but I could not read the page automatically yet.`,
+        };
+    }
+};
+
+const buildUrlContextBlock = async ({ urls = [] }) => {
+    if (!Array.isArray(urls) || urls.length === 0) {
+        return { contextText: "", insightNote: "" };
+    }
+
+    const limitedUrls = urls.slice(0, MAX_URL_ANALYSIS_COUNT);
+    const insights = [];
+    for (let index = 0; index < limitedUrls.length; index += 1) {
+        insights.push(await extractUrlContext({ urlEntry: limitedUrls[index], index }));
+    }
+
+    return {
+        contextText: clipAttachmentText(
+            insights
+                .map((insight) => `${insight.descriptor}\n${insight.extractedContext}`.trim())
+                .join("\n\n"),
+            MAX_URL_CONTEXT_CHARS
+        ),
+        insightNote: insights
+            .map((insight) => String(insight?.summary || "").trim())
+            .filter(Boolean)
+            .slice(0, 1)
+            .join(" "),
+    };
+};
 
 const isImageAttachment = (attachment = {}) =>
     String(attachment?.type || "").startsWith("image/")
@@ -1448,6 +1746,151 @@ const getComparableOptionAliases = (option = {}) =>
             .filter(Boolean)
     );
 
+const HELPER_OPTION_TRIGGER_REGEX = /\b(not sure|other|suggest|recommend|advice|help)\b/i;
+const BINARY_RECOMMENDATION_ANSWER_REGEX = /^(yes|no)$/i;
+
+const normalizeAdviceVisibleOptions = (currentOptions = [], currentQuestion = null) => {
+    const requestOptions = (Array.isArray(currentOptions) ? currentOptions : [])
+        .map((optionEntry) => normalizeOptionObject(optionEntry, {
+            fallbackLabel: optionEntry && typeof optionEntry === "object" ? optionEntry.text || "" : "",
+            fallbackValue: optionEntry && typeof optionEntry === "object" ? optionEntry.text || "" : "",
+        }))
+        .filter(Boolean);
+
+    if (requestOptions.length > 0) {
+        return requestOptions;
+    }
+
+    return currentQuestion
+        ? getDisplayedQuestionOptions(currentQuestion, {})
+        : [];
+};
+
+const getPreferredAdviceOptionLabel = (visibleOptionObjects = [], adviceAdminControls = {}) => {
+    const normalizedOptions = Array.isArray(visibleOptionObjects) ? visibleOptionObjects : [];
+    if (normalizedOptions.length === 0) return "";
+
+    const inlineRecommendedOption = normalizedOptions.find((option) =>
+        /\brecommend(?:ed)?\b/i.test(String(option?.label || option?.value || ""))
+    );
+    if (inlineRecommendedOption) {
+        return String(
+            inlineRecommendedOption?.label
+            || inlineRecommendedOption?.value
+            || inlineRecommendedOption?.canonicalLabel
+            || inlineRecommendedOption?.canonicalValue
+            || ""
+        ).trim();
+    }
+
+    const adminPreferredIndex = findOptionIndexByAdminToken(
+        normalizedOptions,
+        adviceAdminControls.recommendedOption || adviceAdminControls.prioritizeOptions?.[0] || ""
+    );
+    if (adminPreferredIndex >= 0) {
+        return String(
+            normalizedOptions[adminPreferredIndex]?.label
+            || normalizedOptions[adminPreferredIndex]?.value
+            || normalizedOptions[adminPreferredIndex]?.canonicalLabel
+            || normalizedOptions[adminPreferredIndex]?.canonicalValue
+            || ""
+        ).trim();
+    }
+
+    const firstConcreteOption = normalizedOptions.find((option) =>
+        !HELPER_OPTION_TRIGGER_REGEX.test(String(option?.label || option?.value || ""))
+    );
+
+    return String(
+        firstConcreteOption?.label
+        || firstConcreteOption?.value
+        || firstConcreteOption?.canonicalLabel
+        || firstConcreteOption?.canonicalValue
+        || ""
+    ).trim();
+};
+
+const resolveAdviceRecommendedAnswer = ({
+    payload = {},
+    visibleOptionObjects = [],
+    fallbackRecommendedAnswer = "",
+}) => {
+    const requestedAnswer = String(payload?.recommendedAnswer || "").trim();
+    const noticeText = String(payload?.notice || "").trim();
+    const normalizedVisibleOptions = Array.isArray(visibleOptionObjects) ? visibleOptionObjects : [];
+
+    if (normalizedVisibleOptions.length > 0) {
+        const optionMatch =
+            findMatchingOptionsFromText(requestedAnswer, normalizedVisibleOptions)[0]
+            || findMatchingOptionsFromText(noticeText, normalizedVisibleOptions)[0]
+            || findMatchingOptionsFromText(fallbackRecommendedAnswer, normalizedVisibleOptions)[0];
+
+        if (optionMatch) {
+            return String(
+                optionMatch?.label
+                || optionMatch?.value
+                || optionMatch?.canonicalLabel
+                || optionMatch?.canonicalValue
+                || ""
+            ).trim();
+        }
+    }
+
+    return requestedAnswer || String(fallbackRecommendedAnswer || "").trim();
+};
+
+const normalizeGuestAdvicePayload = ({
+    payload = {},
+    isRecommendationMode = false,
+    visibleOptionObjects = [],
+    fallbackRecommendedAnswer = "",
+}) => {
+    const rawNotice = String(payload?.notice || "").trim();
+    const rawPlaceholder = String(payload?.placeholder || "").trim();
+
+    if (!isRecommendationMode) {
+        return {
+            notice: rawNotice,
+            placeholder: rawPlaceholder,
+            recommendedAnswer: "",
+        };
+    }
+
+    const recommendedAnswer = resolveAdviceRecommendedAnswer({
+        payload,
+        visibleOptionObjects,
+        fallbackRecommendedAnswer,
+    });
+    const notice = rawNotice || (recommendedAnswer ? `Recommended: ${recommendedAnswer}.` : "");
+    const placeholder = rawPlaceholder || (recommendedAnswer ? `e.g. ${recommendedAnswer}` : "e.g. go with the recommended direction");
+
+    if (!BINARY_RECOMMENDATION_ANSWER_REGEX.test(recommendedAnswer)) {
+        return {
+            notice,
+            placeholder,
+            recommendedAnswer,
+        };
+    }
+
+    const compactReason = notice
+        .replace(/^recommended:\s*/i, "")
+        .replace(/^(yes|no)\b[:.!-\s]*/i, "")
+        .trim();
+    const positiveBinary = normalizeTextToken(recommendedAnswer) === "yes";
+
+    return {
+        notice: `Recommended direction: ${compactReason || (positiveBinary
+            ? "This fits the stronger path for the project right now."
+            : "This keeps the first version focused on the core project flow.")}`,
+        placeholder: rawPlaceholder && !/^e\.g\.\s*(yes|no)\s*$/i.test(rawPlaceholder)
+            ? rawPlaceholder
+            : (positiveBinary
+                ? "e.g. go ahead with the recommended direction"
+                : "e.g. skip this in the first version"),
+        recommendedAnswer,
+    };
+};
+
 const comparablePhraseContainsWholeWords = (source = "", target = "") => {
     const sourceWords = normalizeOptionComparableText(source).split(/\s+/).filter(Boolean);
     const targetWords = normalizeOptionComparableText(target).split(/\s+/).filter(Boolean);
@@ -2139,6 +2582,56 @@ const getQuestionIdentityType = (question = {}) => {
     }
 
     return "other";
+};
+
+const normalizeSessionPrefillName = (value = "") =>
+    String(value || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120)
+        .trim();
+
+const buildSessionStartPrefill = ({
+    questions = [],
+    prefillName = ""
+} = {}) => {
+    const normalizedName = normalizeSessionPrefillName(prefillName);
+    if (!normalizedName || !Array.isArray(questions) || questions.length === 0) {
+        return {
+            answersBySlug: {},
+            acknowledgedQuestion: null,
+            acknowledgedAnswer: ""
+        };
+    }
+
+    const targetQuestion = questions.find(
+        (question) => question?.slug && getQuestionIdentityType(question) === "person_name"
+    );
+
+    if (!targetQuestion?.slug) {
+        return {
+            answersBySlug: {},
+            acknowledgedQuestion: null,
+            acknowledgedAnswer: ""
+        };
+    }
+
+    return {
+        answersBySlug: { [targetQuestion.slug]: normalizedName },
+        acknowledgedQuestion: targetQuestion,
+        acknowledgedAnswer: normalizedName
+    };
+};
+
+const buildSessionStartPrefillBridge = ({
+    acknowledgedQuestion = null,
+    acknowledgedAnswer = ""
+} = {}) => {
+    if (getQuestionIdentityType(acknowledgedQuestion) !== "person_name") return "";
+    if (!hasAnswerValue(acknowledgedAnswer)) return "";
+
+    const firstName = String(acknowledgedAnswer).trim().split(/\s+/)[0];
+    return firstName ? `Nice to meet you, ${firstName}.` : "";
 };
 
 const matchesLogicRule = (answerValue, rule = {}) => {
@@ -3785,6 +4278,7 @@ const buildCurrentQuestionValidationPrompt = ({
     currentQuestionSubtitle = "",
     userMessageText = "",
     attachmentContextText = "",
+    urlContextText = "",
     attachmentInferredAnswer = "",
     lastAssistantMessage = "",
     validationResponseRules = "",
@@ -3813,6 +4307,7 @@ const buildCurrentQuestionValidationPrompt = ({
             Last Assistant Message Shown To User: ${JSON.stringify(lastAssistantMessage || "None")}
             User's Answer: "${userMessageText}"
             Attachment Context: ${attachmentContextText ? JSON.stringify(attachmentContextText) : '"None"'}
+            URL Context: ${urlContextText ? JSON.stringify(urlContextText) : '"None"'}
             Attachment-Inferred Answer: "${attachmentInferredAnswer || ""}"
             
             Task:
@@ -3820,7 +4315,7 @@ const buildCurrentQuestionValidationPrompt = ({
             - If it's a greeting (hi, hello) but the question expects details -> INVALID.
             - If it's irrelevant/gibberish -> INVALID.
             - If the user is asking an informational side-question (e.g., "what is Flutter?", "which is best for me?") instead of directly answering the current question -> INFO_REQUEST.
-            - If direct text is empty but attachment context clearly answers the current question, treat as VALID.
+            - If direct text is empty but attachment context or URL context clearly answers the current question, treat as VALID.
             - If the user replies with a numbered choice such as "1", "2", "option 3", or "go with 2", interpret it using the 1-based order from "Current Question Options" / "Current Question Numbered Options".
             - If the user's message contains a number as part of a descriptive answer (for example "1 month", "2-4 weeks", "10 pages"), do NOT assume it is a menu selection unless the wording clearly shows they are choosing by option number.
             - If the Current Question has options, and the Last Assistant Message clearly recommends exactly one current option, and the user now gives brief agreement or approval instead of repeating the option, treat that as VALID.
@@ -3860,64 +4355,107 @@ ${validationResponseRules}
 const buildServiceStartState = async ({
     service,
     existingPayload = {},
+    prefilledAnswersBySlug = {},
+    startContext = {},
 }) => {
-    const firstQuestionDefinition = service?.questions?.[0];
+    let initialAnswersBySlug = Object.entries(prefilledAnswersBySlug || {}).reduce((acc, [slug, value]) => {
+        if (slug && hasAnswerValue(value)) {
+            acc[slug] = value;
+        }
+        return acc;
+    }, {});
+    let activeStartContext = startContext;
+    let currentStep = findNextUnansweredStep(service.questions, initialAnswersBySlug);
+
+    // Avoid auto-completing an entire questionnaire before the first visible message.
+    if (currentStep >= service.questions.length && Object.keys(initialAnswersBySlug).length > 0) {
+        initialAnswersBySlug = {};
+        activeStartContext = {};
+        currentStep = 0;
+    }
+
+    const firstQuestionDefinition = service?.questions?.[currentStep];
     const runtimeOptionsByQuestionSlug = {};
+    let answersPayload = buildPersistedAnswersPayload(
+        initialAnswersBySlug,
+        service.questions,
+        { existingPayload }
+    );
 
     if (firstQuestionDefinition?.slug) {
         const runtimeOptions = await generateRuntimeOptionsForQuestion({
             serviceName: service.name,
             servicePrompt: service.aiPrompt || "",
             question: firstQuestionDefinition,
-            answersByQuestionText: {},
-            answersBySlug: {},
+            answersByQuestionText: answersPayload.byQuestionText,
+            answersBySlug: answersPayload.bySlug,
             allQuestions: service.questions
         });
         if (runtimeOptions.length > 0) {
             runtimeOptionsByQuestionSlug[firstQuestionDefinition.slug] = runtimeOptions;
         }
+        answersPayload = buildPersistedAnswersPayload(
+            initialAnswersBySlug,
+            service.questions,
+            {
+                runtimeOptionsByQuestionSlug,
+                existingPayload
+            }
+        );
     }
 
     const firstQuestionConfig = {
         type: firstQuestionDefinition?.type || "text",
         options: getDisplayedQuestionOptions(firstQuestionDefinition, runtimeOptionsByQuestionSlug)
     };
+    const startPrefillBridge = buildSessionStartPrefillBridge(activeStartContext);
     const aiFirstQuestion = firstQuestionDefinition
         ? await buildAiGuidedQuestionMessage({
             serviceName: service.name,
             servicePrompt: service.aiPrompt || "",
-            userLastMessage: "",
-            currentQuestion: {},
+            userLastMessage: startPrefillBridge ? String(activeStartContext?.acknowledgedAnswer || "") : "",
+            currentQuestion: startPrefillBridge ? activeStartContext?.acknowledgedQuestion || {} : {},
             nextQuestion: firstQuestionDefinition,
-            answersByQuestionText: {},
-            answersBySlug: {},
+            answersByQuestionText: answersPayload.byQuestionText,
+            answersBySlug: answersPayload.bySlug,
             allQuestions: service.questions,
             runtimeOptionsByQuestionSlug,
             sideReply: "",
-            bridgeSegments: [],
-            isInitial: true
+            bridgeSegments: startPrefillBridge ? [startPrefillBridge] : [],
+            isInitial: !startPrefillBridge
         })
         : "";
     const isNameFirstQuestion = NAME_QUESTION_REGEX.test(String(firstQuestionDefinition?.text || ""));
+    const firstQuestionFallbackPrompt = firstQuestionDefinition
+        ? (
+            getQuestionOptionLabels(firstQuestionDefinition, runtimeOptionsByQuestionSlug).length > 0
+                ? formatQuestionWithOptions(firstQuestionDefinition, runtimeOptionsByQuestionSlug)
+                : (firstQuestionDefinition.text || "How can I help you regarding this service?")
+        )
+        : `How can I help you regarding ${service?.name || "this service"}?`;
     const firstQuestion = aiFirstQuestion
-        || (isNameFirstQuestion
-            ? buildServiceAwareOpeningMessage(service.name)
-            : (firstQuestionDefinition?.text || "How can I help you regarding this service?"));
-
-    const answersPayload = buildPersistedAnswersPayload(
-        {},
-        service.questions,
-        {
-            runtimeOptionsByQuestionSlug,
-            existingPayload
-        }
-    );
+        || (startPrefillBridge
+            ? buildFriendlyMessage(
+                firstQuestionFallbackPrompt,
+                combineInlineMessages(
+                    startPrefillBridge,
+                    buildPersonalizedQuestionBridge({
+                        nextQuestionText: firstQuestionDefinition?.text || "",
+                        answersByQuestionText: answersPayload.byQuestionText,
+                        serviceName: service.name
+                    })
+                )
+            )
+            : (isNameFirstQuestion
+                ? buildServiceAwareOpeningMessage(service.name)
+                : firstQuestionFallbackPrompt));
 
     return {
         answersPayload,
         firstQuestion,
         firstQuestionConfig,
-        runtimeOptionsByQuestionSlug
+        runtimeOptionsByQuestionSlug,
+        currentStep
     };
 };
 
@@ -4033,7 +4571,7 @@ const generateProposalResponseForSession = async ({
 // @route   POST /api/guest/start
 // @access  Public
 export const startGuestSession = asyncHandler(async (req, res) => {
-    const { serviceId } = req.body; // Can be slug or ID
+    const { serviceId, prefillName = "" } = req.body; // Can be slug or ID
 
     if (!serviceId) {
         throw new AppError("Service ID is required", 400);
@@ -4060,12 +4598,19 @@ export const startGuestSession = asyncHandler(async (req, res) => {
     }
 
     const startedAt = new Date().toISOString();
+    const sessionStartPrefill = buildSessionStartPrefill({
+        questions: service.questions,
+        prefillName
+    });
     const {
         answersPayload,
         firstQuestion,
         firstQuestionConfig,
+        currentStep,
     } = await buildServiceStartState({
         service,
+        prefilledAnswersBySlug: sessionStartPrefill.answersBySlug,
+        startContext: sessionStartPrefill,
         existingPayload: {
             uiState: {
                 [ACTIVE_SERVICE_STARTED_AT_KEY]: startedAt
@@ -4077,7 +4622,7 @@ export const startGuestSession = asyncHandler(async (req, res) => {
     const session = await prisma.aiGuestSession.create({
         data: {
             serviceId: service.slug, // Store slug for consistency
-            currentStep: 0,
+            currentStep,
             answers: answersPayload,
         },
     });
@@ -4117,11 +4662,12 @@ export const guestChat = asyncHandler(async (req, res) => {
     const safeMessageText = messageText.toString().trim();
     const persistedUserMessageContent = safeMessageText || trimmedMessageText;
     const uploadedAttachments = parsedIncomingMessage.attachments;
+    const sharedUrls = parsedIncomingMessage.urls;
 
     console.log(`\n--- [Guest Chat] Session: ${sessionId} ---`);
     console.log(`[User]: ${safeMessageText || message}`);
 
-    if (!sessionId || (!trimmedMessageText && incomingArray.length === 0 && uploadedAttachments.length === 0)) {
+    if (!sessionId || (!trimmedMessageText && incomingArray.length === 0 && uploadedAttachments.length === 0 && sharedUrls.length === 0)) {
         throw new AppError("Session ID and message are required", 400);
     }
 
@@ -4510,16 +5056,27 @@ export const guestChat = asyncHandler(async (req, res) => {
     const rememberedAttachments = uploadedAttachments.length > 0
         ? []
         : getMostRecentAttachmentsFromMessages(session.messages);
+    const rememberedUrls = sharedUrls.length > 0
+        ? []
+        : getMostRecentUrlsFromMessages(session.messages);
     const activeAttachments = uploadedAttachments.length > 0
         ? uploadedAttachments
         : rememberedAttachments;
+    const activeUrls = sharedUrls.length > 0
+        ? sharedUrls
+        : rememberedUrls;
     const isReferencingStoredAttachment = uploadedAttachments.length === 0
         && activeAttachments.length > 0
         && ATTACHMENT_REFERENCE_REGEX.test(`${userMessageText} ${safeMessageText}`.trim());
+    const isReferencingStoredUrl = sharedUrls.length === 0
+        && activeUrls.length > 0
+        && URL_REFERENCE_REGEX.test(`${userMessageText} ${safeMessageText}`.trim());
 
     let attachmentContextText = "";
     let attachmentInferredAnswer = "";
     let attachmentInsightNote = "";
+    let urlContextText = "";
+    let urlInsightNote = "";
     if (activeAttachments.length > 0) {
         attachmentContextText = await buildAttachmentContextBlock({
             attachments: activeAttachments,
@@ -4549,10 +5106,22 @@ export const guestChat = asyncHandler(async (req, res) => {
         }
     }
 
+    if (activeUrls.length > 0 && (sharedUrls.length > 0 || isReferencingStoredUrl)) {
+        const urlContext = await buildUrlContextBlock({ urls: activeUrls });
+        urlContextText = urlContext.contextText;
+        urlInsightNote = urlContext.insightNote;
+        if (urlInsightNote) {
+            console.log(`[URL Insight] ${urlInsightNote}`);
+        }
+    }
+
     const userMessageForReasoning = [
         userMessageText,
         attachmentContextText
             ? `Attachment context from uploaded files:\n${attachmentContextText}`
+            : "",
+        urlContextText
+            ? `Website context from shared URLs:\n${urlContextText}`
             : "",
     ]
         .filter(Boolean)
@@ -4694,6 +5263,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             currentQuestionSubtitle,
             userMessageText,
             attachmentContextText,
+            urlContextText,
             attachmentInferredAnswer,
             lastAssistantMessage,
             validationResponseRules: `${validationResponseRules}\n${minimumBudgetValidationRule}`.trim(),
@@ -4963,7 +5533,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 ? ""
                 : buildQuickReplyHint(currentQuestion, sessionRuntimeOptionsByQuestionSlug);
             const feedbackMsg = stripNameNotedRecap(
-                [sideReply, capturedFutureNote, attachmentInsightNote, feedbackCore, quickReplyHint]
+                [sideReply, capturedFutureNote, attachmentInsightNote, urlInsightNote, feedbackCore, quickReplyHint]
                     .map((part) => String(part || "").trim())
                     .filter(Boolean)
                     .join("\n\n")
@@ -5242,6 +5812,15 @@ export const guestChat = asyncHandler(async (req, res) => {
             }
         }
 
+        if (urlInsightNote) {
+            const alreadyIncluded = bridgeSegments.some((segment) =>
+                containsNormalizedText(segment, urlInsightNote)
+            );
+            if (!alreadyIncluded) {
+                bridgeSegments.unshift(urlInsightNote);
+            }
+        }
+
         if (autoCapturedAnswerSlugs.length > 0) {
             bridgeSegments.push("I have already captured some details from your previous message.");
         }
@@ -5469,17 +6048,19 @@ export const getGuestAdvice = asyncHandler(async (req, res) => {
         })
         .join("\n");
 
-    const visibleOptions = Array.isArray(currentOptions)
-        ? currentOptions
-            .map((optionEntry) => {
-                if (typeof optionEntry === "string") return optionEntry.trim();
-                if (optionEntry && typeof optionEntry === "object") {
-                    return String(optionEntry.label || optionEntry.value || "").trim();
-                }
-                return "";
-            })
-            .filter(Boolean)
-        : [];
+    const visibleOptionObjects = normalizeAdviceVisibleOptions(currentOptions, resolvedCurrentQuestion);
+    const visibleOptions = visibleOptionObjects
+        .map((optionEntry) => String(
+            optionEntry?.label
+            || optionEntry?.value
+            || optionEntry?.canonicalLabel
+            || optionEntry?.canonicalValue
+            || ""
+        ).trim())
+        .filter(Boolean);
+    const fallbackRecommendedAnswer = isRecommendationMode
+        ? getPreferredAdviceOptionLabel(visibleOptionObjects, adviceAdminControls)
+        : "";
 
     const recentSessionContext = Array.isArray(session?.messages)
         ? session.messages
@@ -5502,13 +6083,15 @@ Give a VERY SHORT, highly personalized recommendation (1-2 sentences maximum).
 Do NOT ask the user for more information.
 Do NOT give neutral guidance.
 Do NOT say "tell me", "share", "what feels comfortable", "what sounds best", "you can mention", or anything similar.
-Your notice MUST directly recommend the best answer for this user right now and MUST start with "Recommended:".
-If visible options exist, choose exactly ONE option from the visible options and write it exactly as shown.
+Your notice MUST directly recommend the best answer for this user right now.
+You MUST also set "recommendedAnswer" to the exact final answer the user can send.
+If visible options exist, choose exactly ONE option from the visible options and set "recommendedAnswer" to that exact option text.
+If the best answer is a binary yes/no choice, keep "recommendedAnswer" as the exact option but do NOT write a bare "Yes" or "No" in the notice or placeholder. Phrase the recommendation as a direct direction with one short reason.
 If this is a timeline question without fixed options, recommend one concrete timeline the user can send directly.
 If this is a budget question without fixed options, recommend one concrete budget figure or a narrow range the user can send directly.
 ${minimumBudgetText ? `Never recommend a budget below ${minimumBudgetText}.` : ""}
 After the recommendation, add one short reason tied to their project.
-The placeholder must mirror the recommended final answer only and start with "e.g. ".
+The placeholder must start with "e.g. " and should hint at the recommended final answer naturally.
 `
         : `
 Task:
@@ -5548,8 +6131,10 @@ ${taskBlock}
 Return ONLY a raw JSON object (with double quotes) with this structure:
 {
     "notice": string,
-    "placeholder": string
+    "placeholder": string,
+    "recommendedAnswer": string
 }
+When this is not a recommendation request, set "recommendedAnswer" to an empty string.
 Do not use markdown formatting, code fences, or bold text.`;
 
     try {
@@ -5560,49 +6145,50 @@ Do not use markdown formatting, code fences, or bold text.`;
         );
 
         if (adviceResponse.success) {
-            const rawMsg = adviceResponse.message || "";
-            const firstBrace = rawMsg.indexOf('{');
-            const lastBrace = rawMsg.lastIndexOf('}');
-            const cleanJson = (firstBrace >= 0 && lastBrace >= firstBrace) 
-                ? rawMsg.substring(firstBrace, lastBrace + 1)
-                : rawMsg;
-            const parsed = JSON.parse(cleanJson.replace(/\*\*/g, ""));
+            const parsed = parseJsonObjectFromRaw(adviceResponse.message || "") || {};
+            const normalizedPayload = normalizeGuestAdvicePayload({
+                payload: parsed,
+                isRecommendationMode,
+                visibleOptionObjects,
+                fallbackRecommendedAnswer,
+            });
             return res.json({
                 success: true,
-                notice: parsed.notice,
-                placeholder: parsed.placeholder
+                notice: normalizedPayload.notice,
+                placeholder: normalizedPayload.placeholder,
+                recommendedAnswer: normalizedPayload.recommendedAnswer,
             });
         }
     } catch (e) {
         console.warn("Failed to generate guest advice", e);
     }
 
+    const fallbackPayload = isRecommendationMode
+        ? normalizeGuestAdvicePayload({
+            payload: {
+                notice: fallbackRecommendedAnswer
+                    ? `Recommended: ${fallbackRecommendedAnswer}. This matches the preferred flow for this question.`
+                    : "Recommended direction: use the strongest fit for this step based on your project direction.",
+                placeholder: fallbackRecommendedAnswer
+                    ? `e.g. ${fallbackRecommendedAnswer}`
+                    : "e.g. go with the recommended direction",
+                recommendedAnswer: fallbackRecommendedAnswer,
+            },
+            isRecommendationMode: true,
+            visibleOptionObjects,
+            fallbackRecommendedAnswer,
+        })
+        : {
+            notice: `Got it. Tell me what you have in mind for ${option || 'this'}.`,
+            placeholder: "Tell me a bit more...",
+            recommendedAnswer: "",
+        };
+
     res.json({
         success: true,
-        notice: isRecommendationMode
-            ? (() => {
-                const visibleOptionObjects = visibleOptions.map((label) => ({ label, value: label }));
-                const preferredIndex = findOptionIndexByAdminToken(
-                    visibleOptionObjects,
-                    adviceAdminControls.recommendedOption || adviceAdminControls.prioritizeOptions?.[0] || ""
-                );
-                const preferredOption = preferredIndex >= 0 ? visibleOptions[preferredIndex] : "";
-                return preferredOption
-                    ? `Recommended: ${preferredOption}. This matches the admin-configured preferred flow for this question.`
-                    : "I have a quick recommendation for this question. You can use it as-is or adjust it.";
-            })()
-            : `Got it. Tell me what you have in mind for ${option || 'this'}.`,
-        placeholder: isRecommendationMode
-            ? (() => {
-                const preferredIndex = findOptionIndexByAdminToken(
-                    visibleOptions.map((label) => ({ label, value: label })),
-                    adviceAdminControls.recommendedOption || adviceAdminControls.prioritizeOptions?.[0] || ""
-                );
-                return preferredIndex >= 0
-                    ? `e.g. ${visibleOptions[preferredIndex]}`
-                    : "e.g. use the suggested option or tweak it";
-            })()
-            : "Tell me a bit more..."
+        notice: fallbackPayload.notice,
+        placeholder: fallbackPayload.placeholder,
+        recommendedAnswer: fallbackPayload.recommendedAnswer,
     });
 });
 
@@ -5611,12 +6197,15 @@ export const __testables = {
     applyExtractedAnswerUpdates,
     buildAdminControlSummaryText,
     buildCurrentQuestionValidationPrompt,
+    buildSessionStartPrefill,
     buildSupplementalBudgetExtractions,
     buildLockedServiceReply,
     buildPersistedAnswersPayload,
     buildQuestionDisplayAnswer,
     findExtractedBudgetMinimumViolation,
     findBudgetMinimumViolationChange,
+    normalizeAdviceVisibleOptions,
+    normalizeGuestAdvicePayload,
     getPostProposalBudgetFollowupAction,
     getDisplayedQuestionOptions,
     getBudgetMinimumValidationResult,

@@ -125,6 +125,41 @@ Database: MySQL
   assert.doesNotMatch(normalized, /^Budget: INR 5,000$/m);
 });
 
+test("normalizes proposal field values and bullet items to sentence case", () => {
+  const normalized = normalizeProposalMarkdown({
+    markdown: `
+Client Name: ravindra
+Business Name: cleclo
+Service Type: web development
+Project Overview: build a shopify store with strong seo for a clothing brand.
+Primary Objectives:
+- launch the store quickly
+Features/Deliverables Included:
+- custom shopify theme
+Launch Timeline: ASAP
+Budget: INR 15000
+    `,
+    proposalContext: {
+      clientName: "ravindra",
+      companyName: "cleclo",
+      serviceName: "web development",
+    },
+    selectedServiceName: "web development",
+  });
+
+  assert.match(normalized, /^Client Name: Ravindra$/m);
+  assert.match(normalized, /^Business Name: Cleclo$/m);
+  assert.match(normalized, /^Service Type: Web development$/m);
+  assert.match(
+    normalized,
+    /^Project Overview: Build a Shopify store with strong SEO for a clothing brand\.$/m
+  );
+  assert.match(normalized, /^- Launch the store quickly$/m);
+  assert.match(normalized, /^- Custom Shopify theme$/m);
+  assert.match(normalized, /^Launch Timeline: Asap$/m);
+  assert.match(normalized, /^Budget: INR 15,000$/m);
+});
+
 test("normalizes standalone numeric helpers", () => {
   assert.equal(normalizeNumericFieldValue("seven pages"), "7");
   assert.equal(normalizeProposalBudgetValue("twenty five thousand"), "INR 25,000");
