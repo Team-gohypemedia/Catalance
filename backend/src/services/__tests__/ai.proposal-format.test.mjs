@@ -200,6 +200,58 @@ Budget: INR 15,000 per video
   assert.doesNotMatch(normalized, /^Launch Timeline: 15-30 seconds$/m);
 });
 
+test("respects admin-defined proposal structure for service-specific fields", () => {
+  const normalized = normalizeProposalMarkdown({
+    markdown: `
+Client Name: Maya
+Business Name: Northstar Fitness
+Service Type: SEO
+Project Overview: Improve organic visibility for a gym chain.
+Primary Objectives:
+- Increase qualified traffic
+Features/Deliverables Included:
+- Technical SEO audit
+- Content optimization
+Campaign Focus: Local lead generation
+Target Locations:
+- Mumbai
+- Pune
+Reporting Cadence: Weekly dashboard and monthly strategy review
+Launch Timeline: 3 months
+Budget: INR 40,000
+    `,
+    proposalContext: {
+      clientName: "Maya",
+      companyName: "Northstar Fitness",
+      serviceName: "SEO",
+      proposalStructure: `
+Client Name: ...
+Business Name: ...
+Service Type: ...
+Project Overview: ...
+Primary Objectives:
+- ...
+Features/Deliverables Included:
+- ...
+Campaign Focus: ...
+Target Locations:
+- ...
+Reporting Cadence: ...
+Launch Timeline: ...
+Budget: ...
+      `,
+      proposalPrompt: "Keep the proposal focused on local SEO execution and reporting."
+    },
+    selectedServiceName: "SEO"
+  });
+
+  assert.ok(normalized.indexOf("Campaign Focus:") > normalized.indexOf("Features/Deliverables Included:"));
+  assert.ok(normalized.indexOf("Target Locations:") > normalized.indexOf("Campaign Focus:"));
+  assert.ok(normalized.indexOf("Reporting Cadence:") > normalized.indexOf("Target Locations:"));
+  assert.ok(normalized.indexOf("Launch Timeline:") > normalized.indexOf("Reporting Cadence:"));
+  assert.match(normalized, /^Reporting Cadence: Weekly dashboard and monthly strategy review$/m);
+});
+
 test("normalizes standalone numeric helpers", () => {
   assert.equal(normalizeNumericFieldValue("seven pages"), "7");
   assert.equal(normalizeProposalBudgetValue("twenty five thousand"), "INR 25,000");

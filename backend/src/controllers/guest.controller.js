@@ -4904,6 +4904,8 @@ const generateProposalResponseForSession = async ({
     const proposalContext = {
         serviceName: service.name,
         serviceId: service.slug,
+        proposalStructure: service.proposalStructure || "",
+        proposalPrompt: service.proposalPrompt || "",
         questionnaireAnswers: proposalAnswersPayload.byQuestionText,
         questionnaireAnswersBySlug: proposalAnswersPayload.bySlug,
         serviceQuestionAnswers: buildQuestionAnswerCoverage(
@@ -4930,7 +4932,11 @@ const generateProposalResponseForSession = async ({
         proposalContext,
         proposalHistory,
         service.name,
-        service.aiPrompt || ""
+        service.aiPrompt || "",
+        {
+            proposalStructure: service.proposalStructure || "",
+            proposalPrompt: service.proposalPrompt || ""
+        }
     );
 
     const nextAnswers = mergeAnswersUiState(
