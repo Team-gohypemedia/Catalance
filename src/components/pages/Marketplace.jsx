@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowRight, BadgeCheck, Bot, BriefcaseBusiness,
+  ArrowRight, BadgeCheck, Bot, BriefcaseBusiness, Banknote, Tag, Check,
   ChevronLeft, ChevronRight, Clock, Cloud, Code2,
   Database, Heart, LineChart, MessageSquare,
   Rocket, Search, ShieldCheck, SlidersHorizontal,
@@ -14,8 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Slider } from "@/components/ui/slider";
 import { Sparkles as SparklesBackground } from "@/components/ui/sparkles";
 import { getSession } from "@/shared/lib/auth-storage";
 import { API_BASE_URL } from "@/shared/lib/api-client";
@@ -121,6 +124,41 @@ const Marketplace = () => {
   const [minBudget, setMinBudget] = useState("");
   const [maxBudget, setMaxBudget] = useState("");
   const [sort, setSort] = useState("newest");
+  const [duration, setDuration] = useState("");
+  const [rating, setRating] = useState("");
+
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [draftCategory, setDraftCategory] = useState("all");
+  const [draftMinBudget, setDraftMinBudget] = useState("100000");
+  const [draftMaxBudget, setDraftMaxBudget] = useState("500000");
+  const [draftDuration, setDraftDuration] = useState("");
+  const [draftRating, setDraftRating] = useState("");
+
+  const syncDraftFilters = useCallback(() => {
+    setDraftCategory(category);
+    setDraftMinBudget(minBudget || "100000");
+    setDraftMaxBudget(maxBudget || "500000");
+    setDraftDuration(duration);
+    setDraftRating(rating);
+  }, [category, minBudget, maxBudget, duration, rating]);
+
+  const applyFilters = () => {
+    setCategory(draftCategory);
+    setMinBudget(draftMinBudget === "100000" ? "" : draftMinBudget);
+    setMaxBudget(draftMaxBudget === "500000" ? "" : draftMaxBudget);
+    setDuration(draftDuration);
+    setRating(draftRating);
+    setIsFilterOpen(false);
+  };
+
+  const clearDraftFilters = () => {
+    setDraftCategory("all");
+    setDraftMinBudget("100000");
+    setDraftMaxBudget("500000");
+    setDraftDuration("");
+    setDraftRating("");
+  };
+
   const [page, setPage] = useState(1);
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
@@ -167,6 +205,8 @@ const Marketplace = () => {
       if (category !== "all") query.append("category", category);
       if (debouncedMin) query.append("minBudget", debouncedMin);
       if (debouncedMax) query.append("maxBudget", debouncedMax);
+      if (duration) query.append("duration", duration);
+      if (rating) query.append("rating", rating);
       const res = await fetch(`${API_BASE_URL}/marketplace?${query.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch marketplace");
       const json = await res.json();
@@ -181,9 +221,9 @@ const Marketplace = () => {
     } finally {
       setLoading(false);
     }
-  }, [category, debouncedMax, debouncedMin, debouncedQ, page, sort]);
+  }, [category, debouncedMax, debouncedMin, debouncedQ, duration, page, rating, sort]);
 
-  useEffect(() => setPage(1), [debouncedQ, category, debouncedMin, debouncedMax, sort]);
+  useEffect(() => setPage(1), [debouncedQ, category, debouncedMin, debouncedMax, duration, rating, sort]);
   useEffect(() => void fetchResults(), [fetchResults]);
 
   const updateCategoryRailState = useCallback(() => {
@@ -238,13 +278,15 @@ const Marketplace = () => {
     setCategory("all");
     setMinBudget("");
     setMaxBudget("");
+    setDuration("");
+    setRating("");
     setSort("newest");
   };
 
   return (
-    <div className="relative min-h-screen bg-[#030303] text-foreground">
+    <div className="relative min-h-screen bg-background text-foreground">
       {/* Full Screen Hero Section */}
-      <section className="relative flex min-h-[100vh] w-full flex-col items-center justify-center overflow-hidden bg-[#030303]">
+      <section className="relative flex min-h-[100vh] w-full flex-col items-center justify-center overflow-hidden bg-background">
         {/* Sparkles Background */}
         <div className="absolute inset-0 z-0 pointer-events-none opacity-60">
           <SparklesBackground
@@ -259,12 +301,11 @@ const Marketplace = () => {
             color="#ffffff"
           />
         </div>
-        
+
         {/* Glow Behind Planet */}
-        {/* Increased height, width, opacity, and blur for a much more intense sprawling golden sunrise effect */}
-        <div className="pointer-events-none absolute bottom-[15%] left-1/2 h-[600px] w-[100%] max-w-[1600px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(250,204,21,0.45)_0%,rgba(250,204,21,0.15)_45%,transparent_70%)] blur-[60px]" />
-        <div className="pointer-events-none absolute bottom-[10%] left-1/2 h-[400px] w-[70%] max-w-[1000px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.8)_0%,rgba(250,204,21,0.4)_50%,transparent_70%)] blur-[30px]" />
-        
+        <div className="pointer-events-none absolute bottom-[15%] left-1/2 h-[600px] w-[100%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(250,204,21,0.45)_0%,rgba(250,204,21,0.15)_45%,transparent_70%)] blur-[60px]" />
+        <div className="pointer-events-none absolute bottom-[10%] left-1/2 h-[400px] w-[70%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.8)_0%,rgba(250,204,21,0.4)_50%,transparent_70%)] blur-[30px]" />
+
         {/* Content */}
         <div className="relative z-10 mb-[12vh] flex flex-col items-center gap-7 px-4 text-center">
           <h1 className="max-w-[800px] text-[44px] font-medium tracking-tight text-white sm:text-[56px] md:text-[64px] lg:text-[76px] lg:leading-[1.05]">
@@ -275,37 +316,27 @@ const Marketplace = () => {
           </p>
           <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row">
             <Button size="lg" className="h-12 rounded-full border border-[#fbcc15] bg-[#fbcc15] px-8 text-[15px] font-semibold text-black transition-all hover:bg-[#fbcc15]/90 hover:opacity-90" onClick={() => scrollToSection("marketplace-results")}>
-              Explore Serives
+              Explore Services
             </Button>
-            <Button asChild variant="outline" size="lg" className="h-12 rounded-full border border-white/10 bg-white/5 px-8 text-[15px] font-semibold text-white backdrop-blur-[8px] transition-all hover:bg-white/10 focus:bg-white/10 shadow-sm">
+            <Button asChild variant="secondary" size="lg" className="h-12 rounded-full bg-white px-8 text-[15px] font-semibold text-black transition-all hover:bg-white/90">
               <Link to="/contact">Talk to a strategist</Link>
             </Button>
           </div>
         </div>
 
         {/* Planet Horizon */}
-        <div className="pointer-events-none absolute bottom-0 left-1/2 w-[150%] max-w-[3000px] -translate-x-1/2 translate-y-[65%] lg:w-[130%]">
+        <div className="pointer-events-none absolute bottom-0 left-1/2 w-[150%] -translate-x-1/2 translate-y-[65%] lg:w-[130%]">
           <div className="relative aspect-[3/1] w-full">
-            
+
             {/* 0. Base Black Planet (Anchors true horizon geometry) */}
-            <div className="absolute w-full h-full rounded-[100%] bg-[#000000] shadow-[inset_0_40px_100px_rgba(0,0,0,1)]" />
+            <div className="absolute w-full h-full rounded-[100%] bg-background" />
 
-            {/* 1. True Horizon Radiant Glow */}
-            {/* Perfectly traces the 100% planet curve. */}
-            <div 
-              className="absolute inset-0 rounded-[100%] border-t-[20px] border-white opacity-40 blur-[16px]"
-              style={{
-                WebkitMaskImage: 'linear-gradient(to right, transparent 5%, black 25%, black 75%, transparent 95%)',
-                maskImage: 'linear-gradient(to right, transparent 5%, black 25%, black 75%, transparent 95%)'
-              }}
-            />
-
-            {/* 2. The Pure Solid White SVG Crescent */}
+            {/* 1. The Pure Solid White SVG Crescent */}
             {/* An SVG crescent completely solves all blur, masking, and alignment constraints. It ensures a 100% solid, fully opaque #ffffff highlight that mathematically tracks the planet equator perfectly. 
                 The explicit path points start at x=20 and x=80 (extended slightly wider), forcing the solid filled geometry to physically pinch down to an absolute 0px razor point near the screen edges. */}
-            <svg 
-              className="absolute inset-0 w-full h-full pointer-events-none" 
-              viewBox="0 0 100 100" 
+            <svg
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              viewBox="0 0 100 100"
               preserveAspectRatio="none"
               style={{ filter: 'drop-shadow(0 0 12px rgba(255,255,255,0.8))' }}
             >
@@ -319,71 +350,220 @@ const Marketplace = () => {
       </section>
 
       {/* Main Content Container Restored for content below hero */}
-      <div className="relative mx-auto mt-14 flex w-full max-w-[1280px] flex-col gap-14 px-4 pb-20 sm:px-6 lg:px-8">
-        <section className="grid gap-3 lg:grid-cols-6">
-          {shortcuts.map((item) => {
-            const Icon = item.icon;
-            const active = category === item.value;
-            return (
-              <button key={item.value} type="button" onClick={() => { setCategory(item.value); scrollToSection("marketplace-results"); }} className={cn("group flex min-h-[88px] items-center gap-3 rounded-[24px] border px-4 py-4 text-left shadow-[0_24px_60px_-42px_rgba(2,6,23,0.72)] transition-all", active ? "border-primary/30 bg-primary/10 text-primary" : "border-white/10 bg-white/[0.04] text-white hover:border-white/15 hover:bg-white/[0.06]")}>
-                <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", active ? "bg-primary/15 text-primary" : "bg-white/[0.06] text-slate-300")}>
-                  <Icon className="h-4.5 w-4.5" />
-                </div>
-                <div className="min-w-0 space-y-0.5">
-                  <p className="text-[13px] font-semibold leading-5">{item.label}</p>
-                  <p className="truncate text-[11px] leading-4 text-slate-400" title={item.description}>{item.description}</p>
-                </div>
-              </button>
-            );
-          })}
-        </section>
+      <div className="relative mx-auto mt-14 flex w-full max-w-[1280px] flex-col gap-10 px-4 pb-20 sm:px-6 lg:px-8">
 
-        <section id="marketplace-results" className="space-y-6">
-          <div className={cn(glassPanelClass, "rounded-[34px] p-5")}>
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,2.2fr)_repeat(4,minmax(0,1fr))]">
-              <div className="relative lg:col-span-1">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <Input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search services, categories, or freelancer names" className={cn("h-14 rounded-full pl-11 pr-10 text-sm shadow-none focus-visible:ring-sky-400/30", controlSurfaceClass)} />
-                {q && <button type="button" onClick={() => setQ("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-white"><X className="h-4 w-4" /></button>}
-              </div>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className={cn("h-14 w-full rounded-full px-5 py-0 shadow-none data-[size=default]:h-14", controlSurfaceClass)}><SelectValue placeholder="Category" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All specialties</SelectItem>
-                  {categories.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Input type="number" value={minBudget} onChange={(event) => setMinBudget(event.target.value)} placeholder="Min budget" className={cn("h-14 rounded-full px-5 shadow-none", controlSurfaceClass, numberFieldClass)} />
-              <Input type="number" value={maxBudget} onChange={(event) => setMaxBudget(event.target.value)} placeholder="Max budget" className={cn("h-14 rounded-full px-5 shadow-none", controlSurfaceClass, numberFieldClass)} />
-              <Select value={sort} onValueChange={setSort}>
-                <SelectTrigger className={cn("h-14 w-full rounded-full px-5 py-0 shadow-none data-[size=default]:h-14", controlSurfaceClass)}><SelectValue placeholder="Sort" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest First</SelectItem>
-                  <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                  <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
-                <span className="inline-flex items-center gap-2 font-medium text-white"><SlidersHorizontal className="h-4 w-4 text-primary" />{total} results</span>
-                {category !== "all" && <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-primary">{categories.find((item) => item.value === category)?.label}</Badge>}
-              </div>
-              <Button variant="ghost" className="h-9 self-start rounded-full px-4 text-sm font-medium text-slate-300 hover:bg-white/[0.06] hover:text-white sm:self-auto" onClick={resetFilters}>Reset filters</Button>
-            </div>
-          </div>
+        <section id="marketplace-results" className="space-y-5 pt-4">
+          <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white">Professional Services</h2>
 
-          <div className="flex flex-wrap gap-3">
-            {shortcuts.map((item) => {
-              const Icon = item.icon;
-              const active = category === item.value;
-              return (
-                <button key={`chip-${item.value}`} type="button" onClick={() => setCategory(item.value)} className={cn("inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition", active ? "border-primary/30 bg-primary/10 text-primary" : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white")}>
-                  <Icon className="h-4 w-4" />
-                  {item.label}
+          {/* Unified ToolBar */}
+          <div className="flex w-full flex-col items-center justify-between gap-4 rounded-[28px] lg:rounded-full border border-white/10 bg-background p-1.5 shadow-sm lg:flex-row">
+
+            {/* Category Pills Slider */}
+            <div className="relative flex w-full flex-1 items-center overflow-hidden lg:w-auto lg:border-r lg:border-white/10 lg:pr-2">
+              <div
+                ref={categoryRailRef}
+                onScroll={updateCategoryRailState}
+                onWheel={handleCategoryRailWheel}
+                className="no-scrollbar flex w-full items-center gap-1 overflow-x-auto scroll-smooth px-2"
+              >
+                <button
+                  onClick={() => setCategory("all")}
+                  className={cn(
+                    "shrink-0 whitespace-nowrap rounded-full px-5 py-2.5 text-[13px] font-semibold transition-all",
+                    category === "all"
+                      ? "border border-[#fbcc15]/40 bg-background text-[#fbcc15] shadow-[0_0_15px_-3px_rgba(251,204,21,0.15)]"
+                      : "border border-transparent text-slate-400 hover:text-white hover:bg-white/5"
+                  )}
+                >
+                  All specialties
                 </button>
-              );
-            })}
+                {categories.map((item) => {
+                  const active = category === item.value;
+                  return (
+                    <button
+                      key={item.value}
+                      onClick={() => setCategory(item.value)}
+                      className={cn(
+                        "shrink-0 whitespace-nowrap rounded-full px-5 py-2.5 text-[13px] font-semibold transition-all mb-0.5 mt-0.5",
+                        active
+                          ? "border border-[#fbcc15]/40 bg-background text-[#fbcc15] shadow-[0_0_15px_-3px_rgba(251,204,21,0.15)]"
+                          : "border border-transparent text-slate-400 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      {item.label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Scroll Gradient Masks */}
+              {categoryRailState.left && (
+                <div className="pointer-events-none absolute bottom-0 left-0 top-0 w-12 bg-gradient-to-r from-background to-transparent" />
+              )}
+              {categoryRailState.right && (
+                <div className="pointer-events-none absolute bottom-0 right-0 top-0 w-12 bg-gradient-to-l from-background to-transparent" />
+              )}
+            </div>
+
+            {/* Controls Wrap */}
+            <div className="flex w-full items-center justify-between gap-1 px-2 lg:w-auto lg:justify-end">
+              {/* Scroll Controls (Desktop only to save space) */}
+              <div className="hidden shrink-0 items-center gap-1 pr-2 lg:flex">
+                <button
+                  type="button"
+                  onClick={() => scrollCategoryRail(-1)}
+                  disabled={!categoryRailState.left}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-slate-400 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-30"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollCategoryRail(1)}
+                  disabled={!categoryRailState.right}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-slate-400 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-30"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Search & Filters */}
+              <div className="flex w-full items-center gap-2 lg:w-auto">
+                <div className="relative flex-1 lg:w-56">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <Input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Search projects..."
+                    className="h-10 w-full rounded-full border-none bg-white/[0.04] pl-10 pr-9 text-[13px] text-white shadow-none transition hover:bg-white/[0.07] focus-visible:bg-white/[0.07] focus-visible:ring-0"
+                  />
+                  {q && (
+                    <button type="button" onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                <Dialog open={isFilterOpen} onOpenChange={(open) => { setIsFilterOpen(open); if(open) syncDraftFilters(); }}>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" className="h-10 shrink-0 rounded-full bg-white/[0.04] px-5 text-[13px] font-semibold text-slate-200 hover:bg-white/10 hover:text-white">
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      Filters
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent aria-describedby={undefined} className="w-[90vw] max-w-[760px] rounded-sm border-white/10 bg-[#1e1e1e] p-0 shadow-[0_24px_80px_-42px_rgba(2,6,23,1)] sm:w-[760px] [&>button]:hidden">
+                    <div className="flex items-center justify-between border-b border-white/10 px-8 py-6">
+                      <div className="space-y-1">
+                        <h3 className="text-2xl font-bold tracking-tight text-white">Filters</h3>
+                        <p className="text-sm text-muted-foreground">Refine your search</p>
+                      </div>
+                      <button type="button" onClick={() => setIsFilterOpen(false)} className="rounded-full p-2 text-muted-foreground hover:bg-white/10 hover:text-white">
+                        <X className="h-6 w-6" />
+                      </button>
+                    </div>
+
+                    <div className="grid max-h-[70vh] grid-cols-1 gap-x-16 gap-y-10 overflow-x-hidden overflow-y-auto px-8 py-8 no-scrollbar sm:grid-cols-2">
+                      {/* Price Range */}
+                      <div className="space-y-6">
+                        <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-[#fbcc15]">
+                          <Banknote className="h-5 w-5" /> PRICE RANGE
+                        </h4>
+                        <div className="px-2">
+                          <Slider 
+                            min={0} 
+                            max={1000000} 
+                            step={10000} 
+                            value={[Number(draftMinBudget), Number(draftMaxBudget)]} 
+                            onValueChange={([min, max]) => { setDraftMinBudget(String(min)); setDraftMaxBudget(String(max)); }} 
+                            className="[&_[role=slider]]:h-5 [&_[role=slider]]:w-5 [&_[role=slider]]:border-[#fbcc15] [&_[role=slider]]:bg-[#fbcc15] [&_[role=track]]:h-2 [&_[role=track]]:bg-slate-800 [&>.relative>.absolute]:bg-[#fbcc15]"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between px-1 text-sm font-semibold text-white">
+                          <span>Rs. {Number(draftMinBudget).toLocaleString("en-IN")}</span>
+                          <span>Rs. {Number(draftMaxBudget).toLocaleString("en-IN")}</span>
+                        </div>
+                      </div>
+
+                      {/* Duration */}
+                      <div className="space-y-6">
+                        <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                          <Clock className="h-5 w-5" /> DURATION
+                        </h4>
+                        <div className="flex flex-col gap-4">
+                          {["Up to 4 weeks", "5-6 weeks", "7+ weeks"].map((label) => {
+                            const active = draftDuration === label;
+                            return (
+                              <button key={label} type="button" onClick={() => setDraftDuration(active ? "" : label)} className="flex items-center gap-3 text-[15px] font-medium text-muted-foreground hover:text-white">
+                                <div className={cn("flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-all", active ? "border-[#fbcc15] bg-[#fbcc15]" : "border-slate-500 bg-transparent")}>
+                                  {active && <Check className="h-3 w-3 text-black" strokeWidth={3} />}
+                                </div>
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Ratings */}
+                      <div className="space-y-6">
+                        <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                          <Star className="h-5 w-5" /> RATINGS
+                        </h4>
+                        <div className="flex flex-col gap-4">
+                          {["4.5+ Stars", "4.0+ Stars"].map((label) => {
+                            const active = draftRating === label;
+                            return (
+                              <button key={label} type="button" onClick={() => setDraftRating(active ? "" : label)} className="flex items-center gap-3 text-[15px] font-medium text-muted-foreground hover:text-white">
+                                <div className={cn("flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-all", active ? "border-[#fbcc15] bg-transparent" : "border-slate-500 bg-transparent")}>
+                                  {active && <div className="h-2.5 w-2.5 rounded-full bg-[#fbcc15]" />}
+                                </div>
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Categories */}
+                      <div className="space-y-6 pb-2">
+                        <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                          <Tag className="h-5 w-5" /> CATEGORIES
+                        </h4>
+                        <div className="flex flex-wrap gap-3">
+                          {categories.map((c) => {
+                            const active = draftCategory === c.value;
+                            return (
+                              <button
+                                key={c.value}
+                                onClick={() => setDraftCategory(active ? "all" : c.value)}
+                                className={cn(
+                                  "flex items-center gap-2 rounded-full border px-5 py-2.5 text-[14px] font-semibold transition-all",
+                                  active
+                                    ? "border-[#fbcc15] text-[#fbcc15]"
+                                    : "border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/60 hover:text-foreground"
+                                )}
+                              >
+                                {active && <Code2 className="h-4 w-4" />}
+                                {c.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-none border-t border-white/5 bg-[#1a1a1a] px-8 py-6 shadow-2xl">
+                      <button onClick={clearDraftFilters} className="text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground hover:text-white">
+                        RESET
+                      </button>
+                      <Button onClick={applyFilters} className="h-12 min-w-[160px] rounded-full border border-[#fbcc15]/40 bg-[#fbcc15] px-8 text-[14px] font-bold text-black drop-shadow-[0_0_15px_rgba(251,204,21,0.25)] hover:bg-[#fbcc15]/90 hover:opacity-90 active:scale-95">
+                        APPLY FILTERS
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
