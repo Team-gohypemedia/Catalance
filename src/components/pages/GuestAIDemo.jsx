@@ -40,7 +40,8 @@ import {
     FileText,
     Trash2,
     Globe,
-    MessageSquarePlus
+    MessageSquarePlus,
+    ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -1824,6 +1825,12 @@ const GuestAIDemo = () => {
     const [thinkingState, setThinkingState] = useState(null);
     const [isProposalsModalOpen, setIsProposalsModalOpen] = useState(false);
     const [activeResourceLibrary, setActiveResourceLibrary] = useState(null);
+    const [sidebarDropdowns, setSidebarDropdowns] = useState({
+        proposals: false,
+        links: false,
+        files: false,
+        chats: true,
+    });
 
     const scrollRef = useRef(null);
     const inputRef = useRef(null);
@@ -1874,6 +1881,13 @@ const GuestAIDemo = () => {
     const refreshGeneratedProposals = useCallback(() => {
         setGeneratedProposals(readStoredGeneratedProposals(user?.id));
     }, [user?.id]);
+
+    const toggleSidebarDropdown = useCallback((section) => {
+        setSidebarDropdowns((current) => ({
+            ...current,
+            [section]: !current[section],
+        }));
+    }, []);
 
     const stopThinkingTrace = useCallback(() => {
         if (thinkingIntervalRef.current) {
@@ -2893,7 +2907,6 @@ const GuestAIDemo = () => {
         setSelectedOptions([]);
         setPendingOptionFollowup(null);
         setInputConfig({ type: 'text', options: [] });
-        setActiveResourceLibrary(null);
     };
 
     const handleOpenProposalPreview = (proposal) => {
@@ -2906,10 +2919,6 @@ const GuestAIDemo = () => {
 
     const handleCloseProposalPreview = () => {
         setSelectedProposalPreview(null);
-    };
-
-    const handleOpenResourceLibrary = (libraryType) => {
-        setActiveResourceLibrary(libraryType);
     };
 
     const handleCloseResourceLibrary = () => {
@@ -3314,7 +3323,7 @@ const GuestAIDemo = () => {
                     <div className="mb-1 px-3">
                         <button
                             type="button"
-                            onClick={() => setIsProposalsModalOpen(true)}
+                            onClick={() => toggleSidebarDropdown('proposals')}
                             className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
                         >
                             <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-50 text-amber-600'}`}>
@@ -3323,12 +3332,43 @@ const GuestAIDemo = () => {
                             <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
                                 Proposals
                             </span>
-                            {generatedProposals.length > 0 && (
+                            <div className="flex items-center gap-2">
                                 <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-primary/25 text-primary' : 'bg-amber-100 text-amber-700'}`}>
                                     {generatedProposals.length}
                                 </span>
-                            )}
+                                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.proposals ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                            </div>
                         </button>
+                        {sidebarDropdowns.proposals ? (
+                            generatedProposals.length === 0 ? (
+                                <div className="px-2 pb-2 pt-1">
+                                    <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No proposals yet. Chat with CATA AI to generate one.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-1 px-1 pb-1">
+                                    {generatedProposals.map((proposal, index) => (
+                                        <button
+                                            key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
+                                            type="button"
+                                            onClick={() => handleOpenProposalPreview(proposal)}
+                                            className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${isDark ? 'border-white/10 bg-white/[0.03] hover:bg-white/10' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+                                        >
+                                            <p className={`truncate text-sm font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                                {proposal.projectTitle || 'AI Proposal'}
+                                            </p>
+                                            {(proposal.budget || proposal.timeline) ? (
+                                                <p className={`mt-1 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {[proposal.budget && `Budget: ${proposal.budget}`, proposal.timeline && `Timeline: ${proposal.timeline}`].filter(Boolean).join(' | ')}
+                                                </p>
+                                            ) : null}
+                                            <p className={`mt-1 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
+                                            </p>
+                                        </button>
+                                    ))}
+                                </div>
+                            )
+                        ) : null}
                     </div>
 
                     {/* ── Divider ── */}
@@ -3338,7 +3378,7 @@ const GuestAIDemo = () => {
                     <div className="mb-1 px-3">
                         <button
                             type="button"
-                            onClick={() => handleOpenResourceLibrary('links')}
+                            onClick={() => toggleSidebarDropdown('links')}
                             className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
                         >
                             <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
@@ -3347,16 +3387,46 @@ const GuestAIDemo = () => {
                             <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
                                 Saved Links
                             </span>
-                            <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                {sharedLinks.length}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                    {sharedLinks.length}
+                                </span>
+                                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.links ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                            </div>
                         </button>
+                        {sidebarDropdowns.links ? (
+                            sharedLinks.length === 0 ? (
+                                <div className="px-2 pb-2 pt-1">
+                                    <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Links shared in this chat will appear here.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-1 px-1 pb-1">
+                                    {sharedLinks.map((linkEntry) => (
+                                        <a
+                                            key={linkEntry.id}
+                                            href={linkEntry.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                                        >
+                                            <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                                                <Globe className="h-3.5 w-3.5" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{linkEntry.label}</p>
+                                                <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{linkEntry.url}</p>
+                                            </div>
+                                        </a>
+                                    ))}
+                                </div>
+                            )
+                        ) : null}
                     </div>
 
                     <div className="mb-1 px-3">
                         <button
                             type="button"
-                            onClick={() => handleOpenResourceLibrary('files')}
+                            onClick={() => toggleSidebarDropdown('files')}
                             className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
                         >
                             <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
@@ -3365,164 +3435,115 @@ const GuestAIDemo = () => {
                             <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
                                 Shared Files & Media
                             </span>
-                            <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                {sharedAttachments.length}
-                            </span>
-                        </button>
-                    </div>
-
-                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
-
-                    <div className="hidden">
-                    <div className="mb-1 px-4">
-                        <div className="flex items-center justify-between gap-2">
-                            <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                Saved links
-                            </p>
-                            {sharedLinks.length > 0 && (
-                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                                    {sharedLinks.length}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                    {sharedLinks.length === 0 ? (
-                        <div className="px-4">
-                            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Links shared in this chat will appear here.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-1 px-2">
-                            {sharedLinks.map((linkEntry) => (
-                                <a
-                                    key={linkEntry.id}
-                                    href={linkEntry.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-                                >
-                                    <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
-                                        <Globe className="h-3.5 w-3.5" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                                            {linkEntry.label}
-                                        </p>
-                                        <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                            {linkEntry.url}
-                                        </p>
-                                    </div>
-                                </a>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* ── Divider ── */}
-                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
-
-                    {/* ── Shared files/media section ── */}
-                    <div className="mb-1 px-4">
-                        <div className="flex items-center justify-between gap-2">
-                            <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                Shared files & media
-                            </p>
-                            {sharedAttachments.length > 0 && (
-                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                            <div className="flex items-center gap-2">
+                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
                                     {sharedAttachments.length}
                                 </span>
-                            )}
-                        </div>
+                                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.files ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                            </div>
+                        </button>
+                        {sidebarDropdowns.files ? (
+                            sharedAttachments.length === 0 ? (
+                                <div className="px-2 pb-2 pt-1">
+                                    <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Documents, PDFs, and images you upload will appear here.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-1 px-1 pb-1">
+                                    {sharedAttachments.map((attachment) => (
+                                        <a
+                                            key={attachment.id}
+                                            href={attachment.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                                        >
+                                            <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                                                {attachment.isImage ? <ImageIcon className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{attachment.name}</p>
+                                                <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    {[attachment.kindLabel, formatBytes(attachment.size)].filter(Boolean).join(' | ')}
+                                                </p>
+                                            </div>
+                                        </a>
+                                    ))}
+                                </div>
+                            )
+                        ) : null}
                     </div>
-                    {sharedAttachments.length === 0 ? (
-                        <div className="px-4">
-                            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Documents, PDFs, and images you upload will appear here.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-1 px-2">
-                            {sharedAttachments.map((attachment) => (
-                                <a
-                                    key={attachment.id}
-                                    href={attachment.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-                                >
-                                    <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
-                                        {attachment.isImage
-                                            ? <ImageIcon className="h-3.5 w-3.5" />
-                                            : <FileText className="h-3.5 w-3.5" />
-                                        }
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                                            {attachment.name}
-                                        </p>
-                                        <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                            {[attachment.kindLabel, formatBytes(attachment.size)].filter(Boolean).join(' • ')}
-                                        </p>
-                                    </div>
-                                </a>
-                            ))}
-                        </div>
-                    )}
 
-                    {/* ── Divider ── */}
                     <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
-
-                    {/* ── Previous chats section ── */}
+                    <div className="mb-1 px-3">
+                        <button
+                            type="button"
+                            onClick={() => toggleSidebarDropdown('chats')}
+                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                        >
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                <MessageSquarePlus className="h-3 w-3" />
+                            </div>
+                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                                Recent Chats
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                    {visiblePreviousChats.length}
+                                </span>
+                                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.chats ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                            </div>
+                        </button>
+                        {sidebarDropdowns.chats ? (
+                            visiblePreviousChats.length === 0 ? (
+                                <div className="px-2 pb-2 pt-1">
+                                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>No previous chats.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-0.5 px-1 pb-1">
+                                    {visiblePreviousChats.map((chat) => {
+                                        const isCurrent = chat.sessionId === sessionId;
+                                        const isLoadingHistory = loadingHistoryId === chat.sessionId;
+                                        const preview = chat.preview || chat.serviceName || 'No preview';
+                                        return (
+                                            <div
+                                                key={chat.sessionId}
+                                                className={`group relative flex items-center gap-1.5 rounded-md px-2 py-2 transition-colors ${isCurrent
+                                                    ? isDark ? 'bg-white/10' : 'bg-slate-100'
+                                                    : isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleLoadPreviousChat(chat)}
+                                                    disabled={isLoadingHistory || isCurrent}
+                                                    className="min-w-0 flex-1 text-left outline-none"
+                                                >
+                                                    <p className={`truncate text-sm font-medium transition-colors ${isCurrent
+                                                        ? isDark ? 'text-amber-300' : 'text-amber-600'
+                                                        : isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-600 group-hover:text-slate-900'
+                                                    }`}>
+                                                        {isLoadingHistory ? 'Loading...' : preview}
+                                                    </p>
+                                                    <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                        {formatPreviousChatTime(chat.updatedAt)}
+                                                    </p>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleDeletePreviousChat(e, chat)}
+                                                    disabled={isLoadingHistory}
+                                                    className={`shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 ${isDark ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}
+                                                    aria-label="Delete chat"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )
+                        ) : null}
                     </div>
-                    <div className="mb-1 px-4">
-                        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
-                            Recent chats
-                        </p>
-                    </div>
-                    {visiblePreviousChats.length === 0 ? (
-                        <div className="px-4">
-                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>No previous chats.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-0.5 px-2">
-                            {visiblePreviousChats.map((chat) => {
-                                const isCurrent = chat.sessionId === sessionId;
-                                const isLoadingHistory = loadingHistoryId === chat.sessionId;
-                                const preview = chat.preview || chat.serviceName || 'No preview';
-                                return (
-                                    <div
-                                        key={chat.sessionId}
-                                        className={`group relative flex items-center gap-1.5 rounded-md px-2 py-2 transition-colors ${isCurrent
-                                            ? isDark ? 'bg-white/10' : 'bg-slate-100'
-                                            : isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'
-                                        }`}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() => handleLoadPreviousChat(chat)}
-                                            disabled={isLoadingHistory || isCurrent}
-                                            className="min-w-0 flex-1 text-left outline-none"
-                                        >
-                                            <p className={`truncate text-sm font-medium transition-colors ${isCurrent
-                                                ? isDark ? 'text-amber-300' : 'text-amber-600'
-                                                : isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-600 group-hover:text-slate-900'
-                                            }`}>
-                                                {isLoadingHistory ? 'Loading...' : preview}
-                                            </p>
-                                            <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                {formatPreviousChatTime(chat.updatedAt)}
-                                            </p>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleDeletePreviousChat(e, chat)}
-                                            disabled={isLoadingHistory}
-                                            className={`shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 ${isDark ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}
-                                            aria-label="Delete chat"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
                 </div>
 
                 {/* ── Bottom: user / login ── */}

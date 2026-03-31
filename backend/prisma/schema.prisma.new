@@ -423,6 +423,9 @@ model Service {
   description String?
   icon        String?  // Optional icon name
   active      Boolean  @default(true)
+  aiPrompt    String?  @db.Text // Custom AI instructions for this service
+  proposalStructure String? @db.Text // Admin-managed proposal field order/template
+  proposalPrompt    String? @db.Text // Proposal-specific AI instructions for this service
   
   minBudget   Int?     @default(0)
   currency    String   @default("INR")

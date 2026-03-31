@@ -120,9 +120,15 @@ const loadServiceCatalogFromDb = async () => {
 
     const formattedServices = services.map(s => ({
       id: s.slug,
+      slug: s.slug,
       name: s.name,
       description: s.description,
+      active: s.active,
+      aiPrompt: s.aiPrompt || "",
+      proposalStructure: s.proposalStructure || "",
+      proposalPrompt: s.proposalPrompt || "",
       min_budget: s.minBudget, // internal logic might use this
+      minBudget: s.minBudget,
       currency: s.currency,
       questions: s.questions.map(q => ({
         id: q.slug,
@@ -2315,6 +2321,91 @@ CRITICAL INSTRUCTIONS:
 const buildProposalUserPrompt = (proposalContext, chatHistory) =>
   `proposal_context:\n${JSON.stringify(proposalContext, null, 2)}\n\nchat_history:\n${JSON.stringify(chatHistory, null, 2)}`;
 
+const buildServiceAwareProposalSystemPrompt = ({
+  servicePrompt = "",
+  proposalPrompt = "",
+  proposalFieldDefinitions = []
+} = {}) => {
+  const structureTemplate =
+    renderProposalStructureTemplate(proposalFieldDefinitions) ||
+    renderProposalStructureTemplate(buildDefaultProposalFieldDefinitions(""));
+  const fieldLabelList = dedupeProposalFieldDefinitions(proposalFieldDefinitions)
+    .map(({ label }) => label)
+    .join(", ");
+  const hasAppFields = dedupeProposalFieldDefinitions(proposalFieldDefinitions).some(
+    ({ label }) =>
+      label === "App Type" ||
+      label === "App Features" ||
+      label === "Platform Requirements"
+  );
+  const fieldGuidance = renderProposalFieldGuidance(proposalFieldDefinitions);
+
+  return `You are a proposal generator for a digital services agency.
+
+Service-Specific AI Instructions:
+${servicePrompt || "None"}
+
+Proposal-Specific Instructions:
+${proposalPrompt || "None"}
+
+Use only the information provided in proposal_context and chat_history as grounding context.
+Preserve confirmed user inputs exactly, but if a useful proposal field is missing, infer the best-fit recommendation from the confirmed business context, scope, service type, and standard delivery patterns for that kind of project.
+If proposal_context contains structured fields (such as questionnaireAnswers, questionnaireAnswersBySlug, appHints), prioritize those over ambiguous chat text.
+Treat each non-empty value in proposal_context.questionnaireAnswers / questionnaireAnswersBySlug / capturedFields as confirmed user input.
+If proposal_context already contains a confirmed structured Budget or Launch Timeline, use that exact confirmed value and do NOT override it with conflicting numbers from chat_history.
+If chat_history contains blocked, rejected, hypothetical, or conflicting alternatives, ignore them in favor of the structured confirmed values in proposal_context.
+Do not drop confirmed inputs. If a confirmed input does not fit the defined structure, include it under "Additional Confirmed Inputs" as bullet points.
+If proposal_context.serviceQuestionAnswers is present, treat every non-empty answer there as service-question-verified input.
+Cross-check proposal fields against serviceQuestionAnswers before finalizing output.
+Never leave an included field blank.
+Never use placeholder text such as "Not specified", "Pending confirmation", "To be finalized", "TBD", "TBA", "N/A", or "Unknown".
+If launch timeline is missing, generate a single realistic recommended timeline (e.g. "6 weeks") based on the scope and service type. NEVER write a range.
+Launch Timeline must always use a single concrete value in days, weeks, or months. Never use seconds, minutes, hours, ASAP, urgent, flexible, or any range.
+If budget or pricing is missing, generate a single realistic recommended budget amount in INR based on the scope and service type. NEVER write a budget range.
+If design, build, technology, hosting, engagement, audience, or similar delivery fields are missing, choose practical recommended values that fit the stated requirements.
+Present inferred values directly and professionally inside the field value, not as a question and not as a disclaimer.
+
+Output requirements:
+- Return clean markdown only.
+- Follow this exact proposal field structure and order: ${fieldLabelList || "Client Name, Business Name, Service Type, Project Overview, Primary Objectives, Features/Deliverables Included, Launch Timeline, Budget"}.
+- Put each field label on its own line. Never combine two field labels or headings on the same line.
+- Include only the fields from the structure template below, plus "Additional Confirmed Inputs" when truly needed.
+- Keep string fields textual and keep numeric-only fields numeric.
+- Convert spelled-out numeric answers into digits when the field expects a number. Example: write "Page Count: 5", not "Page Count: five pages".
+- Budget must always be written numerically with currency, such as "INR 50,000" or "INR 5,000 per video".
+- Client Name must use the person's name from the conversation; if absent, derive a professional owner label grounded in the project context.
+- Business Name must use the company/business name; if absent, derive the most plausible working business or project name from the user's description.
+- Service Type must clearly match the requested service.
+- Project Overview must be a 2-3 sentence paragraph summarizing the project scope, business context, goals, and confirmed requirements.
+- Use bullet list items for objectives, features, and any list-style fields in the template.
+
+Proposal Structure Template:
+${structureTemplate}
+
+${fieldGuidance ? `Field-specific guidance:
+${fieldGuidance}
+` : ""}
+
+${hasAppFields ? `App field rules:
+- If proposal_context.appHints.appType exists, use it for App Type.
+- If proposal_context.appHints.appFeatures exists, use it for App Features.
+- If proposal_context.appHints.platformRequirements exists, use it for Platform Requirements.
+- Never omit explicitly provided technologies (e.g., Flutter, React Native, Node.js, Python, React.js admin dashboard) if present in proposal_context.
+- If mobileTechnology, backendTechnology, or dashboardTechnology exist in appHints, include them clearly inside Platform Requirements.` : ""}
+
+CRITICAL INSTRUCTIONS:
+- If proposal_context contains a confirmed structured Launch Timeline, use that exact value. Only fall back to chat_history when no structured timeline is present.
+- If proposal_context contains a confirmed structured Budget, use that exact value. Only fall back to chat_history when no structured budget is present.
+- NEVER use ranges anywhere in the proposal, not for budget, timeline, page count, or any other field. Always commit to a single definitive value.
+- Launch Timeline must never repeat video duration or runtime. Keep runtime under deliverables and keep Launch Timeline as one concrete delivery value in days, weeks, or months only.
+- If the user mentions specific technologies (Flutter, React Native, Node.js, Python, React.js dashboard, etc.), preserve them explicitly in the proposal.
+- Preserve confirmed requirements, but complete any missing proposal fields with sensible recommendations aligned to the user's goals.
+- Use concise, professional, business-ready language.
+- Never let a numeric value appear under the wrong field label.
+- Use sentence case for every field value, paragraph, and bullet item. Do not output all lowercase or all uppercase field content.
+- NEVER use the words "suggest", "suggested", or "suggestion" anywhere in the proposal. Present all inferred recommendations as definitive expert decisions.`;
+};
+
 const PROPOSAL_PLACEHOLDER_REGEX =
   /\b(not specified|pending confirmation|to be finalized|tbd|tba|n\/a|unknown)\b/i;
 
@@ -2409,15 +2500,23 @@ const NUMBER_WORD_SCALES = {
   crore: 10000000
 };
 
-const PROPOSAL_CORE_FIELDS = [
+const PROPOSAL_CORE_PREFIX_FIELDS = [
   "Client Name",
   "Business Name",
   "Service Type",
   "Project Overview",
   "Primary Objectives",
-  "Features/Deliverables Included",
+  "Features/Deliverables Included"
+];
+
+const PROPOSAL_CORE_SUFFIX_FIELDS = [
   "Launch Timeline",
   "Budget"
+];
+
+const PROPOSAL_CORE_FIELDS = [
+  ...PROPOSAL_CORE_PREFIX_FIELDS,
+  ...PROPOSAL_CORE_SUFFIX_FIELDS
 ];
 
 const PROPOSAL_SERVICE_FIELD_MAP = {
@@ -2520,6 +2619,232 @@ const normalizeProposalFieldKey = (value = "") =>
     .replace(/:$/, "")
     .trim()
     .toLowerCase();
+
+const canonicalizeProposalFieldLabel = (value = "") => {
+  const normalizedKey = normalizeProposalFieldKey(value);
+  if (!normalizedKey) return "";
+
+  for (const [canonicalLabel, aliases] of Object.entries(PROPOSAL_FIELD_ALIASES)) {
+    if ((aliases || []).some((alias) => normalizeProposalFieldKey(alias) === normalizedKey)) {
+      return canonicalLabel;
+    }
+  }
+
+  return String(value || "")
+    .replace(/\*+/g, "")
+    .replace(/:$/, "")
+    .trim();
+};
+
+const normalizeProposalStructureText = (value = "") =>
+  String(value || "").replace(/\r/g, "").trim();
+
+const formatProposalFieldLabelFromKey = (value = "") =>
+  String(value || "")
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const parseProposalStructureJson = (value = "") => {
+  const source = normalizeProposalStructureText(value);
+  if (!source || !/^[\[{]/.test(source)) return null;
+
+  try {
+    const parsed = JSON.parse(source);
+    if (Array.isArray(parsed)) {
+      return { version: 1, fields: parsed };
+    }
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.fields)) {
+      return parsed;
+    }
+  } catch {
+    // Fall back to the legacy text-template parser when JSON is invalid.
+  }
+
+  return null;
+};
+
+const dedupeProposalFieldDefinitions = (fieldDefinitions = []) => {
+  const seen = new Set();
+  const rows = [];
+
+  for (const fieldDefinition of fieldDefinitions) {
+    const label = canonicalizeProposalFieldLabel(fieldDefinition?.label || "");
+    const normalizedKey = normalizeProposalFieldKey(label);
+    if (!label || !normalizedKey || seen.has(normalizedKey)) continue;
+    seen.add(normalizedKey);
+    rows.push({
+      label,
+      isList: Boolean(fieldDefinition?.isList),
+      guidance: cleanProposalTextValue(fieldDefinition?.guidance || "")
+    });
+  }
+
+  return rows;
+};
+
+const parseProposalStructureDefinitions = (proposalStructure = "") => {
+  const jsonConfig = parseProposalStructureJson(proposalStructure);
+  if (Array.isArray(jsonConfig?.fields) && jsonConfig.fields.length > 0) {
+    return dedupeProposalFieldDefinitions(
+      jsonConfig.fields.map((field = {}) => {
+        const derivedLabel =
+          field?.label ||
+          field?.name ||
+          field?.title ||
+          formatProposalFieldLabelFromKey(field?.key || "");
+        const normalizedType = String(field?.type || "text").trim().toLowerCase();
+        return {
+          label: derivedLabel,
+          isList:
+            normalizedType === "list" ||
+            normalizedType === "array" ||
+            normalizedType === "bullets" ||
+            normalizedType === "bullet_list",
+          guidance:
+            field?.guidance ||
+            field?.instructions ||
+            field?.description ||
+            field?.notes ||
+            ""
+        };
+      })
+    );
+  }
+
+  const parsedDefinitions = [];
+  let activeIndex = -1;
+
+  for (const rawLine of normalizeProposalStructureText(proposalStructure).split("\n")) {
+    let line = rawLine.trim();
+    if (!line || line.startsWith("```")) continue;
+
+    line = line.replace(/^[#\s]+/, "").trim();
+
+    const keyValueMatch = line.match(
+      /^\*{0,2}(?:[-*]\s+)?(?:\d+\.\s+)?([^:*]+?)\*{0,2}:\s*(.*)$/
+    );
+
+    if (keyValueMatch) {
+      const label = canonicalizeProposalFieldLabel(keyValueMatch[1] || "");
+      if (!label) {
+        activeIndex = -1;
+        continue;
+      }
+
+      parsedDefinitions.push({
+        label,
+        isList: false
+      });
+      activeIndex = parsedDefinitions.length - 1;
+      continue;
+    }
+
+    if (activeIndex >= 0 && /^[-*]\s+/.test(line)) {
+      parsedDefinitions[activeIndex].isList = true;
+    }
+  }
+
+  return dedupeProposalFieldDefinitions(parsedDefinitions);
+};
+
+const buildDefaultProposalFieldDefinitions = (serviceCategory = "") =>
+  dedupeProposalFieldDefinitions([
+    ...PROPOSAL_CORE_PREFIX_FIELDS.map((label) => ({
+      label,
+      isList: PROPOSAL_MULTI_VALUE_FIELDS.has(label)
+    })),
+    ...(PROPOSAL_SERVICE_FIELD_MAP[serviceCategory] || []).map((label) => ({
+      label,
+      isList: PROPOSAL_MULTI_VALUE_FIELDS.has(label)
+    })),
+    ...PROPOSAL_CORE_SUFFIX_FIELDS.map((label) => ({
+      label,
+      isList: PROPOSAL_MULTI_VALUE_FIELDS.has(label)
+    }))
+  ]);
+
+const resolveProposalConfiguration = ({
+  proposalContext = {},
+  selectedServiceName = "",
+  service = null
+} = {}) => {
+  const serviceLabel =
+    cleanProposalTextValue(
+      proposalContext?.serviceName ||
+        proposalContext?.serviceId ||
+        proposalContext?.questionnaireAnswers?.["Service Type"] ||
+        selectedServiceName
+    ) || selectedServiceName;
+  const resolvedService = service || getServiceDefinition(serviceLabel);
+  const proposalStructure = normalizeProposalStructureText(
+    proposalContext?.proposalStructure || resolvedService?.proposalStructure || ""
+  );
+  const proposalPrompt = String(
+    proposalContext?.proposalPrompt || resolvedService?.proposalPrompt || ""
+  ).trim();
+  const parsedDefinitions = parseProposalStructureDefinitions(proposalStructure);
+  const usesCustomStructure = parsedDefinitions.length > 0;
+  const customFieldDefinitions = dedupeProposalFieldDefinitions(parsedDefinitions);
+  const customFieldLabels = new Set(
+    customFieldDefinitions.map(({ label }) => label)
+  );
+  const fieldDefinitions = usesCustomStructure
+    ? dedupeProposalFieldDefinitions([
+        ...PROPOSAL_CORE_PREFIX_FIELDS
+          .filter((label) => !customFieldLabels.has(label))
+          .map((label) => ({
+            label,
+            isList: PROPOSAL_MULTI_VALUE_FIELDS.has(label)
+          })),
+        ...customFieldDefinitions,
+        ...PROPOSAL_CORE_SUFFIX_FIELDS
+          .filter((label) => !customFieldLabels.has(label))
+          .map((label) => ({
+            label,
+            isList: PROPOSAL_MULTI_VALUE_FIELDS.has(label)
+          }))
+      ])
+    : buildDefaultProposalFieldDefinitions(
+        resolveProposalServiceCategory(serviceLabel)
+      );
+
+  return {
+    service: resolvedService,
+    serviceLabel,
+    proposalPrompt,
+    proposalStructure,
+    usesCustomStructure,
+    fieldDefinitions
+  };
+};
+
+const renderProposalStructureTemplate = (fieldDefinitions = []) =>
+  dedupeProposalFieldDefinitions(fieldDefinitions)
+    .flatMap(({ label, isList }) =>
+      isList ? [`${label}:`, "- ..."] : [`${label}: ...`]
+    )
+    .join("\n");
+
+const renderProposalFieldGuidance = (fieldDefinitions = []) =>
+  dedupeProposalFieldDefinitions(fieldDefinitions)
+    .filter(({ guidance }) => guidance)
+    .map(
+      ({ label, isList, guidance }) =>
+        `- ${label} (${isList ? "list" : "text"}): ${guidance}`
+    )
+    .join("\n");
+
+const getProposalMultiValueFieldSet = (fieldDefinitions = []) =>
+  new Set([
+    ...Array.from(PROPOSAL_MULTI_VALUE_FIELDS),
+    ...dedupeProposalFieldDefinitions(fieldDefinitions)
+      .filter((fieldDefinition) => fieldDefinition.isList)
+      .map((fieldDefinition) => fieldDefinition.label)
+  ]);
 
 const escapeRegExp = (value = "") =>
   String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -3044,13 +3369,14 @@ const buildProposalFieldEntry = ({
   chatHistory = [],
   service = null,
   serviceLabel = "General Services",
-  serviceCategory = ""
+  serviceCategory = "",
+  multiValueFields = PROPOSAL_MULTI_VALUE_FIELDS
 } = {}) => {
   const sectionValue = cleanProposalTextValue(section?.value || "");
   const sectionItems =
     section?.items?.length
       ? cleanProposalListItems(section.items)
-      : PROPOSAL_MULTI_VALUE_FIELDS.has(label)
+      : multiValueFields.has(label)
         ? splitProposalListValue(sectionValue)
         : [];
   const contextValue = cleanProposalTextValue(contextEntry?.value || "");
@@ -3205,17 +3531,10 @@ const hasMeaningfulProposalSection = (section) => {
 };
 
 const getExpectedProposalFields = ({ proposalContext = {}, selectedServiceName = "" } = {}) => {
-  const serviceCategory = resolveProposalServiceCategory(
-    proposalContext?.serviceName
-      || proposalContext?.serviceId
-      || proposalContext?.questionnaireAnswers?.["Service Type"]
-      || selectedServiceName
-  );
-
-  return [
-    ...PROPOSAL_CORE_FIELDS,
-    ...(PROPOSAL_SERVICE_FIELD_MAP[serviceCategory] || [])
-  ];
+  return resolveProposalConfiguration({
+    proposalContext,
+    selectedServiceName
+  }).fieldDefinitions.map(({ label }) => label);
 };
 
 const analyzeProposalCompleteness = ({
@@ -3242,15 +3561,23 @@ const normalizeProposalMarkdown = ({
   selectedServiceName = ""
 } = {}) => {
   const sectionIndex = createNormalizedProposalSectionIndex(markdown);
-  const serviceLabel =
+  const serviceLabelFromContext =
     cleanProposalTextValue(
       selectedServiceName ||
-      proposalContext?.serviceName ||
-      getProposalSectionByLabel(sectionIndex, "Service Type")?.value ||
-      ""
+        proposalContext?.serviceName ||
+        getProposalSectionByLabel(sectionIndex, "Service Type")?.value ||
+        ""
     ) || "General Services";
+  const proposalConfiguration = resolveProposalConfiguration({
+    proposalContext,
+    selectedServiceName: serviceLabelFromContext
+  });
+  const serviceLabel = proposalConfiguration.serviceLabel || serviceLabelFromContext;
   const serviceCategory = resolveProposalServiceCategory(serviceLabel);
-  const service = getServiceDefinition(serviceLabel);
+  const service = proposalConfiguration.service || getServiceDefinition(serviceLabel);
+  const multiValueFields = getProposalMultiValueFieldSet(
+    proposalConfiguration.fieldDefinitions
+  );
 
   const contextFields = new Map();
   const addContextField = (label, entry) => {
@@ -3319,15 +3646,11 @@ const normalizeProposalMarkdown = ({
     addContextField(PROPOSAL_ADDITIONAL_FIELD, { items: additionalInputs });
   }
 
-  const expectedFields = getExpectedProposalFields({
-    proposalContext,
-    selectedServiceName: serviceLabel
-  });
-  const serviceSpecificFields = expectedFields.filter(
-    (field) => !PROPOSAL_CORE_FIELDS.includes(field)
+  const expectedFields = proposalConfiguration.fieldDefinitions.map(
+    ({ label }) => label
   );
   const knownFieldKeys = new Set(
-    [...PROPOSAL_CORE_FIELDS, ...serviceSpecificFields, PROPOSAL_ADDITIONAL_FIELD]
+    [...expectedFields, PROPOSAL_ADDITIONAL_FIELD]
       .flatMap((field) => PROPOSAL_FIELD_ALIASES[field] || [field])
       .map((field) => normalizeProposalFieldKey(field))
   );
@@ -3341,11 +3664,8 @@ const normalizeProposalMarkdown = ({
     .map((section) => section.label);
 
   const orderedLabels = [
-    ...PROPOSAL_CORE_FIELDS.slice(0, 6),
-    ...serviceSpecificFields,
+    ...expectedFields,
     ...unknownFieldEntries,
-    "Launch Timeline",
-    "Budget",
     PROPOSAL_ADDITIONAL_FIELD
   ];
 
@@ -3361,7 +3681,8 @@ const normalizeProposalMarkdown = ({
       chatHistory,
       service,
       serviceLabel,
-      serviceCategory
+      serviceCategory,
+      multiValueFields
     });
     return entry ? [{ label, ...entry }] : [];
   });
@@ -3397,6 +3718,47 @@ const buildProposalRepairUserPrompt = ({
   missingFields = []
 } = {}) =>
   `proposal_context:\n${JSON.stringify(proposalContext, null, 2)}\n\nchat_history:\n${JSON.stringify(chatHistory, null, 2)}\n\ndraft_proposal:\n${draftProposal}\n\nmissing_or_invalid_fields:\n${JSON.stringify(missingFields, null, 2)}`;
+
+const buildServiceAwareProposalRepairSystemPrompt = ({
+  proposalPrompt = "",
+  proposalFieldDefinitions = []
+} = {}) => {
+  const structureTemplate =
+    renderProposalStructureTemplate(proposalFieldDefinitions) ||
+    renderProposalStructureTemplate(buildDefaultProposalFieldDefinitions(""));
+  const fieldGuidance = renderProposalFieldGuidance(proposalFieldDefinitions);
+
+  return `You repair proposal markdown for a digital services agency.
+Rewrite the full proposal in clean markdown.
+Use proposal_context and chat_history as grounding context.
+Preserve confirmed user inputs exactly.
+Follow this exact proposal structure template and field order:
+${structureTemplate}
+
+${fieldGuidance ? `Field-specific guidance:
+${fieldGuidance}
+` : ""}
+
+Proposal-Specific Instructions:
+${proposalPrompt || "None"}
+
+Fill every required proposal field with a concrete value.
+If a field is missing from user input, infer a best-fit recommendation from the user's goals, scope, business context, and service type.
+If Client Name is missing, derive a professional owner label grounded in the project context.
+If Business Name is missing, derive a concise working business or project name from the user's description.
+Never leave a field blank.
+Never use placeholder text such as "Not specified", "Pending confirmation", "To be finalized", "TBD", "TBA", "N/A", or "Unknown".
+If budget is missing, provide a realistic recommended budget amount in INR.
+If timeline is missing, provide a realistic recommended timeline.
+For missing design, build, hosting, technology, audience, or engagement fields, choose practical recommended values that fit the project.
+Put each field label on its own line. Never combine two field labels or headings on the same line.
+Keep the same proposal structure and return markdown only.
+Convert numeric words into digits for numeric-only fields.
+Budget must always be numeric with currency.
+Launch Timeline must always use one concrete value in days, weeks, or months only. Never use seconds, minutes, hours, ASAP, urgent, flexible, or a range.
+Use sentence case for every field value, paragraph, and bullet item.
+NEVER use the words "suggest", "suggested", or "suggestion" anywhere in the proposal. Present all inferred recommendations as definitive expert decisions.`;
+};
 
 const parseJsonObjectFromRaw = (raw = "") => {
   const source = String(raw || "").trim();
@@ -3705,7 +4067,8 @@ export const generateProposalMarkdown = async (
   proposalContext = {},
   chatHistory = [],
   selectedServiceName = "",
-  servicePrompt = ""
+  servicePrompt = "",
+  proposalConfig = {}
 ) => {
   await ensureServicesCatalogLoaded();
 
@@ -3725,13 +4088,32 @@ export const generateProposalMarkdown = async (
     contextPayload.serviceName = selectedServiceName;
   }
 
+  if (!contextPayload.proposalStructure && proposalConfig?.proposalStructure) {
+    contextPayload.proposalStructure = proposalConfig.proposalStructure;
+  }
+
+  if (!contextPayload.proposalPrompt && proposalConfig?.proposalPrompt) {
+    contextPayload.proposalPrompt = proposalConfig.proposalPrompt;
+  }
+
   const historyPayload = Array.isArray(chatHistory) ? chatHistory : [];
+  const proposalConfiguration = resolveProposalConfiguration({
+    proposalContext: contextPayload,
+    selectedServiceName
+  });
 
   const { data } = await requestOpenRouterCompletion({
     apiKey,
     title: "Catalance AI Proposal Generator",
     messages: [
-      { role: "system", content: buildProposalSystemPrompt(servicePrompt) },
+      {
+        role: "system",
+        content: buildServiceAwareProposalSystemPrompt({
+          servicePrompt,
+          proposalPrompt: proposalConfiguration.proposalPrompt,
+          proposalFieldDefinitions: proposalConfiguration.fieldDefinitions
+        })
+      },
       {
         role: "user",
         content: buildProposalUserPrompt(contextPayload, historyPayload)
@@ -3762,7 +4144,13 @@ export const generateProposalMarkdown = async (
         apiKey,
         title: "Catalance AI Proposal Repair",
         messages: [
-          { role: "system", content: buildProposalRepairSystemPrompt() },
+          {
+            role: "system",
+            content: buildServiceAwareProposalRepairSystemPrompt({
+              proposalPrompt: proposalConfiguration.proposalPrompt,
+              proposalFieldDefinitions: proposalConfiguration.fieldDefinitions
+            })
+          },
           {
             role: "user",
             content: buildProposalRepairUserPrompt({
