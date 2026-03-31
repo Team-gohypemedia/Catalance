@@ -2669,6 +2669,53 @@ export const DashboardContent = ({ _roleOverride }) => {
     [recentChatUpdates]
   );
 
+  const earningsProjectScopeId = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const raw = params.get("projectId");
+    const normalized = raw ? String(raw).trim() : "";
+    return normalized ? normalized : null;
+  }, [location.search]);
+
+  const acceptedProposalsForEarningsScope = useMemo(() => {
+    if (!earningsProjectScopeId) return metrics.acceptedProposals;
+    return metrics.acceptedProposals.filter(
+      (proposal) => String(proposal?.project?.id || "") === earningsProjectScopeId,
+    );
+  }, [earningsProjectScopeId, metrics.acceptedProposals]);
+
+  const pendingProposalsForEarningsScope = useMemo(() => {
+    if (!earningsProjectScopeId) return metrics.pendingProposals;
+    return metrics.pendingProposals.filter(
+      (proposal) => String(proposal?.project?.id || "") === earningsProjectScopeId,
+    );
+  }, [earningsProjectScopeId, metrics.pendingProposals]);
+
+  const earningsScopeMetrics = useMemo(
+    () =>
+      summarizeFreelancerDashboardMetrics([
+        ...acceptedProposalsForEarningsScope,
+        ...pendingProposalsForEarningsScope,
+      ]),
+    [acceptedProposalsForEarningsScope, pendingProposalsForEarningsScope],
+  );
+
+  const paymentCollectionPercentScoped = useMemo(() => {
+    const totalTracked =
+      earningsScopeMetrics.receivedEarnings + earningsScopeMetrics.pendingEarnings;
+    if (!totalTracked) return 0;
+    return Math.round(
+      (earningsScopeMetrics.receivedEarnings / totalTracked) * 100,
+    );
+  }, [earningsScopeMetrics.pendingEarnings, earningsScopeMetrics.receivedEarnings]);
+
+  const paymentHealthLabelScoped = useMemo(() => {
+    if (paymentCollectionPercentScoped >= 80) return "Strong payout momentum";
+    if (paymentCollectionPercentScoped >= 50) return "Healthy payment mix";
+    if (earningsScopeMetrics.pendingEarnings > 0)
+      return "Pending earnings can still convert";
+    return "Start one more project to grow earnings";
+  }, [earningsScopeMetrics.pendingEarnings, paymentCollectionPercentScoped]);
+
   const paymentCollectionPercent = useMemo(() => {
     const totalTracked = metrics.receivedEarnings + metrics.pendingEarnings;
     if (!totalTracked) return 0;
@@ -3292,349 +3339,318 @@ export const DashboardContent = ({ _roleOverride }) => {
             <FreelancerEarningsSkeleton />
           ) : (
           <section>
+            <div className="px-4 py-5 sm:px-6 lg:px-7">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+                  Running Projects
+                </h2>
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.03] px-3 py-1 text-[11px] font-medium text-zinc-300">
+                  <span className="size-1.5 rounded-full bg-emerald-400" />
+                  {metrics.acceptedProposals.length} in progress
+                </span>
+              </div>
+            </div>
+
             <FreelancerDashboardPanel className="overflow-hidden p-0">
-              <div className="border-b border-white/[0.05] px-4 py-5 sm:px-6 lg:px-7">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
-                        Earnings & Payments
-                      </h2>
-                      <Badge
-                        variant="outline"
-                        className="border-white/[0.08] bg-white/[0.04] text-[#facc15]"
-                      >
-                        Live snapshot
-                      </Badge>
-                    </div>
+              <div className="px-4 pb-5 sm:px-6 lg:px-7">
+                <div className="space-y-5">
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {(pendingPayoutRows.length ? pendingPayoutRows : receivedPayoutRows)
+                      .slice(0, 3)
+                      .map((item, index) => {
+                        const isReceived = String(item.statusLabel).toLowerCase() === "received";
+                        const statusBg = isReceived ? "bg-emerald-500/15 text-emerald-300" : "bg-[#2f1e05] text-[#fbbf24]";
+                        const lineBg = isReceived ? "bg-emerald-400" : "bg-[#f97316]";
+                        const progress = Math.max(0, Math.min(100, Number(item.progress) || 0));
+
+                        return (
+                          <Card
+                            key={item.id}
+                            className={cn(
+                              "relative overflow-hidden rounded-[18px] border border-white/[0.08] bg-background/30 shadow-none",
+                              index === 0 && "border-[#facc15]/70",
+                            )}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                                    {String(item.clientLabel || "").toUpperCase()}
+                                  </p>
+                                  <p className="mt-2 truncate text-[1.15rem] font-semibold tracking-[-0.03em] text-white">
+                                    {item.title}
+                                  </p>
+                                  <p className="mt-1 text-[11px] text-zinc-400">{item.timeLabel}</p>
+                                </div>
+
+                                <Badge className={cn("rounded-[10px] border-0 px-3 py-1 text-[11px] font-semibold", statusBg)}>
+                                  {item.statusLabel}
+                                </Badge>
+                              </div>
+
+                              <div className="mt-4">
+                                <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                                  <span>Freelancer share</span>
+                                  <span className="font-semibold text-zinc-100">{item.amount}</span>
+                                </div>
+                                <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
+                                  <div className={cn("h-full rounded-full", lineBg)} style={{ width: `${progress}%` }} />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                   </div>
 
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button
-                      variant="outline"
-                      className="h-10 rounded-full border-white/15 bg-transparent px-5 text-xs font-semibold text-zinc-100 hover:bg-white/[0.06]"
-                      onClick={() => navigate("/freelancer/project?view=ongoing")}
-                    >
-                      View active projects
-                    </Button>
-                    <Button
-                      className="h-10 rounded-full bg-[#facc15] px-5 text-xs font-semibold text-black hover:bg-[#ffd54f]"
-                      onClick={() => navigate("/freelancer/payments")}
-                    >
-                      Open payments
-                    </Button>
+                  <div className="space-y-4">
+                    <Card className="w-full rounded-[20px] border border-white/[0.08] bg-background/30 shadow-none">
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                              Project Schedule
+                            </p>
+                            <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
+                              Phase timeline for active payouts
+                            </p>
+                          </div>
+                          <Badge className="rounded-full border-0 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold text-zinc-300">
+                            {(() => {
+                              const now = new Date();
+                              const month = now.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+                              const year = now.getFullYear();
+                              return `${month} ${year}`;
+                            })()}
+                          </Badge>
+                        </div>
+
+                        <div className="mt-6 rounded-[18px] border border-white/[0.06] bg-background/30 px-4 py-4">
+                          {(() => {
+                            const now = new Date();
+                            const year = now.getFullYear();
+                            const monthIndex = now.getMonth();
+                            const monthShort = now.toLocaleDateString("en-US", { month: "short" });
+                            const todayDateLabel = new Intl.DateTimeFormat("en-US", {
+                              month: "short",
+                              day: "2-digit",
+                              year: "numeric",
+                            }).format(now);
+
+                            // Match the screenshot’s 4-week grid
+                            const weekRanges = [
+                              [1, 7],
+                              [8, 14],
+                              [15, 21],
+                              [22, 28],
+                            ].map(([startDay, endDay]) => {
+                              const start = new Date(year, monthIndex, startDay);
+                              const end = new Date(year, monthIndex, endDay);
+                              const startLabel = start.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+                              const endLabel = end.toLocaleDateString("en-US", { day: "2-digit" });
+                              return `${startLabel} - ${endLabel}`;
+                            });
+
+                            const safeDay = Math.min(28, Math.max(1, now.getDate()));
+                            const todayLeftPct = ((safeDay - 1) / 27) * 100;
+
+                            const progressPct = Math.max(0, Math.min(100, paymentCollectionPercent || 0));
+                            const overdueDays = Math.max(0, Math.round((100 - progressPct) / 20));
+                            const dueInDays = overdueDays + 3;
+
+                            return (
+                              <div className="grid grid-cols-[160px_1fr] gap-6">
+                                <div className="pt-2 space-y-10">
+                                  <div>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                                      Phase 1
+                                    </p>
+                                    <p className="mt-1 text-[10px] text-zinc-500/70">Discovery & Research</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                                      Phase 2
+                                    </p>
+                                    <p className="mt-1 text-[10px] text-zinc-500/70">Design System</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                                      Phase 3
+                                    </p>
+                                    <p className="mt-1 text-[10px] text-zinc-500/70">Backend Core</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                                      Phase 4
+                                    </p>
+                                    <p className="mt-1 text-[10px] text-zinc-500/70">Beta Testing</p>
+                                  </div>
+                                </div>
+
+                                <div className="relative">
+                                  <div className="grid grid-cols-4 gap-4 text-center">
+                                    {Array.from({ length: 4 }, (_, idx) => (
+                                      <div key={`week-${idx}`} className="min-w-0">
+                                        <p className="text-[10px] font-semibold text-zinc-500/90">
+                                          Week {idx + 1}
+                                        </p>
+                                        <p className="mt-1 text-[10px] text-zinc-500/60">{weekRanges[idx]}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  <div className="relative mt-6 h-[150px]">
+                                    <div className="absolute left-0 right-0 top-[72px] h-[2px] bg-white/[0.08]" />
+                                    <div
+                                      className="absolute top-[-6px] bottom-0 w-px border-l-2 border-dotted border-[#facc15]/60"
+                                      style={{ left: `${todayLeftPct}%` }}
+                                    />
+
+                                    <div
+                                      className="absolute top-[-2px] -translate-x-1/2"
+                                      style={{ left: `${todayLeftPct}%` }}
+                                    >
+                                      <div className="inline-flex flex-col items-center">
+                                        <span className="rounded-[6px] bg-[#facc15] px-2 py-0.5 text-[9px] font-semibold text-black">
+                                          TODAY
+                                        </span>
+                                        <span className="mt-1 text-[9px] font-semibold text-zinc-400">
+                                          {todayDateLabel}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Phase bars */}
+                                    <div className="absolute left-[1%] top-[40px] h-[36px] w-[30%] rounded-[18px] bg-emerald-500/10" />
+                                    <div className="absolute left-[6%] top-[48px] inline-flex items-center rounded-full bg-emerald-500/20 px-4 py-1 text-[10px] font-semibold text-emerald-300">
+                                      <span className="mr-2 inline-flex size-2 rounded-full bg-emerald-400" />
+                                      FINISHED
+                                    </div>
+
+                                    <div className="absolute left-[38%] top-[55px] h-[26px] w-[24%] rounded-[16px] bg-[#facc15]/35" />
+                                    <div className="absolute left-[42%] top-[58px] inline-flex items-center rounded-full bg-[#facc15] px-4 py-1 text-[10px] font-semibold text-black">
+                                      In Progress
+                                    </div>
+
+                                    <div className="absolute left-[46%] top-[83px] inline-flex items-center gap-3">
+                                      <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-300">
+                                        {progressPct}% IN PROGRESS
+                                      </span>
+                                      {overdueDays > 0 ? (
+                                        <span className="rounded-[10px] bg-rose-500/15 px-2 py-0.5 text-[9px] font-semibold text-rose-300">
+                                          Overdue {overdueDays} days
+                                        </span>
+                                      ) : null}
+                                    </div>
+
+                                    <div className="absolute left-[62%] top-[75px] h-[22px] w-[16%] rounded-[14px] bg-white/[0.06]" />
+                                    <div className="absolute left-[66%] top-[79px] inline-flex items-center rounded-full bg-white/[0.06] px-4 py-1 text-[9px] font-semibold text-zinc-400">
+                                      Pending
+                                    </div>
+
+                                    <div className="absolute right-[6%] top-[105px] h-[22px] w-[18%] rounded-[14px] bg-white/[0.06]" />
+                                    <div className="absolute right-[10%] top-[109px] inline-flex items-center rounded-full bg-white/[0.06] px-4 py-1 text-[9px] font-semibold text-zinc-400">
+                                      Scheduled
+                                    </div>
+                                    <div className="absolute right-[3%] top-[129px] text-[9px] font-semibold text-zinc-500">
+                                      due in {dueInDays} days
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {(() => {
+                        const statusTone =
+                          paymentCollectionPercent >= 80
+                            ? "On track"
+                            : paymentCollectionPercent >= 50
+                              ? "Steady"
+                              : "Delayed";
+                        const statusSub = paymentHealthLabel;
+                        const completed = receivedPayoutRows.length;
+                        const pending = pendingPayoutRows.length;
+                        const total = Math.max(1, completed + pending);
+                        const dotCount = Math.min(7, total);
+                        const dotsOn = Math.min(dotCount, completed);
+                        const daysRemaining = pending ? pending * 7 : 0;
+
+                        return (
+                          <>
+                            <Card className="rounded-[20px] border border-white/[0.08] bg-background/30 shadow-none">
+                              <CardContent className="p-5">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                                  Current Status
+                                </p>
+                                <div className="mt-3 flex items-end justify-between gap-3">
+                                  <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+                                    {statusTone}
+                                  </p>
+                                  <p className="text-[11px] font-semibold text-[#facc15]">
+                                    {paymentCollectionPercent}%
+                                  </p>
+                                </div>
+                                <div className="mt-3 h-[2px] overflow-hidden rounded-full bg-white/[0.08]">
+                                  <div
+                                    className="h-full rounded-full bg-[#facc15]"
+                                    style={{ width: `${Math.min(100, paymentCollectionPercent || 0)}%` }}
+                                  />
+                                </div>
+                                <p className="mt-4 text-[12px] font-medium text-zinc-400">{statusSub}</p>
+                              </CardContent>
+                            </Card>
+
+                            <Card className="rounded-[20px] border border-white/[0.08] bg-background/30 shadow-none">
+                              <CardContent className="p-5">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                                  Time Remaining
+                                </p>
+                                <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
+                                  {daysRemaining ? `${daysRemaining} Days` : "—"}
+                                </p>
+                                <p className="mt-2 text-[12px] text-zinc-400">
+                                  Next payout window: {nextPayoutSummaryLabel}
+                                </p>
+                              </CardContent>
+                            </Card>
+
+                            <Card className="rounded-[20px] border border-white/[0.08] bg-background/30 shadow-none">
+                              <CardContent className="p-5">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                                  Completed Tasks
+                                </p>
+                                <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
+                                  {completed}/{total}
+                                </p>
+                                <div className="mt-3 flex items-center gap-1">
+                                  {Array.from({ length: dotCount }).map((_, i) => (
+                                    <span
+                                      // eslint-disable-next-line react/no-array-index-key
+                                      key={i}
+                                      className={cn(
+                                        "h-1.5 w-1.5 rounded-full",
+                                        i < dotsOn ? "bg-[#facc15]" : "bg-white/[0.18]",
+                                      )}
+                                    />
+                                  ))}
+                                </div>
+                                <p className="mt-3 text-[12px] text-zinc-400">
+                                  Cleared payouts vs. tracked payout sources.
+                                </p>
+                              </CardContent>
+                            </Card>
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="px-4 py-5 sm:px-6 lg:px-7">
-                <Tabs defaultValue="overview" className="gap-4">
-                  <TabsList className="h-auto w-full justify-start gap-2 overflow-x-auto rounded-[16px] bg-white/[0.04] p-1 text-white">
-                    <TabsTrigger
-                      value="overview"
-                      className="rounded-[12px] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] data-[state=active]:bg-[#facc15] data-[state=active]:text-black"
-                    >
-                      Overview
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="schedule"
-                      className="rounded-[12px] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] data-[state=active]:bg-[#facc15] data-[state=active]:text-black"
-                    >
-                      Schedule
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="overview" className="space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                      <Card className="border-white/[0.08] bg-background/30 shadow-none">
-                        <CardContent className="p-4 sm:p-5">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">
-                            Received
-                          </p>
-                          <p className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
-                            {formatFreelancerDashboardCurrency(metrics.receivedEarnings)}
-                          </p>
-                          <p className="mt-2 text-sm text-[#94a3b8]">Cleared freelancer earnings</p>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-white/[0.08] bg-background/30 shadow-none">
-                        <CardContent className="p-4 sm:p-5">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">
-                            Pending
-                          </p>
-                          <p className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
-                            {formatFreelancerDashboardCurrency(metrics.pendingEarnings)}
-                          </p>
-                          <p className="mt-2 text-sm text-[#94a3b8]">Expected from active projects</p>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-white/[0.08] bg-background/30 shadow-none">
-                        <CardContent className="p-4 sm:p-5">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">
-                            Collection Rate
-                          </p>
-                          <p className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
-                            {paymentCollectionPercent}%
-                          </p>
-                          <Progress
-                            value={paymentCollectionPercent}
-                            className="mt-3 h-2 bg-white/[0.08] [&>div]:bg-[#facc15]"
-                          />
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-white/[0.08] bg-background/30 shadow-none">
-                        <CardContent className="p-4 sm:p-5">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">
-                            Avg Project Share
-                          </p>
-                          <p className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
-                            {formatFreelancerDashboardCurrency(averageProjectShare)}
-                          </p>
-                          <p className="mt-2 text-sm text-[#94a3b8]">
-                            Based on accepted project earnings
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)]">
-                      <Card className="border-white/[0.08] bg-background/30 shadow-none">
-                        <CardContent className="p-4 sm:p-5">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                              <h3 className="text-base font-semibold text-white">Cashflow snapshot</h3>
-                              <p className="mt-1 text-sm text-[#94a3b8]">{paymentHealthLabel}</p>
-                            </div>
-                            <Badge
-                              variant="outline"
-                              className="border-white/[0.08] bg-white/[0.04] text-zinc-200"
-                            >
-                              Last 6 months
-                            </Badge>
-                          </div>
-
-                          <Separator className="my-4 bg-white/[0.06]" />
-
-                          <div className="grid h-44 grid-cols-6 items-end gap-2 sm:h-52 sm:gap-3">
-                            {earningsTrendData.map((item) => (
-                              <div key={item.label} className="flex h-full min-w-0 flex-col justify-end gap-3">
-                                <div className="flex min-h-0 flex-1 items-end">
-                                  <div
-                                    className={cn(
-                                      "w-full rounded-[10px] bg-white/[0.08] transition-all",
-                                      item.isCurrent && "bg-[#facc15]",
-                                    )}
-                                    style={{ height: `${item.height}%` }}
-                                  />
-                                </div>
-                                <div className="space-y-1 text-center">
-                                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                                    {item.label}
-                                  </p>
-                                  <p
-                                    className={cn(
-                                      "truncate text-[11px] text-[#94a3b8]",
-                                      item.isCurrent && "font-semibold text-[#facc15]",
-                                    )}
-                                  >
-                                    {formatFreelancerDashboardCurrency(item.value)}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-white/[0.08] bg-background/30 shadow-none">
-                        <CardContent className="p-4 sm:p-5">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                              <h3 className="text-base font-semibold text-white">At a glance</h3>
-                              <p className="mt-1 text-sm text-[#94a3b8]">
-                                Quick signals from your live payout pipeline.
-                              </p>
-                            </div>
-                            <Badge
-                              variant="outline"
-                              className="border-white/[0.08] bg-white/[0.04] text-[#facc15]"
-                            >
-                              {pendingPayoutRows.length} pending
-                            </Badge>
-                          </div>
-
-                          <div className="mt-4 space-y-3">
-                            {paymentActionItems.map((item) => (
-                              <div
-                                key={item}
-                                className="rounded-[16px] border border-white/[0.08] bg-white/[0.03] px-3.5 py-3 text-sm text-[#d4d4d8]"
-                              >
-                                {item}
-                              </div>
-                            ))}
-                          </div>
-
-                          <Separator className="my-4 bg-white/[0.06]" />
-
-                          {pendingPayoutRows.length === 0 ? (
-                            <div className="rounded-[18px] border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-5 text-sm text-[#94a3b8]">
-                              No pending payouts right now. New cleared milestones will appear here.
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {pendingPayoutRows.slice(0, 2).map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="rounded-[18px] border border-white/[0.08] bg-white/[0.03] px-4 py-3.5"
-                                >
-                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                    <div className="min-w-0">
-                                      <div className="flex flex-wrap items-center gap-2">
-                                        <p className="truncate text-sm font-semibold text-white">{item.title}</p>
-                                        <Badge
-                                          variant="outline"
-                                          className="border-[#5a3b0d] bg-[#2f1e05] text-[#fbbf24]"
-                                        >
-                                          {item.statusLabel}
-                                        </Badge>
-                                      </div>
-                                      <p className="mt-1 text-sm text-[#94a3b8]">{item.clientLabel}</p>
-                                    </div>
-                                    <div className="shrink-0">
-                                      <p className="text-sm font-semibold text-white sm:text-right">{item.amount}</p>
-                                      <p className="mt-1 text-xs text-zinc-500 sm:text-right">{item.timeLabel}</p>
-                                    </div>
-                                  </div>
-                                  <Progress
-                                    value={item.progress}
-                                    className="mt-3 h-2 bg-white/[0.08] [&>div]:bg-[#facc15]"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="schedule" className="space-y-4">
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <Card className="border-white/[0.08] bg-background/30 shadow-none">
-                        <CardContent className="p-4 sm:p-5">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                              <h3 className="text-base font-semibold text-white">Upcoming payouts</h3>
-                              <p className="mt-1 text-sm text-[#94a3b8]">
-                                Projects that are still moving toward their next payment.
-                              </p>
-                            </div>
-                            <Badge
-                              variant="outline"
-                              className="border-white/[0.08] bg-white/[0.04] text-[#facc15]"
-                            >
-                              {pendingPayoutRows.length}
-                            </Badge>
-                          </div>
-
-                          <div className="mt-4 space-y-3">
-                            {pendingPayoutRows.length === 0 ? (
-                              <div className="rounded-[18px] border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-5 text-sm text-[#94a3b8]">
-                                No pending payout milestones yet.
-                              </div>
-                            ) : (
-                              pendingPayoutRows.map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="rounded-[18px] border border-white/[0.08] bg-white/[0.03] px-4 py-3.5"
-                                >
-                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                    <div className="min-w-0">
-                                      <div className="flex flex-wrap items-center gap-2">
-                                        <p className="truncate text-sm font-semibold text-white">{item.title}</p>
-                                        <Badge
-                                          variant="outline"
-                                          className="border-[#5a3b0d] bg-[#2f1e05] text-[#fbbf24]"
-                                        >
-                                          {item.statusLabel}
-                                        </Badge>
-                                      </div>
-                                      <p className="mt-1 text-sm text-[#94a3b8]">{item.clientLabel}</p>
-                                    </div>
-                                    <div className="shrink-0">
-                                      <p className="text-sm font-semibold text-white sm:text-right">{item.amount}</p>
-                                      <p className="mt-1 text-xs text-zinc-500 sm:text-right">{item.timeLabel}</p>
-                                    </div>
-                                  </div>
-                                  <Progress
-                                    value={item.progress}
-                                    className="mt-3 h-2 bg-white/[0.08] [&>div]:bg-[#facc15]"
-                                  />
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-white/[0.08] bg-background/30 shadow-none">
-                        <CardContent className="p-4 sm:p-5">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                              <h3 className="text-base font-semibold text-white">Recently received</h3>
-                              <p className="mt-1 text-sm text-[#94a3b8]">
-                                A quick log of projects that have already cleared payout.
-                              </p>
-                            </div>
-                            <Badge
-                              variant="outline"
-                              className="border-white/[0.08] bg-white/[0.04] text-emerald-300"
-                            >
-                              {receivedPayoutRows.length}
-                            </Badge>
-                          </div>
-
-                          <div className="mt-4 space-y-3">
-                            {receivedPayoutRows.length === 0 ? (
-                              <div className="rounded-[18px] border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-5 text-sm text-[#94a3b8]">
-                                Received payouts will show up here after project completion.
-                              </div>
-                            ) : (
-                              receivedPayoutRows.map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="rounded-[18px] border border-white/[0.08] bg-white/[0.03] px-4 py-3.5"
-                                >
-                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                    <div className="min-w-0">
-                                      <div className="flex flex-wrap items-center gap-2">
-                                        <p className="truncate text-sm font-semibold text-white">{item.title}</p>
-                                        <Badge
-                                          variant="outline"
-                                          className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                                        >
-                                          {item.statusLabel}
-                                        </Badge>
-                                      </div>
-                                      <p className="mt-1 text-sm text-[#94a3b8]">{item.clientLabel}</p>
-                                    </div>
-                                    <div className="shrink-0">
-                                      <p className="text-sm font-semibold text-white sm:text-right">{item.amount}</p>
-                                      <p className="mt-1 text-xs text-zinc-500 sm:text-right">{item.timeLabel}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-                </Tabs>
               </div>
             </FreelancerDashboardPanel>
           </section>

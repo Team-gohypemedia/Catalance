@@ -1,28 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowRight,
-  BadgeCheck,
-  Bot,
-  BriefcaseBusiness,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Cloud,
-  Code2,
-  Database,
-  Heart,
-  LineChart,
-  MessageSquare,
-  Rocket,
-  Search,
-  ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
-  Star,
-  Users,
-  Workflow,
-  X
+  ArrowRight, BadgeCheck, Bot, BriefcaseBusiness,
+  ChevronLeft, ChevronRight, Clock, Cloud, Code2,
+  Database, Heart, LineChart, MessageSquare,
+  Rocket, Search, ShieldCheck, SlidersHorizontal,
+  Sparkles, Star, Users, Workflow, X
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -33,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sparkles as SparklesBackground } from "@/components/ui/sparkles";
 import { getSession } from "@/shared/lib/auth-storage";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { cn } from "@/shared/lib/utils";
@@ -258,109 +242,84 @@ const Marketplace = () => {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background pt-24 text-foreground">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[-10%] top-24 h-72 w-72 rounded-full bg-primary/18 blur-3xl" />
-        <div className="absolute right-[-8%] top-[22rem] h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
-      </div>
-
-      <div className="relative mx-auto flex w-full max-w-[1280px] flex-col gap-14 px-4 pb-20 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3">
-          <section
-            ref={categoryRailRef}
-            onScroll={updateCategoryRailState}
-            onWheel={handleCategoryRailWheel}
-            className={cn(glassPanelClass, "no-scrollbar flex-1 overflow-x-auto rounded-full px-2 py-2 scroll-smooth")}
-          >
-            <div className="flex min-w-max gap-2 pr-4">
-              <button type="button" onClick={() => { setCategory("all"); scrollToSection("marketplace-results"); }} className={cn("shrink-0 rounded-full px-5 py-2.5 text-sm font-medium transition", category === "all" ? "bg-primary text-primary-foreground" : "text-slate-300 hover:bg-white/[0.06] hover:text-white")}>All specialties</button>
-              {categories.map((item) => {
-                const Icon = item.icon;
-                const active = category === item.value;
-                return (
-                  <button key={item.value} type="button" onClick={() => { setCategory(item.value); scrollToSection("marketplace-results"); }} className={cn("inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition", active ? "bg-primary text-primary-foreground" : "text-slate-300 hover:bg-white/[0.06] hover:text-white")}>
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-          {(categoryRailState.left || categoryRailState.right) && (
-            <div className="flex shrink-0 items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label="Scroll services left"
-                disabled={!categoryRailState.left}
-                className="h-10 w-10 rounded-full border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08] disabled:opacity-40"
-                onClick={() => scrollCategoryRail(-1)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label="Scroll services right"
-                disabled={!categoryRailState.right}
-                className="h-10 w-10 rounded-full border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08] disabled:opacity-40"
-                onClick={() => scrollCategoryRail(1)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+    <div className="relative min-h-screen bg-[#030303] text-foreground">
+      {/* Full Screen Hero Section */}
+      <section className="relative flex min-h-[100vh] w-full flex-col items-center justify-center overflow-hidden bg-[#030303]">
+        {/* Sparkles Background */}
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-60">
+          <SparklesBackground
+            className="h-full w-full"
+            density={600}
+            speed={0.8}
+            minSpeed={0.2}
+            size={1.2}
+            minSize={0.4}
+            opacity={0.8}
+            minOpacity={0.1}
+            color="#ffffff"
+          />
+        </div>
+        
+        {/* Glow Behind Planet */}
+        {/* Increased height, width, opacity, and blur for a much more intense sprawling golden sunrise effect */}
+        <div className="pointer-events-none absolute bottom-[15%] left-1/2 h-[600px] w-[100%] max-w-[1600px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(250,204,21,0.45)_0%,rgba(250,204,21,0.15)_45%,transparent_70%)] blur-[60px]" />
+        <div className="pointer-events-none absolute bottom-[10%] left-1/2 h-[400px] w-[70%] max-w-[1000px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.8)_0%,rgba(250,204,21,0.4)_50%,transparent_70%)] blur-[30px]" />
+        
+        {/* Content */}
+        <div className="relative z-10 mb-[12vh] flex flex-col items-center gap-7 px-4 text-center">
+          <h1 className="max-w-[800px] text-[44px] font-medium tracking-tight text-white sm:text-[56px] md:text-[64px] lg:text-[76px] lg:leading-[1.05]">
+            Hire experts for<br />high-impact work.
+          </h1>
+          <p className="mx-auto max-w-xl text-[17px] leading-relaxed text-[#c9c9c9]">
+            Explore verified services, compare talent<br className="hidden sm:block" />fast, curated shortlist clarity.
+          </p>
+          <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row">
+            <Button size="lg" className="h-12 rounded-full border border-[#fbcc15] bg-[#fbcc15] px-8 text-[15px] font-semibold text-black transition-all hover:bg-[#fbcc15]/90 hover:opacity-90" onClick={() => scrollToSection("marketplace-results")}>
+              Explore Serives
+            </Button>
+            <Button asChild variant="outline" size="lg" className="h-12 rounded-full border border-white/10 bg-white/5 px-8 text-[15px] font-semibold text-white backdrop-blur-[8px] transition-all hover:bg-white/10 focus:bg-white/10 shadow-sm">
+              <Link to="/contact">Talk to a strategist</Link>
+            </Button>
+          </div>
         </div>
 
-        <section className="grid gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)] lg:items-center">
-          <div className="space-y-7">
-            <Badge className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-primary">Curated professional marketplace</Badge>
-            <div className="space-y-5">
-              <h1 className="max-w-3xl text-4xl font-medium tracking-[-0.045em] text-white sm:text-5xl lg:text-[64px] lg:leading-[1.02]">Hire specialist freelancers for high-leverage digital work.</h1>
-              <p className="max-w-2xl text-lg leading-8 text-slate-300">Explore verified service packages across product, growth, automation, cloud, and operations. Compare talent with the speed of a marketplace and the clarity of a curated shortlist.</p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" className="h-14 rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => scrollToSection("marketplace-results")}>Explore services</Button>
-              <Button asChild variant="outline" size="lg" className="h-14 rounded-full border-white/10 bg-white/[0.04] px-7 text-base font-semibold text-white shadow-sm hover:bg-white/[0.08]">
-                <Link to="/contact" className="inline-flex items-center gap-2">Talk to a strategist <ArrowRight className="h-4 w-4" /></Link>
-              </Button>
-            </div>
-          </div>
+        {/* Planet Horizon */}
+        <div className="pointer-events-none absolute bottom-0 left-1/2 w-[150%] max-w-[3000px] -translate-x-1/2 translate-y-[65%] lg:w-[130%]">
+          <div className="relative aspect-[3/1] w-full">
+            
+            {/* 0. Base Black Planet (Anchors true horizon geometry) */}
+            <div className="absolute w-full h-full rounded-[100%] bg-[#000000] shadow-[inset_0_40px_100px_rgba(0,0,0,1)]" />
 
-          <div className="relative overflow-hidden rounded-[34px] border border-primary/25 bg-[linear-gradient(180deg,rgba(21,18,9,0.96),rgba(8,8,7,0.99))] p-3 shadow-[0_30px_100px_-48px_color-mix(in_srgb,var(--primary)_18%,transparent)]">
-            <div className="relative min-h-[320px] overflow-hidden rounded-[28px]">
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(33,28,13,0.96),rgba(11,11,9,0.98))]" />
-              <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(250,204,21,0.10)_1px,transparent_1.4px)] [background-size:18px_18px]" />
-              <div className="absolute left-[-8%] top-[-14%] h-64 w-64 rounded-full bg-primary/12 blur-3xl" />
-              <div className="absolute bottom-[-22%] right-[-8%] h-64 w-64 rounded-full bg-primary/8 blur-3xl" />
-              <div className="relative flex min-h-[320px] flex-col items-center justify-center p-10 text-center">
-                <div className="mx-auto flex items-center justify-center -space-x-4">
-                  {heroPeople.map((person) => {
-                    const freelancerKey = person.freelancer?.id || person.freelancerId || person.id;
-                    return (
-                      <div key={freelancerKey} className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-[3px] border-[#18150d] bg-white text-lg font-semibold text-slate-700 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.9)]">
-                        {person.freelancer?.avatar ? (
-                          <img src={person.freelancer.avatar} alt={person.freelancer.fullName || "Freelancer"} className="h-full w-full object-cover" />
-                        ) : (
-                          <span>{getInitials(person.freelancer?.fullName)}</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="mt-8 text-[17px] font-semibold tracking-[-0.03em] text-white sm:text-[20px]">
-                  {heroExpertCount > 0 ? `${heroExpertCount}+ Verified Marketplace Experts Active` : "Verified Marketplace Experts Active"}
-                </p>
-                <p className="mt-3 max-w-[420px] text-sm text-white/58">
-                  Capability-led matching with distinct, verified freelancer profiles.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+            {/* 1. True Horizon Radiant Glow */}
+            {/* Perfectly traces the 100% planet curve. */}
+            <div 
+              className="absolute inset-0 rounded-[100%] border-t-[20px] border-white opacity-40 blur-[16px]"
+              style={{
+                WebkitMaskImage: 'linear-gradient(to right, transparent 5%, black 25%, black 75%, transparent 95%)',
+                maskImage: 'linear-gradient(to right, transparent 5%, black 25%, black 75%, transparent 95%)'
+              }}
+            />
 
+            {/* 2. The Pure Solid White SVG Crescent */}
+            {/* An SVG crescent completely solves all blur, masking, and alignment constraints. It ensures a 100% solid, fully opaque #ffffff highlight that mathematically tracks the planet equator perfectly. 
+                The explicit path points start at x=20 and x=80 (extended slightly wider), forcing the solid filled geometry to physically pinch down to an absolute 0px razor point near the screen edges. */}
+            <svg 
+              className="absolute inset-0 w-full h-full pointer-events-none" 
+              viewBox="0 0 100 100" 
+              preserveAspectRatio="none"
+              style={{ filter: 'drop-shadow(0 0 12px rgba(255,255,255,0.8))' }}
+            >
+              <path d="M 20 10 A 50 50 0 0 1 80 10 A 50 45 0 0 0 20 10 Z" fill="#ffffff" />
+            </svg>
+
+            {/* 3. Center Volumetric Flare */}
+            <div className="absolute left-1/2 top-[-50px] h-[80px] w-[30%] max-w-[600px] -translate-x-1/2 rounded-[100%] bg-white opacity-20 blur-[40px] mix-blend-screen" />
+          </div>
+        </div>
+      </section>
+
+      {/* Main Content Container Restored for content below hero */}
+      <div className="relative mx-auto mt-14 flex w-full max-w-[1280px] flex-col gap-14 px-4 pb-20 sm:px-6 lg:px-8">
         <section className="grid gap-3 lg:grid-cols-6">
           {shortcuts.map((item) => {
             const Icon = item.icon;

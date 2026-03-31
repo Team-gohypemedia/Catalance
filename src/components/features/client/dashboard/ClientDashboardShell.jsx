@@ -26,13 +26,13 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import {
-DropdownMenu,
-DropdownMenuContent,
-DropdownMenuLabel,
-DropdownMenuRadioGroup,
-DropdownMenuRadioItem,
-DropdownMenuSeparator,
-DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -173,102 +173,102 @@ const ClientDashboardLoadingSkeleton = ({ hero }) => (
       </p>
     </section>
 
-        <section className="mt-12 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
-          {dashboardMetricSkeletonItems.map((item) => (
-            <OverviewMetricCardSkeleton
-              key={`dashboard-metric-skeleton-${item.id}`}
-              item={item}
-            />
-          ))}
-        </section>
+    <section className="mt-12 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+      {dashboardMetricSkeletonItems.map((item) => (
+        <OverviewMetricCardSkeleton
+          key={`dashboard-metric-skeleton-${item.id}`}
+          item={item}
+        />
+      ))}
+    </section>
 
-        <section className="mt-14">
-          <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-            <div className="flex items-center gap-3">
-              <DashboardSkeletonBlock className="h-8 w-44 rounded-full" />
-              <DashboardSkeletonBlock className="size-3 rounded-full" />
-            </div>
-            <DashboardSkeletonBlock className="h-8 w-20 rounded-full" />
+    <section className="mt-14">
+      <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
+        <div className="flex items-center gap-3">
+          <DashboardSkeletonBlock className="h-8 w-44 rounded-full" />
+          <DashboardSkeletonBlock className="size-3 rounded-full" />
+        </div>
+        <DashboardSkeletonBlock className="h-8 w-20 rounded-full" />
+      </div>
+
+      <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
+        {[0, 1, 2].map((item) => (
+          <ProjectCardSkeleton key={`dashboard-project-card-skeleton-${item}`} />
+        ))}
+      </div>
+    </section>
+
+    <section className="mt-14 grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="flex flex-col gap-7">
+        <DashboardPanel className="overflow-hidden bg-card">
+          <div className="flex items-center justify-between border-b border-white/[0.05] px-6 py-5">
+            <DashboardSkeletonBlock className="h-7 w-40 rounded-full" />
+            <DashboardSkeletonBlock className="h-4 w-16 rounded-full" />
           </div>
-
-          <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
-            {[0, 1, 2].map((item) => (
-              <ProjectCardSkeleton key={`dashboard-project-card-skeleton-${item}`} />
+          <div>
+            {[0, 1, 2, 3].map((item) => (
+              <div
+                key={`dashboard-activity-skeleton-${item}`}
+                className="flex items-center justify-between gap-4 border-b border-white/[0.05] px-6 py-5 last:border-b-0"
+              >
+                <div className="flex min-w-0 items-center gap-4">
+                  <DashboardSkeletonBlock className="size-10 rounded-full" />
+                  <div className="min-w-0 space-y-2">
+                    <DashboardSkeletonBlock className="h-4 w-40 rounded-full" />
+                    <DashboardSkeletonBlock className="h-3 w-56 rounded-full" />
+                  </div>
+                </div>
+                <DashboardSkeletonBlock className="h-3 w-14 rounded-full" />
+              </div>
             ))}
           </div>
-        </section>
+        </DashboardPanel>
+      </div>
 
-        <section className="mt-14 grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="flex flex-col gap-7">
-            <DashboardPanel className="overflow-hidden bg-card">
-              <div className="flex items-center justify-between border-b border-white/[0.05] px-6 py-5">
-                <DashboardSkeletonBlock className="h-7 w-40 rounded-full" />
-                <DashboardSkeletonBlock className="h-4 w-16 rounded-full" />
-              </div>
-              <div>
-                {[0, 1, 2, 3].map((item) => (
-                  <div
-                    key={`dashboard-activity-skeleton-${item}`}
-                    className="flex items-center justify-between gap-4 border-b border-white/[0.05] px-6 py-5 last:border-b-0"
-                  >
-                    <div className="flex min-w-0 items-center gap-4">
-                      <DashboardSkeletonBlock className="size-10 rounded-full" />
-                      <div className="min-w-0 space-y-2">
-                        <DashboardSkeletonBlock className="h-4 w-40 rounded-full" />
-                        <DashboardSkeletonBlock className="h-3 w-56 rounded-full" />
-                      </div>
-                    </div>
-                    <DashboardSkeletonBlock className="h-3 w-14 rounded-full" />
+      <div className="flex flex-col gap-7">
+        <DashboardPanel className="overflow-hidden bg-card px-6 pb-6 pt-7">
+          <DashboardSkeletonBlock className="h-7 w-44 rounded-full" />
+          <DashboardSkeletonBlock className="mt-3 h-4 w-64 rounded-full" />
+          <div className="mt-8 space-y-6">
+            {[0, 1].map((item) => (
+              <div key={`dashboard-chat-skeleton-${item}`} className="flex items-start gap-3.5">
+                <DashboardSkeletonBlock className="size-10 rounded-full" />
+                <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_96px] gap-x-2 gap-y-2">
+                  <div className="space-y-2">
+                    <DashboardSkeletonBlock className="h-5 w-36 rounded-full" />
+                    <DashboardSkeletonBlock className="h-3 w-28 rounded-full" />
+                    <DashboardSkeletonBlock className="h-3 w-44 rounded-full" />
                   </div>
-                ))}
-              </div>
-            </DashboardPanel>
-          </div>
-
-          <div className="flex flex-col gap-7">
-            <DashboardPanel className="overflow-hidden bg-card px-6 pb-6 pt-7">
-              <DashboardSkeletonBlock className="h-7 w-44 rounded-full" />
-              <DashboardSkeletonBlock className="mt-3 h-4 w-64 rounded-full" />
-              <div className="mt-8 space-y-6">
-                {[0, 1].map((item) => (
-                  <div key={`dashboard-chat-skeleton-${item}`} className="flex items-start gap-3.5">
-                    <DashboardSkeletonBlock className="size-10 rounded-full" />
-                    <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_96px] gap-x-2 gap-y-2">
-                      <div className="space-y-2">
-                        <DashboardSkeletonBlock className="h-5 w-36 rounded-full" />
-                        <DashboardSkeletonBlock className="h-3 w-28 rounded-full" />
-                        <DashboardSkeletonBlock className="h-3 w-44 rounded-full" />
-                      </div>
-                      <div className="row-span-2 flex flex-col justify-end gap-2">
-                        <DashboardSkeletonBlock className="h-7 w-full rounded-[8px]" />
-                        <DashboardSkeletonBlock className="h-7 w-full rounded-[8px]" />
-                      </div>
-                    </div>
+                  <div className="row-span-2 flex flex-col justify-end gap-2">
+                    <DashboardSkeletonBlock className="h-7 w-full rounded-[8px]" />
+                    <DashboardSkeletonBlock className="h-7 w-full rounded-[8px]" />
                   </div>
-                ))}
+                </div>
               </div>
-              <DashboardSkeletonBlock className="mt-9 h-4 w-40 rounded-full" />
-            </DashboardPanel>
+            ))}
           </div>
-        </section>
+          <DashboardSkeletonBlock className="mt-9 h-4 w-40 rounded-full" />
+        </DashboardPanel>
+      </div>
+    </section>
 
-        <section className="mt-16">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold tracking-[-0.05em] text-white">
-                Project Progress
-              </h2>
-              <p className="mt-2 text-sm text-[#94a3b8]">
-                Track ongoing project phases once the initial project payment has been completed.
-              </p>
-            </div>
-            <DashboardSkeletonBlock className="h-12 w-40 rounded-full" />
-          </div>
+    <section className="mt-16">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold tracking-[-0.05em] text-white">
+            Project Progress
+          </h2>
+          <p className="mt-2 text-sm text-[#94a3b8]">
+            Track ongoing project phases once the initial project payment has been completed.
+          </p>
+        </div>
+        <DashboardSkeletonBlock className="h-12 w-40 rounded-full" />
+      </div>
 
-          <DashboardPanel className="mt-3 overflow-hidden bg-accent p-6">
-            <DashboardSkeletonBlock className="h-[360px] w-full rounded-[24px]" />
-          </DashboardPanel>
-        </section>
+      <DashboardPanel className="mt-3 overflow-hidden bg-accent p-6">
+        <DashboardSkeletonBlock className="h-[360px] w-full rounded-[24px]" />
+      </DashboardPanel>
+    </section>
   </main>
 );
 
@@ -401,9 +401,9 @@ const OverviewMetricCard = ({ item }) => {
           </div>
           {hasValueSwitch
             ? renderSwitchButton(
-                "inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-primary",
-                "size-4 text-muted-foreground/75",
-              )
+              "inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-primary",
+              "size-4 text-muted-foreground/75",
+            )
             : null}
         </div>
         <div className="flex flex-wrap items-end gap-x-1.5 gap-y-1 sm:gap-2">
@@ -1266,14 +1266,14 @@ const resolveProjectProgressStageLevel = (project) => {
   );
   const previousTarget = activePhaseIndex > 0
     ? clampProjectProgressValue(
-        Number(
-          phases[activePhaseIndex - 1]?.targetValue ??
-            phases[activePhaseIndex - 1]?.value ??
-            0,
-        ),
+      Number(
+        phases[activePhaseIndex - 1]?.targetValue ??
+        phases[activePhaseIndex - 1]?.value ??
         0,
-        100,
-      )
+      ),
+      0,
+      100,
+    )
     : 0;
   const activeTarget = Math.max(
     previousTarget + 1,
@@ -1286,10 +1286,10 @@ const resolveProjectProgressStageLevel = (project) => {
   );
   const progressWithinPhase = activeTarget > previousTarget
     ? clampProjectProgressValue(
-        (currentProgress - previousTarget) / (activeTarget - previousTarget),
-        0,
-        1,
-      )
+      (currentProgress - previousTarget) / (activeTarget - previousTarget),
+      0,
+      1,
+    )
     : activePhaseIndex >= phaseCount - 1
       ? 1
       : 0;
@@ -1562,7 +1562,7 @@ const ProjectProgressChartCard = ({
     const curveTemplate = isSingleSeries
       ? projectProgressCurveTemplates[0]
       : projectProgressCurveTemplates[index % projectProgressCurveTemplates.length] ||
-        projectProgressCurveTemplates[0];
+      projectProgressCurveTemplates[0];
     const finalStageLevel = resolveProjectProgressStageLevel(entry);
     const markerTypes = resolveProjectProgressVisibleMarkerTypes(
       entry,
@@ -1784,7 +1784,7 @@ const ProjectProgressSection = ({
     selectedProjectView === "overall"
       ? projects[0]
       : projects.find((project) => String(project?.id) === String(selectedProjectView)) ||
-        projects[0];
+      projects[0];
   const isOverallView = selectedProjectView === "overall";
   const visibleProjects = isOverallView
     ? projects
@@ -2038,9 +2038,9 @@ const ClientDashboardShell = ({
   }, []);
   const projectRedirectCards = React.useMemo(() => {
     const handleStartProject =
-      typeof onOpenQuickProject === "function" ? onOpenQuickProject : () => {};
+      typeof onOpenQuickProject === "function" ? onOpenQuickProject : () => { };
     const handleBrowseMarketplace =
-      typeof onOpenHireFreelancer === "function" ? onOpenHireFreelancer : () => {};
+      typeof onOpenHireFreelancer === "function" ? onOpenHireFreelancer : () => { };
 
     return [
       {
@@ -2133,8 +2133,8 @@ const ClientDashboardShell = ({
     const resizeObserver =
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
-            scheduleMeasure();
-          })
+          scheduleMeasure();
+        })
         : null;
 
     Object.values(projectCardRefs.current).forEach((card) => {
@@ -2173,131 +2173,131 @@ const ClientDashboardShell = ({
           <ClientDashboardLoadingSkeleton hero={hero} />
         ) : (
           <main className="flex-1 pb-12">
-          <section className="mt-14 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:hidden">
+            <section className="mt-14 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:hidden">
+                  {hero.dateLabel}
+                </p>
+                <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
+                  {hero.greeting}, {hero.firstName}
+                </h1>
+                {hero.description ? (
+                  <p className="mt-2 text-sm text-muted-foreground sm:mt-1">{hero.description}</p>
+                ) : null}
+              </div>
+              <p className="hidden text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:block">
                 {hero.dateLabel}
               </p>
-              <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
-                {hero.greeting}, {hero.firstName}
-              </h1>
-              {hero.description ? (
-                <p className="mt-2 text-sm text-muted-foreground sm:mt-1">{hero.description}</p>
-              ) : null}
-            </div>
-            <p className="hidden text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:block">
-              {hero.dateLabel}
-            </p>
-          </section>
+            </section>
 
-          <section className="mt-12 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
-            {metrics.map((item) => (
-              <OverviewMetricCard key={item.id || item.title} item={item} />
-            ))}
-          </section>
+            <section className="mt-12 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+              {metrics.map((item) => (
+                <OverviewMetricCard key={item.id || item.title} item={item} />
+              ))}
+            </section>
 
-          {!isProjectsLoading && showcaseItems.length === 0 ? (
-            <DraftProposalsSection
-              draftProposalRows={draftProposalRows}
-              onOpenQuickProject={onOpenQuickProject}
-              className="mt-14"
-            />
-          ) : null}
+            {!isProjectsLoading && showcaseItems.length === 0 ? (
+              <DraftProposalsSection
+                draftProposalRows={draftProposalRows}
+                onOpenQuickProject={onOpenQuickProject}
+                className="mt-14"
+              />
+            ) : null}
 
-          <section className="mt-14">
-          <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
-                    Active Projects
-                  </h2>
-                  <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
-                    <span className="absolute inset-0 rounded-full bg-[#10b981]/10" />
-                    <span className="absolute inset-0 rounded-full bg-[#10b981]/20 animate-ping" />
-                    <span className="relative block size-[6px] rounded-full bg-[#10b981]" />
-                  </span>
-                </div>
-              </div>
-
-              {shouldUseProjectCarousel ? (
-                <ProjectCarouselControls
-                  onPrevious={() => projectCarouselApi?.scrollPrev()}
-                  onNext={() => projectCarouselApi?.scrollNext()}
-                  canGoPrevious={canGoToPreviousProjects}
-                  canGoNext={canGoToNextProjects}
-                />
-              ) : null}
-            </div>
-
-            {isProjectsLoading ? (
-              <div className="grid gap-5 sm:gap-6 xl:gap-7 md:grid-cols-2 xl:grid-cols-3">
-                {[0, 1, 2].map((item) => (
-                  <ProjectCardSkeleton key={`active-project-skeleton-${item}`} />
-                ))}
-              </div>
-            ) : showcaseItems.length > 0 ? (
-              <>
-                {shouldUseProjectCarousel ? (
-                  <div className="w-full">
-                    <Carousel
-                      setApi={setProjectCarouselApi}
-                      opts={{
-                        align: "start",
-                        containScroll: "trimSnaps",
-                        slidesToScroll: 1,
-                        duration: 34,
-                      }}
-                      className="w-full"
-                    >
-                      <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
-                        {showcaseItems.map((item) => (
-                          <CarouselItem
-                            key={item.id}
-                            className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
-                          >
-                            <div
-                              ref={(node) => {
-                                projectCardRefs.current[item.id] = node;
-                              }}
-                            >
-                              <ProjectProposalCard
-                                project={item}
-                                onPay={onPayRunningProject}
-                                isPaying={runningProjectProcessingId === item.id}
-                                replaceSectionBadgeWithStatus
-                                className={activeProjectCardClassName}
-                              />
-                            </div>
-                          </CarouselItem>
-                        ))}
-                        {projectRedirectCards.map((item) => (
-                          <CarouselItem
-                            key={item.id}
-                            className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
-                          >
-                            <div
-                              style={
-                                isMobile && mobileProjectCardHeight > 0
-                                  ? { height: `${mobileProjectCardHeight}px` }
-                                  : undefined
-                              }
-                            >
-                              <ProjectRedirectCard
-                                item={item}
-                                className={activeProjectRedirectCardClassName}
-                              />
-                            </div>
-                          </CarouselItem>
-                        ))}
-                      </CarouselContent>
-                    </Carousel>
-                    <ProjectCarouselDots
-                      count={projectCarouselSnapCount}
-                      activeIndex={activeProjectSnap}
-                      onSelect={(index) => projectCarouselApi?.scrollTo(index)}
-                    />
+            <section className="mt-14">
+              <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+                      Active Projects
+                    </h2>
+                    <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
+                      <span className="absolute inset-0 rounded-full bg-[#10b981]/10" />
+                      <span className="absolute inset-0 rounded-full bg-[#10b981]/20 animate-ping" />
+                      <span className="relative block size-[6px] rounded-full bg-[#10b981]" />
+                    </span>
                   </div>
-                ) : (
+                </div>
+
+                {shouldUseProjectCarousel ? (
+                  <ProjectCarouselControls
+                    onPrevious={() => projectCarouselApi?.scrollPrev()}
+                    onNext={() => projectCarouselApi?.scrollNext()}
+                    canGoPrevious={canGoToPreviousProjects}
+                    canGoNext={canGoToNextProjects}
+                  />
+                ) : null}
+              </div>
+
+              {isProjectsLoading ? (
+                <div className="grid gap-5 sm:gap-6 xl:gap-7 md:grid-cols-2 xl:grid-cols-3">
+                  {[0, 1, 2].map((item) => (
+                    <ProjectCardSkeleton key={`active-project-skeleton-${item}`} />
+                  ))}
+                </div>
+              ) : showcaseItems.length > 0 ? (
+                <>
+                  {shouldUseProjectCarousel ? (
+                    <div className="w-full">
+                      <Carousel
+                        setApi={setProjectCarouselApi}
+                        opts={{
+                          align: "start",
+                          containScroll: "trimSnaps",
+                          slidesToScroll: 1,
+                          duration: 34,
+                        }}
+                        className="w-full"
+                      >
+                        <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                          {showcaseItems.map((item) => (
+                            <CarouselItem
+                              key={item.id}
+                              className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
+                            >
+                              <div
+                                ref={(node) => {
+                                  projectCardRefs.current[item.id] = node;
+                                }}
+                              >
+                                <ProjectProposalCard
+                                  project={item}
+                                  onPay={onPayRunningProject}
+                                  isPaying={runningProjectProcessingId === item.id}
+                                  replaceSectionBadgeWithStatus
+                                  className={activeProjectCardClassName}
+                                />
+                              </div>
+                            </CarouselItem>
+                          ))}
+                          {projectRedirectCards.map((item) => (
+                            <CarouselItem
+                              key={item.id}
+                              className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
+                            >
+                              <div
+                                style={
+                                  isMobile && mobileProjectCardHeight > 0
+                                    ? { height: `${mobileProjectCardHeight}px` }
+                                    : undefined
+                                }
+                              >
+                                <ProjectRedirectCard
+                                  item={item}
+                                  className={activeProjectRedirectCardClassName}
+                                />
+                              </div>
+                            </CarouselItem>
+                          ))}
+                        </CarouselContent>
+                      </Carousel>
+                      <ProjectCarouselDots
+                        count={projectCarouselSnapCount}
+                        activeIndex={activeProjectSnap}
+                        onSelect={(index) => projectCarouselApi?.scrollTo(index)}
+                      />
+                    </div>
+                  ) : (
                     <div className="grid items-start gap-5 sm:gap-6 xl:gap-7 md:grid-cols-2 xl:grid-cols-3">
                       {showcaseItems.map((item) => (
                         <ProjectProposalCard
@@ -2316,105 +2316,105 @@ const ClientDashboardShell = ({
                           className={activeProjectRedirectCardClassName}
                         />
                       ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <DashboardPanel className="flex min-h-[220px] items-center justify-center p-8 text-center">
-                <div className="max-w-md">
-                  <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
-                    No active projects yet
-                  </p>
-                  <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
-                    Projects will appear here once a freelancer is assigned and work has started.
-                  </p>
-                </div>
-              </DashboardPanel>
-            )}
-
-          </section>
-
-          <section className="mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
-            <div className="min-w-0 flex flex-col gap-5 sm:gap-6 xl:gap-7">
-              {!isProjectsLoading && showcaseItems.length > 0 ? (
-                <DraftProposalsSection
-                  draftProposalRows={draftProposalRows}
-                  onOpenQuickProject={onOpenQuickProject}
-                />
-              ) : null}
-              <RecentActivitySection
-                recentActivities={recentActivities}
-                onOpenViewProjects={onOpenViewProjects}
-                onOpenNotifications={handleOpenNotificationSheet}
-              />
-            </div>
-
-            <div className="grid gap-5 sm:gap-6 xl:gap-7">
-              <section className="w-full min-w-0">
-                <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-                  <div className="min-w-0">
-                    <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
-                      Active Chats
-                    </h2>
-                  </div>
-                </div>
-
-                <DashboardPanel className="w-full overflow-hidden bg-card px-5 pb-5 pt-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:pb-6 sm:pt-6">
-
-                  {acceptedFreelancers.length === 0 ? (
-                    <div className="flex min-h-[220px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[260px] sm:py-10">
-                      <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-14">
-                        <MessageSquareText className="size-6" />
-                      </div>
-                      <p className="mt-5 text-sm text-white">No active project chats yet</p>
-                      <p className="mt-2 max-w-[220px] text-xs text-[#8f8f8f]">
-                        Chat shortcuts appear here once a project becomes active and messaging is unlocked.
-                      </p>
                     </div>
-                  ) : (
-                    <>
-                      <div className="mt-5 sm:mt-6">
-                        {acceptedFreelancers.map((item, index) => (
-                          <div
-                            key={item.id}
-                            className={cn(
-                              "py-5",
-                              index === 0 ? "pt-0" : "",
-                              index === acceptedFreelancers.length - 1
-                                ? "pb-0"
-                                : "border-b border-white/[0.08]",
-                            )}
-                          >
-                            <AcceptedFreelancerRow
-                              item={item}
-                              onOpenMessages={onOpenMessages}
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={onOpenMessages}
-                        className="mt-5 flex w-full items-center justify-center gap-2 border-t border-white/[0.08] pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-[#d6d6d6] transition-colors hover:text-white"
-                      >
-                        <span>
-                          Open Messages ({acceptedFreelancersCount || acceptedFreelancers.length})
-                        </span>
-                        <ChevronRight className="size-[15px] stroke-[1.75]" />
-                      </button>
-                    </>
                   )}
+                </>
+              ) : (
+                <DashboardPanel className="flex min-h-[220px] items-center justify-center p-8 text-center">
+                  <div className="max-w-md">
+                    <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+                      No active projects yet
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+                      Projects will appear here once a freelancer is assigned and work has started.
+                    </p>
+                  </div>
                 </DashboardPanel>
-              </section>
-            </div>
-          </section>
+              )}
 
-          <ProjectProgressSection
-            progressProjects={progressProjects}
-            onViewProject={onViewProject || onOpenViewProjects}
-            onOpenQuickProject={onOpenQuickProject}
-          />
+            </section>
+
+            <section className="mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
+              <div className="min-w-0 flex flex-col gap-5 sm:gap-6 xl:gap-7">
+                {!isProjectsLoading && showcaseItems.length > 0 ? (
+                  <DraftProposalsSection
+                    draftProposalRows={draftProposalRows}
+                    onOpenQuickProject={onOpenQuickProject}
+                  />
+                ) : null}
+                <RecentActivitySection
+                  recentActivities={recentActivities}
+                  onOpenViewProjects={onOpenViewProjects}
+                  onOpenNotifications={handleOpenNotificationSheet}
+                />
+              </div>
+
+              <div className="grid gap-5 sm:gap-6 xl:gap-7">
+                <section className="w-full min-w-0">
+                  <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
+                    <div className="min-w-0">
+                      <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+                        Active Chats
+                      </h2>
+                    </div>
+                  </div>
+
+                  <DashboardPanel className="w-full overflow-hidden bg-card px-5 pb-5 pt-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:pb-6 sm:pt-6">
+
+                    {acceptedFreelancers.length === 0 ? (
+                      <div className="flex min-h-[220px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[260px] sm:py-10">
+                        <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-14">
+                          <MessageSquareText className="size-6" />
+                        </div>
+                        <p className="mt-5 text-sm text-white">No active project chats yet</p>
+                        <p className="mt-2 max-w-[220px] text-xs text-[#8f8f8f]">
+                          Chat shortcuts appear here once a project becomes active and messaging is unlocked.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="mt-5 sm:mt-6">
+                          {acceptedFreelancers.map((item, index) => (
+                            <div
+                              key={item.id}
+                              className={cn(
+                                "py-5",
+                                index === 0 ? "pt-0" : "",
+                                index === acceptedFreelancers.length - 1
+                                  ? "pb-0"
+                                  : "border-b border-white/[0.08]",
+                              )}
+                            >
+                              <AcceptedFreelancerRow
+                                item={item}
+                                onOpenMessages={onOpenMessages}
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={onOpenMessages}
+                          className="mt-5 flex w-full items-center justify-center gap-2 border-t border-white/[0.08] pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-[#d6d6d6] transition-colors hover:text-white"
+                        >
+                          <span>
+                            Open Messages ({acceptedFreelancersCount || acceptedFreelancers.length})
+                          </span>
+                          <ChevronRight className="size-[15px] stroke-[1.75]" />
+                        </button>
+                      </>
+                    )}
+                  </DashboardPanel>
+                </section>
+              </div>
+            </section>
+
+            <ProjectProgressSection
+              progressProjects={progressProjects}
+              onViewProject={onViewProject || onOpenViewProjects}
+              onOpenQuickProject={onOpenQuickProject}
+            />
           </main>
         )}
 

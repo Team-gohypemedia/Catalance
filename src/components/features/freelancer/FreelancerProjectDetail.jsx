@@ -66,7 +66,7 @@ import format from "date-fns/format";
 import isToday from "date-fns/isToday";
 import isYesterday from "date-fns/isYesterday";
 import isSameDay from "date-fns/isSameDay";
-import { getFreelancerVisibleBudgetValue } from "@/shared/lib/currency";
+import { formatINR, getFreelancerVisibleBudgetValue } from "@/shared/lib/currency";
 import { extractStructuredFieldValue } from "@/shared/lib/labeled-fields";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -206,7 +206,8 @@ const projectPanelClassName =
 const projectInsetPanelClassName =
   "rounded-[20px] border border-white/[0.08] bg-[#111111] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
 const projectSectionEyebrowClassName =
-  "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]";
+  "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
+const projectSectionSubheadingClassName = "text-white";
 const projectDetailFieldNames = [
   "Service",
   "Project",
@@ -404,7 +405,7 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
                   href={displayLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-start gap-2 break-all pr-8 text-sm font-medium text-blue-400 hover:underline"
+                  className="flex items-start gap-2 break-all pr-8 text-sm font-medium text-primary hover:underline"
                 >
                   <Link2 className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
@@ -1549,6 +1550,9 @@ const FreelancerProjectDetailContent = () => {
       extractField("Website type") ||
       project?.title ||
       "Not specified";
+    const budget =
+      extractField("Budget") ||
+      (totalBudget > 0 ? formatINR(totalBudget) : "Not set");
     const clientName =
       project?.owner?.fullName ||
       project?.client ||
@@ -1609,6 +1613,7 @@ const FreelancerProjectDetailContent = () => {
 
     return {
       service,
+      budget,
       clientName,
       timeline,
       overview,
@@ -1623,7 +1628,7 @@ const FreelancerProjectDetailContent = () => {
       ],
       pageTags: allPages,
     };
-  }, [project]);
+  }, [project, totalBudget]);
 
   const billingRoadmap = useMemo(() => {
     const milestones = [
@@ -1761,7 +1766,7 @@ const FreelancerProjectDetailContent = () => {
               <h1 className="text-[clamp(1.85rem,4vw,2.75rem)] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
                 {pageTitle}
               </h1>
-              <p className="text-sm text-[#8f96a3]">
+              <p className="text-sm text-muted-foreground">
                 {isLoading
                   ? "Loading project details..."
                   : isFallback
@@ -1769,7 +1774,7 @@ const FreelancerProjectDetailContent = () => {
                   : "Track project progress and deliverables in one place."}
               </p>
               {!isLoading && (
-                <p className="text-xs text-[#717784]">
+                <p className="text-xs text-muted-foreground/80">
                   {activeProjectManager
                     ? `Project Catalyst: ${activeProjectManager.fullName}`
                     : "Project Catalyst: Not assigned yet"}
@@ -1848,33 +1853,42 @@ const FreelancerProjectDetailContent = () => {
             </div>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              { label: "Service Type", value: projectDetailSnapshot.service },
-              { label: "Client", value: projectDetailSnapshot.clientName },
-              { label: "Timeline", value: projectDetailSnapshot.timeline },
-            ].map((item) => (
-              <div key={item.label} className={`${projectInsetPanelClassName} min-w-0`}>
-                <p className={projectSectionEyebrowClassName}>{item.label}</p>
-                <p className="mt-3 break-words text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
-                  {item.value || "Not specified"}
-                </p>
-              </div>
-            ))}
-          </div>
-
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
             <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { label: "Service Type", value: projectDetailSnapshot.service },
+                  { label: "Budget", value: projectDetailSnapshot.budget },
+                  { label: "Timeline", value: projectDetailSnapshot.timeline },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`${projectInsetPanelClassName} min-w-0 bg-[#171717]`}
+                  >
+                    <p className={projectSectionEyebrowClassName}>{item.label}</p>
+                    <p className="mt-3 break-words text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
+                      {item.value || "Not specified"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
               <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
                   <CardTitle className={projectSectionEyebrowClassName}>
-                    Overview
+                    <span className="inline-flex items-center gap-2 align-middle">
+                      <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
+                        <span className="absolute inset-0 rounded-full bg-[#10b981]/10" />
+                        <span className="absolute inset-0 rounded-full bg-[#10b981]/20 animate-ping" />
+                        <span className="relative block size-[6px] rounded-full bg-[#10b981]" />
+                      </span>
+                      <span>Overview</span>
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="flex items-start gap-3 rounded-[18px] border border-amber-500/15 bg-amber-500/5 px-4 py-4">
-                    <span className="mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_6px_rgba(255,193,7,0.08)]" />
-                    <p className="text-sm leading-7 text-[#d4d4d8]">
+                  <div className="px-2 py-1">
+                    <p className="text-sm leading-7 text-[#d4d4d8] text-justify">
                       {projectDetailSnapshot.overview ||
                         "Project scope, priorities, and delivery context will appear here once the brief is fully structured."}
                     </p>
@@ -1889,20 +1903,54 @@ const FreelancerProjectDetailContent = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {projectDetailSnapshot.websiteDetails.map((item) => (
-                      <div
-                        key={item.label}
-                        className={`${projectInsetPanelClassName} min-h-[90px] min-w-0 px-4 py-3.5 sm:px-5 sm:py-4`}
-                      >
-                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
-                          {item.label}
-                        </p>
-                        <p className="mt-3 break-words text-sm font-medium leading-6 text-white">
-                          {item.value || "Not specified"}
-                        </p>
-                      </div>
-                    ))}
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    {projectDetailSnapshot.websiteDetails.map((item) => {
+                      const val = item.value || "Not specified";
+                      const isList = val.includes(" - ") || val.match(/^[-•]\s/m);
+
+                      return (
+                        <div
+                          key={item.label}
+                          className={`min-h-[70px] min-w-0 border-l border-white/[0.08] pl-4 flex flex-col justify-start py-1 ${
+                            isList ? "sm:col-span-2" : ""
+                          }`}
+                        >
+                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            {item.label}
+                          </p>
+                          {(() => {
+                            if (isList) {
+                              const listItems = val
+                                .split(/\s+-\s+|\r?\n/)
+                                .map((entry) => entry.replace(/^[-•]\s*/, "").trim())
+                                .filter(Boolean);
+
+                              if (listItems.length > 1) {
+                                return (
+                                  <ul className="mt-4 grid gap-x-8 gap-y-3 list-none pl-0 sm:grid-cols-2">
+                                    {listItems.map((listItem, index) => (
+                                      <li
+                                        key={`${item.label}-${index}`}
+                                        className="relative pl-[1.125rem] text-sm font-medium leading-relaxed text-white"
+                                      >
+                                        <span className="absolute left-0 top-[0.6rem] h-1 w-1 rounded-full bg-white/40" />
+                                        {listItem}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                );
+                              }
+                            }
+
+                            return (
+                              <p className="mt-1.5 break-words whitespace-pre-wrap text-sm font-medium leading-6 text-white">
+                                {val}
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      );
+                    })}
                   </div>
                   {projectDetailSnapshot.pageTags.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
@@ -1966,7 +2014,7 @@ const FreelancerProjectDetailContent = () => {
                                 ? "text-emerald-300"
                                 : isActive
                                   ? "text-primary"
-                                  : "text-[#8f96a3]",
+                                  : "text-muted-foreground",
                             )}
                           >
                             Phase {index + 1}
@@ -1981,7 +2029,7 @@ const FreelancerProjectDetailContent = () => {
                                 ? "text-emerald-300"
                                 : isActive
                                   ? "text-primary"
-                                  : "text-[#8f96a3]",
+                                : "text-muted-foreground",
                             )}
                           >
                             {isCompleted ? (
@@ -2007,13 +2055,13 @@ const FreelancerProjectDetailContent = () => {
                       <CardTitle className={projectSectionEyebrowClassName}>
                         Project Description
                       </CardTitle>
-                      <CardDescription className="mt-2 text-[#8f96a3]">
+                      <CardDescription className={cn("mt-2", projectSectionSubheadingClassName)}>
                         {derivedTasks.filter((t) => t.status === "completed").length} of{" "}
                         {derivedTasks.length} tasks completed
                       </CardDescription>
                     </div>
                     <div className="min-w-[120px] space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+                      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         <span>Progress</span>
                         <span>{Math.round(overallProgress)}%</span>
                       </div>
@@ -2105,7 +2153,7 @@ const FreelancerProjectDetailContent = () => {
                                 <span
                                   className={`flex-1 text-sm ${
                                     task.status === "completed"
-                                      ? "text-[#8f96a3] line-through"
+                                      ? "text-muted-foreground line-through"
                                       : "text-white"
                                   }`}
                                 >
@@ -2144,7 +2192,7 @@ const FreelancerProjectDetailContent = () => {
                   <CardTitle className={projectSectionEyebrowClassName}>
                     Project Chat
                   </CardTitle>
-                  <CardDescription className="text-[#8f96a3]">
+                  <CardDescription className={projectSectionSubheadingClassName}>
                     Ask questions and share documents
                   </CardDescription>
                 </CardHeader>
@@ -2169,7 +2217,7 @@ const FreelancerProjectDetailContent = () => {
                       <React.Fragment key={message.id || index}>
                         {showDateDivider && (
                           <div className="my-4 flex justify-center">
-                            <span className="rounded-full border border-white/[0.06] bg-[#111111] px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-[#8f96a3]">
+                            <span className="rounded-full border border-white/[0.06] bg-[#111111] px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                               {isToday(currentDate)
                                 ? "Today"
                                 : isYesterday(currentDate)
@@ -2188,7 +2236,7 @@ const FreelancerProjectDetailContent = () => {
                           >
                             {message.sender === "other" &&
                               message.senderName && (
-                                <span className="mb-1 block text-[10px] text-[#8f96a3]">
+                                <span className="mb-1 block text-[10px] text-muted-foreground">
                                   {message.senderName}
                                 </span>
                               )}
@@ -2342,7 +2390,7 @@ const FreelancerProjectDetailContent = () => {
                             <p className="truncate text-sm font-medium text-white">
                               {doc.name}
                             </p>
-                            <p className="mt-1 text-xs text-[#8f96a3]">
+                            <p className="mt-1 text-xs text-muted-foreground">
                               {[fileSize, doc.createdAt ? format(new Date(doc.createdAt), "MMM d, yyyy") : null]
                                 .filter(Boolean)
                                 .join(" • ")}
@@ -2352,7 +2400,7 @@ const FreelancerProjectDetailContent = () => {
                       );
                     })
                   ) : (
-                    <p className="text-sm text-[#8f96a3]">
+                    <p className="text-sm text-white">
                       No documents attached yet. Upload project documentation
                       here.
                     </p>
@@ -2362,49 +2410,32 @@ const FreelancerProjectDetailContent = () => {
 
               <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]">
+                  <CardTitle className={cn(projectSectionEyebrowClassName, "flex items-center gap-2")}>
                     <IndianRupee className="h-3.5 w-3.5" />
                     Budget Summary
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 pt-0">
-                  <div className={cn(projectInsetPanelClassName, "space-y-3 p-4")}>
-                    <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 text-sm text-[#8f96a3]">
-                      <span>Total Budget</span>
-                      <span className="font-semibold text-white">
-                        {project?.currency || "₹"}
-                        {totalBudget.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 text-sm text-[#8f96a3]">
-                      <span>Spent</span>
-                      <span className="font-semibold text-primary">
-                        {project?.currency || "₹"}
-                        {spentBudget.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-[#8f96a3]">
-                      <span>Remaining</span>
-                      <span className="font-semibold text-white">
-                        {project?.currency || "₹"}
-                        {remainingBudget.toLocaleString()}
-                      </span>
-                    </div>
+                <CardContent className="space-y-3 pt-0 text-sm text-white">
+                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                    <span>Total Budget</span>
+                    <span className="font-semibold text-white">
+                      {project?.currency || "₹"}
+                      {totalBudget.toLocaleString()}
+                    </span>
                   </div>
-                  <div className="px-1">
-                    <div className="mb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
-                      <span>Project burn</span>
-                      <span>
-                        {Math.round(
-                          totalBudget > 0 ? (spentBudget / totalBudget) * 100 : 0,
-                        )}
-                        %
-                      </span>
-                    </div>
-                    <Progress
-                      value={totalBudget > 0 ? (spentBudget / totalBudget) * 100 : 0}
-                      className="h-1.5 bg-white/[0.08]"
-                    />
+                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                    <span>Spent</span>
+                    <span className="font-semibold text-emerald-400">
+                      {project?.currency || "₹"}
+                      {spentBudget.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Remaining</span>
+                    <span className="font-semibold text-white">
+                      {project?.currency || "₹"}
+                      {remainingBudget.toLocaleString()}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -2414,21 +2445,24 @@ const FreelancerProjectDetailContent = () => {
                   <CardTitle className={projectSectionEyebrowClassName}>
                     Billing Roadmap
                   </CardTitle>
+                  <CardDescription className={projectSectionSubheadingClassName}>
+                    20% to start, 40% after phase 2, and the final 40% after phase 4.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
                   {billingRoadmap.map((milestone) => (
                     <div
-                      key={milestone.id}
-                      className={cn(
-                        projectInsetPanelClassName,
-                        "space-y-3 p-4",
-                        milestone.status === "active" && "border-primary/25 bg-primary/8",
-                        milestone.status === "paid" && "border-emerald-500/20 bg-emerald-500/8",
-                      )}
-                    >
+                        key={milestone.id}
+                        className={cn(
+                          projectInsetPanelClassName,
+                          "space-y-3 p-4",
+                          milestone.status === "active" && "border-primary/25 bg-primary/10",
+                          milestone.status === "paid" && "border-emerald-500/20 bg-emerald-500/10",
+                        )}
+                      >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                             {milestone.label}
                           </p>
                           <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white">
@@ -2444,7 +2478,7 @@ const FreelancerProjectDetailContent = () => {
                             milestone.status === "active" &&
                               "border-primary/10 bg-primary/15 text-primary",
                             milestone.status === "scheduled" &&
-                              "border-white/[0.08] bg-[#111111] text-[#cfd3da]",
+                              "border-white/[0.08] bg-[#111111] text-muted-foreground",
                           )}
                         >
                           {milestone.status === "paid"
@@ -2454,7 +2488,7 @@ const FreelancerProjectDetailContent = () => {
                               : "Scheduled"}
                         </Badge>
                       </div>
-                      <p className="text-xs leading-5 text-[#8f96a3]">
+                      <p className="text-xs leading-5 text-muted-foreground">
                         {milestone.note}
                       </p>
                     </div>
@@ -2467,7 +2501,7 @@ const FreelancerProjectDetailContent = () => {
                   <CardTitle className={projectSectionEyebrowClassName}>
                     Submit Milestone
                   </CardTitle>
-                  <CardDescription className="text-[#8f96a3]">
+                  <CardDescription className={projectSectionSubheadingClassName}>
                     Send deliverables, GitHub links, and Figma files for review.
                   </CardDescription>
                 </CardHeader>

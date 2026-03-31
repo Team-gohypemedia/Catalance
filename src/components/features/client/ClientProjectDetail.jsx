@@ -26,10 +26,15 @@ import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import Send from "lucide-react/dist/esm/icons/send";
 import Upload from "lucide-react/dist/esm/icons/upload";
+import FileCode2 from "lucide-react/dist/esm/icons/file-code-2";
+import FileImage from "lucide-react/dist/esm/icons/file-image";
+import FileSpreadsheet from "lucide-react/dist/esm/icons/file-spreadsheet";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import NotebookText from "lucide-react/dist/esm/icons/notebook-text";
+import Presentation from "lucide-react/dist/esm/icons/presentation";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/features/appointments/BookAppointment";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
@@ -197,6 +202,171 @@ const formatAttachmentSize = (size) => {
   }
 
   return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+};
+
+const PROJECT_DOCUMENT_TYPE_STYLES = {
+  pdf: {
+    label: "PDF",
+    Icon: FileText,
+    accentClassName: "bg-[#442828]",
+    badgeClassName: "border-[#bf4c50] bg-[#532d2f] text-[#ff7075]",
+  },
+  ppt: {
+    label: "PPT",
+    Icon: Presentation,
+    accentClassName: "bg-[#453022]",
+    badgeClassName: "border-[#d98a45] bg-[#513223] text-[#ff9a43]",
+  },
+  pptx: {
+    label: "PPT",
+    Icon: Presentation,
+    accentClassName: "bg-[#453022]",
+    badgeClassName: "border-[#d98a45] bg-[#513223] text-[#ff9a43]",
+  },
+  xls: {
+    label: "XLS",
+    Icon: FileSpreadsheet,
+    accentClassName: "bg-[#243a2f]",
+    badgeClassName: "border-[#52cf7f] bg-[#1f3429] text-[#4ef58a]",
+  },
+  xlsx: {
+    label: "XLSX",
+    Icon: FileSpreadsheet,
+    accentClassName: "bg-[#243a2f]",
+    badgeClassName: "border-[#52cf7f] bg-[#1f3429] text-[#4ef58a]",
+  },
+  csv: {
+    label: "CSV",
+    Icon: FileCode2,
+    accentClassName: "bg-[#24304b]",
+    badgeClassName: "border-[#5d97ff] bg-[#23365a] text-[#69a7ff]",
+  },
+  doc: {
+    label: "DOC",
+    Icon: FileText,
+    accentClassName: "bg-[#292d52]",
+    badgeClassName: "border-[#7b84ff] bg-[#2a3161] text-[#8b92ff]",
+  },
+  docx: {
+    label: "DOCX",
+    Icon: FileText,
+    accentClassName: "bg-[#292d52]",
+    badgeClassName: "border-[#7b84ff] bg-[#2a3161] text-[#8b92ff]",
+  },
+  md: {
+    label: "MD",
+    Icon: NotebookText,
+    accentClassName: "bg-[#303030]",
+    badgeClassName: "border-[#8f8f8f] bg-[#2b2b2b] text-[#d8d3cf]",
+  },
+  txt: {
+    label: "TXT",
+    Icon: NotebookText,
+    accentClassName: "bg-[#303030]",
+    badgeClassName: "border-[#8f8f8f] bg-[#2b2b2b] text-[#d8d3cf]",
+  },
+  jpg: {
+    label: "IMG",
+    Icon: FileImage,
+    accentClassName: "bg-[#26383d]",
+    badgeClassName: "border-[#56c9c7] bg-[#1f3236] text-[#65ede9]",
+  },
+  jpeg: {
+    label: "IMG",
+    Icon: FileImage,
+    accentClassName: "bg-[#26383d]",
+    badgeClassName: "border-[#56c9c7] bg-[#1f3236] text-[#65ede9]",
+  },
+  png: {
+    label: "IMG",
+    Icon: FileImage,
+    accentClassName: "bg-[#26383d]",
+    badgeClassName: "border-[#56c9c7] bg-[#1f3236] text-[#65ede9]",
+  },
+  webp: {
+    label: "IMG",
+    Icon: FileImage,
+    accentClassName: "bg-[#26383d]",
+    badgeClassName: "border-[#56c9c7] bg-[#1f3236] text-[#65ede9]",
+  },
+  default: {
+    label: "FILE",
+    Icon: FileText,
+    accentClassName: "bg-[#303030]",
+    badgeClassName: "border-[#8f8f8f] bg-[#2b2b2b] text-[#d8d3cf]",
+  },
+};
+
+const getProjectDocumentExtension = (doc = {}) => {
+  const source = `${doc?.name || ""} ${doc?.url || ""}`.trim();
+  const match = source.match(/\.([a-z0-9]+)(?:[?#].*)?$/i);
+  if (match?.[1]) return match[1].toLowerCase();
+
+  const [category, subtype] = String(doc?.type || "").split("/");
+  if (category === "image") return subtype?.toLowerCase() || "png";
+  if (subtype) return subtype.toLowerCase();
+
+  return "";
+};
+
+const getProjectDocumentPresentation = (doc = {}) => {
+  const extension = getProjectDocumentExtension(doc);
+  const typeStyle =
+    PROJECT_DOCUMENT_TYPE_STYLES[extension] || PROJECT_DOCUMENT_TYPE_STYLES.default;
+
+  return {
+    extension,
+    extensionLabel: typeStyle.label || extension.toUpperCase() || "FILE",
+    ...typeStyle,
+  };
+};
+
+const formatProjectDocumentTimestamp = (value) => {
+  if (!value) return "Modified recently";
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Modified recently";
+
+  const diffDays = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 0) return "Modified today";
+  if (diffDays === 1) return "Modified 1 day ago";
+  if (diffDays < 7) return `Modified ${diffDays} days ago`;
+
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks < 5) {
+    return `Modified ${diffWeeks} ${diffWeeks === 1 ? "week" : "weeks"} ago`;
+  }
+
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) {
+    return `Modified ${diffMonths} ${diffMonths === 1 ? "month" : "months"} ago`;
+  }
+
+  const diffYears = Math.floor(diffDays / 365);
+  return `Modified ${diffYears} ${diffYears === 1 ? "year" : "years"} ago`;
+};
+
+const ProjectDocumentAvatar = ({ doc }) => {
+  const { Icon, accentClassName, badgeClassName } = getProjectDocumentPresentation(doc);
+
+  return (
+    <span
+      className={cn(
+        "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+        accentClassName,
+      )}
+    >
+      <span
+        className={cn(
+          "inline-flex h-6 w-6 items-center justify-center rounded-[8px] border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
+          badgeClassName,
+        )}
+      >
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+    </span>
+  );
 };
 
 // Skeleton Loading Component
@@ -454,6 +624,7 @@ const ProjectDashboard = () => {
   const [issueText, setIssueText] = useState("");
   const [isReporting, setIsReporting] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [assetsDialogOpen, setAssetsDialogOpen] = useState(false);
   const [date, setDate] = useState();
   const [time, setTime] = useState("");
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
@@ -1462,12 +1633,38 @@ const ProjectDashboard = () => {
   };
 
   const docs = useMemo(() => {
-    return messages.filter((m) => m.attachment).map((m) => m.attachment);
+    const seenDocuments = new Set();
+
+    return messages
+      .filter((message) => message.attachment)
+      .map((message) => ({
+        ...message.attachment,
+        createdAt:
+          message.attachment?.createdAt ||
+          message.createdAt ||
+          message.timestamp?.toISOString?.() ||
+          null,
+        messageId: message.id,
+        sender: message.sender,
+      }))
+      .filter((doc) => {
+        const signature = doc.messageId || doc.url || `${doc.name}-${doc.createdAt || ""}`;
+        if (seenDocuments.has(signature)) return false;
+        seenDocuments.add(signature);
+        return true;
+      })
+      .sort(
+        (left, right) =>
+          new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime(),
+      );
   }, [messages]);
 
   const deliverableQueue = useMemo(() => {
     return docs.map((doc, index) => {
-      const stableId = `${doc?.url || doc?.name || "deliverable"}-${index}`;
+      const stableId =
+        doc?.messageId ||
+        doc?.url ||
+        `${doc?.name || "deliverable"}-${doc?.createdAt || doc?.size || index}`;
       return {
         id: stableId,
         name: doc?.name || `Deliverable ${index + 1}`,
@@ -1477,6 +1674,11 @@ const ProjectDashboard = () => {
       };
     });
   }, [docs, deliverableReviews]);
+
+  const clientDocs = useMemo(
+    () => docs.filter((doc) => doc.sender === "user"),
+    [docs],
+  );
 
   // ... (SOP and Progress logic remains same) ...
 
@@ -2882,7 +3084,7 @@ const ProjectDashboard = () => {
                   <FreelancerInfoCard freelancer={freelancer} project={project} />
 
                   {/* Project Chat - First */}
-                  <Card className={`${projectPanelClassName} flex h-96 flex-col`}>
+                  <Card id="client-project-chat" className={`${projectPanelClassName} flex h-96 flex-col`}>
                     <CardHeader className="border-b border-border/60 space-y-0.5 pb-4">
                       <CardTitle className={projectSectionEyebrowClassName}>
                         Project Chat
@@ -3061,38 +3263,70 @@ const ProjectDashboard = () => {
                   <Card className={projectPanelClassName}>
                     <CardHeader className="pb-3">
                       <CardTitle className={projectSectionEyebrowClassName}>
-                        Project Documents
+                        Client Documents
                       </CardTitle>
+                      <CardDescription
+                        className={cn(
+                          projectSectionSubheadingClassName,
+                          "text-sm text-white/78",
+                        )}
+                      >
+                        {clientDocs.length} {clientDocs.length === 1 ? "document" : "documents"} shared by client
+                      </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-2 pt-0">
-                      {docs.length > 0 ? (
-                        docs.map((doc, idx) => {
-                          const fileSize = formatAttachmentSize(doc.size) || doc.size;
-                          return (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-3 rounded-[16px] border border-white/[0.06] bg-[#111111] px-3 py-3 text-sm"
-                            >
-                              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                                <FileText className="h-4 w-4 text-primary" />
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-white">
-                                  {doc.name}
-                                </p>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {fileSize || "File"}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })
+                    <CardContent className="pt-0">
+                      {clientDocs.length > 0 ? (
+                        <div className="space-y-1">
+                          {clientDocs.slice(0, 6).map((doc, idx) => {
+                            const fileSize = formatAttachmentSize(doc.size) || "Shared file";
+                            const { extensionLabel } = getProjectDocumentPresentation(doc);
+                            const fileHref = doc.url || "#client-project-chat";
+
+                            return (
+                              <a
+                                key={doc.messageId || doc.url || `${doc.name}-${idx}`}
+                                href={fileHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group flex items-center gap-4 rounded-[18px] px-1 py-2 transition-colors hover:bg-white/[0.025]"
+                              >
+                                <ProjectDocumentAvatar doc={doc} />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-[1rem] font-semibold leading-tight text-[#f1efed]">
+                                    {doc.name || "Shared document"}
+                                  </p>
+                                  <p className="mt-1 text-[0.96rem] text-[#a9a39d]">
+                                    {formatProjectDocumentTimestamp(doc.createdAt)}
+                                  </p>
+                                </div>
+                                <div className="shrink-0 text-right">
+                                  <p className="text-[0.95rem] font-semibold uppercase text-[#b7b1ab]">
+                                    {extensionLabel}
+                                  </p>
+                                  <p className="mt-1 text-[0.96rem] text-[#a9a39d]">
+                                    {fileSize}
+                                  </p>
+                                </div>
+                              </a>
+                            );
+                          })}
+                        </div>
                       ) : (
-                        <p className="text-sm text-white">
-                          No documents attached yet. Upload project documentation
-                          here.
-                        </p>
+                        <div className={cn(projectInsetPanelClassName, "text-sm text-white/72")}>
+                          No documents attached yet. Upload project documentation here.
+                        </div>
                       )}
+
+                      {clientDocs.length > 0 ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setAssetsDialogOpen(true)}
+                          className="mt-6 h-12 w-full rounded-full border-white/[0.08] bg-[#111111] text-xs font-medium uppercase tracking-[0.22em] text-white/78 shadow-none hover:bg-[#181818] hover:text-white"
+                        >
+                          View all shared assets
+                        </Button>
+                      ) : null}
                     </CardContent>
                   </Card>
 
@@ -3765,6 +3999,73 @@ const ProjectDashboard = () => {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={assetsDialogOpen} onOpenChange={setAssetsDialogOpen}>
+        <DialogContent className="sm:max-w-2xl border border-white/[0.08] bg-[#171717] p-0 text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+          <div className="border-b border-white/[0.06] px-6 py-5">
+            <DialogHeader className="text-left">
+              <DialogTitle className={projectSectionEyebrowClassName}>
+                Shared Assets
+              </DialogTitle>
+              <DialogDescription className="text-sm text-white/78">
+                {clientDocs.length} {clientDocs.length === 1 ? "asset" : "assets"} shared by client
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="max-h-[65vh] space-y-3 overflow-y-auto px-6 py-5">
+            {clientDocs.length > 0 ? (
+              clientDocs.map((doc, idx) => {
+                const fileSize = formatAttachmentSize(doc.size) || "Shared file";
+                const { extensionLabel } = getProjectDocumentPresentation(doc);
+
+                return (
+                  <div
+                    key={doc.messageId || doc.url || `${doc.name}-${idx}`}
+                    className={cn(
+                      projectInsetPanelClassName,
+                      "flex items-center gap-4 px-4 py-3",
+                    )}
+                  >
+                    <ProjectDocumentAvatar doc={doc} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-white">
+                        {doc.name || "Shared document"}
+                      </p>
+                      <p className="mt-1 text-xs text-white/60">
+                        {formatProjectDocumentTimestamp(doc.createdAt)}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/68">
+                        {extensionLabel}
+                      </p>
+                      <p className="mt-1 text-xs text-white/60">
+                        {fileSize}
+                      </p>
+                    </div>
+                    {doc.url ? (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="ml-2 rounded-full border-white/[0.08] bg-[#111111] text-white/82 shadow-none hover:bg-[#1b1b1b] hover:text-white"
+                      >
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                          Open
+                        </a>
+                      </Button>
+                    ) : null}
+                  </div>
+                );
+              })
+            ) : (
+              <div className={cn(projectInsetPanelClassName, "text-sm text-white/72")}>
+                No shared assets are available yet.
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>

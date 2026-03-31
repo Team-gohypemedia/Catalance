@@ -440,12 +440,11 @@ const getProposalDraftGroupKey = (proposal = {}) => {
     return `draft-signature:${normalizedProposal.draftSignature}`;
   }
 
-  return `draft:${
-    normalizedProposal.id ||
+  return `draft:${normalizedProposal.id ||
     normalizedProposal.title ||
     normalizedProposal.submittedDate ||
     "proposal"
-  }`;
+    }`;
 };
 
 const getProposalInvitee = (proposal = {}) => {
@@ -521,17 +520,17 @@ const resolveProposalServiceLabel = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
   const proposalContext =
     normalizedProposal.proposalContext &&
-    typeof normalizedProposal.proposalContext === "object"
+      typeof normalizedProposal.proposalContext === "object"
       ? normalizedProposal.proposalContext
       : {};
   const questionnaireAnswersBySlug =
     proposalContext.questionnaireAnswersBySlug &&
-    typeof proposalContext.questionnaireAnswersBySlug === "object"
+      typeof proposalContext.questionnaireAnswersBySlug === "object"
       ? proposalContext.questionnaireAnswersBySlug
       : {};
   const questionnaireAnswers =
     proposalContext.questionnaireAnswers &&
-    typeof proposalContext.questionnaireAnswers === "object"
+      typeof proposalContext.questionnaireAnswers === "object"
       ? proposalContext.questionnaireAnswers
       : {};
   const contentServiceType = extractProposalLabeledValue(
@@ -571,17 +570,17 @@ const resolveProposalBusinessName = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
   const proposalContext =
     normalizedProposal.proposalContext &&
-    typeof normalizedProposal.proposalContext === "object"
+      typeof normalizedProposal.proposalContext === "object"
       ? normalizedProposal.proposalContext
       : {};
   const questionnaireAnswersBySlug =
     proposalContext.questionnaireAnswersBySlug &&
-    typeof proposalContext.questionnaireAnswersBySlug === "object"
+      typeof proposalContext.questionnaireAnswersBySlug === "object"
       ? proposalContext.questionnaireAnswersBySlug
       : {};
   const questionnaireAnswers =
     proposalContext.questionnaireAnswers &&
-    typeof proposalContext.questionnaireAnswers === "object"
+      typeof proposalContext.questionnaireAnswers === "object"
       ? proposalContext.questionnaireAnswers
       : {};
 
@@ -612,17 +611,17 @@ const resolveProposalProjectName = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
   const proposalContext =
     normalizedProposal.proposalContext &&
-    typeof normalizedProposal.proposalContext === "object"
+      typeof normalizedProposal.proposalContext === "object"
       ? normalizedProposal.proposalContext
       : {};
   const questionnaireAnswersBySlug =
     proposalContext.questionnaireAnswersBySlug &&
-    typeof proposalContext.questionnaireAnswersBySlug === "object"
+      typeof proposalContext.questionnaireAnswersBySlug === "object"
       ? proposalContext.questionnaireAnswersBySlug
       : {};
   const questionnaireAnswers =
     proposalContext.questionnaireAnswers &&
-    typeof proposalContext.questionnaireAnswers === "object"
+      typeof proposalContext.questionnaireAnswers === "object"
       ? proposalContext.questionnaireAnswers
       : {};
   const serviceLabel = resolveProposalServiceLabel(normalizedProposal);
@@ -848,17 +847,17 @@ const buildProposalStructuredData = (proposal, clientNameFallback = "Client") =>
   const normalizedProposal = normalizeProposalRecord(proposal);
   const proposalContext =
     normalizedProposal.proposalContext &&
-    typeof normalizedProposal.proposalContext === "object"
+      typeof normalizedProposal.proposalContext === "object"
       ? normalizedProposal.proposalContext
       : {};
   const questionnaireAnswersBySlug =
     proposalContext.questionnaireAnswersBySlug &&
-    typeof proposalContext.questionnaireAnswersBySlug === "object"
+      typeof proposalContext.questionnaireAnswersBySlug === "object"
       ? proposalContext.questionnaireAnswersBySlug
       : {};
   const questionnaireAnswers =
     proposalContext.questionnaireAnswers &&
-    typeof proposalContext.questionnaireAnswers === "object"
+      typeof proposalContext.questionnaireAnswers === "object"
       ? proposalContext.questionnaireAnswers
       : {};
   const content = normalizedProposal.content || normalizedProposal.summary || "";
@@ -1373,7 +1372,7 @@ const ProposalRowCard = ({
               className={cn(
                 "rounded-full border bg-transparent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
                 proposalCardStatusClasses[proposal.status] ||
-                  proposalCardStatusClasses.pending,
+                proposalCardStatusClasses.pending,
               )}
             >
               {statusLabels[proposal.status] || "Pending"}
@@ -1481,7 +1480,7 @@ const ProposalRowCard = ({
           <div className="mt-auto flex flex-col gap-3">
             {showPrimaryAction ? (
               <div className="grid grid-cols-2 gap-3">
-              <Button
+                <Button
                   className="h-11 rounded-[14px] border border-border bg-background/35 px-6 text-sm font-semibold text-foreground shadow-none hover:bg-background"
                   onClick={() => onOpen?.(proposal)}
                 >
@@ -1743,12 +1742,10 @@ const ProposalFreelancerDetailsDialog = ({
             </DialogTitle>
             <DialogDescription className="text-sm leading-6 text-[#94a3b8]">
               {recipients.length > 1
-                ? `${recipients.length} freelancers have received this proposal for ${
-                    resolveProposalTitle(proposal) || "this project"
-                  }.`
-                : `Review who received this proposal for ${
-                    resolveProposalTitle(proposal) || "this project"
-                  }.`}
+                ? `${recipients.length} freelancers have received this proposal for ${resolveProposalTitle(proposal) || "this project"
+                }.`
+                : `Review who received this proposal for ${resolveProposalTitle(proposal) || "this project"
+                }.`}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -1951,8 +1948,8 @@ const mapLocalDraftProposal = (proposal) => {
     freelancerId: normalizedProposal.freelancerId || null,
     submittedDate: formatProposalDate(
       normalizedProposal.updatedAt ||
-        normalizedProposal.createdAt ||
-        new Date().toISOString(),
+      normalizedProposal.createdAt ||
+      new Date().toISOString(),
     ),
     avatar: normalizedProposal.avatar || "",
     summary: normalizedProposal.summary || normalizedProposal.content || "",
@@ -2045,11 +2042,10 @@ const getProposalMergeKey = (proposal) => {
     return `proposal:${normalizedProposal.projectId}:${normalizedProposal.freelancerId}`;
   }
 
-  return `proposal:${
-    normalizedProposal.projectId ||
+  return `proposal:${normalizedProposal.projectId ||
     normalizedProposal.title ||
     normalizedProposal.submittedDate
-  }`;
+    }`;
 };
 
 const mergeProposalCollections = (remote = [], localDrafts = []) => {
@@ -2269,12 +2265,12 @@ const ClientProposalContent = () => {
         const updatedSavedProposals = savedProposals.map((savedProposal) =>
           savedProposal.id === proposal.id
             ? {
-                ...savedProposal,
-                ownerId: user?.id || savedProposal.ownerId || null,
-                syncedProjectId: projectId,
-                projectId,
-                syncedAt: savedProposal.syncedAt || now,
-              }
+              ...savedProposal,
+              ownerId: user?.id || savedProposal.ownerId || null,
+              syncedProjectId: projectId,
+              projectId,
+              syncedAt: savedProposal.syncedAt || now,
+            }
             : savedProposal,
         );
 
@@ -2563,7 +2559,7 @@ const ClientProposalContent = () => {
             }
             toast.success(
               fallbackPayload?.data?.message ||
-                "Payment completed. Project is now active.",
+              "Payment completed. Project is now active.",
             );
             await fetchProposals();
             return;
@@ -2802,20 +2798,20 @@ const ClientProposalContent = () => {
       setSelectedProposalForSend((current) =>
         current && getProposalDraftGroupKey(current) === draftGroupKey
           ? {
-              ...current,
-              ...mappedLocalDraft,
-              sentFreelancers: current.sentFreelancers,
-            }
+            ...current,
+            ...mappedLocalDraft,
+            sentFreelancers: current.sentFreelancers,
+          }
           : current,
       );
 
       setActiveProposal((current) =>
         current
           ? {
-              ...current,
-              ...mappedLocalDraft,
-              sentFreelancers: current.sentFreelancers,
-            }
+            ...current,
+            ...mappedLocalDraft,
+            sentFreelancers: current.sentFreelancers,
+          }
           : current,
       );
 
@@ -2921,9 +2917,9 @@ const ClientProposalContent = () => {
 
         let project = sourceProjectId
           ? {
-              id: sourceProjectId,
-              status: proposal.projectStatus || "OPEN",
-            }
+            id: sourceProjectId,
+            status: proposal.projectStatus || "OPEN",
+          }
           : null;
 
         if (sourceProjectId && DRAFT_PROJECT_STATUSES.has(currentProjectStatus)) {
@@ -3102,11 +3098,11 @@ const ClientProposalContent = () => {
         const nextPending =
           sentFreelancers.length > 0
             ? {
-                ...proposal,
-                sentFreelancers,
-                status: hasPendingInvite ? "pending" : proposal.status,
-                isGroupedPending: sentFreelancers.length > 1,
-              }
+              ...proposal,
+              sentFreelancers,
+              status: hasPendingInvite ? "pending" : proposal.status,
+              isGroupedPending: sentFreelancers.length > 1,
+            }
             : proposal;
 
         if (pendingIndexes.has(draftKey)) {
@@ -3241,11 +3237,11 @@ const ClientProposalContent = () => {
     );
     const skillMatched = projectRequiredSkills.length
       ? normalized.filter((freelancer) => {
-          const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
-          return projectRequiredSkills.some((requiredSkill) =>
-            freelancerMatchesRequiredSkill(requiredSkill, freelancerSkillTokens),
-          );
-        })
+        const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
+        return projectRequiredSkills.some((requiredSkill) =>
+          freelancerMatchesRequiredSkill(requiredSkill, freelancerSkillTokens),
+        );
+      })
       : normalized;
 
     const matched =
@@ -4007,7 +4003,7 @@ const ClientProposalContent = () => {
             </div>
           </DialogFooter>
         </DialogContent>
-        </Dialog>
+      </Dialog>
 
       <FreelancerSelectionDialog
         open={showFreelancerSelect}

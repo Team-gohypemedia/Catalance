@@ -167,12 +167,6 @@ const FreelancerSelectionDialog = ({
             <Badge className="border-primary/20 bg-primary/10 text-primary">
               {filteredFreelancers.length} available
             </Badge>
-            <Badge variant="outline">
-              Ranked {freelancerSelectionData.totalRanked}
-            </Badge>
-            <Badge variant="outline" className="text-muted-foreground">
-              50%+ match only
-            </Badge>
             {freelancerSelectionData.invitedCount > 0 && (
               <Badge variant="outline" className="text-muted-foreground">
                 Invited {freelancerSelectionData.invitedCount}
