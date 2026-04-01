@@ -13,12 +13,19 @@ import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import SlidersHorizontal from "lucide-react/dist/esm/icons/sliders-horizontal";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 import { getSession } from "@/shared/lib/auth-storage";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -80,6 +87,23 @@ const toTaskIdArray = (value) => {
 
 const clampProgress = (value) =>
   Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+
+const phaseTimelineShares = [15, 15, 50, 20];
+
+const resolvePhaseIndexFromProgress = (progress = 0, totalPhases = 4) => {
+  const normalizedProgress = clampProgress(progress);
+  const activeShares = phaseTimelineShares.slice(0, Math.max(1, totalPhases));
+  let cumulative = 0;
+
+  for (let index = 0; index < activeShares.length; index += 1) {
+    cumulative += activeShares[index] || 0;
+    if (normalizedProgress < cumulative) {
+      return index;
+    }
+  }
+
+  return Math.max(0, activeShares.length - 1);
+};
 
 const normalizeComparableText = (value = "") =>
   String(value || "").trim().toLowerCase();
@@ -157,8 +181,24 @@ const resolveFreelancerProjectServiceType = (project = {}, proposal = null) =>
 const buildDefaultPhases = (count = 4) =>
   Array.from({ length: Math.max(1, count) }, (_, index) => ({
     label: `Phase ${index + 1}`,
-    value: Math.round(((index + 1) / Math.max(count, 1)) * 100),
+    value: 0,
   }));
+
+const isProjectAwaitingKickoff = (project = {}) => {
+  const normalizedStatus = String(project?.status || "").trim().toUpperCase();
+  if (normalizedStatus === "AWAITING_PAYMENT") {
+    return true;
+  }
+
+  const nextDueInstallment = project?.paymentPlan?.nextDueInstallment || null;
+  const dueSequence = Number(nextDueInstallment?.sequence);
+  const installmentMarkedPaid = Boolean(
+    nextDueInstallment?.isPaid ||
+      Number(nextDueInstallment?.amountPaid || 0) > 0,
+  );
+
+  return Number.isFinite(dueSequence) && dueSequence <= 1 && !installmentMarkedPaid;
+};
 
 const buildProjectPhaseSteps = (project) => {
   const sop = getSopFromTitle(project?.sourceTitle || project?.templateTitle || project?.serviceType || project?.title);
@@ -256,6 +296,9 @@ const resolvePhaseStepsForDisplay = (steps, phaseLike, fallbackLabel = "Upcoming
 };
 
 const buildProjectPhases = (project) => {
+  const sop = getSopFromTitle(
+    project?.sourceTitle || project?.templateTitle || project?.serviceType || project?.title,
+  );
   const phaseSteps = buildProjectPhaseSteps(project);
   const paymentPlanPhases = Array.isArray(project?.paymentPlan?.phases)
     ? project.paymentPlan.phases
@@ -307,12 +350,30 @@ const buildProjectPhases = (project) => {
   }
 
   return buildDefaultPhases(Number(project?.phaseCount) || 4).map((phase, index) => {
-    const subLabel = index === 0 ? "Current phase" : "Upcoming";
+    const sopPhase = Array.isArray(sop?.phases) ? sop.phases[index] : null;
+    const cleanedSopPhaseName = String(sopPhase?.name || "")
+      .replace(/\s*\(\s*Phase-\d+\s*\)/i, "")
+      .trim();
+    const steps = resolvePhaseStepsForDisplay(
+      phaseSteps[index],
+      phase,
+      index === 0 ? "Current phase" : "Upcoming",
+    );
+    const completedStepCount = Array.isArray(steps)
+      ? steps.filter((step) => String(step?.state || "").toLowerCase() === "complete").length
+      : 0;
+    const totalStepCount = Array.isArray(steps) ? steps.length : 0;
+    const subLabel = totalStepCount > 0
+      ? `${completedStepCount}/${totalStepCount} tasks done`
+      : index === 0
+        ? "Current phase"
+        : "Upcoming";
 
     return {
       ...phase,
+      label: cleanedSopPhaseName || phase.label,
       subLabel,
-      steps: resolvePhaseStepsForDisplay(phaseSteps[index], phase, subLabel),
+      steps,
     };
   });
 };
@@ -839,6 +900,11 @@ const freelancerDashboardCurrencyFormatter = new Intl.NumberFormat("en-IN", {
 
 const formatFreelancerDashboardCurrency = (amount) =>
   freelancerDashboardCurrencyFormatter.format(Number(amount) || 0);
+
+const FREELANCER_SHARE_RATIO = 0.7;
+
+const toFreelancerShareAmount = (amount) =>
+  Math.round((Number(amount) || 0) * FREELANCER_SHARE_RATIO);
 
 const INITIAL_FREELANCER_DASHBOARD_METRICS = {
   activeProjects: 0,
@@ -1532,6 +1598,67 @@ const FreelancerCarouselDots = ({
   );
 };
 
+const FreelancerRunningProjectCard = ({
+  item,
+  isSelected,
+  canShowSelection,
+  onSelect,
+}) => {
+  const statusBg = "bg-[#2f1e05] text-[#fbbf24]";
+  const lineBg = "bg-[#f97316]";
+  const progress = Math.max(0, Math.min(100, Number(item?.progress) || 0));
+  const badgeLabel =
+    String(item?.statusLabel || "").trim().toLowerCase() === "awaiting clearance"
+      ? "In Progress"
+      : item?.statusLabel;
+
+  return (
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      className={cn(
+        "relative cursor-pointer overflow-hidden rounded-[18px] bg-background/30 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition-colors hover:bg-background/40",
+        canShowSelection && isSelected && "border-transparent bg-card shadow-[inset_0_0_0_2px_rgba(250,204,21,1)]",
+      )}
+    >
+      <CardContent className={cn("p-4 pb-6", canShowSelection && isSelected && "pb-7")}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                {String(item?.clientLabel || "").toUpperCase()}
+              </p>
+              <p className="mt-2 truncate text-[1.15rem] font-semibold tracking-[-0.03em] text-white">
+                {item?.title}
+              </p>
+              <p className="mt-1 text-[11px] text-zinc-400">{item?.timeLabel}</p>
+            </div>
+
+            <Badge className={cn("rounded-[10px] border-0 px-3 py-1 text-[11px] font-semibold", statusBg)}>
+              {badgeLabel}
+            </Badge>
+          </div>
+
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-[11px] text-zinc-400">
+              <span>Freelancer share</span>
+              <span className="font-semibold text-zinc-100">{item?.amount}</span>
+            </div>
+            <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
+              <div className={cn("h-full rounded-full", lineBg)} style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const FreelancerPendingProposalRow = ({ item }) => (
   <div className="grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_184px] lg:items-end">
     <div className="min-w-0 w-full">
@@ -1788,6 +1915,13 @@ export const DashboardContent = ({ _roleOverride }) => {
   const [projectCarouselSnapCount, setProjectCarouselSnapCount] = useState(0);
   const [activeProjectSnap, setActiveProjectSnap] = useState(0);
   const [mobileProjectCardHeight, setMobileProjectCardHeight] = useState(0);
+  const [runningProjectsFilter, setRunningProjectsFilter] = useState("all");
+  const [runningProjectsCarouselApi, setRunningProjectsCarouselApi] = useState(null);
+  const [canGoToPreviousRunningProjects, setCanGoToPreviousRunningProjects] = useState(false);
+  const [canGoToNextRunningProjects, setCanGoToNextRunningProjects] = useState(false);
+  const [runningProjectsCarouselSnapCount, setRunningProjectsCarouselSnapCount] = useState(0);
+  const [activeRunningProjectsSnap, setActiveRunningProjectsSnap] = useState(0);
+  const [selectedRunningProjectId, setSelectedRunningProjectId] = useState(null);
   const projectCardRefs = useRef({});
   const [profileCompletion, setProfileCompletion] = useState({
     percent: 0,
@@ -2393,7 +2527,7 @@ export const DashboardContent = ({ _roleOverride }) => {
           id: proposal?.id || `pending-proposal-${index}`,
           title: toDisplayTitleCase(title),
           updatedAt: requestTime,
-          budget: formatFreelancerDashboardCurrency(Number(proposal?.amount) || 0),
+          budget: formatFreelancerDashboardCurrency(toFreelancerShareAmount(proposal?.amount)),
           service: serviceType ? toDisplayTitleCase(serviceType) : "General Service",
           projectId: proposal?.project?.id,
           onView: () => {
@@ -2418,6 +2552,11 @@ export const DashboardContent = ({ _roleOverride }) => {
   );
 
   const resolveProjectProgress = useCallback((proposal, index = 0) => {
+    const project = proposal?.project || {};
+    if (isProjectAwaitingKickoff(project)) {
+      return 0;
+    }
+
     const explicitProgress = Number(proposal?.project?.progress);
     if (Number.isFinite(explicitProgress)) {
       return Math.max(0, Math.min(100, Math.round(explicitProgress)));
@@ -2429,8 +2568,10 @@ export const DashboardContent = ({ _roleOverride }) => {
       return Math.max(12, Math.min(100, Math.round((projectSpent / proposalAmount) * 100)));
     }
 
-    const fallbackProgress = [75, 54, 38, 66];
-    return fallbackProgress[index % fallbackProgress.length];
+    const normalizedStatus = String(project?.status || "").trim().toUpperCase();
+    if (normalizedStatus === "IN_PROGRESS") return 35;
+    if (normalizedStatus === "OPEN") return 10;
+    return 0;
   }, []);
 
   const runningProjectCards = useMemo(
@@ -2449,11 +2590,49 @@ export const DashboardContent = ({ _roleOverride }) => {
           "Client";
         
         // Build full phase structure with steps using the same logic as client dashboard
-        const phases = buildProjectPhases(project);
+        const basePhases = buildProjectPhases(project);
+        const sop = getSopFromTitle(
+          project?.sourceTitle || project?.templateTitle || project?.serviceType || project?.title,
+        );
+        const phaseSteps = buildProjectPhaseSteps(project);
+        const requiredPhaseCount = Math.max(
+          4,
+          Number(project?.phaseCount) || 0,
+          Array.isArray(sop?.phases) ? sop.phases.length : 0,
+          basePhases.length,
+        );
+
+        const phases = Array.from({ length: requiredPhaseCount }, (_, phaseIndex) => {
+          if (phaseIndex < basePhases.length) {
+            return basePhases[phaseIndex];
+          }
+
+          const sopPhase = Array.isArray(sop?.phases) ? sop.phases[phaseIndex] : null;
+          const phaseLabel = String(sopPhase?.name || `Phase ${phaseIndex + 1}`)
+            .replace(/\s*\(\s*Phase-\d+\s*\)/i, "")
+            .trim();
+
+          return {
+            label: phaseLabel || `Phase ${phaseIndex + 1}`,
+            value: 0,
+            progress: 0,
+            subLabel: phaseIndex === 0 ? "Current phase" : "Upcoming",
+            steps: Array.isArray(phaseSteps[phaseIndex]) ? phaseSteps[phaseIndex] : [],
+          };
+        });
+
         const completedPhases = phases.filter(
-          (phase) => clampProgress(phase?.progress ?? phase?.value ?? 0) >= 100
+          (phase, phaseIndex) =>
+            isPhaseMarkedComplete(
+              phase,
+              phaseIndex === 0 ? "Current phase" : "Upcoming",
+            ),
         ).length;
-        const currentPhaseIndex = Math.min(completedPhases, phases.length - 1);
+        const inferredPhaseIndex = resolvePhaseIndexFromProgress(progress, phases.length || 4);
+        const currentPhaseIndex = Math.min(
+          Math.max(completedPhases, inferredPhaseIndex),
+          Math.max(0, phases.length - 1),
+        );
         const currentPhase = phases[currentPhaseIndex] || {
           label: "Phase 1",
           subLabel: "Current phase",
@@ -2486,7 +2665,7 @@ export const DashboardContent = ({ _roleOverride }) => {
           freelancerRole: "Client",
           freelancerInitial: String(ownerName).charAt(0).toUpperCase(),
           freelancerAvatar: project?.owner?.avatar || "",
-          budgetLabel: formatFreelancerDashboardCurrency(Number(proposal?.amount) || 0),
+          budgetLabel: formatFreelancerDashboardCurrency(toFreelancerShareAmount(proposal?.amount)),
           dateLabel: "Deadline",
           dateValue: deadline,
           phaseProgressValue: progress,
@@ -2796,9 +2975,9 @@ export const DashboardContent = ({ _roleOverride }) => {
   const pendingPayoutRows = useMemo(() => {
     return metrics.acceptedProposals
       .filter((proposal) => !isProposalCompletedForDashboard(proposal))
-      .slice(0, 4)
       .map((proposal, index) => {
         const project = proposal?.project || {};
+        const projectId = String(project?.id || "").trim();
         const businessName = resolveFreelancerProjectBusinessName(project, proposal);
         const dueInstallment = project?.paymentPlan?.nextDueInstallment || null;
         const rawAmount = Number(dueInstallment?.amount) || Number(proposal?.amount) || 0;
@@ -2825,6 +3004,8 @@ export const DashboardContent = ({ _roleOverride }) => {
               }).format(new Date(project.deadline))}`
             : `Updated ${formatDashboardActivityTime(proposal?.updatedAt || proposal?.createdAt)}`,
           progress: resolveProjectProgress(proposal, index),
+          projectId,
+          proposalId: proposal?.id ? String(proposal.id) : "",
         };
       });
   }, [metrics.acceptedProposals, resolveProjectProgress]);
@@ -2916,6 +3097,441 @@ export const DashboardContent = ({ _roleOverride }) => {
       `${paymentCollectionPercent}% of tracked earnings already received`,
     ];
   }, [paymentCollectionPercent, pendingPayoutRows.length, receivedPayoutRows.length]);
+
+  const awaitingClearancePayoutRows = useMemo(
+    () =>
+      pendingPayoutRows.filter((item) =>
+        String(item?.statusLabel || "").toLowerCase().includes("awaiting"),
+      ),
+    [pendingPayoutRows],
+  );
+
+  const runningProjectsRows = useMemo(() => pendingPayoutRows, [pendingPayoutRows]);
+
+  const runningProjectFilterOptions = useMemo(
+    () => {
+      const baseOptions = [
+        {
+          value: "all",
+          label: "All projects",
+          count: pendingPayoutRows.length,
+          kind: "preset",
+        },
+        {
+          value: "awaiting",
+          label: "Awaiting clearance",
+          count: awaitingClearancePayoutRows.length,
+          kind: "preset",
+        },
+      ];
+
+      const projectOptions = runningProjectsRows.map((item) => ({
+        value: `project:${String(item?.id || "")}`,
+        label: item?.title || "Untitled project",
+        count: 1,
+        kind: "project",
+      }));
+
+      return [...baseOptions, ...projectOptions];
+    },
+    [awaitingClearancePayoutRows.length, pendingPayoutRows.length, runningProjectsRows],
+  );
+
+  const visibleRunningProjects = useMemo(() => {
+    if (runningProjectsFilter === "awaiting") {
+      return awaitingClearancePayoutRows;
+    }
+
+    if (runningProjectsFilter.startsWith("project:")) {
+      const selectedProjectId = runningProjectsFilter.replace("project:", "");
+      return runningProjectsRows.filter(
+        (item) => String(item?.id || "") === String(selectedProjectId || ""),
+      );
+    }
+
+    return runningProjectsRows;
+  }, [awaitingClearancePayoutRows, runningProjectsFilter, runningProjectsRows]);
+
+  useEffect(() => {
+    if (!visibleRunningProjects.length) {
+      setSelectedRunningProjectId(null);
+      return;
+    }
+
+    const hasSelectedVisible = visibleRunningProjects.some(
+      (item) => String(item?.id || "") === String(selectedRunningProjectId || ""),
+    );
+
+    if (!hasSelectedVisible) {
+      setSelectedRunningProjectId(String(visibleRunningProjects[0].id));
+    }
+  }, [selectedRunningProjectId, visibleRunningProjects]);
+
+  const activeProposalForSchedule = useMemo(
+    () => {
+      const activeProposals = metrics.acceptedProposals.filter(
+        (proposal) => !isProposalCompletedForDashboard(proposal),
+      );
+
+      if (!activeProposals.length) return null;
+
+      if (selectedRunningProjectId) {
+        const matched = activeProposals.find((proposal) => {
+          const proposalId = String(proposal?.id || "").trim();
+          const projectId = String(proposal?.project?.id || "").trim();
+          return proposalId === String(selectedRunningProjectId) || projectId === String(selectedRunningProjectId);
+        });
+        if (matched) return matched;
+      }
+
+      return activeProposals[0] || null;
+    },
+    [metrics.acceptedProposals, selectedRunningProjectId],
+  );
+
+  const schedulePhases = useMemo(() => {
+    const phases = activeProposalForSchedule
+      ? buildProjectPhases(activeProposalForSchedule?.project || {})
+      : [];
+
+    const normalized = phases.slice(0, 4).map((phase, index) => {
+      const steps = Array.isArray(phase?.steps) ? phase.steps : [];
+      const completedSteps = steps.filter(
+        (step) => String(step?.state || "").toLowerCase() === "complete",
+      ).length;
+      const stepProgress = steps.length > 0 ? (completedSteps / steps.length) * 100 : 0;
+
+      const explicitProgress = Number(phase?.progress ?? phase?.value ?? 0);
+      const resolvedProgress = Number.isFinite(explicitProgress) && explicitProgress > 0
+        ? clampProgress(explicitProgress)
+        : clampProgress(stepProgress);
+
+      return {
+        label: phase?.label || `Phase ${index + 1}`,
+        summary: phase?.subLabel || "Pending",
+        progress: resolvedProgress,
+        isComplete:
+          isPhaseMarkedComplete(phase, index === 0 ? "Current phase" : "Upcoming") ||
+          resolvedProgress >= 100,
+      };
+    });
+
+    while (normalized.length < 4) {
+      const nextIndex = normalized.length;
+      normalized.push({
+        label: `Phase ${nextIndex + 1}`,
+        summary: "Upcoming",
+        progress: 0,
+        isComplete: false,
+      });
+    }
+
+    return normalized;
+  }, [activeProposalForSchedule]);
+
+  const completedSchedulePhaseCount = useMemo(
+    () => schedulePhases.filter((phase) => phase.isComplete).length,
+    [schedulePhases],
+  );
+
+  const currentSchedulePhase = useMemo(
+    () => schedulePhases.find((phase) => !phase.isComplete) || schedulePhases[schedulePhases.length - 1] || null,
+    [schedulePhases],
+  );
+
+  const pendingSchedulePhase = useMemo(
+    () =>
+      schedulePhases.find(
+        (phase) =>
+          !phase.isComplete &&
+          String(phase?.label || "") !== String(currentSchedulePhase?.label || ""),
+      ) || null,
+    [currentSchedulePhase, schedulePhases],
+  );
+
+  const scheduledSchedulePhase = useMemo(
+    () => schedulePhases[schedulePhases.length - 1] || null,
+    [schedulePhases],
+  );
+
+  const scheduleTimelineShares = useMemo(() => [15, 15, 50, 20], []);
+
+  const scheduleTimelineStarts = useMemo(() => {
+    let cursor = 0;
+    return scheduleTimelineShares.map((share) => {
+      const start = cursor;
+      cursor += share;
+      return start;
+    });
+  }, [scheduleTimelineShares]);
+
+  const activeScheduleProgressPct = useMemo(() => {
+    if (!activeProposalForSchedule) return 0;
+
+    const payoutHeuristic = clampProgress(resolveProjectProgress(activeProposalForSchedule, 0));
+
+    const phaseWeightedProgress = schedulePhases.reduce(
+      (acc, phase, index) => {
+        if (acc.locked) {
+          return acc;
+        }
+
+        const share = scheduleTimelineShares[index] ?? 0;
+        if (phase?.isComplete) {
+          return {
+            value: acc.value + share,
+            locked: false,
+          };
+        }
+
+        return {
+          value: acc.value + share * (clampProgress(phase?.progress ?? 0) / 100),
+          locked: true,
+        };
+      },
+      { value: 0, locked: false },
+    ).value;
+
+    return clampProgress(Math.max(payoutHeuristic, phaseWeightedProgress));
+  }, [activeProposalForSchedule, resolveProjectProgress, schedulePhases, scheduleTimelineShares]);
+
+  const activeScheduleDaysToDeadline = useMemo(() => {
+    const deadlineRaw = activeProposalForSchedule?.project?.deadline;
+    if (!deadlineRaw) return null;
+
+    const deadline = new Date(deadlineRaw);
+    if (Number.isNaN(deadline.getTime())) return null;
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    deadline.setHours(0, 0, 0, 0);
+
+    return Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  }, [activeProposalForSchedule]);
+
+  const activeScheduleDueInDays = useMemo(() => {
+    if (!Number.isFinite(activeScheduleDaysToDeadline)) return null;
+    return Math.max(0, activeScheduleDaysToDeadline);
+  }, [activeScheduleDaysToDeadline]);
+
+  const activeScheduleProjectTitle = useMemo(() => {
+    const project = activeProposalForSchedule?.project || {};
+    const businessName = resolveFreelancerProjectBusinessName(project, activeProposalForSchedule);
+    const fallbackTitle = project?.title || activeProposalForSchedule?.projectTitle || "Active payouts";
+    return (businessName ? toDisplayTitleCase(businessName) : "") || fallbackTitle;
+  }, [activeProposalForSchedule]);
+
+  const projectScheduleStartDate = useMemo(() => {
+    const project = activeProposalForSchedule?.project || {};
+    const rawDate = project?.createdAt || project?.updatedAt || null;
+    const parsed = rawDate ? new Date(rawDate) : null;
+    if (parsed && !Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }, [activeProposalForSchedule]);
+
+  const projectScheduleDurationDays = useMemo(() => {
+    const project = activeProposalForSchedule?.project || {};
+    const timelineText = String(project?.timeline || project?.duration || "").toLowerCase();
+    const match = timelineText.match(/(\d+)\s*(day|days|week|weeks|month|months)/i);
+    if (match) {
+      const value = Number(match[1]);
+      const unit = String(match[2] || "");
+      if (Number.isFinite(value) && value > 0) {
+        if (unit.startsWith("day")) return value;
+        if (unit.startsWith("week")) return value * 7;
+        if (unit.startsWith("month")) return value * 30;
+      }
+    }
+
+    const deadlineRaw = project?.deadline;
+    if (deadlineRaw) {
+      const deadline = new Date(deadlineRaw);
+      if (!Number.isNaN(deadline.getTime())) {
+        const start = new Date(projectScheduleStartDate);
+        const days = Math.ceil((deadline.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        if (Number.isFinite(days) && days > 0) {
+          return days;
+        }
+      }
+    }
+
+    return 28;
+  }, [activeProposalForSchedule, projectScheduleStartDate]);
+
+  const scheduleWeekRanges = useMemo(() => {
+    const startDate = new Date(projectScheduleStartDate);
+    const totalDays = Math.max(1, projectScheduleDurationDays);
+    const segmentSize = Math.max(1, Math.ceil(totalDays / 4));
+
+    return Array.from({ length: 4 }, (_, index) => {
+      const startOffset = index * segmentSize;
+      const endOffset = Math.min(totalDays - 1, (index + 1) * segmentSize - 1);
+
+      const start = new Date(startDate);
+      start.setDate(startDate.getDate() + startOffset);
+
+      const end = new Date(startDate);
+      end.setDate(startDate.getDate() + endOffset);
+
+      const startLabel = start.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+      const endLabel = end.toLocaleDateString("en-US", { day: "2-digit" });
+      return `${startLabel} - ${endLabel}`;
+    });
+  }, [projectScheduleDurationDays, projectScheduleStartDate]);
+
+  const scheduleTodayLeftPct = useMemo(() => {
+    const normalizedProgress = clampProgress(activeScheduleProgressPct || 0);
+    const cumulativeBoundaries = scheduleTimelineShares.reduce((acc, share, index) => {
+      const previous = index === 0 ? 0 : acc[index - 1];
+      acc.push(previous + share);
+      return acc;
+    }, []);
+
+    const activePhaseIndex = cumulativeBoundaries.findIndex((boundary) => normalizedProgress < boundary);
+    const resolvedActiveIndex = activePhaseIndex >= 0 ? activePhaseIndex : 3;
+    const phaseStartPct = scheduleTimelineStarts[resolvedActiveIndex] ?? 0;
+    const phaseWidthPct = scheduleTimelineShares[resolvedActiveIndex] ?? 25;
+    const progressIntoPhase = Math.max(0, normalizedProgress - phaseStartPct);
+    const inPhaseProgress = phaseWidthPct > 0
+      ? Math.min(1, progressIntoPhase / phaseWidthPct)
+      : 0;
+
+    const markerPct = phaseStartPct + phaseWidthPct * inPhaseProgress;
+    return Math.max(0, Math.min(100, Math.round(markerPct * 100) / 100));
+  }, [activeScheduleProgressPct, scheduleTimelineShares, scheduleTimelineStarts]);
+
+  const activeScheduleWeekIndex = useMemo(() => {
+    const normalizedMarker = Math.max(0, Math.min(99.999, Number(scheduleTodayLeftPct) || 0));
+    return Math.max(0, Math.min(3, Math.floor(normalizedMarker / 25)));
+  }, [scheduleTodayLeftPct]);
+
+  const scheduleTodayDateLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      }).format(new Date()),
+    [],
+  );
+
+  const scheduleTimelineRows = useMemo(() => {
+    const cumulativeBoundaries = scheduleTimelineShares.reduce((acc, share, index) => {
+      const previous = index === 0 ? 0 : acc[index - 1];
+      acc.push(previous + share);
+      return acc;
+    }, []);
+
+    const normalizedProgress = clampProgress(activeScheduleProgressPct || 0);
+    const activeIndex = cumulativeBoundaries.findIndex((boundary) => normalizedProgress < boundary);
+    const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 3;
+
+    return Array.from({ length: 4 }, (_, index) => {
+      const phase = schedulePhases[index] || {
+        label: `Phase ${index + 1}`,
+        summary: "Upcoming",
+        progress: 0,
+        isComplete: false,
+      };
+
+      const isCompleted = index < resolvedActiveIndex;
+      const isActive = index === resolvedActiveIndex;
+      const isPending = index === resolvedActiveIndex + 1;
+      const isScheduled = !isCompleted && !isActive && !isPending;
+
+      return {
+        id: `schedule-phase-${index + 1}`,
+        title: `Phase ${index + 1}`,
+        summary: phase.label || `Phase ${index + 1}`,
+        progress: clampProgress(phase.progress || 0),
+        rowStartPct: scheduleTimelineStarts[index] ?? 0,
+        rowWidthPct: scheduleTimelineShares[index] ?? 15,
+        isCompleted,
+        isActive,
+        isPending,
+        isScheduled,
+        rowLabel: isCompleted
+          ? "FINISHED"
+          : isActive
+            ? "In Progress"
+            : isPending
+              ? "Pending"
+              : "Scheduled",
+        detailLabel: isCompleted
+          ? "Done"
+          : isActive
+            ? `${clampProgress(phase.progress || 0)}% IN PROGRESS`
+            : isPending
+              ? "PENDING"
+              : "",
+        noteLabel: isCompleted
+          ? null
+          : isActive
+            ? !Number.isFinite(activeScheduleDaysToDeadline)
+              ? "On track"
+              : activeScheduleDaysToDeadline < 0
+                ? `Overdue ${Math.abs(activeScheduleDaysToDeadline)} days`
+                : activeScheduleDaysToDeadline === 0
+                  ? "Due today"
+                  : `Due in ${activeScheduleDaysToDeadline} days`
+            : isPending
+              ? !Number.isFinite(activeScheduleDaysToDeadline)
+                ? "Pending"
+                : activeScheduleDaysToDeadline < 0
+                  ? `Overdue ${Math.abs(activeScheduleDaysToDeadline)} days`
+                  : `Due in ${Math.max(1, activeScheduleDaysToDeadline)} days`
+              : !Number.isFinite(activeScheduleDaysToDeadline)
+                ? "Scheduled"
+                : activeScheduleDaysToDeadline < 0
+                  ? `Overdue ${Math.abs(activeScheduleDaysToDeadline)} days`
+                  : `due in ${Math.max(1, activeScheduleDaysToDeadline)} days`,
+      };
+    });
+  }, [
+    activeScheduleDaysToDeadline,
+    activeScheduleProgressPct,
+    schedulePhases,
+    scheduleTimelineShares,
+    scheduleTimelineStarts,
+  ]);
+
+  const showRunningProjectsCarouselControls =
+    runningProjectsFilter === "all" && visibleRunningProjects.length > 3;
+
+  useEffect(() => {
+    const shouldUseRunningProjectsCarousel = runningProjectsFilter === "all";
+    if (!runningProjectsCarouselApi || !shouldUseRunningProjectsCarousel) {
+      setCanGoToPreviousRunningProjects(false);
+      setCanGoToNextRunningProjects(false);
+      setRunningProjectsCarouselSnapCount(0);
+      setActiveRunningProjectsSnap(0);
+      return undefined;
+    }
+
+    const syncRunningProjectsCarouselState = () => {
+      setCanGoToPreviousRunningProjects(runningProjectsCarouselApi.canScrollPrev());
+      setCanGoToNextRunningProjects(runningProjectsCarouselApi.canScrollNext());
+      setRunningProjectsCarouselSnapCount(runningProjectsCarouselApi.scrollSnapList().length);
+      setActiveRunningProjectsSnap(runningProjectsCarouselApi.selectedScrollSnap());
+    };
+
+    syncRunningProjectsCarouselState();
+    runningProjectsCarouselApi.on("select", syncRunningProjectsCarouselState);
+    runningProjectsCarouselApi.on("reInit", syncRunningProjectsCarouselState);
+
+    return () => {
+      runningProjectsCarouselApi.off("select", syncRunningProjectsCarouselState);
+      runningProjectsCarouselApi.off("reInit", syncRunningProjectsCarouselState);
+    };
+  }, [runningProjectsCarouselApi, runningProjectsFilter]);
+
+  const activeRunningProjectsFilterLabel =
+    runningProjectFilterOptions.find((option) => option.value === runningProjectsFilter)?.label ||
+    "All projects";
 
   return (
     <div className="min-h-screen bg-background text-[#f1f5f9]">
@@ -3338,73 +3954,153 @@ export const DashboardContent = ({ _roleOverride }) => {
           {metricsLoading ? (
             <FreelancerEarningsSkeleton />
           ) : (
-          <section>
-            <div className="px-4 py-5 sm:px-6 lg:px-7">
+          <section className="flex flex-col gap-4">
+            <div className="px-4 pt-0 sm:px-6 lg:px-7">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
-                  Running Projects
+                  Delivery Pipeline
                 </h2>
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.03] px-3 py-1 text-[11px] font-medium text-zinc-300">
-                  <span className="size-1.5 rounded-full bg-emerald-400" />
-                  {metrics.acceptedProposals.length} in progress
-                </span>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-8 rounded-full border-white/[0.12] bg-white/[0.03] px-3 text-[11px] font-semibold text-zinc-200 hover:bg-white/[0.08]"
+                      >
+                        <SlidersHorizontal className="mr-1.5 size-3.5" />
+                        {activeRunningProjectsFilterLabel}
+                        <ChevronDown className="ml-1.5 size-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-52 rounded-xl border-white/[0.12] bg-[#121317] p-1.5"
+                    >
+                      {runningProjectFilterOptions.map((option) => (
+                        <DropdownMenuItem
+                          key={option.value}
+                          disabled={option.count === 0}
+                          onSelect={(event) => {
+                            if (option.count === 0) {
+                              event.preventDefault();
+                              return;
+                            }
+                            setRunningProjectsFilter(option.value);
+                          }}
+                          className={cn(
+                            "rounded-lg px-2.5 py-2 text-[12px] font-medium text-zinc-200",
+                            runningProjectsFilter === option.value && "bg-white/[0.08] text-white",
+                            option.count === 0 && "cursor-not-allowed opacity-50",
+                          )}
+                        >
+                          <span>{option.label}</span>
+                          {option.kind === "preset" ? (
+                            <span className="ml-auto text-[11px] text-zinc-400">{option.count}</span>
+                          ) : null}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </div>
 
             <FreelancerDashboardPanel className="overflow-hidden p-0">
-              <div className="px-4 pb-5 sm:px-6 lg:px-7">
-                <div className="space-y-5">
+              <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-7">
+                <div className="flex flex-col gap-4">
 
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {(pendingPayoutRows.length ? pendingPayoutRows : receivedPayoutRows)
-                      .slice(0, 3)
-                      .map((item, index) => {
-                        const isReceived = String(item.statusLabel).toLowerCase() === "received";
-                        const statusBg = isReceived ? "bg-emerald-500/15 text-emerald-300" : "bg-[#2f1e05] text-[#fbbf24]";
-                        const lineBg = isReceived ? "bg-emerald-400" : "bg-[#f97316]";
-                        const progress = Math.max(0, Math.min(100, Number(item.progress) || 0));
+                  {runningProjectsFilter === "all" && visibleRunningProjects.length > 0 ? (
+                    <>
+                      <div className="relative">
+                        {showRunningProjectsCarouselControls ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => runningProjectsCarouselApi?.scrollPrev()}
+                              disabled={!canGoToPreviousRunningProjects}
+                              aria-label="Show previous running project"
+                              className="absolute left-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:text-white/35"
+                            >
+                              <ChevronLeft className="size-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => runningProjectsCarouselApi?.scrollNext()}
+                              disabled={!canGoToNextRunningProjects}
+                              aria-label="Show next running project"
+                              className="absolute right-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:text-white/35"
+                            >
+                              <ChevronRight className="size-4" />
+                            </button>
+                          </>
+                        ) : null}
 
-                        return (
-                          <Card
-                            key={item.id}
-                            className={cn(
-                              "relative overflow-hidden rounded-[18px] border border-white/[0.08] bg-background/30 shadow-none",
-                              index === 0 && "border-[#facc15]/70",
-                            )}
-                          >
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                                    {String(item.clientLabel || "").toUpperCase()}
-                                  </p>
-                                  <p className="mt-2 truncate text-[1.15rem] font-semibold tracking-[-0.03em] text-white">
-                                    {item.title}
-                                  </p>
-                                  <p className="mt-1 text-[11px] text-zinc-400">{item.timeLabel}</p>
-                                </div>
-
-                                <Badge className={cn("rounded-[10px] border-0 px-3 py-1 text-[11px] font-semibold", statusBg)}>
-                                  {item.statusLabel}
-                                </Badge>
-                              </div>
-
-                              <div className="mt-4">
-                                <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                                  <span>Freelancer share</span>
-                                  <span className="font-semibold text-zinc-100">{item.amount}</span>
-                                </div>
-                                <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
-                                  <div className={cn("h-full rounded-full", lineBg)} style={{ width: `${progress}%` }} />
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
+                        <Carousel
+                          setApi={setRunningProjectsCarouselApi}
+                          opts={{
+                            align: "start",
+                            containScroll: "trimSnaps",
+                            slidesToScroll: 1,
+                            duration: 34,
+                          }}
+                          className="w-full"
+                        >
+                          <CarouselContent className="ml-0 items-start gap-4 [backface-visibility:hidden] [will-change:transform]">
+                            {visibleRunningProjects.map((item, index) => (
+                              <CarouselItem
+                                key={item.id}
+                                className={cn(
+                                  "basis-full pl-[2px] pr-[2px]",
+                                  visibleRunningProjects.length === 1
+                                    ? "md:basis-full xl:basis-full"
+                                    : "md:basis-[calc((100%-1rem)/2)] xl:basis-[calc((100%-2rem)/3)]",
+                                )}
+                              >
+                                <FreelancerRunningProjectCard
+                                  item={item}
+                                  isSelected={String(selectedRunningProjectId || "") === String(item.id)}
+                                  canShowSelection={visibleRunningProjects.length > 1}
+                                  onSelect={() => setSelectedRunningProjectId(String(item.id))}
+                                />
+                              </CarouselItem>
+                            ))}
+                          </CarouselContent>
+                        </Carousel>
+                      </div>
+                      <FreelancerCarouselDots
+                        count={runningProjectsCarouselSnapCount}
+                        activeIndex={activeRunningProjectsSnap}
+                        onSelect={(index) => runningProjectsCarouselApi?.scrollTo(index)}
+                        ariaLabel="Running projects carousel pagination"
+                        getDotLabel={(index) => `Go to running project ${index + 1}`}
+                      />
+                    </>
+                  ) : (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {visibleRunningProjects.map((item, index) => (
+                      <FreelancerRunningProjectCard
+                        key={item.id}
+                        item={item}
+                        isSelected={String(selectedRunningProjectId || "") === String(item.id)}
+                        canShowSelection={visibleRunningProjects.length > 1}
+                        onSelect={() => setSelectedRunningProjectId(String(item.id))}
+                      />
+                    ))}
+                    {visibleRunningProjects.length === 0 ? (
+                      <Card className="md:col-span-2 xl:col-span-3 rounded-[18px] border border-dashed border-white/[0.12] bg-background/20 shadow-none">
+                        <CardContent className="flex min-h-[140px] flex-col items-center justify-center p-6 text-center">
+                          <p className="text-sm font-medium text-white">No projects in this filter</p>
+                          <p className="mt-2 text-xs text-zinc-400">
+                            Switch to All projects to view every active payout card.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ) : null}
                   </div>
+                  )}
 
-                  <div className="space-y-4">
+                  <div className="flex flex-col gap-4">
                     <Card className="w-full rounded-[20px] border border-white/[0.08] bg-background/30 shadow-none">
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between gap-4">
@@ -3413,78 +4109,56 @@ export const DashboardContent = ({ _roleOverride }) => {
                               Project Schedule
                             </p>
                             <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
-                              Phase timeline for active payouts
+                              Phase timeline for {activeScheduleProjectTitle}
                             </p>
                           </div>
                           <Badge className="rounded-full border-0 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold text-zinc-300">
                             {(() => {
-                              const now = new Date();
-                              const month = now.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
-                              const year = now.getFullYear();
+                              const dateCandidate = activeProposalForSchedule?.project?.deadline
+                                ? new Date(activeProposalForSchedule.project.deadline)
+                                : new Date();
+                              const month = dateCandidate
+                                .toLocaleDateString("en-US", { month: "short" })
+                                .toUpperCase();
+                              const year = dateCandidate.getFullYear();
                               return `${month} ${year}`;
                             })()}
                           </Badge>
                         </div>
 
                         <div className="mt-6 rounded-[18px] border border-white/[0.06] bg-background/30 px-4 py-4">
-                          {(() => {
-                            const now = new Date();
-                            const year = now.getFullYear();
-                            const monthIndex = now.getMonth();
-                            const monthShort = now.toLocaleDateString("en-US", { month: "short" });
-                            const todayDateLabel = new Intl.DateTimeFormat("en-US", {
-                              month: "short",
-                              day: "2-digit",
-                              year: "numeric",
-                            }).format(now);
+                          {activeProposalForSchedule ? (
+                            <div className="grid grid-cols-[160px_1fr] gap-6">
+                                {(() => {
+                                  const visualRows = [...scheduleTimelineRows].reverse();
 
-                            // Match the screenshot’s 4-week grid
-                            const weekRanges = [
-                              [1, 7],
-                              [8, 14],
-                              [15, 21],
-                              [22, 28],
-                            ].map(([startDay, endDay]) => {
-                              const start = new Date(year, monthIndex, startDay);
-                              const end = new Date(year, monthIndex, endDay);
-                              const startLabel = start.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
-                              const endLabel = end.toLocaleDateString("en-US", { day: "2-digit" });
-                              return `${startLabel} - ${endLabel}`;
-                            });
-
-                            const safeDay = Math.min(28, Math.max(1, now.getDate()));
-                            const todayLeftPct = ((safeDay - 1) / 27) * 100;
-
-                            const progressPct = Math.max(0, Math.min(100, paymentCollectionPercent || 0));
-                            const overdueDays = Math.max(0, Math.round((100 - progressPct) / 20));
-                            const dueInDays = overdueDays + 3;
-
-                            return (
-                              <div className="grid grid-cols-[160px_1fr] gap-6">
-                                <div className="pt-2 space-y-10">
-                                  <div>
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                                      Phase 1
+                                  return (
+                                    <>
+                                <div className="pt-1">
+                                  <div className="h-[34px]">
+                                    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.32em] text-muted-foreground">
+                                      MILESTONES
                                     </p>
-                                    <p className="mt-1 text-[10px] text-zinc-500/70">Discovery & Research</p>
+                                    <p className="mt-1 text-[10px] opacity-0">placeholder</p>
                                   </div>
-                                  <div>
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                                      Phase 2
-                                    </p>
-                                    <p className="mt-1 text-[10px] text-zinc-500/70">Design System</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                                      Phase 3
-                                    </p>
-                                    <p className="mt-1 text-[10px] text-zinc-500/70">Backend Core</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                                      Phase 4
-                                    </p>
-                                    <p className="mt-1 text-[10px] text-zinc-500/70">Beta Testing</p>
+                                  <div className="relative mt-12 h-[214px]">
+                                    {visualRows.map((row, rowIndex) => {
+                                      const rowTop = rowIndex * 52;
+                                      return (
+                                        <div
+                                          key={`${row.id}`}
+                                          className="absolute left-0 right-0"
+                                          style={{ top: `${rowTop}px` }}
+                                        >
+                                          <p className="absolute top-[4px] flex h-[24px] items-center text-[10px] font-semibold uppercase tracking-[0.18em] leading-none text-muted-foreground">
+                                            {row.title}
+                                          </p>
+                                          <p className="absolute top-[30px] flex h-[12px] items-center leading-none text-[10px] text-white/90">
+                                            {row.summary}
+                                          </p>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 </div>
 
@@ -3492,94 +4166,175 @@ export const DashboardContent = ({ _roleOverride }) => {
                                   <div className="grid grid-cols-4 gap-4 text-center">
                                     {Array.from({ length: 4 }, (_, idx) => (
                                       <div key={`week-${idx}`} className="min-w-0">
-                                        <p className="text-[10px] font-semibold text-zinc-500/90">
+                                        <p
+                                          className={cn(
+                                            "text-[10px] font-semibold",
+                                            idx === activeScheduleWeekIndex
+                                              ? "text-primary"
+                                              : "text-muted-foreground",
+                                          )}
+                                        >
                                           Week {idx + 1}
                                         </p>
-                                        <p className="mt-1 text-[10px] text-zinc-500/60">{weekRanges[idx]}</p>
+                                        <p
+                                          className={cn(
+                                            "mt-1 text-[10px]",
+                                            idx === activeScheduleWeekIndex
+                                              ? "text-primary"
+                                              : "text-white/90",
+                                          )}
+                                        >
+                                          {scheduleWeekRanges[idx]}
+                                        </p>
                                       </div>
                                     ))}
                                   </div>
 
-                                  <div className="relative mt-6 h-[150px]">
-                                    <div className="absolute left-0 right-0 top-[72px] h-[2px] bg-white/[0.08]" />
+                                  <div className="relative mt-12 h-[214px]">
+                                    <div className="absolute left-0 right-0 top-0 bottom-0 border-l border-white/[0.05]" />
+                                    {[25, 50, 75].map((leftPct) => (
+                                      <div
+                                        key={`schedule-divider-${leftPct}`}
+                                        className="absolute top-0 bottom-0 border-l border-white/[0.04]"
+                                        style={{ left: `${leftPct}%` }}
+                                      />
+                                    ))}
                                     <div
                                       className="absolute top-[-6px] bottom-0 w-px border-l-2 border-dotted border-[#facc15]/60"
-                                      style={{ left: `${todayLeftPct}%` }}
+                                      style={{ left: `${scheduleTodayLeftPct}%` }}
                                     />
 
                                     <div
-                                      className="absolute top-[-2px] -translate-x-1/2"
-                                      style={{ left: `${todayLeftPct}%` }}
+                                      className="absolute top-[-52px] z-20 -translate-x-1/2"
+                                      style={{ left: `${scheduleTodayLeftPct}%` }}
                                     >
                                       <div className="inline-flex flex-col items-center">
-                                        <span className="rounded-[6px] bg-[#facc15] px-2 py-0.5 text-[9px] font-semibold text-black">
-                                          TODAY
+                                        <span className="text-[9px] font-semibold text-muted-foreground">
+                                          {scheduleTodayDateLabel}
                                         </span>
-                                        <span className="mt-1 text-[9px] font-semibold text-zinc-400">
-                                          {todayDateLabel}
+                                        <span className="mt-1 rounded-[6px] bg-primary px-2 py-0.5 text-[9px] font-semibold text-black">
+                                          TODAY
                                         </span>
                                       </div>
                                     </div>
 
-                                    {/* Phase bars */}
-                                    <div className="absolute left-[1%] top-[40px] h-[36px] w-[30%] rounded-[18px] bg-emerald-500/10" />
-                                    <div className="absolute left-[6%] top-[48px] inline-flex items-center rounded-full bg-emerald-500/20 px-4 py-1 text-[10px] font-semibold text-emerald-300">
-                                      <span className="mr-2 inline-flex size-2 rounded-full bg-emerald-400" />
-                                      FINISHED
-                                    </div>
+                                    {visualRows.map((row, rowIndex) => {
+                                      const rowTop = rowIndex * 52;
+                                      return (
+                                        <div key={row.id} className="absolute left-0 right-0" style={{ top: `${rowTop}px` }}>
+                                          <div
+                                            className={cn(
+                                              "absolute top-0 h-[26px] rounded-[14px]",
+                                              row.isCompleted
+                                                ? "bg-emerald-500/10"
+                                                : row.isActive
+                                                  ? "bg-[#facc15]/35"
+                                                  : "bg-white/[0.06]",
+                                            )}
+                                            style={{ left: `${row.rowStartPct}%`, width: `${row.rowWidthPct}%` }}
+                                          />
+                                          <div
+                                            className={cn(
+                                              "absolute top-[3px] inline-flex items-center rounded-full px-4 py-1 text-[10px] font-semibold",
+                                              row.isCompleted
+                                                ? "bg-emerald-500/20 text-emerald-300"
+                                                : row.isActive
+                                                  ? "bg-[#facc15] text-black"
+                                                  : "bg-white/[0.06] text-zinc-400",
+                                            )}
+                                            style={{ left: `calc(${row.rowStartPct}% + 4%)` }}
+                                          >
+                                            {row.rowLabel}
+                                          </div>
 
-                                    <div className="absolute left-[38%] top-[55px] h-[26px] w-[24%] rounded-[16px] bg-[#facc15]/35" />
-                                    <div className="absolute left-[42%] top-[58px] inline-flex items-center rounded-full bg-[#facc15] px-4 py-1 text-[10px] font-semibold text-black">
-                                      In Progress
-                                    </div>
-
-                                    <div className="absolute left-[46%] top-[83px] inline-flex items-center gap-3">
-                                      <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-300">
-                                        {progressPct}% IN PROGRESS
-                                      </span>
-                                      {overdueDays > 0 ? (
-                                        <span className="rounded-[10px] bg-rose-500/15 px-2 py-0.5 text-[9px] font-semibold text-rose-300">
-                                          Overdue {overdueDays} days
-                                        </span>
-                                      ) : null}
-                                    </div>
-
-                                    <div className="absolute left-[62%] top-[75px] h-[22px] w-[16%] rounded-[14px] bg-white/[0.06]" />
-                                    <div className="absolute left-[66%] top-[79px] inline-flex items-center rounded-full bg-white/[0.06] px-4 py-1 text-[9px] font-semibold text-zinc-400">
-                                      Pending
-                                    </div>
-
-                                    <div className="absolute right-[6%] top-[105px] h-[22px] w-[18%] rounded-[14px] bg-white/[0.06]" />
-                                    <div className="absolute right-[10%] top-[109px] inline-flex items-center rounded-full bg-white/[0.06] px-4 py-1 text-[9px] font-semibold text-zinc-400">
-                                      Scheduled
-                                    </div>
-                                    <div className="absolute right-[3%] top-[129px] text-[9px] font-semibold text-zinc-500">
-                                      due in {dueInDays} days
-                                    </div>
+                                          {row.isCompleted ? (
+                                            <div
+                                              className="absolute top-[30px] inline-flex items-center gap-1.5 text-[9px] font-semibold text-emerald-300"
+                                              style={{ left: `calc(${row.rowStartPct}% + ${Math.max(1, row.rowWidthPct - 4)}%)` }}
+                                            >
+                                              <span className="inline-flex size-3.5 items-center justify-center rounded-full border border-emerald-400/40">
+                                                <span className="size-1.5 rounded-full bg-emerald-400" />
+                                              </span>
+                                              Done
+                                            </div>
+                                          ) : row.isScheduled ? (
+                                            <div
+                                              className="absolute top-[31px] text-[9px] font-semibold text-zinc-500"
+                                              style={{ left: `calc(${row.rowStartPct}% + ${Math.max(1, row.rowWidthPct - 8)}%)` }}
+                                            >
+                                              {row.noteLabel}
+                                            </div>
+                                          ) : (
+                                            <div
+                                              className="absolute top-[31px] inline-flex items-center gap-2"
+                                              style={{ left: `calc(${row.rowStartPct}% + 2%)` }}
+                                            >
+                                              <span
+                                                className={cn(
+                                                  "size-1.5 rounded-full",
+                                                  row.isActive ? "bg-[#facc15]" : "bg-zinc-500/70",
+                                                )}
+                                              />
+                                              <span
+                                                className={cn(
+                                                  "text-[9px] font-semibold uppercase tracking-[0.16em]",
+                                                  row.isActive ? "text-[#facc15]" : "text-zinc-300",
+                                                )}
+                                              >
+                                                {row.detailLabel}
+                                              </span>
+                                              {row.noteLabel ? (
+                                                <span className="rounded-[10px] border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[9px] font-semibold text-rose-300">
+                                                  {row.noteLabel}
+                                                </span>
+                                              ) : null}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </CardContent>
-                    </Card>
+                                  </>
+                                  );
+                                })()}
+                            </div>
+                          ) : (
+                            <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
+                              <p className="text-sm font-semibold text-white">No active project</p>
+                              <p className="mt-2 text-xs text-zinc-400">
+                                Project Schedule will appear when an active project is selected.
+                              </p>
+                            </div>
+                          )}
+                            </div>
+                          </CardContent>
+                        </Card>
 
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {(() => {
+                        const hasActiveProject = Boolean(activeProposalForSchedule);
                         const statusTone =
-                          paymentCollectionPercent >= 80
+                          !hasActiveProject
+                            ? "No active project"
+                            : activeScheduleProgressPct >= 80
                             ? "On track"
-                            : paymentCollectionPercent >= 50
+                            : activeScheduleProgressPct >= 50
                               ? "Steady"
                               : "Delayed";
-                        const statusSub = paymentHealthLabel;
-                        const completed = receivedPayoutRows.length;
-                        const pending = pendingPayoutRows.length;
-                        const total = Math.max(1, completed + pending);
+                        const statusSub = hasActiveProject
+                          ? `Tracking ${activeScheduleProjectTitle}`
+                          : "Select a project from All projects to see live schedule metrics.";
+                        const completed = schedulePhases.filter((phase) => phase.isComplete).length;
+                        const pending = Math.max(0, schedulePhases.length - completed);
+                        const total = Math.max(1, schedulePhases.length || 4);
                         const dotCount = Math.min(7, total);
                         const dotsOn = Math.min(dotCount, completed);
-                        const daysRemaining = pending ? pending * 7 : 0;
+                        const daysRemaining = hasActiveProject && Number.isFinite(activeScheduleDueInDays)
+                          ? activeScheduleDueInDays
+                          : pending
+                            ? pending * 7
+                            : 0;
 
                         return (
                           <>
@@ -3593,13 +4348,13 @@ export const DashboardContent = ({ _roleOverride }) => {
                                     {statusTone}
                                   </p>
                                   <p className="text-[11px] font-semibold text-[#facc15]">
-                                    {paymentCollectionPercent}%
+                                    {hasActiveProject ? `${activeScheduleProgressPct}%` : "—"}
                                   </p>
                                 </div>
                                 <div className="mt-3 h-[2px] overflow-hidden rounded-full bg-white/[0.08]">
                                   <div
                                     className="h-full rounded-full bg-[#facc15]"
-                                    style={{ width: `${Math.min(100, paymentCollectionPercent || 0)}%` }}
+                                    style={{ width: `${hasActiveProject ? Math.min(100, activeScheduleProgressPct || 0) : 0}%` }}
                                   />
                                 </div>
                                 <p className="mt-4 text-[12px] font-medium text-zinc-400">{statusSub}</p>
@@ -3612,10 +4367,12 @@ export const DashboardContent = ({ _roleOverride }) => {
                                   Time Remaining
                                 </p>
                                 <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
-                                  {daysRemaining ? `${daysRemaining} Days` : "—"}
+                                  {hasActiveProject ? (daysRemaining ? `${daysRemaining} Days` : "—") : "No active project"}
                                 </p>
                                 <p className="mt-2 text-[12px] text-zinc-400">
-                                  Next payout window: {nextPayoutSummaryLabel}
+                                  {hasActiveProject
+                                    ? `Next payout window: ${nextPayoutSummaryLabel}`
+                                    : "Next payout window details will appear once a project is active."}
                                 </p>
                               </CardContent>
                             </Card>
@@ -3626,7 +4383,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                                   Completed Tasks
                                 </p>
                                 <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
-                                  {completed}/{total}
+                                  {hasActiveProject ? `${completed}/${total}` : "No active project"}
                                 </p>
                                 <div className="mt-3 flex items-center gap-1">
                                   {Array.from({ length: dotCount }).map((_, i) => (
@@ -3635,13 +4392,15 @@ export const DashboardContent = ({ _roleOverride }) => {
                                       key={i}
                                       className={cn(
                                         "h-1.5 w-1.5 rounded-full",
-                                        i < dotsOn ? "bg-[#facc15]" : "bg-white/[0.18]",
+                                        hasActiveProject && i < dotsOn ? "bg-[#facc15]" : "bg-white/[0.18]",
                                       )}
                                     />
                                   ))}
                                 </div>
                                 <p className="mt-3 text-[12px] text-zinc-400">
-                                  Cleared payouts vs. tracked payout sources.
+                                  {hasActiveProject
+                                    ? "Cleared payouts vs. tracked payout sources."
+                                    : "Task completion summary appears when an active project is available."}
                                 </p>
                               </CardContent>
                             </Card>
