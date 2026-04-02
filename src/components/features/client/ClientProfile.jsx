@@ -213,7 +213,7 @@ const getProfileCompletionPercentage = (formData = emptyFormData) => {
 const ProfileSurface = ({ className, children }) => (
   <section
     className={cn(
-      "rounded-[32px] border border-white/[0.05] bg-[#333333] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]",
+      "rounded-[24px] border border-white/[0.05] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:rounded-[32px]",
       className,
     )}
   >
@@ -224,12 +224,12 @@ const ProfileSurface = ({ className, children }) => (
 const SectionHeader = ({ icon: Icon, title, description, onEdit }) => (
   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div className="flex items-start gap-4">
-      <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:size-11">
         <Icon className="size-5" />
       </div>
       <div className="space-y-1">
-        <h2 className="text-[1.1rem] font-semibold tracking-[-0.02em] text-white">{title}</h2>
-        {description ? <p className="text-sm text-[#94a3b8]">{description}</p> : null}
+        <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-white sm:text-[1.1rem]">{title}</h2>
+        {description ? <p className="text-sm leading-6 text-[#94a3b8]">{description}</p> : null}
       </div>
     </div>
     {onEdit ? (
@@ -237,7 +237,7 @@ const SectionHeader = ({ icon: Icon, title, description, onEdit }) => (
         type="button"
         variant="outline"
         onClick={onEdit}
-        className="h-10 rounded-full border-white/[0.08] bg-white/[0.04] px-4 text-white hover:bg-white/[0.08]"
+        className="h-10 self-start rounded-full border-white/[0.08] bg-white/[0.04] px-4 text-white hover:bg-white/[0.08]"
       >
         <Edit2 className="mr-2 size-4 text-primary" />
         Edit
@@ -247,16 +247,16 @@ const SectionHeader = ({ icon: Icon, title, description, onEdit }) => (
 );
 
 const StatBlock = ({ value, label, tone = "default" }) => (
-  <div className="space-y-1">
+  <div className="min-w-0 space-y-1">
     <p
       className={cn(
-        "text-[1.9rem] font-semibold leading-none tracking-[-0.05em]",
+        "text-[1.55rem] font-semibold leading-none tracking-[-0.05em] sm:text-[1.9rem]",
         tone === "accent" ? "text-primary" : "text-white",
       )}
     >
       {value}
     </p>
-    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#94a3b8]">
+    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8] sm:text-[11px] sm:tracking-[0.22em]">
       {label}
     </p>
   </div>
@@ -299,7 +299,7 @@ const ProfileDisplayField = ({ icon: Icon, label, value, placeholder }) => (
     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6ba]">
       {label}
     </p>
-    <div className="flex min-h-12 items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-5">
+    <div className="flex min-h-12 items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-4 sm:px-5">
       <Icon className="size-4 shrink-0 text-primary" />
       <span
         className={cn(
@@ -320,7 +320,7 @@ const ProfileTextDisplay = ({ label, value, placeholder, className }) => (
     </p>
     <div
       className={cn(
-        "rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-6 py-5 text-sm leading-7 whitespace-pre-wrap",
+        "rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-4 py-4 text-sm leading-7 whitespace-pre-wrap sm:px-6 sm:py-5",
         value ? "text-white" : "text-[#677489]",
         className,
       )}
@@ -338,11 +338,13 @@ const ReadonlyActionField = ({ icon: Icon, label, value, actionLabel, onClick })
     <button
       type="button"
       onClick={onClick}
-      className="group flex h-12 w-full items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-5 text-left transition hover:border-white/[0.1] hover:bg-white/[0.05]"
+      className="group flex min-h-12 w-full flex-col items-start gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-left transition hover:border-white/[0.1] hover:bg-white/[0.05] sm:flex-row sm:items-center sm:px-5"
     >
-      <Icon className="size-4 shrink-0 text-primary" />
-      <span className="min-w-0 flex-1 truncate text-sm text-white">{value}</span>
-      <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+      <div className="flex w-full min-w-0 items-center gap-3">
+        <Icon className="size-4 shrink-0 text-primary" />
+        <span className="min-w-0 flex-1 truncate text-sm text-white">{value}</span>
+      </div>
+      <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary sm:ml-auto">
         {actionLabel}
         <ExternalLink className="size-3.5 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
       </span>
@@ -363,7 +365,7 @@ const BillingShortcutCard = ({
   <button
     type="button"
     onClick={onClick}
-    className="group flex w-full flex-col rounded-[28px] border border-white/[0.06] bg-white/[0.03] p-5 text-left transition hover:border-white/[0.1] hover:bg-white/[0.05]"
+    className="group flex w-full flex-col rounded-[24px] border border-white/[0.06] bg-white/[0.03] p-4 text-left transition hover:border-white/[0.1] hover:bg-white/[0.05] sm:rounded-[28px] sm:p-5"
   >
     <div
       className={cn(
@@ -377,13 +379,13 @@ const BillingShortcutCard = ({
     </div>
 
     <div className="mt-6">
-      <p className="text-[1.75rem] font-semibold tracking-[-0.04em] text-white">{title}</p>
+      <p className="text-[1.4rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.75rem]">{title}</p>
       <p className="mt-2 text-sm leading-6 text-[#94a3b8]">{description}</p>
     </div>
 
-    <div className="mt-8 flex items-center justify-between gap-3">
+    <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-[#7f8ca1]">{meta}</p>
-      <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+      <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary sm:justify-end">
         {actionLabel}
         <ExternalLink className="size-3.5 transition group-hover:translate-x-0.5" />
       </span>
@@ -399,26 +401,28 @@ const NotificationToggleRow = ({
   onCheckedChange,
   readOnly = false,
 }) => (
-  <div className="flex items-center justify-between gap-4 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-5 py-4">
-    <div className="flex min-w-0 items-center gap-4">
+  <div className="flex flex-col gap-4 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <div className="flex min-w-0 items-start gap-4">
       <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] border border-primary/20 bg-primary/10 text-primary">
         <Icon className="size-4" />
       </div>
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-white">{title}</p>
-        <p className="truncate text-xs text-[#7a7a7a]">{description}</p>
+        <p className="text-sm font-semibold text-white">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-[#7a7a7a]">{description}</p>
       </div>
     </div>
 
-    <Switch
-      checked={checked}
-      disabled={readOnly}
-      onCheckedChange={readOnly ? undefined : onCheckedChange}
-      className={cn(
-        "scale-125 data-[state=unchecked]:bg-white/[0.15]",
-        readOnly && "pointer-events-none",
-      )}
-    />
+    <div className="flex justify-end sm:justify-start">
+      <Switch
+        checked={checked}
+        disabled={readOnly}
+        onCheckedChange={readOnly ? undefined : onCheckedChange}
+        className={cn(
+          "scale-125 data-[state=unchecked]:bg-white/[0.15]",
+          readOnly && "pointer-events-none",
+        )}
+      />
+    </div>
   </div>
 );
 
@@ -437,7 +441,7 @@ const ClientProfileContent = () => {
   const [notificationPrefs, setNotificationPrefs] = useState({
     ...defaultNotificationPrefs,
   });
-  const [initialProfileState, setInitialProfileState] = useState(null);
+  const [, setInitialProfileState] = useState(null);
   const [activeEditor, setActiveEditor] = useState(null);
   const [editorSnapshot, setEditorSnapshot] = useState(null);
   const fileInputRef = useRef(null);
@@ -535,10 +539,6 @@ const ClientProfileContent = () => {
     () => projects.reduce((sum, project) => sum + (Number(project?.budget) || 0), 0),
     [projects],
   );
-  const enabledNotificationCount = useMemo(
-    () => Object.values(notificationPrefs).filter(Boolean).length,
-    [notificationPrefs],
-  );
   const profileCompletion = useMemo(
     () => getProfileCompletionPercentage(formData),
     [formData],
@@ -563,23 +563,6 @@ const ClientProfileContent = () => {
     ],
     [activeProjects.length, completedProjects.length, profileCompletion],
   );
-  const hasUnsavedChanges = useMemo(() => {
-    if (!initialProfileState) return Boolean(selectedFile);
-
-    const formChanged = Object.keys(initialProfileState.formData).some((key) => {
-      const currentValue = String(formData[key] || "").trim();
-      const initialValue = String(initialProfileState.formData[key] || "").trim();
-      return currentValue !== initialValue;
-    });
-
-    const prefsChanged = Object.keys(defaultNotificationPrefs).some(
-      (key) =>
-        Boolean(notificationPrefs[key]) !==
-        Boolean(initialProfileState.notificationPrefs?.[key]),
-    );
-
-    return formChanged || prefsChanged || Boolean(selectedFile);
-  }, [formData, initialProfileState, notificationPrefs, selectedFile]);
 
   const handleChange = (event) => {
     const { id, value } = event.target;
@@ -680,25 +663,6 @@ const ClientProfileContent = () => {
     closeProfileCropDialog();
     setActiveEditor(null);
     setEditorSnapshot(null);
-  };
-
-  const handleDiscardChanges = () => {
-    if (!initialProfileState) return;
-
-    setSelectedFile(null);
-    closeProfileCropDialog();
-    setFormData((prev) => {
-      if (
-        prev.avatar &&
-        prev.avatar.startsWith("blob:") &&
-        prev.avatar !== initialProfileState.formData.avatar
-      ) {
-        URL.revokeObjectURL(prev.avatar);
-      }
-
-      return { ...initialProfileState.formData };
-    });
-    setNotificationPrefs({ ...initialProfileState.notificationPrefs });
   };
 
   const handleOpenCustomerPortal = async () => {
@@ -988,45 +952,29 @@ const ClientProfileContent = () => {
         <main className="flex-1 pb-12">
           <ClientPageHeader
             title="Profile Settings"
-            description="Manage your professional identity and workspace preferences."
             dateLabel={false}
-            supportingText={
-              <>
-                <span>Profile {profileCompletion}% complete</span>
-                <span className="h-1 w-1 rounded-full bg-[#59606d]" aria-hidden="true" />
-                <span>
-                  {completedProjects.length} completed project
-                  {completedProjects.length === 1 ? "" : "s"}
-                </span>
-                <span className="h-1 w-1 rounded-full bg-[#59606d]" aria-hidden="true" />
-                <span>
-                  {enabledNotificationCount} active alert channel
-                  {enabledNotificationCount === 1 ? "" : "s"}
-                </span>
-              </>
-            }
           />
 
           <div className="mt-8 space-y-8">
-            <section className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+            <section className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
               <div className="space-y-6">
-                <ProfileSurface className="overflow-hidden p-7">
+                <ProfileSurface className="overflow-hidden p-5 sm:p-6 lg:p-7">
                   <div className="flex flex-col items-center text-center">
-                    <Avatar className="h-36 w-36 border-2 border-[#334155] shadow-[0_24px_60px_-34px_rgba(0,0,0,0.65)]">
+                    <Avatar className="h-28 w-28 border-2 border-[#334155] shadow-[0_24px_60px_-34px_rgba(0,0,0,0.65)] sm:h-32 sm:w-32 lg:h-36 lg:w-36">
                       <AvatarImage
                         src={formData.avatar || user?.avatar}
                         alt={formData.fullName || headerDisplayName}
                         className="object-cover"
                       />
-                      <AvatarFallback className="bg-[#10262d] text-4xl font-semibold text-[#f5f5f5]">
+                      <AvatarFallback className="bg-[#10262d] text-3xl font-semibold text-[#f5f5f5] sm:text-[2.2rem] lg:text-4xl">
                         {getInitials(formData.fullName || headerDisplayName)}
                       </AvatarFallback>
                     </Avatar>
 
-                    <h2 className="mt-8 text-[2.15rem] font-semibold tracking-[-0.05em] text-white">
+                    <h2 className="mt-6 text-[1.8rem] font-semibold tracking-[-0.05em] text-white sm:mt-7 sm:text-[2rem] lg:mt-8 lg:text-[2.15rem]">
                       {formData.fullName || headerDisplayName}
                     </h2>
-                    <p className="mt-2 text-base text-[#94a3b8]">
+                    <p className="mt-2 text-sm text-[#94a3b8] sm:text-base">
                       {formData.email || "Add an email address"}
                     </p>
                     <p className="mt-5 text-sm text-[#7f8ca1]">
@@ -1035,7 +983,7 @@ const ClientProfileContent = () => {
                   </div>
 
                   <div className="mt-8 border-t border-white/[0.05] pt-6">
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-3 gap-3 sm:gap-4">
                       {identityStats.map((item, index) => (
                         <StatBlock
                           key={item.label}
@@ -1048,7 +996,7 @@ const ClientProfileContent = () => {
                   </div>
                 </ProfileSurface>
 
-                <ProfileSurface className="p-6">
+                <ProfileSurface className="p-5 sm:p-6">
                   <SectionHeader
                     icon={CreditCard}
                     title="Billing & Payments"
@@ -1082,7 +1030,7 @@ const ClientProfileContent = () => {
               </div>
 
               <div className="space-y-6">
-                <ProfileSurface className="p-6 sm:p-8">
+                <ProfileSurface className="p-5 sm:p-6 lg:p-8">
                   <SectionHeader
                     icon={User}
                     title="Personal Information"
@@ -1090,7 +1038,7 @@ const ClientProfileContent = () => {
                     onEdit={() => openSectionEditor("personal")}
                   />
 
-                  <div className="mt-8 grid gap-5 md:grid-cols-2">
+                  <div className="mt-6 grid gap-5 md:mt-8 md:grid-cols-2">
                     <ProfileDisplayField
                       icon={User}
                       label="Full Name"
@@ -1118,7 +1066,7 @@ const ClientProfileContent = () => {
                   </div>
                 </ProfileSurface>
 
-                <ProfileSurface className="p-6 sm:p-8">
+                <ProfileSurface className="p-5 sm:p-6 lg:p-8">
                   <SectionHeader
                     icon={FileText}
                     title="Bio & Expertise"
@@ -1126,7 +1074,7 @@ const ClientProfileContent = () => {
                     onEdit={() => openSectionEditor("bio")}
                   />
 
-                  <div className="mt-8">
+                  <div className="mt-6 sm:mt-8">
                     <ProfileTextDisplay
                       label="Professional Bio"
                       value={formData.bio}
@@ -1135,7 +1083,7 @@ const ClientProfileContent = () => {
                   </div>
                 </ProfileSurface>
 
-                <ProfileSurface className="p-6 sm:p-8">
+                <ProfileSurface className="p-5 sm:p-6 lg:p-8">
                   <SectionHeader
                     icon={Building2}
                     title="Company & Presence"
@@ -1143,7 +1091,7 @@ const ClientProfileContent = () => {
                     onEdit={() => openSectionEditor("company")}
                   />
 
-                  <div className="mt-8 space-y-5">
+                  <div className="mt-6 space-y-5 sm:mt-8">
                     <ProfileDisplayField
                       icon={Building2}
                       label="Company Name"
@@ -1168,14 +1116,14 @@ const ClientProfileContent = () => {
               </div>
             </section>
 
-            <ProfileSurface className="p-6 sm:p-8">
+            <ProfileSurface className="p-5 sm:p-6 lg:p-8">
               <SectionHeader
                 icon={Bell}
                 title="Notification Preferences"
                 description="Configure how you receive project updates."
               />
 
-              <div className="mt-8 space-y-8">
+              <div className="mt-6 space-y-7 sm:mt-8 sm:space-y-8">
                 <div className="space-y-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d2d0cb]">
                     Project Notifications

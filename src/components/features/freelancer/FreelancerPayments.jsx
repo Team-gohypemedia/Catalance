@@ -22,6 +22,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTopBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,9 +42,9 @@ import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
 const surfaceClass =
-  "rounded-[28px] border border-white/[0.05] bg-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
+  "rounded-[24px] border border-white/[0.05] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:rounded-[28px]";
 
-const metricCardClass = `${surfaceClass} px-6 py-6`;
+const metricCardClass = `${surfaceClass} px-5 py-5 sm:px-6 sm:py-6`;
 
 const PAYMENT_METHODS = [
   {
@@ -336,7 +337,7 @@ const PaymentMetricCard = ({
         ) : (
           <p
             className={cn(
-              "mt-5 text-[2.2rem] font-semibold leading-none tracking-[-0.04em]",
+              "mt-4 text-[1.7rem] font-semibold leading-none tracking-[-0.04em] sm:mt-5 sm:text-[2rem]",
               tone === "success"
                 ? "text-[#22c55e]"
                 : tone === "warning"
@@ -352,7 +353,7 @@ const PaymentMetricCard = ({
         <Icon className="size-4" />
       </div>
     </div>
-    <p className="mt-5 text-sm text-[#8f96a3]">{helper}</p>
+    <p className="mt-4 text-[11px] text-[#8f96a3] sm:mt-5 sm:text-xs">{helper}</p>
   </div>
 );
 
@@ -369,13 +370,16 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-11 items-center gap-2 rounded-[12px] bg-[#facc15] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
+          className="inline-flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-[12px] bg-[#facc15] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
         >
-          <FolderOpen className="size-4 shrink-0" />
-          <span>Project Filter</span>
-          <span className="max-w-[10rem] truncate rounded-full border border-white/[0.08] bg-background px-2.5 py-0.5 text-[11px] font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            {selectedLabel}
-          </span>
+          <div className="flex min-w-0 items-center gap-2">
+            <FolderOpen className="size-4 shrink-0" />
+            <span className="hidden sm:inline">Project Filter</span>
+            <span className="sm:hidden">Filter</span>
+            <span className="max-w-[8.5rem] truncate rounded-full border border-white/[0.08] bg-background px-2.5 py-0.5 text-[11px] font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:max-w-[10rem]">
+              {selectedLabel}
+            </span>
+          </div>
           <ChevronDown className="size-4 shrink-0 opacity-80" />
         </button>
       </DropdownMenuTrigger>
@@ -429,25 +433,41 @@ const PaymentMethodRow = ({ method, onClick }) => (
   <button
     type="button"
     onClick={() => onClick(method)}
-    className="group flex w-full items-center gap-4 rounded-[18px] border border-white/[0.05] bg-white/[0.015] px-4 py-4 text-left transition hover:border-white/[0.08] hover:bg-white/[0.03]"
+    className="group flex w-full items-start gap-3 rounded-[16px] border border-white/[0.05] bg-white/[0.015] px-4 py-4 text-left transition hover:border-white/[0.08] hover:bg-white/[0.03] sm:items-center sm:gap-4 sm:rounded-[18px]"
   >
-    <div className="flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-[#141414] text-white">
+    <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#141414] text-white sm:size-11">
       <method.icon className="size-[18px]" />
     </div>
     <div className="min-w-0 flex-1">
-      <div className="flex items-center gap-2">
-        <p className="truncate text-base font-medium text-white">{method.label}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="truncate text-sm font-semibold text-white">{method.label}</p>
         {method.badge ? (
           <Badge className="border-0 bg-[#283118] px-2.5 py-0.5 text-[10px] font-medium text-[#facc15]">
             {method.badge}
           </Badge>
         ) : null}
       </div>
-      <p className="mt-1 text-sm text-[#9096a1]">{method.subtitle}</p>
+      <p className="mt-1 text-xs text-[#9096a1]">{method.subtitle}</p>
     </div>
     <ChevronRight className="size-4 text-[#8f96a3] transition group-hover:text-white" />
   </button>
 );
+
+const MilestoneStatusBadge = ({ statusTone, statusLabel }) => {
+  const statusClasses = getStatusClasses(statusTone);
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 text-sm font-medium",
+        statusClasses.text,
+      )}
+    >
+      <span className={cn("size-2.5 rounded-full", statusClasses.dot)} />
+      {statusLabel}
+    </span>
+  );
+};
 
 const EarningsTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) {
@@ -653,23 +673,18 @@ const FreelancerPayments = () => {
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
         <div className="mx-auto max-w-[1600px] space-y-6">
-          <section className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-2xl space-y-3">
-              <h1 className="text-4xl font-black tracking-tight text-white sm:text-[3.4rem]">
-                Payments
-              </h1>
-              <p className="max-w-xl text-lg leading-8 text-[#9096a1]">
-                Track your earnings, pending milestone payouts, and payout balance in one
-                freelancer workspace.
-              </p>
-            </div>
-
-            <ProjectFilterMenu
-              projects={paymentProjects}
-              value={projectFilter}
-              onValueChange={setProjectFilter}
-            />
-          </section>
+          <ClientPageHeader
+            title="Payments"
+            className="mt-0"
+            mobileDateFirst
+            actions={
+              <ProjectFilterMenu
+                projects={paymentProjects}
+                value={projectFilter}
+                onValueChange={setProjectFilter}
+              />
+            }
+          />
 
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <PaymentMetricCard
@@ -706,53 +721,53 @@ const FreelancerPayments = () => {
 
           <section className="grid gap-6 xl:grid-cols-[minmax(0,1.75fr)_minmax(320px,0.85fr)]">
             <div className="space-y-6">
-              <div className={cn(surfaceClass, "px-8 py-8")}>
+              <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8")}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h2 className="text-[2rem] font-semibold tracking-[-0.03em] text-white">
+                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">
                       Wallet Balance
                     </h2>
-                    <p className="mt-2 text-base text-[#9096a1]">
+                    <p className="mt-2 text-sm text-[#9096a1]">
                       See what is ready for payout, what is still protected in escrow, and
                       what is waiting on client action.
                     </p>
                   </div>
-                  <Badge className="h-8 rounded-full border-0 bg-white/[0.05] px-3 text-xs font-medium text-[#d2d6dc]">
+                  <Badge className="h-8 self-start rounded-full border-0 bg-white/[0.05] px-3 text-xs font-medium text-[#d2d6dc]">
                     {summary.activeContracts} active
                   </Badge>
                 </div>
 
-                <div className="mt-8 grid gap-6 lg:grid-cols-3">
-                  <div className="border-b border-white/[0.06] pb-4 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
-                    <p className="text-base text-[#a0a6b1]">Available to Withdraw</p>
+                <div className="mt-6 grid gap-6 md:grid-cols-3 lg:mt-8">
+                  <div className="border-b border-white/[0.06] pb-4 md:border-b-0 md:border-r md:pb-0 md:pr-6">
+                    <p className="text-sm text-[#a0a6b1]">Available to Withdraw</p>
                     {isLoading ? (
                       <Skeleton className="mt-4 h-10 w-36 rounded-xl bg-white/[0.06]" />
                     ) : (
-                      <p className="mt-4 text-[2.4rem] font-semibold tracking-[-0.05em] text-[#22c55e]">
+                      <p className="mt-4 text-[1.8rem] font-semibold tracking-[-0.05em] text-[#22c55e] sm:text-[2.1rem]">
                         {formatINR(summary.availableToWithdraw)}
                       </p>
                     )}
                     <p className="mt-3 text-sm text-[#8f96a3]">Ready for payout</p>
                   </div>
 
-                  <div className="border-b border-white/[0.06] pb-4 lg:border-b-0 lg:border-r lg:pb-0 lg:px-6">
-                    <p className="text-base text-[#a0a6b1]">Pending in Escrow</p>
+                  <div className="border-b border-white/[0.06] pb-4 md:border-b-0 md:border-r md:pb-0 md:px-6">
+                    <p className="text-sm text-[#a0a6b1]">Pending in Escrow</p>
                     {isLoading ? (
                       <Skeleton className="mt-4 h-10 w-36 rounded-xl bg-white/[0.06]" />
                     ) : (
-                      <p className="mt-4 text-[2.4rem] font-semibold tracking-[-0.05em] text-white">
+                      <p className="mt-4 text-[1.8rem] font-semibold tracking-[-0.05em] text-white sm:text-[2.1rem]">
                         {formatINR(summary.escrowShare)}
                       </p>
                     )}
                     <p className="mt-3 text-sm text-[#8f96a3]">Awaiting pending milestone release</p>
                   </div>
 
-                  <div className="lg:pl-6">
-                    <p className="text-base text-[#a0a6b1]">Awaiting Client Deposit</p>
+                  <div className="md:pl-6">
+                    <p className="text-sm text-[#a0a6b1]">Awaiting Client Deposit</p>
                     {isLoading ? (
                       <Skeleton className="mt-4 h-10 w-36 rounded-xl bg-white/[0.06]" />
                     ) : (
-                      <p className="mt-4 text-[2.4rem] font-semibold tracking-[-0.05em] text-white">
+                      <p className="mt-4 text-[1.8rem] font-semibold tracking-[-0.05em] text-white sm:text-[2.1rem]">
                         {formatINR(summary.awaitingDepositShare)}
                       </p>
                     )}
@@ -760,7 +775,7 @@ const FreelancerPayments = () => {
                   </div>
                 </div>
 
-                <div className="mt-8 flex flex-wrap gap-3">
+                <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
                   <Button
                     type="button"
                     onClick={handleWithdraw}
@@ -770,7 +785,7 @@ const FreelancerPayments = () => {
                       !isPayoutConnected ||
                       summary.availableToWithdraw <= 0
                     }
-                    className="h-12 rounded-[14px] bg-[#facc15] px-5 text-sm font-semibold text-black hover:bg-[#f6d64e]"
+                    className="h-12 w-full rounded-[14px] bg-[#facc15] px-5 text-sm font-semibold text-black hover:bg-[#f6d64e] sm:w-auto"
                   >
                     {isWithdrawing ? (
                       <Loader2 className="mr-2 size-4 animate-spin" />
@@ -784,7 +799,7 @@ const FreelancerPayments = () => {
                     type="button"
                     variant="outline"
                     onClick={handleConnectPayoutAccount}
-                    className="h-12 rounded-[14px] border-white/[0.05] bg-[#232323] px-5 text-sm font-semibold text-white hover:bg-[#2b2b2b] hover:text-white"
+                    className="h-12 w-full rounded-[14px] border-white/[0.05] bg-[#232323] px-5 text-sm font-semibold text-white hover:bg-[#2b2b2b] hover:text-white sm:w-auto"
                   >
                     <Plus className="mr-2 size-4" />
                     Add Payment Method
@@ -802,12 +817,12 @@ const FreelancerPayments = () => {
                 ) : null}
               </div>
 
-              <div className={cn(surfaceClass, "px-8 py-7")}>
+              <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7")}>
                 <div className="mb-6">
-                  <h2 className="text-[2rem] font-semibold tracking-[-0.03em] text-white">
+                  <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">
                     Pending Milestones
                   </h2>
-                  <p className="mt-2 text-base text-[#9096a1]">
+                  <p className="mt-2 text-sm text-[#9096a1]">
                     Follow every milestone payout as it moves from pending funding into paid
                     status.
                   </p>
@@ -827,8 +842,58 @@ const FreelancerPayments = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[720px] text-left">
+                  <>
+                    <div className="space-y-3 md:hidden">
+                      {pendingMilestones.map((row) => (
+                        <article
+                          key={row.id}
+                          className="rounded-[18px] border border-white/[0.05] bg-white/[0.015] p-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-white">
+                                {row.projectTitle}
+                              </p>
+                              <p className="mt-1 text-xs text-[#8f96a3]">{row.label}</p>
+                            </div>
+                            <MilestoneStatusBadge
+                              statusTone={row.statusTone}
+                              statusLabel={row.statusLabel}
+                            />
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8f96a3]">
+                                Date
+                              </p>
+                              <p className="mt-1 text-sm text-[#a0a6b1]">
+                                {formatDateLabel(row.date)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8f96a3]">
+                                Amount
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-white">
+                                {formatINR(row.shareAmount)}
+                              </p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8f96a3]">
+                                Client
+                              </p>
+                              <p className="mt-1 text-sm font-medium text-white">
+                                {row.clientName}
+                              </p>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+
+                    <div className="hidden overflow-x-auto md:block">
+                      <table className="w-full min-w-[680px] text-left">
                       <thead>
                         <tr className="border-b border-white/[0.06] text-xs uppercase tracking-[0.18em] text-[#8f96a3]">
                           <th className="pb-5 pr-6 font-medium">Date</th>
@@ -840,50 +905,44 @@ const FreelancerPayments = () => {
                       </thead>
                       <tbody>
                         {pendingMilestones.map((row) => {
-                          const statusClasses = getStatusClasses(row.statusTone);
-
                           return (
                             <tr
                               key={row.id}
                               className="border-b border-white/[0.05] last:border-b-0"
                             >
-                              <td className="py-5 pr-6 text-base text-[#a0a6b1]">
+                              <td className="py-5 pr-6 text-sm text-[#a0a6b1]">
                                 {formatDateLabel(row.date)}
                               </td>
                               <td className="py-5 pr-6">
-                                <p className="text-base font-medium text-white">{row.projectTitle}</p>
+                                <p className="text-sm font-medium text-white">{row.projectTitle}</p>
                                 <p className="mt-1 text-sm text-[#8f96a3]">{row.label}</p>
                               </td>
-                              <td className="py-5 pr-6 text-base font-medium text-white">
+                              <td className="py-5 pr-6 text-sm font-medium text-white">
                                 {row.clientName}
                               </td>
-                              <td className="py-5 pr-6 text-base font-semibold text-white">
+                              <td className="py-5 pr-6 text-sm font-semibold text-white">
                                 {formatINR(row.shareAmount)}
                               </td>
                               <td className="py-5">
-                                <span
-                                  className={cn(
-                                    "inline-flex items-center gap-2 text-base font-medium",
-                                    statusClasses.text,
-                                  )}
-                                >
-                                  <span className={cn("size-2.5 rounded-full", statusClasses.dot)} />
-                                  {row.statusLabel}
-                                </span>
+                                <MilestoneStatusBadge
+                                  statusTone={row.statusTone}
+                                  statusLabel={row.statusLabel}
+                                />
                               </td>
                             </tr>
                           );
                         })}
                       </tbody>
-                    </table>
-                  </div>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
 
             <div className="space-y-6">
-              <div className={cn(surfaceClass, "px-6 py-6")}>
-                <h2 className="text-[2rem] font-semibold tracking-[-0.03em] text-white">
+              <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6")}>
+                <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">
                   Payment Methods
                 </h2>
                 <div className="mt-6 space-y-4">
@@ -906,10 +965,10 @@ const FreelancerPayments = () => {
                 </Button>
               </div>
 
-              <div className={cn(surfaceClass, "px-6 py-6")}>
-                <div className="flex items-start justify-between gap-4">
+              <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6")}>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h2 className="text-[2rem] font-semibold tracking-[-0.03em] text-white">
+                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">
                       Monthly Earnings
                     </h2>
                     <p className="mt-2 text-sm text-[#9096a1]">
@@ -917,18 +976,18 @@ const FreelancerPayments = () => {
                     </p>
                   </div>
                   {!isLoading ? (
-                    <div className="rounded-[16px] border border-white/[0.06] bg-[#141414] px-3 py-2">
+                    <div className="self-start rounded-[16px] border border-white/[0.06] bg-[#141414] px-3 py-2">
                       <p className="text-[11px] text-[#8f96a3]">
                         {monthlyTrend[monthlyTrend.length - 1]?.month || ""}
                       </p>
-                      <p className="mt-1 text-lg font-semibold text-white">
+                      <p className="mt-1 text-base font-semibold text-white">
                         {formatINR(thisMonthEarnings)}
                       </p>
                     </div>
                   ) : null}
                 </div>
 
-                <div className="mt-6 h-[260px]">
+                <div className="mt-5 h-[220px] sm:mt-6 sm:h-[260px]">
                   {isLoading ? (
                     <Skeleton className="h-full w-full rounded-[22px] bg-white/[0.06]" />
                   ) : (

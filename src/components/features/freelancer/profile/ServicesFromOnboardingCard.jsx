@@ -147,10 +147,10 @@ const ServicesFromOnboardingCard = ({
   openEditServiceProfileModal,
   openAddServiceModal,
 }) => {
-  const serviceSlides = chunkServices(onboardingServiceEntries, 2);
+  const serviceSlides = chunkServices(onboardingServiceEntries, 1);
 
   return (
-    <Card className="relative overflow-visible rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] md:p-6">
+    <Card className="relative overflow-visible rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-4 pb-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:p-5 md:p-6">
       <div
         className="absolute inset-x-0 top-0 h-px"
         style={{
@@ -166,7 +166,7 @@ const ServicesFromOnboardingCard = ({
             <Cpu className="h-4 w-4 text-primary" aria-hidden="true" />
           </span>
           <div>
-            <h3 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
+            <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-lg md:text-xl">
               Services From Onboarding
             </h3>
             <p className="text-sm text-muted-foreground">
@@ -177,7 +177,7 @@ const ServicesFromOnboardingCard = ({
         <button
           type="button"
           onClick={openAddServiceModal}
-          className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-md border border-primary/35 bg-primary/10 px-4 text-xs font-semibold text-primary transition-colors duration-200 hover:bg-primary/20 sm:self-auto"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 self-start rounded-md border border-primary/35 bg-primary/10 px-4 text-xs font-semibold text-primary transition-colors duration-200 hover:bg-primary/20 sm:w-auto sm:self-auto"
         >
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
           Add Service
@@ -185,7 +185,7 @@ const ServicesFromOnboardingCard = ({
       </div>
 
       {onboardingServiceEntries.length > 0 ? (
-        <div className="relative mt-6 px-12 md:px-14 lg:px-16">
+        <div className="relative mt-5 sm:mt-6 sm:px-12 md:px-14 lg:px-16">
           <Carousel
             opts={{
               align: "start",
@@ -194,13 +194,13 @@ const ServicesFromOnboardingCard = ({
             className="w-full"
           >
             <div className="overflow-hidden rounded-2xl">
-              <CarouselContent className="-ml-4">
+              <CarouselContent className="ml-0 sm:-ml-4">
                 {serviceSlides.map((slide, slideIndex) => (
                   <CarouselItem
                     key={`services-slide-${slideIndex}`}
-                    className="basis-full pl-4"
+                    className="basis-full pl-0 sm:pl-4"
                   >
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-2">
                       {slide.map(({ serviceKey, detail }) => {
                     const serviceTitle = getServiceLabel(serviceKey);
                     const serviceDescription = String(
@@ -218,7 +218,7 @@ const ServicesFromOnboardingCard = ({
                         ...nicheTags.map((tag) => String(tag || "").trim()),
                       ].filter(Boolean))
                     );
-                    const visibleTags = mergedUniqueTags.slice(0, 6);
+                    const visibleTags = mergedUniqueTags.slice(0, 4);
                     const hiddenTagCount = Math.max(
                       0,
                       mergedUniqueTags.length - visibleTags.length
@@ -243,7 +243,7 @@ const ServicesFromOnboardingCard = ({
                         )
                       ).values()
                     );
-                    const displayedProjects = projectList.slice(0, 6);
+                    const displayedProjects = projectList.slice(0, 4);
                     const serviceProfileCoverImage = resolveAvatarUrl(detail?.coverImage, {
                       allowBlob: true,
                     });
@@ -294,9 +294,9 @@ const ServicesFromOnboardingCard = ({
                     return (
                         <article
                           key={serviceKey}
-                          className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]"
+                          className="group flex h-full flex-col overflow-hidden rounded-xl border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] sm:rounded-2xl"
                         >
-                        <div className="relative h-52 overflow-hidden md:h-56">
+                        <div className="relative h-44 overflow-hidden sm:h-52 md:h-56">
                           {serviceCoverImage ? (
                             <img
                               src={serviceCoverImage}
@@ -317,12 +317,12 @@ const ServicesFromOnboardingCard = ({
                           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.18),rgba(2,6,23,0.72)_70%,rgba(7,7,10,0.97)_100%)]" />
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_28%)]" />
 
-                          <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-end gap-3 p-3.5 md:p-4">
+                          <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-end gap-3 p-3 sm:p-3.5 md:p-4">
                             <button
                               type="button"
                               onClick={() => openEditServiceProfileModal(serviceKey)}
                               className={cn(
-                                "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-[11px] font-semibold backdrop-blur-sm transition-colors duration-200",
+                                "inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-semibold backdrop-blur-sm transition-colors duration-200 sm:px-3 sm:text-[11px]",
                                 hasServiceProfileContent
                                   ? "border-white/10 bg-black/25 text-white/80 hover:bg-black/40 hover:text-white"
                                   : "border-primary/40 bg-primary/15 text-primary hover:bg-primary/25"
@@ -335,13 +335,13 @@ const ServicesFromOnboardingCard = ({
 
                         </div>
 
-                        <div className="flex flex-1 flex-col space-y-3 px-4 pb-3.5 pt-3 md:px-4.5 md:pb-4 md:pt-3.5">
+                        <div className="flex flex-1 flex-col space-y-2.5 px-3.5 pb-3 pt-3 sm:space-y-3 sm:px-4 sm:pb-4 sm:pt-3.5">
                           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                             <div className="min-w-0">
-                              <h4 className="text-base font-semibold tracking-tight text-foreground md:text-lg">
+                              <h4 className="text-[15px] font-semibold tracking-tight text-foreground sm:text-base md:text-lg">
                                 {serviceTitle}
                               </h4>
-                              <div className="mt-1 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                              <div className="mt-1 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55 sm:tracking-[0.16em]">
                                 <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.65)]" />
                                 {normalizeValueLabel(detail?.experienceYears) ||
                                   "Experience not set"}
@@ -351,7 +351,7 @@ const ServicesFromOnboardingCard = ({
 
                           <p
                             className={cn(
-                              "min-h-[4.5rem] max-h-[4.5rem] max-w-6xl overflow-hidden text-[13px] leading-6",
+                              "min-h-[4rem] max-h-[4rem] max-w-6xl overflow-hidden text-xs leading-5 sm:min-h-[4.5rem] sm:max-h-[4.5rem] sm:text-[13px] sm:leading-6",
                               serviceDescription
                                 ? "text-white/68"
                                 : "italic text-white/45"
@@ -366,7 +366,7 @@ const ServicesFromOnboardingCard = ({
                               "Add a stronger service description so clients understand your positioning, delivery approach, and outcomes at a glance."}
                           </p>
 
-                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3 sm:gap-2">
                             {metadataItems.map((item) => (
                               <div
                                 key={`${serviceKey}-${item.label}`}
@@ -375,14 +375,14 @@ const ServicesFromOnboardingCard = ({
                                 <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
                                   {item.label}
                                 </p>
-                                <p className="mt-0.5 truncate text-sm font-semibold text-white">
+                                <p className="mt-0.5 truncate text-[13px] font-semibold text-white sm:text-sm">
                                   {item.value}
                                 </p>
                               </div>
                             ))}
                           </div>
 
-                          <div className="min-h-[5.5rem] border-t border-white/6 pt-3">
+                          <div className="min-h-[5rem] border-t border-white/6 pt-3 sm:min-h-[5.5rem]">
                             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
                               Skills &amp; Technologies
                             </p>
@@ -397,7 +397,7 @@ const ServicesFromOnboardingCard = ({
                                   </span>
                                 ))
                               ) : (
-                                <span className="text-sm text-white/45">
+                                <span className="text-xs text-white/45 sm:text-sm">
                                   No skills added yet.
                                 </span>
                               )}
@@ -409,15 +409,15 @@ const ServicesFromOnboardingCard = ({
                             </div>
                           </div>
 
-                          <div className="mt-auto min-h-[7.75rem] border-t border-white/6 pt-3">
+                          <div className="mt-auto min-h-[7rem] border-t border-white/6 pt-3 sm:min-h-[7.75rem]">
                             <div className="flex items-center justify-between gap-3">
-                              <span className="text-sm font-semibold text-white/78">
+                              <span className="text-[13px] font-semibold text-white/78 sm:text-sm">
                                 Featured Projects ({projectList.length})
                               </span>
                             </div>
 
                             {displayedProjects.length > 0 ? (
-                              <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-[repeat(4,max-content)]">
+                              <div className="mt-3 grid grid-cols-1 gap-x-3 gap-y-2.5 min-[420px]:grid-cols-2 sm:grid-cols-[repeat(4,max-content)] sm:gap-x-6 sm:gap-y-3">
                                 {displayedProjects.map((project, index) => {
                                   const projectHref = normalizeProjectHref(project);
 
@@ -426,7 +426,7 @@ const ServicesFromOnboardingCard = ({
                                       key={`${serviceKey}-project-${index}`}
                                       className="flex items-center gap-0"
                                     >
-                                      <span className="truncate text-sm font-medium text-primary">
+                                      <span className="truncate text-xs font-medium text-primary sm:text-sm">
                                         {project?.title || "Project"}
                                       </span>
                                       {projectHref ? (
@@ -444,7 +444,7 @@ const ServicesFromOnboardingCard = ({
                                   );
                                 })}
                                 {projectList.length > displayedProjects.length ? (
-                                  <p className="text-xs font-medium text-primary/80">
+                                  <p className="text-[11px] font-medium text-primary/80 sm:text-xs">
                                     +{projectList.length - displayedProjects.length} more
                                   </p>
                                 ) : null}
@@ -467,8 +467,10 @@ const ServicesFromOnboardingCard = ({
 
             {serviceSlides.length > 1 ? (
               <>
-                <CarouselPrevious className="!-left-16 md:!-left-16 lg:!-left-18 z-10 size-11 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30" />
-                <CarouselNext className="!-right-16 md:!-right-16 lg:!-right-18 z-10 size-11 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30" />
+                <CarouselPrevious className="!left-2 !top-1/2 z-10 size-10 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30 sm:hidden" />
+                <CarouselNext className="!right-2 !top-1/2 z-10 size-10 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30 sm:hidden" />
+                <CarouselPrevious className="hidden sm:flex sm:!-left-12 sm:size-11 md:!-left-16 lg:!-left-18 z-10 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30" />
+                <CarouselNext className="hidden sm:flex sm:!-right-12 sm:size-11 md:!-right-16 lg:!-right-18 z-10 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30" />
               </>
             ) : null}
           </Carousel>

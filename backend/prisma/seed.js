@@ -8,15 +8,18 @@ const main = async () => {
 
   const defaultPasswordHash = await hashPassword("Password123!");
   const clientPasswordHash = await hashPassword("Password123");
+  const adminPasswordHash = await hashPassword("Admin@2025");
 
   // Create admin user
   const admin = await prisma.user.upsert({
     where: { email: "admin@catalance.com" },
-    update: {},
+    update: {
+      passwordHash: adminPasswordHash,
+    },
     create: {
       email: "admin@catalance.com",
       fullName: "Catalance Admin",
-      passwordHash: defaultPasswordHash,
+      passwordHash: adminPasswordHash,
       role: "ADMIN",
       isVerified: true,
       onboardingComplete: true,

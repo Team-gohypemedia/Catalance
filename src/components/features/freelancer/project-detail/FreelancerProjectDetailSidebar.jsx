@@ -1,8 +1,8 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
 import FileText from "lucide-react/dist/esm/icons/file-text";
-import Flag from "lucide-react/dist/esm/icons/flag";
 import Image from "lucide-react/dist/esm/icons/image";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -22,7 +22,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
 import ClientInfoCard from "./ClientInfoCard";
 
@@ -46,14 +45,6 @@ const FreelancerProjectDetailSidebar = ({
   spentBudget,
   remainingBudget,
   billingRoadmap,
-  milestoneDraft,
-  setMilestoneDraft,
-  milestoneFileInputRef,
-  milestoneFile,
-  handleMilestoneFileChange,
-  isSubmittingMilestone,
-  submitMilestoneForReview,
-  submittedMilestones,
 }) => (
   <div className="space-y-4">
     <ClientInfoCard
@@ -65,15 +56,35 @@ const FreelancerProjectDetailSidebar = ({
     />
 
     <Card className={cn(panelClassName, "min-h-[340px] overflow-hidden")}>
-      <CardHeader className="border-b border-white/[0.06] pb-3">
-        <CardTitle className={eyebrowClassName}>Project Chat</CardTitle>
-        <CardDescription className={subheadingClassName}>
-          Ask questions and share documents
-        </CardDescription>
+      <CardHeader className="space-y-2 border-b border-white/[0.06] pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-0.5">
+            <CardTitle className={eyebrowClassName}>Project Chat</CardTitle>
+            <CardDescription className={cn(subheadingClassName, "text-xs")}>
+              Ask questions and share documents
+            </CardDescription>
+          </div>
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="h-7 border-border/60 px-2.5 text-[11px]"
+          >
+            <Link
+              to={
+                project?.id
+                  ? `/freelancer/messages?projectId=${encodeURIComponent(project.id)}`
+                  : "/freelancer/messages"
+              }
+            >
+              Open in Messages
+            </Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="max-h-[320px] min-h-[200px] space-y-3 overflow-y-auto px-4 py-4">
         {messages.length === 0 ? (
-          <div className="flex min-h-[160px] items-center justify-center rounded-[14px] border border-dashed border-white/[0.08] bg-background px-4 text-center text-sm text-muted-foreground">
+          <div className="flex min-h-[160px] items-center justify-center rounded-[14px] border border-dashed border-white/[0.08] bg-card px-4 text-center text-sm text-muted-foreground">
             No messages yet. Start the conversation with your client.
           </div>
         ) : (
@@ -95,7 +106,7 @@ const FreelancerProjectDetailSidebar = ({
               <React.Fragment key={message.id || index}>
                 {showDateDivider ? (
                   <div className="my-4 flex justify-center">
-                    <span className="rounded-full border border-white/[0.06] bg-[#111111] px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <span className="rounded-full border border-white/[0.06] bg-card px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                       {isToday(currentDate)
                         ? "Today"
                         : isYesterday(currentDate)
@@ -109,7 +120,7 @@ const FreelancerProjectDetailSidebar = ({
                     className={`flex max-w-[88%] flex-col overflow-hidden rounded-2xl px-4 py-2.5 text-sm ${
                       isSelf
                         ? "rounded-tr-sm bg-primary text-primary-foreground shadow-sm"
-                        : "rounded-tl-sm border border-white/[0.06] bg-[#111111] text-white"
+                        : "rounded-tl-sm border border-white/[0.06] bg-card text-white"
                     }`}
                   >
                     {message.sender === "other" && message.senderName ? (
@@ -149,7 +160,7 @@ const FreelancerProjectDetailSidebar = ({
                             rel="noopener noreferrer"
                             className={`flex items-center gap-2 rounded-lg p-2 transition-colors ${
                               !isSelf
-                                ? "border border-white/[0.06] bg-white/[0.04]"
+                                ? "border border-white/[0.06] bg-card"
                                 : "bg-black/10"
                             }`}
                           >
@@ -191,13 +202,13 @@ const FreelancerProjectDetailSidebar = ({
           value={input}
           onChange={(event) => setInput(event.target.value)}
           onKeyPress={(event) => event.key === "Enter" && handleSendMessage()}
-          className="h-10 border-white/[0.08] bg-[#111111] text-sm text-white placeholder:text-[#6b7280]"
+          className="h-10 border-white/[0.08] bg-card text-sm text-white placeholder:text-[#6b7280]"
         />
         <Button
           onClick={() => fileInputRef.current?.click()}
           size="sm"
           variant="outline"
-          className="h-10 w-10 border-white/[0.08] bg-[#111111] p-0 text-[#cfd3da] hover:bg-white/[0.04]"
+          className="h-10 w-10 border-white/[0.08] bg-card p-0 text-[#cfd3da] hover:bg-card/80"
           disabled={isSending}
           title="Upload document"
         >
@@ -368,124 +379,6 @@ const FreelancerProjectDetailSidebar = ({
             </p>
           </div>
         ))}
-      </CardContent>
-    </Card>
-
-    <Card className={panelClassName}>
-      <CardHeader className="pb-3">
-        <CardTitle className={eyebrowClassName}>Submit Milestone</CardTitle>
-        <CardDescription className={subheadingClassName}>
-          Send deliverables, GitHub links, and Figma files for review.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3 pt-0">
-        <Input
-          value={milestoneDraft.title}
-          onChange={(event) =>
-            setMilestoneDraft((prev) => ({
-              ...prev,
-              title: event.target.value,
-            }))
-          }
-          placeholder="Milestone title (required)"
-          className="h-10 border-white/[0.08] !bg-background text-sm text-white placeholder:text-muted-foreground dark:!bg-background"
-        />
-        <Input
-          value={milestoneDraft.githubUrl}
-          onChange={(event) =>
-            setMilestoneDraft((prev) => ({
-              ...prev,
-              githubUrl: event.target.value,
-            }))
-          }
-          placeholder="GitHub link (optional)"
-          className="h-10 border-white/[0.08] !bg-background text-sm text-white placeholder:text-muted-foreground dark:!bg-background"
-        />
-        <Input
-          value={milestoneDraft.figmaUrl}
-          onChange={(event) =>
-            setMilestoneDraft((prev) => ({
-              ...prev,
-              figmaUrl: event.target.value,
-            }))
-          }
-          placeholder="Figma link (optional)"
-          className="h-10 border-white/[0.08] !bg-background text-sm text-white placeholder:text-muted-foreground dark:!bg-background"
-        />
-        <Textarea
-          value={milestoneDraft.notes}
-          onChange={(event) =>
-            setMilestoneDraft((prev) => ({
-              ...prev,
-              notes: event.target.value,
-            }))
-          }
-          placeholder="Notes for PM (scope, QA checklist, known gaps)"
-          className="min-h-24 border-white/[0.08] !bg-background text-sm text-white placeholder:text-muted-foreground dark:!bg-background"
-        />
-
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 gap-2 border-white/[0.08] !bg-background text-[#cfd3da] hover:bg-white/[0.04] dark:!bg-background"
-            onClick={() => milestoneFileInputRef.current?.click()}
-          >
-            <Upload className="h-3.5 w-3.5" />
-            {milestoneFile ? "Replace file" : "Attach file"}
-          </Button>
-          {milestoneFile ? (
-            <p className="truncate text-xs text-[#8f96a3]">
-              {milestoneFile.name}
-            </p>
-          ) : (
-            <p className="text-xs text-[#8f96a3]">No file attached</p>
-          )}
-          <input
-            ref={milestoneFileInputRef}
-            type="file"
-            className="hidden"
-            onChange={handleMilestoneFileChange}
-            accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.zip"
-          />
-        </div>
-
-        <Button
-          type="button"
-          size="sm"
-          className="w-full gap-2"
-          disabled={isSubmittingMilestone}
-          onClick={submitMilestoneForReview}
-        >
-          {isSubmittingMilestone ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Flag className="h-4 w-4" />
-          )}
-          Submit for Review
-        </Button>
-
-        {submittedMilestones.length > 0 ? (
-          <div className="space-y-2 pt-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#8f96a3]">
-              Recent Submissions
-            </p>
-            {submittedMilestones.map((item) => (
-              <div
-                key={item.id}
-                className="rounded-[16px] border border-white/[0.06] bg-[#111111] p-3"
-              >
-                <p className="line-clamp-2 text-xs text-white">{item.text}</p>
-                <p className="mt-1 text-[10px] text-[#8f96a3]">
-                  {item.createdAt
-                    ? format(new Date(item.createdAt), "MMM d, h:mm a")
-                    : ""}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : null}
       </CardContent>
     </Card>
   </div>

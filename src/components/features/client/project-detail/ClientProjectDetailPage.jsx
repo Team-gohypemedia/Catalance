@@ -1468,10 +1468,23 @@ const ProjectDashboard = () => {
   );
 
   const paymentPlan = useMemo(() => {
-    return project?.paymentPlan && typeof project.paymentPlan === "object"
-      ? project.paymentPlan
-      : null;
-  }, [project]);
+    const rawPaymentPlan = project?.paymentPlan;
+
+    if (!rawPaymentPlan) {
+      return null;
+    }
+
+    if (typeof rawPaymentPlan === "string") {
+      try {
+        const parsed = JSON.parse(rawPaymentPlan);
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    return typeof rawPaymentPlan === "object" ? rawPaymentPlan : null;
+  }, [project?.paymentPlan]);
 
   const paymentPlanInstallments = useMemo(
     () =>
@@ -1480,6 +1493,29 @@ const ProjectDashboard = () => {
         : [],
     [paymentPlan],
   );
+  const sortedPaymentPlanInstallments = useMemo(
+    () =>
+      [...paymentPlanInstallments].sort((left, right) => {
+        const gateDelta =
+          Number(left?.dueAfterCompletedPhases || 0) -
+          Number(right?.dueAfterCompletedPhases || 0);
+
+        if (gateDelta !== 0) {
+          return gateDelta;
+        }
+
+        return Number(left?.sequence || 0) - Number(right?.sequence || 0);
+      }),
+    [paymentPlanInstallments],
+  );
+  const phaseMilestoneInstallments = useMemo(
+    () =>
+      sortedPaymentPlanInstallments.filter((installment) => {
+        const gate = Number(installment?.dueAfterCompletedPhases || 0);
+        return Number.isFinite(gate) && gate > 0;
+      }),
+    [sortedPaymentPlanInstallments],
+  );
   const dueInstallment = paymentPlan?.nextDueInstallment || null;
   const initialInstallment =
     paymentPlanInstallments.find(
@@ -1487,8 +1523,29 @@ const ProjectDashboard = () => {
         Number(installment?.sequence || 0) === 1 ||
         Number(installment?.dueAfterCompletedPhases || 0) === 0
     ) || null;
+  const finalInstallment =
+    sortedPaymentPlanInstallments[sortedPaymentPlanInstallments.length - 1] || null;
+  const completionMilestoneInstallment =
+    phaseMilestoneInstallments[phaseMilestoneInstallments.length - 1] ||
+    finalInstallment;
+  const areAllInstallmentsPaid = useMemo(
+    () =>
+      paymentPlanInstallments.length > 0 &&
+      paymentPlanInstallments.every((installment) => {
+        const amount = Number(installment?.amount || 0);
+        return Boolean(installment?.isPaid) || amount <= 0;
+      }),
+    [paymentPlanInstallments],
+  );
   const isInitialPaymentPaid = Boolean(initialInstallment?.isPaid);
   const isInitialPaymentDue = Number(dueInstallment?.sequence || 0) === 1;
+  const isFinalInstallmentPaid =
+    sortedPaymentPlanInstallments.length === 0 ||
+    Boolean(
+      paymentPlan?.isFullyPaid ||
+      completionMilestoneInstallment?.isPaid ||
+      (!dueInstallment && areAllInstallmentsPaid),
+    );
   const phaseGateInstallmentsByPhase = useMemo(() => {
     const grouped = {};
     const installments = paymentPlanInstallments;
@@ -1853,8 +1910,20 @@ const ProjectDashboard = () => {
   const canMarkProjectCompleted =
     !isProjectCompleted &&
     allPhasesCompleted &&
-    Boolean(project?.ownerId) &&
-    project.ownerId === user?.id;
+    isFinalInstallmentPaid;
+  const showLegacyCompletionPrompt =
+    canMarkProjectCompleted && sortedPaymentPlanInstallments.length === 0;
+  const projectCompletionMilestonePhaseId = completionMilestoneInstallment
+    ? Number(
+        completionMilestoneInstallment?.dueAfterCompletedPhases ||
+          derivedPhases[derivedPhases.length - 1]?.id ||
+          0,
+      ) || null
+    : derivedPhases[derivedPhases.length - 1]?.id ?? null;
+  const showProjectCompletionMilestone =
+    canMarkProjectCompleted &&
+    sortedPaymentPlanInstallments.length > 0 &&
+    projectCompletionMilestonePhaseId !== null;
 
   const verificationDueInstallment = useMemo(() => {
     const installments = Array.isArray(paymentPlan?.installments)
@@ -2319,6 +2388,9 @@ const ProjectDashboard = () => {
                   derivedPhases={derivedPhases}
                   derivedTasks={derivedTasks}
                   canMarkProjectCompleted={canMarkProjectCompleted}
+                  showLegacyCompletionPrompt={showLegacyCompletionPrompt}
+                  showProjectCompletionMilestone={showProjectCompletionMilestone}
+                  projectCompletionMilestonePhaseId={projectCompletionMilestonePhaseId}
                   handleMarkProjectCompleted={handleMarkProjectCompleted}
                   isCompletingProject={isCompletingProject}
                   isInitialPaymentDue={isInitialPaymentDue}
@@ -2363,8 +2435,8 @@ const ProjectDashboard = () => {
                   totalBudget={totalBudget}
                   spentBudget={spentBudget}
                   remainingBudget={remainingBudget}
-                  paymentPlan={paymentPlan}
-                  dueInstallment={dueInstallment}
+                  paymentPlan={verificationGatePaymentPlan}
+                  dueInstallment={verificationDueInstallment}
                   isProcessingInstallment={isProcessingInstallment}
                   handlePayDueInstallment={handlePayDueInstallment}
                   shouldCollectFreelancerReview={shouldCollectFreelancerReview}

@@ -85,7 +85,7 @@ const FeaturedProjectsSection = ({
   const projectCount = Array.isArray(portfolioProjects) ? portfolioProjects.length : 0;
 
   return (
-    <section className="relative overflow-visible rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] md:p-6">
+    <section className="relative overflow-visible rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:p-5 md:p-6">
       <div
         className="absolute inset-x-0 top-0 h-px"
         style={{
@@ -95,14 +95,14 @@ const FeaturedProjectsSection = ({
         aria-hidden="true"
       />
 
-      <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-5 md:flex-row md:items-start md:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
             <Rocket className="h-4 w-4 text-primary" aria-hidden="true" />
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 leading-tight">
-              <h3 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
+              <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-lg md:text-xl">
                 Featured Projects
               </h3>
               <span className="inline-flex items-center rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
@@ -120,11 +120,11 @@ const FeaturedProjectsSection = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:w-auto sm:flex sm:flex-wrap sm:items-center">
           <Button
             variant="default"
             size="sm"
-            className="text-sm font-semibold"
+            className="w-full text-sm font-semibold sm:w-auto"
             onClick={onAddProject}
           >
             <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
@@ -133,7 +133,7 @@ const FeaturedProjectsSection = ({
           <Button
             variant="ghost"
             size="sm"
-            className="text-sm font-medium text-primary hover:bg-primary/10"
+            className="w-full text-sm font-medium text-primary hover:bg-primary/10 sm:w-auto"
             onClick={onViewAllProjects}
           >
             View All
@@ -142,16 +142,16 @@ const FeaturedProjectsSection = ({
       </div>
 
       {projectCount > 0 ? (
-        <div className="relative mt-6 px-12 md:px-14 lg:px-16">
+        <div className="relative mt-5 px-0 sm:mt-6 sm:px-12 md:px-14 lg:px-16">
           <Carousel
             opts={{
               align: "start",
-              loop: true,
+              loop: projectCount > 1,
             }}
             className="w-full"
           >
             <div className="overflow-hidden rounded-2xl">
-              <CarouselContent className="-ml-4">
+              <CarouselContent className="-ml-3 sm:-ml-4">
                 {portfolioProjects.map((project, idx) => {
                   const projectHref = normalizeProjectLink(project?.link || "");
                   const projectServiceLabels = resolveProjectServiceLabels(project);
@@ -162,9 +162,9 @@ const FeaturedProjectsSection = ({
                   );
 
                   return (
-                    <CarouselItem key={idx} className="pl-4 md:basis-1/2 xl:basis-1/3">
-                      <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]">
-                        <div className="relative h-52 overflow-hidden md:h-56">
+                    <CarouselItem key={idx} className="basis-full pl-3 sm:pl-4 md:basis-1/2 xl:basis-1/3">
+                      <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] sm:rounded-2xl">
+                        <div className="relative h-44 overflow-hidden sm:h-52 md:h-56">
                           <ProjectCoverMedia
                             project={project}
                             containerClassName="h-full w-full"
@@ -179,8 +179,9 @@ const FeaturedProjectsSection = ({
                               <DropdownMenuTrigger asChild>
                                 <button
                                   type="button"
-                                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/10 bg-background text-foreground opacity-0 shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition-all duration-200 translate-y-1 pointer-events-none group-hover:translate-y-0 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-focus-within:pointer-events-auto focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:pointer-events-auto data-[state=open]:translate-y-0 data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto hover:scale-105 hover:bg-background hover:text-primary"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-background text-foreground opacity-100 shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition-all duration-200 translate-y-0 pointer-events-auto hover:scale-105 hover:bg-background hover:text-primary sm:h-9 sm:w-9 sm:translate-y-1 sm:opacity-0 sm:pointer-events-none sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 sm:group-focus-within:pointer-events-auto sm:focus-visible:translate-y-0 sm:focus-visible:opacity-100 sm:focus-visible:pointer-events-auto sm:data-[state=open]:translate-y-0 sm:data-[state=open]:opacity-100 sm:data-[state=open]:pointer-events-auto"
                                   title="Project actions"
+                                  aria-label="Project actions"
                                 >
                                   <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                                 </button>
@@ -241,10 +242,10 @@ const FeaturedProjectsSection = ({
                           />
                         </div>
 
-                        <div className="flex flex-1 flex-col space-y-3 px-4 pb-3.5 pt-3 md:px-4.5 md:pb-4 md:pt-3.5">
+                        <div className="flex flex-1 flex-col space-y-2.5 px-3.5 pb-3 pt-3 sm:space-y-3 sm:px-4 sm:pb-4 sm:pt-3.5">
                           <div className="min-h-[4.25rem] min-w-0">
                             <h4
-                              className="truncate text-base font-semibold tracking-tight text-foreground"
+                              className="truncate text-[15px] font-semibold tracking-tight text-foreground sm:text-base"
                               title={project.title || project.link}
                             >
                               {project.title || "Project"}
@@ -261,7 +262,7 @@ const FeaturedProjectsSection = ({
                           </div>
 
                           <p
-                            className="min-h-[4.5rem] max-h-[4.5rem] overflow-hidden text-[13px] leading-6 text-white/68"
+                            className="min-h-[4rem] max-h-[4rem] overflow-hidden text-xs leading-5 text-white/68 sm:min-h-[4.5rem] sm:max-h-[4.5rem] sm:text-[13px] sm:leading-6"
                             style={{
                               display: "-webkit-box",
                               WebkitBoxOrient: "vertical",
@@ -273,24 +274,24 @@ const FeaturedProjectsSection = ({
                               "Add a concise project summary so clients can understand the scope, outcome, and value of this work."}
                           </p>
 
-                          <div className="mt-auto flex items-start justify-between gap-3 border-t border-white/6 pt-3">
+                          <div className="mt-auto flex flex-col items-start gap-2.5 border-t border-white/6 pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                             <div className="flex flex-wrap gap-2">
                               {visibleProjectServiceLabels.length ? (
                                 visibleProjectServiceLabels.map((label) => (
                                   <span
                                     key={`${project.title || project.link || idx}-${label}`}
-                                    className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65"
+                                    className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[10px] font-medium text-white/65 sm:text-[11px]"
                                   >
                                     {label}
                                   </span>
                                 ))
                               ) : (
-                                <span className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65">
+                                <span className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[10px] font-medium text-white/65 sm:text-[11px]">
                                   Featured Work
                                 </span>
                               )}
                               {hiddenProjectServiceLabelCount > 0 ? (
-                                <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+                                <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary sm:text-[11px]">
                                   +{hiddenProjectServiceLabelCount} more
                                 </span>
                               ) : null}
@@ -300,7 +301,7 @@ const FeaturedProjectsSection = ({
                                 href={projectHref}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary transition-all duration-200 hover:bg-primary hover:text-primary-foreground"
+                                className="inline-flex items-center gap-1.5 self-start rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary transition-all duration-200 hover:bg-primary hover:text-primary-foreground"
                               >
                                 Open
                                 <ExternalLink className="h-3.5 w-3.5" />
@@ -318,8 +319,12 @@ const FeaturedProjectsSection = ({
                 })}
               </CarouselContent>
             </div>
-            <CarouselPrevious className="!-left-16 md:!-left-16 lg:!-left-18 z-10 size-11 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-primary hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30 disabled:[&_svg]:text-white/30" />
-            <CarouselNext className="!-right-16 md:!-right-16 lg:!-right-18 z-10 size-11 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-primary hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30 disabled:[&_svg]:text-white/30" />
+            {projectCount > 1 ? (
+              <>
+                <CarouselPrevious className="!-left-3 z-10 size-10 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] [&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-primary hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30 disabled:[&_svg]:text-white/30 sm:!-left-12 sm:size-11 sm:[&_svg]:h-5 sm:[&_svg]:w-5 md:!-left-16 lg:!-left-18" />
+                <CarouselNext className="!-right-3 z-10 size-10 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] [&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-primary hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30 disabled:[&_svg]:text-white/30 sm:!-right-12 sm:size-11 sm:[&_svg]:h-5 sm:[&_svg]:w-5 md:!-right-16 lg:!-right-18" />
+              </>
+            ) : null}
           </Carousel>
         </div>
       ) : (

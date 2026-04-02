@@ -37,6 +37,7 @@ import Search from "lucide-react/dist/esm/icons/search";
 import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
 import Smile from "lucide-react/dist/esm/icons/smile";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import X from "lucide-react/dist/esm/icons/x";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import { migrateChatConversationStorageKey } from "@/shared/lib/storage-keys";
 import ClientPageHeader from "@/components/features/client/ClientPageHeader";
@@ -50,6 +51,13 @@ import {
   SOCKET_OPTIONS,
 } from "@/shared/lib/api-client";
 import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
+import {
+  MARKETPLACE_CHAT_UPDATED_EVENT,
+  appendMarketplaceConversationMessage,
+  buildMarketplaceConversationFromRequest,
+  getMarketplaceConversationMessages,
+  readMarketplaceChatRequests,
+} from "@/shared/lib/marketplace-chat-requests";
 import { hasUnlockedProjectChat } from "@/shared/lib/project-chat-access";
 import { cn } from "@/shared/lib/utils";
 
@@ -434,6 +442,33 @@ const getConversationDisplaySubtitle = (conversation = {}, currentUser = null) =
   return uniqueParts.join(" • ") || "Project chat";
 };
 
+const getConversationMemberLabel = (conversation = {}, currentUser = null) => {
+  if (typeof conversation?.memberNamesLabel === "string" && conversation.memberNamesLabel.trim()) {
+    return conversation.memberNamesLabel.trim();
+  }
+
+  const memberNames = Array.isArray(conversation?.memberNames)
+    ? conversation.memberNames
+    : [];
+  const uniqueMembers = memberNames.filter(
+    (value, index, list) =>
+      value &&
+      list.findIndex(
+        (candidate) => normalizeComparableText(candidate) === normalizeComparableText(value),
+      ) === index,
+  );
+
+  if (uniqueMembers.length > 0) {
+    return uniqueMembers.join(", ");
+  }
+
+  return getFirstNonEmptyText(
+    conversation?.name,
+    conversation?.clientName,
+    getDisplayName(currentUser),
+  );
+};
+
 const getMessageSignature = (message = {}) =>
   [
     String(message?.content || "").trim(),
@@ -611,15 +646,16 @@ const ConversationItem = ({
   showOnline = false,
 }) => {
   const displayTitle = getConversationDisplayTitle(conversation);
+  const memberLabel = getConversationMemberLabel(conversation);
 
   return (
     <button
       type="button"
       onClick={onSelect}
       className={cn(
-        "relative flex w-full items-center gap-4 rounded-[18px] border px-4 py-3 text-left transition",
+        "relative flex w-full items-center gap-4 rounded-[18px] border px-4 py-3.5 text-left transition",
         isActive
-          ? "border-white/[0.08] bg-accent text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+          ? "border-white/[0.08] bg-background/70 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
           : "border-transparent text-white hover:border-white/[0.05] hover:bg-white/[0.03]",
       )}
     >
@@ -650,6 +686,15 @@ const ConversationItem = ({
 
         <p
           className={cn(
+            "mt-1 truncate text-[13px]",
+            isActive ? "text-[#dce4ee]" : "text-[#a9b2c0]",
+          )}
+        >
+          {memberLabel}
+        </p>
+
+        <p
+          className={cn(
             "mt-1 truncate text-sm",
             isActive ? "text-[#cbd5e1]" : "text-[#8f96a3]",
           )}
@@ -664,6 +709,99 @@ const ConversationItem = ({
         </span>
       ) : null}
     </button>
+  );
+};
+
+const RequestListItem = ({ request, isActive, onSelect }) => (
+  <button
+    type="button"
+    onClick={onSelect}
+    className={cn(
+      "w-full rounded-[20px] border px-4 py-4 text-left transition",
+      isActive
+        ? "border-white/[0.08] bg-background/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+        : "border-transparent bg-transparent hover:border-white/[0.05] hover:bg-white/[0.03]",
+    )}
+  >
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="truncate text-[0.98rem] font-semibold text-white">
+          {getFirstNonEmptyText(request?.serviceTitle, request?.title, "Marketplace Request")}
+        </p>
+        <p className="mt-1 truncate text-sm text-[#cbd5e1]">
+          {getFirstNonEmptyText(request?.freelancerName, "Freelancer")}
+        </p>
+      </div>
+      <span className="shrink-0 text-[11px] text-[#7f8795]">
+        {formatConversationTimestamp(request?.updatedAt || request?.createdAt)}
+      </span>
+    </div>
+
+    <p className="mt-3 line-clamp-2 rounded-[16px] bg-white/[0.03] px-3 py-2 text-sm leading-6 text-[#8f96a3]">
+      {request?.requestMessage || request?.previewText || "Marketplace request"}
+    </p>
+  </button>
+);
+
+const RequestDetailsPanel = ({ request }) => {
+  if (!request) {
+    return (
+      <div className="flex h-full min-h-0 items-center justify-center bg-card px-6">
+        <div className="max-w-md text-center">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[#ffc107]">
+            <SendHorizontal className="size-6" />
+          </div>
+          <h2 className="mt-5 text-2xl font-semibold text-white">Select a request</h2>
+          <p className="mt-3 text-sm leading-6 text-[#8f96a3]">
+            Review the request details and wait for the freelancer to accept or decline the marketplace inquiry.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const memberNames = Array.isArray(request.memberNames) ? request.memberNames.join(", ") : "";
+
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col bg-card">
+      <div className="border-b border-white/[0.06] px-5 py-5 md:px-7">
+        <div className="flex flex-col gap-2">
+          <p className="text-[1.2rem] font-semibold tracking-[-0.3px] text-white">
+            {getFirstNonEmptyText(request.serviceTitle, request.title, "Marketplace Request")}
+          </p>
+          <p className="text-sm text-[#cbd5e1]">
+            {memberNames || getFirstNonEmptyText(request.clientName, request.freelancerName)}
+          </p>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#7f8795]">
+            Pending freelancer review
+          </p>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-5 md:px-6 md:py-6">
+        <div className="mx-auto flex w-full max-w-[980px] flex-col gap-5">
+          <div className="rounded-[24px] border border-white/[0.06] bg-background/40 p-5 md:p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-base font-semibold text-white">
+                  {getFirstNonEmptyText(request.freelancerName, "Freelancer")}
+                </p>
+                <p className="mt-1 text-sm text-[#8f96a3]">
+                  Marketplace request sent
+                </p>
+              </div>
+              <span className="text-xs uppercase tracking-[0.16em] text-[#7f8795]">
+                {formatConversationTimestamp(request.updatedAt || request.createdAt)}
+              </span>
+            </div>
+
+            <div className="mt-5 rounded-[20px] border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-sm leading-7 text-[#d7dee8]">
+              {request.requestMessage || request.previewText}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -691,6 +829,7 @@ const ChatArea = ({
   const lastConversationKeyRef = useRef("");
   const conversationTitle = getConversationDisplayTitle(conversation);
   const conversationSubtitle = getConversationDisplaySubtitle(conversation, currentUser);
+  const conversationMembers = getConversationMemberLabel(conversation, currentUser);
   const conversationAvatarLabel = conversationTitle || "Project chat";
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
@@ -1126,8 +1265,8 @@ const ChatArea = ({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col bg-accent">
-      <div className="flex items-center justify-between gap-4 border-b border-white/[0.06] bg-accent px-5 py-4 md:px-7">
+    <div className="flex h-full min-h-0 flex-1 flex-col bg-card">
+      <div className="flex items-center justify-between gap-4 border-b border-white/[0.06] bg-card px-5 py-4 md:px-7">
         <div className="flex min-w-0 items-center gap-4">
           <div className="relative shrink-0">
             <Avatar className="size-12 border border-white/10">
@@ -1138,7 +1277,7 @@ const ChatArea = ({
             </Avatar>
             <span
               className={cn(
-                "absolute bottom-0 right-0 size-3 rounded-full border-2 border-accent",
+                "absolute bottom-0 right-0 size-3 rounded-full border-2 border-card",
                 online ? "bg-[#22c55e]" : "bg-[#6b7280]",
               )}
             />
@@ -1148,7 +1287,8 @@ const ChatArea = ({
             <p className="truncate text-[1.15rem] font-semibold tracking-[-0.3px] text-white">
               {conversationTitle}
             </p>
-            <p className={cn("text-sm font-medium", online ? "text-[#facc15]" : "text-[#8f96a3]")}>
+            <p className="truncate text-[13px] text-[#cbd5e1]">{conversationMembers}</p>
+            <p className={cn("text-xs font-medium uppercase tracking-[0.16em]", online ? "text-[#facc15]" : "text-[#8f96a3]")}>
               {online ? `${conversationSubtitle} • Online` : conversationSubtitle}
             </p>
           </div>
@@ -1208,7 +1348,7 @@ const ChatArea = ({
       <div
         ref={messagesViewportRef}
         onScroll={handleMessagesScroll}
-        className="min-h-0 flex-1 overflow-y-auto bg-accent px-2 py-6 md:px-2.5 lg:px-3 [scrollbar-color:rgba(255,255,255,0.18)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.16] [&::-webkit-scrollbar-track]:bg-transparent"
+        className="min-h-0 flex-1 overflow-y-auto bg-card px-2 py-6 md:px-2.5 lg:px-3 [scrollbar-color:rgba(255,255,255,0.18)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.16] [&::-webkit-scrollbar-track]:bg-transparent"
       >
         <div className="mx-auto flex w-full max-w-[1240px] flex-col gap-4 pb-4">
           {visibleMessages.map((message, index) => {
@@ -1398,7 +1538,7 @@ const ChatArea = ({
         </div>
       </div>
 
-      <div className="border-t border-white/[0.06] bg-accent px-4 py-4 md:px-6">
+      <div className="border-t border-white/[0.06] bg-card px-4 py-4 md:px-6">
         {!chatUnlocked ? (
           <div className="mb-4 rounded-[18px] border border-[#5a3b0d] bg-[#2f1e05] px-4 py-3 text-sm text-[#f4d37c]">
             Chat will unlock after the initial 20% payment is completed.
@@ -1406,7 +1546,7 @@ const ChatArea = ({
         ) : null}
 
         {selectedFile ? (
-          <div className="mb-4 flex items-center gap-3 rounded-[22px] border border-white/[0.06] bg-accent px-4 py-3">
+          <div className="mb-4 flex items-center gap-3 rounded-[22px] border border-white/[0.06] bg-card px-4 py-3">
             {filePreview ? (
               <img
                 src={filePreview}
@@ -1484,7 +1624,7 @@ const ChatArea = ({
             <Paperclip className="size-5" />
           </ChatIconButton>
 
-          <div className="flex min-h-[52px] flex-1 items-center gap-3 rounded-[22px] border border-white/[0.08] bg-accent px-4">
+          <div className="flex min-h-[52px] flex-1 items-center gap-3 rounded-[22px] border border-white/[0.08] bg-background/70 px-4">
             <Input
               ref={composerInputRef}
               value={messageInput}
@@ -1542,8 +1682,13 @@ const ClientChat = () => {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [useSocket, setUseSocket] = useState(SOCKET_ENABLED);
+  const [activeTab, setActiveTab] = useState("messages");
   const [conversationSearch, setConversationSearch] = useState("");
+  const [requestSearch, setRequestSearch] = useState("");
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
   const deferredConversationSearch = useDeferredValue(conversationSearch);
+  const deferredRequestSearch = useDeferredValue(requestSearch);
   const [typingUsers, setTypingUsers] = useState([]);
   const [online, setOnline] = useState(false);
   const [hasLockedAcceptedProjects, setHasLockedAcceptedProjects] = useState(false);
@@ -1570,12 +1715,53 @@ const ClientChat = () => {
   const selectedConversationChatUnlocked = Boolean(activeConversation?.chatUnlocked);
   const headerDisplayName = useMemo(() => getDisplayName(user), [user]);
 
+  const syncMarketplaceRequests = useCallback(() => {
+    const allRequests = readMarketplaceChatRequests();
+    const nextPendingRequests = allRequests.filter(
+      (request) =>
+        request.status === "pending" &&
+        String(request.clientId || "") === String(currentUserId || ""),
+    );
+    const acceptedRequestConversations = allRequests
+      .filter(
+        (request) =>
+          request.status === "accepted" &&
+          String(request.clientId || "") === String(currentUserId || ""),
+      )
+      .map((request) => buildMarketplaceConversationFromRequest(request, "client"));
+
+    setPendingRequests(nextPendingRequests);
+    setConversations((previous) => {
+      const nonMarketplaceConversations = previous.filter(
+        (conversation) => !conversation.isMarketplaceRequestChat,
+      );
+
+      return sortConversations([
+        ...nonMarketplaceConversations,
+        ...acceptedRequestConversations,
+      ]);
+    });
+  }, [currentUserId]);
+
   useEffect(() => {
     setConversationId(null);
-    setMessages([]);
+    if (activeConversation?.isMarketplaceRequestChat) {
+      setMessages(
+        getMarketplaceConversationMessages(
+          activeConversation.serviceKey || activeConversation.id,
+        ),
+      );
+    } else {
+      setMessages([]);
+    }
     setTypingUsers([]);
     setOnline(false);
-  }, [selectedConversationKey]);
+  }, [
+    activeConversation?.id,
+    activeConversation?.isMarketplaceRequestChat,
+    activeConversation?.serviceKey,
+    selectedConversationKey,
+  ]);
 
   useEffect(() => {
     if (!selectedConversationKey) {
@@ -1585,6 +1771,48 @@ const ClientChat = () => {
 
     setMessageInput(drafts.current[selectedConversationKey] || "");
   }, [selectedConversationKey]);
+
+  useEffect(() => {
+    syncMarketplaceRequests();
+
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleMarketplaceChatUpdated = () => {
+      syncMarketplaceRequests();
+
+      if (activeConversation?.isMarketplaceRequestChat) {
+        setMessages(
+          getMarketplaceConversationMessages(
+            activeConversation.serviceKey || activeConversation.id,
+          ),
+        );
+      }
+    };
+
+    window.addEventListener(MARKETPLACE_CHAT_UPDATED_EVENT, handleMarketplaceChatUpdated);
+    window.addEventListener("storage", handleMarketplaceChatUpdated);
+
+    return () => {
+      window.removeEventListener(
+        MARKETPLACE_CHAT_UPDATED_EVENT,
+        handleMarketplaceChatUpdated,
+      );
+      window.removeEventListener("storage", handleMarketplaceChatUpdated);
+    };
+  }, [activeConversation, syncMarketplaceRequests]);
+
+  useEffect(() => {
+    if (!pendingRequests.length) {
+      setSelectedRequestId(null);
+      return;
+    }
+
+    if (!pendingRequests.some((request) => String(request.id) === String(selectedRequestId))) {
+      setSelectedRequestId(pendingRequests[0].id);
+    }
+  }, [pendingRequests, selectedRequestId]);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -1830,7 +2058,12 @@ const ClientChat = () => {
 
         if (!cancelled) {
           setHasLockedAcceptedProjects(foundLockedAcceptedProject);
-          setConversations(finalList);
+          setConversations((previous) =>
+            sortConversations([
+              ...previous.filter((conversation) => conversation.isMarketplaceRequestChat),
+              ...finalList,
+            ]),
+          );
           setSelectedConversation((current) => {
             const currentKey = getConversationKey(current);
             if (currentKey) {
@@ -1855,7 +2088,9 @@ const ClientChat = () => {
         console.error("Failed to load conversations:", error);
         if (!cancelled) {
           setHasLockedAcceptedProjects(false);
-          setConversations([]);
+          setConversations((previous) =>
+            previous.filter((conversation) => conversation.isMarketplaceRequestChat),
+          );
         }
       } finally {
         if (!cancelled) {
@@ -1881,7 +2116,11 @@ const ClientChat = () => {
   ]);
 
   useEffect(() => {
-    if (!activeConversation || !selectedConversationChatUnlocked) {
+    if (
+      !activeConversation ||
+      !selectedConversationChatUnlocked ||
+      activeConversation.isMarketplaceRequestChat
+    ) {
       setConversationId(null);
       return;
     }
@@ -1957,7 +2196,14 @@ const ClientChat = () => {
   }, [activeConversation, authFetch, isAuthenticated, selectedConversationChatUnlocked, token]);
 
   useEffect(() => {
-    if (!conversationId || !activeConversation || !selectedConversationChatUnlocked) return;
+    if (
+      !conversationId ||
+      !activeConversation ||
+      !selectedConversationChatUnlocked ||
+      activeConversation.isMarketplaceRequestChat
+    ) {
+      return undefined;
+    }
 
     const storageKey = migrateChatConversationStorageKey(
       getConversationKey(activeConversation),
@@ -2213,7 +2459,37 @@ const ClientChat = () => {
   const handleSendMessage = (attachment = null) => {
     const trimmedMessage = messageInput.trim();
 
-    if ((!trimmedMessage && !attachment) || !conversationId || !selectedConversationChatUnlocked) {
+    if ((!trimmedMessage && !attachment) || !selectedConversationChatUnlocked) {
+      return;
+    }
+
+    if (activeConversation?.isMarketplaceRequestChat) {
+      const nextMessage = appendMarketplaceConversationMessage({
+        conversationKey: activeConversation.serviceKey || activeConversation.id || "",
+        content: trimmedMessage,
+        attachment,
+        senderId: user?.id || null,
+        senderRole: "CLIENT",
+        senderName: headerDisplayName,
+      });
+
+      if (!nextMessage) {
+        return;
+      }
+
+      setMessages((previous) => [...previous, nextMessage]);
+      setMessageInput("");
+      setConversations((previous) =>
+        updateConversationDetails(previous, selectedConversationKey, {
+          previewText: getMessagePreview(nextMessage),
+          lastActivity: getTimestampValue(nextMessage.createdAt) || Date.now(),
+          unreadCount: 0,
+        }),
+      );
+      return;
+    }
+
+    if (!conversationId) {
       return;
     }
 
@@ -2299,7 +2575,7 @@ const ClientChat = () => {
   };
 
   const handleClearChat = useCallback(async () => {
-    if (!conversationId || !authFetch) {
+    if (!conversationId || !authFetch || activeConversation?.isMarketplaceRequestChat) {
       return;
     }
 
@@ -2340,7 +2616,7 @@ const ClientChat = () => {
     } finally {
       setClearingChat(false);
     }
-  }, [authFetch, conversationId, selectedConversationKey]);
+  }, [activeConversation?.isMarketplaceRequestChat, authFetch, conversationId, selectedConversationKey]);
 
   const handleConversationSelect = useCallback(
     (conversation) => {
@@ -2354,6 +2630,7 @@ const ClientChat = () => {
         return;
       }
 
+      setActiveTab("messages");
       setSelectedConversation(conversation);
       setConversations((previous) =>
         previous.map((item) =>
@@ -2381,6 +2658,7 @@ const ClientChat = () => {
         conversation.name,
         conversation.projectTitle,
         conversation.label,
+        getConversationMemberLabel(conversation, user),
         getMessagePreview(conversation),
       ]
         .filter(Boolean)
@@ -2389,11 +2667,35 @@ const ClientChat = () => {
 
       return haystack.includes(query);
     });
-  }, [conversations, deferredConversationSearch]);
-  const messagesHeaderSupportingText = loading
-    ? "Syncing your conversations."
-    : `${filteredConversations.length} conversation${filteredConversations.length === 1 ? "" : "s"} ready to review${conversationSearch.trim() ? " for the current search." : "."}`;
+  }, [conversations, deferredConversationSearch, user]);
+  const filteredRequests = useMemo(() => {
+    const query = deferredRequestSearch.trim().toLowerCase();
 
+    if (!query) {
+      return pendingRequests;
+    }
+
+    return pendingRequests.filter((request) => {
+      const haystack = [
+        request.freelancerName,
+        request.serviceTitle,
+        request.serviceType,
+        request.requestMessage,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [deferredRequestSearch, pendingRequests]);
+  const activeRequest = useMemo(
+    () =>
+      filteredRequests.find((request) => String(request.id) === String(selectedRequestId)) ||
+      filteredRequests[0] ||
+      null,
+    [filteredRequests, selectedRequestId],
+  );
   return (
     <div className="min-h-screen bg-background text-[#f1f5f9]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
@@ -2415,27 +2717,56 @@ const ClientChat = () => {
           <ClientPageHeader
             className="shrink-0"
             title="Messages"
-            description="Keep project conversations, proposal replies, and live updates in one clear workspace."
-            supportingText={messagesHeaderSupportingText}
           />
 
           <section className="mt-8 flex min-h-0 flex-1">
-            <div className="flex min-h-[680px] w-full min-w-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-white/[0.05] bg-accent lg:min-h-[720px] lg:flex-row">
-              <aside className="flex w-full shrink-0 flex-col border-b border-white/[0.06] bg-accent lg:w-[360px] lg:border-b-0 lg:border-r lg:border-white/[0.06]">
-                <div className="px-6 pb-5 pt-7">
-                  <p className="text-[1.05rem] font-semibold text-white">
-                    Messages
-                  </p>
+            <div className="flex min-h-[680px] w-full min-w-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-white/[0.05] bg-card lg:min-h-[720px] lg:flex-row">
+              <aside className="flex w-full shrink-0 flex-col border-b border-white/[0.06] bg-card lg:w-[360px] lg:border-b-0 lg:border-r lg:border-white/[0.06]">
+                <div className="px-4 pb-5 pt-5 md:px-6 md:pt-6">
+                  <div className="grid grid-cols-2 rounded-full border border-white/[0.08] bg-background/50 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("messages")}
+                      className={cn(
+                        "rounded-full px-4 py-2.5 text-sm font-semibold transition",
+                        activeTab === "messages"
+                          ? "bg-[#ffc107] text-[#141414]"
+                          : "text-[#9ca3af] hover:text-white",
+                      )}
+                    >
+                      Messages ({conversations.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("requests")}
+                      className={cn(
+                        "rounded-full px-4 py-2.5 text-sm font-semibold transition",
+                        activeTab === "requests"
+                          ? "bg-[#ffc107] text-[#141414]"
+                          : "text-[#9ca3af] hover:text-white",
+                      )}
+                    >
+                      Requests ({pendingRequests.length})
+                    </button>
+                  </div>
                 </div>
 
-                <div className="px-6 pb-6">
+                <div className="px-4 pb-5 md:px-6">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-[#6b7280]" />
                     <Input
-                      value={conversationSearch}
-                      onChange={(event) => setConversationSearch(event.target.value)}
-                      placeholder="Search chats..."
-                      className="h-11 rounded-[16px] border-white/[0.1] bg-white/[0.02] pl-11 text-sm text-white placeholder:text-[#646b77] focus-visible:ring-0"
+                      value={activeTab === "messages" ? conversationSearch : requestSearch}
+                      onChange={(event) =>
+                        activeTab === "messages"
+                          ? setConversationSearch(event.target.value)
+                          : setRequestSearch(event.target.value)
+                      }
+                      placeholder={
+                        activeTab === "messages"
+                          ? "Search chats..."
+                          : "Search requests..."
+                      }
+                      className="h-11 rounded-[16px] border-white/[0.1] bg-background/60 pl-11 text-sm text-white placeholder:text-[#646b77] focus-visible:ring-0"
                     />
                   </div>
                 </div>
@@ -2446,48 +2777,87 @@ const ClientChat = () => {
                       <Loader2 className="size-4 animate-spin" />
                       <span>Loading chats...</span>
                     </div>
-                  ) : filteredConversations.length > 0 ? (
-                    <div className="space-y-2">
-                      {filteredConversations.map((conversation) => {
-                        const conversationKey = getConversationKey(conversation);
-                        const isActive = conversationKey === selectedConversationKey;
+                  ) : activeTab === "messages" ? (
+                    filteredConversations.length > 0 ? (
+                      <div className="space-y-2">
+                        {filteredConversations.map((conversation) => {
+                          const conversationKey = getConversationKey(conversation);
+                          const isActive = conversationKey === selectedConversationKey;
 
-                        return (
-                          <ConversationItem
-                            key={conversationKey}
-                            conversation={conversation}
-                            isActive={isActive}
-                            onSelect={() => handleConversationSelect(conversation)}
-                            unreadCount={conversation.unreadCount}
-                            showOnline={isActive && online}
-                          />
-                        );
-                      })}
+                          return (
+                            <ConversationItem
+                              key={conversationKey}
+                              conversation={conversation}
+                              isActive={isActive}
+                              onSelect={() => handleConversationSelect(conversation)}
+                              unreadCount={conversation.unreadCount}
+                              showOnline={isActive && online}
+                            />
+                          );
+                        })}
+                      </div>
+                    ) : conversations.length > 0 ? (
+                      <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
+                        <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+                          <Search className="size-5" />
+                        </div>
+                        <p className="mt-4 text-base font-semibold text-white">
+                          No matching conversations
+                        </p>
+                        <p className="mt-2 text-sm text-[#8f96a3]">
+                          Try a different member name or project title.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
+                        <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+                          <SendHorizontal className="size-5" />
+                        </div>
+                        <p className="mt-4 text-base font-semibold text-white">
+                          {hasLockedAcceptedProjects
+                            ? "Chats unlock after kickoff payment"
+                            : "No conversations yet"}
+                        </p>
+                        <p className="mt-2 text-sm text-[#8f96a3]">
+                          {hasLockedAcceptedProjects
+                            ? "Accepted projects will appear here after the initial 20% payment is completed."
+                            : "Accepted collaborations and approved marketplace requests will appear here automatically."}
+                        </p>
+                      </div>
+                    )
+                  ) : filteredRequests.length > 0 ? (
+                    <div className="space-y-3">
+                      {filteredRequests.map((request) => (
+                        <RequestListItem
+                          key={request.id}
+                          request={request}
+                          isActive={String(request.id) === String(activeRequest?.id)}
+                          onSelect={() => setSelectedRequestId(request.id)}
+                        />
+                      ))}
                     </div>
-                  ) : conversations.length > 0 ? (
+                  ) : pendingRequests.length > 0 ? (
                     <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
                       <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
                         <Search className="size-5" />
                       </div>
                       <p className="mt-4 text-base font-semibold text-white">
-                        No matching conversations
+                        No matching requests
                       </p>
                       <p className="mt-2 text-sm text-[#8f96a3]">
-                        Try a different name or project title.
+                        Try a different freelancer name or request title.
                       </p>
                     </div>
                   ) : (
                     <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
                       <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
-                        <SendHorizontal className="size-5" />
+                        <X className="size-5" />
                       </div>
                       <p className="mt-4 text-base font-semibold text-white">
-                        {hasLockedAcceptedProjects ? "Chats unlock after kickoff payment" : "No conversations yet"}
+                        No pending requests
                       </p>
                       <p className="mt-2 text-sm text-[#8f96a3]">
-                        {hasLockedAcceptedProjects
-                          ? "Accepted projects will appear here after the initial 20% payment is completed."
-                          : "Accepted project collaborations will appear here automatically."}
+                        New marketplace requests you send will stay here until the freelancer responds.
                       </p>
                     </div>
                   )}
@@ -2495,7 +2865,9 @@ const ClientChat = () => {
               </aside>
 
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                {activeConversation ? (
+                {activeTab === "requests" ? (
+                  <RequestDetailsPanel request={activeRequest} />
+                ) : activeConversation ? (
                   <ChatArea
                     conversation={activeConversation}
                     messages={messages}
@@ -2508,12 +2880,12 @@ const ClientChat = () => {
                     currentUser={user}
                     typingUsers={typingUsers.map((item) => item.name)}
                     online={online}
-                    onClearChat={handleClearChat}
+                    onClearChat={activeConversation?.isMarketplaceRequestChat ? undefined : handleClearChat}
                     isClearingChat={clearingChat}
                     chatUnlocked={selectedConversationChatUnlocked}
                   />
                 ) : (
-                  <div className="flex h-full min-h-0 items-center justify-center bg-accent px-6">
+                  <div className="flex h-full min-h-0 items-center justify-center bg-card px-6">
                     <div className="max-w-md text-center">
                       <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[#ffc107]">
                         <SendHorizontal className="size-6" />
@@ -2522,8 +2894,7 @@ const ClientChat = () => {
                         Select a conversation
                       </h2>
                       <p className="mt-3 text-sm leading-6 text-[#8f96a3]">
-                        Pick a project thread from the left to review updates, reply to
-                        freelancers, and keep delivery moving.
+                        Pick a project thread from the left to review updates, reply to freelancers, and keep delivery moving.
                       </p>
                     </div>
                   </div>
