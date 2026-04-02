@@ -2,7 +2,19 @@
 
 import React from "react";
 import Bell from "lucide-react/dist/esm/icons/bell";
+import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import HandPlatter from "lucide-react/dist/esm/icons/hand-platter";
+import House from "lucide-react/dist/esm/icons/house";
+import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
+import LogOut from "lucide-react/dist/esm/icons/log-out";
+import Mail from "lucide-react/dist/esm/icons/mail";
 import Menu from "lucide-react/dist/esm/icons/menu";
+import PhoneCall from "lucide-react/dist/esm/icons/phone-call";
+import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
+import Store from "lucide-react/dist/esm/icons/store";
+import UserRound from "lucide-react/dist/esm/icons/user-round";
+import WalletCards from "lucide-react/dist/esm/icons/wallet-cards";
 import X from "lucide-react/dist/esm/icons/x";
 import { Link, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -169,7 +181,7 @@ const ProfileDropdown = ({ profile, displayName, profileInitial }) => {
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
   { label: "Marketplace", key: "marketplace", to: "/marketplace" },
-  { label: "Service", key: "service", to: "/service" },
+  { label: "Service", mobileLabel: "Services", key: "service", to: "/service" },
   { label: "Contact", key: "contact", to: "/contact" },
 ];
 
@@ -274,22 +286,67 @@ const HeaderNav = ({ activeKey, items, mobile = false, onSelect, variant = "mark
 );
 
 const MobileMenuLink = ({ active, item, onSelect, priority = "primary" }) => {
-  const className =
-    priority === "primary"
-      ? cn(
-          "block w-full py-1 text-left text-[1.75rem] font-semibold uppercase tracking-[0.12em] transition-colors",
-          active ? "text-[#ffc107]" : "text-muted-foreground hover:text-[#ffc107]",
-        )
-      : cn(
-          "block w-full py-1 text-left text-base font-semibold uppercase tracking-[0.14em] transition-colors",
-          active ? "text-[#ffc107]" : "text-muted-foreground hover:text-foreground",
-        );
+  const iconMap = {
+    dashboard: LayoutDashboard,
+    projects: BriefcaseBusiness,
+    proposals: FileText,
+    messages: Mail,
+    payments: WalletCards,
+    profile: UserRound,
+    home: House,
+    marketplace: Store,
+    service: HandPlatter,
+    contact: PhoneCall,
+  };
+  const Icon = iconMap[item.key];
+  const content =
+    priority === "primary" ? (
+      <div
+        className={cn(
+          "flex w-full items-center gap-3 rounded-[18px] px-4 py-3 text-left transition",
+          active
+            ? "bg-[#292514] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+            : "text-[#8f96a3] hover:bg-white/[0.03] hover:text-white",
+        )}
+      >
+        <span
+          className={cn(
+            "flex size-9 items-center justify-center rounded-[12px] border transition",
+            active
+              ? "border-[#5a4a1a] bg-[#2f2a16] text-[#ffc107]"
+              : "border-white/[0.05] bg-white/[0.02] text-[#8f96a3]",
+          )}
+        >
+          {Icon ? <Icon className="size-4.5" /> : null}
+        </span>
+        <span className="text-[15px] font-medium">{item.mobileLabel || item.label}</span>
+      </div>
+    ) : (
+      <div
+        className={cn(
+          "flex min-h-[58px] items-center gap-3 rounded-[18px] border px-4 py-3 text-left transition",
+          active
+            ? "border-[#5a4a1a] bg-[#292514] text-white"
+            : "border-white/[0.05] bg-white/[0.03] text-[#d4d8e3] hover:border-white/[0.08] hover:bg-white/[0.05]",
+        )}
+      >
+        <span
+          className={cn(
+            "flex size-8 items-center justify-center rounded-[12px]",
+            active ? "text-[#ffc107]" : "text-[#a8afc1]",
+          )}
+        >
+          {Icon ? <Icon className="size-4.5" /> : null}
+        </span>
+        <span className="text-[15px] font-medium">{item.mobileLabel || item.label}</span>
+      </div>
+    );
 
   if (typeof onSelect === "function") {
     return (
       <SheetClose asChild>
-        <button type="button" onClick={() => onSelect(item.key)} className={className}>
-          {item.label}
+        <button type="button" onClick={() => onSelect(item.key)} className="w-full">
+          {content}
         </button>
       </SheetClose>
     );
@@ -297,10 +354,63 @@ const MobileMenuLink = ({ active, item, onSelect, priority = "primary" }) => {
 
   return (
     <SheetClose asChild>
-      <Link to={item.to} className={className}>
-        {item.label}
+      <Link to={item.to} className={priority === "secondary" ? "block" : "block w-full"}>
+        {content}
       </Link>
     </SheetClose>
+  );
+};
+
+const MobileProfileSwitchCard = ({
+  currentDashboard,
+  displayName,
+  profile,
+  profileInitial,
+  profileTo,
+}) => {
+  const navigate = useNavigate();
+
+  const switchTargetLabel = currentDashboard === "freelancer" ? "Client" : "Freelancer";
+  const switchTargetPath = currentDashboard === "freelancer" ? "/client" : "/freelancer";
+
+  return (
+    <div className="rounded-[26px] border border-white/[0.05] bg-white/[0.03] p-4 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)]">
+      <div className="flex items-center justify-between gap-3">
+        <SheetClose asChild>
+          <button
+            type="button"
+            onClick={() => navigate(profileTo)}
+            className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          >
+            <div className="relative shrink-0">
+              <Avatar className="size-12 border border-white/[0.08]">
+                <AvatarImage src={profile?.avatar} alt={displayName} />
+                <AvatarFallback className="bg-[#272c3d] text-sm font-bold text-white">
+                  {profileInitial}
+                </AvatarFallback>
+              </Avatar>
+              <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#161a28] bg-[#22c55e]" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[1rem] font-semibold text-white">{displayName}</p>
+              <p className="mt-1 text-xs text-[#6f7688]">View profile</p>
+            </div>
+          </button>
+        </SheetClose>
+
+        <SheetClose asChild>
+          <button
+            type="button"
+            onClick={() => navigate(switchTargetPath)}
+            className="flex shrink-0 flex-col items-end gap-1 rounded-[18px] px-2 py-1 text-right transition hover:text-white"
+          >
+            <Repeat2 className="size-4 text-[#d7dbe6]" />
+            <span className="text-[11px] font-medium text-[#7f8797]">switch to</span>
+            <span className="text-xs font-semibold text-[#cfd5df]">{switchTargetLabel}</span>
+          </button>
+        </SheetClose>
+      </div>
+    </div>
   );
 };
 
@@ -497,6 +607,7 @@ const FreelancerWorkspaceHeader = ({
   onNotificationClick,
   className,
 }) => {
+  const { logout } = useAuth();
   const displayName = String(profile?.name || "Freelancer").trim() || "Freelancer";
   const profileInitial = profile?.initial || getInitials(displayName);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -512,11 +623,6 @@ const FreelancerWorkspaceHeader = ({
     />
   );
 
-  const handleMobilePrimaryAction = () => {
-    setMobileMenuOpen(false);
-    onPrimaryAction?.();
-  };
-
   return (
     <header className={cn("sticky top-0 z-50 bg-background", className)}>
       <div className="border-b border-border px-4 py-5 lg:hidden">
@@ -525,54 +631,82 @@ const FreelancerWorkspaceHeader = ({
             <BrandMark />
           </Link>
 
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <button
-                type="button"
-                aria-label="Open navigation menu"
-                className="inline-flex size-11 items-center justify-center rounded-full text-white transition-colors hover:bg-white/5"
-              >
-                <Menu className="size-6" />
-              </button>
-            </SheetTrigger>
+          <div className="flex items-center gap-1">
+            <div className="rounded-full bg-white/[0.02] text-[#ffc107]">
+              {notificationButton}
+            </div>
+
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Open navigation menu"
+                  className="inline-flex size-11 items-center justify-center rounded-full text-white transition-colors hover:bg-white/5"
+                >
+                  <Menu className="size-6" />
+                </button>
+              </SheetTrigger>
             <SheetContent
-              side="right"
+              side="left"
               showCloseButton={false}
-              className="w-full max-w-none border-l-0 bg-background p-0 text-white sm:max-w-none"
+              className="w-[min(88vw,22rem)] border-r border-white/[0.06] rounded-r-[28px] bg-[#101420] p-0 text-white shadow-[0_32px_100px_-36px_rgba(0,0,0,0.92)] sm:max-w-[22rem]"
             >
-              <div className="flex items-center justify-between px-6 py-6">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation menu</SheetTitle>
+                <SheetDescription>
+                  Open workspace and site navigation links.
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="flex items-center justify-between border-b border-white/[0.05] px-6 py-6">
                 <SheetClose asChild>
                   <Link to="/">
                     <BrandMark />
                   </Link>
                 </SheetClose>
 
-                <SheetClose asChild>
-                  <button
-                    type="button"
-                    aria-label="Close navigation menu"
-                    className="inline-flex size-11 items-center justify-center rounded-full text-white transition-colors hover:bg-white/5"
-                  >
-                    <X className="size-6" />
-                  </button>
-                </SheetClose>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-full bg-white/[0.04] text-[#ffc107]">
+                    {notificationButton}
+                  </div>
+                  <SheetClose asChild>
+                    <button
+                      type="button"
+                      aria-label="Close navigation menu"
+                      className="inline-flex size-10 items-center justify-center rounded-full text-[#c6cad5] transition-colors hover:bg-white/[0.05] hover:text-white"
+                    >
+                      <X className="size-5" />
+                    </button>
+                  </SheetClose>
+                </div>
               </div>
 
               <ScrollArea className="flex-1 px-6 pb-8">
                 <div className="flex min-h-full flex-col">
-                  <div className="space-y-7 pt-10">
-                    {workspaceNavItems.map((item) => (
+                  <div className="pt-8">
+                    <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
+                      Main
+                    </p>
+                    <div className="mt-4 space-y-2">
+                    {workspaceNavItems
+                      .filter((item) => item.key !== "profile")
+                      .map((item) => (
                       <MobileMenuLink
                         key={item.key}
                         item={item}
                         active={item.key === activeWorkspaceKey}
                         onSelect={onWorkspaceNav}
+                        priority="primary"
                       />
                     ))}
+                    </div>
                   </div>
 
-                  <div className="mt-12 border-t border-border pt-8">
-                    <div className="space-y-5">
+                  <div className="mt-10">
+                    <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
+                      Home
+                    </p>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
                       {marketingNavItems.map((item) => (
                         <MobileMenuLink
                           key={item.key}
@@ -585,41 +719,33 @@ const FreelancerWorkspaceHeader = ({
                     </div>
                   </div>
 
-                  <div className="mt-auto space-y-4 pb-2 pt-12">
-                    {typeof onPrimaryAction === "function" ? (
+                  <div className="mt-auto space-y-5 pb-2 pt-10">
+                    <SheetClose asChild>
                       <button
                         type="button"
-                        onClick={handleMobilePrimaryAction}
-                        className="flex w-full items-center justify-center gap-2 rounded-[18px] bg-[#ffc107] px-4 py-3 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
+                        onClick={() => {
+                          logout();
+                        }}
+                        className="flex items-center gap-3 px-1 text-sm font-medium text-[#b0b7c7] transition hover:text-white"
                       >
-                        {primaryActionContent}
+                        <LogOut className="size-4.5" />
+                        <span>Sign Out</span>
                       </button>
-                    ) : (
-                      <SheetClose asChild>
-                        <Link
-                          to={primaryActionTo}
-                          className="flex w-full items-center justify-center gap-2 rounded-[18px] bg-[#ffc107] px-4 py-3 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
-                        >
-                          {primaryActionContent}
-                        </Link>
-                      </SheetClose>
-                    )}
+                    </SheetClose>
 
-                    <div className="flex items-center gap-3">
-                      <div className="min-w-0 flex-1">
-                        <ProfileDropdown
-                          profile={profile}
-                          displayName={displayName}
-                          profileInitial={profileInitial}
-                        />
-                      </div>
-                      <div className="shrink-0">{notificationButton}</div>
-                    </div>
+                    <MobileProfileSwitchCard
+                      currentDashboard="freelancer"
+                      displayName={displayName}
+                      profile={profile}
+                      profileInitial={profileInitial}
+                      profileTo={_profileTo}
+                    />
                   </div>
                 </div>
               </ScrollArea>
             </SheetContent>
-          </Sheet>
+            </Sheet>
+          </div>
         </div>
       </div>
 
