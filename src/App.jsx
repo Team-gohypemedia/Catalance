@@ -25,7 +25,7 @@ const ClientProjects = lazy(
   () => import("@/components/features/client/ClientProjects.jsx"),
 );
 const ClientProjectDetail = lazy(
-  () => import("@/components/features/client/ClientProjectDetail.jsx"),
+  () => import("@/components/pages/ClientProjectDetailPage.jsx"),
 );
 const ClientChat = lazy(
   () => import("@/components/features/client/ClientChat.jsx"),
@@ -93,7 +93,7 @@ const FreelancerProjects = lazy(
   () => import("@/components/features/freelancer/FreelancerProjects"),
 );
 const FreelancerProjectDetail = lazy(
-  () => import("@/components/features/freelancer/FreelancerProjectDetail"),
+  () => import("@/components/pages/FreelancerProjectDetailPage.jsx"),
 );
 const FreelancerChat = lazy(
   () => import("@/components/features/freelancer/FreelancerChat"),
