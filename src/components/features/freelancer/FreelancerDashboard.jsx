@@ -117,6 +117,96 @@ const getFirstNonEmptyText = (...values) => {
   return "";
 };
 
+const scheduleRangeDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "2-digit",
+});
+
+const scheduleRangeDateWithYearFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "2-digit",
+  year: "numeric",
+});
+
+const scheduleDayInMs = 1000 * 60 * 60 * 24;
+
+const normalizeScheduleDate = (value) => {
+  if (!value) return null;
+
+  const parsed = value instanceof Date ? new Date(value) : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  parsed.setHours(12, 0, 0, 0);
+  return parsed;
+};
+
+const addScheduleDays = (date, days) => {
+  const nextDate = normalizeScheduleDate(date);
+  if (!nextDate) return null;
+
+  nextDate.setDate(nextDate.getDate() + Number(days || 0));
+  return nextDate;
+};
+
+const getInclusiveScheduleDaySpan = (startDate, endDate) => {
+  const normalizedStart = normalizeScheduleDate(startDate);
+  const normalizedEnd = normalizeScheduleDate(endDate);
+  if (!normalizedStart || !normalizedEnd) return null;
+
+  return Math.max(
+    1,
+    Math.round((normalizedEnd.getTime() - normalizedStart.getTime()) / scheduleDayInMs) + 1,
+  );
+};
+
+const formatScheduleDateRange = (startDate, endDate) => {
+  const normalizedStart = normalizeScheduleDate(startDate);
+  const normalizedEnd = normalizeScheduleDate(endDate);
+  if (!normalizedStart || !normalizedEnd) return "";
+
+  const includeYear = normalizedStart.getFullYear() !== normalizedEnd.getFullYear();
+  const formatter = includeYear
+    ? scheduleRangeDateWithYearFormatter
+    : scheduleRangeDateFormatter;
+
+  return `${formatter.format(normalizedStart)} - ${formatter.format(normalizedEnd)}`;
+};
+
+const allocateScheduleDaysByShare = (totalDays, shares = []) => {
+  const normalizedTotalDays = Math.max(1, Number(totalDays) || 1);
+  const normalizedShares = (Array.isArray(shares) && shares.length ? shares : [100]).map(
+    (share) => Math.max(0, Number(share) || 0),
+  );
+
+  const provisionalAllocations = normalizedShares.map((share, index) => {
+    const rawDays = (normalizedTotalDays * share) / 100;
+    return {
+      index,
+      wholeDays: Math.floor(rawDays),
+      remainder: rawDays % 1,
+      share,
+    };
+  });
+
+  const allocatedDays = provisionalAllocations.map((item) => item.wholeDays);
+  let assignedDays = allocatedDays.reduce((sum, count) => sum + count, 0);
+  const rankedRemainders = provisionalAllocations
+    .slice()
+    .sort((a, b) => b.remainder - a.remainder || b.share - a.share || a.index - b.index);
+
+  let cursor = 0;
+  while (assignedDays < normalizedTotalDays && rankedRemainders.length > 0) {
+    const target = rankedRemainders[cursor % rankedRemainders.length];
+    allocatedDays[target.index] += 1;
+    assignedDays += 1;
+    cursor += 1;
+  }
+
+  return allocatedDays;
+};
+
 const extractLabeledValue = (value = "", labels = []) =>
   extractLabeledLineValue(value, labels);
 
@@ -1605,7 +1695,7 @@ const FreelancerRunningProjectCard = ({
   onSelect,
 }) => {
   const statusBg = "bg-[#2f1e05] text-[#fbbf24]";
-  const lineBg = "bg-[#f97316]";
+  const lineBg = "bg-primary";
   const progress = Math.max(0, Math.min(100, Number(item?.progress) || 0));
   const badgeLabel =
     String(item?.statusLabel || "").trim().toLowerCase() === "awaiting clearance"
@@ -1624,20 +1714,20 @@ const FreelancerRunningProjectCard = ({
         }
       }}
       className={cn(
-        "relative cursor-pointer overflow-hidden rounded-[18px] bg-background/30 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition-colors hover:bg-background/40",
+        "relative cursor-pointer overflow-hidden rounded-[18px] bg-card shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition-colors hover:bg-card",
         canShowSelection && isSelected && "border-transparent bg-card shadow-[inset_0_0_0_2px_rgba(250,204,21,1)]",
       )}
     >
       <CardContent className={cn("p-4 pb-6", canShowSelection && isSelected && "pb-7")}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+              <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
                 {String(item?.clientLabel || "").toUpperCase()}
               </p>
               <p className="mt-2 truncate text-[1.15rem] font-semibold tracking-[-0.03em] text-white">
                 {item?.title}
               </p>
-              <p className="mt-1 text-[11px] text-zinc-400">{item?.timeLabel}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{item?.timeLabel}</p>
             </div>
 
             <Badge className={cn("rounded-[10px] border-0 px-3 py-1 text-[11px] font-semibold", statusBg)}>
@@ -1646,7 +1736,7 @@ const FreelancerRunningProjectCard = ({
           </div>
 
           <div className="mt-4">
-            <div className="flex items-center justify-between text-[11px] text-zinc-400">
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
               <span>Freelancer share</span>
               <span className="font-semibold text-zinc-100">{item?.amount}</span>
             </div>
@@ -3098,14 +3188,6 @@ export const DashboardContent = ({ _roleOverride }) => {
     ];
   }, [paymentCollectionPercent, pendingPayoutRows.length, receivedPayoutRows.length]);
 
-  const awaitingClearancePayoutRows = useMemo(
-    () =>
-      pendingPayoutRows.filter((item) =>
-        String(item?.statusLabel || "").toLowerCase().includes("awaiting"),
-      ),
-    [pendingPayoutRows],
-  );
-
   const runningProjectsRows = useMemo(() => pendingPayoutRows, [pendingPayoutRows]);
 
   const runningProjectFilterOptions = useMemo(
@@ -3115,12 +3197,6 @@ export const DashboardContent = ({ _roleOverride }) => {
           value: "all",
           label: "All projects",
           count: pendingPayoutRows.length,
-          kind: "preset",
-        },
-        {
-          value: "awaiting",
-          label: "Awaiting clearance",
-          count: awaitingClearancePayoutRows.length,
           kind: "preset",
         },
       ];
@@ -3134,14 +3210,10 @@ export const DashboardContent = ({ _roleOverride }) => {
 
       return [...baseOptions, ...projectOptions];
     },
-    [awaitingClearancePayoutRows.length, pendingPayoutRows.length, runningProjectsRows],
+    [pendingPayoutRows.length, runningProjectsRows],
   );
 
   const visibleRunningProjects = useMemo(() => {
-    if (runningProjectsFilter === "awaiting") {
-      return awaitingClearancePayoutRows;
-    }
-
     if (runningProjectsFilter.startsWith("project:")) {
       const selectedProjectId = runningProjectsFilter.replace("project:", "");
       return runningProjectsRows.filter(
@@ -3150,7 +3222,7 @@ export const DashboardContent = ({ _roleOverride }) => {
     }
 
     return runningProjectsRows;
-  }, [awaitingClearancePayoutRows, runningProjectsFilter, runningProjectsRows]);
+  }, [runningProjectsFilter, runningProjectsRows]);
 
   useEffect(() => {
     if (!visibleRunningProjects.length) {
@@ -3254,7 +3326,7 @@ export const DashboardContent = ({ _roleOverride }) => {
     [schedulePhases],
   );
 
-  const scheduleTimelineShares = useMemo(() => [15, 15, 50, 20], []);
+  const scheduleTimelineShares = useMemo(() => phaseTimelineShares.slice(0, 4), []);
 
   const scheduleTimelineStarts = useMemo(() => {
     let cursor = 0;
@@ -3321,93 +3393,154 @@ export const DashboardContent = ({ _roleOverride }) => {
     return (businessName ? toDisplayTitleCase(businessName) : "") || fallbackTitle;
   }, [activeProposalForSchedule]);
 
-  const projectScheduleStartDate = useMemo(() => {
+  const projectScheduleDeadlineDate = useMemo(
+    () => normalizeScheduleDate(activeProposalForSchedule?.project?.deadline),
+    [activeProposalForSchedule],
+  );
+
+  const projectScheduleDurationSeedDays = useMemo(() => {
     const project = activeProposalForSchedule?.project || {};
-    const rawDate = project?.createdAt || project?.updatedAt || null;
-    const parsed = rawDate ? new Date(rawDate) : null;
-    if (parsed && !Number.isNaN(parsed.getTime())) {
-      return parsed;
+    const timelineText = getFirstNonEmptyText(
+      project?.timeline,
+      project?.duration,
+      project?.launchTimeline,
+      activeProposalForSchedule?.timeline,
+      activeProposalForSchedule?.duration,
+    ).toLowerCase();
+
+    const match = timelineText.match(/(\d+)\s*(day|days|week|weeks|month|months)/i);
+    if (!match) return null;
+
+    const value = Number(match[1]);
+    const unit = String(match[2] || "");
+    if (!Number.isFinite(value) || value <= 0) {
+      return null;
     }
 
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    if (unit.startsWith("day")) return value;
+    if (unit.startsWith("week")) return value * 7;
+    if (unit.startsWith("month")) return value * 30;
+    return null;
   }, [activeProposalForSchedule]);
 
-  const projectScheduleDurationDays = useMemo(() => {
+  const projectScheduleStartDate = useMemo(() => {
+    const proposal = activeProposalForSchedule || {};
     const project = activeProposalForSchedule?.project || {};
-    const timelineText = String(project?.timeline || project?.duration || "").toLowerCase();
-    const match = timelineText.match(/(\d+)\s*(day|days|week|weeks|month|months)/i);
-    if (match) {
-      const value = Number(match[1]);
-      const unit = String(match[2] || "");
-      if (Number.isFinite(value) && value > 0) {
-        if (unit.startsWith("day")) return value;
-        if (unit.startsWith("week")) return value * 7;
-        if (unit.startsWith("month")) return value * 30;
-      }
+    const explicitStartDate = [
+      project?.startDate,
+      project?.startAt,
+      project?.startsAt,
+      project?.startedAt,
+      project?.kickoffDate,
+      project?.kickoffAt,
+      project?.timelineStart,
+      proposal?.startDate,
+      proposal?.acceptedAt,
+      proposal?.acceptedOn,
+    ]
+      .map(normalizeScheduleDate)
+      .find(Boolean);
+
+    if (explicitStartDate) {
+      return explicitStartDate;
     }
 
-    const deadlineRaw = project?.deadline;
-    if (deadlineRaw) {
-      const deadline = new Date(deadlineRaw);
-      if (!Number.isNaN(deadline.getTime())) {
-        const start = new Date(projectScheduleStartDate);
-        const days = Math.ceil((deadline.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        if (Number.isFinite(days) && days > 0) {
-          return days;
-        }
-      }
+    if (projectScheduleDeadlineDate && projectScheduleDurationSeedDays) {
+      return addScheduleDays(projectScheduleDeadlineDate, -(projectScheduleDurationSeedDays - 1));
+    }
+
+    const fallbackStartDate = [
+      project?.createdAt,
+      project?.updatedAt,
+      proposal?.createdAt,
+      proposal?.updatedAt,
+    ]
+      .map(normalizeScheduleDate)
+      .find(Boolean);
+
+    return fallbackStartDate || normalizeScheduleDate(dashboardClock) || normalizeScheduleDate(new Date());
+  }, [
+    activeProposalForSchedule,
+    dashboardClock,
+    projectScheduleDeadlineDate,
+    projectScheduleDurationSeedDays,
+  ]);
+
+  const projectScheduleDurationDays = useMemo(() => {
+    if (projectScheduleDurationSeedDays) {
+      return projectScheduleDurationSeedDays;
+    }
+
+    const resolvedDuration = getInclusiveScheduleDaySpan(
+      projectScheduleStartDate,
+      projectScheduleDeadlineDate,
+    );
+    if (resolvedDuration) {
+      return resolvedDuration;
     }
 
     return 28;
-  }, [activeProposalForSchedule, projectScheduleStartDate]);
+  }, [projectScheduleDeadlineDate, projectScheduleDurationSeedDays, projectScheduleStartDate]);
 
-  const scheduleWeekRanges = useMemo(() => {
-    const startDate = new Date(projectScheduleStartDate);
-    const totalDays = Math.max(1, projectScheduleDurationDays);
-    const segmentSize = Math.max(1, Math.ceil(totalDays / 4));
+  const projectScheduleEndDate = useMemo(() => {
+    if (projectScheduleDeadlineDate) {
+      return projectScheduleDeadlineDate;
+    }
+
+    return (
+      addScheduleDays(projectScheduleStartDate, projectScheduleDurationDays - 1) ||
+      normalizeScheduleDate(dashboardClock) ||
+      normalizeScheduleDate(new Date())
+    );
+  }, [
+    dashboardClock,
+    projectScheduleDeadlineDate,
+    projectScheduleDurationDays,
+    projectScheduleStartDate,
+  ]);
+
+  const scheduleMarkerLeftPct = useMemo(
+    () => clampProgress(activeScheduleProgressPct || 0),
+    [activeScheduleProgressPct],
+  );
+
+  const schedulePhaseSegments = useMemo(() => {
+    const totalDays =
+      getInclusiveScheduleDaySpan(projectScheduleStartDate, projectScheduleEndDate) ||
+      Math.max(1, projectScheduleDurationDays);
+    const phaseDayAllocations = allocateScheduleDaysByShare(totalDays, scheduleTimelineShares);
+    let elapsedDays = 0;
 
     return Array.from({ length: 4 }, (_, index) => {
-      const startOffset = index * segmentSize;
-      const endOffset = Math.min(totalDays - 1, (index + 1) * segmentSize - 1);
+      const phaseDurationDays = Math.max(0, phaseDayAllocations[index] ?? 0);
+      const startOffset = elapsedDays;
+      const endOffset = elapsedDays + Math.max(0, phaseDurationDays - 1);
+      const start = addScheduleDays(projectScheduleStartDate, startOffset);
+      const end = addScheduleDays(projectScheduleStartDate, endOffset);
+      elapsedDays += phaseDurationDays;
 
-      const start = new Date(startDate);
-      start.setDate(startDate.getDate() + startOffset);
-
-      const end = new Date(startDate);
-      end.setDate(startDate.getDate() + endOffset);
-
-      const startLabel = start.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
-      const endLabel = end.toLocaleDateString("en-US", { day: "2-digit" });
-      return `${startLabel} - ${endLabel}`;
+      return {
+        id: `schedule-phase-segment-${index + 1}`,
+        label: `Phase ${index + 1}`,
+        start,
+        end,
+        rangeLabel: formatScheduleDateRange(start, end),
+        startPct: scheduleTimelineStarts[index] ?? 0,
+        endPct: (scheduleTimelineStarts[index] ?? 0) + (scheduleTimelineShares[index] ?? 0),
+      };
     });
-  }, [projectScheduleDurationDays, projectScheduleStartDate]);
+  }, [
+    projectScheduleDurationDays,
+    projectScheduleEndDate,
+    projectScheduleStartDate,
+    scheduleTimelineShares,
+    scheduleTimelineStarts,
+  ]);
 
-  const scheduleTodayLeftPct = useMemo(() => {
-    const normalizedProgress = clampProgress(activeScheduleProgressPct || 0);
-    const cumulativeBoundaries = scheduleTimelineShares.reduce((acc, share, index) => {
-      const previous = index === 0 ? 0 : acc[index - 1];
-      acc.push(previous + share);
-      return acc;
-    }, []);
-
-    const activePhaseIndex = cumulativeBoundaries.findIndex((boundary) => normalizedProgress < boundary);
-    const resolvedActiveIndex = activePhaseIndex >= 0 ? activePhaseIndex : 3;
-    const phaseStartPct = scheduleTimelineStarts[resolvedActiveIndex] ?? 0;
-    const phaseWidthPct = scheduleTimelineShares[resolvedActiveIndex] ?? 25;
-    const progressIntoPhase = Math.max(0, normalizedProgress - phaseStartPct);
-    const inPhaseProgress = phaseWidthPct > 0
-      ? Math.min(1, progressIntoPhase / phaseWidthPct)
-      : 0;
-
-    const markerPct = phaseStartPct + phaseWidthPct * inPhaseProgress;
-    return Math.max(0, Math.min(100, Math.round(markerPct * 100) / 100));
-  }, [activeScheduleProgressPct, scheduleTimelineShares, scheduleTimelineStarts]);
-
-  const activeScheduleWeekIndex = useMemo(() => {
-    const normalizedMarker = Math.max(0, Math.min(99.999, Number(scheduleTodayLeftPct) || 0));
-    return Math.max(0, Math.min(3, Math.floor(normalizedMarker / 25)));
-  }, [scheduleTodayLeftPct]);
+  const activeSchedulePhaseSegmentIndex = useMemo(
+    () => resolvePhaseIndexFromProgress(scheduleMarkerLeftPct, scheduleTimelineShares.length || 4),
+    [scheduleMarkerLeftPct, scheduleTimelineShares],
+  );
 
   const scheduleTodayDateLabel = useMemo(
     () =>
@@ -3415,8 +3548,8 @@ export const DashboardContent = ({ _roleOverride }) => {
         month: "short",
         day: "2-digit",
         year: "numeric",
-      }).format(new Date()),
-    [],
+      }).format(dashboardClock),
+    [dashboardClock],
   );
 
   const scheduleTimelineRows = useMemo(() => {
@@ -3954,55 +4087,55 @@ export const DashboardContent = ({ _roleOverride }) => {
           {metricsLoading ? (
             <FreelancerEarningsSkeleton />
           ) : (
-          <section className="flex flex-col gap-4">
-            <div className="px-4 pt-0 sm:px-6 lg:px-7">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
-                  Delivery Pipeline
-                </h2>
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-8 rounded-full border-white/[0.12] bg-white/[0.03] px-3 text-[11px] font-semibold text-zinc-200 hover:bg-white/[0.08]"
-                      >
-                        <SlidersHorizontal className="mr-1.5 size-3.5" />
-                        {activeRunningProjectsFilterLabel}
-                        <ChevronDown className="ml-1.5 size-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className="w-52 rounded-xl border-white/[0.12] bg-[#121317] p-1.5"
+          <section className="w-full min-w-0">
+            <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
+              <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+                Delivery Pipeline
+              </h2>
+              <div className="ml-auto flex items-center gap-2 sm:gap-3">
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-8 w-[12rem] justify-between rounded-full border-white/[0.12] bg-card px-3 text-[11px] font-semibold text-zinc-200 hover:bg-card data-[state=open]:bg-card"
                     >
-                      {runningProjectFilterOptions.map((option) => (
-                        <DropdownMenuItem
-                          key={option.value}
-                          disabled={option.count === 0}
-                          onSelect={(event) => {
-                            if (option.count === 0) {
-                              event.preventDefault();
-                              return;
-                            }
-                            setRunningProjectsFilter(option.value);
-                          }}
-                          className={cn(
-                            "rounded-lg px-2.5 py-2 text-[12px] font-medium text-zinc-200",
-                            runningProjectsFilter === option.value && "bg-white/[0.08] text-white",
-                            option.count === 0 && "cursor-not-allowed opacity-50",
-                          )}
-                        >
-                          <span>{option.label}</span>
-                          {option.kind === "preset" ? (
-                            <span className="ml-auto text-[11px] text-zinc-400">{option.count}</span>
-                          ) : null}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                      <span className="flex min-w-0 items-center gap-2">
+                        <SlidersHorizontal className="size-3.5 shrink-0" />
+                        <span className="truncate">{activeRunningProjectsFilterLabel}</span>
+                      </span>
+                      <ChevronDown className="size-3.5 shrink-0 opacity-70" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-[12rem] rounded-xl border-white/[0.12] bg-card p-1.5"
+                  >
+                    {runningProjectFilterOptions.map((option) => (
+                      <DropdownMenuItem
+                        key={option.value}
+                        disabled={option.count === 0}
+                        onSelect={(event) => {
+                          if (option.count === 0) {
+                            event.preventDefault();
+                            return;
+                          }
+                          setRunningProjectsFilter(option.value);
+                        }}
+                        className={cn(
+                          "rounded-lg px-2.5 py-2 text-[12px] font-medium text-zinc-200",
+                          runningProjectsFilter === option.value && "bg-white/[0.08] text-white",
+                          option.count === 0 && "cursor-not-allowed opacity-50",
+                        )}
+                      >
+                        <span>{option.label}</span>
+                        {option.kind === "preset" ? (
+                          <span className="ml-auto text-[11px] text-zinc-400">{option.count}</span>
+                        ) : null}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
@@ -4054,7 +4187,9 @@ export const DashboardContent = ({ _roleOverride }) => {
                                   "basis-full pl-[2px] pr-[2px]",
                                   visibleRunningProjects.length === 1
                                     ? "md:basis-full xl:basis-full"
-                                    : "md:basis-[calc((100%-1rem)/2)] xl:basis-[calc((100%-2rem)/3)]",
+                                    : visibleRunningProjects.length === 2
+                                      ? "md:basis-[calc((100%-1rem)/2)] xl:basis-[calc((100%-1rem)/2)]"
+                                      : "md:basis-[calc((100%-1rem)/2)] xl:basis-[calc((100%-2rem)/3)]",
                                 )}
                               >
                                 <FreelancerRunningProjectCard
@@ -4077,7 +4212,12 @@ export const DashboardContent = ({ _roleOverride }) => {
                       />
                     </>
                   ) : (
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <div
+                    className={cn(
+                      "grid gap-4",
+                      visibleRunningProjects.length > 1 && "md:grid-cols-2 xl:grid-cols-3",
+                    )}
+                  >
                     {visibleRunningProjects.map((item, index) => (
                       <FreelancerRunningProjectCard
                         key={item.id}
@@ -4101,11 +4241,11 @@ export const DashboardContent = ({ _roleOverride }) => {
                   )}
 
                   <div className="flex flex-col gap-4">
-                    <Card className="w-full rounded-[20px] border border-white/[0.08] bg-background/30 shadow-none">
+                    <Card className="w-full rounded-[20px] border border-white/[0.08] bg-card shadow-none">
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                               Project Schedule
                             </p>
                             <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
@@ -4126,7 +4266,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                           </Badge>
                         </div>
 
-                        <div className="mt-6 rounded-[18px] border border-white/[0.06] bg-background/30 px-4 py-4">
+                        <div className="mt-6 rounded-[18px] border border-white/[0.06] bg-card px-4 py-4">
                           {activeProposalForSchedule ? (
                             <div className="grid grid-cols-[160px_1fr] gap-6">
                                 {(() => {
@@ -4134,8 +4274,8 @@ export const DashboardContent = ({ _roleOverride }) => {
 
                                   return (
                                     <>
-                                <div className="pt-1">
-                                  <div className="h-[34px]">
+                                <div>
+                                  <div className="h-[34px] pt-1">
                                     <p className="text-[0.66rem] font-semibold uppercase tracking-[0.32em] text-muted-foreground">
                                       MILESTONES
                                     </p>
@@ -4163,28 +4303,28 @@ export const DashboardContent = ({ _roleOverride }) => {
                                 </div>
 
                                 <div className="relative">
-                                  <div className="grid grid-cols-4 gap-4 text-center">
-                                    {Array.from({ length: 4 }, (_, idx) => (
-                                      <div key={`week-${idx}`} className="min-w-0">
-                                        <p
-                                          className={cn(
-                                            "text-[10px] font-semibold",
-                                            idx === activeScheduleWeekIndex
-                                              ? "text-primary"
-                                              : "text-muted-foreground",
-                                          )}
-                                        >
-                                          Week {idx + 1}
+                                  <div className="relative h-[34px]">
+                                    {schedulePhaseSegments.map((segment, idx) => (
+                                      <div
+                                        key={segment.id}
+                                        className="absolute top-0 min-w-0 px-2 text-center"
+                                        style={{
+                                          left: `${segment.startPct}%`,
+                                          width: `${Math.max(0, segment.endPct - segment.startPct)}%`,
+                                        }}
+                                      >
+                                        <p className="text-[10px] font-semibold text-muted-foreground">
+                                          {segment.label}
                                         </p>
                                         <p
                                           className={cn(
                                             "mt-1 text-[10px]",
-                                            idx === activeScheduleWeekIndex
+                                            idx === activeSchedulePhaseSegmentIndex
                                               ? "text-primary"
                                               : "text-white/90",
                                           )}
                                         >
-                                          {scheduleWeekRanges[idx]}
+                                          {segment.rangeLabel}
                                         </p>
                                       </div>
                                     ))}
@@ -4201,12 +4341,12 @@ export const DashboardContent = ({ _roleOverride }) => {
                                     ))}
                                     <div
                                       className="absolute top-[-6px] bottom-0 w-px border-l-2 border-dotted border-[#facc15]/60"
-                                      style={{ left: `${scheduleTodayLeftPct}%` }}
+                                      style={{ left: `${scheduleMarkerLeftPct}%` }}
                                     />
 
                                     <div
                                       className="absolute top-[-52px] z-20 -translate-x-1/2"
-                                      style={{ left: `${scheduleTodayLeftPct}%` }}
+                                      style={{ left: `${scheduleMarkerLeftPct}%` }}
                                     >
                                       <div className="inline-flex flex-col items-center">
                                         <span className="text-[9px] font-semibold text-muted-foreground">
@@ -4220,6 +4360,8 @@ export const DashboardContent = ({ _roleOverride }) => {
 
                                     {visualRows.map((row, rowIndex) => {
                                       const rowTop = rowIndex * 52;
+                                      const rowLabelCenterPct = row.rowStartPct + row.rowWidthPct / 2;
+                                      const isOnTrackNote = String(row.noteLabel || "").trim().toLowerCase() === "on track";
                                       return (
                                         <div key={row.id} className="absolute left-0 right-0" style={{ top: `${rowTop}px` }}>
                                           <div
@@ -4235,14 +4377,14 @@ export const DashboardContent = ({ _roleOverride }) => {
                                           />
                                           <div
                                             className={cn(
-                                              "absolute top-[3px] inline-flex items-center rounded-full px-4 py-1 text-[10px] font-semibold",
+                                              "absolute top-[13px] inline-flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full px-4 py-1 text-[10px] font-semibold",
                                               row.isCompleted
                                                 ? "bg-emerald-500/20 text-emerald-300"
                                                 : row.isActive
                                                   ? "bg-[#facc15] text-black"
                                                   : "bg-white/[0.06] text-zinc-400",
                                             )}
-                                            style={{ left: `calc(${row.rowStartPct}% + 4%)` }}
+                                            style={{ left: `${rowLabelCenterPct}%` }}
                                           >
                                             {row.rowLabel}
                                           </div>
@@ -4284,7 +4426,14 @@ export const DashboardContent = ({ _roleOverride }) => {
                                                 {row.detailLabel}
                                               </span>
                                               {row.noteLabel ? (
-                                                <span className="rounded-[10px] border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[9px] font-semibold text-rose-300">
+                                                <span
+                                                  className={cn(
+                                                    "rounded-[10px] border px-2 py-0.5 text-[9px] font-semibold",
+                                                    isOnTrackNote
+                                                      ? "border-[#facc15]/40 bg-[#facc15]/14 text-[#facc15]"
+                                                      : "border-rose-500/30 bg-rose-500/10 text-rose-300",
+                                                  )}
+                                                >
                                                   {row.noteLabel}
                                                 </span>
                                               ) : null}
@@ -4338,9 +4487,9 @@ export const DashboardContent = ({ _roleOverride }) => {
 
                         return (
                           <>
-                            <Card className="rounded-[20px] border border-white/[0.08] bg-background/30 shadow-none">
+                            <Card className="rounded-[20px] border border-white/[0.08] bg-card shadow-none">
                               <CardContent className="p-5">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                                   Current Status
                                 </p>
                                 <div className="mt-3 flex items-end justify-between gap-3">
@@ -4357,19 +4506,19 @@ export const DashboardContent = ({ _roleOverride }) => {
                                     style={{ width: `${hasActiveProject ? Math.min(100, activeScheduleProgressPct || 0) : 0}%` }}
                                   />
                                 </div>
-                                <p className="mt-4 text-[12px] font-medium text-zinc-400">{statusSub}</p>
+                                <p className="mt-4 text-[12px] font-medium text-muted-foreground">{statusSub}</p>
                               </CardContent>
                             </Card>
 
-                            <Card className="rounded-[20px] border border-white/[0.08] bg-background/30 shadow-none">
+                            <Card className="rounded-[20px] border border-white/[0.08] bg-card shadow-none">
                               <CardContent className="p-5">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                                   Time Remaining
                                 </p>
                                 <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
                                   {hasActiveProject ? (daysRemaining ? `${daysRemaining} Days` : "—") : "No active project"}
                                 </p>
-                                <p className="mt-2 text-[12px] text-zinc-400">
+                                <p className="mt-2 text-[12px] text-muted-foreground">
                                   {hasActiveProject
                                     ? `Next payout window: ${nextPayoutSummaryLabel}`
                                     : "Next payout window details will appear once a project is active."}
@@ -4377,9 +4526,9 @@ export const DashboardContent = ({ _roleOverride }) => {
                               </CardContent>
                             </Card>
 
-                            <Card className="rounded-[20px] border border-white/[0.08] bg-background/30 shadow-none">
+                            <Card className="rounded-[20px] border border-white/[0.08] bg-card shadow-none">
                               <CardContent className="p-5">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                                   Completed Tasks
                                 </p>
                                 <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
@@ -4397,7 +4546,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                                     />
                                   ))}
                                 </div>
-                                <p className="mt-3 text-[12px] text-zinc-400">
+                                <p className="mt-3 text-[12px] text-muted-foreground">
                                   {hasActiveProject
                                     ? "Cleared payouts vs. tracked payout sources."
                                     : "Task completion summary appears when an active project is available."}

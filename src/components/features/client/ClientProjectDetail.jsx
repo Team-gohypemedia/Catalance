@@ -173,7 +173,7 @@ const readProjectDetailField = (description = "", fieldName = "") =>
 
 const parseProjectDetailList = (value = "") =>
   String(value || "")
-    .split(/[,•]/)
+    .split(/[,•\r\n]+/)
     .map((item) =>
       item
         .replace(/^[\s-]+/, "")
@@ -1780,7 +1780,14 @@ const ProjectDashboard = () => {
   const projectDetailSnapshot = useMemo(() => {
     const description = String(project?.description || "").trim();
     const extractField = (fieldName) => readProjectDetailField(description, fieldName);
+    const acceptedProposal = project?.proposals?.find((proposal) => proposal?.status === "ACCEPTED");
     const service =
+      project?.serviceName ||
+      acceptedProposal?.serviceName ||
+      project?.serviceType ||
+      acceptedProposal?.serviceType ||
+      project?.serviceKey ||
+      acceptedProposal?.serviceKey ||
       extractField("Service Type") ||
       extractField("Service") ||
       extractField("Website type") ||
@@ -1819,6 +1826,19 @@ const ProjectDashboard = () => {
       extractField("Summary") ||
       extractField("Project Overview") ||
       "";
+    const featuresDeliverables =
+      extractField("Features/Deliverables Included") ||
+      extractField("Deliverables") ||
+      extractField("Pages & Features") ||
+      "";
+    const deliverablesLabel = featuresDeliverables
+      ? extractField("Features/Deliverables Included")
+        ? "Features/Deliverables Included"
+        : extractField("Deliverables")
+          ? "Deliverables"
+          : "Pages & Features"
+      : "";
+    const deliverablesItems = parseProjectDetailList(featuresDeliverables);
 
     const corePages = parseProjectDetailList(
       extractField("Core pages included") || extractField("Core pages"),
@@ -1914,6 +1934,8 @@ const ProjectDashboard = () => {
       overview,
       businessName,
       websiteDetails,
+      deliverablesLabel,
+      deliverablesItems,
       pageTags: allPages,
     };
   }, [freelancer, project, totalBudget]);
@@ -2460,8 +2482,7 @@ const ProjectDashboard = () => {
     }
   }, [authFetch, canMarkProjectCompleted, isCompletingProject, project?.id, syncProjectState]);
 
-  const pageTitle = projectDetailSnapshot.businessName
-    || (project?.title ? `Project: ${project.title}` : "Project Dashboard");
+  const pageTitle = projectDetailSnapshot.businessName || project?.title || "Project Dashboard";
 
   // Show skeleton while loading
   if (isLoading) {
@@ -2556,7 +2577,7 @@ const ProjectDashboard = () => {
                 <div className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {[
-                      { label: "Service", value: projectDetailSnapshot.service },
+                      { label: "Service Type", value: projectDetailSnapshot.service },
                       { label: "Budget", value: projectDetailSnapshot.budget },
                       { label: "Timeline", value: projectDetailSnapshot.timeline },
                     ].map((item) => (
@@ -2601,9 +2622,37 @@ const ProjectDashboard = () => {
                         Project Details
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
+                    <CardContent className="space-y-5 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
+                      {projectDetailSnapshot.deliverablesItems.length > 0 ? (
+                        <div className="rounded-[20px] border border-white/[0.06] bg-[#111111] px-4 py-4 sm:px-5">
+                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            {projectDetailSnapshot.deliverablesLabel ||
+                              "Features/Deliverables Included"}
+                          </p>
+                          <ul className="mt-4 grid list-none gap-x-8 gap-y-3 pl-0 sm:grid-cols-2">
+                            {projectDetailSnapshot.deliverablesItems.map((item) => (
+                              <li
+                                key={item}
+                                className="relative pl-[1.125rem] text-sm font-medium leading-relaxed text-white"
+                              >
+                                <span className="absolute left-0 top-[0.6rem] h-1 w-1 rounded-full bg-white/40" />
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+
                       <div className="grid gap-6 sm:grid-cols-2">
-                        {projectDetailSnapshot.websiteDetails.map((item) => {
+                        {projectDetailSnapshot.websiteDetails.filter((item) => {
+                          if (!projectDetailSnapshot.deliverablesItems.length) return true;
+                          const normalizedLabel = item.label.toLowerCase();
+                          return ![
+                            "deliverables",
+                            "features/deliverables included",
+                            "pages & features",
+                          ].includes(normalizedLabel);
+                        }).map((item) => {
                           const val = item.value || "Not specified";
                           const isList = val.includes(" - ") || val.match(/^[-•]\s/m);
                           return (

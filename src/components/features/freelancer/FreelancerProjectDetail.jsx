@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
 import Circle from "lucide-react/dist/esm/icons/circle";
+import Clock from "lucide-react/dist/esm/icons/clock";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Send from "lucide-react/dist/esm/icons/send";
@@ -93,85 +94,186 @@ const ProjectDetailSkeleton = () => (
   <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
     <div className="w-full max-w-full mx-auto space-y-6">
       <div className="space-y-2">
-        <Skeleton className="h-9 w-64" />
-        <Skeleton className="h-4 w-96" />
+        <Skeleton className="h-9 w-72" />
+        <Skeleton className="h-4 w-80" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="border border-border/60 bg-card/80">
-          <CardHeader className="pb-2">
-            <Skeleton className="h-4 w-24" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-16 mb-3" />
-            <Skeleton className="h-2 w-full" />
-          </CardContent>
-        </Card>
-        <Card className="border border-border/60 bg-card/80">
-          <CardHeader className="pb-2">
-            <Skeleton className="h-4 w-32" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-12 mb-2" />
-            <Skeleton className="h-3 w-24" />
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
-          <Card className="border border-border/60 bg-card/80">
-            <CardHeader className="pb-3">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-48" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 pb-3 border-b border-border/60 last:border-0"
-                >
-                  <Skeleton className="h-5 w-5 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-2 w-full" />
-                  </div>
-                </div>
-              ))}
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[1, 2, 3].map((item) => (
+          <Card key={`meta-${item}`} className="border border-border/60 bg-card/80">
+            <CardContent className="space-y-3 p-4">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-5 w-40" />
             </CardContent>
           </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-4">
           <Card className="border border-border/60 bg-card/80">
             <CardHeader className="pb-3">
-              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-5 w-24" />
             </CardHeader>
-            <CardContent className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-border/60"
-                >
+            <CardContent className="space-y-2 pt-0">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-[92%]" />
+              <Skeleton className="h-4 w-[88%]" />
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            {[1, 2].map((item) => (
+              <Card key={`narrative-${item}`} className="border border-border/60 bg-card/80">
+                <CardHeader className="pb-3">
+                  <Skeleton className="h-4 w-44" />
+                </CardHeader>
+                <CardContent className="space-y-3 pt-0">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-[94%]" />
+                  <Skeleton className="h-4 w-[88%]" />
+                  <Skeleton className="h-4 w-[82%]" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <Card className="border border-border/60 bg-card/80">
+            <CardHeader className="pb-3">
+              <Skeleton className="h-4 w-32" />
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid gap-6 sm:grid-cols-2">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={`detail-${index}`} className="space-y-2 border-l border-border/60 pl-4">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-5 w-40" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border/60 bg-card/80">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-6 w-24" />
+            </CardHeader>
+            <CardContent className="space-y-6 pt-0">
+              <Skeleton className="h-2 w-full" />
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {[1, 2, 3, 4].map((item) => (
+                  <div key={`phase-${item}`} className="rounded-[18px] border border-border/60 p-4 space-y-3">
+                    <Skeleton className="h-3 w-14" />
+                    <Skeleton className="h-5 w-full" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border/60 bg-card/80">
+            <CardHeader className="pb-3">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-4 w-44" />
+            </CardHeader>
+            <CardContent className="space-y-3 pt-4">
+              {[1, 2, 3, 4].map((item) => (
+                <div key={`task-${item}`} className="flex items-center gap-3 rounded-lg border border-border/60 p-3">
                   <Skeleton className="h-5 w-5 rounded-full" />
                   <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-6 w-20 rounded-full" />
                 </div>
               ))}
             </CardContent>
           </Card>
         </div>
+
         <div className="space-y-4">
           <Card className="border border-border/60 bg-card/80">
             <CardHeader className="pb-3">
-              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-28" />
             </CardHeader>
-            <CardContent>
-              <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-4 w-3/4" />
+            <CardContent className="space-y-3 pt-0">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-[80%]" />
+              <Skeleton className="h-10 w-full" />
             </CardContent>
           </Card>
-          <Card className="border border-border/60 bg-card/80 h-96">
-            <CardHeader>
-              <Skeleton className="h-4 w-24" />
+
+          <Card className="border border-border/60 bg-card/80 min-h-[340px]">
+            <CardHeader className="pb-3">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-52" />
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Skeleton className="h-10 w-3/4" />
-              <Skeleton className="h-10 w-2/3 ml-auto" />
+            <CardContent className="space-y-3 pt-0">
+              <Skeleton className="h-[150px] w-full rounded-[14px]" />
+              <div className="flex gap-2">
+                <Skeleton className="h-10 flex-1" />
+                <Skeleton className="h-10 w-10" />
+                <Skeleton className="h-10 w-10" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border/60 bg-card/80">
+            <CardHeader className="pb-3">
+              <Skeleton className="h-4 w-36" />
+            </CardHeader>
+            <CardContent className="space-y-3 pt-0">
+              {[1, 2, 3].map((item) => (
+                <div key={`earnings-${item}`} className="flex items-center justify-between border-b border-border/60 pb-2 last:border-0">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border/60 bg-card/80">
+            <CardHeader className="pb-3">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-full" />
+            </CardHeader>
+            <CardContent className="space-y-3 pt-0">
+              {[1, 2, 3].map((item) => (
+                <div key={`payout-${item}`} className="rounded-[16px] border border-border/60 p-3 space-y-2">
+                  <Skeleton className="h-3 w-40" />
+                  <Skeleton className="h-7 w-24" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border/60 bg-card/80">
+            <CardHeader className="pb-3">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-56" />
+            </CardHeader>
+            <CardContent className="space-y-3 pt-0">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-9 w-32" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border/60 bg-card/80">
+            <CardHeader className="pb-3">
+              <Skeleton className="h-4 w-32" />
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {[1, 2, 3].map((item) => (
+                <Skeleton key={`doc-${item}`} className="h-14 w-full rounded-[14px]" />
+              ))}
             </CardContent>
           </Card>
         </div>
@@ -265,6 +367,72 @@ const parseProjectDetailList = (value = "") =>
         !item.toLowerCase().includes("additional") &&
         !item.toLowerCase().includes("pages"),
     );
+
+const extractNarrativeSection = (description = "", sectionLabel = "", nextSectionLabels = []) => {
+  const source = String(description || "");
+  if (!source.trim() || !sectionLabel) return "";
+
+  const startRegex = new RegExp(`${sectionLabel}\\s*:?\\s*`, "i");
+  const startMatch = source.match(startRegex);
+  if (!startMatch || typeof startMatch.index !== "number") return "";
+
+  const startIndex = startMatch.index + startMatch[0].length;
+  let endIndex = source.length;
+
+  nextSectionLabels.forEach((label) => {
+    if (!label) return;
+    const regex = new RegExp(`${label}\\s*:?`, "i");
+    const slice = source.slice(startIndex);
+    const match = slice.match(regex);
+    if (match && typeof match.index === "number") {
+      endIndex = Math.min(endIndex, startIndex + match.index);
+    }
+  });
+
+  return source
+    .slice(startIndex, endIndex)
+    .replace(/^[\s-]+/, "")
+    .replace(/[\s-]+$/, "")
+    .trim();
+};
+
+const toNarrativeBulletItems = (value = "") =>
+  String(value || "")
+    .split(/\s+-\s+|[\r\n]+|•/)
+    .map((item) =>
+      item
+        .replace(/^[\s-]+/, "")
+        .replace(/[\s-]+$/, "")
+        .trim(),
+    )
+    .filter((item) => item.length > 2);
+
+const websiteDetailDuplicatePrefixes = [
+  "website type",
+  "pages",
+  "design style",
+  "client",
+  "frontend",
+  "frontend framework",
+  "backend",
+  "backend technology",
+  "database",
+  "website build type",
+  "hosting",
+  "page count",
+  "launch timeline",
+  "budget",
+];
+
+const removeWebsiteDetailDuplicates = (items = []) =>
+  items.filter((item) => {
+    const normalized = String(item || "").trim().toLowerCase();
+    if (!normalized) return false;
+
+    return !websiteDetailDuplicatePrefixes.some((prefix) =>
+      normalized.startsWith(`${prefix}:`),
+    );
+  });
 
 const formatAttachmentSize = (size) => {
   const numericSize = Number(size);
@@ -478,6 +646,11 @@ const FreelancerProjectDetailContent = () => {
   const [availabilityManager, setAvailabilityManager] = useState(null);
 
   const [detailOpen, setDetailOpen] = useState(false);
+  const [taskCompletionConfirm, setTaskCompletionConfirm] = useState({
+    open: false,
+    uniqueKey: "",
+    taskTitle: "",
+  });
   const [serverAvailableSlots, setServerAvailableSlots] = useState([]);
 
   useEffect(() => {
@@ -1417,7 +1590,7 @@ const FreelancerProjectDetailContent = () => {
         return {
           ...task,
           uniqueKey,
-          status: "completed",
+          status: "pending-review",
           verified: false,
           phaseName: taskPhase?.name,
         };
@@ -1466,11 +1639,7 @@ const FreelancerProjectDetailContent = () => {
     });
   }, [derivedTasks, derivedPhases]);
 
-  // Handle task click to toggle completion
-  const handleTaskClick = async (e, uniqueKey, taskTitle) => {
-    e.stopPropagation();
-    e.preventDefault();
-
+  const toggleTaskCompletion = async (uniqueKey, taskTitle) => {
     if (verifiedTaskIds.has(uniqueKey)) {
       toast.error("Cannot change status of a verified task");
       return;
@@ -1491,14 +1660,13 @@ const FreelancerProjectDetailContent = () => {
       return updated;
     });
 
-    // Save to database
     if (project?.id && authFetch) {
       try {
         const payload = {
           completedTasks: newCompleted,
         };
 
-        // Only send notification when marking as complete (not when unchecking)
+        // Notify client only when freelancer submits task for review.
         if (isMarkingComplete && taskTitle) {
           payload.notificationMeta = {
             type: "TASK_COMPLETED",
@@ -1511,24 +1679,95 @@ const FreelancerProjectDetailContent = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+
+        if (isMarkingComplete) {
+          toast.success("Task submitted for client review.");
+        } else {
+          toast.info("Task moved back to pending.");
+        }
       } catch (error) {
         console.error("Failed to save task state:", error);
+        toast.error("Failed to update task status.");
       }
     }
   };
 
-  const pageTitle = project?.title
-    ? `Project: ${project.title}`
-    : "Project Dashboard";
+  // Handle task click to toggle completion with explicit freelancer confirmation.
+  const handleTaskClick = async (e, uniqueKey, taskTitle) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (verifiedTaskIds.has(uniqueKey)) {
+      toast.error("Cannot change status of a verified task");
+      return;
+    }
+
+    const isCurrentlyCompleted = completedTaskIds.has(uniqueKey);
+
+    if (!isCurrentlyCompleted) {
+      setTaskCompletionConfirm({
+        open: true,
+        uniqueKey,
+        taskTitle: taskTitle || "this task",
+      });
+      return;
+    }
+
+    await toggleTaskCompletion(uniqueKey, taskTitle);
+  };
+
+  const handleConfirmTaskCompletion = async () => {
+    const { uniqueKey, taskTitle } = taskCompletionConfirm;
+    if (!uniqueKey) return;
+
+    setTaskCompletionConfirm({ open: false, uniqueKey: "", taskTitle: "" });
+    await toggleTaskCompletion(uniqueKey, taskTitle);
+  };
 
   const totalBudget = useMemo(() => {
     return getFreelancerVisibleBudgetValue(project?.budget) ?? 0;
   }, [project]);
 
+  const paidAmountFromApi = useMemo(
+    () => Math.max(0, Number(paymentData?.totalPaid) || 0),
+    [paymentData],
+  );
+
+  const paidAmountFromPhase = useMemo(() => {
+    if (!totalBudget || !Array.isArray(derivedPhases) || derivedPhases.length === 0) {
+      return 0;
+    }
+
+    const milestones = [
+      { phaseOrder: 1, percentage: 20 },
+      { phaseOrder: 2, percentage: 40 },
+      { phaseOrder: 4, percentage: 40 },
+    ];
+
+    const firstIncompletePhaseIndex = derivedPhases.findIndex(
+      (phase) => phase?.status !== "completed",
+    );
+    const currentPhaseIndex =
+      firstIncompletePhaseIndex >= 0
+        ? firstIncompletePhaseIndex
+        : Math.max(derivedPhases.length - 1, 0);
+    const currentPhaseOrder = currentPhaseIndex + 1;
+    const currentPhaseStatus = String(derivedPhases[currentPhaseIndex]?.status || "");
+
+    const paidPercent = milestones.reduce((sum, milestone) => {
+      const isPaid =
+        milestone.phaseOrder < currentPhaseOrder ||
+        (milestone.phaseOrder === currentPhaseOrder && currentPhaseStatus === "completed");
+      return sum + (isPaid ? milestone.percentage : 0);
+    }, 0);
+
+    return Math.round((totalBudget * paidPercent) / 100);
+  }, [derivedPhases, totalBudget]);
+
   const spentBudget = useMemo(() => {
-    // Use actual payment data from API (already 70% after platform fee)
-    return paymentData.totalPaid || 0;
-  }, [paymentData]);
+    // Prefer API values, but fall back to phase-derived payout when API summary is stale.
+    return Math.max(paidAmountFromApi, paidAmountFromPhase);
+  }, [paidAmountFromApi, paidAmountFromPhase]);
 
   const remainingBudget = useMemo(
     () => Math.max(0, totalBudget - spentBudget),
@@ -1545,8 +1784,16 @@ const FreelancerProjectDetailContent = () => {
   const projectDetailSnapshot = useMemo(() => {
     const description = String(project?.description || "").trim();
     const extractField = (fieldName) => readProjectDetailField(description, fieldName);
+    const acceptedProposal = project?.proposals?.find((proposal) => proposal?.status === "ACCEPTED");
     const service =
+      project?.serviceName ||
+      acceptedProposal?.serviceName ||
+      project?.serviceType ||
+      acceptedProposal?.serviceType ||
+      project?.serviceKey ||
+      acceptedProposal?.serviceKey ||
       extractField("Service") ||
+      extractField("Service Type") ||
       extractField("Website type") ||
       project?.title ||
       "Not specified";
@@ -1611,12 +1858,52 @@ const FreelancerProjectDetailContent = () => {
             ) || ""
         : "");
 
+    const businessName =
+      project?.businessName ||
+      project?.companyName ||
+      project?.brandName ||
+      project?.owner?.businessName ||
+      project?.owner?.companyName ||
+      project?.owner?.brandName ||
+      acceptedProposal?.businessName ||
+      acceptedProposal?.companyName ||
+      acceptedProposal?.brandName ||
+      extractField("Business Name") ||
+      extractField("Company Name") ||
+      extractField("Brand Name") ||
+      "";
+
+          const sanitizedOverview = overview
+            .replace(/\bPrimary\s+Objectives\b\s*:?\s*[\s\S]*$/i, "")
+            .replace(/\bFeatures\s*\/\s*Deliverables\s*Included\b\s*:?\s*[\s\S]*$/i, "")
+            .replace(/\bFeatures\s*\/\s*Deliverables\b\s*:?\s*[\s\S]*$/i, "")
+            .replace(/\bDeliverables\s*Included\b\s*:?\s*[\s\S]*$/i, "")
+            .trim();
+
+    const primaryObjectivesRaw = extractNarrativeSection(
+      description,
+      "Primary Objectives",
+      ["Features/Deliverables Included", "Features/Deliverables", "Deliverables Included"],
+    );
+    const featuresDeliverablesRaw =
+      extractNarrativeSection(description, "Features/Deliverables Included") ||
+      extractNarrativeSection(description, "Features/Deliverables") ||
+      extractNarrativeSection(description, "Deliverables Included");
+
+    const primaryObjectives = toNarrativeBulletItems(primaryObjectivesRaw);
+    const featuresDeliverables = removeWebsiteDetailDuplicates(
+      toNarrativeBulletItems(featuresDeliverablesRaw),
+    );
+
     return {
       service,
       budget,
       clientName,
       timeline,
-      overview,
+      overview: sanitizedOverview,
+      businessName,
+      primaryObjectives,
+      featuresDeliverables,
       websiteDetails: [
         { label: "Website Type", value: websiteType || "Not specified" },
         { label: "Pages", value: pageSummary },
@@ -1634,36 +1921,66 @@ const FreelancerProjectDetailContent = () => {
     const milestones = [
       {
         id: "kickoff",
-        label: "Phase 1 / Kickoff Payment",
+        label: "Phase 1 / Kickoff Payout",
+        phaseOrder: 1,
         percentage: 20,
-        note: "Unlocks project kickoff and initial delivery work.",
+        note: "Released to you after kickoff is approved.",
       },
       {
         id: "review",
-        label: "Phase 2 / Progress Review",
+        label: "Phase 2 / Progress Payout",
+        phaseOrder: 2,
         percentage: 40,
-        note: "Shared after the mid-project review and approval.",
+        note: "Released to you after the mid-project review is approved.",
       },
       {
         id: "handover",
-        label: "Phase 4 / Final Handover",
+        label: "Phase 4 / Final Payout",
+        phaseOrder: 4,
         percentage: 40,
-        note: "Released once the final handover is approved.",
+        note: "Released to you once final handover is approved.",
       },
     ];
 
-    let previousThreshold = 0;
+    const hasPhaseProgress = Array.isArray(derivedPhases) && derivedPhases.length > 0;
+    const firstIncompletePhaseIndex = hasPhaseProgress
+      ? derivedPhases.findIndex((phase) => phase?.status !== "completed")
+      : -1;
+    const currentPhaseIndex = hasPhaseProgress
+      ? firstIncompletePhaseIndex >= 0
+        ? firstIncompletePhaseIndex
+        : Math.max(derivedPhases.length - 1, 0)
+      : -1;
+    const currentPhaseOrder = currentPhaseIndex >= 0 ? currentPhaseIndex + 1 : null;
 
     return milestones.map((milestone, index) => {
       const amount = Math.round((totalBudget * milestone.percentage) / 100);
-      const threshold = previousThreshold + amount;
-      const isPaid = spentBudget >= threshold && amount > 0;
-      const isCurrent =
-        !isPaid &&
-        amount > 0 &&
-        (spentBudget >= previousThreshold || (index === 0 && spentBudget <= 0));
+      const isPaidByPhase =
+        hasPhaseProgress &&
+        currentPhaseOrder !== null &&
+        (milestone.phaseOrder < currentPhaseOrder ||
+          (milestone.phaseOrder === currentPhaseOrder &&
+            String(derivedPhases[currentPhaseIndex]?.status || "") === "completed"));
 
-      previousThreshold = threshold;
+      const isCurrentByPhase =
+        hasPhaseProgress && currentPhaseOrder !== null && milestone.phaseOrder === currentPhaseOrder;
+
+      const fallbackThresholdPercent =
+        milestones
+          .slice(0, index + 1)
+          .reduce((sum, item) => sum + (Number(item.percentage) || 0), 0) / 100;
+      const fallbackPreviousThresholdPercent =
+        milestones
+          .slice(0, index)
+          .reduce((sum, item) => sum + (Number(item.percentage) || 0), 0) / 100;
+      const isPaidByAmount = amount > 0 && spentBudget >= totalBudget * fallbackThresholdPercent;
+      const isCurrentByAmount =
+        !isPaidByAmount &&
+        amount > 0 &&
+        spentBudget >= totalBudget * fallbackPreviousThresholdPercent;
+
+      const isPaid = hasPhaseProgress ? isPaidByPhase : isPaidByAmount;
+      const isCurrent = hasPhaseProgress ? isCurrentByPhase : isCurrentByAmount;
 
       return {
         ...milestone,
@@ -1671,7 +1988,23 @@ const FreelancerProjectDetailContent = () => {
         status: isPaid ? "paid" : isCurrent ? "active" : "scheduled",
       };
     });
-  }, [spentBudget, totalBudget]);
+  }, [derivedPhases, spentBudget, totalBudget]);
+
+  const pageTitle =
+    String(
+      projectDetailSnapshot?.businessName ||
+      project?.businessName ||
+      project?.companyName ||
+      project?.brandName ||
+      project?.owner?.businessName ||
+      project?.owner?.companyName ||
+      project?.owner?.brandName ||
+      project?.title ||
+      "Project Dashboard",
+    )
+      .replace(/^(business name|company name|brand name|client name)\s*:\s*/i, "")
+      .replace(/\s*service\s*type\s*:\s*.*$/i, "")
+      .trim();
 
   const handleProjectLinkUpdate = useCallback(
     async (newLink) => {
@@ -1766,13 +2099,6 @@ const FreelancerProjectDetailContent = () => {
               <h1 className="text-[clamp(1.85rem,4vw,2.75rem)] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
                 {pageTitle}
               </h1>
-              <p className="text-sm text-muted-foreground">
-                {isLoading
-                  ? "Loading project details..."
-                  : isFallback
-                  ? "Previewing layout with sample data."
-                  : "Track project progress and deliverables in one place."}
-              </p>
               {!isLoading && (
                 <p className="text-xs text-muted-foreground/80">
                   {activeProjectManager
@@ -1896,6 +2222,62 @@ const FreelancerProjectDetailContent = () => {
                 </CardContent>
               </Card>
 
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Card className={projectPanelClassName}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className={projectSectionEyebrowClassName}>
+                      Primary Objectives
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {projectDetailSnapshot.primaryObjectives.length > 0 ? (
+                      <ul className="space-y-2 px-2 pb-1">
+                        {projectDetailSnapshot.primaryObjectives.map((objective, index) => (
+                          <li
+                            key={`objective-${index}`}
+                            className="relative pl-4 text-sm leading-7 text-[#d4d4d8]"
+                          >
+                            <span className="absolute left-0 top-[0.75rem] h-1 w-1 rounded-full bg-white/55" />
+                            {objective}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="px-2 pb-1 text-sm leading-7 text-[#d4d4d8]">
+                        Primary objectives will appear once the brief is structured.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className={projectPanelClassName}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className={projectSectionEyebrowClassName}>
+                      Features/Deliverables Included
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {projectDetailSnapshot.featuresDeliverables.length > 0 ? (
+                      <ul className="space-y-2 px-2 pb-1">
+                        {projectDetailSnapshot.featuresDeliverables.map((feature, index) => (
+                          <li
+                            key={`feature-${index}`}
+                            className="relative pl-4 text-sm leading-7 text-[#d4d4d8]"
+                          >
+                            <span className="absolute left-0 top-[0.75rem] h-1 w-1 rounded-full bg-white/55" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="px-2 pb-1 text-sm leading-7 text-[#d4d4d8]">
+                        Feature and deliverable details will appear once the brief is structured.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
               <Card className={projectPanelClassName}>
                 <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
                   <CardTitle className={projectSectionEyebrowClassName}>
@@ -1968,78 +2350,78 @@ const FreelancerProjectDetailContent = () => {
               </Card>
 
               <Card className={projectPanelClassName}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-5 px-6">
                   <CardTitle className={projectSectionEyebrowClassName}>
                     Project Progress
                   </CardTitle>
-                  <span className="text-lg font-semibold text-primary">
+                  <span className="text-[1.1rem] font-semibold text-yellow-400">
                     {Math.round(overallProgress)}% Complete
                   </span>
                 </CardHeader>
-                <CardContent className="space-y-5 pt-0">
-                  <div className="relative">
-                    <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
+                <CardContent className="space-y-8 px-6 pb-6 pt-0">
+                  <div className="relative pt-2">
+                    <div className="h-[6px] w-full overflow-hidden rounded-full bg-white/[0.06]">
                       <div
-                        className="h-full rounded-full transition-all duration-300 bg-linear-to-r from-amber-500 via-yellow-400 to-amber-400"
+                        className="h-full rounded-full bg-yellow-400 transition-all duration-300"
                         style={{ width: `${overallProgress}%` }}
                       />
                     </div>
                     <div
-                      className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-white/70 bg-white shadow-md transition-all duration-300"
-                      style={{ left: `calc(${overallProgress}% - 8px)` }}
+                      className="absolute top-1/2 h-3.5 w-3.5 -translate-y-[calc(50%-4px)] rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all duration-300"
+                      style={{ left: `calc(${overallProgress}% - 7px)` }}
                     />
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {derivedPhases.slice(0, 4).map((phase, index) => {
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {Array.from({ length: 4 }).map((_, index) => {
+                      const phase = derivedPhases[index];
                       const isCompleted = phase?.status === "completed";
                       const isActive = phase?.status === "in-progress";
+                      const isPending = !isCompleted && !isActive;
 
                       return (
                         <div
-                          key={phase?.id || `project-phase-${index + 1}`}
-                          className={cn(
-                            "rounded-[18px] border px-4 py-4",
+                          key={phase?.id || `phase-${index}`}
+                          className={`flex flex-col justify-between rounded-[20px] p-5 transition-all ${
                             isCompleted
-                              ? "border-emerald-500/25 bg-emerald-500/10"
+                              ? "bg-background shadow-[inset_2px_0_0_0_#10b981]"
                               : isActive
-                                ? "border-primary/20 bg-primary/10"
-                                : "border-white/[0.08] bg-[#111111]",
-                          )}
+                                ? "bg-background"
+                                : "bg-background"
+                          }`}
                         >
-                          <p
-                            className={cn(
-                              "text-[0.68rem] font-semibold uppercase tracking-[0.18em]",
-                              isCompleted
-                                ? "text-emerald-300"
-                                : isActive
-                                  ? "text-primary"
-                                  : "text-muted-foreground",
-                            )}
-                          >
-                            Phase {index + 1}
-                          </p>
-                          <p className="mt-2 text-sm font-semibold leading-6 text-white">
-                            {phase?.name || "Pending phase"}
-                          </p>
+                          <div>
+                            <div
+                              className={`text-[0.68rem] font-bold uppercase tracking-[0.15em] mb-2 ${
+                                isPending ? "text-muted-foreground/50" : "text-muted-foreground"
+                              }`}
+                            >
+                              Phase {index + 1}
+                            </div>
+                            <div
+                              className={`text-[15px] font-semibold leading-[1.4] mb-4 ${
+                                isPending ? "text-white/40" : "text-white/95"
+                              }`}
+                            >
+                              {phase?.name || "Phase"}
+                            </div>
+                          </div>
                           <div
-                            className={cn(
-                              "mt-3 inline-flex items-center gap-2 text-xs font-medium",
+                            className={`flex items-center gap-2 text-[13px] font-semibold ${
                               isCompleted
-                                ? "text-emerald-300"
+                                ? "text-emerald-500"
                                 : isActive
-                                  ? "text-primary"
-                                : "text-muted-foreground",
-                            )}
+                                  ? "text-[#f59e0b]"
+                                  : "text-muted-foreground/40"
+                            }`}
                           >
-                            {isCompleted ? (
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                            ) : isActive ? (
-                              <Circle className="h-3.5 w-3.5 fill-current" />
-                            ) : (
-                              <Circle className="h-3.5 w-3.5" />
-                            )}
-                            {isCompleted ? "Completed" : isActive ? "In Progress" : "Pending"}
+                            {isCompleted && <CheckCircle2 className="h-4 w-4" />}
+                            {isActive && <Clock className="h-4 w-4" />}
+                            {isCompleted
+                              ? "Completed"
+                              : isActive
+                                ? "In progress"
+                                : "Pending"}
                           </div>
                         </div>
                       );
@@ -2050,29 +2432,15 @@ const FreelancerProjectDetailContent = () => {
 
               <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <CardTitle className={projectSectionEyebrowClassName}>
-                        Project Description
-                      </CardTitle>
-                      <CardDescription className={cn("mt-2", projectSectionSubheadingClassName)}>
-                        {derivedTasks.filter((t) => t.status === "completed").length} of{" "}
-                        {derivedTasks.length} tasks completed
-                      </CardDescription>
-                    </div>
-                    <div className="min-w-[120px] space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        <span>Progress</span>
-                        <span>{Math.round(overallProgress)}%</span>
-                      </div>
-                      <Progress
-                        value={overallProgress}
-                        className="h-1.5 bg-white/[0.08]"
-                      />
-                    </div>
-                  </div>
+                  <CardTitle className={projectSectionEyebrowClassName}>
+                    Project Description
+                  </CardTitle>
+                  <CardDescription className={projectSectionSubheadingClassName}>
+                    {derivedTasks.filter((t) => t.status === "completed").length} of{" "}
+                    {derivedTasks.length} tasks completed
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="pt-2">
+                <CardContent className="pt-6">
                   {project?.notes ? (
                     <div className="mb-4 flex items-start gap-2 rounded-[18px] border border-amber-500/20 bg-amber-500/8 px-4 py-3">
                       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
@@ -2091,17 +2459,17 @@ const FreelancerProjectDetailContent = () => {
                       <AccordionItem
                         key={phaseGroup.phaseId}
                         value={phaseGroup.phaseId}
-                        className="border-white/[0.06]"
+                        className="border-border/60"
                       >
-                        <AccordionTrigger className="py-4 hover:no-underline">
+                        <AccordionTrigger className="hover:no-underline py-3">
                           <div className="flex items-center gap-3 flex-1">
                             {getPhaseIcon(phaseGroup.phaseStatus)}
                             <div className="flex-1 text-left">
-                              <div className="text-sm font-semibold text-white">
+                              <div className="font-semibold text-sm text-foreground">
                                 Phase {phaseGroup.phaseId}:{" "}
                                 {phaseGroup.phaseName}
                               </div>
-                              <div className="text-xs text-[#8f96a3]">
+                              <div className="text-xs text-muted-foreground">
                                 {
                                   phaseGroup.tasks.filter(
                                     (t) => t.status === "completed"
@@ -2118,8 +2486,8 @@ const FreelancerProjectDetailContent = () => {
                               }
                               className={
                                 phaseGroup.phaseStatus === "completed"
-                                  ? "border-emerald-500/10 bg-emerald-500/15 text-emerald-200"
-                                  : "border-white/[0.08] bg-[#111111] text-[#cfd3da]"
+                                  ? "bg-emerald-500 text-white"
+                                  : ""
                               }
                             >
                               {phaseGroup.phaseStatus === "completed"
@@ -2135,10 +2503,10 @@ const FreelancerProjectDetailContent = () => {
                             {phaseGroup.tasks.map((task) => (
                               <div
                                 key={task.uniqueKey}
-                                className={`flex items-center gap-3 rounded-[16px] border border-white/[0.06] bg-[#111111] p-3.5 transition-colors ${
+                                className={`flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-background transition-colors ${
                                   phaseGroup.isLocked
-                                    ? "pointer-events-none opacity-50"
-                                    : "cursor-pointer hover:bg-white/[0.03]"
+                                    ? "opacity-50 pointer-events-none bg-muted/50"
+                                    : "hover:bg-accent/60 cursor-pointer"
                                 }`}
                                 onClick={(e) =>
                                   !phaseGroup.isLocked &&
@@ -2147,28 +2515,37 @@ const FreelancerProjectDetailContent = () => {
                               >
                                 {task.status === "completed" ? (
                                   <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                                ) : task.status === "pending-review" ? (
+                                  <Clock className="w-5 h-5 text-amber-400 shrink-0" />
                                 ) : (
                                   <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
                                 )}
                                 <span
                                   className={`flex-1 text-sm ${
                                     task.status === "completed"
-                                      ? "text-muted-foreground line-through"
-                                      : "text-white"
+                                      ? "line-through text-muted-foreground"
+                                      : task.status === "pending-review"
+                                        ? "text-foreground"
+                                      : "text-foreground"
                                   }`}
                                 >
                                   {task.title}
                                   {phaseGroup.isLocked && (
-                                    <span className="ml-2 inline-block text-xs font-medium text-amber-400 no-underline">
+                                    <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
                                       (Locked)
                                     </span>
                                   )}
                                 </span>
-                                {task.verified && (
-                                  <Badge className="h-6 border-emerald-500/10 bg-emerald-500/15 px-2 text-[10px] text-emerald-200">
-                                    Verified
+                                {task.status === "pending-review" ? (
+                                  <Badge className="h-6 border-amber-500/20 bg-amber-500/12 text-amber-300 px-2 text-[10px]">
+                                    Pending Review
                                   </Badge>
-                                )}
+                                ) : null}
+                                {task.verified ? (
+                                  <Badge className="h-6 bg-emerald-500 text-white px-2 text-[10px]">
+                                    Completed
+                                  </Badge>
+                                ) : null}
                               </div>
                             ))}
                           </div>
@@ -2187,7 +2564,7 @@ const FreelancerProjectDetailContent = () => {
                 onUpdateLink={handleProjectLinkUpdate}
               />
 
-              <Card className={cn(projectPanelClassName, "overflow-hidden")}>
+              <Card className={cn(projectPanelClassName, "min-h-[340px] overflow-hidden")}>
                 <CardHeader className="border-b border-white/[0.06] pb-3">
                   <CardTitle className={projectSectionEyebrowClassName}>
                     Project Chat
@@ -2196,8 +2573,12 @@ const FreelancerProjectDetailContent = () => {
                     Ask questions and share documents
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="max-h-[320px] space-y-3 overflow-y-auto px-4 py-4">
-                  {messages.map((message, index) => {
+                <CardContent className="max-h-[320px] min-h-[200px] space-y-3 overflow-y-auto px-4 py-4">
+                  {messages.length === 0 ? (
+                    <div className="flex min-h-[160px] items-center justify-center rounded-[14px] border border-dashed border-white/[0.08] bg-background px-4 text-center text-sm text-muted-foreground">
+                      No messages yet. Start the conversation with your client.
+                    </div>
+                  ) : messages.map((message, index) => {
                     const isSelf = message.sender === "user";
                     const isAssistant = message.sender === "assistant";
                     const align =
@@ -2412,26 +2793,26 @@ const FreelancerProjectDetailContent = () => {
                 <CardHeader className="pb-3">
                   <CardTitle className={cn(projectSectionEyebrowClassName, "flex items-center gap-2")}>
                     <IndianRupee className="h-3.5 w-3.5" />
-                    Budget Summary
+                    Your Earnings Summary
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0 text-sm text-white">
                   <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
-                    <span>Total Budget</span>
+                    <span>Your Total Share</span>
                     <span className="font-semibold text-white">
                       {project?.currency || "₹"}
                       {totalBudget.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
-                    <span>Spent</span>
+                    <span>Paid to You</span>
                     <span className="font-semibold text-emerald-400">
                       {project?.currency || "₹"}
                       {spentBudget.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Remaining</span>
+                    <span>Pending Payout</span>
                     <span className="font-semibold text-white">
                       {project?.currency || "₹"}
                       {remainingBudget.toLocaleString()}
@@ -2443,10 +2824,10 @@ const FreelancerProjectDetailContent = () => {
               <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
                   <CardTitle className={projectSectionEyebrowClassName}>
-                    Billing Roadmap
+                    Payout Schedule
                   </CardTitle>
                   <CardDescription className={projectSectionSubheadingClassName}>
-                    20% to start, 40% after phase 2, and the final 40% after phase 4.
+                    Track your payout releases: 20% kickoff, 40% progress review, 40% final handover.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
@@ -2482,10 +2863,10 @@ const FreelancerProjectDetailContent = () => {
                           )}
                         >
                           {milestone.status === "paid"
-                            ? "Completed"
+                            ? "Paid"
                             : milestone.status === "active"
-                              ? "Active"
-                              : "Scheduled"}
+                              ? "Next Payout"
+                              : "Upcoming"}
                         </Badge>
                       </div>
                       <p className="text-xs leading-5 text-muted-foreground">
@@ -2515,7 +2896,7 @@ const FreelancerProjectDetailContent = () => {
                       }))
                     }
                     placeholder="Milestone title (required)"
-                    className="h-10 border-white/[0.08] bg-[#111111] text-sm text-white placeholder:text-[#6b7280]"
+                    className="h-10 border-white/[0.08] !bg-background dark:!bg-background text-sm text-white placeholder:text-muted-foreground"
                   />
                   <Input
                     value={milestoneDraft.githubUrl}
@@ -2526,7 +2907,7 @@ const FreelancerProjectDetailContent = () => {
                       }))
                     }
                     placeholder="GitHub link (optional)"
-                    className="h-10 border-white/[0.08] bg-[#111111] text-sm text-white placeholder:text-[#6b7280]"
+                    className="h-10 border-white/[0.08] !bg-background dark:!bg-background text-sm text-white placeholder:text-muted-foreground"
                   />
                   <Input
                     value={milestoneDraft.figmaUrl}
@@ -2537,7 +2918,7 @@ const FreelancerProjectDetailContent = () => {
                       }))
                     }
                     placeholder="Figma link (optional)"
-                    className="h-10 border-white/[0.08] bg-[#111111] text-sm text-white placeholder:text-[#6b7280]"
+                    className="h-10 border-white/[0.08] !bg-background dark:!bg-background text-sm text-white placeholder:text-muted-foreground"
                   />
                   <Textarea
                     value={milestoneDraft.notes}
@@ -2548,7 +2929,7 @@ const FreelancerProjectDetailContent = () => {
                       }))
                     }
                     placeholder="Notes for PM (scope, QA checklist, known gaps)"
-                    className="min-h-24 border-white/[0.08] bg-[#111111] text-sm text-white placeholder:text-[#6b7280]"
+                    className="min-h-24 border-white/[0.08] !bg-background dark:!bg-background text-sm text-white placeholder:text-muted-foreground"
                   />
 
                   <div className="flex items-center gap-2">
@@ -2556,7 +2937,7 @@ const FreelancerProjectDetailContent = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-9 gap-2 border-white/[0.08] bg-[#111111] text-[#cfd3da] hover:bg-white/[0.04]"
+                      className="h-9 gap-2 border-white/[0.08] !bg-background dark:!bg-background text-[#cfd3da] hover:bg-white/[0.04]"
                       onClick={() => milestoneFileInputRef.current?.click()}
                     >
                       <Upload className="h-3.5 w-3.5" />
@@ -2623,6 +3004,38 @@ const FreelancerProjectDetailContent = () => {
       </main>
         </div>
       </div>
+      <Dialog
+        open={taskCompletionConfirm.open}
+        onOpenChange={(open) =>
+          setTaskCompletionConfirm((prev) =>
+            open ? prev : { open: false, uniqueKey: "", taskTitle: "" },
+          )
+        }
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Submit Task for Client Review?</DialogTitle>
+            <DialogDescription>
+              This will mark "{taskCompletionConfirm.taskTitle || "task"}" as pending review and notify the client.
+              The task becomes completed only after client verification.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setTaskCompletionConfirm({ open: false, uniqueKey: "", taskTitle: "" })
+              }
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleConfirmTaskCompletion}>
+              Confirm and Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent
           ref={reportDialogContentRef}
