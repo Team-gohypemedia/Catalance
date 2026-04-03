@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DashboardPanel,
   DashboardSkeletonBlock,
-} from "@/components/client-dashboard/shared.jsx";
+} from "@/components/client/client-dashboard/shared.jsx";
 import { cn } from "@/shared/lib/utils";
 
 const AcceptedFreelancerRow = memo(function AcceptedFreelancerRow({

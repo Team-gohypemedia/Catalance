@@ -3,7 +3,7 @@ import { ProjectProgressSection } from "@/components/features/client/dashboard/C
 import {
   DashboardPanel,
   DashboardSkeletonBlock,
-} from "@/components/client-dashboard/shared.jsx";
+} from "./shared.jsx";
 import { cn } from "@/shared/lib/utils";
 
 const ProjectProgress = memo(function ProjectProgress({

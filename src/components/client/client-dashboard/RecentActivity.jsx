@@ -9,7 +9,7 @@ import Wallet from "lucide-react/dist/esm/icons/wallet";
 import {
   DashboardPanel,
   DashboardSkeletonBlock,
-} from "@/components/client-dashboard/shared.jsx";
+} from "./shared.jsx";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
 

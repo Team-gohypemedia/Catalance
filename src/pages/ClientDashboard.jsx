@@ -57,7 +57,7 @@ import {
   OverviewMetricsGrid,
   ProjectProgress,
   RecentActivity,
-} from "@/components/client-dashboard";
+} from "@/components/client/client-dashboard";
 
 const MIN_FREELANCER_MATCH_SCORE = 50;
 const PROPOSAL_BLOCKED_STATUSES = new Set(["PENDING", "ACCEPTED"]);

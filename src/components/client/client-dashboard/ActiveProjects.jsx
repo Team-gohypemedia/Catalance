@@ -15,7 +15,7 @@ import {
   DashboardPanel,
   ProjectCarouselControls,
   ProjectCarouselDots,
-} from "@/components/client-dashboard/shared.jsx";
+} from "./shared.jsx";
 import {
   ProjectCardSkeleton,
   ProjectProposalCard,

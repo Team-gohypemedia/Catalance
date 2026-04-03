@@ -16,7 +16,7 @@ import { useNavigate } from "react-router-dom";
 import {
   DashboardPanel,
   DashboardSkeletonBlock,
-} from "@/components/client-dashboard/shared.jsx";
+} from "@/components/client/client-dashboard/shared.jsx";
 import { cn } from "@/shared/lib/utils";
 
 const metricIconMap = {
