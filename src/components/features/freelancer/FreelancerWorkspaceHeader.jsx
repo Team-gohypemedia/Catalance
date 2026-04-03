@@ -2,20 +2,6 @@
 
 import React from "react";
 import Bell from "lucide-react/dist/esm/icons/bell";
-import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
-import FileText from "lucide-react/dist/esm/icons/file-text";
-import HandPlatter from "lucide-react/dist/esm/icons/hand-platter";
-import House from "lucide-react/dist/esm/icons/house";
-import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
-import LogOut from "lucide-react/dist/esm/icons/log-out";
-import Mail from "lucide-react/dist/esm/icons/mail";
-import Menu from "lucide-react/dist/esm/icons/menu";
-import PhoneCall from "lucide-react/dist/esm/icons/phone-call";
-import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
-import Store from "lucide-react/dist/esm/icons/store";
-import UserRound from "lucide-react/dist/esm/icons/user-round";
-import WalletCards from "lucide-react/dist/esm/icons/wallet-cards";
-import X from "lucide-react/dist/esm/icons/x";
 import { Link, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -34,6 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import logo from "@/assets/logos/logo.svg";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
@@ -285,135 +272,6 @@ const HeaderNav = ({ activeKey, items, mobile = false, onSelect, variant = "mark
   </nav>
 );
 
-const MobileMenuLink = ({ active, item, onSelect, priority = "primary" }) => {
-  const iconMap = {
-    dashboard: LayoutDashboard,
-    projects: BriefcaseBusiness,
-    proposals: FileText,
-    messages: Mail,
-    payments: WalletCards,
-    profile: UserRound,
-    home: House,
-    marketplace: Store,
-    service: HandPlatter,
-    contact: PhoneCall,
-  };
-  const Icon = iconMap[item.key];
-  const content =
-    priority === "primary" ? (
-      <div
-        className={cn(
-          "flex w-full items-center gap-3 rounded-[18px] px-4 py-3 text-left transition",
-          active
-            ? "bg-[#292514] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-            : "text-[#8f96a3] hover:bg-white/[0.03] hover:text-white",
-        )}
-      >
-        <span
-          className={cn(
-            "flex size-9 items-center justify-center rounded-[12px] border transition",
-            active
-              ? "border-[#5a4a1a] bg-[#2f2a16] text-[#ffc107]"
-              : "border-white/[0.05] bg-white/[0.02] text-[#8f96a3]",
-          )}
-        >
-          {Icon ? <Icon className="size-4.5" /> : null}
-        </span>
-        <span className="text-[15px] font-medium">{item.mobileLabel || item.label}</span>
-      </div>
-    ) : (
-      <div
-        className={cn(
-          "flex min-h-[58px] items-center gap-3 rounded-[18px] border px-4 py-3 text-left transition",
-          active
-            ? "border-[#5a4a1a] bg-[#292514] text-white"
-            : "border-white/[0.05] bg-white/[0.03] text-[#d4d8e3] hover:border-white/[0.08] hover:bg-white/[0.05]",
-        )}
-      >
-        <span
-          className={cn(
-            "flex size-8 items-center justify-center rounded-[12px]",
-            active ? "text-[#ffc107]" : "text-[#a8afc1]",
-          )}
-        >
-          {Icon ? <Icon className="size-4.5" /> : null}
-        </span>
-        <span className="text-[15px] font-medium">{item.mobileLabel || item.label}</span>
-      </div>
-    );
-
-  if (typeof onSelect === "function") {
-    return (
-      <SheetClose asChild>
-        <button type="button" onClick={() => onSelect(item.key)} className="w-full">
-          {content}
-        </button>
-      </SheetClose>
-    );
-  }
-
-  return (
-    <SheetClose asChild>
-      <Link to={item.to} className={priority === "secondary" ? "block" : "block w-full"}>
-        {content}
-      </Link>
-    </SheetClose>
-  );
-};
-
-const MobileProfileSwitchCard = ({
-  currentDashboard,
-  displayName,
-  profile,
-  profileInitial,
-  profileTo,
-}) => {
-  const navigate = useNavigate();
-
-  const switchTargetLabel = currentDashboard === "freelancer" ? "Client" : "Freelancer";
-  const switchTargetPath = currentDashboard === "freelancer" ? "/client" : "/freelancer";
-
-  return (
-    <div className="rounded-[26px] border border-white/[0.05] bg-white/[0.03] p-4 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)]">
-      <div className="flex items-center justify-between gap-3">
-        <SheetClose asChild>
-          <button
-            type="button"
-            onClick={() => navigate(profileTo)}
-            className="flex min-w-0 flex-1 items-center gap-3 text-left"
-          >
-            <div className="relative shrink-0">
-              <Avatar className="size-12 border border-white/[0.08]">
-                <AvatarImage src={profile?.avatar} alt={displayName} />
-                <AvatarFallback className="bg-[#272c3d] text-sm font-bold text-white">
-                  {profileInitial}
-                </AvatarFallback>
-              </Avatar>
-              <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#161a28] bg-[#22c55e]" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-[1rem] font-semibold text-white">{displayName}</p>
-              <p className="mt-1 text-xs text-[#6f7688]">View profile</p>
-            </div>
-          </button>
-        </SheetClose>
-
-        <SheetClose asChild>
-          <button
-            type="button"
-            onClick={() => navigate(switchTargetPath)}
-            className="flex shrink-0 flex-col items-end gap-1 rounded-[18px] px-2 py-1 text-right transition hover:text-white"
-          >
-            <Repeat2 className="size-4 text-[#d7dbe6]" />
-            <span className="text-[11px] font-medium text-[#7f8797]">switch to</span>
-            <span className="text-xs font-semibold text-[#cfd5df]">{switchTargetLabel}</span>
-          </button>
-        </SheetClose>
-      </div>
-    </div>
-  );
-};
-
 const NotificationPopoverButton = ({
   notifications = [],
   unreadCount = 0,
@@ -438,43 +296,8 @@ const NotificationPopoverButton = ({
     };
   }, []);
 
-  React.useEffect(() => {
-    if (typeof document === "undefined") {
-      return undefined;
-    }
-
-    const { body, documentElement } = document;
-    const previousHtmlOverflow = documentElement.style.overflow;
-    const previousHtmlOverscrollBehavior = documentElement.style.overscrollBehavior;
-    const previousOverflow = body.style.overflow;
-    const previousOverscrollBehavior = body.style.overscrollBehavior;
-
-    if (open) {
-      documentElement.style.overflow = "hidden";
-      documentElement.style.overscrollBehavior = "none";
-      body.style.overflow = "hidden";
-      body.style.overscrollBehavior = "none";
-    }
-
-    return () => {
-      documentElement.style.overflow = previousHtmlOverflow;
-      documentElement.style.overscrollBehavior = previousHtmlOverscrollBehavior;
-      body.style.overflow = previousOverflow;
-      body.style.overscrollBehavior = previousOverscrollBehavior;
-    };
-  }, [open]);
-
   return (
-    <>
-      {open ? (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[3px]"
-          onClick={() => setOpen(false)}
-          aria-hidden="true"
-        />
-      ) : null}
-
-      <Sheet open={open} onOpenChange={setOpen} modal={false}>
+      <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <button
             type="button"
@@ -490,7 +313,7 @@ const NotificationPopoverButton = ({
 
         <SheetContent
           side="right"
-          className="z-50 w-full max-w-[22rem] border-l border-border bg-[#171718] p-0 text-white sm:max-w-[24rem]"
+          className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-white shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
         >
           <div className="flex h-full min-h-0 flex-col">
             <SheetHeader className="border-b border-border px-4 py-3 pr-12">
@@ -586,13 +409,12 @@ const NotificationPopoverButton = ({
           </div>
         </SheetContent>
       </Sheet>
-    </>
   );
 };
 
 const FreelancerWorkspaceHeader = ({
   profile,
-  activeMarketingKey = "home",
+  activeMarketingKey = null,
   activeWorkspaceKey = "dashboard",
   onSiteNav,
   onWorkspaceNav,
@@ -610,7 +432,6 @@ const FreelancerWorkspaceHeader = ({
   const { logout } = useAuth();
   const displayName = String(profile?.name || "Freelancer").trim() || "Freelancer";
   const profileInitial = profile?.initial || getInitials(displayName);
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const primaryActionContent = <span>{primaryActionLabel}</span>;
 
@@ -625,129 +446,30 @@ const FreelancerWorkspaceHeader = ({
 
   return (
     <header className={cn("sticky top-0 z-50 bg-background", className)}>
-      <div className="border-b border-border px-4 py-5 lg:hidden">
-        <div className="flex items-center justify-between gap-4">
-          <Link to="/">
-            <BrandMark />
-          </Link>
-
-          <div className="flex items-center gap-1">
-            <div className="rounded-full bg-white/[0.02] text-[#ffc107]">
-              {notificationButton}
-            </div>
-
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Open navigation menu"
-                  className="inline-flex size-11 items-center justify-center rounded-full text-white transition-colors hover:bg-white/5"
-                >
-                  <Menu className="size-6" />
-                </button>
-              </SheetTrigger>
-            <SheetContent
-              side="left"
-              showCloseButton={false}
-              className="w-[min(88vw,22rem)] border-r border-white/[0.06] rounded-r-[28px] bg-[#101420] p-0 text-white shadow-[0_32px_100px_-36px_rgba(0,0,0,0.92)] sm:max-w-[22rem]"
-            >
-              <SheetHeader className="sr-only">
-                <SheetTitle>Navigation menu</SheetTitle>
-                <SheetDescription>
-                  Open workspace and site navigation links.
-                </SheetDescription>
-              </SheetHeader>
-
-              <div className="flex items-center justify-between border-b border-white/[0.05] px-6 py-6">
-                <SheetClose asChild>
-                  <Link to="/">
-                    <BrandMark />
-                  </Link>
-                </SheetClose>
-
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full bg-white/[0.04] text-[#ffc107]">
-                    {notificationButton}
-                  </div>
-                  <SheetClose asChild>
-                    <button
-                      type="button"
-                      aria-label="Close navigation menu"
-                      className="inline-flex size-10 items-center justify-center rounded-full text-[#c6cad5] transition-colors hover:bg-white/[0.05] hover:text-white"
-                    >
-                      <X className="size-5" />
-                    </button>
-                  </SheetClose>
-                </div>
-              </div>
-
-              <ScrollArea className="flex-1 px-6 pb-8">
-                <div className="flex min-h-full flex-col">
-                  <div className="pt-8">
-                    <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
-                      Main
-                    </p>
-                    <div className="mt-4 space-y-2">
-                    {workspaceNavItems
-                      .filter((item) => item.key !== "profile")
-                      .map((item) => (
-                      <MobileMenuLink
-                        key={item.key}
-                        item={item}
-                        active={item.key === activeWorkspaceKey}
-                        onSelect={onWorkspaceNav}
-                        priority="primary"
-                      />
-                    ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-10">
-                    <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
-                      Home
-                    </p>
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                      {marketingNavItems.map((item) => (
-                        <MobileMenuLink
-                          key={item.key}
-                          item={item}
-                          active={item.key === activeMarketingKey}
-                          onSelect={onSiteNav}
-                          priority="secondary"
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-auto space-y-5 pb-2 pt-10">
-                    <SheetClose asChild>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          logout();
-                        }}
-                        className="flex items-center gap-3 px-1 text-sm font-medium text-[#b0b7c7] transition hover:text-white"
-                      >
-                        <LogOut className="size-4.5" />
-                        <span>Sign Out</span>
-                      </button>
-                    </SheetClose>
-
-                    <MobileProfileSwitchCard
-                      currentDashboard="freelancer"
-                      displayName={displayName}
-                      profile={profile}
-                      profileInitial={profileInitial}
-                      profileTo={_profileTo}
-                    />
-                  </div>
-                </div>
-              </ScrollArea>
-            </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-      </div>
+      <WorkspaceMobileSidebar
+        currentDashboard="freelancer"
+        displayName={displayName}
+        profile={profile}
+        profileInitial={profileInitial}
+        profileTo={_profileTo}
+        activeMarketingKey={activeMarketingKey}
+        activeWorkspaceKey={activeWorkspaceKey}
+        marketingNavItems={marketingNavItems}
+        workspaceNavItems={workspaceNavItems}
+        onSiteNav={onSiteNav}
+        onWorkspaceNav={onWorkspaceNav}
+        onLogout={() => {
+          logout();
+        }}
+        renderNotificationButton={() => (
+          <NotificationPopoverButton
+            notifications={notifications}
+            unreadCount={unreadCount}
+            markAllAsRead={markAllAsRead}
+            onNotificationClick={onNotificationClick}
+          />
+        )}
+      />
 
       <div className="hidden space-y-4 pb-3 pt-3 lg:block">
         <div className="mx-auto w-full rounded-[40px] border border-border bg-background p-3 sm:p-4 xl:w-[70%]">

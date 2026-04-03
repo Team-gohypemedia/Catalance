@@ -4,12 +4,14 @@
 @custom-variant dark (&:is(.dark *));
 
 html {
-  scrollbar-gutter: stable;
+  scrollbar-gutter: stable both-edges;
 }
 
+html[data-scroll-locked],
 body[data-scroll-locked] {
   margin-right: 0 !important;
   padding-right: 0 !important;
+  --removed-body-scroll-bar-size: 0px !important;
 }
 
 :root {
@@ -184,11 +186,12 @@ body[data-scroll-locked] {
     @apply border-border outline-ring/50;
   }
   html {
-    scrollbar-gutter: stable;
+    scrollbar-gutter: stable both-edges;
     overflow-x: hidden;
   }
   body {
     @apply bg-background text-foreground;
+    scrollbar-gutter: stable both-edges;
     overflow-x: hidden;
   }
   #root {
