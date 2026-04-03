@@ -13,7 +13,7 @@ const Marketplace = lazy(() => import("@/components/pages/Marketplace"));
 const About = lazy(() => import("@/components/sections/home/About.jsx"));
 const Contact = lazy(() => import("@/components/sections/home/Contact.jsx"));
 const ClientDashboard = lazy(
-  () => import("@/pages/ClientDashboard.jsx"),
+  () => import("@/pages/client/ClientDashboard.jsx"),
 );
 const ClientProposal = lazy(
   () => import("@/components/features/client/ClientProposal.jsx"),
@@ -81,7 +81,7 @@ const PMLogin = lazy(
   () => import("@/components/features/project-manager/PMLogin"),
 );
 const FreelancerDashboard = lazy(
-  () => import("@/components/features/freelancer/FreelancerDashboard"),
+  () => import("@/pages/freelancer/FreelancerDashboard.jsx"),
 );
 const FreelancerProposal = lazy(
   () => import("@/components/features/freelancer/FreelancerProposal"),

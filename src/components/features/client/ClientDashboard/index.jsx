@@ -1,1 +1,1 @@
-export { default } from "@/pages/ClientDashboard.jsx";
+export { default } from "@/pages/client/ClientDashboard.jsx";

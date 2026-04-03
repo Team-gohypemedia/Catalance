@@ -1,0 +1,693 @@
+import React from "react";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import SlidersHorizontal from "lucide-react/dist/esm/icons/sliders-horizontal";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import { cn } from "@/shared/lib/utils";
+import {
+  FreelancerCarouselDots,
+  FreelancerDashboardPanel,
+  FreelancerDashboardSkeletonBlock,
+} from "./shared.jsx";
+
+export const FreelancerDeliveryPipelineSkeleton = () => (
+  <section>
+    <FreelancerDashboardPanel className="overflow-hidden p-0">
+      <div className="border-b border-white/[0.05] px-4 py-5 sm:px-6 lg:px-7">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <FreelancerDashboardSkeletonBlock className="h-8 w-56 rounded-full" />
+              <FreelancerDashboardSkeletonBlock className="h-6 w-24 rounded-full" />
+            </div>
+            <FreelancerDashboardSkeletonBlock className="mt-3 h-4 w-[28rem] max-w-full rounded-full" />
+            <FreelancerDashboardSkeletonBlock className="mt-2 h-4 w-[24rem] max-w-full rounded-full" />
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <FreelancerDashboardSkeletonBlock className="h-10 w-40 rounded-full" />
+            <FreelancerDashboardSkeletonBlock className="h-10 w-36 rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 py-5 sm:px-6 lg:px-7">
+        <FreelancerDashboardSkeletonBlock className="h-10 w-full rounded-[16px]" />
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((item) => (
+            <Card
+              key={`freelancer-earnings-stat-skeleton-${item}`}
+              className="border-white/[0.08] bg-background/30 shadow-none"
+            >
+              <CardContent className="p-4 sm:p-5">
+                <FreelancerDashboardSkeletonBlock className="h-4 w-24 rounded-full" />
+                <FreelancerDashboardSkeletonBlock className="mt-4 h-8 w-28 rounded-full" />
+                <FreelancerDashboardSkeletonBlock className="mt-3 h-4 w-36 rounded-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)]">
+          <Card className="border-white/[0.08] bg-background/30 shadow-none">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <FreelancerDashboardSkeletonBlock className="h-6 w-40 rounded-full" />
+                  <FreelancerDashboardSkeletonBlock className="mt-2 h-4 w-36 rounded-full" />
+                </div>
+                <FreelancerDashboardSkeletonBlock className="h-6 w-24 rounded-full" />
+              </div>
+              <FreelancerDashboardSkeletonBlock className="my-4 h-px w-full" />
+              <FreelancerDashboardSkeletonBlock className="h-52 w-full rounded-[24px]" />
+            </CardContent>
+          </Card>
+
+          <Card className="border-white/[0.08] bg-background/30 shadow-none">
+            <CardContent className="p-4 sm:p-5">
+              <div>
+                <FreelancerDashboardSkeletonBlock className="h-6 w-28 rounded-full" />
+                <FreelancerDashboardSkeletonBlock className="mt-2 h-4 w-44 rounded-full" />
+              </div>
+              <div className="mt-4 space-y-3">
+                <FreelancerDashboardSkeletonBlock className="h-11 w-full rounded-[16px]" />
+                <FreelancerDashboardSkeletonBlock className="h-11 w-full rounded-[16px]" />
+                <FreelancerDashboardSkeletonBlock className="h-11 w-full rounded-[16px]" />
+              </div>
+              <FreelancerDashboardSkeletonBlock className="my-4 h-px w-full" />
+              <FreelancerDashboardSkeletonBlock className="h-24 w-full rounded-[18px]" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </FreelancerDashboardPanel>
+  </section>
+);
+
+const FreelancerRunningProjectCard = ({
+  item,
+  isSelected,
+  canShowSelection,
+  onSelect,
+}) => {
+  const progress = Math.max(0, Math.min(100, Number(item?.progress) || 0));
+  const badgeLabel =
+    String(item?.statusLabel || "").trim().toLowerCase() === "awaiting clearance"
+      ? "In Progress"
+      : item?.statusLabel;
+
+  return (
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      className={cn(
+        "relative cursor-pointer overflow-hidden rounded-[18px] bg-card shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition-colors hover:bg-card",
+        canShowSelection &&
+          isSelected &&
+          "border-transparent bg-card shadow-[inset_0_0_0_2px_rgba(250,204,21,1)]",
+      )}
+    >
+      <CardContent className={cn("p-4 pb-6", canShowSelection && isSelected && "pb-7")}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+              {String(item?.clientLabel || "").toUpperCase()}
+            </p>
+            <p className="mt-2 truncate text-[1.15rem] font-semibold tracking-[-0.03em] text-white">
+              {item?.title}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">{item?.timeLabel}</p>
+          </div>
+
+          <Badge className="rounded-[10px] border-0 bg-[#2f1e05] px-3 py-1 text-[11px] font-semibold text-[#fbbf24]">
+            {badgeLabel}
+          </Badge>
+        </div>
+
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Freelancer share</span>
+            <span className="font-semibold text-zinc-100">{item?.amount}</span>
+          </div>
+          <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
+            <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const DeliveryPipeline = ({
+  activeRunningProjectsFilterLabel,
+  runningProjectFilterOptions,
+  runningProjectsFilter,
+  setRunningProjectsFilter,
+  visibleRunningProjects,
+  showRunningProjectsCarouselControls,
+  runningProjectsCarouselApi,
+  setRunningProjectsCarouselApi,
+  canGoToPreviousRunningProjects,
+  canGoToNextRunningProjects,
+  runningProjectsCarouselSnapCount,
+  activeRunningProjectsSnap,
+  selectedRunningProjectId,
+  setSelectedRunningProjectId,
+  activeScheduleProjectTitle,
+  activeProposalForSchedule,
+  scheduleTimelineRows,
+  schedulePhaseSegments,
+  activeSchedulePhaseSegmentIndex,
+  scheduleMarkerLeftPct,
+  scheduleTodayDateLabel,
+  activeScheduleProgressPct,
+  schedulePhases,
+  activeScheduleDueInDays,
+  nextPayoutSummaryLabel,
+}) => {
+  const hasActiveProject = Boolean(activeProposalForSchedule);
+  const statusTone = !hasActiveProject
+    ? "No active project"
+    : activeScheduleProgressPct >= 80
+      ? "On track"
+      : activeScheduleProgressPct >= 50
+        ? "Steady"
+        : "Delayed";
+  const statusSub = hasActiveProject
+    ? `Tracking ${activeScheduleProjectTitle}`
+    : "Select a project from All projects to see live schedule metrics.";
+  const completed = schedulePhases.filter((phase) => phase.isComplete).length;
+  const pending = Math.max(0, schedulePhases.length - completed);
+  const total = Math.max(1, schedulePhases.length || 4);
+  const dotCount = Math.min(7, total);
+  const dotsOn = Math.min(dotCount, completed);
+  const daysRemaining =
+    hasActiveProject && Number.isFinite(activeScheduleDueInDays)
+      ? activeScheduleDueInDays
+      : pending
+        ? pending * 7
+        : 0;
+
+  return (
+    <section className="w-full min-w-0">
+      <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
+        <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+          Delivery Pipeline
+        </h2>
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 w-[12rem] justify-between rounded-full border-white/[0.12] bg-card px-3 text-[11px] font-semibold text-zinc-200 hover:bg-card data-[state=open]:bg-card"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <SlidersHorizontal className="size-3.5 shrink-0" />
+                  <span className="truncate">{activeRunningProjectsFilterLabel}</span>
+                </span>
+                <ChevronDown className="size-3.5 shrink-0 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-[12rem] rounded-xl border-white/[0.12] bg-card p-1.5"
+            >
+              {runningProjectFilterOptions.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  disabled={option.count === 0}
+                  onSelect={(event) => {
+                    if (option.count === 0) {
+                      event.preventDefault();
+                      return;
+                    }
+                    setRunningProjectsFilter(option.value);
+                  }}
+                  className={cn(
+                    "rounded-lg px-2.5 py-2 text-[12px] font-medium text-zinc-200",
+                    runningProjectsFilter === option.value && "bg-white/[0.08] text-white",
+                    option.count === 0 && "cursor-not-allowed opacity-50",
+                  )}
+                >
+                  <span>{option.label}</span>
+                  {option.kind === "preset" ? (
+                    <span className="ml-auto text-[11px] text-zinc-400">
+                      {option.count}
+                    </span>
+                  ) : null}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      <FreelancerDashboardPanel className="overflow-hidden p-0">
+        <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-7">
+          <div className="flex flex-col gap-4">
+            {runningProjectsFilter === "all" && visibleRunningProjects.length > 0 ? (
+              <>
+                <div className="relative">
+                  {showRunningProjectsCarouselControls ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => runningProjectsCarouselApi?.scrollPrev()}
+                        disabled={!canGoToPreviousRunningProjects}
+                        aria-label="Show previous running project"
+                        className="absolute left-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:text-white/35"
+                      >
+                        <ChevronLeft className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runningProjectsCarouselApi?.scrollNext()}
+                        disabled={!canGoToNextRunningProjects}
+                        aria-label="Show next running project"
+                        className="absolute right-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:text-white/35"
+                      >
+                        <ChevronRight className="size-4" />
+                      </button>
+                    </>
+                  ) : null}
+
+                  <Carousel
+                    setApi={setRunningProjectsCarouselApi}
+                    opts={{
+                      align: "start",
+                      containScroll: "trimSnaps",
+                      slidesToScroll: 1,
+                      duration: 34,
+                    }}
+                    className="w-full"
+                  >
+                    <CarouselContent className="ml-0 items-start gap-4 [backface-visibility:hidden] [will-change:transform]">
+                      {visibleRunningProjects.map((item) => (
+                        <CarouselItem
+                          key={item.id}
+                          className={cn(
+                            "basis-full pl-[2px] pr-[2px]",
+                            visibleRunningProjects.length === 1
+                              ? "md:basis-full xl:basis-full"
+                              : visibleRunningProjects.length === 2
+                                ? "md:basis-[calc((100%-1rem)/2)] xl:basis-[calc((100%-1rem)/2)]"
+                                : "md:basis-[calc((100%-1rem)/2)] xl:basis-[calc((100%-2rem)/3)]",
+                          )}
+                        >
+                          <FreelancerRunningProjectCard
+                            item={item}
+                            isSelected={String(selectedRunningProjectId || "") === String(item.id)}
+                            canShowSelection={visibleRunningProjects.length > 1}
+                            onSelect={() => setSelectedRunningProjectId(String(item.id))}
+                          />
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                  </Carousel>
+                </div>
+                <FreelancerCarouselDots
+                  count={runningProjectsCarouselSnapCount}
+                  activeIndex={activeRunningProjectsSnap}
+                  onSelect={(index) => runningProjectsCarouselApi?.scrollTo(index)}
+                  ariaLabel="Running projects carousel pagination"
+                  getDotLabel={(index) => `Go to running project ${index + 1}`}
+                />
+              </>
+            ) : (
+              <div
+                className={cn(
+                  "grid gap-4",
+                  visibleRunningProjects.length > 1 && "md:grid-cols-2 xl:grid-cols-3",
+                )}
+              >
+                {visibleRunningProjects.map((item) => (
+                  <FreelancerRunningProjectCard
+                    key={item.id}
+                    item={item}
+                    isSelected={String(selectedRunningProjectId || "") === String(item.id)}
+                    canShowSelection={visibleRunningProjects.length > 1}
+                    onSelect={() => setSelectedRunningProjectId(String(item.id))}
+                  />
+                ))}
+                {visibleRunningProjects.length === 0 ? (
+                  <Card className="rounded-[18px] border border-dashed border-white/[0.12] bg-background/20 shadow-none md:col-span-2 xl:col-span-3">
+                    <CardContent className="flex min-h-[140px] flex-col items-center justify-center p-6 text-center">
+                      <p className="text-sm font-medium text-white">No projects in this filter</p>
+                      <p className="mt-2 text-xs text-zinc-400">
+                        Switch to All projects to view every active payout card.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : null}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-4">
+              <Card className="w-full rounded-[20px] border border-white/[0.08] bg-card shadow-none">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                        Project Schedule
+                      </p>
+                      <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
+                        Phase timeline for {activeScheduleProjectTitle}
+                      </p>
+                    </div>
+                    <Badge className="rounded-full border-0 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold text-zinc-300">
+                      {(() => {
+                        const dateCandidate = activeProposalForSchedule?.project?.deadline
+                          ? new Date(activeProposalForSchedule.project.deadline)
+                          : new Date();
+                        const month = dateCandidate
+                          .toLocaleDateString("en-US", { month: "short" })
+                          .toUpperCase();
+                        const year = dateCandidate.getFullYear();
+                        return `${month} ${year}`;
+                      })()}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-6 rounded-[18px] border border-white/[0.06] bg-card px-4 py-4">
+                    {activeProposalForSchedule ? (
+                      <div className="grid grid-cols-[160px_1fr] gap-6">
+                        {(() => {
+                          const visualRows = [...scheduleTimelineRows].reverse();
+
+                          return (
+                            <>
+                              <div>
+                                <div className="h-[34px] pt-1">
+                                  <p className="text-[0.66rem] font-semibold uppercase tracking-[0.32em] text-muted-foreground">
+                                    MILESTONES
+                                  </p>
+                                  <p className="mt-1 text-[10px] opacity-0">placeholder</p>
+                                </div>
+                                <div className="relative mt-12 h-[214px]">
+                                  {visualRows.map((row, rowIndex) => {
+                                    const rowTop = rowIndex * 52;
+                                    return (
+                                      <div
+                                        key={row.id}
+                                        className="absolute left-0 right-0"
+                                        style={{ top: `${rowTop}px` }}
+                                      >
+                                        <p className="absolute top-[4px] flex h-[24px] items-center text-[10px] font-semibold uppercase tracking-[0.18em] leading-none text-muted-foreground">
+                                          {row.title}
+                                        </p>
+                                        <p className="absolute top-[30px] flex h-[12px] items-center leading-none text-[10px] text-white/90">
+                                          {row.summary}
+                                        </p>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              <div className="relative">
+                                <div className="relative h-[34px]">
+                                  {schedulePhaseSegments.map((segment, idx) => (
+                                    <div
+                                      key={segment.id}
+                                      className="absolute top-0 min-w-0 px-2 text-center"
+                                      style={{
+                                        left: `${segment.startPct}%`,
+                                        width: `${Math.max(0, segment.endPct - segment.startPct)}%`,
+                                      }}
+                                    >
+                                      <p className="text-[10px] font-semibold text-muted-foreground">
+                                        {segment.label}
+                                      </p>
+                                      <p
+                                        className={cn(
+                                          "mt-1 text-[10px]",
+                                          idx === activeSchedulePhaseSegmentIndex
+                                            ? "text-primary"
+                                            : "text-white/90",
+                                        )}
+                                      >
+                                        {segment.rangeLabel}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div className="relative mt-12 h-[214px]">
+                                  <div className="absolute inset-y-0 left-0 right-0 border-l border-white/[0.05]" />
+                                  {[25, 50, 75].map((leftPct) => (
+                                    <div
+                                      key={`schedule-divider-${leftPct}`}
+                                      className="absolute inset-y-0 border-l border-white/[0.04]"
+                                      style={{ left: `${leftPct}%` }}
+                                    />
+                                  ))}
+                                  <div
+                                    className="absolute bottom-0 top-[-6px] w-px border-l-2 border-dotted border-[#facc15]/60"
+                                    style={{ left: `${scheduleMarkerLeftPct}%` }}
+                                  />
+
+                                  <div
+                                    className="absolute top-[-52px] z-20 -translate-x-1/2"
+                                    style={{ left: `${scheduleMarkerLeftPct}%` }}
+                                  >
+                                    <div className="inline-flex flex-col items-center">
+                                      <span className="text-[9px] font-semibold text-muted-foreground">
+                                        {scheduleTodayDateLabel}
+                                      </span>
+                                      <span className="mt-1 rounded-[6px] bg-primary px-2 py-0.5 text-[9px] font-semibold text-black">
+                                        TODAY
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {visualRows.map((row, rowIndex) => {
+                                    const rowTop = rowIndex * 52;
+                                    const rowLabelCenterPct =
+                                      row.rowStartPct + row.rowWidthPct / 2;
+                                    const isOnTrackNote =
+                                      String(row.noteLabel || "").trim().toLowerCase() ===
+                                      "on track";
+
+                                    return (
+                                      <div
+                                        key={row.id}
+                                        className="absolute left-0 right-0"
+                                        style={{ top: `${rowTop}px` }}
+                                      >
+                                        <div
+                                          className={cn(
+                                            "absolute top-0 h-[26px] rounded-[14px]",
+                                            row.isCompleted
+                                              ? "bg-emerald-500/10"
+                                              : row.isActive
+                                                ? "bg-[#facc15]/35"
+                                                : "bg-white/[0.06]",
+                                          )}
+                                          style={{
+                                            left: `${row.rowStartPct}%`,
+                                            width: `${row.rowWidthPct}%`,
+                                          }}
+                                        />
+                                        <div
+                                          className={cn(
+                                            "absolute top-[13px] inline-flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full px-4 py-1 text-[10px] font-semibold",
+                                            row.isCompleted
+                                              ? "bg-emerald-500/20 text-emerald-300"
+                                              : row.isActive
+                                                ? "bg-[#facc15] text-black"
+                                                : "bg-white/[0.06] text-zinc-400",
+                                          )}
+                                          style={{ left: `${rowLabelCenterPct}%` }}
+                                        >
+                                          {row.rowLabel}
+                                        </div>
+
+                                        {row.isCompleted ? (
+                                          <div
+                                            className="absolute top-[30px] inline-flex items-center gap-1.5 text-[9px] font-semibold text-emerald-300"
+                                            style={{
+                                              left: `calc(${row.rowStartPct}% + ${Math.max(
+                                                1,
+                                                row.rowWidthPct - 4,
+                                              )}%)`,
+                                            }}
+                                          >
+                                            <span className="inline-flex size-3.5 items-center justify-center rounded-full border border-emerald-400/40">
+                                              <span className="size-1.5 rounded-full bg-emerald-400" />
+                                            </span>
+                                            Done
+                                          </div>
+                                        ) : row.isScheduled ? (
+                                          <div
+                                            className="absolute top-[31px] text-[9px] font-semibold text-zinc-500"
+                                            style={{
+                                              left: `calc(${row.rowStartPct}% + ${Math.max(
+                                                1,
+                                                row.rowWidthPct - 8,
+                                              )}%)`,
+                                            }}
+                                          >
+                                            {row.noteLabel}
+                                          </div>
+                                        ) : (
+                                          <div
+                                            className="absolute top-[31px] inline-flex items-center gap-2"
+                                            style={{ left: `calc(${row.rowStartPct}% + 2%)` }}
+                                          >
+                                            <span
+                                              className={cn(
+                                                "size-1.5 rounded-full",
+                                                row.isActive
+                                                  ? "bg-[#facc15]"
+                                                  : "bg-zinc-500/70",
+                                              )}
+                                            />
+                                            <span
+                                              className={cn(
+                                                "text-[9px] font-semibold uppercase tracking-[0.16em]",
+                                                row.isActive
+                                                  ? "text-[#facc15]"
+                                                  : "text-zinc-300",
+                                              )}
+                                            >
+                                              {row.detailLabel}
+                                            </span>
+                                            {row.noteLabel ? (
+                                              <span
+                                                className={cn(
+                                                  "rounded-[10px] border px-2 py-0.5 text-[9px] font-semibold",
+                                                  isOnTrackNote
+                                                    ? "border-[#facc15]/40 bg-[#facc15]/14 text-[#facc15]"
+                                                    : "border-rose-500/30 bg-rose-500/10 text-rose-300",
+                                                )}
+                                              >
+                                                {row.noteLabel}
+                                              </span>
+                                            ) : null}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
+                        <p className="text-sm font-semibold text-white">No active project</p>
+                        <p className="mt-2 text-xs text-zinc-400">
+                          Project Schedule will appear when an active project is selected.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Card className="rounded-[20px] border border-white/[0.08] bg-card shadow-none">
+                  <CardContent className="p-5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                      Current Status
+                    </p>
+                    <div className="mt-3 flex items-end justify-between gap-3">
+                      <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+                        {statusTone}
+                      </p>
+                      <p className="text-[11px] font-semibold text-[#facc15]">
+                        {hasActiveProject ? `${activeScheduleProgressPct}%` : "—"}
+                      </p>
+                    </div>
+                    <div className="mt-3 h-[2px] overflow-hidden rounded-full bg-white/[0.08]">
+                      <div
+                        className="h-full rounded-full bg-[#facc15]"
+                        style={{
+                          width: `${hasActiveProject ? Math.min(100, activeScheduleProgressPct || 0) : 0}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="mt-4 text-[12px] font-medium text-muted-foreground">
+                      {statusSub}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-[20px] border border-white/[0.08] bg-card shadow-none">
+                  <CardContent className="p-5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                      Time Remaining
+                    </p>
+                    <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
+                      {hasActiveProject
+                        ? daysRemaining
+                          ? `${daysRemaining} Days`
+                          : "—"
+                        : "No active project"}
+                    </p>
+                    <p className="mt-2 text-[12px] text-muted-foreground">
+                      {hasActiveProject
+                        ? `Next payout window: ${nextPayoutSummaryLabel}`
+                        : "Next payout window details will appear once a project is active."}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-[20px] border border-white/[0.08] bg-card shadow-none">
+                  <CardContent className="p-5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                      Completed Tasks
+                    </p>
+                    <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
+                      {hasActiveProject ? `${completed}/${total}` : "No active project"}
+                    </p>
+                    <div className="mt-3 flex items-center gap-1">
+                      {Array.from({ length: dotCount }).map((_, index) => (
+                        <span
+                          key={`schedule-complete-dot-${index}`}
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            hasActiveProject && index < dotsOn
+                              ? "bg-[#facc15]"
+                              : "bg-white/[0.18]",
+                          )}
+                        />
+                      ))}
+                    </div>
+                    <p className="mt-3 text-[12px] text-muted-foreground">
+                      {hasActiveProject
+                        ? "Cleared payouts vs. tracked payout sources."
+                        : "Task completion summary appears when an active project is available."}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </FreelancerDashboardPanel>
+    </section>
+  );
+};
+
+export default DeliveryPipeline;
