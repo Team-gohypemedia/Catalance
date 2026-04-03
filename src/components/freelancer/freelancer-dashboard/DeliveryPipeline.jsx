@@ -155,6 +155,132 @@ const FreelancerRunningProjectCard = ({
   );
 };
 
+const resolveMobilePipelineTone = (hasActiveProject, statusTone) => {
+  if (!hasActiveProject) {
+    return {
+      textClass: "text-zinc-400",
+      dotClass: "bg-zinc-500/70",
+      barClass: "bg-white/[0.18]",
+    };
+  }
+
+  if (statusTone === "On track") {
+    return {
+      textClass: "text-emerald-300",
+      dotClass: "bg-emerald-400",
+      barClass: "bg-emerald-400",
+    };
+  }
+
+  if (statusTone === "Steady") {
+    return {
+      textClass: "text-[#facc15]",
+      dotClass: "bg-[#facc15]",
+      barClass: "bg-[#facc15]",
+    };
+  }
+
+  return {
+    textClass: "text-orange-300",
+    dotClass: "bg-orange-400",
+    barClass: "bg-orange-400",
+  };
+};
+
+const resolveMobilePipelinePhaseAppearance = (row) => {
+  if (row?.isCompleted) {
+    return {
+      dotClass: "border-emerald-400 bg-emerald-400 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]",
+      cardClass: "border-emerald-400/18 bg-[#171717]",
+      chipClass: "border-emerald-400/20 bg-emerald-500/12 text-emerald-300",
+      barClass: "bg-emerald-400",
+      lineClass: "bg-emerald-400/55",
+    };
+  }
+
+  if (row?.isActive) {
+    return {
+      dotClass: "border-[#facc15] bg-[#facc15] shadow-[0_0_0_4px_rgba(250,204,21,0.12)]",
+      cardClass: "border-[#facc15]/16 bg-[#171717]",
+      chipClass: "border-[#facc15]/20 bg-[#facc15]/12 text-[#facc15]",
+      barClass: "bg-[#facc15]",
+      lineClass: "bg-[#facc15]/55",
+    };
+  }
+
+  if (row?.isPending) {
+    return {
+      dotClass: "border-orange-400 bg-orange-400 shadow-[0_0_0_4px_rgba(251,146,60,0.12)]",
+      cardClass: "border-orange-400/16 bg-[#171717]",
+      chipClass: "border-orange-400/20 bg-orange-500/12 text-orange-300",
+      barClass: "bg-orange-400",
+      lineClass: "bg-orange-400/55",
+    };
+  }
+
+  return {
+    dotClass: "border-white/[0.18] bg-[#111111]",
+    cardClass: "border-white/[0.06] bg-[#171717]",
+    chipClass: "border-white/[0.08] bg-white/[0.04] text-zinc-500",
+    barClass: "bg-white/[0.18]",
+    lineClass: "bg-white/[0.08]",
+  };
+};
+
+const FreelancerRunningProjectCompactCard = ({ item, isSelected, onSelect }) => {
+  const progress = Math.max(0, Math.min(100, Number(item?.progress) || 0));
+  const badgeLabel =
+    String(item?.statusLabel || "").trim().toLowerCase() === "awaiting clearance"
+      ? "On Track"
+      : item?.statusLabel;
+
+  return (
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      className={cn(
+        "w-[84vw] min-w-[15rem] max-w-[18rem] shrink-0 snap-start overflow-hidden rounded-[22px] border-0 bg-[#151515] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]",
+        isSelected &&
+          "shadow-[inset_0_0_0_1.5px_rgba(250,204,21,0.95),0_18px_40px_rgba(0,0,0,0.3)]",
+      )}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <span className="inline-flex size-9 items-center justify-center rounded-[12px] border border-white/[0.08] bg-white/[0.03]">
+            <span className="size-2.5 rotate-45 rounded-[3px] border border-primary/80" />
+          </span>
+          <Badge className="rounded-full border-0 bg-emerald-500/12 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+            {badgeLabel}
+          </Badge>
+        </div>
+
+        <p className="mt-4 text-[1.15rem] font-semibold tracking-[-0.04em] text-white">
+          {item?.title || "Untitled project"}
+        </p>
+        <p className="mt-1 text-[11px] leading-5 text-zinc-500">
+          {item?.clientLabel ? `With ${item.clientLabel}` : item?.timeLabel}
+        </p>
+
+        <div className="mt-5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em]">
+          <span className="text-zinc-500">Progress</span>
+          <span className="text-zinc-100">{progress}%</span>
+        </div>
+
+        <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.08]">
+          <div className="h-full rounded-full bg-[#facc15]" style={{ width: `${progress}%` }} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const DeliveryPipeline = ({
   activeRunningProjectsFilterLabel,
   runningProjectFilterOptions,
@@ -204,10 +330,11 @@ const DeliveryPipeline = ({
       : pending
         ? pending * 7
         : 0;
+  const mobileStatusTone = resolveMobilePipelineTone(hasActiveProject, statusTone);
 
   return (
     <section className="w-full min-w-0">
-      <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
+      <div className="mb-4 hidden items-center justify-between gap-4 sm:mb-5 sm:flex">
         <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
           Delivery Pipeline
         </h2>
@@ -262,7 +389,242 @@ const DeliveryPipeline = ({
 
       <FreelancerDashboardPanel className="overflow-hidden p-0">
         <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-7">
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 sm:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-[1rem] font-semibold tracking-[-0.03em] text-white">
+                  Delivery Pipeline
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setRunningProjectsFilter("all")}
+                className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#facc15]"
+              >
+                View all
+              </button>
+            </div>
+
+            {visibleRunningProjects.length > 0 ? (
+              <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex gap-3">
+                  {visibleRunningProjects.map((item) => (
+                    <FreelancerRunningProjectCompactCard
+                      key={item.id}
+                      item={item}
+                      isSelected={String(selectedRunningProjectId || "") === String(item.id)}
+                      onSelect={() => setSelectedRunningProjectId(String(item.id))}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <Card className="rounded-[22px] border border-dashed border-white/[0.12] bg-background/20 shadow-none">
+                <CardContent className="flex min-h-[120px] flex-col items-center justify-center p-5 text-center">
+                  <p className="text-sm font-medium text-white">No active projects</p>
+                  <p className="mt-2 text-xs text-zinc-400">
+                    Switch filters or accept a proposal to start tracking delivery phases.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card className="overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#141414] shadow-none">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                      Project Schedule
+                    </p>
+                    <p className="mt-2 truncate text-[0.95rem] font-semibold tracking-[-0.03em] text-white">
+                      {activeScheduleProjectTitle}
+                    </p>
+                  </div>
+
+                  <div className="shrink-0 text-right">
+                    <span className="inline-flex rounded-full bg-[#facc15] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-black">
+                      Today
+                    </span>
+                    <p className="mt-1 text-[10px] font-medium text-[#facc15]">
+                      {scheduleTodayDateLabel}
+                    </p>
+                  </div>
+                </div>
+
+                {hasActiveProject ? (
+                  <div className="relative mt-5 pl-6">
+                    <div className="absolute bottom-6 left-[7px] top-3 w-px bg-white/[0.08]" />
+
+                    <div className="space-y-4">
+                      {scheduleTimelineRows.map((row, index) => {
+                        const phase = schedulePhases[index] || null;
+                        const segment = schedulePhaseSegments[index] || null;
+                        const appearance = resolveMobilePipelinePhaseAppearance(row);
+                        const progressWidth = row?.isCompleted
+                          ? 100
+                          : row?.isActive
+                            ? Math.max(8, Math.round(Number(row?.progress || phase?.progress || 0)))
+                            : row?.isPending
+                              ? 28
+                              : 0;
+                        const chipLabel = row?.isCompleted
+                          ? "Completed"
+                          : row?.isActive
+                            ? row?.noteLabel || `${progressWidth}% in progress`
+                            : row?.isPending
+                              ? row?.noteLabel || "Pending"
+                              : "Upcoming";
+                        const helperLabel =
+                          row?.isCompleted
+                            ? phase?.summary && phase.summary !== "Pending"
+                              ? phase.summary
+                              : "Finished and ready for handoff."
+                            : row?.isActive
+                              ? phase?.summary && phase.summary !== "Pending"
+                                ? phase.summary
+                                : "Current phase progress is being tracked live."
+                              : row?.isPending
+                                ? phase?.summary && phase.summary !== "Pending"
+                                  ? phase.summary
+                                  : "Queued after the current phase closes."
+                                : "Scheduled later in the delivery plan.";
+
+                        return (
+                          <div key={row.id} className="relative">
+                            <span
+                              className={cn(
+                                "absolute left-[-24px] top-3 z-10 size-[13px] rounded-full border-[3px]",
+                                appearance.dotClass,
+                              )}
+                            />
+
+                            <div
+                              className={cn(
+                                "rounded-[22px] border px-4 py-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]",
+                                appearance.cardClass,
+                              )}
+                            >
+                              <p className="text-[9px] font-semibold uppercase tracking-[0.28em] text-white/28">
+                                Phase {index + 1}
+                              </p>
+                              <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
+                                {phase?.label || row?.summary || `Phase ${index + 1}`}
+                              </p>
+                              <p className="mt-1 text-[11px] text-zinc-500">
+                                {segment?.rangeLabel || phase?.summary || "Upcoming"}
+                              </p>
+
+                              <div
+                                className={cn(
+                                  "mt-3 inline-flex rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em]",
+                                  appearance.chipClass,
+                                )}
+                              >
+                                {chipLabel}
+                              </div>
+
+                              <p className="mt-3 text-[11px] leading-5 text-zinc-500">
+                                {helperLabel}
+                              </p>
+
+                              <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.08]">
+                                <div
+                                  className={cn("h-full rounded-full", appearance.barClass)}
+                                  style={{ width: `${progressWidth}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex min-h-[240px] flex-col items-center justify-center px-3 py-10 text-center">
+                    <p className="text-sm font-semibold text-white">No active project</p>
+                    <p className="mt-2 text-xs leading-5 text-zinc-400">
+                      Select a running project to unlock the schedule timeline and delivery
+                      checkpoints.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-[22px] border border-white/[0.08] bg-[#141414] shadow-none">
+              <CardContent className="p-4">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                  Current Status
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <span className={cn("size-2 rounded-sm", mobileStatusTone.dotClass)} />
+                  <p
+                    className={cn(
+                      "text-[0.95rem] font-semibold uppercase tracking-[0.08em]",
+                      mobileStatusTone.textClass,
+                    )}
+                  >
+                    {hasActiveProject ? statusTone : "No active project"}
+                  </p>
+                </div>
+                <div className="mt-4 h-[3px] overflow-hidden rounded-full bg-white/[0.08]">
+                  <div
+                    className={cn("h-full rounded-full", mobileStatusTone.barClass)}
+                    style={{
+                      width: `${hasActiveProject ? Math.min(100, activeScheduleProgressPct || 0) : 0}%`,
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="rounded-[20px] border border-white/[0.08] bg-[#141414] shadow-none">
+                <CardContent className="p-4">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                    Time Remaining
+                  </p>
+                  <p className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-white">
+                    {hasActiveProject
+                      ? daysRemaining
+                        ? `${daysRemaining} Days`
+                        : "Today"
+                      : "—"}
+                  </p>
+                  <p className="mt-2 text-[11px] leading-5 text-zinc-500">
+                    {hasActiveProject ? nextPayoutSummaryLabel : "Awaiting an active delivery."}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-[20px] border border-white/[0.08] bg-[#141414] shadow-none">
+                <CardContent className="p-4">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                    Completed Tasks
+                  </p>
+                  <p className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-white">
+                    {hasActiveProject ? `${completed}/${total}` : "—"}
+                  </p>
+                  <div className="mt-3 flex items-center gap-1">
+                    {Array.from({ length: dotCount }).map((_, index) => (
+                      <span
+                        key={`schedule-mobile-complete-dot-${index}`}
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          hasActiveProject && index < dotsOn
+                            ? "bg-[#facc15]"
+                            : "bg-white/[0.18]",
+                        )}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          <div className="hidden flex-col gap-4 sm:flex">
             {runningProjectsFilter === "all" && visibleRunningProjects.length > 0 ? (
               <>
                 <div className="relative">
