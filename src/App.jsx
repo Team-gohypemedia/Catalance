@@ -13,7 +13,7 @@ const Marketplace = lazy(() => import("@/components/pages/Marketplace"));
 const About = lazy(() => import("@/components/sections/home/About.jsx"));
 const Contact = lazy(() => import("@/components/sections/home/Contact.jsx"));
 const ClientDashboard = lazy(
-  () => import("@/components/features/client/ClientDashboard/index.jsx"),
+  () => import("@/pages/ClientDashboard.jsx"),
 );
 const ClientProposal = lazy(
   () => import("@/components/features/client/ClientProposal.jsx"),
