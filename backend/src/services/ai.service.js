@@ -246,10 +246,14 @@ const requestOpenRouterCompletion = async ({
     modelsToTry.push(FALLBACK_MODEL);
   }
 
+  const overallStartedAt = getAiServiceNow();
+  const attempts = [];
+
   for (let index = 0; index < modelsToTry.length; index += 1) {
     const model = modelsToTry[index];
     const hasFallback = index < modelsToTry.length - 1;
     let response;
+    const attemptStartedAt = getAiServiceNow();
 
     try {
       response = await fetch(OPENROUTER_API_URL, {
@@ -276,6 +280,7 @@ const requestOpenRouterCompletion = async ({
     }
 
     const data = await response.json().catch(() => null);
+    const attemptDurationMs = roundDurationMs(getAiServiceNow() - attemptStartedAt);
 
     if (response.ok) {
       if (!data) {
@@ -285,10 +290,30 @@ const requestOpenRouterCompletion = async ({
         });
       }
 
-      return { data, model };
+      attempts.push({
+        model,
+        status: response.status,
+        durationMs: attemptDurationMs,
+        ok: true,
+      });
+
+      return {
+        data,
+        model,
+        attempts,
+        attemptCount: attempts.length,
+        durationMs: roundDurationMs(getAiServiceNow() - overallStartedAt),
+      };
     }
 
     const errorMessage = data?.error?.message || "AI API request failed";
+    attempts.push({
+      model,
+      status: response.status,
+      durationMs: attemptDurationMs,
+      ok: false,
+      errorMessage,
+    });
     const isAuthError =
       response.status === 401 ||
       response.status === 403 ||
@@ -1891,6 +1916,102 @@ Instead of following rigid scripts, apply these principles to handle any situati
 - Use short acknowledgments like "Got it", "Noted", or move straight to the next question
 - Always think: "What would a senior consultant say here?"
 `;
+};
+
+const DEFAULT_CHAT_REQUEST_PROFILE = {
+  title: "Catalance AI Assistant",
+  temperature: 0.7,
+  maxTokens: 2000,
+  skipConversationGuards: false,
+};
+
+const getAiServiceNow = () =>
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+
+const roundDurationMs = (value = 0) => {
+  const numericValue = Number(value || 0);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.round(numericValue * 10) / 10);
+};
+
+const INTERNAL_CHAT_REQUEST_PROFILES = {
+  system_default: {
+    title: "Catalance Internal Utility",
+    temperature: 0.2,
+    maxTokens: 500,
+    skipConversationGuards: true,
+  },
+  system_extractor: {
+    title: "Catalance AI Extractor",
+    temperature: 0.1,
+    maxTokens: 450,
+    skipConversationGuards: true,
+  },
+  system_validator: {
+    title: "Catalance AI Validator",
+    temperature: 0.15,
+    maxTokens: 650,
+    skipConversationGuards: true,
+  },
+  system_runtime_options: {
+    title: "Catalance Runtime Option Selector",
+    temperature: 0.15,
+    maxTokens: 350,
+    skipConversationGuards: true,
+  },
+  system_evaluator: {
+    title: "Catalance AI Evaluator",
+    temperature: 0.1,
+    maxTokens: 350,
+    skipConversationGuards: true,
+  },
+  system_question_writer: {
+    title: "Catalance Question Writer",
+    temperature: 0.45,
+    maxTokens: 700,
+    skipConversationGuards: true,
+  },
+};
+
+const normalizeChatRole = (role = "") => {
+  const normalized = String(role || "").trim().toLowerCase();
+  if (normalized === "assistant") return "assistant";
+  if (normalized === "system") return "system";
+  return "user";
+};
+
+const isInternalAiTask = (selectedServiceName = "") =>
+  String(selectedServiceName || "").trim().toLowerCase().startsWith("system_");
+
+const resolveChatRequestProfile = (selectedServiceName = "") => {
+  const normalizedTaskName = String(selectedServiceName || "").trim();
+  if (!isInternalAiTask(normalizedTaskName)) {
+    return DEFAULT_CHAT_REQUEST_PROFILE;
+  }
+
+  return INTERNAL_CHAT_REQUEST_PROFILES[normalizedTaskName]
+    || INTERNAL_CHAT_REQUEST_PROFILES.system_default;
+};
+
+const buildInternalSystemPrompt = (selectedServiceName = "") => {
+  const normalizedTaskName = String(selectedServiceName || "").trim();
+
+  if (normalizedTaskName === "system_question_writer") {
+    return [
+      "You are an internal Catalance writing engine.",
+      "Follow the user-provided instructions exactly.",
+      "Keep the wording natural, concise, and context-aware.",
+      "Return only the requested output shape.",
+    ].join(" ");
+  }
+
+  return [
+    "You are an internal Catalance utility model.",
+    "Follow the task exactly and do not add extra commentary.",
+    "Return only the format explicitly requested by the prompt.",
+  ].join(" ");
 };
 
 const buildSystemPrompt = (selectedServiceName = "") => {
@@ -4241,6 +4362,7 @@ export const chatWithAI = async (
   conversationHistory = [],
   selectedServiceName = ""
 ) => {
+  const chatStartedAt = getAiServiceNow();
   await ensureServicesCatalogLoaded();
 
   const apiKey = env.OPENROUTER_API_KEY?.trim();
@@ -4251,77 +4373,126 @@ export const chatWithAI = async (
     );
   }
 
+  const normalizedServiceName =
+    typeof selectedServiceName === "string" ? selectedServiceName.trim() : "";
+  const isInternalTask = isInternalAiTask(normalizedServiceName);
+  const requestProfile = resolveChatRequestProfile(normalizedServiceName);
   const systemMessage = {
     role: "system",
-    content: buildSystemPrompt(selectedServiceName)
+    content: isInternalTask
+      ? buildInternalSystemPrompt(normalizedServiceName)
+      : buildSystemPrompt(normalizedServiceName)
   };
 
   const formattedHistory = Array.isArray(conversationHistory)
     ? conversationHistory
       .filter((msg) => msg && msg.content)
       .map((msg) => ({
-        role: msg.role === "assistant" ? "assistant" : "user",
+        role: normalizeChatRole(msg.role),
         content: msg.content
       }))
     : [];
 
   const formattedMessages = Array.isArray(messages)
     ? messages.map((msg) => ({
-      role: msg.role === "assistant" ? "assistant" : "user",
+      role: normalizeChatRole(msg.role),
       content: msg.content
     }))
     : [];
 
-  const inputGuardMessage = buildUserInputGuardMessage({
-    conversationHistory: formattedHistory,
-    messages: formattedMessages,
-    selectedServiceName
-  });
+  if (!requestProfile.skipConversationGuards) {
+    const inputGuardMessage = buildUserInputGuardMessage({
+      conversationHistory: formattedHistory,
+      messages: formattedMessages,
+      selectedServiceName: normalizedServiceName
+    });
 
-  if (inputGuardMessage) {
-    const normalized = normalizeBudgetPromptMessage(inputGuardMessage);
-    return {
-      success: true,
-      message:
-        normalized === BUDGET_CANONICAL_QUESTION
-          ? normalized
-          : applyDynamicEmphasis(normalized),
-      usage: null
-    };
+    if (inputGuardMessage) {
+      const normalized = normalizeBudgetPromptMessage(inputGuardMessage);
+      return {
+        success: true,
+        message:
+          normalized === BUDGET_CANONICAL_QUESTION
+            ? normalized
+            : applyDynamicEmphasis(normalized),
+        usage: null,
+        meta: {
+          task: normalizedServiceName || "public_assistant",
+          internalTask: isInternalTask,
+          title: requestProfile.title,
+          mode: "guard",
+          durationMs: roundDurationMs(getAiServiceNow() - chatStartedAt),
+        }
+      };
+    }
+
+    const budgetOverride = buildBudgetOverrideMessage({
+      conversationHistory: formattedHistory,
+      messages: formattedMessages,
+      selectedServiceName: normalizedServiceName
+    });
+
+    if (budgetOverride) {
+      const normalized = normalizeBudgetPromptMessage(budgetOverride);
+      return {
+        success: true,
+        message:
+          normalized === BUDGET_CANONICAL_QUESTION
+            ? normalized
+            : applyDynamicEmphasis(normalized),
+        usage: null,
+        meta: {
+          task: normalizedServiceName || "public_assistant",
+          internalTask: isInternalTask,
+          title: requestProfile.title,
+          mode: "budget_override",
+          durationMs: roundDurationMs(getAiServiceNow() - chatStartedAt),
+        }
+      };
+    }
   }
 
-  const budgetOverride = buildBudgetOverrideMessage({
-    conversationHistory: formattedHistory,
-    messages: formattedMessages,
-    selectedServiceName
-  });
-
-  if (budgetOverride) {
-    const normalized = normalizeBudgetPromptMessage(budgetOverride);
-    return {
-      success: true,
-      message:
-        normalized === BUDGET_CANONICAL_QUESTION
-          ? normalized
-          : applyDynamicEmphasis(normalized),
-      usage: null
-    };
-  }
-
-  const { data } = await requestOpenRouterCompletion({
+  const {
+    data,
+    model,
+    durationMs: providerDurationMs,
+    attemptCount,
+    attempts,
+  } = await requestOpenRouterCompletion({
     apiKey,
-    title: "Catalance AI Assistant",
+    title: requestProfile.title,
     messages: [systemMessage, ...formattedHistory, ...formattedMessages],
-    temperature: 0.7,
-    maxTokens: 2000
+    temperature: requestProfile.temperature,
+    maxTokens: requestProfile.maxTokens
   });
 
   const content = data.choices?.[0]?.message?.content || "";
+  if (isInternalTask) {
+    return {
+      success: true,
+      message: typeof content === "string" ? content.trim() : "",
+      usage: data.usage || null,
+      meta: {
+        task: normalizedServiceName || "public_assistant",
+        internalTask: true,
+        title: requestProfile.title,
+        mode: "completion",
+        provider: "openrouter",
+        model,
+        temperature: requestProfile.temperature,
+        maxTokens: requestProfile.maxTokens,
+        providerDurationMs: roundDurationMs(providerDurationMs),
+        durationMs: roundDurationMs(getAiServiceNow() - chatStartedAt),
+        attemptCount,
+        attempts,
+      }
+    };
+  }
   const safeContent = sanitizeBudgetHallucination({
     assistantText: content,
     conversationHistory: formattedHistory,
     messages: formattedMessages,
-    selectedServiceName
+    selectedServiceName: normalizedServiceName
   });
   const normalizedSafeContent = normalizeBudgetPromptMessage(safeContent);
 
@@ -4333,7 +4504,21 @@ export const chatWithAI = async (
         : applyDynamicEmphasis(
           stripMarkdownHeadings(stripBlockedMarker(normalizedSafeContent))
         ),
-    usage: data.usage || null
+    usage: data.usage || null,
+    meta: {
+      task: normalizedServiceName || "public_assistant",
+      internalTask: false,
+      title: requestProfile.title,
+      mode: "completion",
+      provider: "openrouter",
+      model,
+      temperature: requestProfile.temperature,
+      maxTokens: requestProfile.maxTokens,
+      providerDurationMs: roundDurationMs(providerDurationMs),
+      durationMs: roundDurationMs(getAiServiceNow() - chatStartedAt),
+      attemptCount,
+      attempts,
+    }
   };
 };
 
@@ -4360,9 +4545,13 @@ export const invalidateServicesCatalogCache = () => {
 export const __testables = {
   buildBudgetOverrideMessage,
   buildUserInputGuardMessage,
+  buildInternalSystemPrompt,
+  isInternalAiTask,
+  normalizeChatRole,
   normalizeProposalMarkdown,
   normalizeProposalBudgetValue,
   normalizeProposalTimelineValue,
-  normalizeNumericFieldValue
+  normalizeNumericFieldValue,
+  resolveChatRequestProfile
 };
 

@@ -50,6 +50,227 @@ const URL_CANDIDATE_REGEX = /(?:https?:\/\/|www\.)[^\s<>"']+/gi;
 let pdfJsModulePromise = null;
 let mammothModulePromise = null;
 
+const getTimingNow = () =>
+    typeof performance !== "undefined" && typeof performance.now === "function"
+        ? performance.now()
+        : Date.now();
+
+const roundTimingMs = (value = 0) => {
+    const numericValue = Number(value || 0);
+    if (!Number.isFinite(numericValue)) return 0;
+    return Math.max(0, Math.round(numericValue * 10) / 10);
+};
+
+const createRequestTimingTracker = (scope = "guest_chat") => {
+    const startedAt = getTimingNow();
+    const steps = [];
+    let stepIndex = 0;
+
+    const pushStep = (key = "", meta = {}, stepStartedAt = startedAt, stepEndedAt = getTimingNow()) => {
+        const {
+            label = key,
+            category = "server",
+            detail = "",
+            status = "ok",
+            extra = {},
+        } = meta || {};
+
+        const normalizedExtra = extra && typeof extra === "object" && !Array.isArray(extra)
+            ? extra
+            : {};
+
+        steps.push({
+            index: stepIndex,
+            key: String(key || "").trim() || `step_${stepIndex + 1}`,
+            label: String(label || key || "").trim() || `Step ${stepIndex + 1}`,
+            category: String(category || "server").trim() || "server",
+            detail: String(detail || "").trim(),
+            status: String(status || "ok").trim() || "ok",
+            durationMs: roundTimingMs(stepEndedAt - stepStartedAt),
+            startOffsetMs: roundTimingMs(stepStartedAt - startedAt),
+            endOffsetMs: roundTimingMs(stepEndedAt - startedAt),
+            ...normalizedExtra,
+        });
+        stepIndex += 1;
+    };
+
+    return {
+        async measure(key, work, meta = {}) {
+            const stepStartedAt = getTimingNow();
+            try {
+                const result = await work();
+                const extractedExtra =
+                    typeof meta?.extractMeta === "function" ? meta.extractMeta(result) : null;
+                pushStep(
+                    key,
+                    {
+                        ...meta,
+                        extra: {
+                            ...(meta?.extra && typeof meta.extra === "object" ? meta.extra : {}),
+                            ...(extractedExtra && typeof extractedExtra === "object" ? extractedExtra : {}),
+                        },
+                    },
+                    stepStartedAt,
+                    getTimingNow(),
+                );
+                return result;
+            } catch (error) {
+                pushStep(
+                    key,
+                    {
+                        ...meta,
+                        status: "error",
+                        extra: {
+                            ...(meta?.extra && typeof meta.extra === "object" ? meta.extra : {}),
+                            error: error?.message || String(error),
+                        },
+                    },
+                    stepStartedAt,
+                    getTimingNow(),
+                );
+                throw error;
+            }
+        },
+        mark(key, meta = {}, stepStartedAt = null) {
+            const startAt = Number.isFinite(Number(stepStartedAt))
+                ? Number(stepStartedAt)
+                : getTimingNow();
+            pushStep(key, meta, startAt, getTimingNow());
+        },
+        build(extra = {}) {
+            return {
+                scope,
+                totalDurationMs: roundTimingMs(getTimingNow() - startedAt),
+                stepCount: steps.length,
+                steps,
+                ...(extra && typeof extra === "object" && !Array.isArray(extra) ? extra : {}),
+            };
+        },
+    };
+};
+
+const formatTimingValueForLog = (value = 0) => {
+    const safeValue = roundTimingMs(value);
+    if (safeValue < 1000) return `${safeValue}ms`;
+    if (safeValue < 10000) return `${(safeValue / 1000).toFixed(1)}s`;
+    return `${Math.round(safeValue / 1000)}s`;
+};
+
+const buildTimingTerminalLines = (timingMeta = {}, context = {}) => {
+    const routeLabel = String(context?.routeLabel || timingMeta?.scope || "timing").trim();
+    const requestLabel = String(context?.requestLabel || "").trim();
+    const steps = Array.isArray(timingMeta?.steps) ? timingMeta.steps : [];
+
+    const headerParts = [
+        `[Timing][${routeLabel}]`,
+        requestLabel ? requestLabel : "",
+        `total=${formatTimingValueForLog(timingMeta?.totalDurationMs || 0)}`,
+        `steps=${steps.length}`,
+    ].filter(Boolean);
+
+    const lines = [headerParts.join(" ")];
+
+    steps.forEach((step, index) => {
+        const aiMeta = [
+            step?.aiTask ? `task=${step.aiTask}` : "",
+            step?.aiModel ? `model=${step.aiModel}` : "",
+            Number.isFinite(Number(step?.aiProviderDurationMs)) && Number(step.aiProviderDurationMs) > 0
+                ? `provider=${formatTimingValueForLog(step.aiProviderDurationMs)}`
+                : "",
+            Number.isFinite(Number(step?.aiTotalTokens)) && Number(step.aiTotalTokens) > 0
+                ? `tokens=${step.aiTotalTokens}`
+                : "",
+            step?.status && step.status !== "ok" ? `status=${step.status}` : "",
+        ].filter(Boolean).join(" | ");
+
+        const detailSuffix = step?.detail ? ` - ${step.detail}` : "";
+        const aiSuffix = aiMeta ? ` | ${aiMeta}` : "";
+        lines.push(
+            `  ${index + 1}. ${String(step?.label || step?.key || `step_${index + 1}`)} ` +
+            `[${String(step?.category || "server")}] ${formatTimingValueForLog(step?.durationMs || 0)}` +
+            `${detailSuffix}${aiSuffix}`
+        );
+    });
+
+    return lines;
+};
+
+const logTimingMetaToTerminal = (timingMeta = {}, context = {}) => {
+    const lines = buildTimingTerminalLines(timingMeta, context);
+    lines.forEach((line) => console.log(line));
+};
+
+const attachTimingMetaToResponse = (res, tracker, context = {}) => {
+    const originalJson = res.json.bind(res);
+    res.json = (payload) => {
+        if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+            return originalJson(payload);
+        }
+
+        const timingMeta = payload.timingMeta || tracker.build();
+        logTimingMetaToTerminal(timingMeta, context);
+
+        return originalJson({
+            ...payload,
+            timingMeta,
+        });
+    };
+};
+
+const extractAiTimingMeta = (response = {}) => {
+    const responseMeta = response?.meta;
+    const usage = response?.usage;
+    if (!responseMeta || typeof responseMeta !== "object") return {};
+
+    return {
+        aiTask: responseMeta.task || "",
+        aiMode: responseMeta.mode || "",
+        aiProvider: responseMeta.provider || "",
+        aiModel: responseMeta.model || "",
+        aiProfile: responseMeta.title || "",
+        aiInternalTask: Boolean(responseMeta.internalTask),
+        aiProviderDurationMs: roundTimingMs(responseMeta.providerDurationMs),
+        aiAttemptCount: Number.isFinite(Number(responseMeta.attemptCount))
+            ? Number(responseMeta.attemptCount)
+            : 0,
+        aiPromptTokens: Number.isFinite(Number(usage?.prompt_tokens))
+            ? Number(usage.prompt_tokens)
+            : undefined,
+        aiCompletionTokens: Number.isFinite(Number(usage?.completion_tokens))
+            ? Number(usage.completion_tokens)
+            : undefined,
+        aiTotalTokens: Number.isFinite(Number(usage?.total_tokens))
+            ? Number(usage.total_tokens)
+            : undefined,
+    };
+};
+
+const runTrackedAiCall = async ({
+    timingTracker = null,
+    key = "ai_call",
+    label = "AI call",
+    detail = "",
+    messages = [],
+    conversationHistory = [],
+    selectedServiceName = "",
+}) => {
+    const run = () => chatWithAI(messages, conversationHistory, selectedServiceName);
+    if (!timingTracker) {
+        return run();
+    }
+
+    return timingTracker.measure(
+        key,
+        run,
+        {
+            label,
+            category: "ai",
+            detail,
+            extractMeta: extractAiTimingMeta,
+        },
+    );
+};
+
 const safeDecodeURIComponent = (value = "") => {
     try {
         return decodeURIComponent(value);
@@ -772,6 +993,7 @@ const inferAnswerFromAttachmentContext = async ({
     userMessageText = "",
     attachmentContextText = "",
     serviceName = "",
+    timingTracker = null,
 }) => {
     if (!attachmentContextText.trim()) return "";
     if (NAME_QUESTION_REGEX.test(currentQuestionText || "") && !String(userMessageText || "").trim()) {
@@ -807,11 +1029,15 @@ Return JSON only:
 `;
 
     try {
-        const response = await chatWithAI(
-            [{ role: "user", content: inferPrompt }],
-            [{ role: "system", content: "You are a JSON-only extractor. Return valid JSON only." }],
-            "system_extractor"
-        );
+        const response = await runTrackedAiCall({
+            timingTracker,
+            key: "attachment_answer_inference_ai",
+            label: "Infer answer from attachment",
+            detail: "Trying to answer the current question from uploaded file context.",
+            messages: [{ role: "user", content: inferPrompt }],
+            conversationHistory: [{ role: "system", content: "You are a JSON-only extractor. Return valid JSON only." }],
+            selectedServiceName: "system_extractor",
+        });
         if (!response?.success) return "";
 
         const parsed = parseJsonObjectFromRaw(response.message);
@@ -3376,7 +3602,8 @@ const generateRuntimeOptionsForQuestion = async ({
     question = {},
     answersByQuestionText = {},
     answersBySlug = {},
-    allQuestions = []
+    allQuestions = [],
+    timingTracker = null,
 }) => {
     const questionType = normalizeTextToken(question?.type || "input");
     const adminControls = getQuestionAdminControls(question, servicePrompt);
@@ -3399,11 +3626,15 @@ const generateRuntimeOptionsForQuestion = async ({
     });
 
     try {
-        const response = await chatWithAI(
-            [{ role: "user", content: prompt }],
-            [{ role: "system", content: "You are a JSON-only assistant. Return strict JSON only." }],
-            "system_runtime_options"
-        );
+        const response = await runTrackedAiCall({
+            timingTracker,
+            key: "runtime_option_selection_ai",
+            label: "Select runtime options",
+            detail: `Choosing visible options for "${String(question?.slug || question?.text || "question").trim()}".`,
+            messages: [{ role: "user", content: prompt }],
+            conversationHistory: [{ role: "system", content: "You are a JSON-only assistant. Return strict JSON only." }],
+            selectedServiceName: "system_runtime_options",
+        });
 
         if (!response?.success) {
             return canonicalOptions;
@@ -3470,7 +3701,8 @@ const buildAiGuidedQuestionMessage = async ({
     runtimeOptionsByQuestionSlug = {},
     sideReply = "",
     bridgeSegments = [],
-    isInitial = false
+    isInitial = false,
+    timingTracker = null,
 }) => {
     const nextQuestionText = String(nextQuestion?.text || "").trim();
     if (!nextQuestionText) return "";
@@ -3648,11 +3880,15 @@ ${outputFormatBlock}
 `;
 
     try {
-        const aiResponse = await chatWithAI(
-            [{ role: "user", content: prompt }],
-            [{ role: "system", content: "You are a JSON-only writing assistant. Return strict JSON only." }],
-            serviceName || "system_question_writer"
-        );
+        const aiResponse = await runTrackedAiCall({
+            timingTracker,
+            key: "question_writer_ai",
+            label: "Write guided question reply",
+            detail: `Writing the next assistant message for "${String(nextQuestion?.slug || nextQuestionText || "question").trim()}".`,
+            messages: [{ role: "user", content: prompt }],
+            conversationHistory: [{ role: "system", content: "You are a JSON-only writing assistant. Return strict JSON only." }],
+            selectedServiceName: "system_question_writer",
+        });
 
         if (!aiResponse?.success) return "";
 
@@ -3908,6 +4144,7 @@ const buildBusinessNameGuardMessage = async ({
     allQuestions = [],
     runtimeOptionsByQuestionSlug = {},
     lastAssistantMessage = "",
+    timingTracker = null,
 } = {}) => {
     const scenarioConfig = getBusinessNameGuardScenarioConfig({ scenario, brandName });
     const prompt = buildBusinessNameGuardPrompt({
@@ -3925,11 +4162,15 @@ const buildBusinessNameGuardMessage = async ({
     });
 
     try {
-        const aiResponse = await chatWithAI(
-            [{ role: "user", content: prompt }],
-            [{ role: "system", content: "You are a JSON-only writing assistant. Return strict JSON only." }],
-            serviceName || "system_question_writer"
-        );
+        const aiResponse = await runTrackedAiCall({
+            timingTracker,
+            key: "business_name_guard_ai",
+            label: "Write business-name guard reply",
+            detail: `Handling the "${String(scenario || "brand_guard").trim()}" brand validation branch.`,
+            messages: [{ role: "user", content: prompt }],
+            conversationHistory: [{ role: "system", content: "You are a JSON-only writing assistant. Return strict JSON only." }],
+            selectedServiceName: "system_question_writer",
+        });
 
         if (!aiResponse?.success) {
             return scenarioConfig.fallbackMessage;
@@ -3954,7 +4195,12 @@ const buildBusinessNameGuardMessage = async ({
     }
 };
 
-const checkMeaningfulChangeWithAI = async ({ questionText, oldAnswer, newAnswer }) => {
+const checkMeaningfulChangeWithAI = async ({
+    questionText,
+    oldAnswer,
+    newAnswer,
+    timingTracker = null,
+}) => {
     const prompt = `
 You are an AI assistant helping a user build a project. The user had previously answered this question:
 Question: "${questionText}"
@@ -3979,11 +4225,15 @@ Return ONLY strict valid JSON in this exact format:
 `;
 
     try {
-        const evalResponse = await chatWithAI(
-            [{ role: "user", content: prompt }],
-            [{ role: "system", content: "You are a strict JSON-only evaluator. Output valid JSON." }],
-            "system_evaluator"
-        );
+        const evalResponse = await runTrackedAiCall({
+            timingTracker,
+            key: "meaningful_change_evaluator_ai",
+            label: "Evaluate answer change",
+            detail: `Checking whether "${String(questionText || "question").trim()}" changed meaningfully.`,
+            messages: [{ role: "user", content: prompt }],
+            conversationHistory: [{ role: "system", content: "You are a strict JSON-only evaluator. Output valid JSON." }],
+            selectedServiceName: "system_evaluator",
+        });
         if (evalResponse?.success) {
             const rawMsg = evalResponse.message.replace(/```(?:json)?|```/g, "").trim();
             const firstBrace = rawMsg.indexOf('{');
@@ -4392,7 +4642,12 @@ const buildQuestionAnswerCoverage = (questions = [], answersBySlug = {}, runtime
             : null
     }));
 
-const extractAnswersFromMessage = async ({ serviceName = "", message = "", questions = [] }) => {
+const extractAnswersFromMessage = async ({
+    serviceName = "",
+    message = "",
+    questions = [],
+    timingTracker = null,
+}) => {
     if (!message || !Array.isArray(questions) || questions.length === 0) {
         return [];
     }
@@ -4440,11 +4695,15 @@ Return only valid JSON in this format:
 `;
 
     try {
-        const extractionResponse = await chatWithAI(
-            [{ role: "user", content: extractorPrompt }],
-            [{ role: "system", content: "You are a JSON-only extractor. Output strict JSON only." }],
-            "system_extractor"
-        );
+        const extractionResponse = await runTrackedAiCall({
+            timingTracker,
+            key: "message_answer_extraction_ai",
+            label: "Extract answers from message",
+            detail: "Scanning the latest user message for current and future questionnaire answers.",
+            messages: [{ role: "user", content: extractorPrompt }],
+            conversationHistory: [{ role: "system", content: "You are a JSON-only extractor. Output strict JSON only." }],
+            selectedServiceName: "system_extractor",
+        });
 
         if (!extractionResponse?.success) return [];
         return parseAnswerExtractionResponse(extractionResponse.message);
@@ -4453,7 +4712,12 @@ Return only valid JSON in this format:
     }
 };
 
-const extractAnswersFromConversation = async ({ serviceName = "", history = [], questions = [] }) => {
+const extractAnswersFromConversation = async ({
+    serviceName = "",
+    history = [],
+    questions = [],
+    timingTracker = null,
+}) => {
     if (!Array.isArray(history) || history.length === 0) return [];
     if (!Array.isArray(questions) || questions.length === 0) return [];
 
@@ -4503,11 +4767,15 @@ Return strict JSON only:
 `;
 
     try {
-        const extractionResponse = await chatWithAI(
-            [{ role: "user", content: extractorPrompt }],
-            [{ role: "system", content: "You are a JSON-only extractor. Output strict JSON only." }],
-            "system_extractor"
-        );
+        const extractionResponse = await runTrackedAiCall({
+            timingTracker,
+            key: "conversation_answer_extraction_ai",
+            label: "Extract answers from transcript",
+            detail: "Scanning the whole service transcript before proposal generation.",
+            messages: [{ role: "user", content: extractorPrompt }],
+            conversationHistory: [{ role: "system", content: "You are a JSON-only extractor. Output strict JSON only." }],
+            selectedServiceName: "system_extractor",
+        });
 
         if (!extractionResponse?.success) return [];
         return parseAnswerExtractionResponse(extractionResponse.message);
@@ -4516,13 +4784,23 @@ Return strict JSON only:
     }
 };
 
-const determineConfirmationIntent = async ({ assistantPrompt = "", userMessage = "" }) => {
-    const intentObj = await chatWithAI(
-        [{ role: "system", content: "You extract intent from user confirmation responses." },
-         { role: "user", content: `The assistant asked: "${assistantPrompt}"\nThe user replied: "${userMessage}"\nDoes the user confirm the request (YES), reject it (NO), or say something unrelated (UNKNOWN)? Return ONLY JSON: {"intent": "yes" | "no" | "unknown"}` }],
-        [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
-        "system_validator"
-    );
+const determineConfirmationIntent = async ({
+    assistantPrompt = "",
+    userMessage = "",
+    timingTracker = null,
+}) => {
+    const intentObj = await runTrackedAiCall({
+        timingTracker,
+        key: "confirmation_intent_ai",
+        label: "Classify confirmation intent",
+        detail: "Determining whether the user confirmed, rejected, or sidestepped a yes/no prompt.",
+        messages: [
+            { role: "system", content: "You extract intent from user confirmation responses." },
+            { role: "user", content: `The assistant asked: "${assistantPrompt}"\nThe user replied: "${userMessage}"\nDoes the user confirm the request (YES), reject it (NO), or say something unrelated (UNKNOWN)? Return ONLY JSON: {"intent": "yes" | "no" | "unknown"}` }
+        ],
+        conversationHistory: [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
+        selectedServiceName: "system_validator",
+    });
 
     if (intentObj.success) {
         const parsed = parseJsonObjectFromRaw(intentObj.message);
@@ -4542,6 +4820,7 @@ const analyzePostProposalFollowup = async ({
     currentService = {},
     userMessage = "",
     activeServices = [],
+    timingTracker = null,
 }) => {
     const cleanUserMessage = String(userMessage || "").trim();
     if (!cleanUserMessage) {
@@ -4590,11 +4869,15 @@ Return strict JSON only:
 `;
 
     try {
-        const aiResponse = await chatWithAI(
-            [{ role: "user", content: prompt }],
-            [{ role: "system", content: "You are a JSON-only classifier. Output strict JSON only." }],
-            "system_validator"
-        );
+        const aiResponse = await runTrackedAiCall({
+            timingTracker,
+            key: "post_proposal_followup_ai",
+            label: "Classify post-proposal follow-up",
+            detail: "Deciding whether the new message is a regenerate, service switch, or simple follow-up.",
+            messages: [{ role: "user", content: prompt }],
+            conversationHistory: [{ role: "system", content: "You are a JSON-only classifier. Output strict JSON only." }],
+            selectedServiceName: "system_validator",
+        });
 
         if (!aiResponse?.success) {
             throw new Error("AI follow-up classification failed");
@@ -4743,6 +5026,7 @@ const buildServiceStartState = async ({
     existingPayload = {},
     prefilledAnswersBySlug = {},
     startContext = {},
+    timingTracker = null,
 }) => {
     let initialAnswersBySlug = Object.entries(prefilledAnswersBySlug || {}).reduce((acc, [slug, value]) => {
         if (slug && hasAnswerValue(value)) {
@@ -4775,7 +5059,8 @@ const buildServiceStartState = async ({
             question: firstQuestionDefinition,
             answersByQuestionText: answersPayload.byQuestionText,
             answersBySlug: answersPayload.bySlug,
-            allQuestions: service.questions
+            allQuestions: service.questions,
+            timingTracker,
         });
         if (runtimeOptions.length > 0) {
             runtimeOptionsByQuestionSlug[firstQuestionDefinition.slug] = runtimeOptions;
@@ -4808,7 +5093,8 @@ const buildServiceStartState = async ({
             runtimeOptionsByQuestionSlug,
             sideReply: "",
             bridgeSegments: startPrefillBridge ? [startPrefillBridge] : [],
-            isInitial: !startPrefillBridge
+            isInitial: !startPrefillBridge,
+            timingTracker,
         })
         : "";
     const isNameFirstQuestion = NAME_QUESTION_REGEX.test(String(firstQuestionDefinition?.text || ""));
@@ -4854,12 +5140,26 @@ const generateProposalResponseForSession = async ({
     persistedAnswers,
     userMessageForReasoning = "",
     userMessageText = "",
+    timingTracker = null,
 }) => {
     // Reload messages fresh from DB so we have the full conversation history.
-    const freshSession = await prisma.aiGuestSession.findUnique({
-        where: { id: sessionId },
-        include: { messages: { orderBy: { createdAt: "asc" } } }
-    });
+    const freshSession = timingTracker
+        ? await timingTracker.measure(
+            "proposal_reload_session",
+            () => prisma.aiGuestSession.findUnique({
+                where: { id: sessionId },
+                include: { messages: { orderBy: { createdAt: "asc" } } }
+            }),
+            {
+                label: "Reload proposal session",
+                category: "db",
+                detail: "Reloading messages before proposal generation.",
+            },
+        )
+        : await prisma.aiGuestSession.findUnique({
+            where: { id: sessionId },
+            include: { messages: { orderBy: { createdAt: "asc" } } }
+        });
 
     const scopedMessages = getServiceScopedMessages(
         freshSession?.messages || session.messages,
@@ -4880,7 +5180,8 @@ const generateProposalResponseForSession = async ({
     const extractedFromConversation = await extractAnswersFromConversation({
         serviceName: service.name,
         history: proposalHistory,
-        questions
+        questions,
+        timingTracker,
     });
     const proposalAnswersBySlug = mergeExtractedAnswers({
         baseAnswers: persistedAnswers.bySlug,
@@ -4928,16 +5229,35 @@ const generateProposalResponseForSession = async ({
         proposalContext.appHints = appHints;
     }
 
-    const responseContent = await generateProposalMarkdown(
-        proposalContext,
-        proposalHistory,
-        service.name,
-        service.aiPrompt || "",
-        {
-            proposalStructure: service.proposalStructure || "",
-            proposalPrompt: service.proposalPrompt || ""
-        }
-    );
+    const responseContent = timingTracker
+        ? await timingTracker.measure(
+            "proposal_markdown_generation",
+            () => generateProposalMarkdown(
+                proposalContext,
+                proposalHistory,
+                service.name,
+                service.aiPrompt || "",
+                {
+                    proposalStructure: service.proposalStructure || "",
+                    proposalPrompt: service.proposalPrompt || ""
+                }
+            ),
+            {
+                label: "Generate proposal markdown",
+                category: "ai",
+                detail: "Producing the final proposal document.",
+            },
+        )
+        : await generateProposalMarkdown(
+            proposalContext,
+            proposalHistory,
+            service.name,
+            service.aiPrompt || "",
+            {
+                proposalStructure: service.proposalStructure || "",
+                proposalPrompt: service.proposalPrompt || ""
+            }
+        );
 
     const nextAnswers = mergeAnswersUiState(
         proposalAnswersPayload,
@@ -4950,10 +5270,25 @@ const generateProposalResponseForSession = async ({
     if (
         JSON.stringify(nextAnswers) !== JSON.stringify(session.answers || {})
     ) {
-        await prisma.aiGuestSession.update({
-            where: { id: sessionId },
-            data: { answers: nextAnswers }
-        });
+        if (timingTracker) {
+            await timingTracker.measure(
+                "proposal_answers_update",
+                () => prisma.aiGuestSession.update({
+                    where: { id: sessionId },
+                    data: { answers: nextAnswers }
+                }),
+                {
+                    label: "Save proposal answers",
+                    category: "db",
+                    detail: "Persisting enriched answers after proposal generation.",
+                },
+            );
+        } else {
+            await prisma.aiGuestSession.update({
+                where: { id: sessionId },
+                data: { answers: nextAnswers }
+            });
+        }
     }
 
     return responseContent;
@@ -4963,6 +5298,11 @@ const generateProposalResponseForSession = async ({
 // @route   POST /api/guest/start
 // @access  Public
 export const startGuestSession = asyncHandler(async (req, res) => {
+    const requestTimingTracker = createRequestTimingTracker("guest_start");
+    attachTimingMetaToResponse(res, requestTimingTracker, {
+        routeLabel: "/guest/start",
+        requestLabel: `service=${String(req.body?.serviceId || "").trim() || "unknown"}`,
+    });
     const { serviceId, prefillName = "" } = req.body; // Can be slug or ID
 
     if (!serviceId) {
@@ -4970,20 +5310,28 @@ export const startGuestSession = asyncHandler(async (req, res) => {
     }
 
     // 1. Find the Service and its Questions
-    const service = await prisma.service.findFirst({
-        where: {
-            OR: [
-                { slug: serviceId },
-                { id: serviceId }
-            ],
-            active: true
-        },
-        include: {
-            questions: {
-                orderBy: { order: 'asc' }
+    const service = await requestTimingTracker.measure(
+        "load_selected_service",
+        () => prisma.service.findFirst({
+            where: {
+                OR: [
+                    { slug: serviceId },
+                    { id: serviceId }
+                ],
+                active: true
+            },
+            include: {
+                questions: {
+                    orderBy: { order: 'asc' }
+                }
             }
-        }
-    });
+        }),
+        {
+            label: "Load selected service",
+            category: "db",
+            detail: "Fetching the chosen service and its question set.",
+        },
+    );
 
     if (!service) {
         throw new AppError("Service not found or inactive", 404);
@@ -4999,34 +5347,59 @@ export const startGuestSession = asyncHandler(async (req, res) => {
         firstQuestion,
         firstQuestionConfig,
         currentStep,
-    } = await buildServiceStartState({
-        service,
-        prefilledAnswersBySlug: sessionStartPrefill.answersBySlug,
-        startContext: sessionStartPrefill,
-        existingPayload: {
-            uiState: {
-                [ACTIVE_SERVICE_STARTED_AT_KEY]: startedAt
-            }
-        }
-    });
+    } = await requestTimingTracker.measure(
+        "build_start_state",
+        () => buildServiceStartState({
+            service,
+            prefilledAnswersBySlug: sessionStartPrefill.answersBySlug,
+            startContext: sessionStartPrefill,
+            existingPayload: {
+                uiState: {
+                    [ACTIVE_SERVICE_STARTED_AT_KEY]: startedAt
+                }
+            },
+            timingTracker: requestTimingTracker,
+        }),
+        {
+            label: "Build starting chat state",
+            category: "logic",
+            detail: "Preparing the first question, prefill bridge, and runtime options.",
+        },
+    );
 
     // 2. Create Session
-    const session = await prisma.aiGuestSession.create({
-        data: {
-            serviceId: service.slug, // Store slug for consistency
-            currentStep,
-            answers: answersPayload,
+    const session = await requestTimingTracker.measure(
+        "create_guest_session",
+        () => prisma.aiGuestSession.create({
+            data: {
+                serviceId: service.slug, // Store slug for consistency
+                currentStep,
+                answers: answersPayload,
+            },
+        }),
+        {
+            label: "Create guest session",
+            category: "db",
+            detail: "Saving the new guest session row.",
         },
-    });
+    );
 
     // 3. Create Initial assistant message (The First Question)
-    await prisma.aiGuestMessage.create({
-        data: {
-            sessionId: session.id,
-            role: "assistant",
-            content: firstQuestion,
+    await requestTimingTracker.measure(
+        "save_first_assistant_message",
+        () => prisma.aiGuestMessage.create({
+            data: {
+                sessionId: session.id,
+                role: "assistant",
+                content: firstQuestion,
+            },
+        }),
+        {
+            label: "Save first assistant message",
+            category: "db",
+            detail: "Persisting the first visible assistant question.",
         },
-    });
+    );
 
     res.status(201).json({
         success: true,
@@ -5041,6 +5414,11 @@ export const startGuestSession = asyncHandler(async (req, res) => {
 // @route   POST /api/guest/chat
 // @access  Public
 export const guestChat = asyncHandler(async (req, res) => {
+    const requestTimingTracker = createRequestTimingTracker("guest_chat");
+    attachTimingMetaToResponse(res, requestTimingTracker, {
+        routeLabel: "/guest/chat",
+        requestLabel: `session=${String(req.body?.sessionId || "").trim() || "unknown"}`,
+    });
     const { sessionId, message } = req.body;
 
     const incomingArray = Array.isArray(message)
@@ -5064,28 +5442,44 @@ export const guestChat = asyncHandler(async (req, res) => {
     }
 
     // 1. Fetch Session
-    const session = await prisma.aiGuestSession.findUnique({
-        where: { id: sessionId },
-        include: {
-            messages: {
-                orderBy: { createdAt: "asc" },
+    const session = await requestTimingTracker.measure(
+        "load_guest_session",
+        () => prisma.aiGuestSession.findUnique({
+            where: { id: sessionId },
+            include: {
+                messages: {
+                    orderBy: { createdAt: "asc" },
+                },
             },
+        }),
+        {
+            label: "Load guest session",
+            category: "db",
+            detail: "Loading the session and its message history.",
         },
-    });
+    );
 
     if (!session) {
         throw new AppError("Session not found", 404);
     }
 
     // 2. Fetch Service Questions
-    const service = await prisma.service.findUnique({
-        where: { slug: session.serviceId },
-        include: {
-            questions: {
-                orderBy: { order: 'asc' }
+    const service = await requestTimingTracker.measure(
+        "load_service_context",
+        () => prisma.service.findUnique({
+            where: { slug: session.serviceId },
+            include: {
+                questions: {
+                    orderBy: { order: 'asc' }
+                }
             }
-        }
-    });
+        }),
+        {
+            label: "Load service context",
+            category: "db",
+            detail: "Loading the active service definition and ordered questions.",
+        },
+    );
 
     if (!service) {
         throw new AppError("Service context lost", 404);
@@ -5101,7 +5495,8 @@ export const guestChat = asyncHandler(async (req, res) => {
         // We are waiting for a Yes/No answer regarding the proposed update
         const intent = await determineConfirmationIntent({
             assistantPrompt: "Are you sure you want to update your answer?",
-            userMessage: trimmedMessageText
+            userMessage: trimmedMessageText,
+            timingTracker: requestTimingTracker,
         });
 
         const persistedUserMessageContent = uploadedAttachments.length > 0 && !trimmedMessageText
@@ -5219,7 +5614,8 @@ export const guestChat = asyncHandler(async (req, res) => {
                 question: correctionNextQuestion,
                 answersByQuestionText: correctedPayload.byQuestionText,
                 answersBySlug: correctedAnswersBySlug,
-                allQuestions: questions
+                allQuestions: questions,
+                timingTracker: requestTimingTracker,
             });
             if (correctionNextQuestion?.slug && runtimeOptions.length > 0) {
                 correctedRuntimeOptionsByQuestionSlug[correctionNextQuestion.slug] = runtimeOptions;
@@ -5284,7 +5680,8 @@ export const guestChat = asyncHandler(async (req, res) => {
         const confirmationPrompt = `Do you want me to generate a new ${targetServiceName} proposal now?`;
         const intent = await determineConfirmationIntent({
             assistantPrompt: confirmationPrompt,
-            userMessage: trimmedMessageText
+            userMessage: trimmedMessageText,
+            timingTracker: requestTimingTracker,
         });
 
         await prisma.aiGuestMessage.create({
@@ -5360,7 +5757,8 @@ export const guestChat = asyncHandler(async (req, res) => {
                 }
             ),
             userMessageForReasoning: "",
-            userMessageText: ""
+            userMessageText: "",
+            timingTracker: requestTimingTracker,
         });
 
         console.log(`[Assistant]: ${regeneratedProposal}`);
@@ -5382,17 +5780,26 @@ export const guestChat = asyncHandler(async (req, res) => {
             data: { sessionId, role: "user", content: persistedUserMessageContent }
         });
 
-        const activeServices = await prisma.service.findMany({
-            where: { active: true },
-            select: {
-                slug: true,
-                name: true
-            }
-        });
+        const activeServices = await requestTimingTracker.measure(
+            "load_active_services",
+            () => prisma.service.findMany({
+                where: { active: true },
+                select: {
+                    slug: true,
+                    name: true
+                }
+            }),
+            {
+                label: "Load active services",
+                category: "db",
+                detail: "Needed for post-proposal follow-up classification.",
+            },
+        );
         const followupPlan = await analyzePostProposalFollowup({
             currentService: service,
             userMessage: trimmedMessageText,
-            activeServices
+            activeServices,
+            timingTracker: requestTimingTracker,
         });
 
         let responseMessage = followupPlan.reply || `I already shared the current ${service.name} proposal. If you want another proposal for this service, tell me and I will confirm before generating it.`;
@@ -5469,13 +5876,21 @@ export const guestChat = asyncHandler(async (req, res) => {
     let attachmentInsightNote = "";
     let urlContextText = "";
     let urlInsightNote = "";
-    if (activeAttachments.length > 0) {
-        attachmentContextText = await buildAttachmentContextBlock({
-            attachments: activeAttachments,
-        });
-        if (uploadedAttachments.length > 0 || isReferencingStoredAttachment) {
-            attachmentInsightNote = buildAttachmentInsightForUser({
-                attachments: activeAttachments,
+        if (activeAttachments.length > 0) {
+            attachmentContextText = await requestTimingTracker.measure(
+                "attachment_context_build",
+                () => buildAttachmentContextBlock({
+                    attachments: activeAttachments,
+                }),
+                {
+                    label: "Analyze attachments",
+                    category: "io",
+                    detail: `Extracting context from ${activeAttachments.length} uploaded attachment(s).`,
+                },
+            );
+            if (uploadedAttachments.length > 0 || isReferencingStoredAttachment) {
+                attachmentInsightNote = buildAttachmentInsightForUser({
+                    attachments: activeAttachments,
                 attachmentContextText,
             });
         }
@@ -5488,6 +5903,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             userMessageText,
             attachmentContextText,
             serviceName: service.name,
+            timingTracker: requestTimingTracker,
         });
 
         if (!normalizeTextToken(userMessageText) && normalizeTextToken(attachmentInferredAnswer)) {
@@ -5499,10 +5915,18 @@ export const guestChat = asyncHandler(async (req, res) => {
     }
 
     if (activeUrls.length > 0 && (sharedUrls.length > 0 || isReferencingStoredUrl)) {
-        const urlContext = await buildUrlContextBlock({ urls: activeUrls });
-        urlContextText = urlContext.contextText;
-        urlInsightNote = urlContext.insightNote;
-        if (urlInsightNote) {
+            const urlContext = await requestTimingTracker.measure(
+                "url_context_build",
+                () => buildUrlContextBlock({ urls: activeUrls }),
+                {
+                    label: "Analyze shared URLs",
+                    category: "io",
+                    detail: `Reading ${activeUrls.length} shared URL reference(s).`,
+                },
+            );
+            urlContextText = urlContext.contextText;
+            urlInsightNote = urlContext.insightNote;
+            if (urlInsightNote) {
             console.log(`[URL Insight] ${urlInsightNote}`);
         }
     }
@@ -5546,7 +5970,8 @@ export const guestChat = asyncHandler(async (req, res) => {
         extractedAnswersForMessage = await extractAnswersFromMessage({
             serviceName: service.name,
             message: userMessageForReasoning || userMessageText,
-            questions
+            questions,
+            timingTracker: requestTimingTracker,
         });
         const supplementalBudgetExtractions = buildSupplementalBudgetExtractions({
             message: userMessageForReasoning || userMessageText,
@@ -5670,6 +6095,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 allQuestions: questions,
                 runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                 lastAssistantMessage,
+                timingTracker: requestTimingTracker,
             });
 
             await prisma.aiGuestMessage.create({
@@ -5729,6 +6155,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 allQuestions: questions,
                 runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                 lastAssistantMessage,
+                timingTracker: requestTimingTracker,
             });
 
             await prisma.aiGuestMessage.create({
@@ -5782,6 +6209,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 allQuestions: questions,
                 runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                 lastAssistantMessage,
+                timingTracker: requestTimingTracker,
             });
 
             await prisma.aiGuestMessage.create({
@@ -5834,6 +6262,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 allQuestions: questions,
                 runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                 lastAssistantMessage,
+                timingTracker: requestTimingTracker,
             });
 
             await prisma.aiGuestMessage.create({
@@ -5918,11 +6347,15 @@ export const guestChat = asyncHandler(async (req, res) => {
             });
 
             // We use a separate AI call for validation.
-            const validationResponse = await chatWithAI(
-                [{ role: "user", content: validationPrompt }],
-                [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
-                "system_validator"
-            );
+            const validationResponse = await runTrackedAiCall({
+                timingTracker: requestTimingTracker,
+                key: "current_answer_validation_ai",
+                label: "Validate current answer",
+                detail: `Checking whether the reply answers "${String(currentQuestion?.slug || currentQuestionText || "current_question").trim()}".`,
+                messages: [{ role: "user", content: validationPrompt }],
+                conversationHistory: [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
+                selectedServiceName: "system_validator",
+            });
 
             if (validationResponse.success) {
                 console.log(`[Validation Raw]:`, validationResponse.message);
@@ -5971,7 +6404,8 @@ export const guestChat = asyncHandler(async (req, res) => {
                 runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                 sideReply: "",
                 bridgeSegments: [],
-                isInitial: false
+                isInitial: false,
+                timingTracker: requestTimingTracker,
             });
             validationResult = {
                 isValid: false,
@@ -6056,7 +6490,8 @@ export const guestChat = asyncHandler(async (req, res) => {
                         const evalResult = await checkMeaningfulChangeWithAI({
                             questionText: qText,
                             oldAnswer: change.previousValue,
-                            newAnswer: change.nextValue
+                            newAnswer: change.nextValue,
+                            timingTracker: requestTimingTracker,
                         });
                         if (evalResult.isMeaningful) {
                             activeCorrectionChange = change;
@@ -6164,7 +6599,8 @@ export const guestChat = asyncHandler(async (req, res) => {
                     runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                     sideReply: "",
                     bridgeSegments: [],
-                    isInitial: false
+                    isInitial: false,
+                    timingTracker: requestTimingTracker,
                 });
             const feedbackCore = aiResponseContent || fallbackFeedbackFromAi || formatQuestionWithOptions(
                 currentQuestion,
@@ -6219,13 +6655,21 @@ export const guestChat = asyncHandler(async (req, res) => {
     // --- END VALIDATION STEP ---
 
     // 3. Save User Answer (Valid)
-    const createdUserMessage = await prisma.aiGuestMessage.create({
-        data: {
-            sessionId,
-            role: "user",
-            content: persistedUserMessageContent,
+    const createdUserMessage = await requestTimingTracker.measure(
+        "save_user_message",
+        () => prisma.aiGuestMessage.create({
+            data: {
+                sessionId,
+                role: "user",
+                content: persistedUserMessageContent,
+            },
+        }),
+        {
+            label: "Save user message",
+            category: "db",
+            detail: "Persisting the current user turn.",
         },
-    });
+    );
 
     let updatedAnswersBySlug = { ...existingAnswersBySlug };
     let nextRuntimeOptionsByQuestionSlug = { ...sessionRuntimeOptionsByQuestionSlug };
@@ -6298,7 +6742,8 @@ export const guestChat = asyncHandler(async (req, res) => {
             const evalResult = await checkMeaningfulChangeWithAI({
                 questionText: qText,
                 oldAnswer: change.previousValue,
-                newAnswer: change.nextValue
+                newAnswer: change.nextValue,
+                timingTracker: requestTimingTracker,
             });
             if (evalResult.isMeaningful) {
                 activePastChange = change;
@@ -6392,7 +6837,8 @@ export const guestChat = asyncHandler(async (req, res) => {
             question: questions[nextStep],
             answersByQuestionText: persistedAnswers.byQuestionText,
             answersBySlug: updatedAnswersBySlug,
-            allQuestions: questions
+            allQuestions: questions,
+            timingTracker: requestTimingTracker,
         });
         if (questions[nextStep]?.slug && runtimeOptions.length > 0) {
             nextRuntimeOptionsByQuestionSlug[questions[nextStep].slug] = runtimeOptions;
@@ -6403,13 +6849,21 @@ export const guestChat = asyncHandler(async (req, res) => {
         });
     }
 
-    await prisma.aiGuestSession.update({
-        where: { id: sessionId },
-        data: {
-            answers: persistedAnswers,
-            currentStep: nextStep
-        }
-    });
+    await requestTimingTracker.measure(
+        "save_session_state",
+        () => prisma.aiGuestSession.update({
+            where: { id: sessionId },
+            data: {
+                answers: persistedAnswers,
+                currentStep: nextStep
+            }
+        }),
+        {
+            label: "Save session state",
+            category: "db",
+            detail: "Persisting updated answers and the next step index.",
+        },
+    );
 
     // 4. Determine Next Assistant Response
     let responseContent = "";
@@ -6497,7 +6951,8 @@ export const guestChat = asyncHandler(async (req, res) => {
             allQuestions: questions,
             runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
             sideReply,
-            bridgeSegments
+            bridgeSegments,
+            timingTracker: requestTimingTracker,
         });
 
         if (aiGuidedQuestionMessage) {
@@ -6529,7 +6984,8 @@ export const guestChat = asyncHandler(async (req, res) => {
                 runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
                 persistedAnswers,
                 userMessageForReasoning,
-                userMessageText
+                userMessageText,
+                timingTracker: requestTimingTracker,
             });
         } catch (error) {
             console.error("[Proposal] Generation failed:", error?.message || error);
@@ -6546,13 +7002,21 @@ export const guestChat = asyncHandler(async (req, res) => {
 
     // 5. Save Assistant Message
     console.log(`[Assistant]: ${responseContent}`);
-    const createdAssistantMessage = await prisma.aiGuestMessage.create({
-        data: {
-            sessionId,
-            role: "assistant",
-            content: responseContent,
+    const createdAssistantMessage = await requestTimingTracker.measure(
+        "save_assistant_message",
+        () => prisma.aiGuestMessage.create({
+            data: {
+                sessionId,
+                role: "assistant",
+                content: responseContent,
+            },
+        }),
+        {
+            label: "Save assistant message",
+            category: "db",
+            detail: "Persisting the assistant response.",
         },
-    });
+    );
 
     // Re-fetch messages for complete history or append manually
     const newHistory = toChronologicalGuestHistory([

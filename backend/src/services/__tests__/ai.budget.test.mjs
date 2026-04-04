@@ -11,7 +11,14 @@ process.env.PASSWORD_PEPPER =
   process.env.PASSWORD_PEPPER || "1234567890abcdef";
 
 const { __testables } = await import("../ai.service.js");
-const { buildBudgetOverrideMessage, buildUserInputGuardMessage } = __testables;
+const {
+  buildBudgetOverrideMessage,
+  buildInternalSystemPrompt,
+  buildUserInputGuardMessage,
+  isInternalAiTask,
+  normalizeChatRole,
+  resolveChatRequestProfile,
+} = __testables;
 
 const SERVICE_NAME = "Web Development";
 const BUDGET_QUESTION = "What is your budget for this project?";
@@ -119,4 +126,25 @@ test("input guard does not force re-entry when user says cannot increase", () =>
   });
 
   assert.equal(guardMessage, null);
+});
+
+test("internal AI tasks use the lightweight request profile", () => {
+  const validatorProfile = resolveChatRequestProfile("system_validator");
+  const writerProfile = resolveChatRequestProfile("system_question_writer");
+  const defaultProfile = resolveChatRequestProfile("Web Development");
+
+  assert.equal(validatorProfile.skipConversationGuards, true);
+  assert.equal(writerProfile.skipConversationGuards, true);
+  assert.ok(validatorProfile.maxTokens < defaultProfile.maxTokens);
+  assert.ok(writerProfile.maxTokens < defaultProfile.maxTokens);
+  assert.ok(validatorProfile.temperature < defaultProfile.temperature);
+});
+
+test("internal AI task detection preserves system-role instructions", () => {
+  assert.equal(isInternalAiTask("system_extractor"), true);
+  assert.equal(isInternalAiTask("Web Development"), false);
+  assert.equal(normalizeChatRole("system"), "system");
+  assert.equal(normalizeChatRole("assistant"), "assistant");
+  assert.equal(normalizeChatRole("user"), "user");
+  assert.match(buildInternalSystemPrompt("system_question_writer"), /writing engine/i);
 });
