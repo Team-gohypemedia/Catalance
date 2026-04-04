@@ -7,6 +7,10 @@ import Hero from "@/components/Home/Hero";
 import FreelancerClientCards from "@/components/Home/FreelancerClientCards";
 import ServiceCardsCarousel from "@/components/Home/ServiceCardsCarousel";
 import MarketPlaceCTA from "@/components/Home/MarketPlaceCTA";
+import MadeOnCatalance from "@/components/Home/MadeOnCatalance";
+import Testimonidals from "@/components/Home/Testimonidals";
+import Client from "@/components/features/client/Client";
+import ClientCTA from "@/components/Home/ClientCTA";
 
 const Home = () => {
   React.useEffect(() => {
@@ -22,10 +26,13 @@ const Home = () => {
       <FreelancerClientCards />
       <ServiceCardsCarousel />
       <MarketPlaceCTA />
-      <ServiceCategoryCards />
+      <MadeOnCatalance />
+      <Testimonidals />
+      <ClientCTA />
+      {/* <ServiceCategoryCards />
       <VibeCodingHelp />
       <PortfolioGallery />
-      <FreelancerJoinSection />
+      <FreelancerJoinSection /> */}
     </div>
   );
 };

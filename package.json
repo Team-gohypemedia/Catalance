@@ -67,6 +67,7 @@
     "embla-carousel-react": "^8.6.0",
     "face-api.js": "^0.22.2",
     "firebase": "^12.7.0",
+    "framer": "^3.0.4",
     "framer-motion": "^12.38.0",
     "gsap": "^3.13.0",
     "input-otp": "^1.4.2",

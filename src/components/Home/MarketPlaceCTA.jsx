@@ -33,30 +33,34 @@ const MarketPlaceCTA = () => {
       />
       <div
         aria-hidden
-        className="absolute inset-x-0 top-0 h-[80%] bg-[radial-gradient(ellipse_at_top,rgba(255,204,0,0.18)_0%,rgba(255,204,0,0.1)_24%,rgba(255,204,0,0.03)_48%,transparent_78%)] blur-3xl"
+        className="absolute inset-x-0 top-0 h-[84%] bg-[radial-gradient(ellipse_at_top,rgba(255,204,0,0.28)_0%,rgba(255,204,0,0.16)_20%,rgba(255,204,0,0.06)_46%,transparent_78%)] blur-3xl"
       />
       <div
         aria-hidden
-        className="absolute -right-24 -top-24 h-[34rem] w-[34rem] rounded-full bg-[#ffcc00]/24 blur-[140px] sm:h-[42rem] sm:w-[42rem]"
+        className="absolute left-1/2 top-[-10rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-[#ffcc00]/34 blur-[140px] sm:h-[44rem] sm:w-[44rem]"
       />
       <div
         aria-hidden
-        className="absolute inset-x-0 top-0 h-[70%] [mask-image:linear-gradient(to_bottom,black_0%,black_50%,transparent_100%)]"
+        className="absolute left-1/2 top-0 h-[30rem] w-[85%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(255,204,0,0.18)_0%,rgba(255,204,0,0.08)_38%,transparent_74%)]"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-[76%] [mask-image:linear-gradient(to_bottom,black_0%,black_72%,transparent_100%)]"
       >
         <LightRays
-          raysOrigin="top-right"
-          raysColor="#ffcc00"
-          raysSpeed={1.28}
-          lightSpread={0.14}
-          rayLength={4.9}
-          followMouse={false}
-          mouseInfluence={0}
-          noiseAmount={0}
-          distortion={0.03}
-          className="mix-blend-screen opacity-100"
-          pulsating={false}
-          fadeDistance={1.45}
-          saturation={1.15}
+         raysOrigin="top-center"
+        raysColor="#000000"
+        raysSpeed={1}
+        lightSpread={0.5}
+        rayLength={3}
+        followMouse={true}
+        mouseInfluence={0}
+        noiseAmount={0}
+        distortion={0}
+        className="custom-rays"
+        pulsating={false}
+        fadeDistance={0.5}
+        saturation={2}
         />
       </div>
 
