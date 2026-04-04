@@ -89,6 +89,49 @@ const TECH_CANONICAL_VARIANTS = {
   openai: ["openai", "OpenAI"],
 };
 
+const BUILD_MODE_ALIAS_MAP = new Map([
+  ["code", "code"],
+  ["coded", "code"],
+  ["custom_code", "code"],
+  ["no_code", "no_code"],
+  ["no-code", "no_code"],
+  ["nocode", "no_code"],
+  ["platform_based", "no_code"],
+]);
+
+const WEB_NO_CODE_MATCH_TOKENS = [
+  "wordpress",
+  "shopify",
+  "woocommerce",
+  "webflow",
+  "wix",
+  "squarespace",
+  "framer",
+  "bubble",
+  "elementor",
+];
+
+const WEB_CODE_MATCH_TOKENS = [
+  "react",
+  "nextjs",
+  "next js",
+  "vue",
+  "angular",
+  "nodejs",
+  "node js",
+  "typescript",
+  "javascript",
+  "laravel",
+  "django",
+  "fastapi",
+  "postgresql",
+  "mongodb",
+  "supabase",
+  "custom cms",
+  "api",
+  "custom backend",
+];
+
 const normalizeSlug = (value = "") =>
   String(value || "")
     .trim()
@@ -102,6 +145,19 @@ const normalizeCompact = (value = "") =>
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "");
+
+const normalizeSearchText = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const normalizeDisplayLabel = (value = "") =>
+  String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
 
 const uniqueValues = (values = []) => [...new Set(values.filter(Boolean))];
 const asObject = (value) =>
@@ -130,6 +186,16 @@ const parseOptionalInteger = (value) => {
 
 const clampInteger = (value, min, max) => Math.min(max, Math.max(min, value));
 
+const normalizeBuildModes = (value) =>
+  uniqueValues(
+    String(value || "")
+      .split(",")
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean)
+      .map((entry) => BUILD_MODE_ALIAS_MAP.get(entry) || BUILD_MODE_ALIAS_MAP.get(normalizeSlug(entry)) || null)
+      .filter(Boolean)
+  );
+
 const normalizeCategory = (value) => {
   const slug = normalizeSlug(value);
   if (!slug || slug === "all") return null;
@@ -142,6 +208,19 @@ const normalizeTechToken = (value) => {
   if (!compact) return null;
   return TECH_ALIAS_MAP.get(compact) || compact;
 };
+
+const normalizeFacetToken = (value) => {
+  const normalized = normalizeSearchText(value);
+  return normalized ? normalized.replace(/\s+/g, " ") : null;
+};
+
+const normalizeFacetTokens = (value) =>
+  uniqueValues(
+    String(value || "")
+      .split(",")
+      .map((entry) => normalizeFacetToken(entry))
+      .filter(Boolean)
+  );
 
 const expandTechFilterTokens = (canonicalTokens = []) =>
   uniqueValues(
@@ -199,6 +278,8 @@ const normalizeQuery = (rawQuery = {}) => {
 
   const techStack = uniqueValues(rawTechParts.map(normalizeTechToken));
   const techFilterTokens = expandTechFilterTokens(techStack);
+  const subcategories = normalizeFacetTokens(rawQuery.subcategory);
+  const buildModes = normalizeBuildModes(rawQuery.buildMode);
 
   const page = clampInteger(
     parseOptionalInteger(rawQuery.page) ?? 1,
@@ -217,8 +298,10 @@ const normalizeQuery = (rawQuery = {}) => {
 
   return {
     category,
+    subcategories,
     techStack,
     techFilterTokens,
+    buildModes,
     minBudget,
     maxBudget,
     strictTech,
@@ -227,6 +310,34 @@ const normalizeQuery = (rawQuery = {}) => {
     limit,
     searchTerm,
   };
+};
+
+const buildCandidateSearchBlob = (candidate = {}) =>
+  normalizeSearchText(
+    uniqueValues([
+      candidate?.title,
+      candidate?.description,
+      candidate?.serviceName,
+      candidate?.serviceKey,
+      ...(candidate?.techStack || []),
+      ...(candidate?.activeTechnologies || []),
+      ...(candidate?.serviceSpecializations || []),
+      ...(candidate?.deliverables || []),
+    ]).join(" ")
+  );
+
+const detectCandidateBuildMode = (candidate = {}) => {
+  if (candidate?.serviceKey !== "web_development") return null;
+
+  const blob = buildCandidateSearchBlob(candidate);
+  if (!blob) return null;
+
+  const hasNoCode = WEB_NO_CODE_MATCH_TOKENS.some((token) => blob.includes(token));
+  const hasCode = WEB_CODE_MATCH_TOKENS.some((token) => blob.includes(token));
+
+  if (hasCode) return "code";
+  if (hasNoCode) return "no_code";
+  return null;
 };
 
 const buildTier1Where = (query) => {
@@ -427,6 +538,28 @@ const calcReliabilityScore = (candidate) => {
 const matchesCandidateQuery = (candidate, query) => {
   if (query.category && candidate.serviceKey !== query.category) {
     return false;
+  }
+
+  if (query.subcategories.length) {
+    const candidateSubcategories = new Set(
+      uniqueValues([
+        ...(candidate.serviceSpecializations || []),
+        ...(candidate.deliverables || []),
+      ])
+        .map((entry) => normalizeFacetToken(entry))
+        .filter(Boolean)
+    );
+
+    if (!query.subcategories.some((subcategory) => candidateSubcategories.has(subcategory))) {
+      return false;
+    }
+  }
+
+  if (query.buildModes.length) {
+    const buildMode = detectCandidateBuildMode(candidate);
+    if (!buildMode || !query.buildModes.includes(buildMode)) {
+      return false;
+    }
   }
 
   if (query.strictTech) {
@@ -665,6 +798,455 @@ const buildMergedServiceDetails = ({
   };
 };
 
+const BROWSE_TECH_LABEL_MAP = new Map([
+  ["react", "React.js"],
+  ["reactjs", "React.js"],
+  ["reactjsx", "React.js"],
+  ["next", "Next.js"],
+  ["nextjs", "Next.js"],
+  ["node", "Node.js"],
+  ["nodejs", "Node.js"],
+  ["javascript", "JavaScript"],
+  ["js", "JavaScript"],
+  ["typescript", "TypeScript"],
+  ["ts", "TypeScript"],
+  ["postgres", "PostgreSQL"],
+  ["postgresql", "PostgreSQL"],
+  ["mongo", "MongoDB"],
+  ["mongodb", "MongoDB"],
+  ["vue", "Vue.js"],
+  ["vuejs", "Vue.js"],
+  ["express", "Express.js"],
+  ["expressjs", "Express.js"],
+  ["tailwind", "Tailwind CSS"],
+  ["tailwindcss", "Tailwind CSS"],
+  ["reactnative", "React Native"],
+  ["rn", "React Native"],
+  ["fastapi", "FastAPI"],
+  ["django", "Django"],
+  ["openai", "OpenAI"],
+  ["html", "HTML"],
+  ["css", "CSS"],
+]);
+
+const INVALID_BROWSE_VALUE_TOKENS = new Set([
+  "",
+  "other",
+  "yes",
+  "no",
+  "na",
+  "n_a",
+  "none",
+  "notsure",
+  "not sure",
+]);
+
+const TECH_GROUP_KEY_REGEX = /(tech_stack|tools|platforms|technology|tech)/i;
+
+const toTextList = (value) => {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => toTextList(entry));
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(/[,\n]/)
+      .map((entry) => normalizeDisplayLabel(entry))
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const removeOtherEntries = (values = []) =>
+  values.filter((entry) => normalizeCompact(entry) !== "other");
+
+const isMeaningfulBrowseValue = (value = "") => {
+  const label = normalizeDisplayLabel(value);
+  const token = normalizeFacetToken(label);
+  if (!label || !token || INVALID_BROWSE_VALUE_TOKENS.has(token)) {
+    return false;
+  }
+
+  return label.length <= 96;
+};
+
+const normalizeBrowseTechnologyLabel = (value = "") => {
+  const label = normalizeDisplayLabel(value);
+  if (!label) return "";
+  return BROWSE_TECH_LABEL_MAP.get(normalizeCompact(label)) || label;
+};
+
+const createBrowseEntry = (value, { isCustom = false, type = "subcategory" } = {}) => {
+  const rawLabel = normalizeDisplayLabel(value);
+  if (!isMeaningfulBrowseValue(rawLabel)) return null;
+
+  const label =
+    type === "technology"
+      ? normalizeBrowseTechnologyLabel(rawLabel)
+      : rawLabel;
+  const key = normalizeFacetToken(label || rawLabel);
+
+  if (!key) return null;
+
+  return {
+    key,
+    label: label || rawLabel,
+    rawLabel,
+    isCustom: Boolean(isCustom),
+  };
+};
+
+const dedupeBrowseEntries = (entries = []) => {
+  const bucketByKey = new Map();
+
+  entries.forEach((entry) => {
+    if (!entry?.key) return;
+
+    const existing = bucketByKey.get(entry.key);
+    if (existing) {
+      existing.isCustom = existing.isCustom || entry.isCustom;
+      existing.variants.add(entry.rawLabel || entry.label);
+      return;
+    }
+
+    bucketByKey.set(entry.key, {
+      ...entry,
+      variants: new Set([entry.rawLabel || entry.label]),
+    });
+  });
+
+  return Array.from(bucketByKey.values()).map((entry) => ({
+    key: entry.key,
+    label: entry.label,
+    rawLabel: entry.rawLabel,
+    isCustom: entry.isCustom,
+    variants: Array.from(entry.variants).sort((a, b) => a.localeCompare(b)),
+  }));
+};
+
+const extractBrowseSubcategoryEntries = ({
+  structuredDetail = {},
+  mergedDetail = {},
+} = {}) => {
+  const groups = Object.entries(asObject(structuredDetail.groups)).flatMap(
+    ([groupKey, values]) => (TECH_GROUP_KEY_REGEX.test(groupKey) ? [] : toTextList(values))
+  );
+  const groupOther = Object.entries(asObject(structuredDetail.groupOther)).flatMap(
+    ([groupKey, values]) => (TECH_GROUP_KEY_REGEX.test(groupKey) ? [] : toTextList(values))
+  );
+  const niches = asArray(structuredDetail.niches).flatMap((value) => toTextList(value));
+  const otherNiche = toTextList(structuredDetail.otherNiche);
+
+  const primaryEntries = dedupeBrowseEntries([
+    ...removeOtherEntries(groups).map((value) =>
+      createBrowseEntry(value, { type: "subcategory" })
+    ),
+    ...groupOther.map((value) =>
+      createBrowseEntry(value, { isCustom: true, type: "subcategory" })
+    ),
+    ...removeOtherEntries(niches).map((value) =>
+      createBrowseEntry(value, { type: "subcategory" })
+    ),
+    ...otherNiche.map((value) =>
+      createBrowseEntry(value, { isCustom: true, type: "subcategory" })
+    ),
+  ].filter(Boolean));
+
+  if (primaryEntries.length) {
+    return primaryEntries;
+  }
+
+  return dedupeBrowseEntries(
+    uniqueValues([
+      ...(Array.isArray(mergedDetail.deliverables) ? mergedDetail.deliverables : []),
+      ...(Array.isArray(mergedDetail.serviceSpecializations)
+        ? mergedDetail.serviceSpecializations
+        : []),
+    ])
+      .map((value) => createBrowseEntry(value, { type: "subcategory" }))
+      .filter(Boolean)
+  );
+};
+
+const extractBrowseTechnologyEntries = ({
+  structuredDetail = {},
+  mergedDetail = {},
+} = {}) => {
+  const caseStudy = asObject(structuredDetail.caseStudy);
+  const projects = asArray(structuredDetail.projects);
+
+  const primaryEntries = dedupeBrowseEntries([
+    ...asArray(structuredDetail.skillsAndTechnologies).map((value) =>
+      createBrowseEntry(value, { type: "technology" })
+    ),
+    ...Object.entries(asObject(structuredDetail.groups)).flatMap(([groupKey, values]) =>
+      TECH_GROUP_KEY_REGEX.test(groupKey)
+        ? toTextList(values).map((value) =>
+            createBrowseEntry(value, { type: "technology" })
+          )
+        : []
+    ),
+    ...Object.entries(asObject(structuredDetail.groupOther)).flatMap(([groupKey, values]) =>
+      TECH_GROUP_KEY_REGEX.test(groupKey)
+        ? toTextList(values).map((value) =>
+            createBrowseEntry(value, { isCustom: true, type: "technology" })
+          )
+        : []
+    ),
+    ...removeOtherEntries(asArray(caseStudy.techStack)).map((value) =>
+      createBrowseEntry(value, { type: "technology" })
+    ),
+    ...toTextList(caseStudy.techStackOther).map((value) =>
+      createBrowseEntry(value, { isCustom: true, type: "technology" })
+    ),
+    ...projects.flatMap((project) =>
+      removeOtherEntries(asArray(asObject(project).techStack)).map((value) =>
+        createBrowseEntry(value, { type: "technology" })
+      )
+    ),
+  ].filter(Boolean));
+
+  if (primaryEntries.length) {
+    return primaryEntries;
+  }
+
+  return dedupeBrowseEntries(
+    uniqueValues([
+      ...(Array.isArray(mergedDetail.techStack) ? mergedDetail.techStack : []),
+      ...(Array.isArray(mergedDetail.skillsAndTechnologies)
+        ? mergedDetail.skillsAndTechnologies
+        : []),
+    ])
+      .map((value) => createBrowseEntry(value, { type: "technology" }))
+      .filter(Boolean)
+  );
+};
+
+const getServiceDisplayLabel = ({
+  serviceKey = "",
+  catalogService = null,
+  marketplaceRow = null,
+  mergedDetail = {},
+} = {}) =>
+  normalizeDisplayLabel(
+    catalogService?.name ||
+      mergedDetail?.title ||
+      marketplaceRow?.service ||
+      serviceKey
+        .split("_")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ")
+  ) || "Service";
+
+const createBrowseAggregateBucket = (entry) => ({
+  key: entry.key,
+  label: entry.label,
+  count: 0,
+  isCustom: Boolean(entry.isCustom),
+  variants: new Set(entry.variants || [entry.rawLabel || entry.label]),
+  freelancerIds: new Set(),
+  relatedLabels: new Map(),
+});
+
+const registerBrowseAggregateEntries = (
+  targetMap,
+  entries,
+  freelancerId,
+  relatedEntries = []
+) => {
+  const seenKeys = new Set();
+
+  entries.forEach((entry) => {
+    if (!entry?.key || seenKeys.has(entry.key)) return;
+    seenKeys.add(entry.key);
+
+    const current =
+      targetMap.get(entry.key) || createBrowseAggregateBucket(entry);
+    current.freelancerIds.add(freelancerId);
+    current.isCustom = current.isCustom || entry.isCustom;
+    (entry.variants || [entry.rawLabel || entry.label]).forEach((variant) => {
+      if (variant) current.variants.add(variant);
+    });
+    relatedEntries.forEach((related) => {
+      if (related?.key && related?.label) {
+        current.relatedLabels.set(related.key, related.label);
+      }
+    });
+    current.count = current.freelancerIds.size;
+    targetMap.set(entry.key, current);
+  });
+};
+
+const serializeBrowseAggregateMap = (targetMap, { previewLimit = 0 } = {}) =>
+  Array.from(targetMap.values())
+    .map((entry) => ({
+      key: entry.key,
+      label: entry.label,
+      count: entry.freelancerIds.size,
+      isCustom: entry.isCustom,
+      variants: Array.from(entry.variants).sort((a, b) => a.localeCompare(b)),
+      relatedTechnologies:
+        previewLimit > 0
+          ? Array.from(entry.relatedLabels.values())
+              .sort((a, b) => a.localeCompare(b))
+              .slice(0, previewLimit)
+          : undefined,
+    }))
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.label.localeCompare(b.label);
+    });
+
+const buildMarketplaceBrowsePayload = ({
+  marketplaceRows = [],
+  catalogServices = [],
+  selectedServiceKey = null,
+} = {}) => {
+  const catalogByKey = new Map(
+    catalogServices
+      .map((service) => {
+        const key = normalizeCategory(service?.slug || service?.name || service?.key);
+        return key ? [key, service] : null;
+      })
+      .filter(Boolean)
+  );
+
+  const serviceBuckets = new Map();
+
+  const ensureServiceBucket = (serviceKey, marketplaceRow = null, mergedDetail = {}) => {
+    if (!serviceKey) return null;
+
+    const existing = serviceBuckets.get(serviceKey);
+    if (existing) {
+      if (!existing.coverImage) {
+        existing.coverImage = extractCoverImage(mergedDetail);
+      }
+      return existing;
+    }
+
+    const catalogService = catalogByKey.get(serviceKey);
+    const bucket = {
+      key: serviceKey,
+      label: getServiceDisplayLabel({
+        serviceKey,
+        catalogService,
+        marketplaceRow,
+        mergedDetail,
+      }),
+      description: normalizeDisplayLabel(
+        catalogService?.description ||
+          marketplaceRow?.serviceDetails?.description ||
+          marketplaceRow?.serviceDetails?.serviceDescription
+      ),
+      coverImage: extractCoverImage(mergedDetail),
+      freelancerIds: new Set(),
+      subcategories: new Map(),
+      technologies: new Map(),
+      featuredCount: 0,
+    };
+    serviceBuckets.set(serviceKey, bucket);
+    return bucket;
+  };
+
+  catalogByKey.forEach((_service, serviceKey) => {
+    ensureServiceBucket(serviceKey);
+  });
+
+  marketplaceRows.forEach((row) => {
+    const serviceKey = normalizeCategory(row?.serviceKey || row?.service);
+    if (!serviceKey) return;
+
+    const structuredDetail = extractStructuredServiceDetail(row.freelancer, serviceKey);
+    const mergedDetail = buildMergedServiceDetails({
+      marketplaceDetails: row.serviceDetails,
+      structuredDetails: structuredDetail,
+    });
+    const bucket = ensureServiceBucket(serviceKey, row, mergedDetail);
+    if (!bucket) return;
+
+    bucket.freelancerIds.add(row.freelancerId);
+    if (row.isFeatured) {
+      bucket.featuredCount += 1;
+    }
+
+    const subcategoryEntries = extractBrowseSubcategoryEntries({
+      structuredDetail,
+      mergedDetail,
+    });
+    const technologyEntries = extractBrowseTechnologyEntries({
+      structuredDetail,
+      mergedDetail,
+    });
+
+    registerBrowseAggregateEntries(
+      bucket.subcategories,
+      subcategoryEntries,
+      row.freelancerId,
+      technologyEntries
+    );
+    registerBrowseAggregateEntries(
+      bucket.technologies,
+      technologyEntries,
+      row.freelancerId
+    );
+  });
+
+  const services = Array.from(serviceBuckets.values())
+    .map((bucket) => {
+      const subcategories = serializeBrowseAggregateMap(bucket.subcategories);
+      const technologies = serializeBrowseAggregateMap(bucket.technologies);
+
+      return {
+        key: bucket.key,
+        label: bucket.label,
+        description:
+          bucket.description ||
+          "Browse the specialist lanes, sub-categories, and tools active in this service.",
+        coverImage: bucket.coverImage,
+        freelancerCount: bucket.freelancerIds.size,
+        featuredCount: bucket.featuredCount,
+        subcategoryCount: subcategories.length,
+        technologyCount: technologies.length,
+        subcategoryPreview: subcategories.slice(0, 3).map((entry) => entry.label),
+        technologyPreview: technologies.slice(0, 4).map((entry) => entry.label),
+      };
+    })
+    .sort((a, b) => {
+      if (b.freelancerCount !== a.freelancerCount) {
+        return b.freelancerCount - a.freelancerCount;
+      }
+      return a.label.localeCompare(b.label);
+    });
+
+  const resolvedSelectedServiceKey = normalizeCategory(selectedServiceKey);
+  const selectedBucket = resolvedSelectedServiceKey
+    ? serviceBuckets.get(resolvedSelectedServiceKey) || null
+    : null;
+
+  const selectedService = selectedBucket
+    ? {
+        key: selectedBucket.key,
+        label: selectedBucket.label,
+        description:
+          selectedBucket.description ||
+          "Freelancer onboarding data grouped by sub-category and technology.",
+        coverImage: selectedBucket.coverImage,
+        freelancerCount: selectedBucket.freelancerIds.size,
+        subcategories: serializeBrowseAggregateMap(selectedBucket.subcategories, {
+          previewLimit: 5,
+        }),
+        technologies: serializeBrowseAggregateMap(selectedBucket.technologies),
+      }
+    : null;
+
+  return {
+    services,
+    selectedService,
+  };
+};
+
 /** Extract cover image strictly from a serviceDetails object (Marketplace table rows) */
 const extractCoverImage = (sd = {}) => {
   return sd.coverImage || (Array.isArray(sd.images) && sd.images[0]) || sd.image || sd.thumbnail || null;
@@ -695,6 +1277,7 @@ const mapToMarketplaceRow = (candidate) => {
     id: mktId || candidate.projectId,   // Prefer Marketplace id
     freelancerId: candidate.freelancerId,
     serviceKey: candidate.serviceKey || "",
+    serviceMode: detectCandidateBuildMode(candidate),
     service:
       mergedServiceDetails.title ||
       candidate.serviceName ||
@@ -843,10 +1426,70 @@ export const getMarketplace = asyncHandler(async (req, res) => {
       maxCandidates: candidateLimit,
       normalizedQuery: {
         category: query.category,
+        subcategories: query.subcategories,
+        buildModes: query.buildModes,
         techStack: query.techStack,
         minBudget: query.minBudget,
         maxBudget: query.maxBudget,
       },
+    },
+  });
+});
+
+export const getMarketplaceBrowse = asyncHandler(async (req, res) => {
+  const selectedServiceKey = normalizeCategory(req.query?.service);
+
+  const [catalogServices, marketplaceRows] = await Promise.all([
+    prisma.service.findMany({
+      where: { active: true },
+      select: {
+        slug: true,
+        name: true,
+        description: true,
+        icon: true,
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.marketplace.findMany({
+      where: buildTier1Where({
+        category: selectedServiceKey,
+        searchTerm: "",
+      }),
+      include: {
+        freelancer: {
+          select: {
+            id: true,
+            fullName: true,
+            avatar: true,
+            isVerified: true,
+            status: true,
+            freelancerProfile: {
+              select: {
+                available: true,
+                skills: true,
+                serviceDetails: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { isFeatured: "desc" },
+        { updatedAt: "desc" },
+      ],
+    }),
+  ]);
+
+  const payload = buildMarketplaceBrowsePayload({
+    marketplaceRows,
+    catalogServices,
+    selectedServiceKey,
+  });
+
+  return res.json({
+    data: payload,
+    meta: {
+      service: selectedServiceKey,
     },
   });
 });

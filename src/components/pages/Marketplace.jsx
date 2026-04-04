@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight, BadgeCheck, Bot, BriefcaseBusiness, Banknote, Tag, Check,
@@ -13,18 +13,19 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { Sparkles as SparklesBackground } from "@/components/ui/sparkles";
+import MarketplaceServicesSection from "@/components/pages/marketplace-browse/MarketplaceServicesSection";
+import SubcategorySection from "@/components/pages/marketplace-browse/SubcategorySection";
 import { getSession } from "@/shared/lib/auth-storage";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { cn } from "@/shared/lib/utils";
 
-const categories = [
+const FALLBACK_CATEGORIES = [
   ["Web Development", "web_development", Code2, "Products and storefronts"],
   ["AI Automation", "ai_automation", Bot, "Agents and workflows"],
   ["SEO", "seo", LineChart, "Organic growth"],
@@ -35,7 +36,95 @@ const categories = [
   ["Customer Support", "customer_support", Users, "CX operations"]
 ].map(([label, value, icon, description]) => ({ label, value, icon, description }));
 
-const shortcuts = categories.slice(0, 6);
+const SERVICE_META_BY_KEY = {
+  branding: { icon: Sparkles, description: "Identity systems and brand direction" },
+  web_development: { icon: Code2, description: "Custom sites, landing pages, and storefronts" },
+  seo: { icon: LineChart, description: "Organic growth and technical visibility" },
+  social_media_marketing: { icon: Users, description: "Content systems and social growth" },
+  paid_advertising: { icon: Rocket, description: "Paid media and performance campaigns" },
+  app_development: { icon: BriefcaseBusiness, description: "Mobile apps and cross-platform builds" },
+  software_development: { icon: Workflow, description: "Custom products, SaaS, and internal systems" },
+  lead_generation: { icon: Rocket, description: "Outbound systems and funnel execution" },
+  video_services: { icon: MessageSquare, description: "Video editing and production support" },
+  writing_content: { icon: Tag, description: "Copy, articles, and conversion content" },
+  customer_support: { icon: Users, description: "CX workflows and support delivery" },
+  influencer_marketing: { icon: Star, description: "Creator partnerships and campaign rollout" },
+  ugc_marketing: { icon: Sparkles, description: "UGC systems for paid and organic channels" },
+  ai_automation: { icon: Bot, description: "Agents, workflows, and AI integrations" },
+  whatsapp_chatbot: { icon: MessageSquare, description: "WhatsApp automation and support bots" },
+  creative_design: { icon: Sparkles, description: "Creative systems for marketing and brand" },
+  "3d_modeling": { icon: Database, description: "3D assets, renders, and product visuals" },
+  cgi_videos: { icon: Cloud, description: "CGI storytelling and motion visuals" },
+  crm_erp: { icon: Workflow, description: "Business systems, CRM, and ERP operations" },
+  voice_agent: { icon: MessageSquare, description: "Voice AI and call automation" },
+};
+
+const SERVICE_KEY_ALIASES = {
+  branding_kit: "branding",
+  brand_identity: "branding",
+  website_uiux: "web_development",
+  website_ui_ux: "web_development",
+  website_development: "web_development",
+  web_development: "web_development",
+  web_development_service: "web_development",
+  seo_service: "seo",
+  search_engine_optimization: "seo",
+  social_media_management: "social_media_marketing",
+  social_media_marketing: "social_media_marketing",
+  performance_marketing: "paid_advertising",
+  paid_ads: "paid_advertising",
+  paid_advertising: "paid_advertising",
+  app_development: "app_development",
+  software_development: "software_development",
+  lead_generation: "lead_generation",
+  video_services: "video_services",
+  video_service: "video_services",
+  writing_content: "writing_content",
+  writing_and_content: "writing_content",
+  customer_support_services: "customer_support",
+  customer_support: "customer_support",
+  influencer_marketing: "influencer_marketing",
+  ugc_marketing: "ugc_marketing",
+  ai_automation: "ai_automation",
+  whatsapp_chatbot: "whatsapp_chatbot",
+  creative_design: "creative_design",
+  cgi_video_services: "cgi_videos",
+  cgi_videos: "cgi_videos",
+  crm_erp: "crm_erp",
+  crm_and_erp_solutions: "crm_erp",
+  voice_agent: "voice_agent",
+  voice_agent_ai_calling: "voice_agent",
+};
+
+const WEB_MODE_OPTIONS = [
+  { value: "code", label: "Code" },
+  { value: "no_code", label: "No-code" },
+];
+
+const WEB_NO_CODE_FALLBACK_OPTIONS = [
+  "WordPress",
+  "Shopify",
+  "WooCommerce",
+  "Webflow",
+  "Wix",
+  "Squarespace",
+  "Framer",
+  "Bubble",
+];
+
+const WEB_CODE_FALLBACK_OPTIONS = [
+  "Next.js",
+  "React",
+  "Vue",
+  "Angular",
+  "Node.js",
+  "Laravel",
+  "Django",
+  "FastAPI",
+  "PostgreSQL",
+  "MongoDB",
+  "Supabase",
+];
 
 const spotlights = [
   ["AI & Machine Learning", "ai automation", Bot],
@@ -61,7 +150,6 @@ const glassCardClass = "border border-white/10 bg-white/[0.05] shadow-[0_24px_70
 const controlSurfaceClass = "border-white/10 bg-black/20 text-white placeholder:text-slate-500";
 const numberFieldClass = "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 const MARKETPLACE_PAGE_SIZE = 12;
-
 const deliveryLabels = {
   less_than_2_weeks: "< 2 weeks",
   two_weeks: "2 weeks",
@@ -117,10 +205,232 @@ const scrollToSection = (id) => {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 
+const normalizeKey = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const formatTokenLabel = (value = "") =>
+  String(value || "")
+    .replace(/[_/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const resolveMarketplaceServiceKey = (service = {}) => {
+  const candidates = [
+    service.value,
+    service.slug,
+    service.id,
+    service.name,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeKey(candidate);
+    if (!normalized) continue;
+    if (SERVICE_KEY_ALIASES[normalized]) return SERVICE_KEY_ALIASES[normalized];
+    if (SERVICE_META_BY_KEY[normalized]) return normalized;
+  }
+
+  return normalizeKey(service.slug || service.id || service.name);
+};
+
+const normalizeQuestionOptions = (question = {}) =>
+  (Array.isArray(question?.options) ? question.options : [])
+    .map((option) => {
+      if (typeof option === "string") {
+        return { value: option, label: option };
+      }
+
+      if (option && typeof option === "object") {
+        return {
+          value: option.value || option.label || "",
+          label: option.label || option.value || "",
+        };
+      }
+
+      return null;
+    })
+    .filter((option) => option?.label);
+
+const dedupeLabeledOptions = (values = []) => {
+  const seen = new Set();
+  const result = [];
+
+  values.forEach((entry) => {
+    const label = String(entry?.label || "").trim();
+    const value = String(entry?.value || label).trim();
+    const key = normalizeKey(value || label);
+    if (!label || !key || seen.has(key)) return;
+    seen.add(key);
+    result.push({
+      value: value || label,
+      label,
+    });
+  });
+
+  return result;
+};
+
+const dedupeServiceCategories = (values = []) => {
+  const seen = new Set();
+  const result = [];
+
+  values.forEach((entry) => {
+    const key = normalizeKey(entry?.value || entry?.slug || entry?.name);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    result.push(entry);
+  });
+
+  return result;
+};
+
+const dedupeOptionsByValue = (values = []) => {
+  const seen = new Set();
+  const result = [];
+
+  values.forEach((entry) => {
+    const key = normalizeKey(entry?.value || entry?.label);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    result.push(entry);
+  });
+
+  return result;
+};
+
+const buildServiceCategoryEntry = (service = {}) => {
+  const value = resolveMarketplaceServiceKey(service);
+  const meta = SERVICE_META_BY_KEY[value] || {};
+
+  return {
+    ...service,
+    value,
+    label: service.name || meta.label || formatTokenLabel(value),
+    description:
+      service.description ||
+      meta.description ||
+      "Browse specialists and compare offers in this lane.",
+    icon: meta.icon || Sparkles,
+  };
+};
+
+const toQueryableTechValue = (option = {}) => {
+  const rawLabel = String(option?.label || option?.value || "").trim();
+  const baseLabel = rawLabel.split("(")[0]?.trim() || rawLabel;
+  const normalized = normalizeKey(baseLabel);
+
+  if (normalized === "html_css_js") return "JavaScript";
+  if (normalized === "node_js") return "Node.js";
+  if (normalized === "react_next_js") return "Next.js";
+  if (normalized === "vue_nuxt") return "Vue";
+  if (normalized === "postgresql_mysql") return "PostgreSQL";
+
+  return baseLabel || rawLabel;
+};
+
+const extractTechOptionsFromData = (items = []) => {
+  const counts = new Map();
+  const labelsByKey = new Map();
+
+  items.forEach((item) => {
+    [
+      ...(Array.isArray(item?.techStack) ? item.techStack : []),
+      ...(Array.isArray(item?.serviceDetails?.techStack) ? item.serviceDetails.techStack : []),
+      ...(Array.isArray(item?.serviceDetails?.skillsAndTechnologies)
+        ? item.serviceDetails.skillsAndTechnologies
+        : []),
+      ...(Array.isArray(item?.serviceDetails?.serviceSpecializations)
+        ? item.serviceDetails.serviceSpecializations
+        : []),
+    ].forEach((entry) => {
+      const label = String(entry || "").trim();
+      const key = normalizeKey(label);
+      if (!label || !key || label.length > 28) return;
+      counts.set(key, (counts.get(key) || 0) + 1);
+      if (!labelsByKey.has(key)) labelsByKey.set(key, label);
+    });
+  });
+
+  return Array.from(counts.entries())
+    .sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return String(labelsByKey.get(a[0]) || "").localeCompare(String(labelsByKey.get(b[0]) || ""));
+    })
+    .slice(0, 12)
+    .map(([key]) => {
+      const label = labelsByKey.get(key) || formatTokenLabel(key);
+      return { value: label, label };
+    });
+};
+
+const getQuestionById = (service = {}, matcher = () => false) =>
+  (Array.isArray(service?.questions) ? service.questions : []).find((question) => matcher(question));
+
+const getWebTechOptions = (service = {}, selectedBuildModes = []) => {
+  const selectedModes = new Set(selectedBuildModes);
+  const includeCode = selectedModes.size === 0 || selectedModes.has("code");
+  const includeNoCode = selectedModes.size === 0 || selectedModes.has("no_code");
+  const options = [];
+
+  if (includeNoCode) {
+    const noCodeQuestion = getQuestionById(service, (question) =>
+      ["platform_choice", "platform", "platform_based"].includes(normalizeKey(question?.id))
+    );
+    const noCodeOptions = normalizeQuestionOptions(noCodeQuestion);
+    options.push(
+      ...(
+        noCodeOptions.length
+          ? noCodeOptions
+          : WEB_NO_CODE_FALLBACK_OPTIONS.map((label) => ({ value: label, label }))
+      )
+    );
+  }
+
+  if (includeCode) {
+    const codeQuestions = (Array.isArray(service?.questions) ? service.questions : []).filter((question) =>
+      /^coded_/.test(String(question?.id || ""))
+    );
+    const codeOptions = codeQuestions.flatMap((question) => normalizeQuestionOptions(question));
+    options.push(
+      ...(
+        codeOptions.length
+          ? codeOptions
+          : WEB_CODE_FALLBACK_OPTIONS.map((label) => ({ value: label, label }))
+      )
+    );
+  }
+
+  return dedupeOptionsByValue(
+    dedupeLabeledOptions(options).map((option) => ({
+      ...option,
+      value: toQueryableTechValue(option),
+    }))
+  );
+};
+
+const toggleSelection = (values = [], nextValue = "") =>
+  values.includes(nextValue)
+    ? values.filter((value) => value !== nextValue)
+    : [...values, nextValue];
+
 const Marketplace = () => {
   const [favorites, setFavorites] = useState({});
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
+  const [browseData, setBrowseData] = useState({ services: [], selectedService: null });
+  const [browseLoading, setBrowseLoading] = useState(true);
+  const [serviceCatalog, setServiceCatalog] = useState([]);
+  const [serviceCatalogLoading, setServiceCatalogLoading] = useState(true);
+  const [selectedBuildModes, setSelectedBuildModes] = useState([]);
+  const [selectedTechFilters, setSelectedTechFilters] = useState([]);
   const [minBudget, setMinBudget] = useState("");
   const [maxBudget, setMaxBudget] = useState("");
   const [sort, setSort] = useState("newest");
@@ -133,6 +443,7 @@ const Marketplace = () => {
   const [draftMaxBudget, setDraftMaxBudget] = useState("500000");
   const [draftDuration, setDraftDuration] = useState("");
   const [draftRating, setDraftRating] = useState("");
+  const [draftBuildModes, setDraftBuildModes] = useState([]);
 
   const syncDraftFilters = useCallback(() => {
     setDraftCategory(category);
@@ -140,7 +451,8 @@ const Marketplace = () => {
     setDraftMaxBudget(maxBudget || "500000");
     setDraftDuration(duration);
     setDraftRating(rating);
-  }, [category, minBudget, maxBudget, duration, rating]);
+    setDraftBuildModes(selectedBuildModes);
+  }, [category, minBudget, maxBudget, duration, rating, selectedBuildModes]);
 
   const applyFilters = () => {
     setCategory(draftCategory);
@@ -148,6 +460,7 @@ const Marketplace = () => {
     setMaxBudget(draftMaxBudget === "500000" ? "" : draftMaxBudget);
     setDuration(draftDuration);
     setRating(draftRating);
+    setSelectedBuildModes(draftBuildModes);
     setIsFilterOpen(false);
   };
 
@@ -157,6 +470,7 @@ const Marketplace = () => {
     setDraftMaxBudget("500000");
     setDraftDuration("");
     setDraftRating("");
+    setDraftBuildModes([]);
   };
 
   const [page, setPage] = useState(1);
@@ -164,8 +478,19 @@ const Marketplace = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [categoryRailState, setCategoryRailState] = useState({ left: false, right: false });
-  const categoryRailRef = useRef(null);
+
+  const serviceCategories = (
+    serviceCatalog.length
+      ? dedupeServiceCategories(serviceCatalog.map((service) => buildServiceCategoryEntry(service)))
+      : FALLBACK_CATEGORIES
+  ).map((entry) => {
+    if (entry.icon) return entry;
+    const value = resolveMarketplaceServiceKey(entry);
+    return buildServiceCategoryEntry({ ...entry, value });
+  });
+
+  const activeService = serviceCategories.find((service) => service.value === category) || null;
+  const activeBrowseService = browseData.selectedService;
 
   const debouncedQ = useDebounce(q, 400);
   const debouncedMin = useDebounce(minBudget, 400);
@@ -181,6 +506,81 @@ const Marketplace = () => {
       // Ignore storage access failures in private browsing or restricted contexts.
     }
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchServiceCatalog = async () => {
+      setServiceCatalogLoading(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/ai/services`);
+        if (!res.ok) throw new Error("Failed to fetch services");
+        const json = await res.json();
+        if (cancelled) return;
+        const services = Array.isArray(json?.services) ? json.services : [];
+        setServiceCatalog(services);
+      } catch (error) {
+        console.error("[Marketplace] Failed to load service catalog:", error);
+        if (!cancelled) setServiceCatalog([]);
+      } finally {
+        if (!cancelled) setServiceCatalogLoading(false);
+      }
+    };
+
+    void fetchServiceCatalog();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setSelectedBuildModes([]);
+    setSelectedTechFilters([]);
+  }, [category]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchBrowseData = async () => {
+      setBrowseLoading(true);
+      try {
+        const query = new URLSearchParams();
+        if (category !== "all") {
+          query.append("service", category);
+        }
+        const res = await fetch(
+          `${API_BASE_URL}/marketplace/browse${query.toString() ? `?${query.toString()}` : ""}`
+        );
+        if (!res.ok) throw new Error("Failed to fetch marketplace browse data");
+        const json = await res.json();
+        if (cancelled) return;
+        const nextData = json?.data || {};
+        setBrowseData({
+          services: Array.isArray(nextData.services) ? nextData.services : [],
+          selectedService:
+            nextData.selectedService && typeof nextData.selectedService === "object"
+              ? nextData.selectedService
+              : null,
+        });
+      } catch (error) {
+        console.error("[Marketplace] Failed to load browse data:", error);
+        if (!cancelled) {
+          setBrowseData({ services: [], selectedService: null });
+        }
+      } finally {
+        if (!cancelled) {
+          setBrowseLoading(false);
+        }
+      }
+    };
+
+    void fetchBrowseData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [category]);
 
   const toggleFavorite = (event, id) => {
     event.preventDefault();
@@ -199,10 +599,20 @@ const Marketplace = () => {
   };
 
   const fetchResults = useCallback(async () => {
+    if (category === "all") {
+      setData([]);
+      setTotal(0);
+      setTotalPages(0);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const query = new URLSearchParams({ q: debouncedQ, sort, page: String(page), limit: String(MARKETPLACE_PAGE_SIZE) });
       if (category !== "all") query.append("category", category);
+      if (selectedBuildModes.length) query.append("buildMode", selectedBuildModes.join(","));
+      if (selectedTechFilters.length) query.append("tech", selectedTechFilters.join(","));
       if (debouncedMin) query.append("minBudget", debouncedMin);
       if (debouncedMax) query.append("maxBudget", debouncedMax);
       if (duration) query.append("duration", duration);
@@ -221,67 +631,183 @@ const Marketplace = () => {
     } finally {
       setLoading(false);
     }
-  }, [category, debouncedMax, debouncedMin, debouncedQ, duration, page, rating, sort]);
+  }, [category, debouncedMax, debouncedMin, debouncedQ, duration, page, rating, selectedBuildModes, selectedTechFilters, sort]);
 
-  useEffect(() => setPage(1), [debouncedQ, category, debouncedMin, debouncedMax, duration, rating, sort]);
+  useEffect(() => setPage(1), [debouncedQ, category, debouncedMin, debouncedMax, duration, rating, selectedBuildModes, selectedTechFilters, sort]);
   useEffect(() => void fetchResults(), [fetchResults]);
-
-  const updateCategoryRailState = useCallback(() => {
-    const rail = categoryRailRef.current;
-    if (!rail) return;
-    const maxScrollLeft = Math.max(rail.scrollWidth - rail.clientWidth, 0);
-    setCategoryRailState({
-      left: rail.scrollLeft > 4,
-      right: maxScrollLeft - rail.scrollLeft > 4
-    });
-  }, []);
-
-  useEffect(() => {
-    updateCategoryRailState();
-    window.addEventListener("resize", updateCategoryRailState);
-    return () => window.removeEventListener("resize", updateCategoryRailState);
-  }, [updateCategoryRailState]);
-
-  const scrollCategoryRail = (direction) => {
-    const rail = categoryRailRef.current;
-    if (!rail) return;
-    rail.scrollBy({ left: direction * 240, behavior: "smooth" });
-  };
-
-  const handleCategoryRailWheel = (event) => {
-    const rail = categoryRailRef.current;
-    if (!rail) return;
-    if (rail.scrollWidth <= rail.clientWidth) return;
-    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-    event.preventDefault();
-    rail.scrollBy({ left: event.deltaY, behavior: "auto" });
-  };
-
-  const heroFreelancerIds = new Set();
-  data.forEach((item) => {
-    const freelancerKey = item.freelancer?.id || item.freelancerId;
-    if (freelancerKey) heroFreelancerIds.add(freelancerKey);
-  });
-  const heroExpertCount = heroFreelancerIds.size;
-
-  const heroPeople = [];
-  const heroPreviewIds = new Set();
-  data.forEach((item) => {
-    const freelancerKey = item.freelancer?.id || item.freelancerId;
-    if (!freelancerKey || heroPreviewIds.has(freelancerKey) || heroPeople.length >= 3) return;
-    heroPreviewIds.add(freelancerKey);
-    heroPeople.push(item);
-  });
 
   const resetFilters = () => {
     setQ("");
     setCategory("all");
+    setSelectedBuildModes([]);
+    setSelectedTechFilters([]);
     setMinBudget("");
     setMaxBudget("");
     setDuration("");
     setRating("");
     setSort("newest");
   };
+
+  const handleCategorySelect = (nextCategory) => {
+    setCategory(nextCategory);
+  };
+
+  const toggleTechnologyFilter = (nextValue) => {
+    setSelectedTechFilters((current) => toggleSelection(current, nextValue));
+  };
+
+  const visibleBrowseServices = browseData.services.filter((service) => {
+    if (!debouncedQ || category !== "all") return true;
+    const blob = [service.label, service.description, ...(service.subcategoryPreview || []), ...(service.technologyPreview || [])]
+      .join(" ")
+      .toLowerCase();
+    return blob.includes(debouncedQ.toLowerCase());
+  });
+
+  const marketplaceBrowseActions = category !== "all" ? (
+    <Dialog open={isFilterOpen} onOpenChange={(open) => { setIsFilterOpen(open); if (open) syncDraftFilters(); }}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" className="h-11 shrink-0 rounded-full bg-white/[0.04] px-5 text-[13px] font-semibold text-slate-200 hover:bg-white/10 hover:text-white">
+          <SlidersHorizontal className="mr-2 h-4 w-4" />
+          Filters
+        </Button>
+      </DialogTrigger>
+      <DialogContent aria-describedby={undefined} className="w-[90vw] max-w-[760px] rounded-sm border-white/10 bg-[#1e1e1e] p-0 shadow-[0_24px_80px_-42px_rgba(2,6,23,1)] sm:w-[760px] [&>button]:hidden">
+        <div className="flex items-center justify-between border-b border-white/10 px-8 py-6">
+          <div className="space-y-1">
+            <h3 className="text-2xl font-bold tracking-tight text-white">Filters</h3>
+            <p className="text-sm text-muted-foreground">Refine your search</p>
+          </div>
+          <button type="button" onClick={() => setIsFilterOpen(false)} className="rounded-full p-2 text-muted-foreground hover:bg-white/10 hover:text-white">
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+
+          <div className="grid max-h-[70vh] grid-cols-1 gap-x-16 gap-y-10 overflow-x-hidden overflow-y-auto px-8 py-8 no-scrollbar sm:grid-cols-2">
+          <div className="space-y-6">
+            <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-[#fbcc15]">
+              <Banknote className="h-5 w-5" /> PRICE RANGE
+            </h4>
+            <div className="px-2">
+              <Slider
+                min={0}
+                max={1000000}
+                step={10000}
+                value={[Number(draftMinBudget), Number(draftMaxBudget)]}
+                onValueChange={([min, max]) => { setDraftMinBudget(String(min)); setDraftMaxBudget(String(max)); }}
+                className="[&_[role=slider]]:h-5 [&_[role=slider]]:w-5 [&_[role=slider]]:border-[#fbcc15] [&_[role=slider]]:bg-[#fbcc15] [&_[role=track]]:h-2 [&_[role=track]]:bg-slate-800 [&>.relative>.absolute]:bg-[#fbcc15]"
+              />
+            </div>
+            <div className="flex items-center justify-between px-1 text-sm font-semibold text-white">
+              <span>Rs. {Number(draftMinBudget).toLocaleString("en-IN")}</span>
+              <span>Rs. {Number(draftMaxBudget).toLocaleString("en-IN")}</span>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+              <Clock className="h-5 w-5" /> DURATION
+            </h4>
+            <div className="flex flex-col gap-4">
+              {["Up to 4 weeks", "5-6 weeks", "7+ weeks"].map((label) => {
+                const active = draftDuration === label;
+                return (
+                  <button key={label} type="button" onClick={() => setDraftDuration(active ? "" : label)} className="flex items-center gap-3 text-[15px] font-medium text-muted-foreground hover:text-white">
+                    <div className={cn("flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-all", active ? "border-[#fbcc15] bg-[#fbcc15]" : "border-slate-500 bg-transparent")}>
+                      {active && <Check className="h-3 w-3 text-black" strokeWidth={3} />}
+                    </div>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+              <Star className="h-5 w-5" /> RATINGS
+            </h4>
+            <div className="flex flex-col gap-4">
+              {["4.5+ Stars", "4.0+ Stars"].map((label) => {
+                const active = draftRating === label;
+                return (
+                  <button key={label} type="button" onClick={() => setDraftRating(active ? "" : label)} className="flex items-center gap-3 text-[15px] font-medium text-muted-foreground hover:text-white">
+                    <div className={cn("flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-all", active ? "border-[#fbcc15] bg-transparent" : "border-slate-500 bg-transparent")}>
+                      {active && <div className="h-2.5 w-2.5 rounded-full bg-[#fbcc15]" />}
+                    </div>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+            <div className="space-y-6 pb-2">
+              <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                <Tag className="h-5 w-5" /> CATEGORIES
+            </h4>
+            <div className="flex flex-wrap gap-3">
+              {serviceCategories.map((c) => {
+                const active = draftCategory === c.value;
+                return (
+                  <button
+                    key={c.value}
+                    onClick={() => setDraftCategory(active ? "all" : c.value)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-full border px-5 py-2.5 text-[14px] font-semibold transition-all",
+                      active
+                        ? "border-[#fbcc15] text-[#fbcc15]"
+                        : "border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/60 hover:text-foreground"
+                    )}
+                  >
+                    {active && <Code2 className="h-4 w-4" />}
+                    {c.label}
+                  </button>
+                );
+              })}
+              </div>
+            </div>
+
+            {draftCategory === "web_development" ? (
+              <div className="space-y-6 pb-2">
+                <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                  <Code2 className="h-5 w-5" /> BUILD MODE
+                </h4>
+                <div className="flex flex-wrap gap-3">
+                  {WEB_MODE_OPTIONS.map((option) => {
+                    const active = draftBuildModes.includes(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setDraftBuildModes((current) => toggleSelection(current, option.value))}
+                        className={cn(
+                          "rounded-full border px-4 py-2.5 text-sm font-semibold transition-all",
+                          active
+                            ? "border-[#fbcc15]/45 bg-[#fbcc15]/12 text-[#fbcc15]"
+                            : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+        <div className="flex items-center justify-between rounded-none border-t border-white/5 bg-[#1a1a1a] px-8 py-6 shadow-2xl">
+          <button onClick={clearDraftFilters} className="text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground hover:text-white">
+            RESET
+          </button>
+          <Button onClick={applyFilters} className="h-12 min-w-[160px] rounded-full border border-[#fbcc15]/40 bg-[#fbcc15] px-8 text-[14px] font-bold text-black drop-shadow-[0_0_15px_rgba(251,204,21,0.25)] hover:bg-[#fbcc15]/90 hover:opacity-90 active:scale-95">
+            APPLY FILTERS
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  ) : null;
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
@@ -349,237 +875,60 @@ const Marketplace = () => {
         </div>
       </section>
 
+      <section
+        id="marketplace-results"
+        className="relative z-30 mx-auto -mt-28 w-full max-w-[1280px] px-4 sm:-mt-32 sm:px-6 lg:-mt-32 lg:px-8"
+      >
+        <MarketplaceServicesSection
+          services={visibleBrowseServices}
+          loading={browseLoading || serviceCatalogLoading}
+          searchValue={q}
+          searchPlaceholder={category === "all" ? "Search services" : "Search freelancers"}
+          onSearchChange={setQ}
+          onSelectService={handleCategorySelect}
+          activeServiceKey={category}
+          actions={marketplaceBrowseActions}
+        />
+      </section>
+
       {/* Main Content Container Restored for content below hero */}
-      <div className="relative mx-auto mt-14 flex w-full max-w-[1280px] flex-col gap-10 px-4 pb-20 sm:px-6 lg:px-8">
+      <div className="relative z-20 mx-auto mt-5 flex w-full max-w-[1280px] flex-col gap-10 px-4 pb-20 sm:mt-6 sm:px-6 lg:px-8">
+        <section className="space-y-5">
+          {category !== "all" ? (
+            <>
+              <SubcategorySection
+                service={activeBrowseService || activeService}
+                selectedTechnologies={selectedTechFilters}
+                onToggleTechnology={toggleTechnologyFilter}
+              />
+            </>
+          ) : null}
 
-        <section id="marketplace-results" className="space-y-5 pt-4">
-          <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white">Professional Services</h2>
-
-          {/* Unified ToolBar */}
-          <div className="flex w-full flex-col items-center justify-between gap-4 rounded-[28px] lg:rounded-full border border-white/10 bg-background p-1.5 shadow-sm lg:flex-row">
-
-            {/* Category Pills Slider */}
-            <div className="relative flex w-full flex-1 items-center overflow-hidden lg:w-auto lg:border-r lg:border-white/10 lg:pr-2">
-              <div
-                ref={categoryRailRef}
-                onScroll={updateCategoryRailState}
-                onWheel={handleCategoryRailWheel}
-                className="no-scrollbar flex w-full items-center gap-1 overflow-x-auto scroll-smooth px-2"
-              >
-                <button
-                  onClick={() => setCategory("all")}
-                  className={cn(
-                    "shrink-0 whitespace-nowrap rounded-full px-5 py-2.5 text-[13px] font-semibold transition-all",
-                    category === "all"
-                      ? "border border-[#fbcc15]/40 bg-background text-[#fbcc15] shadow-[0_0_15px_-3px_rgba(251,204,21,0.15)]"
-                      : "border border-transparent text-slate-400 hover:text-white hover:bg-white/5"
-                  )}
-                >
-                  All specialties
-                </button>
-                {categories.map((item) => {
-                  const active = category === item.value;
-                  return (
-                    <button
-                      key={item.value}
-                      onClick={() => setCategory(item.value)}
-                      className={cn(
-                        "shrink-0 whitespace-nowrap rounded-full px-5 py-2.5 text-[13px] font-semibold transition-all mb-0.5 mt-0.5",
-                        active
-                          ? "border border-[#fbcc15]/40 bg-background text-[#fbcc15] shadow-[0_0_15px_-3px_rgba(251,204,21,0.15)]"
-                          : "border border-transparent text-slate-400 hover:text-white hover:bg-white/5"
-                      )}
-                    >
-                      {item.label}
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Scroll Gradient Masks */}
-              {categoryRailState.left && (
-                <div className="pointer-events-none absolute bottom-0 left-0 top-0 w-12 bg-gradient-to-r from-background to-transparent" />
-              )}
-              {categoryRailState.right && (
-                <div className="pointer-events-none absolute bottom-0 right-0 top-0 w-12 bg-gradient-to-l from-background to-transparent" />
-              )}
-            </div>
-
-            {/* Controls Wrap */}
-            <div className="flex w-full items-center justify-between gap-1 px-2 lg:w-auto lg:justify-end">
-              {/* Scroll Controls (Desktop only to save space) */}
-              <div className="hidden shrink-0 items-center gap-1 pr-2 lg:flex">
-                <button
-                  type="button"
-                  onClick={() => scrollCategoryRail(-1)}
-                  disabled={!categoryRailState.left}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-slate-400 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-30"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollCategoryRail(1)}
-                  disabled={!categoryRailState.right}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-slate-400 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-30"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* Search & Filters */}
-              <div className="flex w-full items-center gap-2 lg:w-auto">
-                <div className="relative flex-1 lg:w-56">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                  <Input
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder="Search projects..."
-                    className="h-10 w-full rounded-full border-none bg-white/[0.04] pl-10 pr-9 text-[13px] text-white shadow-none transition hover:bg-white/[0.07] focus-visible:bg-white/[0.07] focus-visible:ring-0"
-                  />
-                  {q && (
-                    <button type="button" onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-
-                <Dialog open={isFilterOpen} onOpenChange={(open) => { setIsFilterOpen(open); if(open) syncDraftFilters(); }}>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" className="h-10 shrink-0 rounded-full bg-white/[0.04] px-5 text-[13px] font-semibold text-slate-200 hover:bg-white/10 hover:text-white">
-                      <SlidersHorizontal className="mr-2 h-4 w-4" />
-                      Filters
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent aria-describedby={undefined} className="w-[90vw] max-w-[760px] rounded-sm border-white/10 bg-[#1e1e1e] p-0 shadow-[0_24px_80px_-42px_rgba(2,6,23,1)] sm:w-[760px] [&>button]:hidden">
-                    <div className="flex items-center justify-between border-b border-white/10 px-8 py-6">
-                      <div className="space-y-1">
-                        <h3 className="text-2xl font-bold tracking-tight text-white">Filters</h3>
-                        <p className="text-sm text-muted-foreground">Refine your search</p>
-                      </div>
-                      <button type="button" onClick={() => setIsFilterOpen(false)} className="rounded-full p-2 text-muted-foreground hover:bg-white/10 hover:text-white">
-                        <X className="h-6 w-6" />
-                      </button>
-                    </div>
-
-                    <div className="grid max-h-[70vh] grid-cols-1 gap-x-16 gap-y-10 overflow-x-hidden overflow-y-auto px-8 py-8 no-scrollbar sm:grid-cols-2">
-                      {/* Price Range */}
-                      <div className="space-y-6">
-                        <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-[#fbcc15]">
-                          <Banknote className="h-5 w-5" /> PRICE RANGE
-                        </h4>
-                        <div className="px-2">
-                          <Slider 
-                            min={0} 
-                            max={1000000} 
-                            step={10000} 
-                            value={[Number(draftMinBudget), Number(draftMaxBudget)]} 
-                            onValueChange={([min, max]) => { setDraftMinBudget(String(min)); setDraftMaxBudget(String(max)); }} 
-                            className="[&_[role=slider]]:h-5 [&_[role=slider]]:w-5 [&_[role=slider]]:border-[#fbcc15] [&_[role=slider]]:bg-[#fbcc15] [&_[role=track]]:h-2 [&_[role=track]]:bg-slate-800 [&>.relative>.absolute]:bg-[#fbcc15]"
-                          />
-                        </div>
-                        <div className="flex items-center justify-between px-1 text-sm font-semibold text-white">
-                          <span>Rs. {Number(draftMinBudget).toLocaleString("en-IN")}</span>
-                          <span>Rs. {Number(draftMaxBudget).toLocaleString("en-IN")}</span>
-                        </div>
-                      </div>
-
-                      {/* Duration */}
-                      <div className="space-y-6">
-                        <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                          <Clock className="h-5 w-5" /> DURATION
-                        </h4>
-                        <div className="flex flex-col gap-4">
-                          {["Up to 4 weeks", "5-6 weeks", "7+ weeks"].map((label) => {
-                            const active = draftDuration === label;
-                            return (
-                              <button key={label} type="button" onClick={() => setDraftDuration(active ? "" : label)} className="flex items-center gap-3 text-[15px] font-medium text-muted-foreground hover:text-white">
-                                <div className={cn("flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-all", active ? "border-[#fbcc15] bg-[#fbcc15]" : "border-slate-500 bg-transparent")}>
-                                  {active && <Check className="h-3 w-3 text-black" strokeWidth={3} />}
-                                </div>
-                                {label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Ratings */}
-                      <div className="space-y-6">
-                        <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                          <Star className="h-5 w-5" /> RATINGS
-                        </h4>
-                        <div className="flex flex-col gap-4">
-                          {["4.5+ Stars", "4.0+ Stars"].map((label) => {
-                            const active = draftRating === label;
-                            return (
-                              <button key={label} type="button" onClick={() => setDraftRating(active ? "" : label)} className="flex items-center gap-3 text-[15px] font-medium text-muted-foreground hover:text-white">
-                                <div className={cn("flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-all", active ? "border-[#fbcc15] bg-transparent" : "border-slate-500 bg-transparent")}>
-                                  {active && <div className="h-2.5 w-2.5 rounded-full bg-[#fbcc15]" />}
-                                </div>
-                                {label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Categories */}
-                      <div className="space-y-6 pb-2">
-                        <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                          <Tag className="h-5 w-5" /> CATEGORIES
-                        </h4>
-                        <div className="flex flex-wrap gap-3">
-                          {categories.map((c) => {
-                            const active = draftCategory === c.value;
-                            return (
-                              <button
-                                key={c.value}
-                                onClick={() => setDraftCategory(active ? "all" : c.value)}
-                                className={cn(
-                                  "flex items-center gap-2 rounded-full border px-5 py-2.5 text-[14px] font-semibold transition-all",
-                                  active
-                                    ? "border-[#fbcc15] text-[#fbcc15]"
-                                    : "border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/60 hover:text-foreground"
-                                )}
-                              >
-                                {active && <Code2 className="h-4 w-4" />}
-                                {c.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-none border-t border-white/5 bg-[#1a1a1a] px-8 py-6 shadow-2xl">
-                      <button onClick={clearDraftFilters} className="text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground hover:text-white">
-                        RESET
-                      </button>
-                      <Button onClick={applyFilters} className="h-12 min-w-[160px] rounded-full border border-[#fbcc15]/40 bg-[#fbcc15] px-8 text-[14px] font-bold text-black drop-shadow-[0_0_15px_rgba(251,204,21,0.25)] hover:bg-[#fbcc15]/90 hover:opacity-90 active:scale-95">
-                        APPLY FILTERS
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
-          </div>
-
+          {category !== "all" ? (
           <AnimatePresence mode="wait">
             {loading ? (
-              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-                {Array.from({ length: MARKETPLACE_PAGE_SIZE }).map((_, index) => (
-                  <Card key={`skeleton-${index}`} className={cn(glassCardClass, "overflow-hidden rounded-[28px]")}>
-                    <Skeleton className="h-44 w-full rounded-none" />
-                    <CardContent className="space-y-4 p-5">
-                      <div className="flex items-center gap-3"><Skeleton className="h-11 w-11 rounded-full" /><div className="space-y-2"><Skeleton className="h-4 w-28" /><Skeleton className="h-3 w-20" /></div></div>
-                      <Skeleton className="h-5 w-full" />
-                      <Skeleton className="h-4 w-4/5" />
-                      <Skeleton className="h-4 w-full" />
-                    </CardContent>
-                  </Card>
-                ))}
+              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#fbcc15]">
+                    Specialists
+                  </p>
+                  <h3 className="text-2xl font-semibold tracking-[-0.04em] text-white">
+                    Freelancer listings
+                  </h3>
+                </div>
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+                  {Array.from({ length: MARKETPLACE_PAGE_SIZE }).map((_, index) => (
+                    <Card key={`skeleton-${index}`} className={cn(glassCardClass, "overflow-hidden rounded-[28px]")}>
+                      <Skeleton className="h-44 w-full rounded-none" />
+                      <CardContent className="space-y-4 p-5">
+                        <div className="flex items-center gap-3"><Skeleton className="h-11 w-11 rounded-full" /><div className="space-y-2"><Skeleton className="h-4 w-28" /><Skeleton className="h-3 w-20" /></div></div>
+                        <Skeleton className="h-5 w-full" />
+                        <Skeleton className="h-4 w-4/5" />
+                        <Skeleton className="h-4 w-full" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </motion.div>
             ) : data.length === 0 ? (
               <motion.div key="empty" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="rounded-[34px] border border-dashed border-white/10 bg-white/[0.04] px-6 py-20 text-center shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)]">
@@ -589,7 +938,19 @@ const Marketplace = () => {
                 <Button variant="outline" className="mt-7 rounded-full border-white/10 bg-white/[0.04] px-6 py-5 text-sm font-semibold text-white hover:bg-white/[0.08]" onClick={resetFilters}>Clear all filters</Button>
               </motion.div>
             ) : (
-              <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#fbcc15]">
+                    Specialists
+                  </p>
+                  <h3 className="text-2xl font-semibold tracking-[-0.04em] text-white">
+                    Freelancer listings
+                  </h3>
+                  <p className="text-sm text-slate-400">
+                    {total} result{total === 1 ? "" : "s"} in {activeBrowseService?.label || activeService?.label || "this service"}.
+                  </p>
+                </div>
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
                 {data.map((item) => {
                   const image = item.serviceDetails?.coverImage || item.serviceDetails?.image || null;
                   const rating = Number(item.rating || 0);
@@ -648,11 +1009,13 @@ const Marketplace = () => {
                     </motion.article>
                   );
                 })}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
+          ) : null}
 
-          {!loading && totalPages > 1 && (
+          {category !== "all" && !loading && totalPages > 1 && (
             <div className="flex flex-col gap-4 rounded-[30px] border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[0_24px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-400">
                 Page <span className="font-semibold text-white">{page}</span> of{" "}
