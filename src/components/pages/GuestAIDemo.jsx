@@ -696,6 +696,87 @@ const buildThinkingMeta = (durationMs = 0, timingPayload = null) => {
     };
 };
 
+const buildBrowserAiDebugRows = (timingPayload = null) => {
+    const serverTiming = normalizeServerTimingMeta(
+        timingPayload?.server || timingPayload?.timingMeta || timingPayload?.backend || timingPayload
+    );
+
+    return Array.isArray(serverTiming?.steps)
+        ? serverTiming.steps
+            .filter((step) =>
+                step?.category === 'ai'
+                || step?.aiModel
+                || step?.aiTask
+                || step?.aiProfile
+            )
+            .map((step, index) => ({
+                step: step.label || step.key || `AI step ${index + 1}`,
+                task: step.aiTask || step.aiProfile || '',
+                model: step.aiModel || '',
+                provider: step.aiProvider || '',
+                providerMs: normalizeTimingValue(step.aiProviderDurationMs),
+                totalMs: normalizeTimingValue(step.durationMs),
+                promptTokens: Number.isFinite(Number(step.aiPromptTokens))
+                    ? Number(step.aiPromptTokens)
+                    : null,
+                completionTokens: Number.isFinite(Number(step.aiCompletionTokens))
+                    ? Number(step.aiCompletionTokens)
+                    : null,
+                totalTokens: Number.isFinite(Number(step.aiTotalTokens))
+                    ? Number(step.aiTotalTokens)
+                    : null,
+                attempts: Number.isFinite(Number(step.aiAttemptCount))
+                    ? Number(step.aiAttemptCount)
+                    : 0,
+            }))
+        : [];
+};
+
+const logGuestAiBrowserDebug = (label = 'guest/chat', payload = {}) => {
+    if (typeof window === 'undefined' || typeof console === 'undefined') return;
+
+    const timingMeta = payload?.timingMeta || null;
+    const aiRows = buildBrowserAiDebugRows(timingMeta);
+    const modelList = [...new Set(aiRows.map((row) => row.model).filter(Boolean))];
+    const groupLabel =
+        `[GuestAIDemo][${label}] origin=${window.location.origin} api=${API_BASE_URL} ` +
+        `models=${modelList.join(', ') || 'none'}`;
+
+    if (typeof console.groupCollapsed === 'function') {
+        console.groupCollapsed(groupLabel);
+    } else {
+        console.log(groupLabel);
+    }
+
+    console.log('API base URL:', API_BASE_URL);
+    console.log('Page origin:', window.location.origin);
+    if (payload?.sessionId) {
+        console.log('Session ID:', payload.sessionId);
+    }
+    if (payload?.serviceId || payload?.serviceName) {
+        console.log('Service:', {
+            id: payload.serviceId || '',
+            name: payload.serviceName || '',
+        });
+    }
+
+    if (timingMeta) {
+        console.log('Server timing meta:', timingMeta);
+    } else {
+        console.warn('No timingMeta returned from backend. This usually means the production backend is old or you are hitting a different API deployment.');
+    }
+
+    if (aiRows.length > 0 && typeof console.table === 'function') {
+        console.table(aiRows);
+    } else {
+        console.warn('No AI model rows were found in the response timing data.');
+    }
+
+    if (typeof console.groupEnd === 'function') {
+        console.groupEnd();
+    }
+};
+
 const formatThinkingDuration = (durationMs = 0) => {
     const safeDuration = Math.max(0, Number(durationMs || 0));
     if (safeDuration < 1000) return `${Math.round(safeDuration)}ms`;
@@ -2906,6 +2987,12 @@ const GuestAIDemo = () => {
                     },
                 }
             );
+            logGuestAiBrowserDebug('guest/start', {
+                timingMeta: data?.timingMeta || null,
+                sessionId: data?.sessionId || '',
+                serviceId: service?.slug || service?.id || '',
+                serviceName: service?.name || '',
+            });
 
             if (data?.sessionId) {
                 setSessionId(data.sessionId);
@@ -3060,6 +3147,12 @@ const GuestAIDemo = () => {
                     },
                 }
             );
+            logGuestAiBrowserDebug('guest/chat', {
+                timingMeta: data?.timingMeta || null,
+                sessionId,
+                serviceId: data?.serviceMeta?.serviceId || selectedService?.slug || selectedService?.id || '',
+                serviceName: data?.serviceMeta?.serviceName || selectedService?.name || '',
+            });
             const responseServiceId = data?.serviceMeta?.serviceId || '';
             const responseServiceName = data?.serviceMeta?.serviceName || '';
             let activeService = selectedService;
