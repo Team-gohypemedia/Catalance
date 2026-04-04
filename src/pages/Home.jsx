@@ -6,6 +6,7 @@ import FreelancerJoinSection from "@/components/sections/home/FreelancerJoinSect
 import Hero from "@/components/Home/Hero";
 import FreelancerClientCards from "@/components/Home/FreelancerClientCards";
 import ServiceCardsCarousel from "@/components/Home/ServiceCardsCarousel";
+import MarketPlaceCTA from "@/components/Home/MarketPlaceCTA";
 
 const Home = () => {
   React.useEffect(() => {
@@ -20,6 +21,7 @@ const Home = () => {
       <Hero/>
       <FreelancerClientCards />
       <ServiceCardsCarousel />
+      <MarketPlaceCTA />
       <ServiceCategoryCards />
       <VibeCodingHelp />
       <PortfolioGallery />
