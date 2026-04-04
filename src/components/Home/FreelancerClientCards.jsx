@@ -59,7 +59,7 @@ const FreelancerClientCards = () => {
               alt=""
               aria-hidden
               draggable="false"
-              className="pointer-events-none absolute bottom-6 left-0 z-0 w-44 select-none opacity-0 rotate-[-30deg] transform-gpu transition-[transform,opacity] duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-x-24 group-hover:opacity-100"
+              className="pointer-events-none absolute bottom-6 -left-16 z-0 w-44 select-none opacity-0 rotate-[-30deg] transform-gpu transition-transform duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-x-8 group-hover:opacity-100"
             />
 
             <article className={`${cardClassName} z-10`}>
@@ -114,7 +114,7 @@ const FreelancerClientCards = () => {
               alt=""
               aria-hidden
               draggable="false"
-              className="pointer-events-none absolute bottom-6 right-0 z-0 w-48 select-none opacity-0 rotate-[30deg] transform-gpu transition-[transform,opacity] duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-24 group-hover:opacity-100"
+              className="pointer-events-none absolute bottom-6 -right-16 z-0 w-48 select-none opacity-0 rotate-[30deg] transform-gpu transition-transform duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-6 group-hover:opacity-100"
             />
 
             <article className={`${cardClassName} z-10`}>
