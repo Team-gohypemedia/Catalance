@@ -46,7 +46,7 @@ const FreelancerClientCards = () => {
           <h2 className="text-[2.1rem] font-medium leading-[1.05] tracking-tight whitespace-nowrap text-white sm:text-[2.75rem] md:text-[3.4rem] lg:text-[4.4rem]">
             Hire <span className="text-primary">Freelancers</span> Who Don&apos;t Disappear
           </h2>
-          <p className="mx-auto mt-6 max-w-3xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-7 sm:text-base md:text-lg">
+          <p className="mx-auto mt-6 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-7 sm:text-base md:text-lg">
             Verified experts. Clear timelines. Protected payments. Dedicated
             support. Finally, a platform that actually works.
           </p>

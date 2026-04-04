@@ -5,6 +5,7 @@ import PortfolioGallery from "@/components/sections/home/PortfolioGallery";
 import FreelancerJoinSection from "@/components/sections/home/FreelancerJoinSection";
 import Hero from "@/components/Home/Hero";
 import FreelancerClientCards from "@/components/Home/FreelancerClientCards";
+import ServiceCardsCarousel from "@/components/Home/ServiceCardsCarousel";
 
 const Home = () => {
   React.useEffect(() => {
@@ -18,6 +19,7 @@ const Home = () => {
     <div className="flex min-h-screen flex-col bg-background">
       <Hero/>
       <FreelancerClientCards />
+      <ServiceCardsCarousel />
       <ServiceCategoryCards />
       <VibeCodingHelp />
       <PortfolioGallery />
