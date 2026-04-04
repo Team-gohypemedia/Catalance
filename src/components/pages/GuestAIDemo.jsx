@@ -540,12 +540,159 @@ const buildThinkingState = (elapsedMs = 0) => {
     };
 };
 
-const buildThinkingMeta = (durationMs = 0) => {
+const normalizeTimingValue = (value = 0) => {
+    const numericValue = Number(value || 0);
+    if (!Number.isFinite(numericValue)) return 0;
+    return Math.max(0, Math.round(numericValue * 10) / 10);
+};
+
+const normalizeServerTimingMeta = (value = null) => {
+    if (!value || typeof value !== 'object') return null;
+    const steps = Array.isArray(value.steps)
+        ? value.steps
+            .map((step, index) => {
+                if (!step || typeof step !== 'object') return null;
+                const durationMs = normalizeTimingValue(step.durationMs);
+                return {
+                    index,
+                    key: String(step.key || `step_${index + 1}`).trim() || `step_${index + 1}`,
+                    label: String(step.label || step.key || `Step ${index + 1}`).trim() || `Step ${index + 1}`,
+                    category: String(step.category || 'server').trim() || 'server',
+                    detail: String(step.detail || '').trim(),
+                    status: String(step.status || 'ok').trim() || 'ok',
+                    durationMs,
+                    startOffsetMs: normalizeTimingValue(step.startOffsetMs),
+                    endOffsetMs: normalizeTimingValue(step.endOffsetMs),
+                    aiModel: String(step.aiModel || '').trim(),
+                    aiTask: String(step.aiTask || '').trim(),
+                    aiProfile: String(step.aiProfile || '').trim(),
+                    aiProvider: String(step.aiProvider || '').trim(),
+                    aiMode: String(step.aiMode || '').trim(),
+                    aiProviderDurationMs: normalizeTimingValue(step.aiProviderDurationMs),
+                    aiAttemptCount: Number.isFinite(Number(step.aiAttemptCount))
+                        ? Number(step.aiAttemptCount)
+                        : 0,
+                    aiPromptTokens: Number.isFinite(Number(step.aiPromptTokens))
+                        ? Number(step.aiPromptTokens)
+                        : null,
+                    aiCompletionTokens: Number.isFinite(Number(step.aiCompletionTokens))
+                        ? Number(step.aiCompletionTokens)
+                        : null,
+                    aiTotalTokens: Number.isFinite(Number(step.aiTotalTokens))
+                        ? Number(step.aiTotalTokens)
+                        : null,
+                };
+            })
+            .filter(Boolean)
+        : [];
+
+    const totalDurationMs = normalizeTimingValue(value.totalDurationMs || value.durationMs);
+    if (!totalDurationMs && steps.length === 0) return null;
+
+    return {
+        scope: String(value.scope || '').trim(),
+        totalDurationMs,
+        steps,
+    };
+};
+
+const buildTimingBreakdown = (durationMs = 0, timingPayload = null) => {
+    const serverTiming = normalizeServerTimingMeta(
+        timingPayload?.server || timingPayload?.timingMeta || timingPayload?.backend || timingPayload
+    );
+    const clientTiming = timingPayload?.client && typeof timingPayload.client === 'object'
+        ? timingPayload.client
+        : {};
+    const uploadDurationMs = normalizeTimingValue(clientTiming.uploadDurationMs);
+    const clientPreparationDurationMs = normalizeTimingValue(clientTiming.clientPreparationDurationMs);
+    const apiRoundTripDurationMs = normalizeTimingValue(clientTiming.apiRoundTripDurationMs);
+    const browserNetworkOverheadMs = serverTiming?.totalDurationMs > 0 && apiRoundTripDurationMs > 0
+        ? normalizeTimingValue(Math.max(0, apiRoundTripDurationMs - serverTiming.totalDurationMs))
+        : 0;
+
+    const clientRows = [
+        clientPreparationDurationMs > 0
+            ? {
+                key: 'client_preparation',
+                label: 'Client preparation',
+                durationMs: clientPreparationDurationMs,
+                detail: 'Preparing the request in the browser before it is sent.',
+            }
+            : null,
+        uploadDurationMs > 0
+            ? {
+                key: 'attachment_upload',
+                label: 'Attachment upload',
+                durationMs: uploadDurationMs,
+                detail: 'Uploading file attachments before the chat request starts.',
+            }
+            : null,
+        apiRoundTripDurationMs > 0
+            ? {
+                key: 'api_round_trip',
+                label: 'API round trip',
+                durationMs: apiRoundTripDurationMs,
+                detail: 'Browser-to-backend request and response time.',
+            }
+            : null,
+        browserNetworkOverheadMs > 0
+            ? {
+                key: 'network_overhead',
+                label: 'Network + browser wait',
+                durationMs: browserNetworkOverheadMs,
+                detail: 'The difference between backend processing time and full API roundtrip time.',
+            }
+            : null,
+    ].filter(Boolean);
+
+    if (!serverTiming && clientRows.length === 0) return null;
+
+    return {
+        totalDurationMs: normalizeTimingValue(durationMs),
+        clientRows,
+        serverTiming,
+    };
+};
+
+const getTimingBreakdownGroups = (thinkingMeta = null) => {
+    const breakdown = thinkingMeta?.timingBreakdown;
+    if (!breakdown) return [];
+
+    const groups = [];
+    if (breakdown.clientRows.length > 0) {
+        groups.push({
+            key: 'client',
+            label: 'Client',
+            rows: breakdown.clientRows,
+        });
+    }
+
+    if (breakdown.serverTiming) {
+        groups.push({
+            key: 'server',
+            label: 'Server',
+            rows: [
+                {
+                    key: 'server_total',
+                    label: 'Total server time',
+                    durationMs: breakdown.serverTiming.totalDurationMs,
+                    detail: 'Total backend processing time for this response.',
+                },
+                ...breakdown.serverTiming.steps,
+            ],
+        });
+    }
+
+    return groups;
+};
+
+const buildThinkingMeta = (durationMs = 0, timingPayload = null) => {
     const state = buildThinkingState(durationMs);
     return {
         durationMs,
         finalStageLabel: state.stage?.label || 'Completed',
         completedStageLabels: state.completedStages.map((entry) => entry.label),
+        timingBreakdown: buildTimingBreakdown(durationMs, timingPayload),
     };
 };
 
@@ -2738,6 +2885,7 @@ const GuestAIDemo = () => {
         setSelectedOptions([]);
         setPendingOptionFollowup(null);
         try {
+            const requestStartedAt = getNowTimestamp();
             const response = await request('/guest/start', {
                 method: 'POST',
                 timeout: 120000,
@@ -2747,16 +2895,32 @@ const GuestAIDemo = () => {
                 })
             });
             const data = unwrapPayload(response);
+            const completedThinkingMeta = buildThinkingMeta(
+                Math.max(0, getNowTimestamp() - requestStartedAt),
+                {
+                    server: data?.timingMeta || null,
+                    client: {
+                        clientPreparationDurationMs: 0,
+                        uploadDurationMs: 0,
+                        apiRoundTripDurationMs: Math.max(0, getNowTimestamp() - requestStartedAt),
+                    },
+                }
+            );
 
             if (data?.sessionId) {
                 setSessionId(data.sessionId);
                 if (Array.isArray(data.history) && data.history.length > 0) {
-                    setMessages(data.history);
+                    setMessages(mergeMessagesWithThinkingMeta(
+                        data.history,
+                        [],
+                        completedThinkingMeta
+                    ));
                 } else {
                     const initialHistory = [
                         {
                             role: "assistant",
-                            content: data.message || `Hello! I see you're interested in **${service.name}**.`
+                            content: data.message || `Hello! I see you're interested in **${service.name}**.`,
+                            thinkingMeta: completedThinkingMeta,
                         }
                     ];
                     setMessages(initialHistory);
@@ -2842,10 +3006,13 @@ const GuestAIDemo = () => {
             setIsTyping(true);
             startThinkingTrace(requestStartedAt);
             setIsUploadingAttachment(hasAttachments);
-
+            const uploadStartedAt = getNowTimestamp();
             const uploadedAttachments = hasAttachments
                 ? await Promise.all(pendingAttachments.map((file) => uploadGuestAttachment(file)))
                 : [];
+            const uploadDurationMs = hasAttachments
+                ? Math.max(0, getNowTimestamp() - uploadStartedAt)
+                : 0;
 
             const serializedUrls = extractedSharedUrls.urls
                 .map((urlEntry) => buildUrlToken(urlEntry))
@@ -2865,6 +3032,7 @@ const GuestAIDemo = () => {
             setSelectedOptions([]);
             setPendingOptionFollowup(null);
 
+            const apiRequestStartedAt = getNowTimestamp();
             const response = await request('/guest/chat', {
                 method: 'POST',
                 timeout: 120000,
@@ -2876,8 +3044,21 @@ const GuestAIDemo = () => {
                 })
             });
             const data = unwrapPayload(response);
+            const apiRoundTripDurationMs = Math.max(0, getNowTimestamp() - apiRequestStartedAt);
+            const clientPreparationDurationMs = Math.max(
+                0,
+                apiRequestStartedAt - requestStartedAt - uploadDurationMs
+            );
             const completedThinkingMeta = buildThinkingMeta(
-                Math.max(0, getNowTimestamp() - requestStartedAt)
+                Math.max(0, getNowTimestamp() - requestStartedAt),
+                {
+                    server: data?.timingMeta || null,
+                    client: {
+                        clientPreparationDurationMs,
+                        uploadDurationMs,
+                        apiRoundTripDurationMs,
+                    },
+                }
             );
             const responseServiceId = data?.serviceMeta?.serviceId || '';
             const responseServiceName = data?.serviceMeta?.serviceName || '';
@@ -3664,6 +3845,7 @@ const GuestAIDemo = () => {
                             const thinkingMeta = Number.isFinite(Number(msg?.thinkingMeta?.durationMs))
                                 ? msg.thinkingMeta
                                 : null;
+                            const timingBreakdownGroups = getTimingBreakdownGroups(thinkingMeta);
 
                             return msg.role === 'user' ? (
                                 /* ── USER message: right-aligned bubble ── */
@@ -3787,6 +3969,62 @@ const GuestAIDemo = () => {
                                                 Responded in {formatThinkingDuration(thinkingMeta.durationMs)}
                                             </div>
                                         )}
+                                        {/* {timingBreakdownGroups.length > 0 && (
+                                            <details className={`mt-2 overflow-hidden rounded-2xl border text-[11px] ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50/80'}`}>
+                                                <summary className={`cursor-pointer list-none px-3 py-2 font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                    View timing breakdown
+                                                </summary>
+                                                <div className={`space-y-3 border-t px-3 py-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                                                    {timingBreakdownGroups.map((group) => (
+                                                        <div key={group.key} className="space-y-1.5">
+                                                            <div className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                                                                {group.label}
+                                                            </div>
+                                                            <div className="space-y-1.5">
+                                                                {group.rows.map((row, rowIndex) => {
+                                                                    const aiMetaText = [
+                                                                        row.aiTask ? `Task: ${row.aiTask}` : '',
+                                                                        row.aiModel ? `Model: ${row.aiModel}` : '',
+                                                                        row.aiProviderDurationMs > 0 ? `Provider: ${formatThinkingDuration(row.aiProviderDurationMs)}` : '',
+                                                                        Number.isFinite(Number(row.aiTotalTokens)) && row.aiTotalTokens > 0 ? `Tokens: ${row.aiTotalTokens}` : '',
+                                                                    ]
+                                                                        .filter(Boolean)
+                                                                        .join(' | ');
+
+                                                                    return (
+                                                                        <div
+                                                                            key={`${group.key}-${row.key || rowIndex}`}
+                                                                            className={`rounded-xl px-3 py-2 ${isDark ? 'bg-white/[0.03]' : 'bg-white'}`}
+                                                                        >
+                                                                            <div className="flex items-start justify-between gap-3">
+                                                                                <div className="min-w-0">
+                                                                                    <div className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                                                                        {row.label}
+                                                                                    </div>
+                                                                                    {row.detail && (
+                                                                                        <div className={`mt-0.5 leading-relaxed ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                                                                                            {row.detail}
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {aiMetaText && (
+                                                                                        <div className={`mt-1 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                                                            {aiMetaText}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className={`shrink-0 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                                                    {formatThinkingDuration(row.durationMs)}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </details>
+                                        )} */}
                                     </div>
                                 </motion.div>
                             );
