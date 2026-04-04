@@ -215,6 +215,7 @@ const upsertStoredGuestSession = (entry = {}) => {
         serviceName: entry.serviceName || current?.serviceName || 'AI Consultation',
         serviceDescription: entry.serviceDescription || current?.serviceDescription || '',
         preview: entry.preview || current?.preview || '',
+        businessName: entry.businessName || current?.businessName || '',
         messageCount: Number(entry.messageCount || current?.messageCount || 0),
         createdAt: current?.createdAt || entry.createdAt || now,
         updatedAt: entry.updatedAt || now,
@@ -596,7 +597,8 @@ const mergeMessagesWithThinkingMeta = (
     return merged;
 };
 
-const toPreviewText = (messages = []) => {
+const toPreviewText = (messages = []) => { // UPDATED
+
     const source = [...messages].reverse();
     for (const message of source) {
         const parsed = parseMessageContentWithAttachments(message?.content || '', message?.attachments || []);
@@ -1702,6 +1704,55 @@ const parseProposalContent = (content = '') => {
     };
 };
 
+/**
+ * Extracts business/brand name from chat history by scanning the latest proposal.
+ * @param {Array} messages
+ * @returns {string}
+ */
+const extractBusinessNameFromHistory = (messages = []) => {
+    const list = Array.isArray(messages) ? messages : [];
+
+    // 1. Try to get from the latest proposal first (most reliable)
+    const latestProposal = [...list].reverse().find(
+        (msg) => msg?.role === 'assistant' && isProposalMessage(msg?.content || '')
+    );
+    if (latestProposal) {
+        const parsed = parseProposalContent(latestProposal.content);
+        if (parsed.fields?.businessName) return parsed.fields.businessName;
+    }
+
+    // 2. Scan conversation: find user answer after AI asks about brand/company name
+    const BRAND_QUESTION_RE = /\b(brand\s*(name|names)?|company\s*(name|names)?|business\s*(name|names)?)\b/i;
+    const BRAND_ANSWER_MAX_LEN = 50; // brand names are short
+    for (let i = 0; i < list.length - 1; i++) {
+        const msg = list[i];
+        if (msg?.role !== 'assistant') continue;
+        const msgContent = String(msg?.content || '');
+        // AI must be ASKING a question about the brand name
+        if (!BRAND_QUESTION_RE.test(msgContent)) continue;
+        if (!msgContent.includes('?')) continue; // must be a question
+        // Find the very next user message
+        for (let j = i + 1; j < list.length; j++) {
+            const next = list[j];
+            if (next?.role !== 'user') continue;
+            const { text } = parseMessageContentWithAttachments(next?.content || '', next?.attachments || []);
+            const trimmed = String(text || '').trim();
+            // Brand names: short, single-line, no URLs, not a sentence (no periods/questions in middle)
+            const looksLikeBrandName = trimmed.length > 0
+                && trimmed.length <= BRAND_ANSWER_MAX_LEN
+                && !trimmed.includes('\n')
+                && !/^https?:\/\//i.test(trimmed)
+                && !/[.!?]/.test(trimmed.slice(0, -1)); // no sentence punctuation except at end
+            if (looksLikeBrandName) {
+                return trimmed;
+            }
+            break;
+        }
+    }
+
+    return '';
+};
+
 const ProposalPreview = ({ content, isDark }) => {
     const parsed = parseProposalContent(content);
 
@@ -1941,6 +1992,7 @@ const GuestAIDemo = () => {
             serviceName: activeService.name || 'AI Consultation',
             serviceDescription: activeService.description || '',
             preview: toPreviewText(list),
+            businessName: extractBusinessNameFromHistory(list),
             messageCount: list.length,
             updatedAt: new Date().toISOString(),
         });
@@ -3503,7 +3555,10 @@ const GuestAIDemo = () => {
                                     {visiblePreviousChats.map((chat) => {
                                         const isCurrent = chat.sessionId === sessionId;
                                         const isLoadingHistory = loadingHistoryId === chat.sessionId;
-                                        const preview = chat.preview || chat.serviceName || 'No preview';
+                                        const brandName = chat.businessName || '';
+                                        const preview = brandName
+                                            ? `${chat.serviceName || 'Service'} - ${brandName}`
+                                            : (chat.preview || chat.serviceName || 'No preview');
                                         return (
                                             <div
                                                 key={chat.sessionId}

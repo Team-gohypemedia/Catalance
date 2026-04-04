@@ -1833,7 +1833,10 @@ const mapApiProposal = (proposal) => {
     updatedAt: normalizedProposal.updatedAt || normalizedProposal.createdAt || null,
     syncedProjectId:
       normalizedProposal.projectId || normalizedProposal.project?.id || null,
-    proposalContext: normalizedProposal.proposalContext || null,
+    proposalContext:
+      normalizedProposal.proposalContext ||
+      normalizedProposal.project?.proposalJson?.contextSnapshot ||
+      null,
     rejectionReason: normalizedProposal.rejectionReason || null,
     rejectionReasonKey: normalizedProposal.rejectionReasonKey || null,
   };
@@ -2702,6 +2705,7 @@ const ClientProposalContent = () => {
                 title: nextTitle,
                 description: nextContent,
                 proposalContent: nextContent,
+                proposalContext: nextProposalContext,
                 ...(nextBudget ? { budget: nextBudgetValue } : {}),
                 serviceKey:
                   activeProposal.serviceKey || resolveProposalServiceLabel(activeProposal),
@@ -2806,6 +2810,7 @@ const ClientProposalContent = () => {
                 || proposal.content
                 || proposal.summary
                 || "",
+              proposalContext: proposal.proposalContext || null,
               budget: normalizedBudget,
               timeline: proposal.timeline || "1 month",
               serviceKey:
@@ -2839,6 +2844,7 @@ const ClientProposalContent = () => {
                 || proposal.content
                 || proposal.summary
                 || "",
+              proposalContext: proposal.proposalContext || null,
               budget: normalizedBudget,
               timeline: proposal.timeline || "1 month",
               serviceKey:

@@ -626,6 +626,7 @@ export const getServices = asyncHandler(async (req, res) => {
     active: s.active,
     aiPrompt: s.aiPrompt,
     proposalStructure: s.proposalStructure,
+    internalProposalStructure: s.internalProposalStructure,
     proposalPrompt: s.proposalPrompt,
     minBudget: s.minBudget,
     currency: s.currency,
@@ -644,6 +645,7 @@ export const upsertService = asyncHandler(async (req, res) => {
     active,
     aiPrompt,
     proposalStructure,
+    internalProposalStructure,
     proposalPrompt,
     minBudget,
     currency
@@ -661,6 +663,7 @@ export const upsertService = asyncHandler(async (req, res) => {
       active: active === undefined ? true : active,
       aiPrompt,
       proposalStructure: proposalStructure || null,
+      internalProposalStructure: internalProposalStructure || null,
       proposalPrompt: proposalPrompt || null,
       minBudget: minBudget ? Number(minBudget) : 0,
       currency: currency || "INR"
@@ -673,6 +676,7 @@ export const upsertService = asyncHandler(async (req, res) => {
       active: active === undefined ? true : active,
       aiPrompt,
       proposalStructure: proposalStructure || null,
+      internalProposalStructure: internalProposalStructure || null,
       proposalPrompt: proposalPrompt || null,
       minBudget: minBudget ? Number(minBudget) : 0,
       currency: currency || "INR"

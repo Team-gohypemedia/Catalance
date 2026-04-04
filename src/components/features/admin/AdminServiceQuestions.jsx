@@ -6,23 +6,48 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/shared/context/AuthContext";
 import { toast } from "sonner";
-import { AnimatePresence, motion, Reorder } from "framer-motion";
+import { Reorder } from "framer-motion";
 import * as LucideIcons from "lucide-react";
 
 import ServiceQuestionFlow from "./ServiceQuestionFlow";
+
+const QUESTION_TYPE_META = {
+    input: {
+        label: "Text Input",
+        badgeClassName: "border-white/10 bg-white/5 text-slate-100",
+        accentClassName: "bg-slate-300"
+    },
+    single_option: {
+        label: "Single Select",
+        badgeClassName: "border-primary/25 bg-primary/12 text-primary",
+        accentClassName: "bg-primary"
+    },
+    multi_option: {
+        label: "Multi Select",
+        badgeClassName: "border-emerald-500/25 bg-emerald-500/12 text-emerald-300",
+        accentClassName: "bg-emerald-400"
+    }
+};
+
+const SummaryMetric = ({ label, value, note }) => (
+    <div className="rounded-2xl border border-white/10 bg-black/20 px-3.5 py-3.5 backdrop-blur">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">{label}</p>
+        <p className="mt-2 text-2xl font-medium tracking-tight [font-variant-numeric:tabular-nums]">{value}</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{note}</p>
+    </div>
+);
 
 const AdminServiceQuestions = () => {
     const { authFetch } = useAuth();
     const [services, setServices] = useState([]);
     const [selectedServiceId, setSelectedServiceId] = useState("");
+    const [serviceSearch, setServiceSearch] = useState("");
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingServices, setLoadingServices] = useState(false);
@@ -57,10 +82,26 @@ const AdminServiceQuestions = () => {
         }
     }, [selectedServiceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const selectedService = services.find((service) => service.id === selectedServiceId) || null;
+    const normalizedServiceSearch = serviceSearch.trim().toLowerCase();
+    const visibleServices = services.filter((service) => {
+        if (service.id === selectedServiceId) return true;
+        if (!normalizedServiceSearch) return true;
+        return [service.name, service.id, service.description]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(normalizedServiceSearch));
+    });
+    const savedContextCount = questions.filter((question) => question.saveResponse).length;
+    const optionalCount = questions.filter((question) => !question.required).length;
+    const branchingRuleCount = questions.reduce(
+        (count, question) => count + ((question.logic || []).filter((rule) => rule.nextQuestionSlug).length),
+        0
+    );
+    const selectionQuestionCount = questions.filter((question) => question.type !== "input").length;
+
     const fetchServices = async () => {
         setLoadingServices(true);
         try {
-            console.log("Fetching services...");
             const res = await authFetch("/admin/services");
             if (!res.ok) {
                 console.error("Failed to fetch services. Status:", res.status);
@@ -68,14 +109,12 @@ const AdminServiceQuestions = () => {
                 return;
             }
             const data = await res.json();
-            console.log("Services fetched:", data);
 
             if (data?.data) {
                 setServices(data.data);
-                // Optional: Auto select first if none selected
-                // if (data.data.length > 0 && !selectedServiceId) setSelectedServiceId(data.data[0].id);
-            } else {
-                console.warn("No data property in services response:", data);
+                if (data.data.length > 0 && !selectedServiceId) {
+                    setSelectedServiceId(data.data[0].id);
+                }
             }
         } catch (error) {
             console.error("Failed to load services:", error);
@@ -282,234 +321,381 @@ const AdminServiceQuestions = () => {
 
     return (
         <AdminLayout>
-            <div className="relative flex flex-col gap-8 p-8 max-w-7xl mx-auto h-[calc(100vh-4rem)] overflow-hidden">
+            <div className="relative mx-auto flex max-w-[1440px] flex-col gap-6 px-5 py-6 lg:px-6">
                 <AdminTopBar label="Service Questions" />
 
-                <div className="flex-1 flex flex-col md:flex-row gap-8 overflow-hidden min-h-0">
+                <div className="grid items-start gap-5 xl:grid-cols-[290px_minmax(0,1fr)]">
 
-                    {/* Sidebar Service List */}
-                    <div className="w-full md:w-1/4 flex flex-col gap-4 bg-card border rounded-xl p-4 shadow-sm h-full overflow-hidden shrink-0">
-                        <div className="flex flex-col gap-1 shrink-0">
-                            <h2 className="text-xl font-bold tracking-tight">Services</h2>
-                            <p className="text-sm text-muted-foreground">Select a service to manage its questions.</p>
-                        </div>
-                        <div className="flex-1 overflow-y-auto -mr-2 pr-2 custom-scrollbar">
-                            <div className="flex flex-col gap-1 pr-1 pb-12">
-                                {loadingServices ? (
-                                    <div className="p-4 text-center text-sm text-muted-foreground animate-pulse">
-                                        Loading services...
-                                    </div>
-                                ) : services.length === 0 ? (
-                                    <div className="p-4 text-center text-sm text-muted-foreground">
-                                        No services found.
-                                    </div>
-                                ) : (
-                                    services.map(s => {
-                                        const Icon = LucideIcons[s.icon] || LucideIcons.Layers;
-                                        const isSelected = selectedServiceId === s.id;
-                                        return (
-                                            <button
-                                                key={s.id}
-                                                onClick={() => setSelectedServiceId(s.id)}
-                                                className={`flex items-center gap-3 py-2 px-3 rounded-lg text-left transition-all ${isSelected
-                                                    ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/50'
-                                                    : 'hover:bg-muted text-foreground'
-                                                    }`}
-                                            >
-                                                <Icon className={`h-5 w-5 shrink-0 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-medium text-sm leading-tight line-clamp-2">{s.name}</div>
-                                                    <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                                                        {s.questionCount} questions
-                                                    </div>
-                                                </div>
-                                                {isSelected && <LucideIcons.ChevronRight className="h-4 w-4 opacity-50 shrink-0" />}
-                                            </button>
-                                        );
-                                    })
-                                )}
+                    <Card className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
+                        <CardHeader className="space-y-4 border-b border-white/10 p-4">
+                            <div className="space-y-1">
+                                <CardTitle className="text-xl font-semibold tracking-tight">Services</CardTitle>
+                                <p className="text-sm leading-6 text-muted-foreground">Select a service to manage its interview flow, branching, and AI context capture.</p>
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Main Content Area */}
-                    <div className="flex-1 flex flex-col gap-6 min-h-0 overflow-hidden">
-                        <div className="flex justify-between items-center bg-card p-6 rounded-xl border shadow-sm shrink-0">
-                            <div>
-                                <h1 className="text-2xl font-bold tracking-tight">
-                                    {selectedServiceId
-                                        ? services.find(s => s.id === selectedServiceId)?.name
-                                        : "Question Manager"}
-                                </h1>
-                                <p className="text-muted-foreground">
-                                    {selectedServiceId
-                                        ? "Configure the AI interview flow for this service."
-                                        : "Select a service from the sidebar to begin."}
-                                </p>
-                            </div>
-                            <div className="flex gap-2">
-                                <div className="flex bg-muted rounded-lg p-1 border">
-                                    <button
-                                        onClick={() => setViewMode("list")}
-                                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                                    >
-                                        <LucideIcons.List className="h-4 w-4 mr-2 inline" /> List
-                                    </button>
-                                    <button
-                                        onClick={() => setViewMode("flow")}
-                                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'flow' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                                    >
-                                        <LucideIcons.GitGraph className="h-4 w-4 mr-2 inline" /> Flow
-                                    </button>
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    onClick={handleCopyFlow}
-                                    disabled={!selectedServiceId || questions.length === 0}
-                                    className="bg-card shadow-sm"
-                                >
-                                    <LucideIcons.Copy className="mr-2 h-4 w-4" /> Copy Flow
-                                </Button>
-                                <Button
-                                    onClick={() => handleOpenDialog()}
-                                    disabled={!selectedServiceId}
-                                    size="lg"
-                                    className="shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
-                                >
-                                    <LucideIcons.Plus className="mr-2 h-5 w-5" /> Add Question
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-hidden bg-muted/20 rounded-xl border relative">
-                            {viewMode === 'flow' && selectedServiceId && questions.length > 0 ? (
-                                <div className="h-full w-full bg-white relative">
-                                    <ServiceQuestionFlow
-                                        questions={questions}
-                                        onEditQuestion={(q) => handleOpenDialog(q)}
+                            <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
+                                <Label htmlFor="service-search" className="sr-only">Search Services</Label>
+                                <div className="flex items-center gap-3">
+                                    <LucideIcons.Search className="h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="service-search"
+                                        name="serviceSearch"
+                                        value={serviceSearch}
+                                        onChange={(event) => setServiceSearch(event.target.value)}
+                                        placeholder="Search services..."
+                                        autoComplete="off"
+                                        spellCheck={false}
+                                        className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
                                     />
                                 </div>
-                            ) : (
-                                <div className="h-full overflow-y-auto p-6 custom-scrollbar">
-                                    {!selectedServiceId ? (
-                                        <div className="flex flex-col items-center justify-center h-[400px] text-center opacity-50">
-                                            <LucideIcons.MousePointer2 className="h-16 w-16 mb-4 text-muted-foreground" />
-                                            <h3 className="text-xl font-medium">No Service Selected</h3>
-                                            <p className="max-w-xs mt-2">Please select a service from the list on the left to view and edit its questions.</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2.5">
+                                <SummaryMetric label="Visible" value={visibleServices.length} note="Services matching this filter" />
+                                <SummaryMetric label="Catalog" value={services.length} note="Services available to configure" />
+                            </div>
+                        </CardHeader>
+
+                        <CardContent className="p-3">
+                            <div className="space-y-2">
+                                    {loadingServices ? (
+                                        <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">
+                                            Loading services...
                                         </div>
-                                    ) : loading ? (
-                                        <div className="flex flex-col gap-4">
-                                            {[1, 2, 3].map(i => (
-                                                <div key={i} className="h-32 rounded-lg bg-card border animate-pulse" />
-                                            ))}
-                                        </div>
-                                    ) : questions.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center h-[400px] text-center">
-                                            <div className="p-4 rounded-full bg-background border shadow-sm mb-4">
-                                                <LucideIcons.FileQuestion className="h-10 w-10 text-muted-foreground" />
-                                            </div>
-                                            <h3 className="text-lg font-medium">No questions defined</h3>
-                                            <p className="text-muted-foreground mt-2 mb-6 max-w-sm">
-                                                This service has no questions yet. The AI needs questions to understand client requirements.
-                                            </p>
-                                            <Button variant="outline" onClick={() => handleOpenDialog()}>
-                                                Create First Question
-                                            </Button>
+                                    ) : visibleServices.length === 0 ? (
+                                        <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">
+                                            No services match this search yet.
                                         </div>
                                     ) : (
-                                        <div className="space-y-4">
-                                            <Reorder.Group axis="y" values={questions} onReorder={handleReorder} className="space-y-4">
-                                                {questions.map((q, idx) => (
-                                                    <Reorder.Item
-                                                        key={q.id}
-                                                        value={q}
-                                                        onDragEnd={handleDragEnd}
-                                                        initial={{ opacity: 0, x: -20 }}
-                                                        animate={{ opacity: 1, x: 0 }}
-                                                        transition={{ duration: 0.2 }}
-                                                    >
-                                                        <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-md">
-                                                            <CardContent className="p-5 flex gap-5 items-start">
-                                                                <div className="mt-1 flex flex-col items-center gap-2 text-muted-foreground cursor-grab active:cursor-grabbing">
-                                                                    <div className="bg-muted w-8 h-8 rounded-full flex items-center justify-center font-mono text-xs font-bold border">
-                                                                        {idx + 1}
-                                                                    </div>
-                                                                    <LucideIcons.GripVertical className="h-4 w-4 opacity-0 group-hover:opacity-50 cursor-grab" />
+                                        visibleServices.map((service) => {
+                                            const Icon = LucideIcons[service.icon] || LucideIcons.Layers;
+                                            const isSelected = selectedServiceId === service.id;
+                                            return (
+                                                <button
+                                                    key={service.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedServiceId(service.id)}
+                                                    aria-pressed={isSelected}
+                                                    className={`w-full rounded-2xl border px-3.5 py-3.5 text-left transition-all duration-200 ${
+                                                        isSelected
+                                                            ? "border-primary/30 bg-primary/10 shadow-[0_12px_28px_rgba(255,199,0,0.1)]"
+                                                            : "border-white/10 bg-black/15 hover:border-white/20 hover:bg-white/[0.03]"
+                                                    }`}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+                                                            isSelected
+                                                                ? "border-primary/35 bg-primary/15 text-primary"
+                                                                : "border-white/10 bg-white/[0.03] text-muted-foreground"
+                                                        }`}>
+                                                            <Icon className="h-[18px] w-[18px]" />
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="min-w-0">
+                                                                    <p className="line-clamp-2 text-sm font-medium leading-5 text-white">{service.name}</p>
+                                                                    <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{service.id}</p>
                                                                 </div>
-
-                                                                <div className="flex-1 space-y-3">
-                                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                                        <Badge variant="outline" className="font-mono text-xs text-muted-foreground">
-                                                                            {q.id}
-                                                                        </Badge>
-                                                                        <Badge className={
-                                                                            q.type === 'multi_option' ? 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-purple-200' :
-                                                                                q.type === 'single_option' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200' :
-                                                                                    'bg-slate-100 text-slate-800 hover:bg-slate-200 border-slate-200'
-                                                                        }>
-                                                                            {q.type === 'multi_option' ? 'Multi Select' : q.type === 'single_option' ? 'Single Select' : 'Text Input'}
-                                                                        </Badge>
-                                                                        {!q.required && (
-                                                                            <Badge variant="secondary" className="text-muted-foreground">Optional</Badge>
-                                                                        )}
-                                                                    </div>
-
-                                                                    <p className="text-lg font-medium text-foreground leading-snug">
-                                                                        {q.question}
-                                                                    </p>
-                                                                    {q.subtitle && (
-                                                                        <p className="text-sm text-muted-foreground italic">
-                                                                            Context: {q.subtitle}
-                                                                        </p>
-                                                                    )}
-                                                                    {q.saveResponse && (
-                                                                        <Badge variant="secondary" className="mt-1 bg-yellow-100 text-yellow-800 border-yellow-200">
-                                                                            AI Context Saved
-                                                                        </Badge>
-                                                                    )}
-
-                                                                    {q.options && q.options.length > 0 && (
-                                                                        <div className="flex flex-wrap gap-2 pt-1">
-                                                                            {q.options.map((opt, i) => (
-                                                                                <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 text-xs font-medium border text-secondary-foreground hover:bg-secondary/70 transition-colors">
-                                                                                    <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
-                                                                                    {opt.label || opt}
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(q)}>
-                                                                        <LucideIcons.Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                                                                    </Button>
-                                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(q)} className="hover:bg-destructive/10">
-                                                                        <LucideIcons.Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                                                                    </Button>
-                                                                </div>
-                                                            </CardContent>
-                                                        </Card>
-                                                    </Reorder.Item>
-                                                ))}
-                                            </Reorder.Group>
-                                            <div className="h-20" /> {/* Bottom Spacer */}
-                                        </div>
+                                                                {isSelected ? <LucideIcons.ChevronRight className="mt-1 h-4 w-4 shrink-0 text-primary" /> : null}
+                                                            </div>
+                                                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                                                <Badge variant={service.active ? "default" : "secondary"} className="rounded-full">
+                                                                    {service.active ? "Active" : "Draft"}
+                                                                </Badge>
+                                                                <Badge variant="outline" className="rounded-full">
+                                                                    {service.questionCount} questions
+                                                                </Badge>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })
                                     )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <div className="flex flex-col gap-5">
+                        <section className="relative overflow-hidden rounded-[26px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(255,199,0,0.12),transparent_34%),linear-gradient(135deg,rgba(24,24,24,0.96),rgba(8,8,8,1))] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.3)] lg:p-6">
+                            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(255,199,0,0.08),transparent)] opacity-60" />
+                            <div className="relative flex flex-col gap-5">
+                                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                                    <div className="max-w-3xl">
+                                        <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+                                            Interview Design
+                                        </div>
+                                        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-white [text-wrap:balance] sm:text-3xl">
+                                            {selectedService ? selectedService.name : "Question Manager"}
+                                        </h1>
+                                        <p className="mt-2.5 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+                                            {selectedService
+                                                ? "Tune the question order, the answers saved into AI context, and the branches that shape proposal generation."
+                                                : "Select a service to start designing its AI interview flow."}
+                                        </p>
+                                        {selectedService ? (
+                                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                                                <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                                    {selectedService.id}
+                                                </Badge>
+                                                <Badge variant={selectedService.active ? "default" : "secondary"} className="rounded-full">
+                                                    {selectedService.active ? "Active Service" : "Draft Service"}
+                                                </Badge>
+                                            </div>
+                                        ) : null}
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2.5">
+                                        <div className="inline-flex rounded-full border border-white/10 bg-black/20 p-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setViewMode("list")}
+                                                aria-pressed={viewMode === "list"}
+                                                className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                                                    viewMode === "list"
+                                                        ? "bg-white text-black shadow-sm"
+                                                        : "text-muted-foreground hover:text-white"
+                                                }`}
+                                            >
+                                                <LucideIcons.List className="mr-2 h-4 w-4" />
+                                                List
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setViewMode("flow")}
+                                                aria-pressed={viewMode === "flow"}
+                                                className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                                                    viewMode === "flow"
+                                                        ? "bg-white text-black shadow-sm"
+                                                        : "text-muted-foreground hover:text-white"
+                                                }`}
+                                            >
+                                                <LucideIcons.GitGraph className="mr-2 h-4 w-4" />
+                                                Flow
+                                            </button>
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleCopyFlow}
+                                            disabled={!selectedServiceId || questions.length === 0}
+                                            className="rounded-full border-white/10 bg-white/[0.04] px-4"
+                                        >
+                                            <LucideIcons.Copy className="mr-2 h-4 w-4" />
+                                            Copy Flow
+                                        </Button>
+                                        <Button
+                                            onClick={() => handleOpenDialog()}
+                                            disabled={!selectedServiceId}
+                                            className="rounded-full px-5 shadow-[0_14px_30px_rgba(255,199,0,0.14)]"
+                                        >
+                                            <LucideIcons.Plus className="mr-2 h-5 w-5" />
+                                            Add Question
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {selectedService ? (
+                                    <>
+                                        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+                                            <SummaryMetric label="Questions" value={questions.length} note="Total steps in this interview flow" />
+                                            <SummaryMetric label="AI Context" value={savedContextCount} note="Questions saved for downstream prompts" />
+                                            <SummaryMetric label="Branches" value={branchingRuleCount} note="Conditional rules that reroute the flow" />
+                                            <SummaryMetric label="Selections" value={selectionQuestionCount} note="Choice-based prompts in this flow" />
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-black/15 px-3.5 py-2.5 text-sm text-muted-foreground">
+                                            <LucideIcons.GripVertical className="h-4 w-4 text-primary" />
+                                            Drag cards to reorder. Click a card or flow node to edit it.
+                                            <span className="text-white/50">Optional prompts: {optionalCount}</span>
+                                        </div>
+                                    </>
+                                ) : null}
+                            </div>
+                        </section>
+
+                        <Card className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(24,24,24,0.95),rgba(10,10,10,0.98))]">
+                            {viewMode === "flow" && selectedServiceId && questions.length > 0 ? (
+                                <>
+                                    <div className="border-b border-white/10 px-4 py-3 text-sm text-muted-foreground">
+                                        Inspect branches visually. Click any node to open the editor for that question.
+                                    </div>
+                                    <div className="h-[680px] p-3.5">
+                                        <ServiceQuestionFlow
+                                            questions={questions}
+                                            onEditQuestion={(question) => handleOpenDialog(question)}
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="p-5">
+                                    <div className="space-y-4">
+                                        {!selectedServiceId ? (
+                                            <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[28px] border border-dashed border-white/10 bg-black/15 px-6 text-center">
+                                                <div className="mb-5 rounded-full border border-primary/20 bg-primary/10 p-4 text-primary">
+                                                    <LucideIcons.MousePointer2 className="h-12 w-12" />
+                                                </div>
+                                                <h3 className="text-2xl font-semibold tracking-tight">Select A Service</h3>
+                                                <p className="mt-3 max-w-md text-muted-foreground">
+                                                    Choose a service from the rail to review its interview flow, question order, and branching logic.
+                                                </p>
+                                            </div>
+                                        ) : loading ? (
+                                            <div className="space-y-3.5">
+                                                {[1, 2, 3].map((item) => (
+                                                    <div key={item} className="h-36 animate-pulse rounded-[22px] border border-white/10 bg-white/[0.03]" />
+                                                ))}
+                                            </div>
+                                        ) : questions.length === 0 ? (
+                                            <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[28px] border border-dashed border-white/10 bg-black/15 px-6 text-center">
+                                                <div className="mb-5 rounded-full border border-primary/20 bg-primary/10 p-4 text-primary">
+                                                    <LucideIcons.FileQuestion className="h-10 w-10" />
+                                                </div>
+                                                <h3 className="text-2xl font-semibold tracking-tight">No Questions Defined</h3>
+                                                <p className="mt-3 max-w-xl text-muted-foreground">
+                                                    This service does not have an interview flow yet. Add the first question to start collecting the context that drives proposals and internal project JSON.
+                                                </p>
+                                                <Button className="mt-6 rounded-full px-5" onClick={() => handleOpenDialog()}>
+                                                    <LucideIcons.Plus className="mr-2 h-4 w-4" />
+                                                    Create First Question
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <Reorder.Group axis="y" values={questions} onReorder={handleReorder} className="space-y-4">
+                                                {questions.map((question, index) => {
+                                                    const typeMeta = QUESTION_TYPE_META[question.type] || QUESTION_TYPE_META.input;
+                                                    const logicRuleCount = (question.logic || []).filter((rule) => rule.nextQuestionSlug).length;
+
+                                                    return (
+                                                        <Reorder.Item
+                                                            key={question.id}
+                                                            value={question}
+                                                            onDragEnd={handleDragEnd}
+                                                        >
+                                                            <Card className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(31,31,31,0.98),rgba(13,13,13,0.98))] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_16px_34px_rgba(0,0,0,0.28)]">
+                                                                <div className={`absolute left-0 top-0 h-full w-1.5 ${typeMeta.accentClassName}`} />
+                                                                <CardContent className="p-5">
+                                                                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                                                                        <div className="flex items-center gap-3 lg:w-[72px] lg:flex-col lg:items-center lg:justify-start">
+                                                                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] font-mono text-sm font-semibold text-white">
+                                                                                {index + 1}
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground lg:flex-col lg:gap-1">
+                                                                                <LucideIcons.GripVertical className="h-4 w-4 cursor-grab active:cursor-grabbing" />
+                                                                                Drag
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="min-w-0 flex-1 space-y-3.5">
+                                                                            <div className="flex flex-col gap-3.5 xl:flex-row xl:items-start xl:justify-between">
+                                                                                <div className="min-w-0 space-y-3">
+                                                                                    <div className="flex flex-wrap gap-2">
+                                                                                        <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.03] font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                                                                            {question.id}
+                                                                                        </Badge>
+                                                                                        <Badge variant="outline" className={`rounded-full ${typeMeta.badgeClassName}`}>
+                                                                                            {typeMeta.label}
+                                                                                        </Badge>
+                                                                                        {question.required ? null : (
+                                                                                            <Badge variant="secondary" className="rounded-full">Optional</Badge>
+                                                                                        )}
+                                                                                        {question.saveResponse ? (
+                                                                                            <Badge variant="secondary" className="rounded-full border-primary/20 bg-primary/15 text-primary">
+                                                                                                AI Context Saved
+                                                                                            </Badge>
+                                                                                        ) : null}
+                                                                                    </div>
+                                                                                    <div className="space-y-2">
+                                                                                        <h3 className="text-xl font-semibold leading-tight tracking-tight text-white [text-wrap:balance]">
+                                                                                            {question.question}
+                                                                                        </h3>
+                                                                                        <p className="text-sm text-muted-foreground">
+                                                                                            {logicRuleCount > 0
+                                                                                                ? `${logicRuleCount} conditional branch${logicRuleCount === 1 ? "" : "es"} configured.`
+                                                                                                : question.nextQuestionSlug
+                                                                                                    ? `Default jump: ${question.nextQuestionSlug}.`
+                                                                                                    : "Follows the sequential service flow."}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <div className="flex shrink-0 gap-2">
+                                                                                    <Button
+                                                                                        variant="outline"
+                                                                                        size="icon"
+                                                                                        onClick={() => handleOpenDialog(question)}
+                                                                                        className="rounded-full border-white/10 bg-white/[0.04]"
+                                                                                        aria-label={`Edit ${question.id}`}
+                                                                                    >
+                                                                                        <LucideIcons.Pencil className="h-4 w-4" />
+                                                                                    </Button>
+                                                                                    <Button
+                                                                                        variant="outline"
+                                                                                        size="icon"
+                                                                                        onClick={() => handleDelete(question)}
+                                                                                        className="rounded-full border-white/10 bg-white/[0.04] hover:border-destructive/40 hover:bg-destructive/10"
+                                                                                        aria-label={`Delete ${question.id}`}
+                                                                                    >
+                                                                                        <LucideIcons.Trash2 className="h-4 w-4" />
+                                                                                    </Button>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.9fr)]">
+                                                                                <div className="rounded-2xl border border-white/10 bg-black/20 p-3.5">
+                                                                                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">AI Context</p>
+                                                                                    <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                                                                                        {question.subtitle || "No hidden guidance yet. Add context here to help the AI interpret and reuse this answer."}
+                                                                                    </p>
+                                                                                </div>
+
+                                                                                <div className="rounded-2xl border border-white/10 bg-black/20 p-3.5">
+                                                                                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">Answer Format</p>
+                                                                                    {question.options && question.options.length > 0 ? (
+                                                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                                                            {question.options.map((option, optionIndex) => (
+                                                                                                <Badge key={optionIndex} variant="outline" className="rounded-full border-white/10 bg-white/[0.03]">
+                                                                                                    {option.label || option}
+                                                                                                </Badge>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <p className="mt-3 text-sm text-muted-foreground">Free-form text response.</p>
+                                                                                    )}
+                                                                                </div>
+
+                                                                                <div className="rounded-2xl border border-white/10 bg-black/20 p-3.5">
+                                                                                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">Flow Control</p>
+                                                                                    <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+                                                                                        <p>Default next: <span className="text-white">{question.nextQuestionSlug || "Sequential"}</span></p>
+                                                                                        <p>Branch rules: <span className="text-white">{logicRuleCount}</span></p>
+                                                                                        <p>Stored for AI: <span className="text-white">{question.saveResponse ? "Yes" : "No"}</span></p>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </CardContent>
+                                                            </Card>
+                                                        </Reorder.Item>
+                                                    );
+                                                })}
+                                            </Reorder.Group>
+                                        )}
+                                    </div>
                                 </div>
                             )}
-                        </div>
+                        </Card>
                     </div>
                 </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
-                        <DialogHeader className="p-6 pb-2">
-                            <DialogTitle className="text-2xl">{currentQuestion ? "Edit Question" : "Add New Question"}</DialogTitle>
+                    <DialogContent className="flex max-h-[min(90vh,860px)] w-[96vw] max-w-[960px] flex-col gap-0 overflow-hidden overscroll-contain border border-white/10 bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] p-0 shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+                        <DialogHeader className="border-b border-white/10 p-5 pb-4">
+                            <DialogTitle className="text-xl font-semibold">{currentQuestion ? "Edit Question" : "Add New Question"}</DialogTitle>
+                            <DialogDescription className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                                Build the interview step, decide whether the answer is saved into AI context, and configure where the flow should go next.
+                            </DialogDescription>
                         </DialogHeader>
-                        <div className="overflow-y-auto px-6 pb-6">
-                            <form onSubmit={handleSubmit} className="space-y-6 py-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5">
+                            <form onSubmit={handleSubmit} className="space-y-5 py-4">
+                                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="q-id">Question ID (Slug)</Label>
                                         <div className="relative">
@@ -565,7 +751,7 @@ const AdminServiceQuestions = () => {
                                         value={formData.question}
                                         onChange={(e) => setFormData({ ...formData, question: e.target.value })}
                                         placeholder="e.g. What is your estimated budget for this project?"
-                                        className="text-lg"
+                                        className="text-base"
                                         required
                                     />
                                 </div>
@@ -584,7 +770,7 @@ const AdminServiceQuestions = () => {
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col gap-2 pb-2">
+                                <div className="flex flex-col gap-2 pb-1">
                                     <div className="flex items-center space-x-2">
                                         <Checkbox
                                             id="q-required"
@@ -608,17 +794,17 @@ const AdminServiceQuestions = () => {
                                 </div>
 
                                 {(formData.type === "single_option" || formData.type === "multi_option") && (
-                                    <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+                                    <div className="space-y-4 rounded-2xl border border-white/10 bg-black/15 p-4">
                                         <div className="flex justify-between items-center">
-                                            <Label className="text-base font-semibold">Answer Options</Label>
-                                            <Button type="button" variant="secondary" size="sm" onClick={addOption}>
+                                            <Label className="text-sm font-medium">Answer Options</Label>
+                                            <Button type="button" variant="secondary" size="sm" className="rounded-full" onClick={addOption}>
                                                 <LucideIcons.Plus className="h-3 w-3 mr-1" /> Add Option
                                             </Button>
                                         </div>
-                                        <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                                        <div className="max-h-[220px] space-y-3 overflow-y-auto overscroll-contain pr-2 custom-scrollbar">
                                             {formData.options.map((opt, idx) => (
                                                 <div key={idx} className="flex gap-2 items-center">
-                                                    <div className="bg-background border rounded-full w-6 h-6 flex items-center justify-center text-xs text-muted-foreground shrink-0">
+                                                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-xs text-muted-foreground">
                                                         {String.fromCharCode(65 + idx)}
                                                     </div>
                                                     <Input
@@ -634,13 +820,14 @@ const AdminServiceQuestions = () => {
                                                         size="icon"
                                                         onClick={() => removeOption(idx)}
                                                         className="hover:bg-destructive/10 hover:text-destructive shrink-0"
+                                                        aria-label={`Remove option ${idx + 1}`}
                                                     >
                                                         <LucideIcons.Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             ))}
                                             {formData.options.length === 0 && (
-                                                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                                                <div className="rounded-xl border border-dashed border-white/10 py-7 text-center text-muted-foreground">
                                                     <LucideIcons.ListChecks className="h-8 w-8 mx-auto mb-2 opacity-50" />
                                                     <p className="text-sm">No options added yet.</p>
                                                     <Button type="button" variant="link" onClick={addOption} className="h-auto p-0 mt-1">
@@ -653,7 +840,7 @@ const AdminServiceQuestions = () => {
                                 )}
 
                                 {/* Logic Configuration Section */}
-                                <div className="space-y-4 border-t pt-4">
+                                <div className="space-y-4 border-t border-white/10 pt-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="q-next">Default Next Question (Optional)</Label>
                                         <Select
@@ -679,19 +866,19 @@ const AdminServiceQuestions = () => {
                                         <p className="text-[10px] text-muted-foreground">Override the default sequential flow. Advanced logic below takes precedence.</p>
                                     </div>
 
-                                    <div className="flex justify-between items-center pt-2">
-                                        <Label className="text-base font-semibold">Branching Logic (Advanced)</Label>
-                                        <Button type="button" variant="outline" size="sm" onClick={addLogicRule}>
+                                    <div className="flex items-center justify-between gap-3 pt-1">
+                                        <Label className="text-sm font-medium">Branching Logic (Advanced)</Label>
+                                        <Button type="button" variant="outline" size="sm" className="rounded-full border-white/10 bg-white/[0.03]" onClick={addLogicRule}>
                                             <LucideIcons.GitBranch className="h-3 w-3 mr-1" /> Add Rule
                                         </Button>
                                     </div>
 
                                     {formData.logic && formData.logic.length > 0 ? (
-                                        <div className="space-y-3 bg-slate-50 p-3 rounded-lg border">
+                                        <div className="space-y-3 rounded-2xl border border-white/10 bg-black/15 p-3">
                                             {formData.logic.map((rule, idx) => (
-                                                <div key={idx} className="flex flex-col gap-3 p-3 bg-white rounded-lg border shadow-sm">
+                                                <div key={idx} className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 p-3">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-medium text-slate-500 w-20">If Answer</span>
+                                                        <span className="w-20 text-sm font-medium text-muted-foreground">If Answer</span>
                                                         <Select value={rule.condition} onValueChange={(val) => updateLogicRule(idx, 'condition', val)}>
                                                             <SelectTrigger className="h-9 w-[130px]">
                                                                 <SelectValue />
@@ -725,7 +912,7 @@ const AdminServiceQuestions = () => {
                                                     </div>
 
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-medium text-slate-500 w-20">Jump to</span>
+                                                        <span className="w-20 text-sm font-medium text-muted-foreground">Jump to</span>
                                                         <Select value={rule.nextQuestionSlug} onValueChange={(val) => updateLogicRule(idx, 'nextQuestionSlug', val)}>
                                                             <SelectTrigger className="h-9 flex-1">
                                                                 <SelectValue placeholder="Select target question" />
@@ -740,7 +927,14 @@ const AdminServiceQuestions = () => {
                                                                     ))}
                                                             </SelectContent>
                                                         </Select>
-                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeLogicRule(idx)} className="h-9 w-9 text-destructive hover:bg-destructive/10">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => removeLogicRule(idx)}
+                                                            className="h-9 w-9 text-destructive hover:bg-destructive/10"
+                                                            aria-label={`Remove branching rule ${idx + 1}`}
+                                                        >
                                                             <LucideIcons.Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </div>
@@ -748,14 +942,14 @@ const AdminServiceQuestions = () => {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="bg-slate-50/50 border border-dashed rounded-lg p-4 text-center">
+                                        <div className="rounded-2xl border border-dashed border-white/10 bg-black/15 p-4 text-center">
                                             <p className="text-sm text-muted-foreground">No branching rules defined.</p>
                                             <p className="text-xs text-muted-foreground mt-1">Flow will proceed to the next question in order.</p>
                                         </div>
                                     )}
                                 </div>
 
-                                <DialogFooter className="pt-4 border-t">
+                                <DialogFooter className="border-t border-white/10 pt-4">
                                     <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                                     <Button type="submit">Save Question</Button>
                                 </DialogFooter>
