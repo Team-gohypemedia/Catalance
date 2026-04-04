@@ -407,15 +407,17 @@ const AdminServices = () => {
                 ) : (
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {serviceCards.map((service) => (
-                            <Card key={service.id} className="flex h-full flex-col">
-                                <CardHeader className="space-y-4">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`rounded-xl p-3 ${service.active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                            <Card key={service.id} className="flex h-full min-w-0 flex-col overflow-hidden">
+                                <CardHeader className="min-w-0 space-y-4">
+                                    <div className="flex min-w-0 items-start justify-between gap-3">
+                                        <div className="flex min-w-0 flex-1 items-start gap-4">
+                                            <div className={`shrink-0 rounded-xl p-3 ${service.active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                                                 <DynamicIcon name={service.icon} className="h-7 w-7" />
                                             </div>
-                                            <div className="min-w-0">
-                                                <CardTitle className="truncate text-xl">{service.name}</CardTitle>
+                                            <div className="min-w-0 flex-1">
+                                                <CardTitle className="line-clamp-2 break-words text-xl leading-tight">
+                                                    {service.name}
+                                                </CardTitle>
                                                 <div className="mt-2 flex flex-wrap gap-2">
                                                     <Badge variant={service.active ? "default" : "secondary"}>
                                                         {service.active ? "Active" : "Inactive"}
@@ -426,11 +428,11 @@ const AdminServices = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="icon" onClick={() => openDialog(service)}>
+                                        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => openDialog(service)}>
                                             <LucideIcons.Settings2 className="h-5 w-5" />
                                         </Button>
                                     </div>
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="line-clamp-3 text-sm text-muted-foreground">
                                         {service.description || "No description provided."}
                                     </p>
                                 </CardHeader>
