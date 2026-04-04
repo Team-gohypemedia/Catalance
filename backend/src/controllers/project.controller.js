@@ -181,6 +181,74 @@ const normalizeProjectProposalList = (value) => {
 const hasOwnField = (value, key) =>
   Boolean(value) && Object.prototype.hasOwnProperty.call(value, key);
 
+const normalizeServiceLookupValue = (value = "") =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[_/\\-]+/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const uniqueTextValues = (values = []) => {
+  const seen = new Set();
+  const result = [];
+
+  values.forEach((value) => {
+    const normalized = String(value || "").trim();
+    if (!normalized) return;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(normalized);
+  });
+
+  return result;
+};
+
+const resolveProjectServiceDefinition = async ({
+  input = {},
+  fallback = null,
+} = {}) => {
+  const lookupCandidates = uniqueTextValues([
+    input?.serviceKey,
+    input?.serviceType,
+    input?.service,
+    input?.serviceName,
+    input?.category,
+    fallback?.serviceKey,
+    fallback?.serviceType,
+  ]);
+  if (lookupCandidates.length === 0) return null;
+
+  const services = await prisma.service.findMany({
+    select: {
+      slug: true,
+      name: true,
+      internalProposalStructure: true,
+      proposalStructure: true,
+    },
+  });
+  if (!Array.isArray(services) || services.length === 0) return null;
+
+  for (const candidate of lookupCandidates) {
+    const normalizedCandidate = normalizeServiceLookupValue(candidate);
+    if (!normalizedCandidate) continue;
+
+    const match = services.find((service) => {
+      const normalizedSlug = normalizeServiceLookupValue(service?.slug);
+      const normalizedName = normalizeServiceLookupValue(service?.name);
+      return (
+        normalizedSlug === normalizedCandidate
+        || normalizedName === normalizedCandidate
+      );
+    });
+
+    if (match) return match;
+  }
+
+  return null;
+};
+
 const buildProjectProposalData = (input = {}, { fallback = null, preserveFallback = false } = {}) => {
   const mergedPayload = fallback ? { ...fallback, ...input } : input;
   const extractedFields = extractProjectProposalFields(mergedPayload);
@@ -632,7 +700,20 @@ export const createProject = asyncHandler(async (req, res) => {
   }
 
   const { title, description, budget, status, proposal } = req.body;
-  const structuredProposalData = buildProjectProposalData(req.body);
+  const serviceDefinition = await resolveProjectServiceDefinition({
+    input: req.body,
+  });
+  const resolvedInternalProposalStructure =
+    serviceDefinition?.internalProposalStructure
+    || serviceDefinition?.proposalStructure
+    || "";
+  const proposalPayload = resolvedInternalProposalStructure
+    ? {
+      ...req.body,
+      proposalStructure: resolvedInternalProposalStructure,
+    }
+    : req.body;
+  const structuredProposalData = buildProjectProposalData(proposalPayload);
   const freelancerMatchingData = await buildProjectFreelancerMatchingData(req.body, {
     proposalData: structuredProposalData,
   });
@@ -946,6 +1027,7 @@ export const updateProject = asyncHandler(async (req, res) => {
       hasOwnField(updates, "description")
       || hasOwnField(updates, "proposalContent")
       || hasOwnField(updates, "serviceKey")
+      || hasOwnField(updates, "proposalContext")
       || PROJECT_PROPOSAL_FIELD_KEYS.some((field) => hasOwnField(updates, field));
 
     const shouldRefreshFreelancerMatching =
@@ -953,10 +1035,27 @@ export const updateProject = asyncHandler(async (req, res) => {
       || hasOwnField(updates, "title")
       || hasOwnField(updates, "budget");
 
+    const serviceDefinition = shouldRefreshProposalFields
+      ? await resolveProjectServiceDefinition({
+        input: updates,
+        fallback: existing,
+      })
+      : null;
+
     if (shouldRefreshProposalFields) {
+      const resolvedInternalProposalStructure =
+        serviceDefinition?.internalProposalStructure
+        || serviceDefinition?.proposalStructure
+        || "";
+      const proposalPayload = resolvedInternalProposalStructure
+        ? {
+          ...updates,
+          proposalStructure: resolvedInternalProposalStructure,
+        }
+        : updates;
       Object.assign(
         sanitizedUpdates,
-        buildProjectProposalData(updates, {
+        buildProjectProposalData(proposalPayload, {
           fallback: existing,
           preserveFallback: true,
         }),

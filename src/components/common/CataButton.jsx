@@ -1,13 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import Bot from "lucide-react/dist/esm/icons/bot";
+import { useLocation } from "react-router-dom";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
-import X from "lucide-react/dist/esm/icons/x";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import { FamilyButton } from "@/components/ui/family-button";
-import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
 
 const STORAGE_KEY = "cata-button-position";
@@ -15,9 +12,7 @@ const DEFAULT_BOTTOM = 32; // 8 * 4 = 32px (bottom-8)
 const MIN_BOTTOM = 20;
 
 export const CataButton = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
 
   // Vertical position state (distance from bottom in pixels)
   const [bottomPosition, setBottomPosition] = useState(() => {
@@ -108,18 +103,6 @@ export const CataButton = () => {
     };
   }, [isDragging, handleDragMove, handleDragEnd]);
 
-  const handleMessagesClick = () => {
-    if (user?.role === "CLIENT") {
-      navigate("/client/messages");
-    } else if (user?.role === "FREELANCER") {
-      navigate("/freelancer/messages");
-    } else if (user?.role === "PROJECT_MANAGER") {
-      navigate("/project-manager/messages");
-    } else {
-      navigate("/login");
-    }
-  };
-
   // Only show on dashboard routes
   const dashboardPrefixes = [
     "/client",
@@ -138,7 +121,7 @@ export const CataButton = () => {
   return (
     <div
       className={cn(
-        "fixed right-8 z-50 group cursor-grab active:cursor-grabbing",
+        "fixed right-3 z-50 origin-bottom-right scale-90 group cursor-grab active:cursor-grabbing sm:right-8 sm:scale-100",
         isDragging && "cursor-grabbing",
       )}
       style={{ bottom: `${bottomPosition}px` }}

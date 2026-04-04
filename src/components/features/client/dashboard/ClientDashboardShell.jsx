@@ -1745,7 +1745,7 @@ const ProjectProgressChartCard = ({
   );
 };
 
-const ProjectProgressSection = ({
+export const ProjectProgressSection = ({
   progressProjects,
   onViewProject,
   onOpenQuickProject,

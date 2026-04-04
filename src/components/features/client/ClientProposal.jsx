@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Bell from "lucide-react/dist/esm/icons/bell";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
@@ -12,7 +11,7 @@ import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Send from "lucide-react/dist/esm/icons/send";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
@@ -35,13 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -1212,82 +1205,6 @@ const ProposalFreelancerAvatars = ({
   );
 };
 
-const NotificationPopoverButton = ({
-  notifications,
-  unreadCount,
-  onMarkAllAsRead,
-  onNotificationClick,
-}) => (
-  <Popover>
-    <PopoverTrigger asChild>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="relative flex size-9 items-center justify-center rounded-full p-0 text-[#94a3b8] transition-colors hover:bg-transparent hover:text-white"
-      >
-        <Bell className="size-4.5" />
-        {unreadCount > 0 ? (
-          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
-        ) : null}
-      </Button>
-    </PopoverTrigger>
-    <PopoverContent
-      align="end"
-      className="w-[22rem] border border-white/10 bg-[#171718] p-0 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
-    >
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <h4 className="text-sm font-semibold">Notifications</h4>
-        {unreadCount > 0 ? (
-          <button
-            type="button"
-            className="text-xs font-medium text-primary transition hover:text-primary/80"
-            onClick={onMarkAllAsRead}
-          >
-            Mark all as read
-          </button>
-        ) : null}
-      </div>
-      <ScrollArea className="h-72">
-        {notifications.length === 0 ? (
-          <div className="flex h-full min-h-52 flex-col items-center justify-center gap-2 px-6 text-center text-[#7e8392]">
-            <Bell className="h-8 w-8 opacity-40" />
-            <p className="text-sm">No notifications yet</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-white/6">
-            {notifications.slice(0, 20).map((notification) => (
-              <button
-                key={notification.id}
-                type="button"
-                onClick={() => onNotificationClick(notification)}
-                className={cn(
-                  "flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-white/5",
-                  !notification.read && "bg-primary/5",
-                )}
-              >
-                <div
-                  className={cn(
-                    "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                    !notification.read ? "bg-primary" : "bg-white/15",
-                  )}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-white">
-                    {notification.title}
-                  </p>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#8f96a3]">
-                    {notification.message}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
-    </PopoverContent>
-  </Popover>
-);
-
 const EmptyStateCard = ({ title, description }) => (
   <Card className={cn("shadow-none", proposalPanelClassName)}>
     <CardContent className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center">
@@ -1916,7 +1833,10 @@ const mapApiProposal = (proposal) => {
     updatedAt: normalizedProposal.updatedAt || normalizedProposal.createdAt || null,
     syncedProjectId:
       normalizedProposal.projectId || normalizedProposal.project?.id || null,
-    proposalContext: normalizedProposal.proposalContext || null,
+    proposalContext:
+      normalizedProposal.proposalContext ||
+      normalizedProposal.project?.proposalJson?.contextSnapshot ||
+      null,
     rejectionReason: normalizedProposal.rejectionReason || null,
     rejectionReasonKey: normalizedProposal.rejectionReasonKey || null,
   };
@@ -2077,8 +1997,7 @@ const deleteLocalDraftProposal = (proposalId, userId) => {
 
 const ClientProposalContent = () => {
   const { isAuthenticated, authFetch, user } = useAuth();
-  const navigate = useNavigate();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { unreadCount } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   const [proposals, setProposals] = useState([]);
   const [activeProposal, setActiveProposal] = useState(null);
@@ -2115,50 +2034,6 @@ const ClientProposalContent = () => {
   const deepLinkProjectId = searchParams.get("projectId");
   const deepLinkTab = (searchParams.get("tab") || "").toLowerCase();
   const deepLinkAction = (searchParams.get("action") || "").toLowerCase();
-
-  const handleNotificationClick = useCallback(
-    (notification) => {
-      markAsRead(notification.id);
-
-      if (notification.type === "chat" && notification.data) {
-        const service = notification.data.service || "";
-        const parts = service.split(":");
-        let projectId = notification.data.projectId;
-
-        if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
-          projectId = parts[1];
-        }
-
-        if (projectId) {
-          navigate(`/client/messages?projectId=${projectId}`);
-        } else {
-          navigate("/client/messages");
-        }
-        return;
-      }
-
-      if (notification.type === "proposal") {
-        const proposalStatus = String(notification.data?.status || "").toUpperCase();
-        if (proposalStatus === "ACCEPTED" && notification.data?.projectId) {
-          navigate("/client/project");
-          return;
-        }
-
-        navigate("/client/proposal");
-        return;
-      }
-
-      if (
-        (notification.type === "task_completed" ||
-          notification.type === "task_verified" ||
-          notification.type === "freelancer_change_resolved") &&
-        notification.data?.projectId
-      ) {
-        navigate(`/client/project/${notification.data.projectId}`);
-      }
-    },
-    [markAsRead, navigate],
-  );
 
   const fetchProposals = useCallback(async () => {
     const { proposals: localSavedProposals } = loadSavedProposalsFromStorage(user?.id);
@@ -2830,6 +2705,7 @@ const ClientProposalContent = () => {
                 title: nextTitle,
                 description: nextContent,
                 proposalContent: nextContent,
+                proposalContext: nextProposalContext,
                 ...(nextBudget ? { budget: nextBudgetValue } : {}),
                 serviceKey:
                   activeProposal.serviceKey || resolveProposalServiceLabel(activeProposal),
@@ -2934,6 +2810,7 @@ const ClientProposalContent = () => {
                 || proposal.content
                 || proposal.summary
                 || "",
+              proposalContext: proposal.proposalContext || null,
               budget: normalizedBudget,
               timeline: proposal.timeline || "1 month",
               serviceKey:
@@ -2967,6 +2844,7 @@ const ClientProposalContent = () => {
                 || proposal.content
                 || proposal.summary
                 || "",
+              proposalContext: proposal.proposalContext || null,
               budget: normalizedBudget,
               timeline: proposal.timeline || "1 month",
               serviceKey:
@@ -3440,14 +3318,6 @@ const ClientProposalContent = () => {
           }}
           activeWorkspaceKey="proposals"
           unreadCount={unreadCount}
-          notificationNode={
-            <NotificationPopoverButton
-              notifications={notifications}
-              unreadCount={unreadCount}
-              onMarkAllAsRead={markAllAsRead}
-              onNotificationClick={handleNotificationClick}
-            />
-          }
         />
 
         <main className="flex-1 pb-12">

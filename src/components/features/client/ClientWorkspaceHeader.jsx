@@ -2,8 +2,6 @@
 
 import React from "react";
 import Bell from "lucide-react/dist/esm/icons/bell";
-import Menu from "lucide-react/dist/esm/icons/menu";
-import X from "lucide-react/dist/esm/icons/x";
 import { Link, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -23,6 +21,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import logo from "@/assets/logos/logo.svg";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -171,7 +170,7 @@ const ProfileDropdown = ({ profile, displayName, profileInitial, currentDashboar
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
   { label: "Marketplace", key: "marketplace", to: "/marketplace" },
-  { label: "Service", key: "service", to: "/service" },
+  { label: "Service", mobileLabel: "Services", key: "service", to: "/service" },
   { label: "Contact", key: "contact", to: "/contact" },
 ];
 
@@ -242,32 +241,6 @@ const DefaultNotificationPopoverButton = ({
     };
   }, []);
 
-  React.useEffect(() => {
-    if (typeof document === "undefined") {
-      return undefined;
-    }
-
-    const { body, documentElement } = document;
-    const previousHtmlOverflow = documentElement.style.overflow;
-    const previousHtmlOverscrollBehavior = documentElement.style.overscrollBehavior;
-    const previousOverflow = body.style.overflow;
-    const previousOverscrollBehavior = body.style.overscrollBehavior;
-
-    if (open) {
-      documentElement.style.overflow = "hidden";
-      documentElement.style.overscrollBehavior = "none";
-      body.style.overflow = "hidden";
-      body.style.overscrollBehavior = "none";
-    }
-
-    return () => {
-      documentElement.style.overflow = previousHtmlOverflow;
-      documentElement.style.overscrollBehavior = previousHtmlOverscrollBehavior;
-      body.style.overflow = previousOverflow;
-      body.style.overscrollBehavior = previousOverscrollBehavior;
-    };
-  }, [open]);
-
   const handleNotificationClick = (notification) => {
     if (!notification?.id) return;
 
@@ -312,17 +285,7 @@ const DefaultNotificationPopoverButton = ({
   };
 
   return (
-    <>
-      {open ? (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[3px]"
-          onClick={() => setOpen(false)}
-          onWheel={(event) => event.preventDefault()}
-          onTouchMove={(event) => event.preventDefault()}
-          aria-hidden="true"
-        />
-      ) : null}
-      <Sheet open={open} onOpenChange={setOpen} modal={false}>
+      <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button
           type="button"
@@ -339,7 +302,7 @@ const DefaultNotificationPopoverButton = ({
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="z-50 w-full max-w-[22rem] border-l border-border bg-[#171718] p-0 text-white sm:max-w-[24rem]"
+        className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-white shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
       >
         <div className="flex h-full flex-col">
           <SheetHeader className="border-b border-border px-4 py-3 pr-12">
@@ -427,7 +390,6 @@ const DefaultNotificationPopoverButton = ({
         </div>
       </SheetContent>
       </Sheet>
-    </>
   );
 };
 
@@ -495,40 +457,9 @@ const HeaderNav = ({ activeKey, items, mobile = false, onSelect, variant = "mark
   </nav>
 );
 
-const MobileMenuLink = ({ active, item, onSelect, priority = "primary" }) => {
-  const className =
-    priority === "primary"
-      ? cn(
-          "block w-full py-1 text-left text-[1.75rem] font-semibold uppercase tracking-[0.12em] transition-colors",
-          active ? "text-[#ffc107]" : "text-muted-foreground hover:text-[#ffc107]",
-        )
-      : cn(
-          "block w-full py-1 text-left text-base font-semibold uppercase tracking-[0.14em] transition-colors",
-          active ? "text-[#ffc107]" : "text-muted-foreground hover:text-foreground",
-        );
-
-  if (typeof onSelect === "function") {
-    return (
-      <SheetClose asChild>
-        <button type="button" onClick={() => onSelect(item.key)} className={className}>
-          {item.label}
-        </button>
-      </SheetClose>
-    );
-  }
-
-  return (
-    <SheetClose asChild>
-      <Link to={item.to} className={className}>
-        {item.label}
-      </Link>
-    </SheetClose>
-  );
-};
-
 const ClientWorkspaceHeader = ({
   profile,
-  activeMarketingKey = "home",
+  activeMarketingKey = null,
   activeWorkspaceKey = "dashboard",
   onSiteNav,
   onWorkspaceNav,
@@ -544,9 +475,9 @@ const ClientWorkspaceHeader = ({
   unreadCount = 0,
   className,
 }) => {
+  const { logout } = useAuth();
   const displayName = String(profile?.name || "Client").trim() || "Client";
   const profileInitial = profile?.initial || getInitials(displayName);
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const primaryActionContent = (
     <>
@@ -564,117 +495,30 @@ const ClientWorkspaceHeader = ({
     );
   })();
 
-  const handleMobilePrimaryAction = () => {
-    setMobileMenuOpen(false);
-    onPrimaryAction?.();
-  };
-
   return (
     <header className={cn("sticky top-0 z-50 bg-background", className)}>
-      <div className="border-b border-border px-4 py-5 lg:hidden">
-        <div className="flex items-center justify-between gap-4">
-          <Link to="/">
-            <BrandMark />
-          </Link>
-
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <button
-                type="button"
-                aria-label="Open navigation menu"
-                className="inline-flex size-11 items-center justify-center rounded-full text-white transition-colors hover:bg-white/5"
-              >
-                <Menu className="size-6" />
-              </button>
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              showCloseButton={false}
-              className="w-full max-w-none border-l-0 bg-background p-0 text-white sm:max-w-none"
-            >
-              <div className="flex items-center justify-between px-6 py-6">
-                <SheetClose asChild>
-                  <Link to="/">
-                    <BrandMark />
-                  </Link>
-                </SheetClose>
-
-                <SheetClose asChild>
-                  <button
-                    type="button"
-                    aria-label="Close navigation menu"
-                    className="inline-flex size-11 items-center justify-center rounded-full text-white transition-colors hover:bg-white/5"
-                  >
-                    <X className="size-6" />
-                  </button>
-                </SheetClose>
-              </div>
-
-              <ScrollArea className="flex-1 px-6 pb-8">
-                <div className="flex min-h-full flex-col">
-                  <div className="space-y-7 pt-10">
-                    {workspaceNavItems.map((item) => (
-                      <MobileMenuLink
-                        key={item.key}
-                        item={item}
-                        active={item.key === activeWorkspaceKey}
-                        onSelect={onWorkspaceNav}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="mt-12 border-t border-border pt-8">
-                    <div className="space-y-5">
-                      {marketingNavItems.map((item) => (
-                        <MobileMenuLink
-                          key={item.key}
-                          item={item}
-                          active={item.key === activeMarketingKey}
-                          onSelect={onSiteNav}
-                          priority="secondary"
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-auto space-y-4 pb-2 pt-12">
-                    {typeof onPrimaryAction === "function" ? (
-                      <button
-                        type="button"
-                        onClick={handleMobilePrimaryAction}
-                        className="flex w-full items-center justify-center gap-2 rounded-[18px] bg-[#ffc107] px-4 py-3 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
-                      >
-                        {primaryActionContent}
-                      </button>
-                    ) : (
-                      <SheetClose asChild>
-                        <Link
-                          to={primaryActionTo}
-                          className="flex w-full items-center justify-center gap-2 rounded-[18px] bg-[#ffc107] px-4 py-3 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
-                        >
-                          {primaryActionContent}
-                        </Link>
-                      </SheetClose>
-                    )}
-
-                    <div className="flex items-center gap-3">
-                      <div className="min-w-0 flex-1">
-                        <ProfileDropdown
-                          profile={profile}
-                          displayName={displayName}
-                          profileInitial={profileInitial}
-                          currentDashboard="client"
-                        />
-                      </div>
-                      <div className="shrink-0">{notificationButton}</div>
-                    </div>
-                  </div>
-                </div>
-              </ScrollArea>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </div>
+      <WorkspaceMobileSidebar
+        currentDashboard="client"
+        displayName={displayName}
+        profile={profile}
+        profileInitial={profileInitial}
+        profileTo={_profileTo}
+        activeMarketingKey={activeMarketingKey}
+        activeWorkspaceKey={activeWorkspaceKey}
+        marketingNavItems={marketingNavItems}
+        workspaceNavItems={workspaceNavItems}
+        onSiteNav={onSiteNav}
+        onWorkspaceNav={onWorkspaceNav}
+        onLogout={() => {
+          logout();
+        }}
+        renderNotificationButton={() => notificationNode || (
+          <DefaultNotificationPopoverButton
+            unreadCount={unreadCount}
+            notificationTo={notificationTo}
+          />
+        )}
+      />
 
       <div className="hidden space-y-4 pb-3 pt-3 lg:block">
         <div className="mx-auto w-full rounded-[40px] border border-border bg-background p-3 sm:p-4 xl:w-[70%]">

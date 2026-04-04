@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import Clock from "lucide-react/dist/esm/icons/clock";
@@ -30,6 +31,9 @@ const ClientProjectDetailMainColumn = ({
   derivedPhases,
   derivedTasks,
   canMarkProjectCompleted,
+  showLegacyCompletionPrompt,
+  showProjectCompletionMilestone,
+  projectCompletionMilestonePhaseId,
   handleMarkProjectCompleted,
   isCompletingProject,
   isInitialPaymentDue,
@@ -47,8 +51,30 @@ const ClientProjectDetailMainColumn = ({
   verifyingTaskIds,
   promptVerifyTask,
   formatINR,
-}) => (
-  <div className="space-y-4">
+}) => {
+  const [expandedPhaseId, setExpandedPhaseId] = useState(() =>
+    currentActivePhase?.id != null ? String(currentActivePhase.id) : "",
+  );
+
+  useEffect(() => {
+    const activePhaseId =
+      currentActivePhase?.id != null ? String(currentActivePhase.id) : "";
+
+    setExpandedPhaseId((currentValue) => {
+      const hasCurrentPhase = tasksByPhase.some(
+        (phaseGroup) => String(phaseGroup.phaseId) === currentValue,
+      );
+
+      if (hasCurrentPhase) {
+        return currentValue;
+      }
+
+      return activePhaseId;
+    });
+  }, [currentActivePhase?.id, tasksByPhase]);
+
+  return (
+    <div className="space-y-4">
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {[
         { label: "Service Type", value: projectDetailSnapshot.service },
@@ -90,104 +116,66 @@ const ClientProjectDetailMainColumn = ({
       </CardContent>
     </Card>
 
-    <Card className={panelClassName}>
-      <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
-        <CardTitle className={eyebrowClassName}>Project Details</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
-        {projectDetailSnapshot.deliverablesItems.length > 0 ? (
-          <div className="rounded-[20px] border border-white/[0.06] bg-[#111111] px-4 py-4 sm:px-5">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {projectDetailSnapshot.deliverablesLabel ||
-                "Features/Deliverables Included"}
-            </p>
-            <ul className="mt-4 grid list-none gap-x-8 gap-y-3 pl-0 sm:grid-cols-2">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+      <Card className={panelClassName}>
+        <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
+          <CardTitle className={eyebrowClassName}>Features</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {projectDetailSnapshot.deliverablesItems.length > 0 ? (
+            <ul className="space-y-5 px-2 pb-2 sm:px-2">
               {projectDetailSnapshot.deliverablesItems.map((item) => (
                 <li
                   key={item}
-                  className="relative pl-[1.125rem] text-sm font-medium leading-relaxed text-white"
+                  className="flex items-start gap-3 text-sm leading-7 text-[#e4e4e7]"
                 >
-                  <span className="absolute left-0 top-[0.6rem] h-1 w-1 rounded-full bg-white/40" />
-                  {item}
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#ffd400]" />
+                  <span>{item}</span>
                 </li>
               ))}
             </ul>
-          </div>
-        ) : null}
+          ) : (
+            <p className="px-2 pb-1 text-sm leading-7 text-[#d4d4d8]">
+              Feature and deliverable details will appear once the brief is
+              structured.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          {projectDetailSnapshot.websiteDetails
-            .filter((item) => {
-              if (!projectDetailSnapshot.deliverablesItems.length) return true;
-              const normalizedLabel = item.label.toLowerCase();
-              return ![
-                "deliverables",
-                "features/deliverables included",
-                "pages & features",
-              ].includes(normalizedLabel);
-            })
-            .map((item) => {
-              const val = item.value || "Not specified";
-              const isList = val.includes(" - ") || val.match(/^[-•]\s/m);
-
-              return (
+      <Card className={panelClassName}>
+        <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
+          <CardTitle className={eyebrowClassName}>Website Type</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {projectDetailSnapshot.websiteDetails
+              .filter((item) => {
+                if (!projectDetailSnapshot.deliverablesItems.length) return true;
+                const normalizedLabel = item.label.toLowerCase();
+                return ![
+                  "deliverables",
+                  "features/deliverables included",
+                  "pages & features",
+                ].includes(normalizedLabel);
+              })
+              .map((item) => (
                 <div
                   key={item.label}
-                  className={`min-h-[70px] min-w-0 border-l border-white/[0.08] pl-4 flex flex-col justify-start py-1 ${
-                    isList ? "sm:col-span-2" : ""
-                  }`}
+                  className="min-h-[98px] rounded-[12px] bg-[#262626] px-4 py-4"
                 >
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  <p className="text-[0.66rem] font-medium uppercase tracking-[0.15em] text-white/45">
                     {item.label}
                   </p>
-                  {(() => {
-                    if (isList) {
-                      const listItems = val
-                        .split(/\s+-\s+|\r?\n/)
-                        .map((segment) => segment.replace(/^[-•]\s*/, "").trim())
-                        .filter(Boolean);
-
-                      if (listItems.length > 1) {
-                        return (
-                          <ul className="mt-4 grid list-none gap-x-8 gap-y-3 pl-0 sm:grid-cols-2">
-                            {listItems.map((listItem, index) => (
-                              <li
-                                key={`${item.label}-${index}`}
-                                className="relative pl-[1.125rem] text-sm font-medium leading-relaxed text-white"
-                              >
-                                <span className="absolute left-0 top-[0.6rem] h-1 w-1 rounded-full bg-white/40" />
-                                {listItem}
-                              </li>
-                            ))}
-                          </ul>
-                        );
-                      }
-                    }
-
-                    return (
-                      <p className="mt-1.5 break-words whitespace-pre-wrap text-sm font-medium leading-6 text-white">
-                        {val}
-                      </p>
-                    );
-                  })()}
+                  <p className="mt-5 break-words text-[1.05rem] font-semibold leading-6 text-white sm:text-[1.08rem]">
+                    {item.value || "Not specified"}
+                  </p>
                 </div>
-              );
-            })}
-        </div>
-        {projectDetailSnapshot.pageTags.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {projectDetailSnapshot.pageTags.map((page) => (
-              <span
-                key={page}
-                className="inline-flex items-center rounded-full border border-white/[0.08] bg-[#111111] px-3 py-1 text-[11px] font-medium text-[#cfd3da]"
-              >
-                {page}
-              </span>
-            ))}
+              ))}
           </div>
-        ) : null}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
 
     <Card className={panelClassName}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-5 px-6">
@@ -213,20 +201,30 @@ const ClientProjectDetailMainColumn = ({
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => {
             const phase = derivedPhases[index];
+            const phaseValue = phase?.id != null ? String(phase.id) : "";
             const isCompleted = phase?.status === "completed";
             const isActive = phase?.status === "in-progress";
             const isPending = !isCompleted && !isActive;
+            const isExpanded = phaseValue !== "" && expandedPhaseId === phaseValue;
 
             return (
-              <div
+              <button
+                type="button"
                 key={phase?.id || `phase-${index}`}
-                className={`flex flex-col justify-between rounded-[20px] p-5 transition-all ${
-                  isCompleted
-                    ? "bg-[#111111] shadow-[inset_2px_0_0_0_#10b981]"
-                    : isActive
-                      ? "bg-[#111111]"
-                      : "bg-[#111111]/40"
-                }`}
+                onClick={() => {
+                  if (!phaseValue) return;
+                  setExpandedPhaseId(phaseValue);
+                }}
+                aria-expanded={isExpanded}
+                className={cn(
+                  "relative flex w-full flex-col justify-between overflow-hidden rounded-[20px] border border-white/[0.08] bg-card p-5 text-left transition-all",
+                  phaseValue
+                    ? isExpanded
+                      ? "cursor-pointer border-white/[0.14] ring-1 ring-white/[0.10] hover:border-white/[0.14] hover:ring-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 focus-visible:ring-offset-0"
+                      : "cursor-pointer hover:border-white/[0.14] hover:ring-1 hover:ring-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 focus-visible:ring-offset-0"
+                    : "",
+                  isCompleted ? "shadow-[inset_2px_0_0_0_#10b981]" : "",
+                )}
               >
                 <div>
                   <div
@@ -263,7 +261,7 @@ const ClientProjectDetailMainColumn = ({
                       ? "In progress"
                       : "Pending"}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -279,7 +277,7 @@ const ClientProjectDetailMainColumn = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
-        {canMarkProjectCompleted ? (
+        {showLegacyCompletionPrompt ? (
           <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
               <div>
@@ -359,7 +357,8 @@ const ClientProjectDetailMainColumn = ({
         <Accordion
           type="single"
           collapsible
-          defaultValue={currentActivePhase?.id}
+          value={expandedPhaseId || undefined}
+          onValueChange={setExpandedPhaseId}
           className="w-full"
         >
           {tasksByPhase.map((phaseGroup) => {
@@ -368,11 +367,17 @@ const ClientProjectDetailMainColumn = ({
             const shouldShowPhaseMilestones =
               phaseGroup.phaseStatus === "completed" &&
               phaseInstallments.length > 0;
+            const shouldShowProjectCompletionPrompt =
+              showProjectCompletionMilestone &&
+              String(projectCompletionMilestonePhaseId) ===
+                String(phaseGroup.phaseId);
+            const shouldShowPhaseFooter =
+              shouldShowPhaseMilestones || shouldShowProjectCompletionPrompt;
 
             return (
               <div key={phaseGroup.phaseId}>
                 <AccordionItem
-                  value={phaseGroup.phaseId}
+                  value={String(phaseGroup.phaseId)}
                   className="border-border/60"
                 >
                   <AccordionTrigger className="py-3 hover:no-underline">
@@ -496,9 +501,10 @@ const ClientProjectDetailMainColumn = ({
                   </AccordionContent>
                 </AccordionItem>
 
-                {shouldShowPhaseMilestones ? (
+                {shouldShowPhaseFooter ? (
                   <div className="mt-4 space-y-3 border-b border-border/60 pb-4">
-                    {phaseInstallments.map((installment) => {
+                    {shouldShowPhaseMilestones
+                      ? phaseInstallments.map((installment) => {
                       const isDueNow = Boolean(installment?.isDue);
                       const isPaid = Boolean(installment?.isPaid);
                       const canPayInstallment =
@@ -516,7 +522,7 @@ const ClientProjectDetailMainColumn = ({
                           className={cn(
                             "rounded-xl border px-3.5 py-2 transition-colors",
                             isPaid
-                              ? "border-emerald-500/20 bg-accent/85"
+                              ? "border-emerald-500/30 bg-emerald-500/10"
                               : isDueNow
                                 ? "border-emerald-500/30 bg-accent/90"
                                 : "border-border/60 bg-accent/65",
@@ -597,9 +603,63 @@ const ClientProjectDetailMainColumn = ({
                               ) : null}
                             </div>
                           </div>
+                          </div>
+                        );
+                      })
+                      : null}
+
+                    {shouldShowProjectCompletionPrompt ? (
+                      <div className="rounded-xl border border-primary/30 bg-primary/10 px-3.5 py-2 transition-colors">
+                        <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                          <div className="flex items-start gap-2 sm:items-center">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/12 text-primary">
+                              <CheckCircle2 className="h-3 w-3" />
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                                  Project Completion Approval
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                <p className="text-sm font-semibold leading-tight text-foreground sm:text-[15px]">
+                                  Final payment received. Approval required to close the project.
+                                </p>
+                                <Badge
+                                  variant="secondary"
+                                  className="border-primary/40 bg-primary/10 px-2 py-0 text-[10px] font-medium leading-5 text-primary"
+                                >
+                                  Client Approval Required
+                                </Badge>
+                              </div>
+                              <p className="pt-0.5 text-xs leading-snug text-muted-foreground sm:text-[13px]">
+                                The project will stay active until you approve completion.
+                                Once confirmed, it will be marked completed and further
+                                changes will be locked.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-1 sm:items-end">
+                            <Button
+                              size="sm"
+                              className="h-7 w-fit px-2.5 text-[11px] sm:self-end"
+                              onClick={handleMarkProjectCompleted}
+                              disabled={!canMarkProjectCompleted || isCompletingProject}
+                            >
+                              {isCompletingProject ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="h-3 w-3" />
+                              )}
+                              {isCompletingProject
+                                ? "Saving"
+                                : "Mark Project Completed"}
+                            </Button>
+                          </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -608,7 +668,8 @@ const ClientProjectDetailMainColumn = ({
         </Accordion>
       </CardContent>
     </Card>
-  </div>
-);
+    </div>
+  );
+};
 
 export default ClientProjectDetailMainColumn;

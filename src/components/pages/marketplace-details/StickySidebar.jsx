@@ -11,6 +11,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { getSession } from "@/shared/lib/auth-storage";
+import { createMarketplaceChatRequest } from "@/shared/lib/marketplace-chat-requests";
 
 // ─── Price formatter ──────────────────────────────────────────────────────────
 const formatPrice = (serviceDetails = {}, titleLabel = "Service Plan") => {
@@ -41,6 +43,12 @@ const formatDelivery = (serviceDetails = {}) => {
             .replace(/\b\w/g, (char) => char.toUpperCase())
     );
 };
+
+const getDisplayName = (user = {}) =>
+    user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
+
+const getClientBusinessName = (user = {}) =>
+    user?.companyName || user?.businessName || user?.brandName || "";
 
 // ─── Unauthenticated in-modal prompt ─────────────────────────────────────────
 const LoginPrompt = ({ onLogin, onClose }) => (
@@ -111,6 +119,7 @@ const StickySidebar = ({
     const [sendError, setSendError] = useState(null);
     // The "showAuth=true" state triggers the login prompt within the modal
     const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+    const currentUser = getSession()?.user || null;
 
     const handleCTAClick = () => {
         if (!isAuthenticated) {
@@ -137,63 +146,30 @@ const StickySidebar = ({
         setSending(true);
         setSendError(null);
         try {
-            const { API_BASE_URL } = await import("@/shared/lib/api-client");
-            const token =
-                localStorage.getItem("freelancer-auth-token") ||
-                localStorage.getItem("auth-token");
+            if (!isAuthenticated || !currentUser?.id) {
+                setShowAuthPrompt(true);
+                return;
+            }
 
-            const payload = {
-                content: message,
-                service: `CHAT:${service.id}:${service.freelancerId}`,
-                projectTitle: `Inquiry: ${service.service}`,
-            };
-
-            const response = await fetch(`${API_BASE_URL}/chat/conversations`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                body: JSON.stringify({
-                    service: payload.service,
-                    projectTitle: payload.projectTitle
-                }),
+            createMarketplaceChatRequest({
+                clientId: currentUser.id,
+                clientName: getDisplayName(currentUser),
+                clientAvatar: currentUser.avatar || currentUser.profilePicture || "",
+                clientBusinessName: getClientBusinessName(currentUser),
+                freelancerId: freelancer?.id || service?.freelancerId || null,
+                freelancerName: freelancer?.fullName || freelancer?.name || "Freelancer",
+                freelancerAvatar: freelancer?.avatar || "",
+                serviceId: service?.id || null,
+                serviceTitle: service?.service || service?.serviceName || "Marketplace Request",
+                serviceType:
+                    serviceDetails?.category ||
+                    service?.category ||
+                    service?.service ||
+                    "Marketplace Request",
+                requestMessage: message,
+                previewText: message,
+                requestSource: "marketplace",
             });
-
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                if (response.status === 401) {
-                    setShowAuthPrompt(true);
-                    return;
-                }
-                throw new Error(err.message || "Failed to create conversation");
-            }
-
-            const convoRaw = await response.json();
-            const convoId = convoRaw?.data?.id;
-
-            if (!convoId) {
-                throw new Error("Invalid response from chat service");
-            }
-
-            // Step 2: Send the actual message
-            const msgResponse = await fetch(`${API_BASE_URL}/chat/conversations/${convoId}/messages`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                body: JSON.stringify({
-                    content: message,
-                    service: payload.service,
-                    projectTitle: payload.projectTitle
-                }),
-            });
-
-            if (!msgResponse.ok) {
-                const err = await msgResponse.json().catch(() => ({}));
-                throw new Error(err.message || "Failed to send message");
-            }
 
             setSendSuccess(true);
             setTimeout(() => {
@@ -318,9 +294,9 @@ const StickySidebar = ({
                             <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center">
                                 <CheckCheck className="w-7 h-7 text-emerald-500" />
                             </div>
-                            <p className="font-semibold text-foreground">Message Sent!</p>
+                            <p className="font-semibold text-foreground">Request Sent!</p>
                             <p className="text-sm text-muted-foreground">
-                                The freelancer will get back to you soon.
+                                The freelancer can review it from their requests tab.
                             </p>
                         </div>
 
@@ -328,7 +304,7 @@ const StickySidebar = ({
                         /* AUTH PROMPT state — no alert, clean in-modal UX */
                         <>
                             <DialogHeader className="pb-1">
-                                <DialogTitle className="text-lg">Contact Freelancer</DialogTitle>
+                                <DialogTitle className="text-lg">Send Request</DialogTitle>
                             </DialogHeader>
                             <LoginPrompt
                                 onLogin={() => {
@@ -344,7 +320,7 @@ const StickySidebar = ({
                         <>
                             <DialogHeader className="pb-2">
                                 <DialogTitle className="text-lg">
-                                    Message {freelancer?.fullName || "Freelancer"}
+                                    Request {freelancer?.fullName || "Freelancer"}
                                 </DialogTitle>
                                 <DialogDescription className="text-sm">
                                     Regarding &ldquo;{service.service}&rdquo;
@@ -378,7 +354,7 @@ const StickySidebar = ({
                                     onClick={handleSend}
                                     disabled={sending || !message.trim()}
                                     className="rounded-xl gap-2 min-w-[120px]"
-                                    aria-label="Send message to freelancer"
+                                    aria-label="Send request to freelancer"
                                 >
                                     {sending ? (
                                         <span className="inline-flex items-center gap-1.5">
@@ -386,7 +362,7 @@ const StickySidebar = ({
                                             Sending…
                                         </span>
                                     ) : (
-                                        <><Send className="w-4 h-4" /> Send</>
+                                        <><Send className="w-4 h-4" /> Send Request</>
                                     )}
                                 </Button>
                             </DialogFooter>

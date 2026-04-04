@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
@@ -27,6 +28,27 @@ import { cn } from "@/shared/lib/utils";
 import FreelancerInfoCard from "./FreelancerInfoCard";
 import ProjectDocumentAvatar from "./ProjectDocumentAvatar";
 
+const getInstallmentScheduleNote = (installment, installments) => {
+  const phaseGate = Number(installment?.dueAfterCompletedPhases || 0);
+  const sequence = Number(installment?.sequence || 0);
+  const totalInstallments = Array.isArray(installments) ? installments.length : 0;
+  const isFinalInstallment = totalInstallments > 0 && sequence === totalInstallments;
+
+  if (phaseGate <= 0 || sequence === 1) {
+    return "Charged once kickoff is approved and the project starts.";
+  }
+
+  if (isFinalInstallment || phaseGate >= 4) {
+    return "Charged once final handover is approved.";
+  }
+
+  if (phaseGate === 2) {
+    return "Charged once the mid-project review is approved.";
+  }
+
+  return `Charged once phase ${phaseGate} is approved.`;
+};
+
 const ClientProjectDetailSidebar = ({
   panelClassName,
   insetPanelClassName,
@@ -47,9 +69,6 @@ const ClientProjectDetailSidebar = ({
   formatAttachmentSize,
   getProjectDocumentPresentation,
   formatProjectDocumentTimestamp,
-  deliverableQueue,
-  reviewingDeliverableId,
-  handleDeliverableDecision,
   totalBudget,
   spentBudget,
   remainingBudget,
@@ -79,11 +98,31 @@ const ClientProjectDetailSidebar = ({
     />
 
     <Card id="client-project-chat" className={`${panelClassName} flex h-96 flex-col`}>
-      <CardHeader className="space-y-0.5 border-b border-border/60 pb-4">
-        <CardTitle className={eyebrowClassName}>Project Chat</CardTitle>
-        <CardDescription className={cn(subheadingClassName, "text-xs")}>
-          Ask questions and share documents
-        </CardDescription>
+      <CardHeader className="space-y-2 border-b border-border/60 pb-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-0.5">
+            <CardTitle className={eyebrowClassName}>Project Chat</CardTitle>
+            <CardDescription className={cn(subheadingClassName, "text-xs")}>
+              Ask questions and share documents
+            </CardDescription>
+          </div>
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="h-7 border-border/60 px-2.5 text-[11px]"
+          >
+            <Link
+              to={
+                project?.id
+                  ? `/client/messages?projectId=${encodeURIComponent(project.id)}`
+                  : "/client/messages"
+              }
+            >
+              Open in Messages
+            </Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="flex-1 space-y-3 overflow-y-auto py-4">
         {messages.map((message, index) => {
@@ -309,105 +348,6 @@ const ClientProjectDetailSidebar = ({
 
     <Card className={panelClassName}>
       <CardHeader className="pb-3">
-        <CardTitle className={eyebrowClassName}>Deliverables Approval</CardTitle>
-        <CardDescription className={subheadingClassName}>
-          Review freelancer submissions and approve or request revisions.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {deliverableQueue.length === 0 ? (
-          <p className="text-sm text-white">
-            No deliverables submitted yet. Uploaded project files will appear
-            here.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {deliverableQueue.map((deliverable) => (
-              <div
-                key={deliverable.id}
-                className="space-y-2 rounded-lg border border-border/60 bg-background/30 p-3"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      {deliverable.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {deliverable.size || "File"}
-                    </p>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      deliverable.status === "approved"
-                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
-                        : deliverable.status === "revision_requested"
-                          ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
-                          : "border-border/60"
-                    }
-                  >
-                    {deliverable.status === "approved"
-                      ? "Approved"
-                      : deliverable.status === "revision_requested"
-                        ? "Revision Requested"
-                        : "Pending Review"}
-                  </Badge>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {deliverable.url ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2 text-xs"
-                      asChild
-                    >
-                      <a
-                        href={deliverable.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Open
-                      </a>
-                    </Button>
-                  ) : null}
-                  <Button
-                    size="sm"
-                    className="h-8 text-xs"
-                    disabled={reviewingDeliverableId === deliverable.id}
-                    onClick={() =>
-                      handleDeliverableDecision(deliverable.id, "approved")
-                    }
-                  >
-                    {reviewingDeliverableId === deliverable.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : null}
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-xs"
-                    disabled={reviewingDeliverableId === deliverable.id}
-                    onClick={() =>
-                      handleDeliverableDecision(
-                        deliverable.id,
-                        "revision_requested",
-                      )
-                    }
-                  >
-                    Request Revisions
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-
-    <Card className={panelClassName}>
-      <CardHeader className="pb-3">
         <CardTitle className={cn(eyebrowClassName, "flex items-center gap-2")}>
           <IndianRupee className="h-4 w-4" />
           Budget Summary
@@ -437,42 +377,57 @@ const ClientProjectDetailSidebar = ({
 
     <Card className={panelClassName}>
       <CardHeader className="pb-3">
-        <CardTitle className={cn(eyebrowClassName, "flex items-center gap-2")}>
-          <CreditCard className="h-4 w-4" />
-          Billing Roadmap
-        </CardTitle>
+        <CardTitle className={eyebrowClassName}>Payment Schedule</CardTitle>
         <CardDescription className={subheadingClassName}>
-          20% to start, 40% after phase 2, and the final 40% after phase 4.
+          Track your project payments: 20% kickoff, 40% progress review, 40%
+          final handover.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 pt-0">
         {Array.isArray(paymentPlan?.installments) && paymentPlan.installments.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {paymentPlan.installments.map((installment) => (
               <div
                 key={installment.sequence}
-                className="flex items-center justify-between rounded-lg border border-border/60 bg-transparent px-3 py-3"
+                className={cn(
+                  insetPanelClassName,
+                  "space-y-3 p-4",
+                  installment.isDue && "border-primary/25 bg-primary/10",
+                  installment.isPaid && "border-emerald-500/20 bg-emerald-500/10",
+                )}
               >
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    {installment.label}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {installment.percentage}% of project budget
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-foreground">
-                    INR {Number(installment.amount || 0).toLocaleString()}
-                  </p>
-                  <Badge variant={installment.isDue ? "secondary" : "outline"}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      {installment.label}
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white">
+                      ₹{Number(installment.amount || 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <Badge
+                    className={cn(
+                      "border px-2.5 py-1 text-[10px] font-medium",
+                      installment.isPaid
+                        ? "border-emerald-500/10 bg-emerald-500/15 text-emerald-200"
+                        : installment.isDue
+                          ? "border-primary/10 bg-primary/15 text-primary"
+                          : "border-white/[0.08] bg-[#111111] text-muted-foreground",
+                    )}
+                  >
                     {installment.isPaid
                       ? "Paid"
                       : installment.isDue
-                        ? "Due now"
-                        : "Scheduled"}
+                        ? "Next Payment"
+                        : "Upcoming"}
                   </Badge>
                 </div>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {getInstallmentScheduleNote(
+                    installment,
+                    paymentPlan.installments,
+                  )}
+                </p>
               </div>
             ))}
           </div>

@@ -156,13 +156,13 @@ const PaymentSummaryCard = ({
   kind = "currency",
   tone = "default",
 }) => (
-  <div className="rounded-[20px] border border-white/[0.05] bg-accent px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+  <div className="rounded-[20px] border border-white/[0.05] bg-card px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:px-5 sm:py-5">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8f96a3]">{label}</p>
         <p
           className={cn(
-            "mt-2 truncate text-[2rem] font-semibold leading-none tracking-[-0.04em]",
+            "mt-2 truncate text-[1.7rem] font-semibold leading-none tracking-[-0.04em] sm:text-[2rem]",
             tone === "success"
               ? "text-[#34d399]"
               : tone === "warning"
@@ -179,7 +179,7 @@ const PaymentSummaryCard = ({
         </div>
       ) : null}
     </div>
-    {helper ? <p className="mt-4 text-xs text-[#7c828d]">{helper}</p> : null}
+    {helper ? <p className="mt-3 text-[11px] text-[#7c828d] sm:mt-4 sm:text-xs">{helper}</p> : null}
   </div>
 );
 
@@ -195,7 +195,7 @@ const BillingToolRow = ({
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className="group flex w-full items-center gap-3 rounded-[16px] border border-white/[0.05] bg-white/[0.01] px-4 py-3 text-left transition hover:border-white/[0.08] hover:bg-white/[0.02] disabled:cursor-not-allowed disabled:opacity-60"
+    className="group flex w-full items-start gap-3 rounded-[16px] border border-white/[0.05] bg-white/[0.01] px-4 py-3 text-left transition hover:border-white/[0.08] hover:bg-white/[0.02] disabled:cursor-not-allowed disabled:opacity-60 sm:items-center"
   >
     <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[#141414] text-[#e5e7eb]">
       {loading ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
@@ -223,15 +223,18 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-[#facc15] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
+          className="inline-flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[10px] bg-[#facc15] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
         >
-          <FolderOpen className="size-4 shrink-0" />
-          <span>Project Filter</span>
-          <span
-            className="max-w-[10rem] truncate rounded-full border border-border/60 bg-background px-2.5 py-0.5 text-[11px] font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-          >
-            {selectedProjectLabel}
-          </span>
+          <div className="flex min-w-0 items-center gap-2">
+            <FolderOpen className="size-4 shrink-0" />
+            <span className="hidden sm:inline">Project Filter</span>
+            <span className="sm:hidden">Filter</span>
+            <span
+              className="max-w-[8.5rem] truncate rounded-full border border-border/60 bg-background px-2.5 py-0.5 text-[11px] font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:max-w-[10rem]"
+            >
+              {selectedProjectLabel}
+            </span>
+          </div>
           <ChevronDown className="size-4 shrink-0 opacity-80" />
         </button>
       </DropdownMenuTrigger>
@@ -318,7 +321,7 @@ const TransactionRow = ({ transaction, visible, onOpenProject }) => {
     <button
       type="button"
       onClick={() => onOpenProject(transaction?.projectId)}
-      className="flex w-full items-center justify-between gap-3 border-b border-white/[0.05] py-3 text-left last:border-b-0"
+      className="flex w-full flex-col gap-2 border-b border-white/[0.05] py-3 text-left last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
     >
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-white">{transaction.installmentLabel}</p>
@@ -328,7 +331,7 @@ const TransactionRow = ({ transaction, visible, onOpenProject }) => {
           {transaction.freelancerName}
         </p>
       </div>
-      <div className="text-right">
+      <div className="flex w-full items-center justify-between gap-4 sm:block sm:w-auto sm:text-right">
         <p
           className={cn(
             "text-sm font-semibold",
@@ -354,9 +357,9 @@ const ActiveProjectPaymentsPanel = ({
 }) => {
   if (!project) {
     return (
-      <div className="rounded-[24px] border border-white/[0.05] bg-accent p-6">
-        <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">Active Project Payments</h2>
-        <div className="mt-5 rounded-[18px] border border-dashed border-white/[0.1] bg-[#2a2a2a] p-6 text-center">
+      <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
+        <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">Active Project Payments</h2>
+        <div className="mt-5 rounded-[18px] border border-dashed border-white/[0.1] bg-[#2a2a2a] p-5 text-center sm:p-6">
           <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-white/[0.04] text-[#facc15]">
             <CreditCard className="size-6" />
           </div>
@@ -369,14 +372,14 @@ const ActiveProjectPaymentsPanel = ({
             <button
               type="button"
               onClick={onOpenProposals}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-[#facc15] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
+              className="inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-[#facc15] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
             >
               Open Proposals
             </button>
             <button
               type="button"
               onClick={onOpenProjects}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-white/[0.08] px-5 text-sm font-semibold text-white transition hover:border-white/[0.14] hover:bg-white/[0.03]"
+              className="inline-flex h-10 w-full items-center justify-center rounded-[10px] border border-white/[0.08] px-5 text-sm font-semibold text-white transition hover:border-white/[0.14] hover:bg-white/[0.03] sm:w-auto"
             >
               View Projects
             </button>
@@ -400,13 +403,13 @@ const ActiveProjectPaymentsPanel = ({
     "Untitled Project";
 
   return (
-    <div className="rounded-[24px] border border-white/[0.05] bg-accent p-6">
-      <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">Active Project Payments</h2>
+    <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
+      <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">Active Project Payments</h2>
 
-      <div className="mt-5 rounded-[18px] border border-white/[0.05] bg-accent p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-        <div className="flex items-start justify-between gap-4">
+      <div className="mt-5 rounded-[18px] border border-white/[0.05] bg-card p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <h3 className="truncate text-[1.45rem] font-semibold tracking-[-0.02em] text-white">
+            <h3 className="truncate text-[1.2rem] font-semibold tracking-[-0.02em] text-white sm:text-[1.45rem]">
               {projectHeadline}
             </h3>
             <ProjectMetaStack
@@ -417,7 +420,7 @@ const ActiveProjectPaymentsPanel = ({
           </div>
           <p
             className={cn(
-              "shrink-0 text-[1.6rem] font-semibold",
+              "text-[1.35rem] font-semibold sm:shrink-0 sm:text-[1.6rem]",
               hasDueInstallment ? "text-[#34d399]" : "text-[#facc15]",
             )}
           >
@@ -425,16 +428,16 @@ const ActiveProjectPaymentsPanel = ({
           </p>
         </div>
 
-        <div className="mt-5 flex items-end justify-between gap-4">
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
-            <p className="text-[2rem] font-semibold leading-none tracking-[-0.03em] text-white">
+            <p className="text-[1.7rem] font-semibold leading-none tracking-[-0.03em] text-white sm:text-[2rem]">
               {maskCurrency(project.paidAmount, showAmounts)}
             </p>
             <p className="mt-2 text-xs text-[#8f96a3]">
               {maskCurrency(project.totalAmount, showAmounts)} total budget
             </p>
           </div>
-          <p className="text-[11px] uppercase tracking-[0.12em] text-[#8f96a3]">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-[#8f96a3] sm:text-right">
             {project.paidPercentage}% funded • {project.paidInstallmentCount}/{project.totalInstallments} milestones completed
           </p>
         </div>
@@ -450,7 +453,7 @@ const ActiveProjectPaymentsPanel = ({
           <button
             type="button"
             onClick={() => onOpenProject(project.id)}
-            className="inline-flex h-10 items-center justify-center rounded-[10px] bg-[#facc15] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
+            className="inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-[#facc15] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
           >
             View details
           </button>
@@ -467,7 +470,7 @@ const ActiveProjectPaymentsPanel = ({
             }
             disabled={!dueInstallment || isProcessingDuePayment}
             className={cn(
-              "inline-flex h-10 items-center justify-center gap-2 rounded-[10px] px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
+              "inline-flex h-10 w-full items-center justify-center gap-2 rounded-[10px] px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto",
               hasDueInstallment
                 ? "bg-[#34d399] text-[#052e16] hover:bg-[#4ade80]"
                 : "border border-white/[0.08] text-white hover:border-white/[0.14] hover:bg-white/[0.03]",
@@ -511,7 +514,7 @@ const ActiveProjectPaymentsPanel = ({
                 <div
                   key={`${project.id}-${installment?.sequence || index + 1}`}
                   className={cn(
-                    "flex items-center justify-between gap-3 rounded-[10px] border px-3 py-2",
+                    "flex flex-col gap-2 rounded-[10px] border px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3",
                     scheduleRowClass,
                   )}
                 >
@@ -521,7 +524,7 @@ const ActiveProjectPaymentsPanel = ({
                       {installment?.label || `Milestone ${installment?.sequence || index + 1}`}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
                     <p className="text-sm font-semibold text-white">
                       {maskCurrency(Number(installment?.amount) || 0, showAmounts)}
                     </p>
@@ -580,7 +583,12 @@ const BillingAmountCell = ({ label, value, visible, tone = "default", className 
   return (
     <div className={cn("min-w-0 px-1 py-1", className)}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7c828d]">{label}</p>
-      <p className={cn("mt-1.5 text-[1.45rem] font-semibold tracking-[-0.03em]", valueClass)}>
+      <p
+        className={cn(
+          "mt-1.5 text-[1.2rem] font-semibold tracking-[-0.03em] sm:text-[1.45rem]",
+          valueClass,
+        )}
+      >
         {maskCurrency(value, visible)}
       </p>
     </div>
@@ -607,7 +615,7 @@ const ProjectBillingList = ({
 
   if (!invoices.length) {
     return (
-      <div className="mt-5 rounded-[18px] border border-dashed border-white/[0.08] bg-accent px-5 py-8 text-sm text-[#8f96a3]">
+      <div className="mt-5 rounded-[18px] border border-dashed border-white/[0.08] bg-card px-4 py-7 text-sm text-[#8f96a3] sm:px-5 sm:py-8">
         Billing entries will appear here once your project invoices are created.
       </div>
     );
@@ -622,12 +630,12 @@ const ProjectBillingList = ({
         return (
           <article
             key={invoice.id}
-            className="rounded-[18px] border border-white/[0.05] bg-accent px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:px-5 sm:py-5"
+            className="rounded-[18px] border border-white/[0.05] bg-card px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:px-5 sm:py-5"
           >
             <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.95fr)_190px] xl:items-center">
-              <div className="min-w-0 rounded-[16px] px-4 py-4">
+              <div className="min-w-0 rounded-[16px] p-0 sm:px-4 sm:py-4">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h3 className="truncate text-[1.2rem] font-semibold tracking-[-0.03em] text-white">
+                  <h3 className="truncate text-[1.05rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.2rem]">
                     {invoice.projectLabel}
                   </h3>
                   <span
@@ -640,7 +648,7 @@ const ProjectBillingList = ({
                   </span>
                 </div>
 
-                <p className="mt-2 truncate text-[1.02rem] font-semibold text-[#dbe3f1]">
+                <p className="mt-2 truncate text-sm font-semibold text-[#dbe3f1] sm:text-[1.02rem]">
                   {invoice.installmentLabel}
                 </p>
 
@@ -677,11 +685,11 @@ const ProjectBillingList = ({
                 />
               </div>
 
-              <div className="flex shrink-0 flex-col gap-2 rounded-[16px] p-2 sm:flex-row xl:flex-col">
+              <div className="flex shrink-0 flex-col gap-2 rounded-[16px] p-0 sm:flex-row sm:p-2 xl:flex-col">
                 <button
                   type="button"
                   onClick={() => onDownloadInvoice(invoice)}
-                  className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-[12px] border border-white/[0.08] px-4 text-sm font-semibold text-white transition hover:bg-white/[0.05] hover:border-white/[0.12]"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/[0.08] px-4 text-sm font-semibold text-white transition hover:bg-white/[0.05] hover:border-white/[0.12] sm:w-auto xl:w-full"
                 >
                   <Download className="size-4" />
                   Download invoice
@@ -689,7 +697,7 @@ const ProjectBillingList = ({
                 <button
                   type="button"
                   onClick={() => onOpenProject(invoice.projectId)}
-                  className="inline-flex h-11 items-center justify-center rounded-[12px] bg-[#facc15] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-[#facc15] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto xl:w-full"
                 >
                   View details
                 </button>
@@ -706,7 +714,7 @@ const ProjectBillingList = ({
             onClick={() => {
               setShowAllInvoices((currentValue) => !currentValue);
             }}
-            className="inline-flex h-11 items-center justify-center rounded-[12px] border border-white/[0.06] bg-white/[0.03] px-5 text-sm font-semibold text-[#dbe3f1] transition hover:bg-white/[0.06] hover:text-white"
+            className="inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-white/[0.06] bg-white/[0.03] px-5 text-sm font-semibold text-[#dbe3f1] transition hover:bg-white/[0.06] hover:text-white sm:w-auto"
           >
             {showAllInvoices ? "Show fewer invoices" : `Show all ${invoices.length} invoices`}
           </button>
@@ -746,7 +754,10 @@ const MonthlyPaymentsChart = ({ points, visible, compact = false }) => {
     <div className={cn("relative", compact ? "mt-4" : "mt-7")}>
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className={cn(compact ? "h-[150px]" : "h-[220px]", "w-full overflow-visible")}
+        className={cn(
+          compact ? "h-[135px] sm:h-[150px]" : "h-[180px] sm:h-[220px]",
+          "w-full overflow-visible",
+        )}
       >
         {gridLevels.map((level) => {
           const y =
@@ -819,28 +830,28 @@ const PaymentsLoadingState = () => (
   <>
     <section className="mt-8 grid gap-4 md:grid-cols-3">
       {[1, 2, 3].map((item) => (
-        <Skeleton key={item} className="h-[120px] rounded-[20px] bg-white/[0.04]" />
+        <Skeleton key={item} className="h-[110px] rounded-[20px] bg-white/[0.04] sm:h-[120px]" />
       ))}
     </section>
 
     <section className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.78fr)]">
-      <Skeleton className="h-[440px] rounded-[24px] bg-white/[0.04]" />
-      <Skeleton className="h-[440px] rounded-[24px] bg-white/[0.04]" />
+      <Skeleton className="h-[380px] rounded-[24px] bg-white/[0.04] sm:h-[440px]" />
+      <Skeleton className="h-[320px] rounded-[24px] bg-white/[0.04] sm:h-[440px]" />
     </section>
 
     <section className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.78fr)]">
-      <Skeleton className="h-[430px] rounded-[24px] bg-white/[0.04]" />
-      <Skeleton className="h-[270px] rounded-[24px] bg-white/[0.04]" />
+      <Skeleton className="h-[360px] rounded-[24px] bg-white/[0.04] sm:h-[430px]" />
+      <Skeleton className="h-[240px] rounded-[24px] bg-white/[0.04] sm:h-[270px]" />
     </section>
   </>
 );
 
 const EmptyPaymentsState = () => (
-  <div className="mt-8 rounded-[24px] border border-dashed border-white/[0.08] bg-accent px-6 py-16 text-center">
+  <div className="mt-8 rounded-[24px] border border-dashed border-white/[0.08] bg-card px-5 py-12 text-center sm:px-6 sm:py-16">
     <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-white/[0.04] text-primary">
       <Wallet className="size-7" />
     </div>
-    <h2 className="mt-6 text-2xl font-semibold text-white">No billing activity yet</h2>
+    <h2 className="mt-6 text-[1.55rem] font-semibold text-white sm:text-2xl">No billing activity yet</h2>
     <p className="mx-auto mt-3 max-w-[32rem] text-sm text-[#8f96a3]">
       Once a project proposal is accepted and billing milestones are created, this dashboard will populate automatically.
     </p>
@@ -1143,10 +1154,6 @@ const ClientPaymentsContent = () => {
   const recentTransactions = useMemo(() => recentReceipts.slice(0, 4), [recentReceipts]);
 
   const latestPaidInvoice = recentReceipts[0] || null;
-  const paymentsHeaderSupportingText = selectedProject
-    ? `Showing billing activity for ${selectedProject.projectLabel}.`
-    : `${billingProjects.length} project${billingProjects.length === 1 ? "" : "s"} with billing activity available.`;
-
   const billingTools = useMemo(
     () => [
       {
@@ -1294,8 +1301,7 @@ const ClientPaymentsContent = () => {
         <main className="flex-1 pb-12">
           <ClientPageHeader
             title="Financial Overview"
-            description="Track project budgets, milestone payments, and escrow activity in one place."
-            supportingText={paymentsHeaderSupportingText}
+            mobileDateFirst
             actions={
               <ProjectFilterMenu
                 projects={billingProjects}
@@ -1351,10 +1357,10 @@ const ClientPaymentsContent = () => {
                     onOpenProposals={() => navigate("/client/proposal")}
                   />
 
-                  <div className="flex-1 rounded-[24px] border border-white/[0.05] bg-accent p-6">
+                  <div className="flex-1 rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
                     <div className="flex flex-col gap-3">
                       <div className="space-y-2">
-                        <h2 className="text-[2rem] font-semibold tracking-[-0.03em] text-white">Project billing</h2>
+                        <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[2rem]">Project billing</h2>
                         <p className="text-sm text-[#8f96a3]">
                           {selectedProject
                             ? `Showing every invoice, paid amount, and outstanding balance for ${selectedProject.projectLabel}.`
@@ -1374,8 +1380,8 @@ const ClientPaymentsContent = () => {
                 </div>
 
                 <div className="space-y-6">
-                  <div className="rounded-[24px] border border-white/[0.05] bg-accent p-5">
-                    <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">
+                  <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
+                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">
                       Recent Transactions
                     </h2>
 
@@ -1411,8 +1417,8 @@ const ClientPaymentsContent = () => {
                     </button>
                   </div>
 
-                  <div className="rounded-[24px] border border-white/[0.05] bg-accent p-5">
-                    <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">Billing tools</h2>
+                  <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
+                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">Billing tools</h2>
                     <p className="mt-1 text-sm text-[#8f96a3]">
                       Quick access to payment methods, invoices, and escrow visibility.
                     </p>
@@ -1444,8 +1450,8 @@ const ClientPaymentsContent = () => {
                     </button>
                   </div>
 
-                  <div className="rounded-[24px] border border-white/[0.05] bg-accent p-5">
-                    <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">Monthly spend</h2>
+                  <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
+                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">Monthly spend</h2>
                     <p className="mt-1 text-xs text-[#8f96a3]">
                       {selectedProject
                         ? `Showing spend only for ${selectedProject.title}.`

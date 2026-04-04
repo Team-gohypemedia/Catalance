@@ -28,6 +28,7 @@ const ClientPageHeader = ({
   actions = null,
   dateLabel,
   className,
+  mobileDateFirst = false,
 }) => {
   const resolvedDateLabel =
     typeof dateLabel === "string" && dateLabel.trim()
@@ -43,6 +44,12 @@ const ClientPageHeader = ({
         className,
       )}
     >
+      {mobileDateFirst && resolvedDateLabel ? (
+        <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#64748b] lg:hidden">
+          {resolvedDateLabel}
+        </p>
+      ) : null}
+
       <div className="max-w-[40rem]">
         <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold tracking-[-0.05em] text-white">
           {title}
@@ -60,7 +67,12 @@ const ClientPageHeader = ({
       {resolvedDateLabel || actions ? (
         <div className="flex flex-col gap-4 lg:items-end lg:text-right">
           {resolvedDateLabel ? (
-            <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#64748b]">
+            <p
+              className={cn(
+                "text-xs font-medium uppercase tracking-[0.24em] text-[#64748b]",
+                mobileDateFirst && "hidden lg:block",
+              )}
+            >
               {resolvedDateLabel}
             </p>
           ) : null}

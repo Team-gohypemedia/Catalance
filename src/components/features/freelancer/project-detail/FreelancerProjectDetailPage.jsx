@@ -18,15 +18,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
-import Send from "lucide-react/dist/esm/icons/send";
-import Upload from "lucide-react/dist/esm/icons/upload";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
 import Headset from "lucide-react/dist/esm/icons/headset";
@@ -38,8 +35,6 @@ import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import X from "lucide-react/dist/esm/icons/x";
-import Flag from "lucide-react/dist/esm/icons/flag";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
@@ -55,7 +50,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -281,16 +275,7 @@ const FreelancerProjectDetailContent = () => {
     totalPending: 0,
   });
   const fileInputRef = useRef(null);
-  const milestoneFileInputRef = useRef(null);
   const reportDialogContentRef = useRef(null);
-  const [milestoneDraft, setMilestoneDraft] = useState({
-    title: "",
-    githubUrl: "",
-    figmaUrl: "",
-    notes: "",
-  });
-  const [milestoneFile, setMilestoneFile] = useState(null);
-  const [isSubmittingMilestone, setIsSubmittingMilestone] = useState(false);
 
   // Dispute Report State
   const [reportOpen, setReportOpen] = useState(false);
@@ -1049,110 +1034,6 @@ const FreelancerProjectDetailContent = () => {
     }
   };
 
-  const handleMilestoneFileChange = (event) => {
-    const file = event.target.files?.[0] || null;
-    setMilestoneFile(file);
-  };
-
-  const normalizeUrl = (value = "") => {
-    const raw = String(value || "").trim();
-    if (!raw) return "";
-    if (/^https?:\/\//i.test(raw)) return raw;
-    return `https://${raw}`;
-  };
-
-  const submitMilestoneForReview = async () => {
-    if (!conversationId || !authFetch) {
-      toast.error("Chat is not ready yet. Please try again in a moment.");
-      return;
-    }
-
-    const title = milestoneDraft.title.trim();
-    const githubUrl = normalizeUrl(milestoneDraft.githubUrl);
-    const figmaUrl = normalizeUrl(milestoneDraft.figmaUrl);
-    const notes = milestoneDraft.notes.trim();
-
-    if (!title) {
-      toast.error("Add a milestone title before submitting.");
-      return;
-    }
-
-    if (!milestoneFile && !githubUrl && !figmaUrl) {
-      toast.error("Attach a file or add a GitHub/Figma link for review.");
-      return;
-    }
-
-    setIsSubmittingMilestone(true);
-    try {
-      let attachment = null;
-      if (milestoneFile) {
-        const formData = new FormData();
-        formData.append("file", milestoneFile);
-        const uploadResponse = await authFetch("/upload/chat", {
-          method: "POST",
-          body: formData,
-          skipLogoutOn401: true,
-        });
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload milestone file");
-        }
-        const uploadPayload = await uploadResponse.json();
-        const fileUrl = uploadPayload?.data?.url || uploadPayload?.url;
-        attachment = {
-          name: milestoneFile.name,
-          size: milestoneFile.size,
-          type: milestoneFile.type,
-          url: fileUrl,
-        };
-      }
-
-      const lines = [
-        "[Milestone Submission]",
-        `Title: ${title}`,
-      ];
-      if (githubUrl) lines.push(`GitHub: ${githubUrl}`);
-      if (figmaUrl) lines.push(`Figma: ${figmaUrl}`);
-      if (notes) lines.push(`Notes: ${notes}`);
-      const content = lines.join("\n");
-
-      const serviceKey =
-        project?.ownerId && user?.id
-          ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}`
-          : `project:${project?.id || projectId}`;
-
-      await authFetch(`/chat/conversations/${conversationId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content,
-          service: serviceKey,
-          senderRole: "FREELANCER",
-          senderName: user?.fullName || user?.name || user?.email || "Freelancer",
-          attachment,
-          skipAssistant: true,
-        }),
-      });
-
-      setMilestoneDraft({
-        title: "",
-        githubUrl: "",
-        figmaUrl: "",
-        notes: "",
-      });
-      setMilestoneFile(null);
-      if (milestoneFileInputRef.current) {
-        milestoneFileInputRef.current.value = "";
-      }
-      toast.success("Milestone submitted for PM review.");
-      fetchMessages();
-    } catch (error) {
-      console.error("Failed to submit milestone", error);
-      toast.error(error?.message || "Failed to submit milestone");
-    } finally {
-      setIsSubmittingMilestone(false);
-    }
-  };
-
   const docs = useMemo(() => {
     return messages
       .filter((m) => m.attachment)
@@ -1160,20 +1041,6 @@ const FreelancerProjectDetailContent = () => {
         ...m.attachment,
         createdAt: m.createdAt || m.timestamp,
       }));
-  }, [messages]);
-
-  const submittedMilestones = useMemo(() => {
-    return messages
-      .filter((message) => message.sender === "user")
-      .filter((message) => String(message.text || "").includes("[Milestone Submission]"))
-      .map((message, index) => ({
-        id: message.id || `milestone-${index}`,
-        text: message.text,
-        attachment: message.attachment,
-        createdAt: message.createdAt || message.timestamp,
-      }))
-      .slice(-4)
-      .reverse();
   }, [messages]);
 
   const activeSOP = useMemo(() => {
@@ -1474,6 +1341,10 @@ const FreelancerProjectDetailContent = () => {
       extractField("Design Style") ||
       extractField("Designs") ||
       extractField("Website Build Type");
+    const buildType =
+      extractField("Website Build Type") ||
+      extractField("Build Type") ||
+      "Custom Dev";
     const frontend =
       extractField("Frontend Framework") ||
       extractField("Frontend") ||
@@ -1536,18 +1407,10 @@ const FreelancerProjectDetailContent = () => {
             .replace(/\bFeatures\s*\/\s*Deliverables\b\s*:?\s*[\s\S]*$/i, "")
             .replace(/\bDeliverables\s*Included\b\s*:?\s*[\s\S]*$/i, "")
             .trim();
-
-    const primaryObjectivesRaw = extractNarrativeSection(
-      description,
-      "Primary Objectives",
-      ["Features/Deliverables Included", "Features/Deliverables", "Deliverables Included"],
-    );
     const featuresDeliverablesRaw =
       extractNarrativeSection(description, "Features/Deliverables Included") ||
       extractNarrativeSection(description, "Features/Deliverables") ||
       extractNarrativeSection(description, "Deliverables Included");
-
-    const primaryObjectives = toNarrativeBulletItems(primaryObjectivesRaw);
     const featuresDeliverables = removeWebsiteDetailDuplicates(
       toNarrativeBulletItems(featuresDeliverablesRaw),
     );
@@ -1559,15 +1422,13 @@ const FreelancerProjectDetailContent = () => {
       timeline,
       overview: sanitizedOverview,
       businessName,
-      primaryObjectives,
       featuresDeliverables,
       websiteDetails: [
         { label: "Website Type", value: websiteType || "Not specified" },
-        { label: "Pages", value: pageSummary },
+        { label: "Build Type", value: buildType || "Not specified" },
+        { label: "Page Count", value: pageSummary },
         { label: "Design Style", value: designStyle || "Not specified" },
-        { label: "Client", value: clientName },
-        { label: "Frontend", value: frontend || techStack || "Not specified" },
-        { label: "Backend", value: backend || "Not specified" },
+        { label: "Framework", value: frontend || techStack || "Not specified" },
         { label: "Database", value: database || "Not specified" },
       ],
       pageTags: allPages,
@@ -1772,6 +1633,7 @@ const FreelancerProjectDetailContent = () => {
               project={project}
               activePhase={activePhase}
               tasksByPhase={tasksByPhase}
+              billingRoadmap={billingRoadmap}
               getPhaseIcon={getPhaseIcon}
               handleTaskClick={handleTaskClick}
             />
@@ -1795,14 +1657,6 @@ const FreelancerProjectDetailContent = () => {
               spentBudget={spentBudget}
               remainingBudget={remainingBudget}
               billingRoadmap={billingRoadmap}
-              milestoneDraft={milestoneDraft}
-              setMilestoneDraft={setMilestoneDraft}
-              milestoneFileInputRef={milestoneFileInputRef}
-              milestoneFile={milestoneFile}
-              handleMilestoneFileChange={handleMilestoneFileChange}
-              isSubmittingMilestone={isSubmittingMilestone}
-              submitMilestoneForReview={submitMilestoneForReview}
-              submittedMilestones={submittedMilestones}
             />
           </div>
         </div>
