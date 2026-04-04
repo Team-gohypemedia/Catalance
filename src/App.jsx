@@ -8,7 +8,7 @@ import { useAuth } from "@/shared/context/AuthContext";
 import AdminRoute from "@/components/features/auth/AdminRoute";
 import CataButton from "@/components/common/CataButton";
 
-const Home = lazy(() => import("@/components/pages/Home"));
+const Home = lazy(() => import("@/pages/Home.jsx"));
 const Marketplace = lazy(() => import("@/components/pages/Marketplace"));
 const About = lazy(() => import("@/components/sections/home/About.jsx"));
 const Contact = lazy(() => import("@/components/sections/home/Contact.jsx"));

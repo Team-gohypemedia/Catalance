@@ -3,10 +3,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-html {
-  scrollbar-gutter: stable both-edges;
-}
-
 html[data-scroll-locked],
 body[data-scroll-locked] {
   margin-right: 0 !important;
@@ -186,12 +182,11 @@ body[data-scroll-locked] {
     @apply border-border outline-ring/50;
   }
   html {
-    scrollbar-gutter: stable both-edges;
+    scrollbar-gutter: stable;
     overflow-x: hidden;
   }
   body {
     @apply bg-background text-foreground;
-    scrollbar-gutter: stable both-edges;
     overflow-x: hidden;
   }
   #root {

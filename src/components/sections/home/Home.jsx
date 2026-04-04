@@ -1,11 +1,1 @@
-import CatalanceHero from "@/components/sections/home/CatalanceHero";
-
-const Home = () => {
-  return (
-    <main>
-      <CatalanceHero />
-    </main>
-  );
-};
-
-export default Home;
+export { default } from "@/pages/Home.jsx";
