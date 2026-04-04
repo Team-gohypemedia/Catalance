@@ -4,6 +4,7 @@ const projectStatusEnum = z.enum(["DRAFT", "OPEN", "IN_PROGRESS", "AWAITING_PAYM
 const proposalStatusEnum = z.enum(["PENDING", "ACCEPTED", "REJECTED"]);
 const optionalTextField = z.string().trim().max(50000).optional();
 const optionalTextListField = z.array(z.string().trim().min(1).max(500)).optional();
+const optionalJsonField = z.record(z.any()).optional();
 
 const proposalPayload = z
   .object({
@@ -65,6 +66,7 @@ export const createProjectSchema = z.object({
     appType: optionalTextField,
     appFeatures: optionalTextListField,
     platformRequirements: optionalTextListField,
+    proposalContext: optionalJsonField,
     status: projectStatusEnum.optional(),
     proposal: proposalPayload.optional()
   })

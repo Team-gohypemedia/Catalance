@@ -94,6 +94,408 @@ const normalizeExplicitList = (value) => {
   return [];
 };
 
+const normalizeStructuredFieldKey = (value = "") =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .trim();
+
+const formatTemplateLabelFromKey = (value = "") =>
+  String(value || "")
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const normalizeTemplateFieldType = (value = "") =>
+  ["list", "array", "bullets", "bullet_list"].includes(
+    String(value || "").trim().toLowerCase(),
+  )
+    ? "list"
+    : "text";
+
+const parseProposalStructureJson = (value = "") => {
+  const source = String(value || "").trim();
+  if (!source || !/^[\[{]/.test(source)) return null;
+
+  try {
+    const parsed = JSON.parse(source);
+    if (Array.isArray(parsed)) {
+      return { fields: parsed };
+    }
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.fields)) {
+      return parsed;
+    }
+  } catch {
+    // Fall back to the legacy text structure parser below.
+  }
+
+  return null;
+};
+
+const dedupeProposalTemplateFields = (definitions = []) => {
+  const seen = new Set();
+  const rows = [];
+
+  for (const definition of definitions) {
+    const label = cleanProposalText(
+      definition?.label
+      || definition?.name
+      || definition?.title
+      || formatTemplateLabelFromKey(definition?.key || ""),
+    );
+    const fieldKey = normalizeStructuredFieldKey(definition?.key || label);
+    if (!label || !fieldKey || seen.has(fieldKey)) continue;
+    seen.add(fieldKey);
+    rows.push({
+      key: fieldKey,
+      label,
+      type: normalizeTemplateFieldType(
+        definition?.type || (definition?.isList ? "list" : "text"),
+      ),
+    });
+  }
+
+  return rows;
+};
+
+const parseProposalStructureDefinitions = (proposalStructure = "") => {
+  const jsonConfig = parseProposalStructureJson(proposalStructure);
+  if (Array.isArray(jsonConfig?.fields) && jsonConfig.fields.length > 0) {
+    return dedupeProposalTemplateFields(jsonConfig.fields);
+  }
+
+  const parsedDefinitions = [];
+  let activeIndex = -1;
+
+  for (const rawLine of stripProposalCodeFences(proposalStructure).split("\n")) {
+    let line = rawLine.trim();
+    if (!line) continue;
+
+    line = line.replace(/^[#\s]+/, "").trim();
+
+    const keyValueMatch = line.match(
+      /^\*{0,2}(?:[-*]\s+)?(?:\d+\.\s+)?([^:*]+?)\*{0,2}:\s*(.*)$/,
+    );
+
+    if (keyValueMatch) {
+      const label = cleanProposalText(keyValueMatch[1]);
+      if (!label) {
+        activeIndex = -1;
+        continue;
+      }
+
+      parsedDefinitions.push({
+        key: normalizeStructuredFieldKey(label),
+        label,
+        type: "text",
+      });
+      activeIndex = parsedDefinitions.length - 1;
+      continue;
+    }
+
+    if (activeIndex >= 0 && /^[-*]\s+/.test(line)) {
+      parsedDefinitions[activeIndex].type = "list";
+    }
+  }
+
+  return dedupeProposalTemplateFields(parsedDefinitions);
+};
+
+const PROPOSAL_FIELD_DEFINITION_BY_LABEL = PROPOSAL_FIELD_DEFINITIONS.reduce(
+  (acc, definition) => {
+    definition.labels.forEach((label) => {
+      acc.set(normalizeFieldLabel(label), definition);
+    });
+    return acc;
+  },
+  new Map(),
+);
+
+const normalizeTemplateFieldValue = (value, type = "text") => {
+  if (type === "list") {
+    const items = normalizeExplicitList(value);
+    return {
+      value: cleanProposalText(Array.isArray(value) ? value.join(", ") : value || ""),
+      items,
+    };
+  }
+
+  const textValue = Array.isArray(value)
+    ? cleanProposalText(value.join(", "))
+    : cleanProposalText(value);
+  return {
+    value: textValue,
+    items: [],
+  };
+};
+
+const buildSectionRecord = ({
+  label = "",
+  type = "text",
+  value = "",
+  items = [],
+} = {}) => ({
+  key: normalizeFieldLabel(label),
+  fieldKey: normalizeStructuredFieldKey(label),
+  label: cleanProposalText(label),
+  type: normalizeTemplateFieldType(type),
+  value: cleanProposalText(value),
+  items: uniqueItems(items),
+});
+
+const findTemplateSectionMatch = (sectionMap = new Map(), definition = {}) => {
+  const directKey = normalizeFieldLabel(definition.label);
+  if (sectionMap.has(directKey)) {
+    return sectionMap.get(directKey);
+  }
+
+  const standardDefinition = PROPOSAL_FIELD_DEFINITION_BY_LABEL.get(directKey);
+  if (!standardDefinition) return null;
+
+  for (const alias of standardDefinition.labels) {
+    const aliasMatch = sectionMap.get(normalizeFieldLabel(alias));
+    if (aliasMatch) return aliasMatch;
+  }
+
+  return null;
+};
+
+const PROPOSAL_CONTEXT_FIELD_ALIASES = {
+  clientName: ["clientName"],
+  businessName: ["businessName", "companyName", "brandName"],
+  serviceType: ["serviceType", "serviceName", "service"],
+  projectOverview: ["projectOverview", "summary", "description"],
+  budgetSummary: ["budgetSummary", "budget"],
+  timeline: ["timeline", "launchTimeline"],
+  targetAudience: ["targetAudience"],
+  targetLocations: ["targetLocations"],
+  seoGoals: ["seoGoals"],
+  primaryObjectives: ["primaryObjectives"],
+  featuresDeliverables: ["featuresDeliverables", "deliverables"],
+  appType: ["appType"],
+  appFeatures: ["appFeatures"],
+  platformRequirements: ["platformRequirements"],
+};
+
+const isNonArrayObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value);
+
+const getProposalContext = (payload = {}) => {
+  if (isNonArrayObject(payload?.proposalContext)) {
+    return payload.proposalContext;
+  }
+  if (isNonArrayObject(payload?.proposalJson?.contextSnapshot)) {
+    return payload.proposalJson.contextSnapshot;
+  }
+  return {};
+};
+
+const labelsLooselyMatch = (left = "", right = "") => {
+  const normalizedLeft = normalizeFieldLabel(left);
+  const normalizedRight = normalizeFieldLabel(right);
+  if (!normalizedLeft || !normalizedRight) return false;
+  if (normalizedLeft === normalizedRight) return true;
+  if (normalizedLeft.length >= 5 && normalizedRight.includes(normalizedLeft)) return true;
+  if (normalizedRight.length >= 5 && normalizedLeft.includes(normalizedRight)) return true;
+  return false;
+};
+
+const findProposalContextValue = ({
+  proposalContext = {},
+  definition = null,
+  standardDefinition = null,
+} = {}) => {
+  if (!definition) return null;
+
+  const structuredKey = normalizeStructuredFieldKey(
+    definition?.key || standardDefinition?.key || definition?.label || "",
+  );
+  const definitionLabel = definition?.label || "";
+  const directAliasKeys = uniqueItems([
+    ...(standardDefinition
+      ? [standardDefinition.key, ...(PROPOSAL_CONTEXT_FIELD_ALIASES[standardDefinition.key] || [])]
+      : []),
+    structuredKey,
+  ]);
+
+  for (const aliasKey of directAliasKeys) {
+    if (hasOwnField(proposalContext, aliasKey)) {
+      return proposalContext[aliasKey];
+    }
+  }
+
+  for (const [key, value] of Object.entries(proposalContext)) {
+    if (labelsLooselyMatch(key, definitionLabel)) {
+      return value;
+    }
+    if (normalizeStructuredFieldKey(key) === structuredKey) {
+      return value;
+    }
+  }
+
+  const questionnaireAnswers = isNonArrayObject(proposalContext?.questionnaireAnswers)
+    ? proposalContext.questionnaireAnswers
+    : {};
+  for (const [question, answer] of Object.entries(questionnaireAnswers)) {
+    if (labelsLooselyMatch(question, definitionLabel)) {
+      return answer;
+    }
+  }
+
+  const questionnaireAnswersBySlug = isNonArrayObject(proposalContext?.questionnaireAnswersBySlug)
+    ? proposalContext.questionnaireAnswersBySlug
+    : {};
+  for (const [questionSlug, answer] of Object.entries(questionnaireAnswersBySlug)) {
+    if (normalizeStructuredFieldKey(questionSlug) === structuredKey) {
+      return answer;
+    }
+    if (labelsLooselyMatch(questionSlug, definitionLabel)) {
+      return answer;
+    }
+  }
+
+  return null;
+};
+
+const sanitizeProposalContextSnapshot = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") {
+    const normalized = String(value || "").trim();
+    return normalized || null;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    const sanitized = value
+      .map((entry) => sanitizeProposalContextSnapshot(entry))
+      .filter((entry) =>
+        entry !== null
+        && entry !== undefined
+        && (!(Array.isArray(entry)) || entry.length > 0)
+        && (!isNonArrayObject(entry) || Object.keys(entry).length > 0),
+      );
+    return sanitized.length > 0 ? sanitized : null;
+  }
+  if (isNonArrayObject(value)) {
+    const sanitized = Object.entries(value).reduce((acc, [key, entry]) => {
+      const nextValue = sanitizeProposalContextSnapshot(entry);
+      if (
+        nextValue === null
+        || nextValue === undefined
+        || (Array.isArray(nextValue) && nextValue.length === 0)
+        || (isNonArrayObject(nextValue) && Object.keys(nextValue).length === 0)
+      ) {
+        return acc;
+      }
+      acc[key] = nextValue;
+      return acc;
+    }, {});
+    return Object.keys(sanitized).length > 0 ? sanitized : null;
+  }
+
+  return null;
+};
+
+const buildTemplateSections = ({
+  sections = [],
+  definitions = [],
+  extractedFields = {},
+  payload = {},
+} = {}) => {
+  const proposalContext = getProposalContext(payload);
+  const sectionMap = new Map(
+    (Array.isArray(sections) ? sections : []).map((section) => [
+      normalizeFieldLabel(section?.label || section?.key || ""),
+      section,
+    ]),
+  );
+  const usedKeys = new Set();
+
+  const orderedSections = definitions.map((definition) => {
+    const matchedSection = findTemplateSectionMatch(sectionMap, definition);
+    if (matchedSection) {
+      usedKeys.add(normalizeFieldLabel(matchedSection.label || matchedSection.key || ""));
+    }
+
+    const standardDefinition = PROPOSAL_FIELD_DEFINITION_BY_LABEL.get(
+      normalizeFieldLabel(definition.label),
+    );
+    const fallbackSource =
+      standardDefinition && hasOwnField(extractedFields, standardDefinition.key)
+        ? extractedFields[standardDefinition.key]
+        : standardDefinition && hasOwnField(payload, standardDefinition.key)
+          ? payload[standardDefinition.key]
+          : findProposalContextValue({
+            proposalContext,
+            definition,
+            standardDefinition,
+          });
+    const normalizedFallback = normalizeTemplateFieldValue(
+      fallbackSource,
+      definition.type,
+    );
+    const normalizedMatched = normalizeTemplateFieldValue(
+      definition.type === "list"
+        ? matchedSection?.items?.length
+          ? matchedSection.items
+          : matchedSection?.value || ""
+        : matchedSection?.value
+          || (matchedSection?.items?.length ? matchedSection.items.join(", ") : ""),
+      definition.type,
+    );
+
+    return buildSectionRecord({
+      label: definition.label,
+      type: definition.type,
+      value:
+        normalizedMatched.value
+        || normalizedFallback.value
+        || "",
+      items:
+        normalizedMatched.items.length > 0
+          ? normalizedMatched.items
+          : normalizedFallback.items,
+    });
+  });
+
+  const unmatchedSections = (Array.isArray(sections) ? sections : [])
+    .filter((section) => {
+      const normalizedKey = normalizeFieldLabel(section?.label || section?.key || "");
+      return normalizedKey && !usedKeys.has(normalizedKey);
+    })
+    .map((section) =>
+      buildSectionRecord({
+        label: section.label || section.key,
+        type: section?.items?.length ? "list" : "text",
+        value: section.value,
+        items: section.items,
+      }),
+    );
+
+  return [...orderedSections, ...unmatchedSections];
+};
+
+const buildStructuredFieldsMap = (sections = []) =>
+  (Array.isArray(sections) ? sections : []).reduce((acc, section) => {
+    const fieldKey = normalizeStructuredFieldKey(
+      section?.fieldKey || section?.label || section?.key || "",
+    );
+    if (!fieldKey || acc[fieldKey]) return acc;
+
+    acc[fieldKey] = {
+      label: cleanProposalText(section?.label || ""),
+      type: normalizeTemplateFieldType(section?.type || (section?.items?.length ? "list" : "text")),
+      value: cleanProposalText(section?.value || ""),
+      items: uniqueItems(Array.isArray(section?.items) ? section.items : []),
+    };
+    return acc;
+  }, {});
+
 export const extractProposalSectionMap = (markdown = "") => {
   const sections = new Map();
   let activeKey = null;
@@ -179,6 +581,7 @@ export const extractProjectProposalFields = (payload = {}) => {
   const proposalContent = stripProposalCodeFences(rawProposalSource);
   const fallbackDescription = cleanProposalText(payload?.description || "");
   const sectionMap = extractProposalSectionMap(proposalContent || payload?.description || "");
+  const proposalContext = getProposalContext(payload);
   const result = {};
 
   PROPOSAL_FIELD_DEFINITIONS.forEach((definition) => {
@@ -186,6 +589,19 @@ export const extractProjectProposalFields = (payload = {}) => {
 
     if (definition.type === "list") {
       let items = normalizeExplicitList(explicitValue);
+      if (items.length === 0) {
+        items = normalizeExplicitList(
+          findProposalContextValue({
+            proposalContext,
+            definition: {
+              key: definition.key,
+              label: definition.labels[0] || definition.key,
+              type: definition.type,
+            },
+            standardDefinition: definition,
+          }),
+        );
+      }
       if (items.length === 0) {
         const section = getSectionByLabels(sectionMap, definition.labels);
         if (section) {
@@ -207,6 +623,20 @@ export const extractProjectProposalFields = (payload = {}) => {
 
     if (!value && definition.key === "serviceType") {
       value = cleanProposalText(payload?.service || payload?.serviceName || "");
+    }
+
+    if (!value) {
+      value = cleanProposalText(
+        findProposalContextValue({
+          proposalContext,
+          definition: {
+            key: definition.key,
+            label: definition.labels[0] || definition.key,
+            type: definition.type,
+          },
+          standardDefinition: definition,
+        }),
+      );
     }
 
     if (!value) {
@@ -239,6 +669,7 @@ export const extractProjectProposalFields = (payload = {}) => {
 
 export const buildProjectProposalJson = (payload = {}) => {
   const extractedFields = extractProjectProposalFields(payload);
+  const contextSnapshot = sanitizeProposalContextSnapshot(getProposalContext(payload));
   const rawProposalSource =
     payload?.proposalContent
     || payload?.content
@@ -250,7 +681,7 @@ export const buildProjectProposalJson = (payload = {}) => {
   const sectionMap = extractProposalSectionMap(
     proposalContent || payload?.description || "",
   );
-  const sections = Array.from(sectionMap.values())
+  const parsedSections = Array.from(sectionMap.values())
     .map((section) => {
       const label = cleanProposalText(section?.label || "");
       const value = cleanProposalText(section?.value || "");
@@ -262,12 +693,25 @@ export const buildProjectProposalJson = (payload = {}) => {
 
       return {
         key: normalizeFieldLabel(label),
+        fieldKey: normalizeStructuredFieldKey(label),
         label,
+        type: items.length > 0 ? "list" : "text",
         value,
         items,
       };
     })
     .filter(Boolean);
+  const templateDefinitions = parseProposalStructureDefinitions(
+    payload?.proposalStructure || "",
+  );
+  const sections = templateDefinitions.length > 0
+    ? buildTemplateSections({
+      sections: parsedSections,
+      definitions: templateDefinitions,
+      extractedFields,
+      payload,
+    })
+    : parsedSections;
 
   const fields = PROPOSAL_FIELD_DEFINITIONS.reduce((acc, definition) => {
     if (hasOwnField(extractedFields, definition.key)) {
@@ -300,6 +744,20 @@ export const buildProjectProposalJson = (payload = {}) => {
     budget: budget || null,
     proposalContent: proposalContent || "",
     fields,
+    structuredFields: buildStructuredFieldsMap(sections),
+    ...(contextSnapshot ? { contextSnapshot } : {}),
+    ...(templateDefinitions.length > 0
+      ? {
+        template: {
+          source: "service",
+          fields: templateDefinitions.map((definition) => ({
+            key: definition.key,
+            label: definition.label,
+            type: definition.type,
+          })),
+        },
+      }
+      : {}),
     sections,
   };
 };
@@ -494,6 +952,9 @@ export const buildProjectFreelancerMatchingSeed = (payload = {}) => {
       : buildProjectProposalJson(payload);
   const extractedFields = extractProjectProposalFields({
     ...payload,
+    proposalContext:
+      payload?.proposalContext
+      || (isNonArrayObject(proposalJson?.contextSnapshot) ? proposalJson.contextSnapshot : undefined),
     proposalContent:
       payload?.proposalContent
       || proposalJson?.proposalContent

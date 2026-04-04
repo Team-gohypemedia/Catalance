@@ -138,6 +138,169 @@ Budget: INR 10,000 per month
         && section.items.includes("Increase organic traffic"),
     ),
   );
+  assert.equal(result.structuredFields.client_name?.value, "Ravindra");
+  assert.deepEqual(result.structuredFields.primary_objectives?.items, [
+    "Improve local keyword rankings",
+    "Increase organic traffic",
+  ]);
+});
+
+test("buildProjectProposalJson follows admin proposal structure for saved project json", () => {
+  const proposalContent = `
+Client Name: Maya
+Business Name: Northstar Fitness
+Service Type: SEO
+Project Overview: Improve organic visibility for a gym chain.
+Primary Objectives:
+- Increase qualified traffic
+Features/Deliverables Included:
+- Technical SEO audit
+- Content optimization
+Campaign Focus: Local lead generation
+Target Locations:
+- Mumbai
+- Pune
+Reporting Cadence: Weekly dashboard and monthly strategy review
+Launch Timeline: 3 months
+Budget: INR 40,000
+  `;
+
+  const result = buildProjectProposalJson({
+    title: "Northstar SEO",
+    serviceKey: "seo",
+    proposalContent,
+    proposalStructure: JSON.stringify({
+      version: 1,
+      fields: [
+        { label: "Client Name", type: "text" },
+        { label: "Business Name", type: "text" },
+        { label: "Service Type", type: "text" },
+        { label: "Project Overview", type: "text" },
+        { label: "Primary Objectives", type: "list" },
+        { label: "Features/Deliverables Included", type: "list" },
+        { label: "Campaign Focus", type: "text" },
+        { label: "Target Locations", type: "list" },
+        { label: "Reporting Cadence", type: "text" },
+        { label: "Launch Timeline", type: "text" },
+        { label: "Budget", type: "text" },
+      ],
+    }),
+  });
+
+  assert.deepEqual(
+    result.template.fields.map((field) => field.label),
+    [
+      "Client Name",
+      "Business Name",
+      "Service Type",
+      "Project Overview",
+      "Primary Objectives",
+      "Features/Deliverables Included",
+      "Campaign Focus",
+      "Target Locations",
+      "Reporting Cadence",
+      "Launch Timeline",
+      "Budget",
+    ],
+  );
+  assert.deepEqual(
+    result.sections.slice(0, 11).map((section) => section.label),
+    [
+      "Client Name",
+      "Business Name",
+      "Service Type",
+      "Project Overview",
+      "Primary Objectives",
+      "Features/Deliverables Included",
+      "Campaign Focus",
+      "Target Locations",
+      "Reporting Cadence",
+      "Launch Timeline",
+      "Budget",
+    ],
+  );
+  assert.equal(result.structuredFields.campaign_focus?.value, "Local lead generation");
+  assert.deepEqual(result.structuredFields.target_locations?.items, [
+    "Mumbai",
+    "Pune",
+  ]);
+  assert.equal(
+    result.structuredFields.reporting_cadence?.value,
+    "Weekly dashboard and monthly strategy review",
+  );
+});
+
+test("buildProjectProposalJson fills internal-only template fields from proposal context", () => {
+  const proposalContent = `
+Client Name: Maya
+Business Name: Northstar Fitness
+Service Type: App Development
+Project Overview: Build a hybrid member app for bookings and loyalty.
+Primary Objectives:
+- Launch premium member features
+Launch Timeline: 12 weeks
+Budget: INR 400,000
+  `;
+
+  const result = buildProjectProposalJson({
+    title: "Northstar app rollout",
+    serviceKey: "app-development",
+    proposalContent,
+    proposalStructure: JSON.stringify({
+      version: 1,
+      fields: [
+        { label: "Client Name", type: "text" },
+        { label: "Business Name", type: "text" },
+        { label: "Service Type", type: "text" },
+        { label: "Project Overview", type: "text" },
+        { label: "Internal Delivery Notes", type: "text" },
+        { label: "Required Integrations", type: "list" },
+        { label: "Reporting Cadence", type: "text" },
+        { label: "Budget", type: "text" },
+      ],
+    }),
+    proposalContext: {
+      questionnaireAnswers: {
+        "Reporting Cadence": "Weekly sprint summary",
+      },
+      questionnaireAnswersBySlug: {
+        internal_delivery_notes:
+          "Need admin analytics, role-based access, and CRM handoff.",
+        required_integrations: ["Razorpay", "Firebase Auth", "HubSpot"],
+      },
+    },
+  });
+
+  assert.deepEqual(
+    result.sections.slice(0, 8).map((section) => section.label),
+    [
+      "Client Name",
+      "Business Name",
+      "Service Type",
+      "Project Overview",
+      "Internal Delivery Notes",
+      "Required Integrations",
+      "Reporting Cadence",
+      "Budget",
+    ],
+  );
+  assert.equal(
+    result.structuredFields.internal_delivery_notes?.value,
+    "Need admin analytics, role-based access, and CRM handoff.",
+  );
+  assert.deepEqual(result.structuredFields.required_integrations?.items, [
+    "Razorpay",
+    "Firebase Auth",
+    "HubSpot",
+  ]);
+  assert.equal(
+    result.structuredFields.reporting_cadence?.value,
+    "Weekly sprint summary",
+  );
+  assert.deepEqual(
+    result.contextSnapshot?.questionnaireAnswersBySlug?.required_integrations,
+    ["Razorpay", "Firebase Auth", "HubSpot"],
+  );
 });
 
 test("buildProjectFreelancerMatchingSeed builds hidden freelancer matching data from proposal context", () => {

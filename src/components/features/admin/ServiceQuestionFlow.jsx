@@ -1,25 +1,22 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import {
     ReactFlow,
     useNodesState,
     useEdgesState,
     Controls,
     Background,
-    applyNodeChanges,
-    applyEdgeChanges,
     MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import dagre from 'dagre';
 
-const nodeWidth = 250;
-const nodeHeight = 100;
+const nodeWidth = 280;
+const nodeHeight = 144;
 
 const getLayoutedElements = (nodes, edges) => {
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
-
     dagreGraph.setGraph({ rankdir: 'TB' });
 
     nodes.forEach((node) => {
@@ -34,8 +31,6 @@ const getLayoutedElements = (nodes, edges) => {
 
     const layoutedNodes = nodes.map((node) => {
         const nodeWithPosition = dagreGraph.node(node.id);
-
-        // Dagre returns center coordinates, React Flow needs top-left
         return {
             ...node,
             position: {
@@ -48,39 +43,104 @@ const getLayoutedElements = (nodes, edges) => {
     return { nodes: layoutedNodes, edges };
 };
 
-const nodeHelper = (question) => {
+const getQuestionTypeLabel = (type = 'input') => {
+    if (type === 'single_option') return 'Single Select';
+    if (type === 'multi_option') return 'Multi Select';
+    return 'Text Input';
+};
+
+const getQuestionTypeColors = (type = 'input') => {
+    if (type === 'single_option') {
+        return {
+            badgeText: '#facc15',
+            badgeBackground: 'rgba(250, 204, 21, 0.12)',
+            badgeBorder: '1px solid rgba(250, 204, 21, 0.2)',
+            accent: '#facc15',
+        };
+    }
+
+    if (type === 'multi_option') {
+        return {
+            badgeText: '#34d399',
+            badgeBackground: 'rgba(52, 211, 153, 0.12)',
+            badgeBorder: '1px solid rgba(52, 211, 153, 0.2)',
+            accent: '#34d399',
+        };
+    }
+
+    return {
+        badgeText: '#e5e7eb',
+        badgeBackground: 'rgba(255, 255, 255, 0.06)',
+        badgeBorder: '1px solid rgba(255, 255, 255, 0.08)',
+        accent: '#94a3b8',
+    };
+};
+
+const nodeHelper = (question, index) => {
+    const typeLabel = getQuestionTypeLabel(question.type);
+    const typeColors = getQuestionTypeColors(question.type);
+    const logicRuleCount = Array.isArray(question.logic)
+        ? question.logic.filter((rule) => rule.nextQuestionSlug).length
+        : 0;
+
     return {
         id: question.id,
-        position: { x: 0, y: 0 }, // Initial position, will be overridden by dagre
+        position: { x: 0, y: 0 },
         data: {
             label: (
-                <div className="flex flex-col h-full justify-between">
-                    <div className="pb-2 border-b border-gray-100 mb-2">
-                        <span className="font-mono text-[10px] uppercase text-gray-400 font-bold bg-gray-50 px-1.5 py-0.5 rounded">
-                            {question.id}
-                        </span>
+                <div className="flex h-full flex-col justify-between gap-3">
+                    <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-2.5">
+                        <div className="min-w-0 space-y-2">
+                            <span className="inline-flex max-w-full items-center rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                                <span className="truncate">{question.id}</span>
+                            </span>
+                            <p className="line-clamp-3 text-[13px] font-medium leading-5 text-white">
+                                {question.question}
+                            </p>
+                        </div>
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-xs font-semibold text-slate-200">
+                            {index + 1}
+                        </div>
                     </div>
-                    <div className="text-sm font-medium leading-tight line-clamp-3">
-                        {question.question}
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-gray-50 flex gap-1 justify-end">
-                        {question.type === 'input' && <div className="text-[10px] text-gray-400">Text Input</div>}
-                        {question.type !== 'input' && <div className="text-[10px] text-blue-500 font-medium">Selection</div>}
+
+                    <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                            <span
+                                className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                                style={{
+                                    color: typeColors.badgeText,
+                                    background: typeColors.badgeBackground,
+                                    border: typeColors.badgeBorder,
+                                }}
+                            >
+                                {typeLabel}
+                            </span>
+                            {question.saveResponse ? (
+                                <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                                    AI Context
+                                </span>
+                            ) : null}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-2.5 text-[11px] text-slate-400">
+                            <span>{logicRuleCount > 0 ? `${logicRuleCount} branch rules` : 'Sequential flow'}</span>
+                            <span>{question.required ? 'Required' : 'Optional'}</span>
+                        </div>
                     </div>
                 </div>
             ),
-            question: question
+            question,
         },
         type: 'default',
         style: {
-            background: '#fff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '12px',
+            background: 'linear-gradient(180deg, rgba(31,31,31,0.98), rgba(12,12,12,0.98))',
+            border: `1px solid ${typeColors.accent === '#94a3b8' ? 'rgba(255,255,255,0.08)' : `${typeColors.accent}30`}`,
+            borderRadius: '18px',
             padding: '16px',
             width: nodeWidth,
-            minHeight: 80,
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-            textAlign: 'left'
+            minHeight: nodeHeight,
+            boxShadow: '0 14px 34px rgba(0, 0, 0, 0.28)',
+            textAlign: 'left',
         },
     };
 };
@@ -90,78 +150,71 @@ const ServiceQuestionFlow = ({ questions, onEditQuestion }) => {
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
     useEffect(() => {
-        if (!questions || questions.length === 0) return;
+        if (!questions || questions.length === 0) {
+            setNodes([]);
+            setEdges([]);
+            return;
+        }
 
-        // 1. Create Nodes
-        const initialNodes = questions.map((q) => nodeHelper(q));
-
-        // 2. Create Edges
+        const initialNodes = questions.map((question, index) => nodeHelper(question, index));
         const initialEdges = [];
-        questions.forEach((q, idx) => {
+
+        questions.forEach((question, index) => {
             let hasLogicBranch = false;
 
-            // Interface Logic Branches
-            if (q.logic && q.logic.length > 0) {
-                q.logic.forEach((rule, rIdx) => {
+            if (Array.isArray(question.logic) && question.logic.length > 0) {
+                question.logic.forEach((rule, ruleIndex) => {
                     if (rule.nextQuestionSlug) {
                         hasLogicBranch = true;
                         initialEdges.push({
-                            id: `e-${q.id}-logic-${rIdx}`,
-                            source: q.id,
+                            id: `e-${question.id}-logic-${ruleIndex}`,
+                            source: question.id,
                             target: rule.nextQuestionSlug,
-                            label: `${rule.condition === 'equals' ? 'Is' : rule.condition} "${rule.value}"`,
+                            label: `${rule.condition === 'equals' ? 'If' : rule.condition} ${rule.value || 'match'}`,
                             type: 'smoothstep',
                             animated: false,
-                            style: { stroke: '#3b82f6', strokeWidth: 2 },
-                            labelStyle: { fill: '#3b82f6', fontWeight: 700, fontSize: 10 },
+                            style: { stroke: '#facc15', strokeWidth: 2.25 },
+                            labelStyle: { fill: '#facc15', fontWeight: 700, fontSize: 10 },
                             markerEnd: {
                                 type: MarkerType.ArrowClosed,
-                                color: '#3b82f6',
+                                color: '#facc15',
                             },
                         });
                     }
                 });
             }
 
-            // Default Flow (Next Step) - Only add if NO logic or logically allows continuation
-            // NOTE: Usually if there is logic, default flow acts as "Else". 
-            // For now, let's assume if there are logic rules covering *some* cases, 
-            // the implicit "next" still exists for other cases unless it's a terminal node.
-            // But to keep graph clean, maybe we only show "Next" if it falls through?
-            // Let's add "Next" for sequential continuity unless it's the last one.
-            if (idx < questions.length - 1) {
+            if (index < questions.length - 1) {
                 initialEdges.push({
-                    id: `e-${q.id}-default`,
-                    source: q.id,
-                    target: questions[idx + 1].id,
+                    id: `e-${question.id}-default`,
+                    source: question.id,
+                    target: questions[index + 1].id,
                     label: hasLogicBranch ? 'Else' : 'Next',
                     type: 'smoothstep',
                     animated: true,
-                    style: { stroke: '#cbd5e1', strokeDasharray: '5,5' },
+                    style: { stroke: 'rgba(148, 163, 184, 0.85)', strokeDasharray: '6,6', strokeWidth: 1.5 },
                     labelStyle: { fill: '#94a3b8', fontSize: 10 },
                     markerEnd: {
                         type: MarkerType.ArrowClosed,
-                        color: '#cbd5e1',
+                        color: 'rgba(148, 163, 184, 0.85)',
                     },
                 });
             }
         });
 
-        // 3. Apply Layout
         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(initialNodes, initialEdges);
-
         setNodes(layoutedNodes);
         setEdges(layoutedEdges);
-    }, [questions, setNodes, setEdges]);
+    }, [questions, setEdges, setNodes]);
 
-    const onNodeClick = (event, node) => {
+    const onNodeClick = (_event, node) => {
         if (onEditQuestion && node.data.question) {
             onEditQuestion(node.data.question);
         }
     };
 
     return (
-        <div style={{ width: '100%', height: '600px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+        <div className="h-full w-full overflow-hidden rounded-[22px] border border-white/10 bg-[#0b0b0b]">
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -169,10 +222,14 @@ const ServiceQuestionFlow = ({ questions, onEditQuestion }) => {
                 onEdgesChange={onEdgesChange}
                 onNodeClick={onNodeClick}
                 fitView
+                fitViewOptions={{ padding: 0.18 }}
+                minZoom={0.3}
+                maxZoom={1.5}
                 attributionPosition="bottom-right"
+                proOptions={{ hideAttribution: true }}
             >
                 <Controls />
-                <Background color="#aaa" gap={16} />
+                <Background color="rgba(255,255,255,0.08)" gap={22} size={1} />
             </ReactFlow>
         </div>
     );
