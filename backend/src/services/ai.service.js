@@ -1946,31 +1946,31 @@ const INTERNAL_CHAT_REQUEST_PROFILES = {
   system_extractor: {
     title: "Catalance AI Extractor",
     temperature: 0.1,
-    maxTokens: 450,
+    maxTokens: 320,
     skipConversationGuards: true,
   },
   system_validator: {
     title: "Catalance AI Validator",
     temperature: 0.15,
-    maxTokens: 650,
+    maxTokens: 520,
     skipConversationGuards: true,
   },
   system_runtime_options: {
     title: "Catalance Runtime Option Selector",
     temperature: 0.15,
-    maxTokens: 350,
+    maxTokens: 260,
     skipConversationGuards: true,
   },
   system_evaluator: {
     title: "Catalance AI Evaluator",
     temperature: 0.1,
-    maxTokens: 350,
+    maxTokens: 240,
     skipConversationGuards: true,
   },
   system_question_writer: {
     title: "Catalance Question Writer",
     temperature: 0.45,
-    maxTokens: 700,
+    maxTokens: 560,
     skipConversationGuards: true,
   },
 };
