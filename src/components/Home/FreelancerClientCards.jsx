@@ -9,22 +9,25 @@ import UserRoundSearch from "lucide-react/dist/esm/icons/user-round-search";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import Brain from "lucide-react/dist/esm/icons/brain";
 import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
-import Coins from "lucide-react/dist/esm/icons/coins";
+import Handshake from "lucide-react/dist/esm/icons/handshake";
+import ChartNoAxesCombined from "lucide-react/dist/esm/icons/chart-no-axes-combined";
+import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
+import MessageSquareDot from "lucide-react/dist/esm/icons/message-square-dot";
 import { Button } from "@/components/ui/button";
 import Mascot1 from "@/assets/mascot/mascot1.png";
 
 const businessFeatures = [
-  { icon: BadgeCheck, text: "Verified expertise & portfolios" },
-  { icon: Users, text: "50K+ vetted professionals" },
-  { icon: Wallet, text: "Secure escrow protection" },
-  { icon: Clock3, text: "Real-time project tracking" },
+  { icon: BadgeCheck, text: " Pre-vetted professionals only" },
+  { icon: Users, text: "AI-powered talent matching" },
+  { icon: ShieldCheck, text: "Safe & secure payments" },
+  { icon: Clock3, text: "Transparent project tracking" },
 ];
 
 const freelancerFeatures = [
-  { icon: Coins, text: "0% commission on first project" },
-  { icon: Globe, text: "Global network of startups" },
-  { icon: Brain, text: "Smart job matching AI" },
-  { icon: ShieldAlert, text: "Contract dispute protection" },
+  { icon: Handshake, text: "Collaborate with vetted organizations" },
+  { icon: ChartNoAxesCombined, text: "Consistent, high-quality project opportunities" },
+  { icon: ShieldCheck, text: "Structured and secure payment processes" },
+  { icon: MessageSquareDot, text: "Professional dispute resolution support" },
 ];
 
 const featureClassName =
@@ -47,8 +50,7 @@ const FreelancerClientCards = () => {
             Hire <span className="text-primary">Freelancers</span> Who Don&apos;t Disappear
           </h2>
           <p className="mx-auto mt-6 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-7 sm:text-base md:text-lg">
-            Verified experts. Clear timelines. Protected payments. Dedicated
-            support. Finally, a platform that actually works.
+            Reliable talent focused on quality and timely delivery.
           </p>
         </div>
 
@@ -72,7 +74,7 @@ const FreelancerClientCards = () => {
                 </div>
 
                 <h3 className="max-w-xs text-[2.05rem] font-semibold leading-tight text-white">
-                  Find Talent You Can Count On
+                  Hire Reliable Talent Faster
                 </h3>
 
                 <div className="mt-10 space-y-5">
@@ -127,7 +129,7 @@ const FreelancerClientCards = () => {
                 </div>
 
                 <h3 className="max-w-sm text-[2.05rem] font-semibold leading-tight text-white">
-                  Find Clients Who Value Your Work
+                  Grow Your Career with Trusted Clients
                 </h3>
 
                 <div className="mt-10 space-y-5">
