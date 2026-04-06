@@ -271,10 +271,24 @@ const runTrackedAiCall = async ({
     );
 };
 
-const SERVICE_CONTEXT_CACHE_TTL_MS = 60 * 1000;
+const SERVICE_CONTEXT_CACHE_TTL_MS = 10 * 60 * 1000;
 const SERVICE_QUESTIONS_INCLUDE = Object.freeze({
     questions: {
         orderBy: { order: "asc" }
+    }
+});
+const buildGuestSessionCoreSelect = () => ({
+    id: true,
+    serviceId: true,
+    currentStep: true,
+    answers: true,
+    messages: {
+        orderBy: { createdAt: "asc" },
+        select: {
+            role: true,
+            content: true,
+            createdAt: true,
+        }
     }
 });
 const serviceContextCache = new Map();
@@ -2961,6 +2975,118 @@ const getQuestionIdentityType = (question = {}) => {
     return "other";
 };
 
+const SIMPLE_OPTION_SELECTION_REGEX = /^(?:(?:go with|pick|choose|select)\s+)?(?:option\s*)?(\d+)$/i;
+const SIMPLE_PERSON_NAME_PREFIX_REGEX = /^(?:my name is|name is|i am|i'm|im|this is)\s+/i;
+const SIMPLE_BUSINESS_NAME_PREFIX_REGEX = /^(?:(?:my|our)\s+(?:brand|business|company|project)\s+name\s+is|(?:brand|business|company|project)\s+name\s+is|(?:my|our)\s+(?:brand|business|company|project)\s+is|it'?s)\s+/i;
+const ATOMIC_ANSWER_SEPARATOR_REGEX = /[,;\n:]/;
+const PERSON_NAME_TOKEN_REGEX = /^[a-z][a-z'.-]*$/i;
+const BUSINESS_NAME_TOKEN_REGEX = /^[a-z0-9][a-z0-9&'.-]*$/i;
+const BUSINESS_NAME_EXTRA_DETAIL_REGEX = /\b(i|we|our|my|brand|business|company|project|service|services|offer|provide|need|requirements?|budget|timeline|website|app|content|machine|process)\b/i;
+
+const stripAtomicAnswerPrefix = (message = "", identityType = "other") => {
+    const rawMessage = String(message || "").trim();
+    if (!rawMessage) return "";
+
+    if (identityType === "person_name") {
+        return rawMessage.replace(SIMPLE_PERSON_NAME_PREFIX_REGEX, "").trim();
+    }
+
+    if (identityType === "business_name") {
+        return rawMessage.replace(SIMPLE_BUSINESS_NAME_PREFIX_REGEX, "").trim();
+    }
+
+    return rawMessage;
+};
+
+const looksLikeSingleOptionSelection = (message = "", question = {}, runtimeOptionsByQuestionSlug = {}) => {
+    const rawMessage = String(message || "").trim();
+    if (!rawMessage) return false;
+    if (ATOMIC_ANSWER_SEPARATOR_REGEX.test(rawMessage)) return false;
+
+    const displayedOptions = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug);
+    if (displayedOptions.length === 0) return false;
+
+    const numericMatch = rawMessage.match(SIMPLE_OPTION_SELECTION_REGEX);
+    if (numericMatch) {
+        const selectedIndex = Number.parseInt(numericMatch[1], 10);
+        return Number.isInteger(selectedIndex) && selectedIndex >= 1 && selectedIndex <= displayedOptions.length;
+    }
+
+    const matchedOptions = findMatchingOptionsFromText(
+        rawMessage,
+        getAcceptedQuestionOptions(question, runtimeOptionsByQuestionSlug)
+    );
+    if (matchedOptions.length !== 1) return false;
+    if (countOptionLabelsMentioned(rawMessage, question, runtimeOptionsByQuestionSlug) > 1) return false;
+
+    const normalizedMessage = normalizeTextToken(rawMessage);
+    if (!normalizedMessage) return false;
+
+    return matchedOptions.some((option) =>
+        getComparableOptionAliases(option).some((alias) => {
+            const normalizedAlias = normalizeTextToken(alias);
+            return normalizedAlias && normalizedMessage === normalizedAlias;
+        })
+    );
+};
+
+const looksLikeAtomicNameAnswer = (message = "", identityType = "other") => {
+    const stripped = stripAtomicAnswerPrefix(message, identityType)
+        .replace(/[.!?]+$/g, "")
+        .trim();
+    if (!stripped) return false;
+    if (ATOMIC_ANSWER_SEPARATOR_REGEX.test(stripped)) return false;
+
+    const normalized = normalizeTextToken(stripped);
+    if (!normalized || GREETING_SMALLTALK_REGEX.test(normalized)) return false;
+
+    const tokens = stripped.split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return false;
+
+    if (identityType === "person_name") {
+        return tokens.length <= 3 && tokens.every((token) => PERSON_NAME_TOKEN_REGEX.test(token));
+    }
+
+    if (identityType === "business_name") {
+        return (
+            tokens.length <= 3
+            && !BUSINESS_NAME_EXTRA_DETAIL_REGEX.test(normalized)
+            && tokens.every((token) => BUSINESS_NAME_TOKEN_REGEX.test(token))
+        );
+    }
+
+    return false;
+};
+
+const shouldSkipMessageAnswerExtraction = ({
+    message = "",
+    currentQuestion = null,
+    runtimeOptionsByQuestionSlug = {},
+    hasAttachmentContext = false,
+    hasUrlContext = false,
+    correctionIntent = false,
+} = {}) => {
+    const rawMessage = String(message || "").trim();
+    if (!rawMessage || !currentQuestion) return false;
+    if (hasAttachmentContext || hasUrlContext || correctionIntent) return false;
+    if (rawMessage.length > 80) return false;
+
+    const questionType = normalizeTextToken(currentQuestion?.type || "input");
+    if (
+        OPTION_QUESTION_TYPES.has(questionType)
+        && looksLikeSingleOptionSelection(rawMessage, currentQuestion, runtimeOptionsByQuestionSlug)
+    ) {
+        return true;
+    }
+
+    const identityType = getQuestionIdentityType(currentQuestion);
+    if (identityType === "person_name" || identityType === "business_name") {
+        return looksLikeAtomicNameAnswer(rawMessage, identityType);
+    }
+
+    return false;
+};
+
 const RESERVED_PLATFORM_BRAND_NAMES = ["Catalance"];
 const WELL_KNOWN_COMPANY_BRAND_NAMES = [
     "Google",
@@ -3483,11 +3609,18 @@ const parseMessageFieldFromJson = (rawMessage = "") => {
     return fallbackMatch[1].replace(/\\"/g, "\"").trim();
 };
 
+const clipContextSnippet = (value = "", limit = 160) => {
+    const normalized = String(value || "").replace(/\s+/g, " ").trim();
+    if (!normalized) return "";
+    if (normalized.length <= limit) return normalized;
+    return `${normalized.slice(0, Math.max(0, limit - 3)).trimEnd()}...`;
+};
+
 const buildAnswersContextLines = (answersByQuestionText = {}) =>
     Object.entries(answersByQuestionText || {})
         .filter(([, value]) => hasAnswerValue(value))
-        .map(([question, answer]) => `- ${question}: ${String(answer).trim()}`)
-        .slice(0, 12)
+        .map(([question, answer]) => `- ${clipContextSnippet(question, 90)}: ${clipContextSnippet(answer, 140)}`)
+        .slice(0, 8)
         .join("\n");
 
 const stringifyAnswerForContext = (value) => {
@@ -3512,13 +3645,14 @@ const buildSavedResponseContextLines = (answersBySlug = {}, questions = [], runt
                 runtimeOptionsByQuestionSlug
             ) || stringifyAnswerForContext(answerValue);
             if (!answerText) return null;
+            const clippedAnswerText = clipContextSnippet(answerText, 140);
             const subtitle = buildAdminControlSummaryText(getQuestionAdminControls(question));
             return subtitle
-                ? `- ${question.text}: ${answerText} (intent: ${subtitle})`
-                : `- ${question.text}: ${answerText}`;
+                ? `- ${clipContextSnippet(question.text, 90)}: ${clippedAnswerText} (intent: ${clipContextSnippet(subtitle, 80)})`
+                : `- ${clipContextSnippet(question.text, 90)}: ${clippedAnswerText}`;
         })
         .filter(Boolean)
-        .slice(0, 12)
+        .slice(0, 8)
         .join("\n");
 
 const buildQuestionSubtitleMapLines = (questions = []) =>
@@ -3527,10 +3661,10 @@ const buildQuestionSubtitleMapLines = (questions = []) =>
             const slug = String(question?.slug || "").trim();
             const subtitle = buildAdminControlSummaryText(getQuestionAdminControls(question));
             if (!slug || !subtitle) return null;
-            return `- ${slug}: ${subtitle}`;
+            return `- ${slug}: ${clipContextSnippet(subtitle, 90)}`;
         })
         .filter(Boolean)
-        .slice(0, 30)
+        .slice(0, 12)
         .join("\n");
 
 const extractFirstSentence = (value = "") => {
@@ -3876,8 +4010,12 @@ const buildAiGuidedQuestionMessage = async ({
         runtimeOptionsByQuestionSlug
     );
     const subtitleMapContext = buildQuestionSubtitleMapLines(allQuestions);
-    const currentQuestionSubtitle = buildAdminControlSummaryText(currentQuestionAdminControls);
-    const nextQuestionSubtitle = buildAdminControlSummaryText(nextQuestionAdminControls);
+    const currentQuestionSubtitle = clipContextSnippet(buildAdminControlSummaryText(currentQuestionAdminControls), 120);
+    const nextQuestionSubtitle = clipContextSnippet(buildAdminControlSummaryText(nextQuestionAdminControls), 120);
+    const serviceInstructionText = clipContextSnippet(
+        parseAdminControlText(servicePrompt || "").contextText || "None",
+        220
+    );
     const guidanceHints = bridgeSegments
         .map((item) => String(item || "").trim())
         .filter(Boolean)
@@ -4228,20 +4366,24 @@ const buildBusinessNameGuardPrompt = ({
     );
     const currentQuestionAdminControls = getQuestionAdminControls(currentQuestion, servicePrompt);
     const currentQuestionSubtitle = buildAdminControlSummaryText(currentQuestionAdminControls);
+    const serviceInstructionText = clipContextSnippet(
+        parseAdminControlText(servicePrompt || "").contextText || "None",
+        220
+    );
 
     return `
 You are writing one assistant message in a guided questionnaire.
 
 Service: "${serviceName}"
 Service-Specific AI Instructions:
-${parseAdminControlText(servicePrompt || "").contextText || "None"}
+${serviceInstructionText}
 
 ${buildAdminPromptSection(currentQuestionAdminControls, "Admin Controls (highest priority when relevant)")}
 
 Current questionnaire question:
 ${JSON.stringify(String(currentQuestion?.text || ""))}
 
-Last assistant message:
+Last Assistant Message Shown To User:
 ${JSON.stringify(String(lastAssistantMessage || ""))}
 
 User last message:
@@ -4940,6 +5082,10 @@ const determineConfirmationIntent = async ({
     userMessage = "",
     timingTracker = null,
 }) => {
+    const normalized = String(userMessage || "").toLowerCase();
+    if (/\b(yes|yeah|yep|sure|okay|ok|go ahead|continue|start)\b/.test(normalized)) return "yes";
+    if (/\b(no|nope|stop|cancel|not now|don't|do not)\b/.test(normalized)) return "no";
+
     const intentObj = await runTrackedAiCall({
         timingTracker,
         key: "confirmation_intent_ai",
@@ -4961,9 +5107,6 @@ const determineConfirmationIntent = async ({
         }
     }
 
-    const normalized = String(userMessage || "").toLowerCase();
-    if (/\b(yes|yeah|yep|sure|okay|ok|go ahead|continue|start)\b/.test(normalized)) return "yes";
-    if (/\b(no|nope|stop|cancel|not now|don't|do not)\b/.test(normalized)) return "no";
     return "unknown";
 };
 
@@ -5105,71 +5248,73 @@ const buildCurrentQuestionValidationPrompt = ({
         parseAdminControlText(servicePrompt || "")
     );
     const currentQuestionContext = buildAdminControlSummaryText(adminControls);
+    const answersContext = buildAnswersContextLines(knownContextByQuestion);
+    const visibleOptions = Array.isArray(currentQuestionOptions) ? currentQuestionOptions : [];
+    const numberedOptions = Array.isArray(currentQuestionNumberedOptions) ? currentQuestionNumberedOptions : [];
+    const canonicalOptions = Array.isArray(currentQuestionCanonicalOptions) ? currentQuestionCanonicalOptions : [];
+    const adminInstructionText = parseAdminControlText(servicePrompt || "").contextText || "None";
 
     return `
-            You are a friendly, professional assistant guiding a user through a questionnaire for a "${serviceName}" service.
-            
-            Service-Specific AI Instructions:
-            ${parseAdminControlText(servicePrompt || "").contextText || "None"}
+You are validating one answer in a guided questionnaire for the "${serviceName}" service.
 
-            ${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when relevant)")}
-            
-            Current Question Asked: "${currentQuestionText}"
-            Current Question Options: ${JSON.stringify(currentQuestionOptions)}
-            Current Question Numbered Options: ${JSON.stringify(currentQuestionNumberedOptions)}
-            Valid Canonical Option Pool: ${JSON.stringify(currentQuestionCanonicalOptions)}
-            Known Context From Earlier Answers: ${JSON.stringify(knownContextByQuestion)}
-            Saved AI Memory Context: ${JSON.stringify(savedResponseContext || "None")}
-            Current Question Internal Context: ${JSON.stringify(currentQuestionContext || "None")}
-            Last Assistant Message Shown To User: ${JSON.stringify(lastAssistantMessage || "None")}
-            User's Answer: "${userMessageText}"
-            Attachment Context: ${attachmentContextText ? JSON.stringify(attachmentContextText) : '"None"'}
-            URL Context: ${urlContextText ? JSON.stringify(urlContextText) : '"None"'}
-            Attachment-Inferred Answer: "${attachmentInferredAnswer || ""}"
-            
-            Task:
-            1. Validate the user's answer to the Current Question.
-            - If it's a greeting (hi, hello) but the question expects details -> INVALID.
-            - If it's irrelevant/gibberish -> INVALID.
-            - If the user is asking an informational side-question (e.g., "what is Flutter?", "which is best for me?") instead of directly answering the current question -> INFO_REQUEST.
-            - If direct text is empty but attachment context or URL context clearly answers the current question, treat as VALID.
-            - If the user replies with a numbered choice such as "1", "2", "option 3", or "go with 2", interpret it using the 1-based order from "Current Question Options" / "Current Question Numbered Options".
-            - If the user's message contains a number as part of a descriptive answer (for example "1 month", "2-4 weeks", "10 pages"), do NOT assume it is a menu selection unless the wording clearly shows they are choosing by option number.
-            - If the Current Question has options, and the Last Assistant Message clearly recommends exactly one current option, and the user now gives brief agreement or approval instead of repeating the option, treat that as VALID.
-            - In that case, set "normalizedAnswer" to the exact recommended option label or value from the current option pool.
-            - Only use recommendation acceptance when the assistant's recommendation is explicit and unambiguous. If the assistant did not clearly recommend one option, do not guess.
-            - If the user explicitly names another option or changes direction, follow the user's latest intent instead of the earlier recommendation.
-            - **COMPANY NAME CHECK**: If the Current Question asks for a company or brand name and the user answers "Catalance" (or a direct Catalance variant), treat it as INVALID and politely ask for their own project or brand name.
-            - If the user mentions another well-known or established company name, do NOT automatically reject it.
-            - If their team affiliation and role are already clear, you may treat that company name as VALID.
-            - Otherwise, respond conversationally by asking whether they are part of the team and what their role is.
-            - CRITICAL UNIVERSAL PREDICTION: You are a smart AI. If the user's answer (for ANY question) contains specific keywords or details that logically imply they belong to one of the options (e.g. naming "Elementor" making WordPress obvious), you MUST immediately accept it as VALID.
-            - UNSUPPORTED PLATFORMS: If the user requests a fundamentally unsupported platform or tool that conflicts with all available options (e.g., asking for Webflow, Framer, Wix, or Squarespace when the only options are WordPress, Shopify, or Custom React/Node Development), do NOT forcibly map it to "Custom Development". Instead, treat it as an INFO_REQUEST. Your response \`message\` should politely explain that we primarily specialize in the listed technologies, briefly explain how one of our options (like Custom Development or WordPress) might still achieve their design goals, and ask which of our supported options they would like to explore so we can align the project correctly.
-            - Do not be pedantic or rigid. Do NOT force them to pick the literal option or repeat themselves.
-            - For option-based questions, only map to an option when the user's meaning clearly matches one of the available choices.
-            - If the user gives a direct custom value that still answers the question, treat it as VALID even when it is not one of the listed options. Example: if options are "3 months", "6 months", and "12 months", and the user says "1 month" or "4 months", accept it as VALID.
-            - For those custom off-menu answers, preserve the user's exact value in "normalizedAnswer" instead of rejecting it or forcing the nearest option.
-            - Put the selected option label/value in "normalizedAnswer" only when the match is clear. Otherwise, keep the direct user value that answers the question.
-            - In general, if the user's answer logically provides the requested information in their own words for any question, treat it as VALID.
-            - Treat "Current Question Options" as the options currently shown to the user.
-            - Treat "Valid Canonical Option Pool" as additional valid matches the user may mention even if not shown.
-            - If Admin Controls define mapping aliases or acceptance rules, honor them whenever the user's meaning is clear.
-            - If you re-list choices to the user, use only "Current Question Options" and present them as examples/guidance, not as the only acceptable answers unless the question explicitly says that.
-            - Otherwise -> VALID.
+Service instructions:
+${adminInstructionText}
 
-            2. Generate a Response Message:
+${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when relevant)")}
+
+Current question: ${JSON.stringify(currentQuestionText)}
+Visible options: ${JSON.stringify(visibleOptions)}
+Visible numbered options: ${JSON.stringify(numberedOptions)}
+Canonical option pool: ${JSON.stringify(canonicalOptions)}
+Earlier confirmed answers:
+${answersContext || "- none yet"}
+Saved AI memory:
+${savedResponseContext || "- none yet"}
+Hidden current-question intent:
+${JSON.stringify(currentQuestionContext || "none")}
+Last Assistant Message Shown To User:
+${JSON.stringify(lastAssistantMessage || "None")}
+User answer:
+${JSON.stringify(userMessageText || "")}
+Attachment context:
+${attachmentContextText ? JSON.stringify(clipContextSnippet(attachmentContextText, 1200)) : '"None"'}
+URL context:
+${urlContextText ? JSON.stringify(clipContextSnippet(urlContextText, 1000)) : '"None"'}
+Attachment-inferred answer:
+${JSON.stringify(attachmentInferredAnswer || "")}
+
+Validation rules:
+- Greeting only, gibberish, or irrelevant text when details are needed => INVALID.
+- Direct side-question, confusion, advice request, "not sure", or "other" => INFO_REQUEST.
+- If direct text is empty but attachment/URL context clearly answers the question => VALID.
+- If the reply clearly chooses by option number, map it using the visible numbered options.
+- Do not mistake descriptive numbers like "1 month" or "10 pages" for option numbers unless the user is clearly choosing by number.
+- If the assistant clearly recommended exactly one visible option and the user now gives brief agreement or approval instead of repeating it, treat that as VALID.
+- In that case, set "normalizedAnswer" to the exact recommended option label or value from the visible or canonical option pool.
+- If the user names a different option, follow the latest user intent.
+- For business/brand-name questions, "Catalance" or direct variants => INVALID and ask for their own project or brand name.
+- Other well-known company names are not auto-invalid. Do NOT automatically reject them. If team affiliation/role is already clear, they may be VALID; otherwise ask whether they are part of that team and what their role is.
+- If the answer logically implies one option (example: "Elementor" implies WordPress), accept it as VALID.
+- If the user asks for an unsupported platform/tool that conflicts with all available options, return INFO_REQUEST and explain the supported direction briefly.
+- Do not force literal option matching when the user's meaning is already clear.
+- Custom direct answers can still be VALID even if off-menu. Preserve the user's exact value in normalizedAnswer when it still answers the question.
+- Use visible options as the shown menu and canonical option pool as extra acceptable matches.
+- Honor admin alias/mapping rules when the meaning is clear.
+- Only re-list visible options if needed for guidance.
+
+Response rules:
 ${validationResponseRules}
-            - Use "Internal Context" and "Saved AI Memory Context" only as hidden intent guidance. Never reveal those labels/text directly to the user.
+- Use hidden intent and saved memory only as guidance. Never expose those labels directly.
 
-            Return ONLY a raw JSON object (double quotes only) with this structure:
-            {
-                "isValid": boolean,
-                "status": "valid_answer" | "invalid_answer" | "info_request",
-                "message": string, // The response to send to the user (error feedback OR next question transition)
-                "normalizedAnswer": string // For VALID answers, put the final direct answer for the current question (including inferred from attachment). Else empty string.
-            }
-            Do not use markdown formatting, code fences, or bold text.
-        `;
+Return strict JSON only:
+{
+  "isValid": boolean,
+  "status": "valid_answer" | "invalid_answer" | "info_request",
+  "message": string,
+  "normalizedAnswer": string
+}
+Do not use markdown, code fences, or bold text.
+`;
 };
 
 const buildServiceStartState = async ({
@@ -5299,7 +5444,7 @@ const generateProposalResponseForSession = async ({
             "proposal_reload_session",
             () => prisma.aiGuestSession.findUnique({
                 where: { id: sessionId },
-                include: { messages: { orderBy: { createdAt: "asc" } } }
+                select: buildGuestSessionCoreSelect()
             }),
             {
                 label: "Reload proposal session",
@@ -5309,7 +5454,7 @@ const generateProposalResponseForSession = async ({
         )
         : await prisma.aiGuestSession.findUnique({
             where: { id: sessionId },
-            include: { messages: { orderBy: { createdAt: "asc" } } }
+            select: buildGuestSessionCoreSelect()
         });
 
     const scopedMessages = getServiceScopedMessages(
@@ -5588,11 +5733,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         "load_guest_session",
         () => prisma.aiGuestSession.findUnique({
             where: { id: sessionId },
-            include: {
-                messages: {
-                    orderBy: { createdAt: "asc" },
-                },
-            },
+            select: buildGuestSessionCoreSelect(),
         }),
         {
             label: "Load guest session",
@@ -6106,12 +6247,29 @@ export const guestChat = asyncHandler(async (req, res) => {
     const questionSlugSet = new Set(questions.map((q) => q.slug).filter(Boolean));
     let extractedAnswersForMessage = [];
     if (currentStep < questions.length) {
-        extractedAnswersForMessage = await extractAnswersFromMessage({
-            serviceName: service.name,
-            message: userMessageForReasoning || userMessageText,
-            questions,
-            timingTracker: requestTimingTracker,
+        const skipMessageAnswerExtraction = shouldSkipMessageAnswerExtraction({
+            message: userMessageText,
+            currentQuestion,
+            runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+            hasAttachmentContext: Boolean(attachmentContextText),
+            hasUrlContext: Boolean(urlContextText),
+            correctionIntent,
         });
+
+        if (skipMessageAnswerExtraction) {
+            requestTimingTracker.mark("message_answer_extraction_skip", {
+                label: "Skip answer extraction",
+                category: "logic",
+                detail: `Skipping extractor for an obvious single-field reply to "${String(currentQuestion?.slug || currentQuestion?.text || "current_question").trim()}".`,
+            });
+        } else {
+            extractedAnswersForMessage = await extractAnswersFromMessage({
+                serviceName: service.name,
+                message: userMessageForReasoning || userMessageText,
+                questions,
+                timingTracker: requestTimingTracker,
+            });
+        }
         const supplementalBudgetExtractions = buildSupplementalBudgetExtractions({
             message: userMessageForReasoning || userMessageText,
             questions,
@@ -6172,33 +6330,24 @@ export const guestChat = asyncHandler(async (req, res) => {
         const validationResponseRules = isOpeningIntakeStep
             ? `
             - This is one of the first three questions.
-            - Keep the full response under 50 words total.
-            - Use up to two short sentences: one natural acknowledgement or warm opener, plus one short friendly bridge sentence.
-            - Do NOT give suggestions, recommendations, best practices, feature ideas, or strategic advice.
-            - If VALID: use one short natural acknowledgement sentence and one short warm bridge sentence. DO NOT ASK ANY QUESTIONS.
-            - If INVALID: use one short natural acknowledgement sentence, one short warm bridge sentence, then re-ask the Current Question naturally.
-            - If INFO_REQUEST or if the user answers with "not sure", "other", or asks for advice: Give a practical helpful answer. Provide a short, tailored recommendation with concrete examples based on their known context and the service type. Then ask the Current Question again. Do NOT give long, unrelated strategic advice.
-            - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
-            - If user sends only a greeting while name is asked, respond warmly and ask their name in a natural way.
+            - Keep the full response under 50 words.
+            - Use up to two short lead-in sentences.
+            - Do not give best practices, feature ideas, or strategy advice.
+            - If VALID: acknowledge briefly and stop. Do not ask any question.
+            - If INVALID: be warm, then re-ask the current question naturally.
+            - If INFO_REQUEST, "not sure", or "other": answer briefly, give a short tailored recommendation, then ask the current question again.
+            - For name questions, ask for "name" only, never "full name".
+            - If the user sends only a greeting while name is asked, respond warmly and ask their name naturally.
             `
             : `
-            - If INVALID: Politely ask for clarification or the specific details needed.
-            - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
-            - If user sends only a greeting while name is asked, respond warmly and ask their name in a natural way.
-            - Do not sound corrective or robotic. Avoid phrases like "invalid response", "I caught", "still need", or "wrong answer".
-            - If INFO_REQUEST or if the user answers with "not sure", "other", or asks for advice: Give a practical helpful answer with more detail:
-              1) Answer the user's confusion/question clearly (2-4 short sentences).
-              2) Give a highly tailored recommendation with concrete examples based on their known context and the service type.
-              3) Then ask the Current Question again so we can continue the flow.
-              4) If Current Question has options, include them as numbered list (1., 2., 3.).
-            - If VALID: Acknowledge the answer enthusiastically, providing a short but informative conversational response relating to their answer.
-              Include at least one concrete reason, benefit, or tradeoff tied to the user's known context when relevant.
-              DO NOT ASK ANY QUESTIONS. Stop after your short conversational bridge.
-              (If it's the final question, just say "Thanks! Let me put that together for you.")
-            - If INVALID: Politely ask for clarification or the specific details needed. But be sure to write a warm, friendly response before re-asking the question.
-            - If the question has options, you may re-list them as helpful guidance, but do not imply that custom text answers are forbidden unless the question explicitly says only fixed options are allowed.
-            - Keep wording polite, friendly, and engaging.
-            - Keep the total response under 100 words.
+            - For name questions, ask for "name" only, never "full name".
+            - If the user sends only a greeting while name is asked, respond warmly and ask their name naturally.
+            - Do not sound corrective or robotic. Avoid phrases like "invalid response", "wrong answer", or "still need".
+            - If INFO_REQUEST, "not sure", or "other": answer clearly in 2-4 short sentences, give a tailored recommendation, then ask the current question again. If the question has visible options, include them as a numbered list.
+            - If VALID: acknowledge naturally with a short useful bridge tied to their answer or context. Do not ask any question. If this is the final question, just thank them and say you will put it together.
+            - If INVALID: be warm, explain briefly, and re-ask the current question.
+            - If the question has options, you may re-list them as guidance, but do not imply custom answers are forbidden unless the question explicitly requires fixed options.
+            - Keep the full response under 100 words.
             `;
         const minimumBudgetValidationRule = Number(service?.minBudget || 0) > 0
             ? `
@@ -7242,7 +7391,7 @@ export const getGuestAdvice = asyncHandler(async (req, res) => {
     if (sessionId) {
         session = await prisma.aiGuestSession.findUnique({
             where: { id: sessionId },
-            include: { messages: { orderBy: { createdAt: "asc" } } }
+            select: buildGuestSessionCoreSelect()
         });
     }
 
@@ -7463,5 +7612,6 @@ export const __testables = {
     normalizeAnswerForQuestion,
     parseKnownBrandAffiliationResponse,
     parseAdminControlText,
+    shouldSkipMessageAnswerExtraction,
     toChronologicalGuestHistory,
 };
