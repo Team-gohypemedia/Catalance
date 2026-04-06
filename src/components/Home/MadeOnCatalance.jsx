@@ -1,84 +1,62 @@
 import React from "react";
 import { Marquee } from "@/components/ui/marquee";
+import project1 from "@/assets/images/projects/project-1.jpg";
+import project2 from "@/assets/images/projects/project-2.jpg";
+import project3 from "@/assets/images/projects/project-3.jpg";
+import project4 from "@/assets/images/projects/project-4.jpg";
+import project5 from "@/assets/images/projects/project-5.jpg";
+import project6 from "@/assets/images/projects/project-6.jpg";
+import project7 from "@/assets/images/projects/project-7.jpg";
+import project8 from "@/assets/images/projects/project-8.jpg";
+import project9 from "@/assets/images/projects/project-9.jpg";
+import project10 from "@/assets/images/projects/project-10.jpg";
+import project11 from "@/assets/images/projects/project-11.jpg";
+import project12 from "@/assets/images/projects/project-12.jpg";
+import project13 from "@/assets/images/projects/project-13.jpg";
+import project14 from "@/assets/images/projects/project-14.jpg";
 
 const placeCards = [
   {
-    name: "Santorini",
-    region: "Greece",
-    image:
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+    image: project1,
   },
   {
-    name: "Kyoto",
-    region: "Japan",
-    image:
-      "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1200&q=80",
+    image: project2,
   },
   {
-    name: "Marrakech",
-    region: "Morocco",
-    image:
-      "https://images.unsplash.com/photo-1539020140153-e479b8c22e70?auto=format&fit=crop&w=1200&q=80",
+    image: project3,
   },
   {
-    name: "Bali",
-    region: "Indonesia",
-    image:
-      "https://images.unsplash.com/photo-1501183007986-d0d080b147f9?auto=format&fit=crop&w=1200&q=80",
+    image: project4,
   },
   {
-    name: "Reykjavik",
-    region: "Iceland",
-    image:
-      "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1200&q=80",
+    image: project5,
   },
   {
-    name: "New York",
-    region: "USA",
-    image:
-      "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=1200&q=80",
+    image: project6,
   },
   {
-    name: "Lisbon",
-    region: "Portugal",
-    image:
-      "https://images.unsplash.com/photo-1513735492246-483525079686?auto=format&fit=crop&w=1200&q=80",
+    image: project7,
   },
   {
-    name: "Banff",
-    region: "Canada",
-    image:
-      "https://images.unsplash.com/photo-1500043357865-c6b8827edf7a?auto=format&fit=crop&w=1200&q=80",
+    image: project8,
   },
   {
-    name: "Dubai",
-    region: "UAE",
-    image:
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80",
+    image: project9,
   },
   {
-    name: "Cappadocia",
-    region: "Turkey",
-    image:
-      "https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?auto=format&fit=crop&w=1200&q=80",
+    image: project10,
   },
   {
-    name: "Maui",
-    region: "Hawaii",
-    image:
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+    image: project11,
   },
   {
-    name: "Seoul",
-    region: "South Korea",
-    image:
-      "https://images.unsplash.com/photo-1538485399081-0a8b7fd7f0c2?auto=format&fit=crop&w=1200&q=80",
+    image: project12,
   },
   {
-    name: "Oslo",
-    region: "Norway",
-    image:
-      "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80",
+    image: project13,
+  },
+  {
+    image: project14,
   },
 ];
 

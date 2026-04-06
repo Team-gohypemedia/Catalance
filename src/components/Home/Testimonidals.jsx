@@ -5,48 +5,43 @@ import { Marquee } from '@/components/ui/marquee'
 const testimonials = [
   {
     quote:
-      "The insights we get from SocialLift's analytics are invaluable. They've helped us fine-tune our strategy.",
-    name: 'Tom J.',
-    role: 'E-commerce Entrepreneur',
-    handle: '@tomj',
+    'The CGI ads they designed for us were a game-changer. They not only looked incredible but also conveyed our message perfectly. Our engagement and conversions saw a big boost.',
+    name: '',
+    role: 'CGI Artist',
     image:
       'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
   },
   {
     quote:
-      'Managing multiple platforms was overwhelming before SocialLift. Now, it is effortless, and our brand looks cohesive.',
-    name: 'Jenna L.',
-    role: 'Fashion Brand Manager',
-    handle: '@jennal',
+    'From the start, Go Hype Media impressed with their clarity and planning. They laid out what to expect, delivered on time, and were flexible when we needed tweaks. Our online presence got a major boost',
+    name: 'Mohd Kaif',
+    role: 'Software Engineer',
     image:
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
+      'https://lh3.googleusercontent.com/a-/ALV-UjV87ET3lWHlXGslhEmY3VTVa9sYEXAQKJCea8dCd3K0w4u7JRHM=w72-h72-p-rp-mo-br100',
   },
   {
     quote:
-      'We finally have a workflow that keeps our content consistent without burning out the team.',
-    name: 'Aiden R.',
-    role: 'Founder, Studio North',
-    handle: '@aidenr',
+      'If you’re looking for a digital-agency in Delhi that actually cares, Go Hype Media is it. They took time to understand our business, crafted a customised plan (not just a cookie-cutter approach) and executed with good communication throughout.',
+    name: 'Aniket Thakur',
+    role: 'Software Engineer',
     image:
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
+      'https://lh3.googleusercontent.com/a-/ALV-UjX3ddj5TywgZTltbWR04JBTX0AUnCLMMXT5jxgHvxkkkf2L7H8V=w72-h72-p-rp-mo-br100',
   },
   {
     quote:
-      'SocialLift gave us a clearer weekly rhythm and the reports are easy for the whole team to understand.',
-    name: 'Maya K.',
-    role: 'Marketing Lead',
-    handle: '@mayak',
+      'Amazing experience with Go Hype Media — creative team, quick delivery, and great results.',
+    name: 'Ajay Prajapati',
+    role: 'UX Designer',
     image:
-      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&q=80',
+      'https://lh3.googleusercontent.com/a-/ALV-UjXIHrkC7Kh18MDC6VznKCkq7j2QygoDlUlZZ2cG9jtmvmKRTgek=w72-h72-p-rp-mo-br100',
   },
   {
     quote:
-      'Our engagement started climbing almost immediately after we moved our campaigns here.',
-    name: 'Noah P.',
-    role: 'Creative Director',
-    handle: '@noahp',
+      'Go hype media best social media agency in Delhi and best digital market agency in Delhi I am recommended it always',
+    name: 'Nitin Nayak',
+    role: 'Video Editor',
     image:
-      'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?auto=format&fit=crop&w=400&q=80',
+      'https://lh3.googleusercontent.com/a-/ALV-UjVWLMJeRN_Pk1A0PYQMcaeaRI-cfmX2EL8DPdlRSHnn9ie0gB4=w72-h72-p-rp-mo-br100',
   },
 ]
 

@@ -1,9 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
+import ChromaKeyVideo from "@/components/common/ChromaKeyVideo";
 import LightRays from "@/components/ui/LightRays";
 import { Button } from "@/components/ui/button";
-import Mascot1 from "@/assets/mascot/mascot1.png";
+import MascotCTA from "@/assets/videos/mascot-cta.mp4";
 
 const MARKETPLACE_STATS = [
   {
@@ -68,12 +69,8 @@ const MarketPlaceCTA = () => {
         <div className="flex items-center">
           <div className="grid w-full items-center gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
             <div className="flex justify-center lg:justify-start">
-              <img
-                src={Mascot1}
-                alt="Catalance mascot wearing a yellow suit"
-                loading="lazy"
-                decoding="async"
-                draggable="false"
+              <ChromaKeyVideo
+                src={MascotCTA}
                 className="w-full max-w-[15rem] select-none object-contain drop-shadow-[0_24px_60px_rgba(255,204,0,0.18)] sm:max-w-[19rem] lg:max-w-[25rem]"
               />
             </div>
@@ -85,9 +82,7 @@ const MarketPlaceCTA = () => {
               </h2>
 
               <p className="mt-6 max-w-xl text-pretty text-[0.98rem] leading-relaxed text-white/78 sm:text-lg lg:max-w-2xl">
-                Vetted talent. Protected payments. Managed projects. The
-                platform built for clients who expect professionals to act like
-                professionals.
+                Trusted professionals delivering quality work on time, consistently.
               </p>
 
               <Button
