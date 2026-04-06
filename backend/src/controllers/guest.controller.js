@@ -271,6 +271,157 @@ const runTrackedAiCall = async ({
     );
 };
 
+const SERVICE_CONTEXT_CACHE_TTL_MS = 60 * 1000;
+const SERVICE_QUESTIONS_INCLUDE = Object.freeze({
+    questions: {
+        orderBy: { order: "asc" }
+    }
+});
+const serviceContextCache = new Map();
+const serviceContextInFlight = new Map();
+
+const cloneJsonLikeValue = (value) => {
+    if (value === null || value === undefined) return value;
+    if (typeof structuredClone === "function") {
+        try {
+            return structuredClone(value);
+        } catch {
+            // Fall through to a best-effort JSON clone.
+        }
+    }
+
+    try {
+        return JSON.parse(JSON.stringify(value));
+    } catch {
+        return value;
+    }
+};
+
+const cloneServiceRecord = (service = null) => {
+    if (!service || typeof service !== "object") return service;
+
+    return {
+        ...service,
+        questions: Array.isArray(service.questions)
+            ? service.questions.map((question) => ({
+                ...question,
+                options: cloneJsonLikeValue(question?.options),
+                logic: cloneJsonLikeValue(question?.logic),
+            }))
+            : [],
+    };
+};
+
+const buildServiceContextCacheKey = ({
+    identifier = "",
+    lookup = "slug_or_id",
+    activeOnly = false,
+}) =>
+    `${activeOnly ? "active" : "any"}:${lookup}:${String(identifier || "").trim().toLowerCase()}`;
+
+const getCachedServiceRecord = (cacheKey = "") => {
+    const entry = serviceContextCache.get(cacheKey);
+    if (!entry) return null;
+
+    if (entry.expiresAt <= Date.now()) {
+        serviceContextCache.delete(cacheKey);
+        return null;
+    }
+
+    return cloneServiceRecord(entry.value);
+};
+
+const setCachedServiceRecord = (service = null, { activeOnly = false } = {}) => {
+    if (!service?.id || !service?.slug) return;
+
+    const cachedValue = cloneServiceRecord(service);
+    const expiresAt = Date.now() + SERVICE_CONTEXT_CACHE_TTL_MS;
+    const identifiers = [service.id, service.slug]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+
+    identifiers.forEach((identifier) => {
+        serviceContextCache.set(
+            buildServiceContextCacheKey({
+                identifier,
+                lookup: "slug_or_id",
+                activeOnly,
+            }),
+            { value: cachedValue, expiresAt }
+        );
+    });
+
+    serviceContextCache.set(
+        buildServiceContextCacheKey({
+            identifier: service.slug,
+            lookup: "slug",
+            activeOnly,
+        }),
+        { value: cachedValue, expiresAt }
+    );
+};
+
+const getServiceWithOrderedQuestions = async ({
+    identifier = "",
+    lookup = "slug_or_id",
+    activeOnly = false,
+} = {}) => {
+    const normalizedIdentifier = String(identifier || "").trim();
+    if (!normalizedIdentifier) return null;
+
+    const cacheKey = buildServiceContextCacheKey({
+        identifier: normalizedIdentifier,
+        lookup,
+        activeOnly,
+    });
+    const cached = getCachedServiceRecord(cacheKey);
+    if (cached) return cached;
+
+    const inFlight = serviceContextInFlight.get(cacheKey);
+    if (inFlight) {
+        const sharedResult = await inFlight;
+        return cloneServiceRecord(sharedResult);
+    }
+
+    const loadPromise = (async () => {
+        const whereClause =
+            lookup === "slug"
+                ? {
+                    slug: normalizedIdentifier,
+                    ...(activeOnly ? { active: true } : {}),
+                }
+                : {
+                    OR: [
+                        { slug: normalizedIdentifier },
+                        { id: normalizedIdentifier }
+                    ],
+                    ...(activeOnly ? { active: true } : {}),
+                };
+
+        const service = await prisma.service.findFirst({
+            where: whereClause,
+            include: SERVICE_QUESTIONS_INCLUDE,
+        });
+
+        if (service) {
+            setCachedServiceRecord(service, { activeOnly: false });
+            if (service.active) {
+                setCachedServiceRecord(service, { activeOnly: true });
+            }
+        }
+
+        return service ? cloneServiceRecord(service) : null;
+    })();
+
+    serviceContextInFlight.set(cacheKey, loadPromise);
+
+    try {
+        return await loadPromise;
+    } finally {
+        serviceContextInFlight.delete(cacheKey);
+    }
+};
+
 const safeDecodeURIComponent = (value = "") => {
     try {
         return decodeURIComponent(value);
@@ -5312,19 +5463,10 @@ export const startGuestSession = asyncHandler(async (req, res) => {
     // 1. Find the Service and its Questions
     const service = await requestTimingTracker.measure(
         "load_selected_service",
-        () => prisma.service.findFirst({
-            where: {
-                OR: [
-                    { slug: serviceId },
-                    { id: serviceId }
-                ],
-                active: true
-            },
-            include: {
-                questions: {
-                    orderBy: { order: 'asc' }
-                }
-            }
+        () => getServiceWithOrderedQuestions({
+            identifier: serviceId,
+            lookup: "slug_or_id",
+            activeOnly: true,
         }),
         {
             label: "Load selected service",
@@ -5466,13 +5608,10 @@ export const guestChat = asyncHandler(async (req, res) => {
     // 2. Fetch Service Questions
     const service = await requestTimingTracker.measure(
         "load_service_context",
-        () => prisma.service.findUnique({
-            where: { slug: session.serviceId },
-            include: {
-                questions: {
-                    orderBy: { order: 'asc' }
-                }
-            }
+        () => getServiceWithOrderedQuestions({
+            identifier: session.serviceId,
+            lookup: "slug",
+            activeOnly: false,
         }),
         {
             label: "Load service context",
@@ -7056,13 +7195,10 @@ export const getGuestHistory = asyncHandler(async (req, res) => {
     let inputConfig = { type: "text", options: [] };
 
     if (Number.isInteger(session.currentStep) && session.currentStep >= 0) {
-        const service = await prisma.service.findUnique({
-            where: { slug: session.serviceId },
-            include: {
-                questions: {
-                    orderBy: { order: "asc" }
-                }
-            }
+        const service = await getServiceWithOrderedQuestions({
+            identifier: session.serviceId,
+            lookup: "slug",
+            activeOnly: false,
         });
 
         const currentQuestion = service?.questions?.[session.currentStep];
@@ -7113,18 +7249,10 @@ export const getGuestAdvice = asyncHandler(async (req, res) => {
     const resolvedServiceId = session?.serviceId || serviceId;
     let service = null;
     if (resolvedServiceId) {
-        service = await prisma.service.findFirst({
-            where: {
-                OR: [
-                    { slug: resolvedServiceId },
-                    { id: resolvedServiceId }
-                ]
-            },
-            include: {
-                questions: {
-                    orderBy: { order: "asc" }
-                }
-            },
+        service = await getServiceWithOrderedQuestions({
+            identifier: resolvedServiceId,
+            lookup: "slug_or_id",
+            activeOnly: false,
         });
     }
 

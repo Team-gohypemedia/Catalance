@@ -567,6 +567,8 @@ model AiGuestMessage {
   role      String // "user" or "assistant"
   content   String         @db.Text
   createdAt DateTime       @default(now())
+
+  @@index([sessionId, createdAt])
 }
 
 model ProjectTask {
