@@ -143,7 +143,6 @@ const ActiveProjects = memo(function ActiveProjects({
     () => (Array.isArray(showcaseItems) ? showcaseItems : []),
     [showcaseItems],
   );
-  const shouldUseProjectCarousel = isMobile ? items.length > 1 : items.length > 3;
   const [projectCarouselApi, setProjectCarouselApi] = useState(null);
   const [canGoToPreviousProjects, setCanGoToPreviousProjects] = useState(false);
   const [canGoToNextProjects, setCanGoToNextProjects] = useState(false);
@@ -191,6 +190,11 @@ const ActiveProjects = memo(function ActiveProjects({
       },
     ];
   }, [onOpenHireFreelancer, onOpenQuickProject]);
+
+  const totalVisibleProjectCards = items.length + projectRedirectCards.length;
+  const shouldUseProjectCarousel = isMobile
+    ? totalVisibleProjectCards > 1
+    : totalVisibleProjectCards > 3;
 
   useEffect(() => {
     if (!projectCarouselApi || !shouldUseProjectCarousel) {

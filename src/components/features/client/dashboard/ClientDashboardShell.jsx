@@ -81,7 +81,7 @@ const draftProposalSurfaceToneClassName =
   "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 
 const draftProposalDetailBlockClassName =
-  `flex min-w-0 flex-col rounded-[14px] ${draftProposalSurfaceToneClassName} p-4 lg:h-[76px]`;
+  `flex min-w-0 flex-col justify-between rounded-[14px] ${draftProposalSurfaceToneClassName} px-4 pt-4 pb-5 min-h-[90px]`;
 
 const draftProposalActionButtonClassName =
   "inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-[10px] px-4 text-sm font-semibold transition-colors";

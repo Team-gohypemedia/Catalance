@@ -2032,6 +2032,7 @@ const ClientProposalContent = () => {
   const freelancerPoolPromiseRef = useRef(null);
 
   const deepLinkProjectId = searchParams.get("projectId");
+  const deepLinkDraftId = searchParams.get("draftId");
   const deepLinkTab = (searchParams.get("tab") || "").toLowerCase();
   const deepLinkAction = (searchParams.get("action") || "").toLowerCase();
 
@@ -3204,7 +3205,53 @@ const ClientProposalContent = () => {
   }, [freelancerSelectionData.available]);
 
   useEffect(() => {
-    if (!deepLinkProjectId || isLoading || hasHandledDeepLink) return;
+    if (isLoading || hasHandledDeepLink) return;
+
+    const tabByStatus = (status) => {
+      if (status === "draft") return "draft";
+      if (status === "rejected") return "rejected";
+      return "pending";
+    };
+
+    const validTabs = new Set(["draft", "pending", "rejected"]);
+
+    if (deepLinkDraftId || (!deepLinkProjectId && deepLinkAction === "send")) {
+      const targetDraft =
+        (deepLinkDraftId
+          ? proposals.find(
+            (proposal) => String(proposal.id) === String(deepLinkDraftId),
+          )
+          : null) || proposals.find((proposal) => proposal.status === "draft");
+
+      setActiveTab(
+        validTabs.has(deepLinkTab)
+          ? deepLinkTab
+          : tabByStatus(targetDraft?.status || "draft"),
+      );
+
+      if (targetDraft) {
+        if (deepLinkAction === "send") {
+          openFreelancerSelection(targetDraft);
+        } else {
+          handleOpenProposal(targetDraft);
+        }
+      }
+
+      if (deepLinkDraftId || deepLinkAction) {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete("action");
+        nextParams.delete("draftId");
+        setSearchParams(nextParams, { replace: true });
+      }
+
+      setHasHandledDeepLink(true);
+      return;
+    }
+
+    if (!deepLinkProjectId) {
+      setHasHandledDeepLink(true);
+      return;
+    }
 
     const relatedProposals = proposals.filter(
       (proposal) => String(proposal.projectId) === String(deepLinkProjectId),
@@ -3215,13 +3262,6 @@ const ClientProposalContent = () => {
       return;
     }
 
-    const tabByStatus = (status) => {
-      if (status === "draft") return "draft";
-      if (status === "rejected") return "rejected";
-      return "pending";
-    };
-
-    const validTabs = new Set(["draft", "pending", "rejected"]);
     const inferredTab = tabByStatus(relatedProposals[0]?.status);
     const targetTab = validTabs.has(deepLinkTab) ? deepLinkTab : inferredTab;
     setActiveTab(targetTab);
@@ -3243,11 +3283,13 @@ const ClientProposalContent = () => {
     setHasHandledDeepLink(true);
   }, [
     deepLinkAction,
+    deepLinkDraftId,
     deepLinkProjectId,
     deepLinkTab,
     handleOpenProposal,
     hasHandledDeepLink,
     isLoading,
+    openFreelancerSelection,
     proposals,
     searchParams,
     setSearchParams,

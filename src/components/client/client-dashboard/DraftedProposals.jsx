@@ -14,7 +14,7 @@ const draftProposalSurfaceToneClassName =
   "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 
 const draftProposalDetailBlockClassName =
-  `flex min-w-0 flex-col rounded-[14px] ${draftProposalSurfaceToneClassName} p-4 lg:h-[76px]`;
+  `flex min-w-0 flex-col justify-between rounded-[14px] ${draftProposalSurfaceToneClassName} px-4 pt-4 pb-5 min-h-[90px]`;
 
 const draftProposalActionButtonClassName =
   "inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-[10px] px-4 text-sm font-semibold transition-colors";
@@ -32,7 +32,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
               Service
             </p>
-            <p className="mt-3 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            <p className="break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
               {item.tag}
             </p>
           </div>
@@ -41,7 +41,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
               Budget
             </p>
-            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
               {item.budget}
             </p>
           </div>
