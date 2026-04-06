@@ -19,7 +19,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import logo from "@/assets/logos/logo.svg";
@@ -210,10 +209,7 @@ const BrandMark = () => (
   </div>
 );
 
-const DefaultNotificationPopoverButton = ({
-  unreadCount: unreadCountProp,
-  notificationTo = "/client/messages",
-}) => {
+const NotificationSheetController = ({ notificationTo = "/client/messages" }) => {
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(false);
   const {
@@ -222,8 +218,7 @@ const DefaultNotificationPopoverButton = ({
     markAsRead,
     markAllAsRead,
   } = useNotifications();
-
-  const unreadCount = unreadCountProp ?? contextUnreadCount;
+  const unreadCount = contextUnreadCount;
 
   React.useEffect(() => {
     if (typeof window === "undefined") {
@@ -285,21 +280,7 @@ const DefaultNotificationPopoverButton = ({
   };
 
   return (
-      <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="relative size-9 rounded-full text-[#94a3b8] transition-colors hover:bg-white/5 hover:text-white"
-          aria-label="Open notifications"
-        >
-          <Bell className="size-4.5" />
-          {unreadCount > 0 ? (
-            <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
-          ) : null}
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
         side="right"
         className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-white shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
@@ -390,6 +371,32 @@ const DefaultNotificationPopoverButton = ({
         </div>
       </SheetContent>
       </Sheet>
+  );
+};
+
+const NotificationTriggerButton = ({ unreadCount = 0 }) => {
+  const handleOpenNotifications = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent("client-notifications:open"));
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      onClick={handleOpenNotifications}
+      className="relative size-9 rounded-full text-[#94a3b8] transition-colors hover:bg-white/5 hover:text-white"
+      aria-label="Open notifications"
+    >
+      <Bell className="size-4.5" />
+      {unreadCount > 0 ? (
+        <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
+      ) : null}
+    </Button>
   );
 };
 
@@ -486,17 +493,11 @@ const ClientWorkspaceHeader = ({
     </>
   );
 
-  const notificationButton = notificationNode || (() => {
-    return (
-      <DefaultNotificationPopoverButton
-        unreadCount={unreadCount}
-        notificationTo={notificationTo}
-      />
-    );
-  })();
+  const notificationButton = notificationNode || <NotificationTriggerButton unreadCount={unreadCount} />;
 
   return (
     <header className={cn("sticky top-0 z-50 bg-background", className)}>
+      <NotificationSheetController notificationTo={notificationTo} />
       <WorkspaceMobileSidebar
         currentDashboard="client"
         displayName={displayName}
@@ -512,12 +513,7 @@ const ClientWorkspaceHeader = ({
         onLogout={() => {
           logout();
         }}
-        renderNotificationButton={() => notificationNode || (
-          <DefaultNotificationPopoverButton
-            unreadCount={unreadCount}
-            notificationTo={notificationTo}
-          />
-        )}
+        renderNotificationButton={() => notificationNode || <NotificationTriggerButton unreadCount={unreadCount} />}
       />
 
       <div className="hidden space-y-4 pb-3 pt-3 lg:block">

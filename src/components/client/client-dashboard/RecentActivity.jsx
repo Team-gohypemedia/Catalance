@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useMemo, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
@@ -10,6 +10,7 @@ import {
   DashboardPanel,
   DashboardSkeletonBlock,
 } from "./shared.jsx";
+import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
 
@@ -43,7 +44,7 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
       <button
         type="button"
         onClick={item.onClick}
-        className="flex w-full items-start gap-4 rounded-[18px] px-3 py-3 text-left transition-colors hover:bg-white/[0.02]"
+        className="flex w-full items-start gap-4 rounded-[18px] px-3 py-3 text-left transition-colors hover:bg-white/2"
       >
         <div
           className={cn(
@@ -67,7 +68,7 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
                 event.stopPropagation();
                 item.onAction();
               }}
-              className="mt-3 inline-flex h-8 items-center justify-center rounded-[8px] bg-[#ffc107] px-3 text-xs font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+              className="mt-3 inline-flex h-8 items-center justify-center rounded-xl bg-[#ffc107] px-3 text-xs font-semibold text-black transition-colors hover:bg-[#ffd54f]"
             >
               {actionLabel}
             </button>
@@ -84,7 +85,7 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
     <button
       type="button"
       onClick={item.onClick}
-      className="flex w-full flex-col gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.02] sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
+      className="flex w-full flex-col gap-3 px-4 py-4 text-left transition-colors hover:bg-white/2 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
     >
       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
         <div
@@ -110,7 +111,7 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
               event.stopPropagation();
               item.onAction();
             }}
-            className="inline-flex h-8 items-center justify-center rounded-[8px] bg-[#ffc107] px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-black transition-colors hover:bg-[#ffd54f]"
+            className="inline-flex h-8 items-center justify-center rounded-xl bg-[#ffc107] px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-black transition-colors hover:bg-[#ffd54f]"
           >
             {actionLabel}
           </button>
@@ -128,11 +129,16 @@ const RecentActivity = memo(function RecentActivity({
   isLoading = false,
   className = "",
 }) {
+  const dashboardData = useOptionalClientDashboardData();
   const isMobile = useIsMobile();
   const items = useMemo(
-    () => (Array.isArray(recentActivities) ? recentActivities : []),
-    [recentActivities],
+    () =>
+      Array.isArray(recentActivities)
+        ? recentActivities
+        : dashboardData?.recentActivities || [],
+    [dashboardData?.recentActivities, recentActivities],
   );
+  const resolvedIsLoading = isLoading || dashboardData?.isLoading;
   const [showAllRecentActivities, setShowAllRecentActivities] = useState(false);
 
   useEffect(() => {
@@ -150,6 +156,16 @@ const RecentActivity = memo(function RecentActivity({
     0,
     items.length - MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT,
   );
+  const handleOpenViewAll = useCallback(() => {
+    if (typeof onOpenNotifications === "function") {
+      onOpenNotifications();
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("client-notifications:open"));
+    }
+  }, [onOpenNotifications]);
 
   return (
     <section className={cn("w-full min-w-0", className)}>
@@ -157,14 +173,10 @@ const RecentActivity = memo(function RecentActivity({
         <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
           Recent Activity
         </h2>
-        {!isLoading ? (
+        {!resolvedIsLoading ? (
           <button
             type="button"
-            onClick={
-              typeof onOpenNotifications === "function"
-                ? onOpenNotifications
-                : onOpenViewProjects
-            }
+            onClick={handleOpenViewAll}
             className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[#ffc107] transition-colors hover:text-[#ffd54f]"
           >
             View All
@@ -173,12 +185,12 @@ const RecentActivity = memo(function RecentActivity({
       </div>
 
       <DashboardPanel className="overflow-hidden bg-card">
-        {isLoading ? (
+        {resolvedIsLoading ? (
           <div>
             {[0, 1, 2, 3].map((item) => (
               <div
                 key={`dashboard-activity-skeleton-${item}`}
-                className="flex items-center justify-between gap-4 border-b border-white/[0.05] px-6 py-5 last:border-b-0"
+                className="flex items-center justify-between gap-4 border-b border-white/5 px-6 py-5 last:border-b-0"
               >
                 <div className="flex min-w-0 items-center gap-4">
                   <DashboardSkeletonBlock className="size-10 rounded-full" />
@@ -205,7 +217,7 @@ const RecentActivity = memo(function RecentActivity({
 
             {hasOverflow ? (
               <div className="px-2 pt-4">
-                <div className="h-px bg-white/[0.08]" />
+                <div className="h-px bg-white/8" />
                 <button
                   type="button"
                   onClick={() => setShowAllRecentActivities((current) => !current)}

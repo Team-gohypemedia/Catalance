@@ -917,7 +917,7 @@ const upsertStoredGeneratedProposal = (proposalContent, userId) => {
     }
 
     const normalizedContent = normalizeMarkdownContent(proposalContent);
-    if (!normalizedContent || !isProposalMessage(normalizedContent)) {
+    if (!normalizedContent) {
         return readStoredGeneratedProposals(userId);
     }
 
@@ -934,7 +934,9 @@ const upsertStoredGeneratedProposal = (proposalContent, userId) => {
 
     const proposalToSave = {
         id: existingProposals[existingIndex]?.id || `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-        projectTitle: parsed.fields?.serviceType || parsed.fields?.businessName || "AI Generated Proposal",
+        businessName: parsed.fields?.businessName || parsed.fields?.companyName || "",
+        companyName: parsed.fields?.companyName || parsed.fields?.businessName || "",
+        projectTitle: parsed.fields?.businessName || parsed.fields?.companyName || parsed.fields?.serviceType || "AI Generated Proposal",
         service: parsed.fields?.serviceType || "General services",
         serviceKey: parsed.fields?.serviceType || "",
         summary: normalizedContent,

@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
@@ -21,7 +22,10 @@ import {
   ProjectProposalCard,
 } from "@/components/features/client/ClientProjects";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
+import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import { cn } from "@/shared/lib/utils";
+import { toast } from "sonner";
+import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
 
 const activeProjectCardClassName = "w-full";
 const activeProjectRedirectCardClassName = "w-full h-full md:min-h-[506px]";
@@ -138,11 +142,21 @@ const ActiveProjects = memo(function ActiveProjects({
   runningProjectProcessingId = null,
   className = "",
 }) {
+  const navigate = useNavigate();
+  const dashboardData = useOptionalClientDashboardData();
   const isMobile = useIsMobile();
+  const [localProcessingProjectId, setLocalProcessingProjectId] = useState(null);
   const items = useMemo(
-    () => (Array.isArray(showcaseItems) ? showcaseItems : []),
-    [showcaseItems],
+    () =>
+      Array.isArray(showcaseItems)
+        ? showcaseItems
+        : dashboardData?.activeProjectCards || [],
+    [dashboardData?.activeProjectCards, showcaseItems],
   );
+  const resolvedIsLoading =
+    Array.isArray(showcaseItems) || !dashboardData ? isLoading : dashboardData.isLoading;
+  const resolvedRunningProjectProcessingId =
+    runningProjectProcessingId ?? localProcessingProjectId;
   const [projectCarouselApi, setProjectCarouselApi] = useState(null);
   const [canGoToPreviousProjects, setCanGoToPreviousProjects] = useState(false);
   const [canGoToNextProjects, setCanGoToNextProjects] = useState(false);
@@ -153,9 +167,13 @@ const ActiveProjects = memo(function ActiveProjects({
 
   const projectRedirectCards = useMemo(() => {
     const handleStartProject =
-      typeof onOpenQuickProject === "function" ? onOpenQuickProject : () => {};
+      typeof onOpenQuickProject === "function"
+        ? onOpenQuickProject
+        : () => navigate("/service");
     const handleBrowseMarketplace =
-      typeof onOpenHireFreelancer === "function" ? onOpenHireFreelancer : () => {};
+      typeof onOpenHireFreelancer === "function"
+        ? onOpenHireFreelancer
+        : () => navigate("/marketplace");
 
     return [
       {
@@ -189,7 +207,41 @@ const ActiveProjects = memo(function ActiveProjects({
         onClick: handleBrowseMarketplace,
       },
     ];
-  }, [onOpenHireFreelancer, onOpenQuickProject]);
+  }, [navigate, onOpenHireFreelancer, onOpenQuickProject]);
+
+  const handlePayProject = useCallback(
+    async (project) => {
+      if (!project?.id) return;
+
+      if (typeof onPayRunningProject === "function") {
+        await onPayRunningProject(project);
+        return;
+      }
+
+      if (!dashboardData?.authFetch || !dashboardData?.refreshDashboardData) return;
+
+      setLocalProcessingProjectId(project.id);
+
+      try {
+        const paymentResult = await processProjectInstallmentPayment({
+          authFetch: dashboardData.authFetch,
+          projectId: project.id,
+          description: `${project.dueInstallment?.label || "Project payment"} for ${
+            project.title || "project"
+          }`,
+        });
+
+        toast.success(paymentResult?.message || "Payment completed successfully.");
+        await dashboardData.refreshDashboardData({ silent: true });
+      } catch (error) {
+        console.error("Project payment failed:", error);
+        toast.error(error?.message || "Failed to process payment");
+      } finally {
+        setLocalProcessingProjectId(null);
+      }
+    },
+    [dashboardData, onPayRunningProject],
+  );
 
   const totalVisibleProjectCards = items.length + projectRedirectCards.length;
   const shouldUseProjectCarousel = isMobile
@@ -295,7 +347,7 @@ const ActiveProjects = memo(function ActiveProjects({
           </div>
         </div>
 
-        {!isLoading && shouldUseProjectCarousel ? (
+        {!resolvedIsLoading && shouldUseProjectCarousel ? (
           <ProjectCarouselControls
             onPrevious={() => projectCarouselApi?.scrollPrev()}
             onNext={() => projectCarouselApi?.scrollNext()}
@@ -307,7 +359,7 @@ const ActiveProjects = memo(function ActiveProjects({
         ) : null}
       </div>
 
-      {isLoading ? (
+      {resolvedIsLoading ? (
         <div className="grid gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3 xl:gap-7">
           {[0, 1, 2].map((item) => (
             <ProjectCardSkeleton key={`active-project-skeleton-${item}`} />
@@ -340,8 +392,8 @@ const ActiveProjects = memo(function ActiveProjects({
                       >
                         <ProjectProposalCard
                           project={item}
-                          onPay={onPayRunningProject}
-                          isPaying={runningProjectProcessingId === item.id}
+                          onPay={handlePayProject}
+                          isPaying={resolvedRunningProjectProcessingId === item.id}
                           replaceSectionBadgeWithStatus
                           className={activeProjectCardClassName}
                         />
@@ -383,8 +435,8 @@ const ActiveProjects = memo(function ActiveProjects({
                 <ProjectProposalCard
                   key={item.id}
                   project={item}
-                  onPay={onPayRunningProject}
-                  isPaying={runningProjectProcessingId === item.id}
+                  onPay={handlePayProject}
+                  isPaying={resolvedRunningProjectProcessingId === item.id}
                   replaceSectionBadgeWithStatus
                   className={activeProjectCardClassName}
                 />

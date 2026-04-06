@@ -17,6 +17,8 @@ import {
   DashboardPanel,
   DashboardSkeletonBlock,
 } from "@/components/client/client-dashboard/shared.jsx";
+import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
+import { formatDashboardMetricAmount } from "./dashboard-utils.js";
 import { cn } from "@/shared/lib/utils";
 
 const metricIconMap = {
@@ -35,6 +37,46 @@ const dashboardMetricSkeletonItems = [
   { id: "completed-projects", hasValueSwitch: false },
   { id: "pending-approvals", hasValueSwitch: false },
   { id: "payments-summary", hasValueSwitch: true },
+];
+
+const buildDashboardMetrics = ({
+  activeProjectCount,
+  completedProjectCount,
+  pendingProposalCount,
+  paymentSummary,
+}) => [
+  {
+    id: "active-projects",
+    title: "ACTIVE PROJECTS",
+    value: String(activeProjectCount || 0).padStart(2, "0"),
+    iconKey: "projects",
+    to: "/client/project?filter=ongoing",
+  },
+  {
+    id: "completed-projects",
+    title: "COMPLETED PROJECTS",
+    value: String(completedProjectCount || 0).padStart(2, "0"),
+    iconKey: "completed",
+    to: "/client/project?filter=completed",
+  },
+  {
+    id: "pending-approvals",
+    title: "PENDING APPROVALS",
+    value: String(pendingProposalCount || 0).padStart(2, "0"),
+    iconKey: "proposals",
+    to: "/client/proposal?tab=pending",
+  },
+  {
+    id: "payments-summary",
+    title: "TOTAL AMOUNT PAID",
+    value: formatDashboardMetricAmount(paymentSummary?.totalPaid || 0),
+    alternateTitle: "PENDING PAYMENTS",
+    alternateValue: formatDashboardMetricAmount(paymentSummary?.totalPending || 0),
+    hasValueSwitch: true,
+    defaultMode: "alternate",
+    iconKey: "payments",
+    to: "/client/payments",
+  },
 ];
 
 const OverviewMetricCardSkeleton = memo(function OverviewMetricCardSkeleton({
@@ -244,7 +286,25 @@ const OverviewMetricsGrid = memo(function OverviewMetricsGrid({
   isLoading = false,
   className = "",
 }) {
-  const items = useMemo(() => (Array.isArray(metrics) ? metrics : []), [metrics]);
+  const dashboardData = useOptionalClientDashboardData();
+  const items = useMemo(() => {
+    if (Array.isArray(metrics)) {
+      return metrics;
+    }
+
+    if (!dashboardData) {
+      return [];
+    }
+
+    return buildDashboardMetrics({
+      activeProjectCount: dashboardData.activeProjectCount,
+      completedProjectCount: dashboardData.completedProjectCount,
+      pendingProposalCount: dashboardData.pendingProposalCount,
+      paymentSummary: dashboardData.paymentSummary,
+    });
+  }, [dashboardData, metrics]);
+  const resolvedIsLoading =
+    Array.isArray(metrics) || !dashboardData ? isLoading : dashboardData.isLoading;
 
   return (
     <section
@@ -253,7 +313,7 @@ const OverviewMetricsGrid = memo(function OverviewMetricsGrid({
         className,
       )}
     >
-      {isLoading
+      {resolvedIsLoading
         ? dashboardMetricSkeletonItems.map((item) => (
           <OverviewMetricCardSkeleton
             key={`dashboard-metric-skeleton-${item.id}`}
