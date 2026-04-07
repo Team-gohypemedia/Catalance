@@ -81,6 +81,11 @@ const formatDraftBudget = (value) => {
   return formatINR(numericValue);
 };
 
+const formatDraftTimeline = (value) => {
+  const rawValue = String(value || "").trim();
+  return rawValue || "Not set";
+};
+
 const buildDraftProposalPath = (draftId, action = "view") => {
   const params = new URLSearchParams({ tab: "draft", action });
   if (draftId) params.set("draftId", draftId);
@@ -246,7 +251,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
           {item.title}
         </p>
 
-        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
+        <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
           <div className={draftProposalDetailBlockClassName}>
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
               Service
@@ -262,6 +267,15 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
             </p>
             <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
               {item.budget}
+            </p>
+          </div>
+
+          <div className={draftProposalDetailBlockClassName}>
+            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
+              Timeline
+            </p>
+            <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+              {item.timeline || "Not set"}
             </p>
           </div>
         </div>
@@ -540,6 +554,9 @@ const DraftedProposals = memo(function DraftedProposals({
         title: resolveDraftTitle(proposal),
         tag: resolveDraftService(proposal),
         budget: formatDraftBudget(proposal.budget),
+        timeline: formatDraftTimeline(
+          proposal.timeline || proposal.launchTimeline || proposal.duration,
+        ),
         onSend: () => {
           setActiveDraftId(proposal.id);
           setSelectedDraftForSend(proposal);
