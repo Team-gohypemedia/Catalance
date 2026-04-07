@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { memo } from "react";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { Badge } from "@/components/ui/badge";
@@ -43,12 +43,12 @@ const ProposalRowCard = ({
   const displayBusinessName = businessName ? toDisplayTitleCase(businessName) : "";
   const projectName = resolveProposalProjectName(proposal);
   const serviceLabel = resolveProposalServiceLabel(proposal);
-  const proposalServiceType = useMemo(() => {
-    const normalizedServiceType = String(serviceLabel || "").trim();
-    if (!normalizedServiceType) return "";
-    if (GENERIC_PROPOSAL_CATEGORIES.has(normalizedServiceType.toLowerCase())) return "";
-    return toDisplayTitleCase(normalizedServiceType);
-  }, [serviceLabel]);
+  const normalizedServiceType = String(serviceLabel || "").trim();
+  const proposalServiceType =
+    normalizedServiceType &&
+    !GENERIC_PROPOSAL_CATEGORIES.has(normalizedServiceType.toLowerCase())
+      ? toDisplayTitleCase(normalizedServiceType)
+      : "";
   const cardTitle = displayBusinessName || projectName || serviceLabel || "Proposal";
   const freelancerRecipients = getProposalFreelancerRecipients(proposal);
   const canViewFreelancerDetails =
@@ -230,4 +230,4 @@ const ProposalRowCard = ({
   );
 };
 
-export default ProposalRowCard;
+export default memo(ProposalRowCard);

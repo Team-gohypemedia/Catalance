@@ -1,11 +1,10 @@
-import React from "react";
+import React, { memo } from "react";
 import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/shared/lib/utils";
 import ProposalCardsCarousel from "./ProposalCardsCarousel.jsx";
 import { EmptyStateCard, ProposalLoadingState } from "./ProposalStates.jsx";
 import { proposalTabCopy } from "./proposal-utils.js";
-import { useClientProposalData } from "./useClientProposalData.js";
 
 const tabConfig = [
   { value: "draft", label: "Draft" },
@@ -13,27 +12,24 @@ const tabConfig = [
   { value: "rejected", label: "Rejected" },
 ];
 
-const ProposalTabsSection = () => {
-  const {
-    activeTab,
-    grouped,
-    isLoading,
-    processingPaymentProposalId,
-    sendingProposalId,
-    setActiveTab,
-    handleApproveAndPay,
-    handleDelete,
-    handleOpenFreelancerDetails,
-    handleOpenProposal,
-    openFreelancerSelection,
-  } = useClientProposalData();
-
+const ProposalTabsSection = ({
+  activeTab,
+  grouped,
+  isLoading,
+  setActiveTab,
+  processingPaymentProposalId,
+  sendingProposalId,
+  handleApproveAndPay,
+  handleDelete,
+  handleOpenFreelancerDetails,
+  handleOpenProposal,
+  openFreelancerSelection,
+}) => {
   const currentTabItems = grouped[activeTab] || [];
   const currentTabMeta = proposalTabCopy[activeTab] || proposalTabCopy.draft;
 
   return (
     <Tabs
-      defaultValue="draft"
       value={activeTab}
       onValueChange={setActiveTab}
       className="w-full space-y-8"
@@ -124,4 +120,4 @@ const ProposalTabsSection = () => {
   );
 };
 
-export default ProposalTabsSection;
+export default memo(ProposalTabsSection);

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
 import ProposalDetailsDialog from "./ProposalDetailsDialog.jsx";
@@ -9,33 +9,46 @@ import {
   freelancerMatchesRequiredSkill,
   generateFreelancerGradient,
 } from "./proposal-utils.js";
-import { useClientProposalData } from "./useClientProposalData.js";
 
-const ClientProposalDialogs = () => {
-  const {
-    freelancerDetailsProposal,
-    unsendingProposalId,
-    handleFreelancerDetailsDialogOpenChange,
-    handleUnsendProposalFromFreelancer,
-    showFreelancerSelect,
-    setShowFreelancerSelect,
-    proposalForFreelancerSelection,
-    isFreelancersLoading,
-    sendingProposalId,
-    sendingFreelancerId,
-    freelancerSearch,
-    setFreelancerSearch,
-    filteredFreelancers,
-    freelancerSelectionData,
-    bestMatchFreelancerIds,
-    projectRequiredSkills,
-    handleViewFreelancerProfile,
-    sendProposalToFreelancer,
-    showFreelancerProfile,
-    handleFreelancerProfileOpenChange,
-    viewingFreelancer,
-  } = useClientProposalData();
-
+const ClientProposalDialogs = ({
+  user,
+  activeProposal,
+  isViewing,
+  isLoadingProposal,
+  isEditingProposal,
+  isSavingProposal,
+  editableProposalDraft,
+  processingPaymentProposalId,
+  sendingProposalId,
+  sendingFreelancerId,
+  freelancerDetailsProposal,
+  unsendingProposalId,
+  showFreelancerSelect,
+  setShowFreelancerSelect,
+  proposalForFreelancerSelection,
+  isFreelancersLoading,
+  freelancerSearch,
+  setFreelancerSearch,
+  filteredFreelancers,
+  freelancerSelectionData,
+  bestMatchFreelancerIds,
+  projectRequiredSkills,
+  showFreelancerProfile,
+  viewingFreelancer,
+  handleProposalDialogOpenChange,
+  handleEditableProposalDraftChange,
+  handleSaveProposalChanges,
+  handleCancelProposalEditing,
+  handleDelete,
+  handleApproveAndPay,
+  openFreelancerSelection,
+  handleFreelancerDetailsDialogOpenChange,
+  handleUnsendProposalFromFreelancer,
+  sendProposalToFreelancer,
+  handleFreelancerProfileOpenChange,
+  handleViewFreelancerProfile,
+  startEditingProposal,
+}) => {
   return (
     <>
       <ProposalFreelancerDetailsDialog
@@ -46,7 +59,25 @@ const ClientProposalDialogs = () => {
         unsendingProposalId={unsendingProposalId}
       />
 
-      <ProposalDetailsDialog />
+      <ProposalDetailsDialog
+        user={user}
+        activeProposal={activeProposal}
+        isViewing={isViewing}
+        isLoadingProposal={isLoadingProposal}
+        isEditingProposal={isEditingProposal}
+        isSavingProposal={isSavingProposal}
+        editableProposalDraft={editableProposalDraft}
+        processingPaymentProposalId={processingPaymentProposalId}
+        sendingProposalId={sendingProposalId}
+        handleProposalDialogOpenChange={handleProposalDialogOpenChange}
+        handleEditableProposalDraftChange={handleEditableProposalDraftChange}
+        handleSaveProposalChanges={handleSaveProposalChanges}
+        handleCancelProposalEditing={handleCancelProposalEditing}
+        handleDelete={handleDelete}
+        handleApproveAndPay={handleApproveAndPay}
+        openFreelancerSelection={openFreelancerSelection}
+        startEditingProposal={startEditingProposal}
+      />
 
       <FreelancerSelectionDialog
         open={showFreelancerSelect}
@@ -80,4 +111,4 @@ const ClientProposalDialogs = () => {
   );
 };
 
-export default ClientProposalDialogs;
+export default memo(ClientProposalDialogs);

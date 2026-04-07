@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { memo, useEffect, useState } from "react";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,11 @@ import {
 import { cn } from "@/shared/lib/utils";
 import ProposalRowCard from "./ProposalRowCard.jsx";
 
-const ClientProposalCarouselDots = ({ count, activeIndex, onSelect }) => {
+const ClientProposalCarouselDots = memo(function ClientProposalCarouselDots({
+  count,
+  activeIndex,
+  onSelect,
+}) {
   if (count <= 1) return null;
 
   return (
@@ -39,7 +43,7 @@ const ClientProposalCarouselDots = ({ count, activeIndex, onSelect }) => {
       })}
     </div>
   );
-};
+});
 
 const ProposalCardsCarousel = ({
   proposals,
@@ -107,6 +111,7 @@ const ProposalCardsCarousel = ({
     );
   }
 
+  const shouldShowProposalCarouselControls = proposals.length > 4;
   const proposalCarouselDesktopControlClassName =
     "size-11 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
   const proposalCarouselMobileControlClassName =
@@ -122,53 +127,59 @@ const ProposalCardsCarousel = ({
           containScroll: "trimSnaps",
         }}
       >
-        <div className="mb-5 hidden justify-end gap-2 md:flex">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className={proposalCarouselDesktopControlClassName}
-            onClick={() => proposalCarouselApi?.scrollPrev()}
-            disabled={!canGoToPreviousProposal}
-            aria-label="Show previous proposal"
-          >
-            <ChevronLeft className="size-5" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className={proposalCarouselDesktopControlClassName}
-            onClick={() => proposalCarouselApi?.scrollNext()}
-            disabled={!canGoToNextProposal}
-            aria-label="Show next proposal"
-          >
-            <ChevronRight className="size-5" />
-          </Button>
-        </div>
+        {shouldShowProposalCarouselControls ? (
+          <div className="mb-5 hidden justify-end gap-2 md:flex">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={proposalCarouselDesktopControlClassName}
+              onClick={() => proposalCarouselApi?.scrollPrev()}
+              disabled={!canGoToPreviousProposal}
+              aria-label="Show previous proposal"
+            >
+              <ChevronLeft className="size-5" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={proposalCarouselDesktopControlClassName}
+              onClick={() => proposalCarouselApi?.scrollNext()}
+              disabled={!canGoToNextProposal}
+              aria-label="Show next proposal"
+            >
+              <ChevronRight className="size-5" />
+            </Button>
+          </div>
+        ) : null}
 
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className={`absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
-          onClick={() => proposalCarouselApi?.scrollPrev()}
-          disabled={!canGoToPreviousProposal}
-          aria-label="Show previous proposal"
-        >
-          <ChevronLeft className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className={`absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
-          onClick={() => proposalCarouselApi?.scrollNext()}
-          disabled={!canGoToNextProposal}
-          aria-label="Show next proposal"
-        >
-          <ChevronRight className="size-4" />
-        </Button>
+        {shouldShowProposalCarouselControls ? (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={`absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
+              onClick={() => proposalCarouselApi?.scrollPrev()}
+              disabled={!canGoToPreviousProposal}
+              aria-label="Show previous proposal"
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={`absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
+              onClick={() => proposalCarouselApi?.scrollNext()}
+              disabled={!canGoToNextProposal}
+              aria-label="Show next proposal"
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </>
+        ) : null}
 
         <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform]">
           {proposals.map((proposal) => (
@@ -200,4 +211,4 @@ const ProposalCardsCarousel = ({
   );
 };
 
-export default ProposalCardsCarousel;
+export default memo(ProposalCardsCarousel);

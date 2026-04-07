@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { memo, useMemo } from "react";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Layers3 from "lucide-react/dist/esm/icons/layers-3";
@@ -35,29 +35,26 @@ import {
   statusColors,
   statusLabels,
 } from "./proposal-utils.js";
-import { useClientProposalData } from "./useClientProposalData.js";
 
-const ProposalDetailsDialog = () => {
-  const {
-    user,
-    activeProposal,
-    isViewing,
-    isLoadingProposal,
-    isEditingProposal,
-    isSavingProposal,
-    editableProposalDraft,
-    processingPaymentProposalId,
-    sendingProposalId,
-    handleProposalDialogOpenChange,
-    handleEditableProposalDraftChange,
-    handleSaveProposalChanges,
-    handleCancelProposalEditing,
-    handleDelete,
-    handleApproveAndPay,
-    openFreelancerSelection,
-    startEditingProposal,
-  } = useClientProposalData();
-
+const ProposalDetailsDialog = ({
+  user,
+  activeProposal,
+  isViewing,
+  isLoadingProposal,
+  isEditingProposal,
+  isSavingProposal,
+  editableProposalDraft,
+  processingPaymentProposalId,
+  sendingProposalId,
+  handleProposalDialogOpenChange,
+  handleEditableProposalDraftChange,
+  handleSaveProposalChanges,
+  handleCancelProposalEditing,
+  handleDelete,
+  handleApproveAndPay,
+  openFreelancerSelection,
+  startEditingProposal,
+}) => {
   const headerDisplayName = getDisplayName(user);
   const activeProposalDetails = activeProposal ? extractProposalDetails(activeProposal) : null;
   const activeProposalStructuredData = useMemo(
@@ -76,7 +73,7 @@ const ProposalDetailsDialog = () => {
         normalizedStatus === "pending" ||
         normalizedStatus === "sent")
     );
-  }, [activeProposal]);
+  }, [activeProposal?.requiresPayment, activeProposal?.status]);
   const proposalModalTitle = useMemo(() => {
     const baseTitle = resolveProposalTitle(activeProposal) || "Proposal";
     if (!isEditingProposal) return baseTitle;
@@ -525,4 +522,4 @@ const ProposalDetailsDialog = () => {
   );
 };
 
-export default ProposalDetailsDialog;
+export default memo(ProposalDetailsDialog);

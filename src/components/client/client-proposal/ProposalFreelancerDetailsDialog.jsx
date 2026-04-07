@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { memo } from "react";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -28,10 +28,7 @@ const ProposalFreelancerDetailsDialog = ({
   onUnsend,
   unsendingProposalId,
 }) => {
-  const recipients = useMemo(
-    () => getProposalFreelancerRecipients(proposal),
-    [proposal],
-  );
+  const recipients = getProposalFreelancerRecipients(proposal);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -134,4 +131,4 @@ const ProposalFreelancerDetailsDialog = ({
   );
 };
 
-export default ProposalFreelancerDetailsDialog;
+export default memo(ProposalFreelancerDetailsDialog);
