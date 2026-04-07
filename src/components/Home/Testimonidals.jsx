@@ -1,5 +1,5 @@
 import React from 'react'
-import { Wormhole } from '@/components/ui/wormhole'
+import { Wormhole } from '@/components/ui/Wormhole'
 import { Marquee } from '@/components/ui/marquee'
 
 const testimonials = [
@@ -108,7 +108,7 @@ const Testimonidals = () => {
             offset: -30,
             stroke: 1.1,
             opacity: [0.18, 1, 0.45],
-            colors: ["rgb(135, 72, 0)", "rgb(135, 72, 0)", "rgb(135, 72, 0)"],
+            colors: ["rgb(255, 255, 255)", "rgb(255, 255, 255)", "rgb(255, 255, 255)"],
           }}
           pulse={{
             delay: 1.4,
