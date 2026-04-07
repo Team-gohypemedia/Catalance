@@ -87,7 +87,7 @@ const Skiper47 = ({
   return (
     <div
       className={cn(
-        "flex h-full w-full items-center justify-center overflow-hidden bg-[#f5f4f3]",
+        "relative flex h-full w-full items-center justify-center overflow-hidden bg-[#f5f4f3]",
         wrapperClassName,
       )}>
       <Carousel_001
@@ -103,6 +103,14 @@ const Skiper47 = ({
         slidesPerView={slidesPerView}
         breakpoints={breakpoints}
         centeredSlides={centeredSlides}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 left-0 z-20 w-5 bg-[inherit] sm:w-6 lg:w-8"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 right-0 z-20 w-5 bg-[inherit] sm:w-6 lg:w-8"
       />
     </div>
   );
@@ -136,8 +144,9 @@ const Carousel_001 = ({
 
   const css = `
   .Carousal_001 {
+    padding-inline: 6px !important;
     padding-bottom: 26px !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
   .Carousal_001 .swiper-pagination-bullet {
@@ -162,7 +171,7 @@ const Carousel_001 = ({
         duration: 0.3,
         delay: 0.5,
       }}
-      className={cn("relative w-full max-w-[1120px]", className)}>
+      className={cn("relative w-full max-w-[1120px] overflow-hidden", className)}>
       <style>{css}</style>
       <Swiper
         spaceBetween={spaceBetween}
