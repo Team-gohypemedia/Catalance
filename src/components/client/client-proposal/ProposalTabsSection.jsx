@@ -12,19 +12,23 @@ const tabConfig = [
   { value: "rejected", label: "Rejected" },
 ];
 
-const ProposalTabsSection = ({
-  activeTab,
-  grouped,
-  isLoading,
-  setActiveTab,
-  processingPaymentProposalId,
-  sendingProposalId,
-  handleApproveAndPay,
-  handleDelete,
-  handleOpenFreelancerDetails,
-  handleOpenProposal,
-  openFreelancerSelection,
-}) => {
+const ProposalTabsSection = ({ proposalState, actions }) => {
+  const {
+    activeTab,
+    grouped,
+    isLoading,
+    processingPaymentProposalId,
+    sendingProposalId,
+  } = proposalState;
+  const {
+    setActiveTab,
+    handleApproveAndPay,
+    handleDelete,
+    handleOpenFreelancerDetails,
+    handleOpenProposal,
+    openFreelancerSelection,
+  } = actions;
+
   const currentTabItems = grouped[activeTab] || [];
   const currentTabMeta = proposalTabCopy[activeTab] || proposalTabCopy.draft;
 

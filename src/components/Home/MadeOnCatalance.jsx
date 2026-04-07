@@ -84,6 +84,9 @@ const verticalLanes = Array.from({ length: 4 }, (_, laneIndex) => ({
   reverse: laneIndex % 2 === 1,
 }));
 
+const laneFadeMaskClassName =
+  "[mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_88%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_88%,transparent_100%)] [mask-repeat:no-repeat] [-webkit-mask-repeat:no-repeat] [mask-size:100%_100%] [-webkit-mask-size:100%_100%]";
+
 const MadeOnCatalance = () => {
   return (
     <section className="relative h-screen overflow-hidden bg-background text-foreground">
@@ -93,26 +96,20 @@ const MadeOnCatalance = () => {
           <h2 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
             Made on <span className="text-primary">CATALANCE</span>
           </h2>
-          <p className="mt-4 max-w-5xl text-sm leading-6 text-muted-foreground sm:text-base">
-            A full-screen vertical marquee of place imagery, built to move continuously without text inside the cards.
-          </p>
         </header>
 
-        <div className="relative grid flex-1 min-h-0 grid-cols-2 gap-4 py-6 lg:grid-cols-4 lg:gap-6">
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-20 bg-linear-to-b from-background via-background/90 to-transparent sm:h-28" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-20 bg-linear-to-t from-background via-background/90 to-transparent sm:h-28" />
-
+        <div className="relative grid min-h-0 flex-1 grid-cols-2 gap-4 py-6 lg:grid-cols-4 lg:gap-6">
           {verticalLanes.map((lane) => (
             <Marquee
               key={lane.key}
               vertical
-              className="h-full min-h-0 flex-1 p-0 [--gap:1.25rem]"
+              className={`h-full min-h-0 flex-1 p-0 [--gap:1.25rem] ${laneFadeMaskClassName}`}
               pauseOnHover={false}
               repeat={5}
               reverse={lane.reverse}
             >
-              {lane.items.map((place) => (
-                <PlaceCard key={place.name} place={place} />
+              {lane.items.map((place, placeIndex) => (
+                <PlaceCard key={`${lane.key}-${placeIndex}`} place={place} />
               ))}
             </Marquee>
           ))}

@@ -2,18 +2,18 @@ import React, { memo } from "react";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { getDisplayName, getInitials } from "./proposal-utils.js";
 
-const ClientProposalHeader = ({ unreadCount, user }) => {
-  const headerDisplayName = getDisplayName(user);
+const ClientProposalHeader = ({ userState }) => {
+  const headerDisplayName = getDisplayName(userState?.user);
 
   return (
     <ClientWorkspaceHeader
       profile={{
-        avatar: user?.avatar,
+        avatar: userState?.user?.avatar,
         name: headerDisplayName,
         initial: getInitials(headerDisplayName),
       }}
       activeWorkspaceKey="proposals"
-      unreadCount={unreadCount}
+      unreadCount={userState?.unreadCount}
     />
   );
 };

@@ -8,17 +8,14 @@ const MARKETPLACE_STATS = [
   {
     label: "Brands Onboarded",
     value: "20k+",
-    description: "7,000+ businesses and brands using Catalance.",
   },
   {
     label: "Successful Projects",
     value: "1000+",
-    description: "10,000+ projects completed successfully through the platform.",
   },
   {
     label: "Freelancers Enrolled",
     value: "10+",
-    description: "Skilled freelancers who have joined the Catalance network.",
   },
 ];
 
@@ -67,9 +64,6 @@ const MarketPlaceCTA = () => {
               </p>
               <p className="mt-4 text-[2.6rem] font-medium leading-none tracking-tight text-white sm:text-[3.4rem]">
                 {stat.value}
-              </p>
-              <p className="mt-4 text-sm leading-relaxed text-white/62 sm:text-[0.95rem]">
-                {stat.description}
               </p>
             </div>
           ))}

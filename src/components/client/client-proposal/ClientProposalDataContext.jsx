@@ -825,6 +825,27 @@ export const ClientProposalDataProvider = ({ children }) => {
         const normalizedBudget = parseProposalBudgetValue(proposal.budget);
         const sourceProjectId = proposal?.syncedProjectId || proposal?.projectId || null;
         const currentProjectStatus = String(proposal?.projectStatus || "").toLowerCase();
+        const projectProposalContext =
+          proposal.proposalContext &&
+          typeof proposal.proposalContext === "object" &&
+          !Array.isArray(proposal.proposalContext)
+            ? proposal.proposalContext
+            : undefined;
+
+        const buildProjectPayload = () => ({
+          title: resolveProposalTitle(proposal),
+          description: proposal.summary || proposal.content || "",
+          proposalContent:
+            proposal.proposalContent ||
+            proposal.content ||
+            proposal.summary ||
+            "",
+          budget: normalizedBudget,
+          timeline: proposal.timeline || "1 month",
+          serviceKey: proposal.serviceKey || resolveProposalServiceLabel(proposal),
+          status: "OPEN",
+          ...(projectProposalContext ? { proposalContext: projectProposalContext } : {}),
+        });
 
         const hasExistingProposalForFreelancer = proposals.some((entry) => {
           if (!entry?.freelancerId || !entry?.projectId) return false;
@@ -852,21 +873,7 @@ export const ClientProposalDataProvider = ({ children }) => {
           const publishRes = await authFetch(`/projects/${sourceProjectId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: resolveProposalTitle(proposal),
-              description: proposal.summary || proposal.content || "",
-              proposalContent:
-                proposal.proposalContent ||
-                proposal.content ||
-                proposal.summary ||
-                "",
-              proposalContext: proposal.proposalContext || null,
-              budget: normalizedBudget,
-              timeline: proposal.timeline || "1 month",
-              serviceKey:
-                proposal.serviceKey || resolveProposalServiceLabel(proposal),
-              status: "OPEN",
-            }),
+            body: JSON.stringify(buildProjectPayload()),
           });
 
           const publishPayload = await publishRes.json().catch(() => null);
@@ -886,21 +893,7 @@ export const ClientProposalDataProvider = ({ children }) => {
           const projectRes = await authFetch("/projects", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: resolveProposalTitle(proposal),
-              description: proposal.summary || proposal.content || "",
-              proposalContent:
-                proposal.proposalContent ||
-                proposal.content ||
-                proposal.summary ||
-                "",
-              proposalContext: proposal.proposalContext || null,
-              budget: normalizedBudget,
-              timeline: proposal.timeline || "1 month",
-              serviceKey:
-                proposal.serviceKey || resolveProposalServiceLabel(proposal),
-              status: "OPEN",
-            }),
+            body: JSON.stringify(buildProjectPayload()),
           });
 
           const projectPayload = await projectRes.json().catch(() => null);
@@ -1377,27 +1370,64 @@ export const ClientProposalDataProvider = ({ children }) => {
     setIsEditingProposal(true);
   }, []);
 
-  const value = useMemo(
+  const userState = useMemo(
     () => ({
-      unreadCount,
       user,
-      isLoading,
+      unreadCount,
+    }),
+    [unreadCount, user],
+  );
+
+  const proposalState = useMemo(
+    () => ({
+      proposals,
+      activeProposal,
       activeTab,
       grouped,
-      activeProposal,
-      isViewing,
+      isLoading,
       isLoadingProposal,
       isEditingProposal,
       isSavingProposal,
       editableProposalDraft,
       processingPaymentProposalId,
       sendingProposalId,
-      sendingFreelancerId,
-      unsendingProposalId,
+    }),
+    [
+      activeProposal,
+      activeTab,
+      editableProposalDraft,
+      grouped,
+      isEditingProposal,
+      isLoading,
+      isLoadingProposal,
+      isSavingProposal,
+      processingPaymentProposalId,
+      proposals,
+      sendingProposalId,
+    ],
+  );
+
+  const dialogState = useMemo(
+    () => ({
+      isViewing,
       freelancerDetailsProposal,
       showFreelancerSelect,
       showFreelancerProfile,
       viewingFreelancer,
+      unsendingProposalId,
+    }),
+    [
+      freelancerDetailsProposal,
+      isViewing,
+      showFreelancerProfile,
+      showFreelancerSelect,
+      unsendingProposalId,
+      viewingFreelancer,
+    ],
+  );
+
+  const freelancerState = useMemo(
+    () => ({
       freelancerSearch,
       isFreelancersLoading,
       proposalForFreelancerSelection,
@@ -1405,6 +1435,22 @@ export const ClientProposalDataProvider = ({ children }) => {
       freelancerSelectionData,
       bestMatchFreelancerIds,
       projectRequiredSkills,
+      sendingFreelancerId,
+    }),
+    [
+      bestMatchFreelancerIds,
+      filteredFreelancers,
+      freelancerSearch,
+      freelancerSelectionData,
+      isFreelancersLoading,
+      projectRequiredSkills,
+      proposalForFreelancerSelection,
+      sendingFreelancerId,
+    ],
+  );
+
+  const actions = useMemo(
+    () => ({
       setActiveTab,
       setShowFreelancerSelect,
       setFreelancerSearch,
@@ -1425,48 +1471,36 @@ export const ClientProposalDataProvider = ({ children }) => {
       startEditingProposal,
     }),
     [
-      unreadCount,
-      user,
-      isLoading,
-      activeTab,
-      grouped,
-      activeProposal,
-      isViewing,
-      isLoadingProposal,
-      isEditingProposal,
-      isSavingProposal,
-      editableProposalDraft,
-      processingPaymentProposalId,
-      sendingProposalId,
-      sendingFreelancerId,
-      unsendingProposalId,
-      freelancerDetailsProposal,
-      showFreelancerSelect,
-      showFreelancerProfile,
-      viewingFreelancer,
-      freelancerSearch,
-      isFreelancersLoading,
-      proposalForFreelancerSelection,
-      filteredFreelancers,
-      freelancerSelectionData,
-      bestMatchFreelancerIds,
-      projectRequiredSkills,
-      handleDelete,
-      handleOpenFreelancerDetails,
-      handleUnsendProposalFromFreelancer,
       handleApproveAndPay,
-      handleOpenProposal,
-      handleEditableProposalDraftChange,
-      handleSaveProposalChanges,
       handleCancelProposalEditing,
+      handleDelete,
+      handleEditableProposalDraftChange,
+      handleFreelancerDetailsDialogOpenChange,
+      handleFreelancerProfileOpenChange,
+      handleOpenFreelancerDetails,
+      handleOpenProposal,
+      handleProposalDialogOpenChange,
+      handleSaveProposalChanges,
+      handleUnsendProposalFromFreelancer,
+      handleViewFreelancerProfile,
       openFreelancerSelection,
       sendProposalToFreelancer,
-      handleProposalDialogOpenChange,
-      handleFreelancerDetailsDialogOpenChange,
-      handleViewFreelancerProfile,
-      handleFreelancerProfileOpenChange,
+      setActiveTab,
+      setFreelancerSearch,
+      setShowFreelancerSelect,
       startEditingProposal,
     ],
+  );
+
+  const value = useMemo(
+    () => ({
+      userState,
+      proposalState,
+      dialogState,
+      freelancerState,
+      actions,
+    }),
+    [actions, dialogState, freelancerState, proposalState, userState],
   );
 
   return (

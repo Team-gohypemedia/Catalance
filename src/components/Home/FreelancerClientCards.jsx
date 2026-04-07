@@ -25,9 +25,9 @@ const businessFeatures = [
 
 const freelancerFeatures = [
   { icon: Handshake, text: "Collaborate with vetted organizations" },
-  { icon: ChartNoAxesCombined, text: "Consistent, high-quality project opportunities" },
-  { icon: ShieldCheck, text: "Structured and secure payment processes" },
-  { icon: MessageSquareDot, text: "Professional dispute resolution support" },
+  { icon: ChartNoAxesCombined, text: "Reliable high-quality opportunities" },
+  { icon: ShieldCheck, text: "Secure structured payments" },
+  { icon: MessageSquareDot, text: "Professional dispute support" },
 ];
 
 const featureClassName =

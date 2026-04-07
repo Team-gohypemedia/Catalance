@@ -231,11 +231,6 @@ const HOME_SERVICE_CARDS = HOME_SERVICES.map((service, index) => ({
   isPriority: index < 4,
 }));
 
-const SLIDE_INERT_STYLE = {
-  contentVisibility: "auto",
-  containIntrinsicSize: "22rem",
-};
-
 const ServiceRailCard = React.memo(function ServiceRailCard({
   service,
   onSelect,
@@ -311,9 +306,9 @@ const ServiceCardsCarousel = () => {
   );
 
   const syncCarouselState = React.useCallback((emblaApi) => {
-    if (!emblaApi) return;
-    setSelectedIndex(emblaApi.selectedScrollSnap());
-  }, []);
+    if (!emblaApi || serviceCount === 0) return;
+    setSelectedIndex(emblaApi.selectedScrollSnap() % serviceCount);
+  }, [serviceCount]);
 
   React.useEffect(() => {
     if (!api) return;
@@ -326,7 +321,7 @@ const ServiceCardsCarousel = () => {
       api.off("select", syncCarouselState);
       api.off("reInit", syncCarouselState);
     };
-  }, [api, syncCarouselState]);
+  }, [api, serviceCount, syncCarouselState]);
 
   const handleScrollPrev = React.useCallback(() => {
     if (!api) return;
@@ -347,8 +342,7 @@ const ServiceCardsCarousel = () => {
             Ghost You
           </h2>
           <p className="mt-3 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-4 sm:text-base md:text-lg">
-            Every freelancer checked. Every project protected | Browse experts
-            who show up, do the work, and meet deadlines
+            Trusted freelancers who deliver work on time.
           </p>
 
           <Button
@@ -388,9 +382,7 @@ const ServiceCardsCarousel = () => {
             opts={{
               align: "start",
               loop: true,
-              dragFree: false,
               slidesToScroll: 1,
-              containScroll: "trimSnaps",
               duration: 34,
             }}
             className="w-full px-12 py-2 sm:px-14 lg:px-16"
@@ -399,8 +391,7 @@ const ServiceCardsCarousel = () => {
               {HOME_SERVICE_CARDS.map((service) => (
                 <CarouselItem
                   key={service.id}
-                  className="basis-[82%] pl-3 sm:basis-[48%] sm:pl-4 lg:basis-[34%] xl:basis-[26%] 2xl:basis-[22%]"
-                  style={SLIDE_INERT_STYLE}
+                  className="basis-[82%] sm:basis-[48%] lg:basis-[calc((100%-2rem)/3)] xl:basis-[calc((100%-3rem)/4)] 2xl:basis-[calc((100%-4rem)/5)]"
                 >
                   <ServiceRailCard service={service} onSelect={handleSelectService} />
                 </CarouselItem>

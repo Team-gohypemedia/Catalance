@@ -1,48 +1,41 @@
 import React from 'react'
 import { Wormhole } from '@/components/ui/Wormhole'
 import { Marquee } from '@/components/ui/marquee'
+import testimonial1 from '@/assets/images/testimonials/ajay-prajapati.jpg'
+import testimonial2 from '@/assets/images/testimonials/mohd-kaif.jpg'
+import testimonial3 from '@/assets/images/testimonials/nitin-nayak.jpg'
+import testimonial4 from '@/assets/images/testimonials/aniket-thakur.jpg'
 
 const testimonials = [
   {
     quote:
-    'The CGI ads they designed for us were a game-changer. They not only looked incredible but also conveyed our message perfectly. Our engagement and conversions saw a big boost.',
-    name: '',
-    role: 'CGI Artist',
-    image:
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    quote:
-    'From the start, Go Hype Media impressed with their clarity and planning. They laid out what to expect, delivered on time, and were flexible when we needed tweaks. Our online presence got a major boost',
-    name: 'Mohd Kaif',
-    role: 'Software Engineer',
-    image:
-      'https://lh3.googleusercontent.com/a-/ALV-UjV87ET3lWHlXGslhEmY3VTVa9sYEXAQKJCea8dCd3K0w4u7JRHM=w72-h72-p-rp-mo-br100',
-  },
-  {
-    quote:
-      'If you’re looking for a digital-agency in Delhi that actually cares, Go Hype Media is it. They took time to understand our business, crafted a customised plan (not just a cookie-cutter approach) and executed with good communication throughout.',
-    name: 'Aniket Thakur',
-    role: 'Software Engineer',
-    image:
-      'https://lh3.googleusercontent.com/a-/ALV-UjX3ddj5TywgZTltbWR04JBTX0AUnCLMMXT5jxgHvxkkkf2L7H8V=w72-h72-p-rp-mo-br100',
-  },
-  {
-    quote:
-      'Amazing experience with Go Hype Media — creative team, quick delivery, and great results.',
+    'Since using the platform, our brand visibility and engagement have grown consistently across platforms.',
     name: 'Ajay Prajapati',
     role: 'UX Designer',
-    image:
-      'https://lh3.googleusercontent.com/a-/ALV-UjXIHrkC7Kh18MDC6VznKCkq7j2QygoDlUlZZ2cG9jtmvmKRTgek=w72-h72-p-rp-mo-br100',
+    image: testimonial1,
   },
   {
+    quote:
+    'Our brand visibility and audience interaction improved significantly thanks to Catalance.',
+    name: 'Mohd Kaif',
+    role: 'Software Engineer',
+    image: testimonial2,
+  },
+    {
     quote:
       'Go hype media best social media agency in Delhi and best digital market agency in Delhi I am recommended it always',
     name: 'Nitin Nayak',
     role: 'Video Editor',
-    image:
-      'https://lh3.googleusercontent.com/a-/ALV-UjVWLMJeRN_Pk1A0PYQMcaeaRI-cfmX2EL8DPdlRSHnn9ie0gB4=w72-h72-p-rp-mo-br100',
+    image: testimonial3,
   },
+  {
+    quote:
+      'We saw a complete shift in our online presence, with doubled engagement and deeper audience connection.',
+    name: 'Aniket Thakur',
+    role: 'Software Engineer',
+    image: testimonial4,
+  },
+
 ]
 
 function StarRating() {
