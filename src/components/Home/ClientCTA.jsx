@@ -1,4 +1,5 @@
 import React from 'react'
+import { Button } from '@/components/ui/button'
 
 const ClientCTA = () => {
   return (
@@ -7,8 +8,8 @@ const ClientCTA = () => {
         <div className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-background px-6 py-12 sm:px-10 sm:py-14 lg:min-h-[460px] lg:px-16">
           <div className="absolute inset-0 bg-background" />
 
-          <div className="absolute -left-28 top-1/2 h-[440px] w-[440px] -translate-y-1/2 rounded-full bg-primary/35 blur-[120px]" />
-          <div className="absolute -right-28 top-1/2 h-[440px] w-[440px] -translate-y-1/2 rounded-full bg-primary/35 blur-[120px]" />
+          <div className="absolute -left-28 top-1/2 h-[440px] w-[440px] -translate-y-1/2 rounded-full bg-primary/70 blur-[120px]" />
+          <div className="absolute -right-28 top-1/2 h-[440px] w-[440px] -translate-y-1/2 rounded-full bg-primary/70 blur-[120px]" />
 
           <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--primary)/0.28)_0%,hsl(var(--background))_50%,hsl(var(--primary)/0.28)_100%)]" />
 
@@ -23,12 +24,13 @@ const ClientCTA = () => {
                 On-demand expert freelancers for every project
               </p>
 
-              <button
-                type="button"
-                className="mx-auto mt-8 inline-flex h-12 items-center justify-center rounded-[1rem] bg-primary px-7 text-[1rem] font-medium text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.3)] transition-transform duration-200 hover:-translate-y-0.5"
+              <Button
+              type="button"
+              size="lg"
+              className="mt-5"
               >
                 Connect Collaborate Create
-              </button>
+              </Button>
             </div>
           </div>
         </div>
