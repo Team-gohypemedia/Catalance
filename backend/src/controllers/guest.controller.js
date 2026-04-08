@@ -132,7 +132,9 @@ const createRequestTimingTracker = (scope = "guest_chat") => {
             }
         },
         mark(key, meta = {}, stepStartedAt = null) {
-            const startAt = Number.isFinite(Number(stepStartedAt))
+            const startAt = stepStartedAt !== null
+                && stepStartedAt !== undefined
+                && Number.isFinite(Number(stepStartedAt))
                 ? Number(stepStartedAt)
                 : getTimingNow();
             pushStep(key, meta, startAt, getTimingNow());
@@ -255,11 +257,53 @@ const runTrackedAiCall = async ({
     selectedServiceName = "",
 }) => {
     const run = () => chatWithAI(messages, conversationHistory, selectedServiceName);
-    if (!timingTracker) {
-        return run();
+
+    const normalizedTaskName = String(selectedServiceName || "").trim();
+    const shouldUseCache = INTERNAL_AI_CACHEABLE_TASKS.has(normalizedTaskName);
+    const cacheKey = shouldUseCache
+        ? buildInternalAiCacheKey({ selectedServiceName: normalizedTaskName, messages, conversationHistory })
+        : "";
+
+    if (cacheKey) {
+        const cachedResult = getCachedInternalAiResult(cacheKey);
+        if (cachedResult) {
+            timingTracker?.mark(`${key}_cache_hit`, {
+                label: `${label} (cache)`,
+                category: "cache",
+                detail: `Reusing cached result for ${String(label || "AI call").trim().toLowerCase()}.`,
+                extra: {
+                    cacheHit: true,
+                    ...extractAiTimingMeta(cachedResult),
+                },
+            });
+            return cachedResult;
+        }
+
+        if (internalAiInFlight.has(cacheKey)) {
+            const inFlightResult = await internalAiInFlight.get(cacheKey);
+            timingTracker?.mark(`${key}_shared_hit`, {
+                label: `${label} (shared)`,
+                category: "cache",
+                detail: `Reusing in-flight result for ${String(label || "AI call").trim().toLowerCase()}.`,
+                extra: {
+                    cacheHit: true,
+                    sharedInFlight: true,
+                    ...extractAiTimingMeta(inFlightResult),
+                },
+            });
+            return cloneJsonLikeValue(inFlightResult);
+        }
     }
 
-    return timingTracker.measure(
+    if (!timingTracker) {
+        const directResult = await run();
+        if (cacheKey && directResult?.success) {
+            setCachedInternalAiResult(cacheKey, directResult);
+        }
+        return directResult;
+    }
+
+    const executeMeasured = () => timingTracker.measure(
         key,
         run,
         {
@@ -269,9 +313,31 @@ const runTrackedAiCall = async ({
             extractMeta: extractAiTimingMeta,
         },
     );
+
+    if (!cacheKey) {
+        return executeMeasured();
+    }
+
+    const taskPromise = (async () => {
+        const response = await executeMeasured();
+        if (response?.success) {
+            setCachedInternalAiResult(cacheKey, response);
+        }
+        return response;
+    })();
+
+    internalAiInFlight.set(cacheKey, taskPromise);
+
+    try {
+        return await taskPromise;
+    } finally {
+        internalAiInFlight.delete(cacheKey);
+    }
 };
 
 const SERVICE_CONTEXT_CACHE_TTL_MS = 10 * 60 * 1000;
+const INTERNAL_AI_CACHE_TTL_MS = 5 * 60 * 1000;
+const INTERNAL_AI_CACHE_MAX_ENTRIES = 400;
 const SERVICE_QUESTIONS_INCLUDE = Object.freeze({
     questions: {
         orderBy: { order: "asc" }
@@ -293,6 +359,8 @@ const buildGuestSessionCoreSelect = () => ({
 });
 const serviceContextCache = new Map();
 const serviceContextInFlight = new Map();
+const internalAiResultCache = new Map();
+const internalAiInFlight = new Map();
 
 const cloneJsonLikeValue = (value) => {
     if (value === null || value === undefined) return value;
@@ -309,6 +377,70 @@ const cloneJsonLikeValue = (value) => {
     } catch {
         return value;
     }
+};
+
+const INTERNAL_AI_CACHEABLE_TASKS = new Set([
+    "system_extractor",
+    "system_validator",
+    "system_runtime_options",
+    "system_evaluator",
+    "system_question_writer",
+]);
+
+const buildInternalAiCacheKey = ({
+    selectedServiceName = "",
+    messages = [],
+    conversationHistory = [],
+}) => JSON.stringify({
+    selectedServiceName: String(selectedServiceName || "").trim(),
+    messages: Array.isArray(messages) ? messages : [],
+    conversationHistory: Array.isArray(conversationHistory) ? conversationHistory : [],
+});
+
+const pruneInternalAiCache = () => {
+    const now = Date.now();
+
+    for (const [cacheKey, entry] of internalAiResultCache.entries()) {
+        if (!entry || entry.expiresAt <= now) {
+            internalAiResultCache.delete(cacheKey);
+        }
+    }
+
+    if (internalAiResultCache.size <= INTERNAL_AI_CACHE_MAX_ENTRIES) {
+        return;
+    }
+
+    const entriesByCreatedAt = Array.from(internalAiResultCache.entries())
+        .sort(([, left], [, right]) => Number(left?.createdAt || 0) - Number(right?.createdAt || 0));
+
+    while (internalAiResultCache.size > INTERNAL_AI_CACHE_MAX_ENTRIES && entriesByCreatedAt.length > 0) {
+        const [cacheKey] = entriesByCreatedAt.shift();
+        internalAiResultCache.delete(cacheKey);
+    }
+};
+
+const getCachedInternalAiResult = (cacheKey = "") => {
+    if (!cacheKey) return null;
+    const entry = internalAiResultCache.get(cacheKey);
+    if (!entry) return null;
+
+    if (entry.expiresAt <= Date.now()) {
+        internalAiResultCache.delete(cacheKey);
+        return null;
+    }
+
+    return cloneJsonLikeValue(entry.value);
+};
+
+const setCachedInternalAiResult = (cacheKey = "", value = null) => {
+    if (!cacheKey || !value) return;
+
+    internalAiResultCache.set(cacheKey, {
+        value: cloneJsonLikeValue(value),
+        createdAt: Date.now(),
+        expiresAt: Date.now() + INTERNAL_AI_CACHE_TTL_MS,
+    });
+    pruneInternalAiCache();
 };
 
 const cloneServiceRecord = (service = null) => {
@@ -1896,9 +2028,18 @@ const buildAdminControlSummaryText = (controls = {}) => {
     return parts.join(" | ").trim();
 };
 
-const buildAdminPromptSection = (controls = {}, title = "Admin Controls") => {
+const buildAdminPromptSection = (
+    controls = {},
+    title = "Admin Controls",
+    {
+        maxResponseRules = 4,
+        maxValidationRules = 4,
+        maxMappings = 4,
+        contextLimit = 220,
+    } = {},
+) => {
     const rows = [];
-    const contextText = String(controls?.contextText || "").trim();
+    const contextText = clipContextSnippet(String(controls?.contextText || "").trim(), contextLimit);
     if (contextText) {
         rows.push(`- Context: ${contextText.replace(/\n+/g, " | ")}`);
     }
@@ -1909,17 +2050,17 @@ const buildAdminPromptSection = (controls = {}, title = "Admin Controls") => {
         rows.push(`- Preferred option when making a recommendation: ${controls.recommendedOption}`);
     }
     if (Array.isArray(controls?.responseRules) && controls.responseRules.length > 0) {
-        for (const rule of controls.responseRules) {
+        for (const rule of controls.responseRules.slice(0, maxResponseRules)) {
             rows.push(`- Response rule: ${rule}`);
         }
     }
     if (Array.isArray(controls?.validationRules) && controls.validationRules.length > 0) {
-        for (const rule of controls.validationRules) {
+        for (const rule of controls.validationRules.slice(0, maxValidationRules)) {
             rows.push(`- Validation rule: ${rule}`);
         }
     }
     if (Array.isArray(controls?.optionMappings) && controls.optionMappings.length > 0) {
-        for (const mapping of controls.optionMappings) {
+        for (const mapping of controls.optionMappings.slice(0, maxMappings)) {
             rows.push(`- Option mapping alias: "${mapping.source}" => "${mapping.target}"`);
         }
     }
@@ -2982,6 +3123,8 @@ const ATOMIC_ANSWER_SEPARATOR_REGEX = /[,;\n:]/;
 const PERSON_NAME_TOKEN_REGEX = /^[a-z][a-z'.-]*$/i;
 const BUSINESS_NAME_TOKEN_REGEX = /^[a-z0-9][a-z0-9&'.-]*$/i;
 const BUSINESS_NAME_EXTRA_DETAIL_REGEX = /\b(i|we|our|my|brand|business|company|project|service|services|offer|provide|need|requirements?|budget|timeline|website|app|content|machine|process)\b/i;
+const SIMPLE_CONFIRMATION_NO_REGEX = /^(?:no|nope|nah|nothing else|nothing more|that's all|thats all|all good|no thanks|no thank you)$/i;
+const SIMPLE_CONFIRMATION_YES_REGEX = /^(?:yes|yeah|yep|sure|okay|ok|go ahead|continue|generate|please generate|yes generate)$/i;
 
 const stripAtomicAnswerPrefix = (message = "", identityType = "other") => {
     const rawMessage = String(message || "").trim();
@@ -3085,6 +3228,109 @@ const shouldSkipMessageAnswerExtraction = ({
     }
 
     return false;
+};
+
+const isProposalConfirmationQuestion = (question = {}) => {
+    const combinedText = [
+        question?.slug || "",
+        question?.id || "",
+        question?.text || "",
+        question?.subtitle || "",
+    ]
+        .join(" ")
+        .toLowerCase();
+
+    return /\bconfirmation\b/.test(combinedText)
+        || /\banything else\b/.test(combinedText)
+        || /\bbefore i generate\b/.test(combinedText)
+        || /\bgenerate the proposal\b/.test(combinedText);
+};
+
+const buildLocalValidationAckMessage = (question = {}, normalizedAnswer = "") => {
+    const identityType = getQuestionIdentityType(question);
+    const questionType = normalizeTextToken(question?.type || "input");
+    const answerText = String(normalizedAnswer || "").trim();
+
+    if (isProposalConfirmationQuestion(question)) {
+        return SIMPLE_CONFIRMATION_NO_REGEX.test(answerText)
+            ? "Perfect — I’ll generate the proposal based on what you shared."
+            : "Great — I’ll include that while I put the proposal together.";
+    }
+
+    if (OPTION_QUESTION_TYPES.has(questionType)) {
+        return "Got it.";
+    }
+
+    if (identityType === "person_name") {
+        return `Thanks, ${answerText || "there"}!`;
+    }
+
+    if (identityType === "business_name") {
+        return "Thanks!";
+    }
+
+    return pickFriendlyBridge(question?.text || answerText || "response");
+};
+
+const getFastLocalValidationResult = ({
+    question = null,
+    userMessage = "",
+    runtimeOptionsByQuestionSlug = {},
+    hasAttachmentContext = false,
+    hasUrlContext = false,
+    correctionIntent = false,
+}) => {
+    const rawMessage = String(userMessage || "").trim();
+    if (!question || !rawMessage) return null;
+    if (hasAttachmentContext || hasUrlContext || correctionIntent) return null;
+
+    const questionType = normalizeTextToken(question?.type || "input");
+    if (
+        OPTION_QUESTION_TYPES.has(questionType)
+        && looksLikeSingleOptionSelection(rawMessage, question, runtimeOptionsByQuestionSlug)
+    ) {
+        const normalizedAnswer = normalizeAnswerForQuestion(question, rawMessage, runtimeOptionsByQuestionSlug);
+        if (!normalizedAnswer) return null;
+        return {
+            isValid: true,
+            status: "valid_answer",
+            message: buildLocalValidationAckMessage(question, normalizedAnswer),
+            normalizedAnswer,
+        };
+    }
+
+    const identityType = getQuestionIdentityType(question);
+    if (identityType === "person_name" || identityType === "business_name") {
+        if (!looksLikeAtomicNameAnswer(rawMessage, identityType)) {
+            return null;
+        }
+
+        const normalizedAnswer = stripAtomicAnswerPrefix(rawMessage, identityType)
+            .replace(/[.!?]+$/g, "")
+            .trim();
+        if (!normalizedAnswer) return null;
+
+        return {
+            isValid: true,
+            status: "valid_answer",
+            message: buildLocalValidationAckMessage(question, normalizedAnswer),
+            normalizedAnswer,
+        };
+    }
+
+    if (isProposalConfirmationQuestion(question)) {
+        const normalizedAnswer = normalizeTextToken(rawMessage);
+        if (SIMPLE_CONFIRMATION_NO_REGEX.test(rawMessage) || SIMPLE_CONFIRMATION_YES_REGEX.test(rawMessage)) {
+            return {
+                isValid: true,
+                status: "valid_answer",
+                message: buildLocalValidationAckMessage(question, normalizedAnswer),
+                normalizedAnswer: rawMessage,
+            };
+        }
+    }
+
+    return null;
 };
 
 const RESERVED_PLATFORM_BRAND_NAMES = ["Catalance"];
@@ -3616,11 +3862,18 @@ const clipContextSnippet = (value = "", limit = 160) => {
     return `${normalized.slice(0, Math.max(0, limit - 3)).trimEnd()}...`;
 };
 
-const buildAnswersContextLines = (answersByQuestionText = {}) =>
+const buildAnswersContextLines = (
+    answersByQuestionText = {},
+    {
+        maxItems = 8,
+        questionLimit = 90,
+        answerLimit = 140,
+    } = {},
+) =>
     Object.entries(answersByQuestionText || {})
         .filter(([, value]) => hasAnswerValue(value))
-        .map(([question, answer]) => `- ${clipContextSnippet(question, 90)}: ${clipContextSnippet(answer, 140)}`)
-        .slice(0, 8)
+        .map(([question, answer]) => `- ${clipContextSnippet(question, questionLimit)}: ${clipContextSnippet(answer, answerLimit)}`)
+        .slice(0, maxItems)
         .join("\n");
 
 const stringifyAnswerForContext = (value) => {
@@ -3633,7 +3886,17 @@ const stringifyAnswerForContext = (value) => {
     return String(value || "").trim();
 };
 
-const buildSavedResponseContextLines = (answersBySlug = {}, questions = [], runtimeOptionsByQuestionSlug = {}) =>
+const buildSavedResponseContextLines = (
+    answersBySlug = {},
+    questions = [],
+    runtimeOptionsByQuestionSlug = {},
+    {
+        maxItems = 8,
+        questionLimit = 90,
+        answerLimit = 140,
+        subtitleLimit = 80,
+    } = {},
+) =>
     (Array.isArray(questions) ? questions : [])
         .filter((question) => question?.saveResponse && question?.slug)
         .map((question) => {
@@ -3645,26 +3908,32 @@ const buildSavedResponseContextLines = (answersBySlug = {}, questions = [], runt
                 runtimeOptionsByQuestionSlug
             ) || stringifyAnswerForContext(answerValue);
             if (!answerText) return null;
-            const clippedAnswerText = clipContextSnippet(answerText, 140);
+            const clippedAnswerText = clipContextSnippet(answerText, answerLimit);
             const subtitle = buildAdminControlSummaryText(getQuestionAdminControls(question));
             return subtitle
-                ? `- ${clipContextSnippet(question.text, 90)}: ${clippedAnswerText} (intent: ${clipContextSnippet(subtitle, 80)})`
-                : `- ${clipContextSnippet(question.text, 90)}: ${clippedAnswerText}`;
+                ? `- ${clipContextSnippet(question.text, questionLimit)}: ${clippedAnswerText} (intent: ${clipContextSnippet(subtitle, subtitleLimit)})`
+                : `- ${clipContextSnippet(question.text, questionLimit)}: ${clippedAnswerText}`;
         })
         .filter(Boolean)
-        .slice(0, 8)
+        .slice(0, maxItems)
         .join("\n");
 
-const buildQuestionSubtitleMapLines = (questions = []) =>
+const buildQuestionSubtitleMapLines = (
+    questions = [],
+    {
+        maxItems = 12,
+        subtitleLimit = 90,
+    } = {},
+) =>
     (Array.isArray(questions) ? questions : [])
         .map((question) => {
             const slug = String(question?.slug || "").trim();
             const subtitle = buildAdminControlSummaryText(getQuestionAdminControls(question));
             if (!slug || !subtitle) return null;
-            return `- ${slug}: ${clipContextSnippet(subtitle, 90)}`;
+            return `- ${slug}: ${clipContextSnippet(subtitle, subtitleLimit)}`;
         })
         .filter(Boolean)
-        .slice(0, 12)
+        .slice(0, maxItems)
         .join("\n");
 
 const extractFirstSentence = (value = "") => {
@@ -3834,12 +4103,23 @@ const buildRuntimeOptionSelectionPrompt = ({
         value: option.value,
         label: option.canonicalLabel || option.label,
     }));
-    const answersContext = buildAnswersContextLines(answersByQuestionText);
+    const answersContext = buildAnswersContextLines(answersByQuestionText, {
+        maxItems: 4,
+        questionLimit: 70,
+        answerLimit: 90,
+    });
     const savedResponseContext = buildSavedResponseContextLines(
         answersBySlug,
-        allQuestions
+        allQuestions,
+        {},
+        {
+            maxItems: 4,
+            questionLimit: 70,
+            answerLimit: 90,
+            subtitleLimit: 60,
+        }
     );
-    const questionContext = buildAdminControlSummaryText(adminControls);
+    const questionContext = clipContextSnippet(buildAdminControlSummaryText(adminControls), 120);
 
     return `
 You are selecting the best UI options for one questionnaire step.
@@ -3854,7 +4134,12 @@ ${answersContext || "- none yet"}
 Saved AI memory:
 ${savedResponseContext || "- none yet"}
 
-${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when relevant)")}
+${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when relevant)", {
+        maxResponseRules: 3,
+        maxValidationRules: 3,
+        maxMappings: 3,
+        contextLimit: 140,
+    })}
 
 Canonical option pool:
 ${JSON.stringify(canonicalOptions)}
@@ -3897,7 +4182,7 @@ const generateRuntimeOptionsForQuestion = async ({
         return [];
     }
 
-    if (canonicalOptions.length <= 2) {
+    if (canonicalOptions.length <= 4) {
         return canonicalOptions;
     }
 
@@ -4003,18 +4288,31 @@ const buildAiGuidedQuestionMessage = async ({
         : -1;
     const isOpeningIntakeQuestion =
         Number.isInteger(nextQuestionIndex) && nextQuestionIndex >= 0 && nextQuestionIndex < 3;
-    const answersContext = buildAnswersContextLines(answersByQuestionText);
+    const answersContext = buildAnswersContextLines(answersByQuestionText, {
+        maxItems: 6,
+        questionLimit: 75,
+        answerLimit: 100,
+    });
     const savedResponseContext = buildSavedResponseContextLines(
         answersBySlug,
         allQuestions,
-        runtimeOptionsByQuestionSlug
+        runtimeOptionsByQuestionSlug,
+        {
+            maxItems: 5,
+            questionLimit: 75,
+            answerLimit: 100,
+            subtitleLimit: 60,
+        }
     );
-    const subtitleMapContext = buildQuestionSubtitleMapLines(allQuestions);
+    const subtitleMapContext = buildQuestionSubtitleMapLines(allQuestions, {
+        maxItems: isOpeningIntakeQuestion ? 4 : 6,
+        subtitleLimit: 70,
+    });
     const currentQuestionSubtitle = clipContextSnippet(buildAdminControlSummaryText(currentQuestionAdminControls), 120);
     const nextQuestionSubtitle = clipContextSnippet(buildAdminControlSummaryText(nextQuestionAdminControls), 120);
     const serviceInstructionText = clipContextSnippet(
         parseAdminControlText(servicePrompt || "").contextText || "None",
-        220
+        160
     );
     const guidanceHints = bridgeSegments
         .map((item) => String(item || "").trim())
@@ -4114,13 +4412,18 @@ You are writing one assistant message in a guided questionnaire.
 
 Service: "${serviceName}"
 Service-Specific AI Instructions:
-${parseAdminControlText(servicePrompt || "").contextText || "None"}
+${serviceInstructionText}
 
-${buildAdminPromptSection(nextQuestionAdminControls, "Admin Controls (highest priority when relevant)")}
+${buildAdminPromptSection(nextQuestionAdminControls, "Admin Controls (highest priority when relevant)", {
+        maxResponseRules: isOpeningIntakeQuestion ? 2 : 3,
+        maxValidationRules: 3,
+        maxMappings: 3,
+        contextLimit: 160,
+    })}
 
-User last message: ${JSON.stringify(userLastMessage)}
-Question just answered: ${JSON.stringify(String(currentQuestion?.text || ""))}
-Required next question (must ask now): ${JSON.stringify(nextQuestionText)}
+User last message: ${JSON.stringify(clipContextSnippet(userLastMessage, 220))}
+Question just answered: ${JSON.stringify(clipContextSnippet(String(currentQuestion?.text || ""), 120))}
+Required next question (must ask now): ${JSON.stringify(clipContextSnippet(nextQuestionText, 140))}
 Required options (if any):
 ${optionLabelsText}
 
@@ -4138,8 +4441,8 @@ Question subtitle map (hidden guidance for flow continuity):
 ${subtitleMapContext || "- none"}
 
 Helper phrases you may reuse naturally:
-    - side_reply: ${JSON.stringify(sideReply)}
-    - hints: ${JSON.stringify(guidanceHints)}
+    - side_reply: ${JSON.stringify(clipContextSnippet(sideReply, 160))}
+    - hints: ${JSON.stringify(clipContextSnippet(guidanceHints, 160))}
 
 ${isInitial ? startTaskBlock : followupTaskBlock}
 
@@ -5248,11 +5551,22 @@ const buildCurrentQuestionValidationPrompt = ({
         parseAdminControlText(servicePrompt || "")
     );
     const currentQuestionContext = buildAdminControlSummaryText(adminControls);
-    const answersContext = buildAnswersContextLines(knownContextByQuestion);
+    const answersContext = buildAnswersContextLines(knownContextByQuestion, {
+        maxItems: 5,
+        questionLimit: 70,
+        answerLimit: 90,
+    });
     const visibleOptions = Array.isArray(currentQuestionOptions) ? currentQuestionOptions : [];
     const numberedOptions = Array.isArray(currentQuestionNumberedOptions) ? currentQuestionNumberedOptions : [];
     const canonicalOptions = Array.isArray(currentQuestionCanonicalOptions) ? currentQuestionCanonicalOptions : [];
-    const adminInstructionText = parseAdminControlText(servicePrompt || "").contextText || "None";
+    const adminInstructionText = clipContextSnippet(
+        parseAdminControlText(servicePrompt || "").contextText || "None",
+        160
+    );
+    const savedMemoryText = savedResponseContext
+        ? clipContextSnippet(savedResponseContext, 500)
+        : "- none yet";
+    const clippedLastAssistantMessage = clipContextSnippet(lastAssistantMessage || "None", 220);
 
     return `
 You are validating one answer in a guided questionnaire for the "${serviceName}" service.
@@ -5260,26 +5574,30 @@ You are validating one answer in a guided questionnaire for the "${serviceName}"
 Service instructions:
 ${adminInstructionText}
 
-${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when relevant)")}
+${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when relevant)", {
+        maxResponseRules: 3,
+        maxValidationRules: 4,
+        maxMappings: 3,
+        contextLimit: 160,
+    })}
 
 Current question: ${JSON.stringify(currentQuestionText)}
-Visible options: ${JSON.stringify(visibleOptions)}
 Visible numbered options: ${JSON.stringify(numberedOptions)}
 Canonical option pool: ${JSON.stringify(canonicalOptions)}
 Earlier confirmed answers:
 ${answersContext || "- none yet"}
 Saved AI memory:
-${savedResponseContext || "- none yet"}
+${savedMemoryText}
 Hidden current-question intent:
-${JSON.stringify(currentQuestionContext || "none")}
+${JSON.stringify(clipContextSnippet(currentQuestionContext || "none", 140))}
 Last Assistant Message Shown To User:
-${JSON.stringify(lastAssistantMessage || "None")}
+${JSON.stringify(clippedLastAssistantMessage)}
 User answer:
 ${JSON.stringify(userMessageText || "")}
 Attachment context:
-${attachmentContextText ? JSON.stringify(clipContextSnippet(attachmentContextText, 1200)) : '"None"'}
+${attachmentContextText ? JSON.stringify(clipContextSnippet(attachmentContextText, 700)) : '"None"'}
 URL context:
-${urlContextText ? JSON.stringify(clipContextSnippet(urlContextText, 1000)) : '"None"'}
+${urlContextText ? JSON.stringify(clipContextSnippet(urlContextText, 500)) : '"None"'}
 Attachment-inferred answer:
 ${JSON.stringify(attachmentInferredAnswer || "")}
 
@@ -6246,6 +6564,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     );
     const questionSlugSet = new Set(questions.map((q) => q.slug).filter(Boolean));
     let extractedAnswersForMessage = [];
+    let extractedAnswersForMessagePromise = Promise.resolve([]);
     if (currentStep < questions.length) {
         const skipMessageAnswerExtraction = shouldSkipMessageAnswerExtraction({
             message: userMessageText,
@@ -6263,38 +6582,15 @@ export const guestChat = asyncHandler(async (req, res) => {
                 detail: `Skipping extractor for an obvious single-field reply to "${String(currentQuestion?.slug || currentQuestion?.text || "current_question").trim()}".`,
             });
         } else {
-            extractedAnswersForMessage = await extractAnswersFromMessage({
+            extractedAnswersForMessagePromise = extractAnswersFromMessage({
                 serviceName: service.name,
                 message: userMessageForReasoning || userMessageText,
                 questions,
                 timingTracker: requestTimingTracker,
             });
         }
-        const supplementalBudgetExtractions = buildSupplementalBudgetExtractions({
-            message: userMessageForReasoning || userMessageText,
-            questions,
-            currentQuestion,
-        });
-        if (supplementalBudgetExtractions.length > 0) {
-            const existingExtractedSlugs = new Set(
-                extractedAnswersForMessage
-                    .map((entry) => String(entry?.slug || "").trim())
-                    .filter(Boolean)
-            );
-            supplementalBudgetExtractions.forEach((entry) => {
-                if (!existingExtractedSlugs.has(entry.slug)) {
-                    extractedAnswersForMessage.push(entry);
-                }
-            });
-        }
     }
-    const lateBudgetMinimumViolation = !isBudgetQuestion(currentQuestion)
-        ? findExtractedBudgetMinimumViolation({
-            extractedAnswers: extractedAnswersForMessage,
-            questionsBySlug,
-            service,
-        })
-        : null;
+    let lateBudgetMinimumViolation = null;
 
 
     // --- VALIDATION STEP ---
@@ -6616,6 +6912,30 @@ export const guestChat = asyncHandler(async (req, res) => {
         }
 
         if (!validationResult) {
+            const fastLocalValidation = getFastLocalValidationResult({
+                question: currentQuestion,
+                userMessage: userMessageText,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                hasAttachmentContext: Boolean(attachmentContextText),
+                hasUrlContext: Boolean(urlContextText),
+                correctionIntent,
+            });
+
+            if (fastLocalValidation) {
+                validationResult = fastLocalValidation;
+                aiResponseContent = fastLocalValidation.message;
+                requestTimingTracker.mark("current_answer_validation_fast_path", {
+                    label: "Validate current answer (fast path)",
+                    category: "logic",
+                    detail: `Accepted an obvious reply for "${String(currentQuestion?.slug || currentQuestionText || "current_question").trim()}" without an AI validator call.`,
+                    extra: {
+                        fastPath: true,
+                    },
+                });
+            }
+        }
+
+        if (!validationResult) {
             const validationPrompt = buildCurrentQuestionValidationPrompt({
                 serviceName: service.name,
                 servicePrompt: service.aiPrompt || "",
@@ -6703,6 +7023,35 @@ export const guestChat = asyncHandler(async (req, res) => {
             aiResponseContent = validationResult.message;
             console.log("[Validation Parse Fallback]:", validationResult);
         }
+
+        if (currentStep < questions.length) {
+            extractedAnswersForMessage = await extractedAnswersForMessagePromise;
+            const supplementalBudgetExtractions = buildSupplementalBudgetExtractions({
+                message: userMessageForReasoning || userMessageText,
+                questions,
+                currentQuestion,
+            });
+            if (supplementalBudgetExtractions.length > 0) {
+                const existingExtractedSlugs = new Set(
+                    extractedAnswersForMessage
+                        .map((entry) => String(entry?.slug || "").trim())
+                        .filter(Boolean)
+                );
+                supplementalBudgetExtractions.forEach((entry) => {
+                    if (!existingExtractedSlugs.has(entry.slug)) {
+                        extractedAnswersForMessage.push(entry);
+                    }
+                });
+            }
+        }
+
+        lateBudgetMinimumViolation = !isBudgetQuestion(currentQuestion)
+            ? findExtractedBudgetMinimumViolation({
+                extractedAnswers: extractedAnswersForMessage,
+                questionsBySlug,
+                service,
+            })
+            : null;
 
         if (lateBudgetMinimumViolation) {
             validationResult = lateBudgetMinimumViolation.validation;
