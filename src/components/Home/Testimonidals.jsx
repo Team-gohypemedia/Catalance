@@ -1,7 +1,7 @@
 import React from 'react'
 import { Wormhole } from '@/components/ui/Wormhole'
 import { Marquee } from '@/components/ui/marquee'
-import testimonial1 from '@/assets/images/testimonials/ajay-prajapati.jpg'
+import testimonial1 from '@/assets/images/testimonials/Ajay-prajapati.jpg'
 import testimonial2 from '@/assets/images/testimonials/mohd-kaif.jpg'
 import testimonial3 from '@/assets/images/testimonials/nitin-nayak.jpg'
 import testimonial4 from '@/assets/images/testimonials/aniket-thakur.jpg'
