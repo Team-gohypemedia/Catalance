@@ -340,7 +340,7 @@ const ServiceCardsCarousel = () => {
 
   return (
     <section className="relative flex min-h-screen w-full items-center overflow-hidden bg-background py-12 sm:py-16">
-      <div className="relative mx-auto flex w-full max-w-[92rem] flex-col justify-center gap-8 px-4 sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex w-full max-w-[100rem] flex-col justify-center gap-8 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center text-center">
           <h2 className="w-full max-w-none text-[2rem] font-medium leading-[1.05] tracking-tight text-white sm:text-[2.7rem] md:whitespace-nowrap md:text-[3.2rem] lg:text-[3.95rem] xl:text-[4.2rem]">
             Freelancers <span className="text-primary">Who</span> Don&apos;t
@@ -360,12 +360,12 @@ const ServiceCardsCarousel = () => {
           </Button>
         </div>
 
-        <div className="relative overflow-hidden">
+        <div className="relative">
           <button
             type="button"
             onClick={handleScrollPrev}
             aria-label="Previous services"
-            className="absolute left-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:flex"
+            className="absolute left-1 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:left-2 sm:flex lg:left-4"
             disabled={!api}
           >
             <ChevronLeft className="h-5 w-5" />
@@ -375,14 +375,11 @@ const ServiceCardsCarousel = () => {
             type="button"
             onClick={handleScrollNext}
             aria-label="Next services"
-            className="absolute right-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:flex"
+            className="absolute right-1 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:right-2 sm:flex lg:right-4"
             disabled={!api}
           >
             <ChevronRight className="h-5 w-5" />
           </button>
-
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-14 bg-gradient-to-r from-background via-background/82 to-transparent lg:block" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-14 bg-gradient-to-l from-background via-background/82 to-transparent lg:block" />
 
           <Carousel
             setApi={setApi}
@@ -392,7 +389,7 @@ const ServiceCardsCarousel = () => {
               slidesToScroll: 1,
               containScroll: "trimSnaps",
             }}
-            className="w-full"
+            className="w-full overflow-hidden px-8 sm:px-16 lg:px-24"
           >
             <CarouselContent className="-ml-4 items-stretch sm:-ml-5 lg:-ml-6">
               {HOME_SERVICE_CARDS.map((service) => (
