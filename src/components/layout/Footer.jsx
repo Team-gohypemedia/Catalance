@@ -183,7 +183,7 @@ const Footer = () => {
               <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleNewsletterSubmit}>
                 <input
                   className="h-12 w-full rounded-2xl border border-border/60 bg-card px-5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40"
-                  placeholder="name@framer.com"
+                  placeholder="name@catalance.in"
                   type="email"
                   autoComplete="email"
                   required

@@ -240,10 +240,11 @@ const ServiceRailCard = React.memo(function ServiceRailCard({
       type="button"
       onClick={() => onSelect(service)}
       aria-label={`Explore ${service.title}`}
-      className="group relative flex h-full min-h-[21.5rem] w-full flex-col overflow-hidden rounded-[2rem] border border-border/70 bg-card p-6 text-left text-card-foreground shadow-[0_10px_28px_-26px_rgba(0,0,0,0.58)] transition-colors duration-300 hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-[22rem] sm:rounded-[2.1rem]"
+      className="group relative flex h-full min-h-[21.5rem] w-full max-w-full flex-col overflow-hidden rounded-[2rem] border border-border/70 bg-card p-6 text-left text-card-foreground shadow-[0_10px_28px_-26px_rgba(0,0,0,0.58)] transition-colors duration-300 hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-[22rem] sm:rounded-[2.1rem]"
     >
       <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-white/[0.03] via-transparent to-transparent" />
-      <div className="relative flex flex-1 flex-col">
+
+      <div className="relative flex h-full flex-1 flex-col">
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
           <div className="relative flex h-24 w-full items-center justify-center self-center sm:h-28">
             <div className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/8 blur-lg" />
@@ -273,6 +274,7 @@ const ServiceRailCard = React.memo(function ServiceRailCard({
               {service.price}
             </p>
           </div>
+
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors duration-300 group-hover:border-primary group-hover:text-primary">
             <ArrowRight className="h-4 w-4" />
           </span>
@@ -305,10 +307,13 @@ const ServiceCardsCarousel = () => {
     [navigate],
   );
 
-  const syncCarouselState = React.useCallback((emblaApi) => {
-    if (!emblaApi || serviceCount === 0) return;
-    setSelectedIndex(emblaApi.selectedScrollSnap() % serviceCount);
-  }, [serviceCount]);
+  const syncCarouselState = React.useCallback(
+    (emblaApi) => {
+      if (!emblaApi || serviceCount === 0) return;
+      setSelectedIndex(emblaApi.selectedScrollSnap() % serviceCount);
+    },
+    [serviceCount],
+  );
 
   React.useEffect(() => {
     if (!api) return;
@@ -321,7 +326,7 @@ const ServiceCardsCarousel = () => {
       api.off("select", syncCarouselState);
       api.off("reInit", syncCarouselState);
     };
-  }, [api, serviceCount, syncCarouselState]);
+  }, [api, syncCarouselState]);
 
   const handleScrollPrev = React.useCallback(() => {
     if (!api) return;
@@ -341,6 +346,7 @@ const ServiceCardsCarousel = () => {
             Freelancers <span className="text-primary">Who</span> Don&apos;t
             Ghost You
           </h2>
+
           <p className="mt-3 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-4 sm:text-base md:text-lg">
             Trusted freelancers who deliver work on time.
           </p>
@@ -354,21 +360,22 @@ const ServiceCardsCarousel = () => {
           </Button>
         </div>
 
-        <div className="relative">
+        <div className="relative overflow-hidden">
           <button
             type="button"
             onClick={handleScrollPrev}
             aria-label="Previous services"
-            className="absolute left-0 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+            className="absolute left-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:flex"
             disabled={!api}
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
+
           <button
             type="button"
             onClick={handleScrollNext}
             aria-label="Next services"
-            className="absolute right-0 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+            className="absolute right-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:flex"
             disabled={!api}
           >
             <ChevronRight className="h-5 w-5" />
@@ -383,17 +390,20 @@ const ServiceCardsCarousel = () => {
               align: "start",
               loop: true,
               slidesToScroll: 1,
-              duration: 34,
+              containScroll: "trimSnaps",
             }}
-            className="w-full px-12 py-2 sm:px-14 lg:px-16"
+            className="w-full"
           >
-            <CarouselContent className="ml-0 items-stretch gap-3 [backface-visibility:hidden] [will-change:transform] sm:gap-4">
+            <CarouselContent className="-ml-4 items-stretch sm:-ml-5 lg:-ml-6">
               {HOME_SERVICE_CARDS.map((service) => (
                 <CarouselItem
                   key={service.id}
-                  className="basis-[82%] pl-0 sm:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-2rem)/3)] xl:basis-[calc((100%-3rem)/4)] 2xl:basis-[calc((100%-4rem)/5)]"
+                  className="min-w-0 basis-[88%] pl-4 sm:basis-1/2 sm:pl-5 lg:basis-1/3 lg:pl-6 xl:basis-1/4 2xl:basis-1/5"
                 >
-                  <ServiceRailCard service={service} onSelect={handleSelectService} />
+                  <ServiceRailCard
+                    service={service}
+                    onSelect={handleSelectService}
+                  />
                 </CarouselItem>
               ))}
             </CarouselContent>
