@@ -25,6 +25,7 @@ import {
 const ProposalRowCard = ({
   proposal,
   onDelete,
+  onIncreaseBudget,
   onOpen,
   onPay,
   onSend,
@@ -34,6 +35,8 @@ const ProposalRowCard = ({
 }) => {
   const details = extractProposalDetails(proposal);
   const isDraft = proposal.status === "draft";
+  const canIncreaseBudget =
+    Boolean(onIncreaseBudget) && Boolean(proposal?.canIncreaseBudget);
   const canSendToFreelancers =
     Boolean(onSend) &&
     !proposal.requiresPayment &&
@@ -60,9 +63,11 @@ const ProposalRowCard = ({
   const showRejectionReason = proposal.status === "rejected" && Boolean(rejectionReasonText);
   const recipientCount = freelancerRecipients.length;
   const primaryActionLabel = canSendToFreelancers
-    ? isSending
-      ? "Sending..."
-      : "Send Proposal"
+    ? canIncreaseBudget
+      ? "Increase Budget"
+      : isSending
+        ? "Sending..."
+        : "Send Proposal"
     : proposal.requiresPayment && onPay
       ? isPaying
         ? "Processing..."
@@ -199,6 +204,11 @@ const ProposalRowCard = ({
                   className="h-11 rounded-[14px] bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
                   onClick={() => {
                     if (canSendToFreelancers) {
+                      if (canIncreaseBudget) {
+                        onIncreaseBudget?.(proposal);
+                        return;
+                      }
+
                       onSend?.(proposal);
                       return;
                     }

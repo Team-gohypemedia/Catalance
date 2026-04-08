@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
+import ProposalBudgetDialog from "./ProposalBudgetDialog.jsx";
 import ProposalDetailsDialog from "./ProposalDetailsDialog.jsx";
 import ProposalFreelancerDetailsDialog from "./ProposalFreelancerDetailsDialog.jsx";
 import {
@@ -25,11 +26,16 @@ const ClientProposalDialogs = ({
     isEditingProposal,
     isSavingProposal,
     editableProposalDraft,
+    canIncreaseBudgetForActiveProposal,
+    canOpenFreelancerSelectionForActiveProposal,
     processingPaymentProposalId,
     sendingProposalId,
   } = proposalState || {};
   const {
+    budgetDialogProposal,
+    budgetInput,
     freelancerDetailsProposal,
+    isUpdatingBudget,
     showFreelancerSelect,
     showFreelancerProfile,
     viewingFreelancer,
@@ -48,12 +54,16 @@ const ClientProposalDialogs = ({
   const {
     setShowFreelancerSelect,
     setFreelancerSearch,
+    setBudgetInput,
+    submitBudgetIncrease,
+    handleBudgetDialogOpenChange,
     handleProposalDialogOpenChange,
     handleEditableProposalDraftChange,
     handleSaveProposalChanges,
     handleCancelProposalEditing,
     handleDelete,
     handleApproveAndPay,
+    openBudgetDialogForProposal,
     openFreelancerSelection,
     handleFreelancerDetailsDialogOpenChange,
     handleUnsendProposalFromFreelancer,
@@ -81,6 +91,8 @@ const ClientProposalDialogs = ({
         isEditingProposal={isEditingProposal}
         isSavingProposal={isSavingProposal}
         editableProposalDraft={editableProposalDraft}
+        canIncreaseBudget={canIncreaseBudgetForActiveProposal}
+        canOpenFreelancerSelection={canOpenFreelancerSelectionForActiveProposal}
         processingPaymentProposalId={processingPaymentProposalId}
         sendingProposalId={sendingProposalId}
         handleProposalDialogOpenChange={handleProposalDialogOpenChange}
@@ -89,8 +101,19 @@ const ClientProposalDialogs = ({
         handleCancelProposalEditing={handleCancelProposalEditing}
         handleDelete={handleDelete}
         handleApproveAndPay={handleApproveAndPay}
+        openBudgetDialogForProposal={openBudgetDialogForProposal}
         openFreelancerSelection={openFreelancerSelection}
         startEditingProposal={startEditingProposal}
+      />
+
+      <ProposalBudgetDialog
+        open={Boolean(budgetDialogProposal)}
+        proposal={budgetDialogProposal}
+        budgetInput={budgetInput}
+        onBudgetInputChange={setBudgetInput}
+        onOpenChange={handleBudgetDialogOpenChange}
+        onSubmit={submitBudgetIncrease}
+        isUpdatingBudget={isUpdatingBudget}
       />
 
       <FreelancerSelectionDialog

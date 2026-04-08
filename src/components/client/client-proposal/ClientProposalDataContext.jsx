@@ -15,6 +15,9 @@ import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
 import { toast } from "sonner";
 import { ClientProposalDataContext } from "./client-proposal-data-context.js";
 import {
+  isProposalEligibleForBudgetIncrease,
+} from "./proposal-budget-utils.js";
+import {
   CLOSED_PROJECT_STATUSES,
   DRAFT_PROJECT_STATUSES,
   MIN_FREELANCER_MATCH_SCORE,
@@ -43,10 +46,11 @@ import {
   resolveProposalTitle,
   shouldHideRejectedProposal,
 } from "./proposal-utils.js";
+import { useProposalBudgetIncrease } from "./useProposalBudgetIncrease.js";
 
 export const ClientProposalDataProvider = ({ children }) => {
   const { isAuthenticated, authFetch, user } = useAuth();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, notifications, markAsRead } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   const [proposals, setProposals] = useState([]);
   const [activeProposal, setActiveProposal] = useState(null);
@@ -114,6 +118,72 @@ export const ClientProposalDataProvider = ({ children }) => {
       setIsLoading(false);
     }
   }, [authFetch, user?.id]);
+
+  const handleProposalBudgetUpdated = useCallback(
+    async ({ projectId, budgetValue, updatedProposalIds = [] } = {}) => {
+      const normalizedBudget = String(Math.round(Number(budgetValue) || 0));
+      const updatedIds = new Set(updatedProposalIds);
+
+      setProposals((current) =>
+        current.map((proposal) => {
+          const matchesProject =
+            projectId && String(proposal?.projectId || proposal?.syncedProjectId || "") ===
+              String(projectId);
+          const matchesProposal = proposal?.id && updatedIds.has(proposal.id);
+
+          if (!matchesProject && !matchesProposal) {
+            return proposal;
+          }
+
+          return {
+            ...proposal,
+            budget: normalizedBudget,
+            updatedAt: new Date().toISOString(),
+          };
+        }),
+      );
+      setSelectedProposalForSend((current) => {
+        if (
+          !current ||
+          String(current?.projectId || current?.syncedProjectId || "") !== String(projectId)
+        ) {
+          return current;
+        }
+
+        return {
+          ...current,
+          budget: normalizedBudget,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      setActiveProposal((current) => {
+        if (
+          !current ||
+          String(current?.projectId || current?.syncedProjectId || "") !== String(projectId)
+        ) {
+          return current;
+        }
+
+        return {
+          ...current,
+          budget: normalizedBudget,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      await fetchProposals();
+    },
+    [fetchProposals],
+  );
+
+  const { budgetDialogState, budgetDialogActions } = useProposalBudgetIncrease({
+    authFetch,
+    userId: user?.id,
+    proposals,
+    notifications,
+    markNotificationAsRead: markAsRead,
+    onBudgetUpdated: handleProposalBudgetUpdated,
+  });
 
   const fetchFreelancerPool = useCallback(async () => {
     if (!user?.id) return [];
@@ -966,7 +1036,7 @@ export const ClientProposalDataProvider = ({ children }) => {
     );
   }, [deepLinkProjectId, proposals]);
 
-  const grouped = useMemo(() => {
+  const groupedBuckets = useMemo(() => {
     const acceptedProjectKeys = new Set(
       scopedProposals
         .filter((proposal) => proposal.status === "accepted" && proposal.projectId)
@@ -1082,6 +1152,24 @@ export const ClientProposalDataProvider = ({ children }) => {
 
     return groupedBuckets;
   }, [scopedProposals]);
+
+  const grouped = useMemo(
+    () => ({
+      draft: (groupedBuckets.draft || []).map((proposal) => ({
+        ...proposal,
+        canIncreaseBudget: isProposalEligibleForBudgetIncrease(proposal, proposals),
+      })),
+      pending: (groupedBuckets.pending || []).map((proposal) => ({
+        ...proposal,
+        canIncreaseBudget: isProposalEligibleForBudgetIncrease(proposal, proposals),
+      })),
+      rejected: (groupedBuckets.rejected || []).map((proposal) => ({
+        ...proposal,
+        canIncreaseBudget: isProposalEligibleForBudgetIncrease(proposal, proposals),
+      })),
+    }),
+    [groupedBuckets, proposals],
+  );
 
   const proposalForFreelancerSelection = useMemo(() => {
     if (!selectedProposalForSend) return null;
@@ -1370,6 +1458,20 @@ export const ClientProposalDataProvider = ({ children }) => {
     setIsEditingProposal(true);
   }, []);
 
+  const canIncreaseBudgetForActiveProposal = useMemo(
+    () => isProposalEligibleForBudgetIncrease(activeProposal, proposals),
+    [activeProposal, proposals],
+  );
+
+  const canOpenFreelancerSelectionForActiveProposal = useMemo(() => {
+    if (!activeProposal || activeProposal?.requiresPayment) {
+      return false;
+    }
+
+    const status = String(activeProposal?.status || "").toLowerCase();
+    return status === "draft" || status === "pending" || status === "sent";
+  }, [activeProposal]);
+
   const userState = useMemo(
     () => ({
       user,
@@ -1389,12 +1491,16 @@ export const ClientProposalDataProvider = ({ children }) => {
       isEditingProposal,
       isSavingProposal,
       editableProposalDraft,
+      canIncreaseBudgetForActiveProposal,
+      canOpenFreelancerSelectionForActiveProposal,
       processingPaymentProposalId,
       sendingProposalId,
     }),
     [
       activeProposal,
       activeTab,
+      canIncreaseBudgetForActiveProposal,
+      canOpenFreelancerSelectionForActiveProposal,
       editableProposalDraft,
       grouped,
       isEditingProposal,
@@ -1410,6 +1516,7 @@ export const ClientProposalDataProvider = ({ children }) => {
   const dialogState = useMemo(
     () => ({
       isViewing,
+      ...budgetDialogState,
       freelancerDetailsProposal,
       showFreelancerSelect,
       showFreelancerProfile,
@@ -1417,6 +1524,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       unsendingProposalId,
     }),
     [
+      budgetDialogState,
       freelancerDetailsProposal,
       isViewing,
       showFreelancerProfile,
@@ -1454,6 +1562,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       setActiveTab,
       setShowFreelancerSelect,
       setFreelancerSearch,
+      ...budgetDialogActions,
       openFreelancerSelection,
       handleDelete,
       handleOpenFreelancerDetails,
@@ -1471,6 +1580,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       startEditingProposal,
     }),
     [
+      budgetDialogActions,
       handleApproveAndPay,
       handleCancelProposalEditing,
       handleDelete,

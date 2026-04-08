@@ -48,6 +48,7 @@ const ClientProposalCarouselDots = memo(function ClientProposalCarouselDots({
 const ProposalCardsCarousel = ({
   proposals,
   onDelete,
+  onIncreaseBudget,
   onOpen,
   onPay,
   onSend,
@@ -99,6 +100,7 @@ const ProposalCardsCarousel = ({
             key={proposal.id}
             proposal={proposal}
             onDelete={onDelete}
+            onIncreaseBudget={onIncreaseBudget}
             onOpen={onOpen}
             onPay={onPay}
             onSend={onSend}
@@ -190,6 +192,7 @@ const ProposalCardsCarousel = ({
               <ProposalRowCard
                 proposal={proposal}
                 onDelete={onDelete}
+                onIncreaseBudget={onIncreaseBudget}
                 onOpen={onOpen}
                 onPay={onPay}
                 onSend={onSend}

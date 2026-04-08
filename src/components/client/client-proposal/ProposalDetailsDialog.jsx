@@ -44,6 +44,8 @@ const ProposalDetailsDialog = ({
   isEditingProposal,
   isSavingProposal,
   editableProposalDraft,
+  canIncreaseBudget,
+  canOpenFreelancerSelection,
   processingPaymentProposalId,
   sendingProposalId,
   handleProposalDialogOpenChange,
@@ -52,6 +54,7 @@ const ProposalDetailsDialog = ({
   handleCancelProposalEditing,
   handleDelete,
   handleApproveAndPay,
+  openBudgetDialogForProposal,
   openFreelancerSelection,
   startEditingProposal,
 }) => {
@@ -73,7 +76,7 @@ const ProposalDetailsDialog = ({
         normalizedStatus === "pending" ||
         normalizedStatus === "sent")
     );
-  }, [activeProposal?.requiresPayment, activeProposal?.status]);
+  }, [activeProposal]);
   const proposalModalTitle = useMemo(() => {
     const baseTitle = resolveProposalTitle(activeProposal) || "Proposal";
     if (!isEditingProposal) return baseTitle;
@@ -485,6 +488,34 @@ const ProposalDetailsDialog = ({
                 {sendingProposalId === activeProposal?.id
                   ? "Sending..."
                   : "Send to Freelancers"}
+              </Button>
+            ) : null}
+
+            {canIncreaseBudget ? (
+              <Button
+                className="h-11 rounded-full bg-primary px-5 text-primary-foreground hover:bg-primary/90"
+                onClick={() => openBudgetDialogForProposal(activeProposal)}
+                disabled={isSavingProposal || isLoadingProposal}
+              >
+                Increase Budget
+              </Button>
+            ) : null}
+
+            {canIncreaseBudget && canOpenFreelancerSelection ? (
+              <Button
+                variant="outline"
+                className="h-11 rounded-full border-primary/25 bg-primary/10 px-5 text-primary hover:bg-primary/15"
+                onClick={() => openFreelancerSelection(activeProposal)}
+                disabled={sendingProposalId === activeProposal?.id}
+              >
+                {sendingProposalId === activeProposal?.id ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                {sendingProposalId === activeProposal?.id
+                  ? "Sending..."
+                  : "Send to More Freelancers"}
               </Button>
             ) : null}
 

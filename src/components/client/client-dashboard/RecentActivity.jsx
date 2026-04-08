@@ -34,16 +34,75 @@ const activityToneMap = {
   slate: "bg-[#273142] text-[#94a3b8]",
 };
 
+const ActivityActionButtons = memo(function ActivityActionButtons({
+  item,
+  compact = false,
+}) {
+  const hasPrimaryAction = typeof item.onAction === "function";
+  const hasSecondaryAction = typeof item.onSecondaryAction === "function";
+
+  if (!hasPrimaryAction && !hasSecondaryAction) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-2",
+        compact ? "mt-3" : "",
+      )}
+    >
+      {hasSecondaryAction ? (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            item.onSecondaryAction();
+          }}
+          className={cn(
+            "inline-flex h-8 items-center justify-center rounded-xl border border-white/10 bg-background/40 px-3 text-xs font-semibold text-white transition-colors hover:bg-background/65",
+            compact ? "" : "text-[11px] uppercase tracking-[0.06em]",
+          )}
+        >
+          {item.secondaryActionLabel || "View Details"}
+        </button>
+      ) : null}
+
+      {hasPrimaryAction ? (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            item.onAction();
+          }}
+          className={cn(
+            "inline-flex h-8 items-center justify-center rounded-xl bg-[#ffc107] px-3 text-xs font-semibold text-black transition-colors hover:bg-[#ffd54f]",
+            compact ? "" : "text-[11px] uppercase tracking-[0.06em]",
+          )}
+        >
+          {item.actionLabel || "View"}
+        </button>
+      ) : null}
+    </div>
+  );
+});
+
 const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
   const Icon = activityIconMap[item.iconKey] || FolderKanban;
-  const hasAction = typeof item.onAction === "function";
-  const actionLabel = item.actionLabel || "View";
+  const handleRowKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      item.onClick?.();
+    }
+  };
 
   if (compact) {
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={item.onClick}
+        onKeyDown={handleRowKeyDown}
         className="flex w-full items-start gap-4 rounded-[18px] px-3 py-3 text-left transition-colors hover:bg-white/2"
       >
         <div
@@ -61,30 +120,21 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
           <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
             {item.subtitle}
           </p>
-          {hasAction ? (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                item.onAction();
-              }}
-              className="mt-3 inline-flex h-8 items-center justify-center rounded-xl bg-[#ffc107] px-3 text-xs font-semibold text-black transition-colors hover:bg-[#ffd54f]"
-            >
-              {actionLabel}
-            </button>
-          ) : null}
+          <ActivityActionButtons item={item} compact />
           <span className="mt-3 block text-xs text-muted-foreground">
             {item.timeLabel}
           </span>
         </div>
-      </button>
+      </div>
     );
   }
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={item.onClick}
+      onKeyDown={handleRowKeyDown}
       className="flex w-full flex-col gap-3 px-4 py-4 text-left transition-colors hover:bg-white/2 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
     >
       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
@@ -104,27 +154,16 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
         </div>
       </div>
       <div className="flex items-center gap-3 pl-12 sm:pl-13 lg:pl-0">
-        {hasAction ? (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              item.onAction();
-            }}
-            className="inline-flex h-8 items-center justify-center rounded-xl bg-[#ffc107] px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-black transition-colors hover:bg-[#ffd54f]"
-          >
-            {actionLabel}
-          </button>
-        ) : null}
+        <ActivityActionButtons item={item} />
         <span className="text-xs text-muted-foreground">{item.timeLabel}</span>
       </div>
-    </button>
+    </div>
   );
 });
 
 const RecentActivity = memo(function RecentActivity({
   recentActivities,
-  onOpenViewProjects,
+  onOpenViewProjects: _onOpenViewProjects,
   onOpenNotifications,
   isLoading = false,
   className = "",

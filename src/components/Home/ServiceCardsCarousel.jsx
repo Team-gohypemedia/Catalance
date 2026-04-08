@@ -387,11 +387,11 @@ const ServiceCardsCarousel = () => {
             }}
             className="w-full px-12 py-2 sm:px-14 lg:px-16"
           >
-            <CarouselContent className="items-stretch [backface-visibility:hidden] [will-change:transform]">
+            <CarouselContent className="ml-0 items-stretch gap-3 [backface-visibility:hidden] [will-change:transform] sm:gap-4">
               {HOME_SERVICE_CARDS.map((service) => (
                 <CarouselItem
                   key={service.id}
-                  className="basis-[82%] sm:basis-[48%] lg:basis-[calc((100%-2rem)/3)] xl:basis-[calc((100%-3rem)/4)] 2xl:basis-[calc((100%-4rem)/5)]"
+                  className="basis-[82%] pl-0 sm:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-2rem)/3)] xl:basis-[calc((100%-3rem)/4)] 2xl:basis-[calc((100%-4rem)/5)]"
                 >
                   <ServiceRailCard service={service} onSelect={handleSelectService} />
                 </CarouselItem>

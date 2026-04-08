@@ -15,6 +15,11 @@ import { getSession } from "@/shared/lib/auth-storage";
 import { fetchChatConversations } from "@/shared/lib/api-client";
 import { hasUnlockedProjectChat } from "@/shared/lib/project-chat-access";
 import {
+  buildProposalBudgetDetailsPath,
+  collectBudgetIncreaseProjects,
+} from "@/components/client/client-proposal/proposal-budget-utils.js";
+import { useProposalBudgetIncrease } from "@/components/client/client-proposal/useProposalBudgetIncrease.js";
+import {
   getPendingProposalCount,
   getProjectPaymentSummary,
   isProjectCompleted,
@@ -280,10 +285,55 @@ const buildProgressProjects = ({ projects = [] }) =>
       };
     });
 
-const buildRecentActivities = ({ notifications = [], projects = [], chatConversations = [], navigate }) => {
-  const recentNotificationItems = (Array.isArray(notifications) ? notifications : [])
-    .slice(0, CLIENT_DASHBOARD_RECENT_ACTIVITY_LIMIT)
-    .map((notification, index) => {
+const buildRecentActivities = ({
+  notifications = [],
+  projects = [],
+  proposals = [],
+  chatConversations = [],
+  navigate,
+  openBudgetDialogByProjectId,
+}) => {
+  const budgetIncreaseProjects = collectBudgetIncreaseProjects(proposals);
+  const buildBudgetActivityItem = ({
+    id,
+    title,
+    subtitle,
+    createdAt,
+    projectId,
+  }) => {
+    const normalizedProjectId = String(projectId || "").trim();
+    const matchingBudgetTarget = budgetIncreaseProjects.get(normalizedProjectId) || null;
+    const budgetDetailsPath = normalizedProjectId
+      ? buildProposalBudgetDetailsPath(proposals, normalizedProjectId)
+      : "/client/proposal";
+
+    return {
+      id,
+      iconKey: "budget",
+      tone: "warning",
+      title: title || "Consider Increasing Budget",
+      subtitle:
+        subtitle ||
+        "Your project budget could be adjusted to attract more freelancers.",
+      timeLabel: formatDashboardRelativeTime(createdAt),
+      sortValue: new Date(createdAt || 0).getTime() || 0,
+      projectId: normalizedProjectId || null,
+      secondaryActionLabel: "View Details",
+      onSecondaryAction: () => navigate(budgetDetailsPath),
+      actionLabel:
+        matchingBudgetTarget && typeof openBudgetDialogByProjectId === "function"
+          ? "Increase Budget"
+          : undefined,
+      onAction:
+        matchingBudgetTarget && typeof openBudgetDialogByProjectId === "function"
+          ? () => openBudgetDialogByProjectId(normalizedProjectId)
+          : undefined,
+      onClick: () => navigate(budgetDetailsPath),
+    };
+  };
+
+  const recentNotificationItems = (Array.isArray(notifications) ? notifications : []).map(
+    (notification, index) => {
       const type = String(notification?.type || "").toLowerCase();
       const createdAt = notification?.createdAt || notification?.updatedAt;
       const projectId = String(notification?.data?.projectId || "").trim();
@@ -299,6 +349,7 @@ const buildRecentActivities = ({ notifications = [], projects = [], chatConversa
             notification?.data?.projectTitle ||
             "A freelancer sent you a new message.",
           timeLabel: formatDashboardRelativeTime(createdAt),
+          sortValue: new Date(createdAt || 0).getTime() || 0,
           onClick: () =>
             navigate(
               projectId
@@ -318,6 +369,7 @@ const buildRecentActivities = ({ notifications = [], projects = [], chatConversa
           title: notification?.title || "Proposal Update",
           subtitle: notification?.message || "Your proposal workflow has a new update.",
           timeLabel: formatDashboardRelativeTime(createdAt),
+          sortValue: new Date(createdAt || 0).getTime() || 0,
           onClick: () =>
             navigate(
               proposalStatus === "ACCEPTED" && projectId
@@ -328,19 +380,13 @@ const buildRecentActivities = ({ notifications = [], projects = [], chatConversa
       }
 
       if (type === "budget_suggestion") {
-        return {
+        return buildBudgetActivityItem({
           id: notification?.id || `notification-budget-${index}`,
-          iconKey: "budget",
-          tone: "warning",
-          title: notification?.title || "Consider Increasing Budget",
-          subtitle:
-            notification?.message ||
-            "Your project budget could be adjusted to attract more freelancers.",
-          timeLabel: formatDashboardRelativeTime(createdAt),
-          actionLabel: notification?.read ? undefined : "Review",
-          onAction: () => navigate("/client/proposal"),
-          onClick: () => navigate("/client/proposal"),
-        };
+          title: notification?.title,
+          subtitle: notification?.message,
+          createdAt,
+          projectId,
+        });
       }
 
       if (
@@ -355,6 +401,7 @@ const buildRecentActivities = ({ notifications = [], projects = [], chatConversa
           title: notification?.title || "Milestone Completed",
           subtitle: notification?.message || "A project milestone has been completed.",
           timeLabel: formatDashboardRelativeTime(createdAt),
+          sortValue: new Date(createdAt || 0).getTime() || 0,
           onClick: () =>
             navigate(
               projectId
@@ -371,12 +418,42 @@ const buildRecentActivities = ({ notifications = [], projects = [], chatConversa
         title: notification?.title || "Workspace Update",
         subtitle: notification?.message || "Catalance updated your workspace.",
         timeLabel: formatDashboardRelativeTime(createdAt),
+        sortValue: new Date(createdAt || 0).getTime() || 0,
         onClick: () => navigate("/client/project"),
       };
+    },
+  );
+
+  const existingBudgetProjectIds = new Set(
+    recentNotificationItems
+      .map((item) => String(item?.projectId || "").trim())
+      .filter(Boolean),
+  );
+
+  const derivedBudgetReminderItems = [...budgetIncreaseProjects.values()]
+    .filter((entry) => !existingBudgetProjectIds.has(entry.projectId))
+    .map((entry) =>
+      buildBudgetActivityItem({
+        id: `activity-budget-${entry.projectId}`,
+        title: "Consider Increasing Budget",
+        subtitle: `Your proposal for "${resolveProjectBusinessName(entry.proposal?.project, entry.proposal) || resolveProjectServiceLabel(entry.proposal?.project, entry.proposal) || resolveProjectBusinessName(entry.proposal, null) || "this project"}" has been pending for over 24 hours. Consider increasing your budget to attract freelancers.`,
+        createdAt: entry.proposal?.updatedAt || entry.proposal?.createdAt,
+        projectId: entry.projectId,
+      }),
+    );
+
+  const prioritizedNotificationItems = [...recentNotificationItems, ...derivedBudgetReminderItems]
+    .sort((left, right) => (right.sortValue || 0) - (left.sortValue || 0))
+    .slice(0, CLIENT_DASHBOARD_RECENT_ACTIVITY_LIMIT)
+    .map((item) => {
+      const rest = { ...item };
+      delete rest.sortValue;
+      delete rest.projectId;
+      return rest;
     });
 
-  if (recentNotificationItems.length > 0) {
-    return recentNotificationItems;
+  if (prioritizedNotificationItems.length > 0) {
+    return prioritizedNotificationItems;
   }
 
   const sortedProjects = [...projects].sort((left, right) => {
@@ -499,7 +576,7 @@ const fetchClientDashboardData = async (authFetch) => {
 export const ClientDashboardDataProvider = ({ children }) => {
   const { authFetch, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  const { notifications } = useNotifications();
+  const { notifications, markAsRead } = useNotifications();
   const [projects, setProjects] = useState([]);
   const [proposals, setProposals] = useState([]);
   const [chatConversations, setChatConversations] = useState([]);
@@ -545,6 +622,19 @@ export const ClientDashboardDataProvider = ({ children }) => {
   useEffect(() => {
     void refreshDashboardData();
   }, [refreshDashboardData]);
+
+  const handleDashboardBudgetUpdated = useCallback(async () => {
+    await refreshDashboardData({ silent: true });
+  }, [refreshDashboardData]);
+
+  const { budgetDialogState, budgetDialogActions } = useProposalBudgetIncrease({
+    authFetch,
+    userId: sessionUser?.id || user?.id,
+    proposals,
+    notifications,
+    markNotificationAsRead: markAsRead,
+    onBudgetUpdated: handleDashboardBudgetUpdated,
+  });
 
   const mergedProjects = useMemo(
     () => mergeProjectsWithProposals(projects, proposals),
@@ -618,10 +708,19 @@ export const ClientDashboardDataProvider = ({ children }) => {
       buildRecentActivities({
         notifications,
         projects: mergedProjects,
+        proposals,
         chatConversations,
         navigate,
+        openBudgetDialogByProjectId: budgetDialogActions.openBudgetDialogByProjectId,
       }),
-    [chatConversations, mergedProjects, navigate, notifications],
+    [
+      budgetDialogActions.openBudgetDialogByProjectId,
+      chatConversations,
+      mergedProjects,
+      navigate,
+      notifications,
+      proposals,
+    ],
   );
 
   const value = useMemo(
@@ -647,6 +746,8 @@ export const ClientDashboardDataProvider = ({ children }) => {
       activeProjects,
       activeProjectCards,
       activeProjectCount: activeProjects.length,
+      budgetDialogState,
+      budgetDialogActions,
       completedProjects,
       completedProjectCount: completedProjects.length,
     }),
@@ -654,6 +755,8 @@ export const ClientDashboardDataProvider = ({ children }) => {
       activeProjectCards,
       activeProjects,
       authFetch,
+      budgetDialogActions,
+      budgetDialogState,
       chatConversations,
       acceptedFreelancerSection,
       completedProjects,

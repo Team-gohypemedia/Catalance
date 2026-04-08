@@ -2,6 +2,7 @@ import React from "react";
 import {
   ActiveChats,
   ActiveProjects,
+  ClientDashboardDialogs,
   ClientDashboardDataProvider,
   ClientDashboardHeader,
   DraftedProposals,
@@ -39,6 +40,8 @@ const ClientDashboard = () => (
 
         <ClientDashboardFooter variant="workspace" />
       </div>
+
+      <ClientDashboardDialogs />
     </div>
   </ClientDashboardDataProvider>
 );

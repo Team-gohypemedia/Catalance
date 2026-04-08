@@ -317,7 +317,7 @@ export const updateProposal = asyncHandler(async (req, res) => {
         audience: "freelancer",
         type: "proposal",
         title: "Budget Increased",
-        message: `Your proposal for "${updatedProposal?.project?.title || "this project"}" now has a higher budget.`,
+        message: `Your proposal for "${updatedProposal?.project?.title || "this project"}" now has a higher budget. Check your proposal section to review the updated amount.`,
         data: {
           projectId: updatedProposal?.project?.id || proposal?.projectId || null,
           proposalId: updatedProposal?.id || proposalId,

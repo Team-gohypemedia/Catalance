@@ -24,6 +24,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
     setActiveTab,
     handleApproveAndPay,
     handleDelete,
+    openBudgetDialogForProposal,
     handleOpenFreelancerDetails,
     handleOpenProposal,
     openFreelancerSelection,
@@ -69,6 +70,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
             proposals={currentTabItems}
             onOpen={handleOpenProposal}
             onDelete={handleDelete}
+            onIncreaseBudget={openBudgetDialogForProposal}
             onSend={openFreelancerSelection}
             onViewFreelancers={handleOpenFreelancerDetails}
             sendingProposalId={sendingProposalId}
@@ -89,6 +91,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
             proposals={currentTabItems}
             onOpen={handleOpenProposal}
             onDelete={handleDelete}
+            onIncreaseBudget={openBudgetDialogForProposal}
             onPay={handleApproveAndPay}
             onSend={openFreelancerSelection}
             onViewFreelancers={handleOpenFreelancerDetails}
@@ -111,6 +114,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
             proposals={currentTabItems}
             onOpen={handleOpenProposal}
             onDelete={handleDelete}
+            onIncreaseBudget={openBudgetDialogForProposal}
             onViewFreelancers={handleOpenFreelancerDetails}
           />
         ) : (
