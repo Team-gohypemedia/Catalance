@@ -754,7 +754,6 @@ export function Wormhole({ lines, pulse, rings, delay: globalDelay }) {
         d="M2132.41 0.0625C2115.77 140.253 2098.74 280.042 2083.06 420.522C2082.36 432.272 2081.72 444.023 2081.12 455.783C2077.33 530.013 2075.38 604.403 2074.4 678.843"
       /> */}
                     </motion.g>
-                }
                 <motion.g>
                     <motion.path
                         className="cls-1"
