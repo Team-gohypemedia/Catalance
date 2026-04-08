@@ -161,7 +161,7 @@ const Hero = () => {
           size="lg"
           className="px-8 text-lg font-semibold shadow-[0_14px_36px_rgba(255,204,0,0.22)] sm:mt-11"
         >
-          <Link to="/talent">Browse Talent</Link>
+          <Link to="/service">Hire Expert</Link>
         </Button>
       </div>
     </section>

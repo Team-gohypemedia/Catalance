@@ -68,7 +68,7 @@ const FreelancerClientCards = () => {
               <div className="relative z-10 flex h-full flex-col">
                 <div className="mb-11 flex items-center justify-between gap-4">
                   <Briefcase className="size-7 text-primary" />
-                  <span className="text-sm font-semibold uppercase tracking-[0.28em] text-white/58">
+                  <span className="text-sm font-semibold uppercase tracking-[0.28em] text-white">
                     For Businesses
                   </span>
                 </div>
@@ -123,7 +123,7 @@ const FreelancerClientCards = () => {
               <div className="relative z-10 flex h-full flex-col">
                 <div className="mb-11 flex items-center justify-between gap-4">
                   <UserRoundSearch className="size-7 text-primary" />
-                  <span className="text-sm font-semibold uppercase tracking-[0.28em] text-white/58">
+                  <span className="text-sm font-semibold uppercase tracking-[0.28em] text-white">
                     For Freelancers
                   </span>
                 </div>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { subscribeNewsletter } from "@/shared/lib/api-client";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import { Button } from "@/components/ui/button";
 import logo from "@/assets/logos/logo.svg";
 
 const Footer = () => {
@@ -97,17 +98,8 @@ const Footer = () => {
             <div className="flex flex-col gap-5">
               <h3 className="text-sm font-semibold text-foreground">Platform</h3>
               <nav className="flex flex-col gap-3">
-                <Link to="/talent" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                <Link to="/marketplace" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                   Browse Talent
-                </Link>
-                <Link to="/enterprise" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                  Enterprise Solutions
-                </Link>
-                <Link to="/integrations" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                  Integrations
-                </Link>
-                <Link to="/features" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                  Features
                 </Link>
               </nav>
             </div>
@@ -121,12 +113,6 @@ const Footer = () => {
                 <Link to="/contact-us" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                   Contact Us
                 </Link>
-                <Link to="/careers" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                  Careers
-                </Link>
-                <Link to="/press" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                  Press
-                </Link>
               </nav>
             </div>
 
@@ -135,15 +121,6 @@ const Footer = () => {
               <nav className="flex flex-col gap-3">
                 <Link to="/blog" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                   Blog
-                </Link>
-                <Link to="/help" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                  Help Center
-                </Link>
-                <Link to="/docs" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                  Documentation
-                </Link>
-                <Link to="/community" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                  Community
                 </Link>
               </nav>
             </div>
@@ -182,7 +159,7 @@ const Footer = () => {
             <div className="w-full max-w-md">
               <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleNewsletterSubmit}>
                 <input
-                  className="h-12 w-full rounded-2xl border border-border/60 bg-card px-5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40"
+                  className="w-full rounded-lg border border-border/60 bg-card px-5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40"
                   placeholder="name@catalance.in"
                   type="email"
                   autoComplete="email"
@@ -191,14 +168,14 @@ const Footer = () => {
                   onChange={(event) => setNewsletterEmail(event.target.value)}
                   disabled={isSubmittingNewsletter}
                 />
-                <button
-                  className="inline-flex h-12 items-center justify-center rounded-2xl bg-background px-8 text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                <Button
+                size="lg"
                   type="submit"
                   disabled={isSubmittingNewsletter}
                   aria-label="Subscribe to newsletter"
                 >
                   Subscribe
-                </button>
+                </Button>
               </form>
             </div>
           </div>
