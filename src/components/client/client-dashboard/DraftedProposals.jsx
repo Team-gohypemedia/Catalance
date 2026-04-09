@@ -92,8 +92,8 @@ const buildDraftProposalPath = (draftId, action = "view") => {
   return `/client/proposal?${params.toString()}`;
 };
 
-const isAcceptedProposalStatus = (proposal = {}) =>
-  String(proposal?.status || "").toLowerCase() === "accepted";
+const isBlockingProposalStatus = (proposal = {}) =>
+  PROPOSAL_BLOCKED_STATUSES.has(String(proposal?.status || "").toLowerCase());
 
 const resolveProposalProjectKey = (proposal = {}) =>
   String(proposal?.syncedProjectId || proposal?.projectId || "").trim();
@@ -105,7 +105,7 @@ const shouldHideDraftProposal = (draft = {}, remoteProposals = []) => {
   return remoteProposals.some(
     (proposal) =>
       resolveProposalProjectKey(proposal) === projectKey &&
-      isAcceptedProposalStatus(proposal),
+      isBlockingProposalStatus(proposal),
   );
 };
 
