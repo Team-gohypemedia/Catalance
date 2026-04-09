@@ -194,6 +194,102 @@ const getInitials = (value = "") => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
+const buildClientProjectDestination = (projectId = "") => {
+  const normalizedProjectId = String(projectId || "").trim();
+
+  return normalizedProjectId
+    ? `/client/project/${encodeURIComponent(normalizedProjectId)}`
+    : "/client/project";
+};
+
+const buildClientProposalDestination = ({ projectId = "", tab = "pending" } = {}) => {
+  const normalizedProjectId = String(projectId || "").trim();
+  const params = new URLSearchParams();
+
+  if (normalizedProjectId) {
+    params.set("projectId", normalizedProjectId);
+  }
+
+  if (tab) {
+    params.set("tab", tab);
+  }
+
+  const query = params.toString();
+  return query ? `/client/proposal?${query}` : "/client/proposal";
+};
+
+const resolveNotificationDestination = (notification, fallbackTo = "/client/project") => {
+  const explicitDestination = String(
+    notification?.data?.route ||
+      notification?.data?.redirectTo ||
+      notification?.data?.href ||
+      notification?.data?.url ||
+      notification?.data?.path ||
+      "",
+  ).trim();
+
+  if (explicitDestination) {
+    return explicitDestination;
+  }
+
+  const type = String(notification?.type || "").trim().toLowerCase();
+  const projectId = String(
+    notification?.data?.projectId || notification?.data?.syncedProjectId || "",
+  ).trim();
+  const status = String(notification?.data?.status || "").trim().toUpperCase();
+
+  if (type === "chat") {
+    const service = String(notification?.data?.service || "");
+    const parts = service.split(":");
+    let chatProjectId = projectId;
+
+    if (!chatProjectId && parts.length >= 4 && parts[0] === "CHAT") {
+      chatProjectId = parts[1];
+    }
+
+    return chatProjectId
+      ? `/client/messages?projectId=${encodeURIComponent(chatProjectId)}`
+      : "/client/messages";
+  }
+
+  if (
+    type === "proposal" ||
+    type === "proposal_followup" ||
+    type === "budget_suggestion" ||
+    type === "proposal_expired"
+  ) {
+    if (status === "ACCEPTED" && projectId) {
+      return buildClientProjectDestination(projectId);
+    }
+
+    const proposalTab =
+      type === "proposal_expired" ||
+      status === "REJECTED" ||
+      status === "DECLINED" ||
+      status === "EXPIRED"
+        ? "rejected"
+        : "pending";
+
+    return buildClientProposalDestination({ projectId, tab: proposalTab });
+  }
+
+  if (
+    type === "task_completed" ||
+    type === "task_verified" ||
+    type === "task_unverified" ||
+    type === "freelancer_change_resolved" ||
+    type === "freelancer_change_request" ||
+    type === "project_assigned" ||
+    type === "meeting_scheduled" ||
+    type === "payment" ||
+    type === "freelancer_review"
+  ) {
+    return buildClientProjectDestination(projectId);
+  }
+
+  return fallbackTo;
+};
+
 const BrandMark = () => (
   <div className="flex items-center gap-2">
     <div className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary">
@@ -209,7 +305,7 @@ const BrandMark = () => (
   </div>
 );
 
-const NotificationSheetController = ({ notificationTo = "/client/messages" }) => {
+const NotificationSheetController = ({ notificationTo = "/client/project" }) => {
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(false);
   const {
@@ -242,41 +338,7 @@ const NotificationSheetController = ({ notificationTo = "/client/messages" }) =>
     markAsRead(notification.id);
     setOpen(false);
 
-    if (notification.type === "chat" && notification.data) {
-      const service = notification.data.service || "";
-      const parts = service.split(":");
-      let projectId = notification.data.projectId;
-
-      if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
-        projectId = parts[1];
-      }
-
-      navigate(projectId ? `/client/messages?projectId=${projectId}` : "/client/messages");
-      return;
-    }
-
-    if (notification.type === "proposal") {
-      const proposalStatus = String(notification.data?.status || "").toUpperCase();
-      if (proposalStatus === "ACCEPTED" && notification.data?.projectId) {
-        navigate("/client/project");
-        return;
-      }
-
-      navigate("/client/proposal");
-      return;
-    }
-
-    if (
-      (notification.type === "task_completed" ||
-        notification.type === "task_verified" ||
-        notification.type === "freelancer_change_resolved") &&
-      notification.data?.projectId
-    ) {
-      navigate(`/client/project/${notification.data.projectId}`);
-      return;
-    }
-
-    navigate(notificationTo);
+    navigate(resolveNotificationDestination(notification, notificationTo));
   };
 
   return (

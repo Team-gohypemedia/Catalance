@@ -349,41 +349,95 @@ export const ClientProposalDataProvider = ({ children }) => {
   const updateProposalProjectReference = useCallback(
     (proposal, projectId, projectStatus = "OPEN") => {
       const now = new Date().toISOString();
+      const normalizedProjectId = String(projectId || "").trim();
+      const normalizedProjectStatus = String(projectStatus || "OPEN").toUpperCase();
+
+      if (!proposal?.id || !normalizedProjectId) {
+        return;
+      }
 
       if (proposal?.isLocalDraft) {
-        queryKey: null,
         const storageKeys = getProposalStorageKeys(user?.id);
         const { proposals: savedProposals } = loadSavedProposalsFromStorage(user?.id);
-        const updatedSavedProposals = savedProposals.map((savedProposal) =>
-          savedProposal.id === proposal.id
-            ? {
-                ...savedProposal,
-                ownerId: user?.id || savedProposal.ownerId || null,
-    if (freelancerPoolCacheRef.current.userId !== user.id) {
-                projectId,
-                syncedAt: savedProposal.syncedAt || now,
-        queryKey: null,
-              }
-            : savedProposal,
-        );
+        const updatedSavedProposals = savedProposals.map((savedProposal) => {
+          if (savedProposal.id !== proposal.id) {
+            return savedProposal;
+          }
+
+          return {
+            ...savedProposal,
+            ownerId: user?.id || savedProposal.ownerId || null,
+            projectId: normalizedProjectId,
+            syncedProjectId: normalizedProjectId,
+            projectStatus: normalizedProjectStatus,
+            syncedAt: savedProposal.syncedAt || now,
+            project: {
+              ...(savedProposal.project && typeof savedProposal.project === "object"
+                ? savedProposal.project
+                : {}),
+              id: normalizedProjectId,
+              status: normalizedProjectStatus,
+            },
+          };
+        });
 
         persistSavedProposalsToStorage(updatedSavedProposals, proposal.id, storageKeys);
       }
 
       const patch = {
-    if (!user?.id || !showFreelancerSelect || !selectedProposalForSend) return;
+        projectId: normalizedProjectId,
+        syncedProjectId: normalizedProjectId,
+        projectStatus: normalizedProjectStatus,
+        syncedAt: now,
+      };
+
+      setProposals((current) =>
+        current.map((entry) =>
+          entry.id === proposal.id
+            ? {
+                ...entry,
+                ...patch,
+                project: {
+                  ...(entry.project && typeof entry.project === "object"
+                    ? entry.project
+                    : {}),
+                  id: normalizedProjectId,
+                  status: normalizedProjectStatus,
+                },
+              }
+            : entry,
+        ),
       );
       setSelectedProposalForSend((current) =>
-        current?.id === proposal.id ? { ...current, ...patch } : current,
+        current?.id === proposal.id
+          ? {
+              ...current,
+              ...patch,
+              project: {
+                ...(current.project && typeof current.project === "object"
+                  ? current.project
+                  : {}),
+                id: normalizedProjectId,
+                status: normalizedProjectStatus,
+              },
+            }
+          : current,
       );
       setActiveProposal((current) =>
-      const queryKey = buildProposalMatchCacheKey(selectedProposalForSend);
-        current?.id === proposal.id ? { ...current, ...patch } : current,
-      if (
-        cache.userId === user.id &&
-        cache.queryKey === queryKey &&
-        cache.loaded
-      ) {
+        current?.id === proposal.id
+          ? {
+              ...current,
+              ...patch,
+              project: {
+                ...(current.project && typeof current.project === "object"
+                  ? current.project
+                  : {}),
+                id: normalizedProjectId,
+                status: normalizedProjectStatus,
+              },
+            }
+          : current,
+      );
     },
     [user?.id],
   );
@@ -391,7 +445,7 @@ export const ClientProposalDataProvider = ({ children }) => {
   useEffect(() => {
     if (deepLinkProjectId) return;
     const validTabs = new Set(["draft", "pending", "rejected"]);
-        const pool = await fetchFreelancerPool(selectedProposalForSend);
+    if (validTabs.has(deepLinkTab)) {
       setActiveTab(deepLinkTab);
     }
   }, [deepLinkTab, deepLinkProjectId]);
@@ -1104,7 +1158,8 @@ export const ClientProposalDataProvider = ({ children }) => {
         .map((proposal) => String(proposal.projectId)),
     );
     const sentFreelancersByDraftKey = scopedProposals.reduce((acc, proposal) => {
-      if (proposal.status === "draft") return acc;
+      const proposalStatus = String(proposal?.status || "").toLowerCase();
+      if (!PROPOSAL_BLOCKED_STATUSES.has(proposalStatus)) return acc;
 
       const draftKey = getProposalDraftGroupKey(proposal);
       const invitee = getProposalInvitee(proposal);
