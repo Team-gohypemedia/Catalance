@@ -695,27 +695,7 @@ const DraftedProposals = memo(function DraftedProposals({
           throw new Error(proposalPayload?.message || "Failed to send proposal.");
         }
 
-        const now = new Date().toISOString();
-        const storageKeys = getProposalStorageKeys(sessionUser?.id);
-        const { proposals: storedDrafts } = loadSavedProposalsFromStorage(
-          sessionUser?.id,
-        );
-        const updatedDrafts = storedDrafts.map((entry) =>
-          entry.id === proposal.id
-            ? {
-                ...entry,
-                projectId: project.id,
-                syncedProjectId: project.id,
-                projectStatus: String(project.status || "OPEN").toUpperCase(),
-                syncedAt: entry.syncedAt || now,
-                updatedAt: now,
-              }
-            : entry,
-        );
-        persistSavedProposalsToStorage(updatedDrafts, proposal.id, storageKeys);
-        setSavedDrafts(updatedDrafts);
-        setActiveDraftId(proposal.id);
-
+        handleDeleteDraft(proposal.id);
         await refreshDashboardData?.({ silent: true });
 
         toast.success(`Proposal sent to ${freelancer.fullName || "freelancer"}!`);
@@ -730,11 +710,11 @@ const DraftedProposals = memo(function DraftedProposals({
     },
     [
       authFetch,
+      handleDeleteDraft,
       isControlled,
       proposals,
       refreshDashboardData,
       selectedDraftForSend,
-      sessionUser?.id,
     ],
   );
 

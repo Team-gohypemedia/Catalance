@@ -2122,8 +2122,18 @@ export const DashboardContent = ({ _roleOverride, children }) => {
       name: displayName,
       avatar: effectiveUser?.avatar || "",
       initial: String(displayName).charAt(0).toUpperCase(),
+      isVerified: Boolean(
+        effectiveUser?.freelancerProfile?.isVerified ?? effectiveUser?.isVerified
+      ),
     };
-  }, [effectiveUser?.avatar, effectiveUser?.email, effectiveUser?.fullName, effectiveUser?.name]);
+  }, [
+    effectiveUser?.avatar,
+    effectiveUser?.email,
+    effectiveUser?.fullName,
+    effectiveUser?.freelancerProfile?.isVerified,
+    effectiveUser?.isVerified,
+    effectiveUser?.name,
+  ]);
   const handleWorkspaceNav = useCallback(
     (key) => {
       if (key === "dashboard") {

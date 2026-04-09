@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { listUsers } from "../modules/users/user.service.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
+import { syncFreelancerOpenToWorkStatus } from "../lib/freelancer-open-to-work.js";
 import {
   resolveUserProfileDetails,
   extractWorkExperienceFromProfileDetails,
@@ -174,8 +175,8 @@ const resolveTimeCommitmentFromProfileDetails = (profileDetails = {}) => {
   );
 };
 
-const resolveAvailabilityLabel = ({ available, profileDetails = {} }) => {
-  if (!available) return "Busy";
+const resolveAvailabilityLabel = ({ openToWork, profileDetails = {} }) => {
+  if (!openToWork) return "Busy";
 
   const timeline = normalizeText(profileDetails?.availability?.startTimeline || "");
   if (timeline) return `Available - ${timeline}`;
@@ -813,6 +814,7 @@ export const getPmDashboardSummary = asyncHandler(async (req, res) => {
                   rating: true,
                   reviewCount: true,
                   skills: true,
+                  openToWork: true,
                 },
               },
             },
@@ -983,6 +985,7 @@ export const getPmProjectDetails = asyncHandler(async (req, res) => {
                   experienceYears: true,
                   portfolio: true,
                   profileDetails: true,
+                  openToWork: true,
                 },
               },
             },
@@ -1820,7 +1823,7 @@ export const getPmFreelancerDetails = asyncHandler(async (req, res) => {
       languages,
       timeCommitment: timeCommitment || null,
       availability: resolveAvailabilityLabel({
-        available: Boolean(freelancer.freelancerProfile?.available),
+        openToWork: Boolean(freelancer.freelancerProfile?.openToWork),
         profileDetails: details,
       }),
     }
@@ -1864,8 +1867,8 @@ export const searchPmFreelancers = asyncHandler(async (req, res) => {
 
   const freelancers = marketplaceUsers
     .filter((user) => {
-      if (availability === "available" && !user.available) return false;
-      if (availability === "unavailable" && user.available) return false;
+      if (availability === "available" && !user.openToWork) return false;
+      if (availability === "unavailable" && user.openToWork) return false;
       if (minRating > 0 && Number(user.rating || 0) < minRating) return false;
       if (minExperience > 0 && Number(user.experienceYears || 0) < minExperience) return false;
 
@@ -1905,7 +1908,7 @@ export const searchPmFreelancers = asyncHandler(async (req, res) => {
         Number(user.rating || 0) * 10 +
         Math.min(Number(user.reviewCount || 0), 40) +
         Math.min(Number(user.experienceYears || 0), 20) +
-        (user.available ? 10 : 0);
+        (user.openToWork ? 10 : 0);
 
       const review = latestReviewByFreelancer.get(user.id);
 
@@ -1924,7 +1927,7 @@ export const searchPmFreelancers = asyncHandler(async (req, res) => {
         languages,
         timeCommitment: resolveTimeCommitmentFromProfileDetails(profileDetails) || null,
         availability: resolveAvailabilityLabel({
-          available: Boolean(user.available),
+          openToWork: Boolean(user.openToWork),
           profileDetails,
         }),
         projectExperience: Number(user.experienceYears || 0),
@@ -2176,6 +2179,13 @@ export const replacePmProjectFreelancer = asyncHandler(async (req, res) => {
       },
     });
   });
+
+  await Promise.allSettled([
+    currentAssignment?.freelancerId
+      ? syncFreelancerOpenToWorkStatus(currentAssignment.freelancerId)
+      : Promise.resolve(null),
+    syncFreelancerOpenToWorkStatus(freelancer.id),
+  ]);
 
   if (project.ownerId) {
     await sendNotificationToUser(project.ownerId, {
@@ -2454,6 +2464,10 @@ export const createPmProjectSetup = asyncHandler(async (req, res) => {
 
     return createdProject;
   });
+
+  if (freelancerId) {
+    await syncFreelancerOpenToWorkStatus(freelancerId).catch(() => null);
+  }
 
   res.status(201).json({
     data: {

@@ -1,3 +1,5 @@
+import { isFreelancerOpenToWork } from "./freelancer-availability.js";
+
 const SCORE_WEIGHTS = {
   technology: 30,
   specialization: 22,
@@ -238,7 +240,6 @@ const REQUIRED_RELEVANCE_TEXT_FIELD_KEYS = [
 ];
 
 const MAX_REQUIREMENT_KEYWORDS = 80;
-const BUDGET_HARD_FILTER_MULTIPLIER = 1.35;
 const KEYWORD_STOP_WORDS = new Set([
   "a",
   "an",
@@ -1005,6 +1006,9 @@ function scoreIndustryMatch(requiredIndustries, freelancerIndustries) {
 function extractServicePriceFromDetail(detail) {
   if (!detail || typeof detail !== "object") return "";
   const candidates = [
+    detail?.startingPrice,
+    detail?.minBudget,
+    detail?.price,
     detail?.averageProjectPriceRange,
     detail?.averageProjectPrice,
     detail?.averagePrice,
@@ -1018,8 +1022,87 @@ function extractServicePriceFromDetail(detail) {
   return "";
 }
 
+function parsePriceFloor(rawPrice = "") {
+  if (rawPrice === null || rawPrice === undefined || rawPrice === "") return null;
+  if (typeof rawPrice === "number" && Number.isFinite(rawPrice) && rawPrice > 0) {
+    return Math.round(rawPrice);
+  }
+
+  const text = String(rawPrice).toLowerCase().replace(/,/g, "");
+  if (!text) return null;
+
+  const regex =
+    /(\d+(?:\.\d+)?)\s*(k|thousand|lakh|lac|lakhs|lacs|crore|cr|million|m)?/gi;
+  const amounts = [];
+  let match = regex.exec(text);
+
+  while (match) {
+    const amount = Number.parseFloat(match[1]);
+    if (Number.isFinite(amount)) {
+      const unit = String(match[2] || "").toLowerCase();
+      let multiplier = 1;
+      if (unit === "k" || unit === "thousand") multiplier = 1000;
+      if (unit.startsWith("lakh") || unit === "lac" || unit === "lacs") {
+        multiplier = 100000;
+      }
+      if (unit === "crore" || unit === "cr") multiplier = 10000000;
+      if (unit === "million" || unit === "m") multiplier = 1000000;
+      amounts.push(amount * multiplier);
+    }
+    match = regex.exec(text);
+  }
+
+  if (!amounts.length) return null;
+  return Math.round(Math.min(...amounts));
+}
+
+function getFreelancerProfileDetails(freelancer = {}) {
+  if (freelancer?.profileDetails && typeof freelancer.profileDetails === "object") {
+    return freelancer.profileDetails;
+  }
+
+  const nestedProfileDetails = freelancer?.freelancerProfile?.profileDetails;
+  if (nestedProfileDetails && typeof nestedProfileDetails === "object") {
+    return nestedProfileDetails;
+  }
+
+  return {};
+}
+
+function hasMeaningfulCaseStudy(detail = {}) {
+  const caseStudy = detail?.caseStudy;
+  if (!caseStudy || typeof caseStudy !== "object") return false;
+  return flattenValues(caseStudy).some((entry) => String(entry || "").trim().length > 0);
+}
+
+function freelancerHasRelevantCaseStudy(freelancer = {}, serviceKey = "") {
+  const serviceDetails = getFreelancerProfileDetails(freelancer)?.serviceDetails;
+  if (!serviceDetails || typeof serviceDetails !== "object") return false;
+
+  const entries = Object.entries(serviceDetails);
+  if (!entries.length) return false;
+
+  const normalizedServiceKey = normalizeServiceKey(serviceKey);
+  const matchingEntries = normalizedServiceKey
+    ? entries.filter(([rawKey]) => normalizeServiceKey(rawKey) === normalizedServiceKey)
+    : [];
+  const candidateEntries = matchingEntries.length ? matchingEntries : entries;
+
+  return candidateEntries.some(([, detail]) => hasMeaningfulCaseStudy(detail));
+}
+
 function resolveServicePriceRange(freelancer, serviceProject, requirements) {
-  const directRange = String(serviceProject?.averageProjectPriceRange || "").trim();
+  const directRange = String(
+    serviceProject?.startingPrice ||
+      serviceProject?.minBudget ||
+      serviceProject?.price ||
+      serviceProject?.averageProjectPriceRange ||
+      serviceProject?.priceRange ||
+      serviceProject?.averageProjectPrice ||
+      serviceProject?.averagePrice ||
+      serviceProject?.pricing ||
+      "",
+  ).trim();
   if (directRange) return directRange;
 
   const serviceDetails = freelancer?.profileDetails?.serviceDetails;
@@ -1050,6 +1133,7 @@ function resolveServicePriceRange(freelancer, serviceProject, requirements) {
 function evaluateBudgetMatch(clientBudget, freelancerPriceRange) {
   const budgetAmount = safeNumber(clientBudget, 0);
   const normalizedPriceRange = String(freelancerPriceRange || "").trim();
+  const priceFloor = parsePriceFloor(normalizedPriceRange);
 
   if (!budgetAmount) {
     return {
@@ -1084,11 +1168,10 @@ function evaluateBudgetMatch(clientBudget, freelancerPriceRange) {
 
   const min = safeNumber(range.min, 0);
   const max = Number.isFinite(range.max) ? range.max : Number.POSITIVE_INFINITY;
-  const isFarAboveBudget = budgetAmount < min && min > budgetAmount * BUDGET_HARD_FILTER_MULTIPLIER;
 
-  if (isFarAboveBudget) {
+  if (priceFloor !== null && budgetAmount < priceFloor) {
     return {
-      raw: 0.1,
+      raw: 0,
       hardRejected: true,
       withinRange: false,
       range: { min, max },
@@ -1096,7 +1179,7 @@ function evaluateBudgetMatch(clientBudget, freelancerPriceRange) {
     };
   }
 
-  if (budgetAmount >= min && budgetAmount <= max) {
+  if (priceFloor !== null) {
     return {
       raw: 1,
       hardRejected: false,
@@ -1106,39 +1189,8 @@ function evaluateBudgetMatch(clientBudget, freelancerPriceRange) {
     };
   }
 
-  if (budgetAmount < min) {
-    const gapRatio = (min - budgetAmount) / Math.max(min, 1);
-    let raw = 0.25;
-    if (gapRatio <= 0.1) raw = 0.85;
-    else if (gapRatio <= 0.25) raw = 0.65;
-    else if (gapRatio <= 0.4) raw = 0.45;
-
-    return {
-      raw,
-      hardRejected: false,
-      withinRange: false,
-      range: { min, max },
-      priceRange: normalizedPriceRange,
-    };
-  }
-
-  if (!Number.isFinite(max)) {
-    return {
-      raw: 0.95,
-      hardRejected: false,
-      withinRange: true,
-      range: { min, max },
-      priceRange: normalizedPriceRange,
-    };
-  }
-
-  const overshootRatio = (budgetAmount - max) / Math.max(max, 1);
-  let raw = 0.55;
-  if (overshootRatio <= 0.2) raw = 0.85;
-  else if (overshootRatio <= 0.5) raw = 0.7;
-
   return {
-    raw,
+    raw: 0.35,
     hardRejected: false,
     withinRange: false,
     range: { min, max },
@@ -1599,7 +1651,7 @@ function computeScoreForProject(freelancer, serviceProject, requirements) {
   const techHardFilterPassed =
     !requirements.technologyCanonicals.length || technology.matchedCount > 0;
   const budgetHardFilterPassed = !budget.hardRejected;
-  const overallHardFilterPassed = techHardFilterPassed;
+  const overallHardFilterPassed = techHardFilterPassed && budgetHardFilterPassed;
 
   return {
     totalScore: Math.round(totalScore),
@@ -1677,32 +1729,29 @@ function buildCandidatePool(freelancers, requirements) {
   const normalized = Array.isArray(freelancers) ? freelancers.filter(Boolean) : [];
   if (!normalized.length) return [];
 
-  const strict = normalized.filter((freelancer) => {
+  return normalized.filter((freelancer) => {
     const status = String(freelancer?.status || "").toUpperCase();
     const onboardingReady = freelancer?.onboardingComplete === true;
-    const verified = freelancer?.isVerified === true;
     return (
       ALLOWED_STATUSES.has(status) &&
       onboardingReady &&
-      verified &&
+      isFreelancerOpenToWork(freelancer) &&
       freelancerMatchesService(freelancer, requirements.serviceKey) &&
       isEligibleByAvailability(freelancer, requirements)
     );
   });
+}
 
-  if (strict.length >= 3) return strict;
+function getMatchPriority(freelancer, requirements) {
+  const verifiedPriority = freelancer?.isVerified === true ? 2 : 0;
+  const caseStudyPriority = freelancerHasRelevantCaseStudy(
+    freelancer,
+    requirements?.serviceKey,
+  )
+    ? 1
+    : 0;
 
-  const serviceMatched = normalized.filter((freelancer) =>
-    freelancerMatchesService(freelancer, requirements.serviceKey),
-  );
-  if (serviceMatched.length >= 3) return serviceMatched;
-
-  const verifiedCandidates = normalized.filter(
-    (freelancer) => freelancer?.isVerified === true,
-  );
-  if (verifiedCandidates.length) return verifiedCandidates;
-
-  return normalized;
+  return verifiedPriority + caseStudyPriority;
 }
 
 export function extractMatchingRequirements(proposal = {}) {
@@ -1849,9 +1898,9 @@ export function rankFreelancersForProposal(freelancers = [], proposal = null) {
   if (!Array.isArray(freelancers) || freelancers.length === 0) return [];
   const requirements = extractMatchingRequirements(proposal || {});
   const candidates = buildCandidatePool(freelancers, requirements);
-  const scoringPool = candidates.length ? candidates : freelancers;
+  if (!candidates.length) return [];
 
-  const scoredFreelancers = scoringPool
+  const scoredFreelancers = candidates
     .map((freelancer) => {
       const serviceProjects = getServiceProjectsForRequirement(
         freelancer,
@@ -1872,9 +1921,11 @@ export function rankFreelancersForProposal(freelancers = [], proposal = null) {
       if (!scoredVariants.length) return null;
       scoredVariants.sort(compareScoredVariants);
       const bestResult = scoredVariants[0];
+      const matchPriority = getMatchPriority(freelancer, requirements);
 
       return {
         ...freelancer,
+        matchPriority,
         matchScore: bestResult?.totalScore || 0,
         matchBreakdown: bestResult?.breakdown || {},
         matchedTechnologies: bestResult?.matchedTechnologies || [],
@@ -1914,6 +1965,10 @@ export function rankFreelancersForProposal(freelancers = [], proposal = null) {
 
   return filteredByTechCoverage
     .sort((a, b) => {
+      const matchPriorityDiff =
+        safeNumber(b?.matchPriority, 0) - safeNumber(a?.matchPriority, 0);
+      if (matchPriorityDiff !== 0) return matchPriorityDiff;
+
       if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
 
       const techCoverageDiff =

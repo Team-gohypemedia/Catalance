@@ -210,6 +210,15 @@ const FreelancerSelectionDialog = ({
               }
 
               if (filteredFreelancers.length === 0) {
+                if (freelancerSelectionData.totalRanked === 0) {
+                  return (
+                    <Card className="col-span-full border-dashed">
+                      <CardContent className="p-8 text-center text-muted-foreground">
+                        We are not able to find a freelancer within your requirements.
+                      </CardContent>
+                    </Card>
+                  );
+                }
                 if (hasSearchQuery) {
                   return (
                     <Card className="col-span-full border-dashed">

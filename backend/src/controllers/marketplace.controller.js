@@ -340,16 +340,13 @@ const detectCandidateBuildMode = (candidate = {}) => {
   return null;
 };
 
-const buildTier1Where = (query) => {
+const buildTier1Where = (query, profileAvailabilityConditions) => {
   const andConditions = [
     {
       freelancer: {
         role: "FREELANCER",
         status: "ACTIVE",
-        OR: [
-          { freelancerProfile: { is: null } },
-          { freelancerProfile: { is: { available: true } } },
-        ],
+        OR: profileAvailabilityConditions,
       },
     },
   ];
@@ -374,6 +371,18 @@ const buildTier1Where = (query) => {
 
   return { AND: andConditions };
 };
+
+const buildTier1DiscoveryWhere = (query) =>
+  buildTier1Where(query, [
+    { freelancerProfile: { is: null } },
+    { freelancerProfile: { is: { available: true } } },
+  ]);
+
+const buildTier1BrowseWhere = (query) =>
+  buildTier1Where(query, [
+    { freelancerProfile: { is: null } },
+    { freelancerProfile: { is: { available: true } } },
+  ]);
 
 const getScoreWeights = (query) => {
   if (query.strictTech) {
@@ -1341,7 +1350,7 @@ export const getMarketplace = asyncHandler(async (req, res) => {
   const configuredCap = getConfiguredCandidateCap();
   const candidateLimit = configuredCap;
 
-  const where = buildTier1Where(query);
+  const where = buildTier1DiscoveryWhere(query);
 
   const marketplaceRows = await prisma.marketplace.findMany({
     where,
@@ -1357,6 +1366,7 @@ export const getMarketplace = asyncHandler(async (req, res) => {
           freelancerProfile: {
             select: {
               available: true,
+              openToWork: true,
               rating: true,
               reviewCount: true,
               skills: true,
@@ -1451,7 +1461,7 @@ export const getMarketplaceBrowse = asyncHandler(async (req, res) => {
       orderBy: { name: "asc" },
     }),
     prisma.marketplace.findMany({
-      where: buildTier1Where({
+      where: buildTier1BrowseWhere({
         category: selectedServiceKey,
         searchTerm: "",
       }),
@@ -1466,6 +1476,7 @@ export const getMarketplaceBrowse = asyncHandler(async (req, res) => {
             freelancerProfile: {
               select: {
                 available: true,
+                openToWork: true,
                 skills: true,
                 serviceDetails: true,
               },

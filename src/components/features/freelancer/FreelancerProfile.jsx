@@ -268,6 +268,7 @@ const FreelancerProfile = () => {
     avatar: "",
     coverImage: "",
     available: true,
+    openToWork: true,
   });
   const [portfolio, setPortfolio] = useState({
     portfolioUrl: "",
@@ -413,6 +414,10 @@ const FreelancerProfile = () => {
             coverImage: personalCoverImage,
             location: location || identityLocation,
             headline: payload.personal?.headline || identityTitle || "",
+            openToWork:
+              payload.personal?.openToWork !== undefined
+                ? Boolean(payload.personal.openToWork)
+                : true,
           },
           portfolio: {
             portfolioUrl: existingPortfolio.portfolioUrl || "",
@@ -456,6 +461,15 @@ const FreelancerProfile = () => {
               : payload.status !== undefined
                 ? payload.status === "ACTIVE"
                 : true,
+          openToWork:
+            payload.openToWork !== undefined
+              ? Boolean(payload.openToWork)
+              : true,
+          isVerified: Boolean(
+            payload.personal?.isVerified ??
+            payload.freelancerProfile?.isVerified ??
+            payload.isVerified
+          ),
         },
         skills: Array.isArray(payload.skills) ? payload.skills : [],
         workExperience: Array.isArray(payload.workExperience) ? payload.workExperience : [],
@@ -490,6 +504,8 @@ const FreelancerProfile = () => {
           avatar: "",
           coverImage: "",
           available: false,
+          openToWork: false,
+          isVerified: false,
         });
         setPortfolio({
           portfolioUrl: "",
@@ -589,6 +605,10 @@ const FreelancerProfile = () => {
             identityFallbackCoverImage ||
             "",
           available: normalized.personal?.available ?? true,
+          openToWork: normalized.personal?.openToWork ?? true,
+          isVerified:
+            normalized.personal?.isVerified ??
+            Boolean(user?.isVerified || user?.freelancerProfile?.isVerified),
         };
 
         const loadedServiceDetailMap =
@@ -701,6 +721,8 @@ const FreelancerProfile = () => {
             avatar: resolveAvatarUrl(user?.avatar, { allowBlob: true }) || "",
             coverImage: "",
             available: true,
+            openToWork: true,
+            isVerified: Boolean(user?.isVerified || user?.freelancerProfile?.isVerified),
           };
           const fallbackPortfolio = {
             portfolioUrl: "",
@@ -1268,7 +1290,7 @@ const FreelancerProfile = () => {
       return;
     }
 
-    toast.success(`Profile set to ${nextAvailable ? "Open to Work" : "Offline"}`);
+    toast.success(`Profile set to ${nextAvailable ? "Available" : "Offline"}`);
     setIsAvailabilitySaving(false);
   };
 
@@ -2925,12 +2947,18 @@ const FreelancerProfile = () => {
       name: user?.fullName || user?.name || personal.name || "Freelancer",
       email: user?.email || personal.email || "",
       initial: initials,
+      isVerified: Boolean(
+        personal.isVerified ?? user?.isVerified ?? user?.freelancerProfile?.isVerified
+      ),
     }),
     [
       initials,
       personal.email,
       personal.name,
+      personal.isVerified,
       profilePhotoUrl,
+      user?.isVerified,
+      user?.freelancerProfile?.isVerified,
       user?.avatar,
       user?.email,
       user?.fullName,
@@ -3322,6 +3350,7 @@ const FreelancerProfile = () => {
             displayHeadline={displayHeadline}
             displayBio={displayBio}
             displayLocation={displayLocation}
+            isVerified={Boolean(personal.isVerified)}
             onboardingIdentity={onboardingIdentity}
             onboardingLanguages={onboardingLanguages}
             openEditPersonalModal={openEditPersonalModal}

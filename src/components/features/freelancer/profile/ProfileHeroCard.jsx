@@ -13,7 +13,9 @@ import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Upload from "lucide-react/dist/esm/icons/upload";
+import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +50,7 @@ const ProfileHeroCard = ({
   displayHeadline,
   displayBio,
   displayLocation,
+  isVerified = false,
   onboardingIdentity,
   onboardingLanguages,
   openEditPersonalModal,
@@ -75,7 +78,8 @@ const ProfileHeroCard = ({
   const resolvedBio = String(displayBio || personal.bio || "").trim();
   const profileName = String(personal.name || "").trim() || "Your Name";
   const profileHandle = username ? `@${username}` : "@add-username";
-  const availabilityLabel = personal.available ? "Open to Work" : "Offline";
+  const availabilityLabel = personal.available ? "Available" : "Offline";
+  const openToWorkLabel = personal.openToWork ? "Open to Work" : "At Capacity";
   const [hasCoverImageError, setHasCoverImageError] = useState(false);
   const [isCoverDragActive, setIsCoverDragActive] = useState(false);
 
@@ -275,13 +279,40 @@ const ProfileHeroCard = ({
         </div>
 
         <div className="mt-5 min-w-0 space-y-1 sm:mt-0">
-          <h1
-            title={profileName}
-            className="min-w-0 max-w-full truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl"
-          >
-            {profileName}
-          </h1>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1
+                title={profileName}
+                className="min-w-0 max-w-full truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl"
+              >
+                {profileName}
+              </h1>
+
+              {isVerified ? (
+                <Badge
+                  title="This freelancer has successfully completed at least one project on our platform."
+                  className="h-6 border-emerald-500/20 bg-emerald-500/10 px-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300"
+                >
+                  <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                  Verified Freelancer
+                </Badge>
+              ) : null}
+              {typeof personal.openToWork === "boolean" ? (
+                <Badge
+                  title="Auto-managed from your active project count."
+                  className={`h-6 px-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                    personal.openToWork
+                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                      : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                  }`}
+                >
+                  {openToWorkLabel}
+                </Badge>
+              ) : null}
+            </div>
+
           <p className="text-sm text-muted-foreground sm:text-base">{profileHandle}</p>
+          </div>
           <p className="max-w-5xl text-[15px] leading-7 text-foreground sm:text-base sm:leading-relaxed">
             {resolvedBio || "Add a short professional bio to showcase your expertise."}
           </p>
@@ -355,7 +386,7 @@ const ProfileHeroCard = ({
                 : "border-border/70 bg-background text-muted-foreground hover:bg-muted"
             }`}
             title={`Set profile status to ${
-              personal.available ? "Offline" : "Open to Work"
+              personal.available ? "Offline" : "Available"
             }`}
           >
             {availabilitySaving ? (

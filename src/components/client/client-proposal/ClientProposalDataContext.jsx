@@ -1040,6 +1040,11 @@ export const ClientProposalDataProvider = ({ children }) => {
           throw new Error(proposalPayload?.message || "Failed to send proposal.");
         }
 
+        deleteLocalDraftProposal(proposal.id, user?.id);
+        setProposals((current) =>
+          current.filter((entry) => entry.id !== proposal.id),
+        );
+
         toast.success(
           proposalRes.status === 200
             ? `Proposal resent to ${freelancer.fullName || "freelancer"}!`
@@ -1060,6 +1065,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       fetchProposals,
       proposals,
       selectedProposalForSend,
+      user?.id,
       updateProposalProjectReference,
     ],
   );

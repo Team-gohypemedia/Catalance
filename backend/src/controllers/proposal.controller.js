@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { Prisma, prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
+import { syncFreelancerOpenToWorkStatus } from "../lib/freelancer-open-to-work.js";
 
 const normalizeAmount = (value) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) {
@@ -114,6 +115,8 @@ export const createProposal = asyncHandler(async (req, res) => {
               status: nextStatus,
               rejectionReason: null,
               rejectionReasonKey: null,
+              followupGuidanceSent: false,
+              budgetReminderSent: false,
             },
           });
         }
@@ -135,6 +138,10 @@ export const createProposal = asyncHandler(async (req, res) => {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     }
   );
+
+  if (nextStatus === "ACCEPTED" && proposal?.freelancerId) {
+    await syncFreelancerOpenToWorkStatus(proposal.freelancerId).catch(() => null);
+  }
 
   // Determine who should receive the notification:
   // - If CLIENT (project owner) is sending the proposal TO a freelancer -> notify the FREELANCER
@@ -820,10 +827,15 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
           where: { id: updated.projectId },
           data: { status: "AWAITING_PAYMENT" }
         });
+        await syncFreelancerOpenToWorkStatus(updated.freelancerId).catch(() => null);
       } catch (projError) {
         console.error("Failed to update project status:", projError);
       }
 
+    }
+
+    if (normalizedStatus === "ACCEPTED" && updated?.freelancerId) {
+      await syncFreelancerOpenToWorkStatus(updated.freelancerId).catch(() => null);
     }
 
     res.json({ data: updated });

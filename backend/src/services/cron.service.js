@@ -3,9 +3,13 @@ import { prisma } from '../lib/prisma.js';
 import { env } from '../config/env.js';
 import { sendEmail } from '../lib/email-service.js';
 import { resend } from '../lib/resend.js';
+import { reconcileFreelancerOpenToWorkStatuses } from '../lib/freelancer-open-to-work.js';
 
 const CRON_DB_COOLDOWN_MS = 5 * 60 * 1000;
 let skipCronUntil = 0;
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+const FIVE_DAYS_MS = 5 * TWENTY_FOUR_HOURS_MS;
+const SEVEN_DAYS_MS = 7 * TWENTY_FOUR_HOURS_MS;
 
 const isDatabaseConnectivityError = (error) => {
     const code = error?.code;
@@ -50,6 +54,18 @@ const handleCronError = (jobName, error) => {
 
 export const startCronJobs = () => {
     console.log('Starting cron jobs...');
+
+    void reconcileFreelancerOpenToWorkStatuses()
+        .then((result) => {
+            if (result?.updatedCount > 0) {
+                console.log(
+                    `[Cron] Startup reconciliation adjusted openToWork for ${result.updatedCount}/${result.checkedCount} freelancer profiles.`
+                );
+            }
+        })
+        .catch((error) => {
+            handleCronError('freelancer availability startup reconciliation', error);
+        });
 
     // Run every minute
     cron.schedule('* * * * *', async () => {
@@ -164,24 +180,25 @@ export const startCronJobs = () => {
     }, { noOverlap: true });
 
     // ============================================================
-    // Budget Increase Reminder: Run every hour to check for proposals
-    // that have been pending for more than 24 hours without acceptance
+    // Proposal Follow-up Guidance: Run every hour to notify clients when a proposal
+    // has been pending for more than 24 hours but is still within the 5-day window.
     // ============================================================
     cron.schedule('0 * * * *', async () => {
-        if (shouldSkipCronRun('budget reminder cron')) {
+        if (shouldSkipCronRun('proposal follow-up guidance cron')) {
             return;
         }
 
         try {
-            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            const twentyFourHoursAgo = new Date(Date.now() - TWENTY_FOUR_HOURS_MS);
+            const fiveDaysAgo = new Date(Date.now() - FIVE_DAYS_MS);
 
-            // Find proposals that are PENDING, older than 24hrs, and haven't had a reminder sent
             const pendingProposals = await prisma.proposal.findMany({
                 where: {
                     status: 'PENDING',
-                    budgetReminderSent: false,
+                    followupGuidanceSent: false,
                     createdAt: {
-                        lt: twentyFourHoursAgo
+                        lt: twentyFourHoursAgo,
+                        gt: fiveDaysAgo
                     }
                 },
                 include: {
@@ -197,7 +214,106 @@ export const startCronJobs = () => {
             });
 
             if (pendingProposals.length > 0) {
-                console.log(`[Cron] Found ${pendingProposals.length} proposals pending >24hrs for budget reminder.`);
+                console.log(`[Cron] Found ${pendingProposals.length} proposals pending >24hrs for follow-up guidance.`);
+            }
+
+            for (const proposal of pendingProposals) {
+                const owner = proposal.project?.owner;
+                if (!owner?.email) {
+                    console.log(`[Cron] No owner email found for proposal ${proposal.id}`);
+                    continue;
+                }
+
+                const freelancerName = proposal.freelancer?.fullName || 'The freelancer';
+                const projectTitle = proposal.project?.title || 'your project';
+
+                console.log(`[Cron] Sending follow-up guidance email to: ${owner.email}`);
+                const emailResult = await sendEmail({
+                    to: owner.email,
+                    subject: `Update on Your Proposal for "${projectTitle}"`,
+                    title: 'Your Proposal Needs Attention',
+                    html: `
+                        <p>Hi ${owner.fullName || 'there'},</p>
+                        <p>Your proposal for <strong>"${projectTitle}"</strong> has not been accepted yet. ${freelancerName} may currently be unavailable or busy.</p>
+
+                        <div style="background-color: #eff6ff; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+                            <p style="margin: 0; font-weight: bold;">💡 Recommendation</p>
+                            <p style="margin: 10px 0 0 0; font-size: 14px;">
+                                We recommend exploring other freelancers to get your work started sooner.
+                            </p>
+                        </div>
+                    `
+                });
+
+                if (emailResult) {
+                    console.log(`[Cron] ✅ Follow-up guidance email sent successfully to: ${owner.email}`);
+                } else {
+                    console.log(`[Cron] ⚠️ Follow-up guidance email failed for: ${owner.email}`);
+                }
+
+                try {
+                    const { sendNotificationToUser } = await import('../lib/notification-util.js');
+                    const notifResult = await sendNotificationToUser(owner.id, {
+                        audience: 'client',
+                        type: 'proposal_followup',
+                        title: 'Freelancer May Be Unavailable',
+                        message: `Your proposal for "${projectTitle}" has not been accepted yet. The freelancer may currently be unavailable or busy. We recommend exploring other freelancers to get your work started sooner.`,
+                        data: {
+                            projectId: proposal.projectId,
+                            proposalId: proposal.id,
+                            followUpStage: '24h'
+                        }
+                    }, false);
+                    console.log(`[Cron] ✅ Follow-up guidance notification sent for proposal ${proposal.id}, result:`, notifResult);
+                } catch (notifyErr) {
+                    console.error(`[Cron] ❌ Failed to send follow-up guidance notification for proposal ${proposal.id}:`, notifyErr);
+                }
+
+                await prisma.proposal.update({
+                    where: { id: proposal.id },
+                    data: { followupGuidanceSent: true }
+                });
+            }
+        } catch (error) {
+            handleCronError('proposal follow-up guidance cron', error);
+        }
+    }, { noOverlap: true });
+
+    // ============================================================
+    // Budget Increase Reminder: Run every hour to check for proposals
+    // that have been pending for more than 5 days without acceptance
+    // ============================================================
+    cron.schedule('0 * * * *', async () => {
+        if (shouldSkipCronRun('budget reminder cron')) {
+            return;
+        }
+
+        try {
+            const fiveDaysAgo = new Date(Date.now() - FIVE_DAYS_MS);
+
+            // Find proposals that are PENDING, older than 5 days, and haven't had a reminder sent
+            const pendingProposals = await prisma.proposal.findMany({
+                where: {
+                    status: 'PENDING',
+                    budgetReminderSent: false,
+                    createdAt: {
+                        lt: fiveDaysAgo
+                    }
+                },
+                include: {
+                    project: {
+                        include: {
+                            owner: true
+                        }
+                    },
+                    freelancer: {
+                        select: { fullName: true, email: true }
+                    }
+                }
+            });
+
+            if (pendingProposals.length > 0) {
+                console.log(`[Cron] Found ${pendingProposals.length} proposals pending >5d for budget reminder.`);
             }
 
             for (const proposal of pendingProposals) {
@@ -218,7 +334,7 @@ export const startCronJobs = () => {
                     title: 'Your Proposal is Still Pending',
                     html: `
                         <p>Hi ${owner.fullName || 'there'},</p>
-                        <p>Your proposal for <strong>"${projectTitle}"</strong> has been pending for over 24 hours without acceptance from ${freelancerName}.</p>
+                        <p>Your proposal for <strong>"${projectTitle}"</strong> has been pending for over 5 days without acceptance from ${freelancerName}.</p>
                         
                         <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
                             <p style="margin: 0; font-weight: bold;">💡 Tip: Consider increasing your budget</p>
@@ -245,7 +361,7 @@ export const startCronJobs = () => {
                         audience: 'client',
                         type: 'budget_suggestion',
                         title: 'Consider Increasing Budget',
-                        message: `Your proposal for "${projectTitle}" has been pending for over 24 hours. Consider increasing your budget to attract freelancers.`,
+                        message: `Your proposal for "${projectTitle}" has still not been accepted after 5 days. Increase your budget to reach more freelancers who are more likely to work within your budget.`,
                         data: {
                             projectId: proposal.projectId,
                             proposalId: proposal.id,
@@ -270,7 +386,7 @@ export const startCronJobs = () => {
 
     // ============================================================
     // Auto-Reject Proposals: Run every hour to auto-reject proposals
-    // that have been pending for more than 48 hours without acceptance
+    // that have been pending for more than 7 days without acceptance
     // ============================================================
     cron.schedule('0 * * * *', async () => {
         if (shouldSkipCronRun('auto-reject proposals cron')) {
@@ -278,14 +394,14 @@ export const startCronJobs = () => {
         }
 
         try {
-            const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+            const sevenDaysAgo = new Date(Date.now() - SEVEN_DAYS_MS);
 
-            // Find proposals that are PENDING and older than 48 hours
+            // Find proposals that are PENDING and older than 7 days
             const expiredProposals = await prisma.proposal.findMany({
                 where: {
                     status: 'PENDING',
                     createdAt: {
-                        lt: fortyEightHoursAgo
+                        lt: sevenDaysAgo
                     }
                 },
                 include: {
@@ -301,7 +417,7 @@ export const startCronJobs = () => {
             });
 
             if (expiredProposals.length > 0) {
-                console.log(`[Cron] Found ${expiredProposals.length} proposals to auto-reject (>48hrs).`);
+                console.log(`[Cron] Found ${expiredProposals.length} proposals to auto-reject (>7d).`);
             }
 
             for (const proposal of expiredProposals) {
@@ -324,7 +440,7 @@ export const startCronJobs = () => {
                         title: 'Proposal Auto-Expired',
                         html: `
                             <p>Hi ${owner.fullName || 'there'},</p>
-                            <p>Your proposal to <strong>${freelancerName}</strong> for <strong>"${projectTitle}"</strong> has expired after 48 hours without acceptance.</p>
+                            <p>Your proposal to <strong>${freelancerName}</strong> for <strong>"${projectTitle}"</strong> has expired after 7 days without acceptance.</p>
                             
                             <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
                                 <p style="margin: 0; font-weight: bold;">💡 Tip: You can send a new proposal</p>
@@ -347,7 +463,7 @@ export const startCronJobs = () => {
                             audience: 'client',
                             type: 'proposal_expired',
                             title: 'Proposal Expired',
-                            message: `Your proposal to ${freelancerName} for "${projectTitle}" has expired. You can now send to another freelancer.`,
+                            message: `Your proposal to ${freelancerName} for "${projectTitle}" has expired after 7 days. You can now send to another freelancer.`,
                             data: {
                                 projectId: proposal.projectId,
                                 proposalId: proposal.id
@@ -360,6 +476,27 @@ export const startCronJobs = () => {
             }
         } catch (error) {
             handleCronError('auto-reject proposals cron', error);
+        }
+    }, { noOverlap: true });
+
+    // ============================================================
+    // Freelancer Availability Reconciliation: Run every hour to re-sync
+    // openToWork against the current active project count.
+    // ============================================================
+    cron.schedule('17 * * * *', async () => {
+        if (shouldSkipCronRun('freelancer availability reconciliation cron')) {
+            return;
+        }
+
+        try {
+            const result = await reconcileFreelancerOpenToWorkStatuses();
+            if (result.updatedCount > 0) {
+                console.log(
+                    `[Cron] Reconciled openToWork for ${result.updatedCount}/${result.checkedCount} freelancer profiles.`
+                );
+            }
+        } catch (error) {
+            handleCronError('freelancer availability reconciliation cron', error);
         }
     }, { noOverlap: true });
 

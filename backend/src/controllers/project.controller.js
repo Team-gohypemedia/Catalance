@@ -10,6 +10,8 @@ import {
   isCompletedPhaseLockedAfterAdvance,
   isTaskPhaseLockedByPayment,
 } from "../../../src/shared/lib/project-verification-gates.js";
+import { markFreelancerVerifiedAfterProjectCompletion } from "../lib/freelancer-verification.js";
+import { syncFreelancerOpenToWorkStatus } from "../lib/freelancer-open-to-work.js";
 import {
   buildProjectProposalJson,
   PROJECT_PROPOSAL_FIELD_KEYS,
@@ -79,10 +81,10 @@ const normalizeBudget = (value) => {
   }
 
   if (typeof value === "string") {
-    // Handle currency symbols, commas, and ranges like "â‚¹60,001â€“1,00,000"
+    // Strip currency symbols, commas, and pull the first number if a range is provided.
     const sanitized = value
-      .replace(/[â‚¹,\s]/g, "")
-      .replace(/[â€“â€”]/g, "-"); // normalize dash variants
+      .replace(/[–—]/g, "-")
+      .replace(/[^\d.-]/g, "");
 
     const rangePart = sanitized.includes("-")
       ? sanitized.split("-")[0]
@@ -752,6 +754,13 @@ export const createProject = asyncHandler(async (req, res) => {
     });
   }
 
+  if (
+    createdProposal?.status === "ACCEPTED" &&
+    String(project.status || status || "").toUpperCase() !== "DRAFT"
+  ) {
+    await syncFreelancerOpenToWorkStatus(createdProposal.freelancerId).catch(() => null);
+  }
+
   res.status(201).json({
     data: {
       project: hydrateProjectForResponse(project),
@@ -1165,6 +1174,31 @@ export const updateProject = asyncHandler(async (req, res) => {
       data: sanitizedUpdates
     });
     console.log("DEBUG: Update successful");
+
+    if (
+      String(sanitizedUpdates.status || "").toUpperCase() === "COMPLETED" &&
+      acceptedProposal?.freelancerId
+    ) {
+      try {
+        const verified = await markFreelancerVerifiedAfterProjectCompletion(
+          acceptedProposal.freelancerId
+        );
+        if (verified) {
+          console.log(
+            `[Verification] Marked freelancer ${acceptedProposal.freelancerId} as verified after project ${id} completion.`
+          );
+        }
+      } catch (verificationError) {
+        console.error(
+          `[Verification] Failed to mark freelancer ${acceptedProposal.freelancerId} as verified after project ${id} completion:`,
+          verificationError
+        );
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, "status") && acceptedProposal?.freelancerId) {
+      await syncFreelancerOpenToWorkStatus(acceptedProposal.freelancerId).catch(() => null);
+    }
 
     // Send notification based on notificationMeta
     if (notificationMeta?.type && notificationMeta?.taskName) {
@@ -1654,6 +1688,10 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
     },
   });
 
+  if (acceptedProposal?.freelancerId) {
+    await syncFreelancerOpenToWorkStatus(acceptedProposal.freelancerId).catch(() => null);
+  }
+
   const updatedProject = hydrateProjectForResponse({
     ...project,
     ...updatedProjectRecord,
@@ -1736,6 +1774,10 @@ export const payUpfront = asyncHandler(async (req, res) => {
       status: nextStatus,
     },
   });
+
+  if (acceptedProposal?.freelancerId) {
+    await syncFreelancerOpenToWorkStatus(acceptedProposal.freelancerId).catch(() => null);
+  }
 
   const updatedProject = hydrateProjectForResponse({
     ...project,
@@ -1981,10 +2023,25 @@ export const pauseProject = asyncHandler(async (req, res) => {
   if (!userId) throw new AppError("Authentication required", 401);
   await requirePmOrAdmin(userId, id);
 
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      proposals: {
+        where: { status: "ACCEPTED" },
+        select: { freelancerId: true },
+      },
+    },
+  });
+
   const updated = await prisma.project.update({
     where: { id },
     data: { status: "PAUSED" }
   });
+
+  const pausedFreelancerId = project?.proposals?.[0]?.freelancerId;
+  if (pausedFreelancerId) {
+    await syncFreelancerOpenToWorkStatus(pausedFreelancerId).catch(() => null);
+  }
 
   res.json({ data: updated, message: "Project has been paused." });
 });
@@ -2010,6 +2067,8 @@ export const removeFreelancer = asyncHandler(async (req, res) => {
     where: { id: acceptedProposal.id },
     data: { status: "REPLACED" }
   });
+
+  await syncFreelancerOpenToWorkStatus(acceptedProposal.freelancerId).catch(() => null);
 
   res.json({
     data: { projectId: id },
@@ -2208,6 +2267,13 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
       },
     });
   });
+
+  await Promise.allSettled([
+    currentAssignment?.freelancerId
+      ? syncFreelancerOpenToWorkStatus(currentAssignment.freelancerId)
+      : Promise.resolve(null),
+    syncFreelancerOpenToWorkStatus(freelancer.id),
+  ]);
 
   try {
     await sendNotificationToUser(project.ownerId, {

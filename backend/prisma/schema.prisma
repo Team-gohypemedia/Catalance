@@ -109,6 +109,8 @@ model FreelancerProfile {
   companyName                 String?
   location                    String?
   available                   Boolean  @default(true)
+  openToWork                  Boolean  @default(true)
+  isVerified                  Boolean  @default(false)
   rating                      Decimal? @default(0) @db.Decimal(3, 1)
   reviewCount                 Int      @default(0)
   experienceYears             Int?     @default(0)
@@ -323,6 +325,7 @@ model Proposal {
   status             ProposalStatus @default(PENDING)
   rejectionReason    String?        @db.Text
   rejectionReasonKey String?
+  followupGuidanceSent Boolean       @default(false)
   budgetReminderSent Boolean        @default(false)
   freelancer         User           @relation(fields: [freelancerId], references: [id])
   freelancerId       String
