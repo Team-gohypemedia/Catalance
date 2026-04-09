@@ -128,6 +128,7 @@ const ProposalDetailsDialog = ({
                   isEditingProposal ? (
                     <>
                       <Button
+                        type="button"
                         variant="outline"
                         className="h-11 rounded-full border-white/10 bg-background/30 px-5 text-white hover:bg-background/50"
                         onClick={handleCancelProposalEditing}
@@ -136,6 +137,7 @@ const ProposalDetailsDialog = ({
                         Cancel
                       </Button>
                       <Button
+                        type="button"
                         className="h-11 rounded-full bg-primary px-5 text-[#141414] hover:bg-primary/90"
                         onClick={handleSaveProposalChanges}
                         disabled={isSavingProposal}
@@ -148,6 +150,7 @@ const ProposalDetailsDialog = ({
                     </>
                   ) : (
                     <Button
+                      type="button"
                       variant="outline"
                       className="h-11 rounded-full border-primary/25 bg-primary/10 px-5 text-primary hover:bg-primary/15"
                       onClick={startEditingProposal}
@@ -475,6 +478,7 @@ const ProposalDetailsDialog = ({
           <div className="flex flex-wrap items-center gap-3">
             {activeProposal?.status === "draft" && !activeProposal?.requiresPayment ? (
               <Button
+                type="button"
                 variant="outline"
                 className="h-11 rounded-full border-primary/25 bg-primary/10 px-5 text-primary hover:bg-primary/15"
                 onClick={() => openFreelancerSelection(activeProposal)}
@@ -493,6 +497,7 @@ const ProposalDetailsDialog = ({
 
             {canIncreaseBudget ? (
               <Button
+                type="button"
                 className="h-11 rounded-full bg-primary px-5 text-primary-foreground hover:bg-primary/90"
                 onClick={() => openBudgetDialogForProposal(activeProposal)}
                 disabled={isSavingProposal || isLoadingProposal}
@@ -503,6 +508,7 @@ const ProposalDetailsDialog = ({
 
             {canIncreaseBudget && canOpenFreelancerSelection ? (
               <Button
+                type="button"
                 variant="outline"
                 className="h-11 rounded-full border-primary/25 bg-primary/10 px-5 text-primary hover:bg-primary/15"
                 onClick={() => openFreelancerSelection(activeProposal)}
@@ -521,6 +527,7 @@ const ProposalDetailsDialog = ({
 
             {activeProposal?.requiresPayment ? (
               <Button
+                type="button"
                 className="rounded-full bg-emerald-500 text-black hover:bg-emerald-400"
                 onClick={() => handleApproveAndPay(activeProposal)}
                 disabled={processingPaymentProposalId === activeProposal?.id}
@@ -538,6 +545,7 @@ const ProposalDetailsDialog = ({
 
             {activeProposal && !activeProposal.requiresPayment ? (
               <Button
+                type="button"
                 variant="ghost"
                 className="h-11 rounded-full px-3 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300"
                 onClick={() => handleDelete(activeProposal)}

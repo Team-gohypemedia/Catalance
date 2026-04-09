@@ -113,7 +113,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       setProposals(mergeProposalCollections(uniqueById, localDrafts));
     } catch (error) {
       console.error("Failed to load proposals from API:", error);
-      setProposals(localDrafts);
+      setProposals((current) => (current.length > 0 ? current : localDrafts));
     } finally {
       setIsLoading(false);
     }
@@ -123,25 +123,29 @@ export const ClientProposalDataProvider = ({ children }) => {
     async ({ projectId, budgetValue, updatedProposalIds = [] } = {}) => {
       const normalizedBudget = String(Math.round(Number(budgetValue) || 0));
       const updatedIds = new Set(updatedProposalIds);
+      const nextUpdatedAt = new Date().toISOString();
 
-      setProposals((current) =>
-        current.map((proposal) => {
-          const matchesProject =
-            projectId && String(proposal?.projectId || proposal?.syncedProjectId || "") ===
-              String(projectId);
-          const matchesProposal = proposal?.id && updatedIds.has(proposal.id);
+      await fetchProposals();
 
-          if (!matchesProject && !matchesProposal) {
-            return proposal;
-          }
+      const applyBudgetUpdate = (proposal) => {
+        const matchesProject =
+          projectId &&
+          String(proposal?.projectId || proposal?.syncedProjectId || "") ===
+            String(projectId);
+        const matchesProposal = proposal?.id && updatedIds.has(proposal.id);
 
-          return {
-            ...proposal,
-            budget: normalizedBudget,
-            updatedAt: new Date().toISOString(),
-          };
-        }),
-      );
+        if (!matchesProject && !matchesProposal) {
+          return proposal;
+        }
+
+        return {
+          ...proposal,
+          budget: normalizedBudget,
+          updatedAt: nextUpdatedAt,
+        };
+      };
+
+      setProposals((current) => current.map(applyBudgetUpdate));
       setSelectedProposalForSend((current) => {
         if (
           !current ||
@@ -153,7 +157,7 @@ export const ClientProposalDataProvider = ({ children }) => {
         return {
           ...current,
           budget: normalizedBudget,
-          updatedAt: new Date().toISOString(),
+          updatedAt: nextUpdatedAt,
         };
       });
       setActiveProposal((current) => {
@@ -167,11 +171,41 @@ export const ClientProposalDataProvider = ({ children }) => {
         return {
           ...current,
           budget: normalizedBudget,
-          updatedAt: new Date().toISOString(),
+          updatedAt: nextUpdatedAt,
         };
       });
 
-      await fetchProposals();
+      void fetchProposals().then(() => {
+        setProposals((current) => current.map(applyBudgetUpdate));
+        setSelectedProposalForSend((current) => {
+          if (
+            !current ||
+            String(current?.projectId || current?.syncedProjectId || "") !== String(projectId)
+          ) {
+            return current;
+          }
+
+          return {
+            ...current,
+            budget: normalizedBudget,
+            updatedAt: nextUpdatedAt,
+          };
+        });
+        setActiveProposal((current) => {
+          if (
+            !current ||
+            String(current?.projectId || current?.syncedProjectId || "") !== String(projectId)
+          ) {
+            return current;
+          }
+
+          return {
+            ...current,
+            budget: normalizedBudget,
+            updatedAt: nextUpdatedAt,
+          };
+        });
+      });
     },
     [fetchProposals],
   );
@@ -610,9 +644,10 @@ export const ClientProposalDataProvider = ({ children }) => {
       setIsViewing(true);
       setActiveProposal(proposal);
 
-      if (proposal?.isLocalDraft) return;
-      if (proposal?.content && proposal?.budget) return;
-      if (!proposal?.id) return;
+      if (proposal?.isLocalDraft || !proposal?.id) {
+        setIsLoadingProposal(false);
+        return;
+      }
 
       try {
         setIsLoadingProposal(true);

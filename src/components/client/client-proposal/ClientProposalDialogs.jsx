@@ -21,7 +21,6 @@ const ClientProposalDialogs = ({
   const { user } = userState || {};
   const {
     activeProposal,
-    isViewing,
     isLoadingProposal,
     isEditingProposal,
     isSavingProposal,
@@ -32,6 +31,7 @@ const ClientProposalDialogs = ({
     sendingProposalId,
   } = proposalState || {};
   const {
+    isViewing,
     budgetDialogProposal,
     budgetInput,
     freelancerDetailsProposal,

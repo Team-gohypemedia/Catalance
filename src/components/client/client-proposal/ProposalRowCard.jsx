@@ -97,6 +97,7 @@ const ProposalRowCard = ({
 
             {canDeleteProposal ? (
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
@@ -194,6 +195,7 @@ const ProposalRowCard = ({
             {showPrimaryAction ? (
               <div className="grid grid-cols-2 gap-3">
                 <Button
+                  type="button"
                   className="h-11 rounded-[14px] border border-border bg-background/35 px-6 text-sm font-semibold text-foreground shadow-none hover:bg-background"
                   onClick={() => onOpen?.(proposal)}
                 >
@@ -201,6 +203,7 @@ const ProposalRowCard = ({
                 </Button>
 
                 <Button
+                  type="button"
                   className="h-11 rounded-[14px] bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
                   onClick={() => {
                     if (canSendToFreelancers) {
@@ -227,6 +230,7 @@ const ProposalRowCard = ({
               </div>
             ) : (
               <Button
+                type="button"
                 className="h-14 rounded-[14px] bg-primary px-6 text-base font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
                 onClick={() => onOpen?.(proposal)}
               >

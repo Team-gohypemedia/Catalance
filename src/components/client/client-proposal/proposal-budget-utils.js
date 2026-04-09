@@ -41,7 +41,7 @@ const normalizeProposalStatus = (status = "") => {
 };
 
 const getProposalTimestamp = (proposal = {}) => {
-  const value = proposal?.createdAt || proposal?.updatedAt || null;
+  const value = proposal?.updatedAt || proposal?.createdAt || null;
   const parsed = value ? new Date(value).getTime() : NaN;
   return Number.isFinite(parsed) ? parsed : 0;
 };

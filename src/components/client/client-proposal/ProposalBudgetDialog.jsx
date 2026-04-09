@@ -67,6 +67,7 @@ const ProposalBudgetDialog = ({
 
         <DialogFooter className="gap-3 sm:gap-0">
           <Button
+            type="button"
             variant="outline"
             className="border-white/10 bg-background/30 text-white hover:bg-background/50"
             onClick={() => onOpenChange?.(false)}
@@ -75,6 +76,7 @@ const ProposalBudgetDialog = ({
             Cancel
           </Button>
           <Button
+            type="button"
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={onSubmit}
             disabled={isUpdatingBudget}
