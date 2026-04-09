@@ -2174,17 +2174,29 @@ export const DashboardContent = ({ _roleOverride, children }) => {
       name: displayName,
       avatar: effectiveUser?.avatar || "",
       initial: String(displayName).charAt(0).toUpperCase(),
+      available: effectiveUser?.available,
+      openToWork:
+        typeof effectiveUser?.freelancerProfile?.openToWork === "boolean"
+          ? effectiveUser.freelancerProfile.openToWork
+          : typeof effectiveUser?.openToWork === "boolean"
+            ? effectiveUser.openToWork
+            : typeof effectiveUser?.available === "boolean"
+              ? effectiveUser.available
+              : undefined,
       isVerified: Boolean(
         effectiveUser?.freelancerProfile?.isVerified ?? effectiveUser?.isVerified
       ),
     };
   }, [
     effectiveUser?.avatar,
+    effectiveUser?.available,
     effectiveUser?.email,
     effectiveUser?.fullName,
     effectiveUser?.freelancerProfile?.isVerified,
+    effectiveUser?.freelancerProfile?.openToWork,
     effectiveUser?.isVerified,
     effectiveUser?.name,
+    effectiveUser?.openToWork,
   ]);
   const handleWorkspaceNav = useCallback(
     (key) => {

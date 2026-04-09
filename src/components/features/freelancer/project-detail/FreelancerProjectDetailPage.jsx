@@ -1555,6 +1555,15 @@ const FreelancerProjectDetailContent = () => {
             profile={{
               avatar: user?.avatar,
               name: String(user?.fullName || user?.name || "Freelancer").trim() || "Freelancer",
+              available: user?.available,
+              openToWork:
+                typeof user?.freelancerProfile?.openToWork === "boolean"
+                  ? user.freelancerProfile.openToWork
+                  : typeof user?.openToWork === "boolean"
+                    ? user.openToWork
+                    : typeof user?.available === "boolean"
+                      ? user.available
+                      : undefined,
             }}
             activeWorkspaceKey="projects"
             primaryActionLabel="Projects"
@@ -1574,6 +1583,15 @@ const FreelancerProjectDetailContent = () => {
             profile={{
               avatar: user?.avatar,
               name: String(user?.fullName || user?.name || "Freelancer").trim() || "Freelancer",
+              available: user?.available,
+              openToWork:
+                typeof user?.freelancerProfile?.openToWork === "boolean"
+                  ? user.freelancerProfile.openToWork
+                  : typeof user?.openToWork === "boolean"
+                    ? user.openToWork
+                    : typeof user?.available === "boolean"
+                      ? user.available
+                      : undefined,
             }}
             activeWorkspaceKey="projects"
             primaryActionLabel="Projects"

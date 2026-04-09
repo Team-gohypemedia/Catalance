@@ -127,8 +127,25 @@ export const FreelancerTopBar = () => {
       name: displayName,
       avatar: sessionUser?.avatar || "",
       initial: String(displayName).charAt(0).toUpperCase(),
+      available: sessionUser?.available,
+      openToWork:
+        typeof sessionUser?.freelancerProfile?.openToWork === "boolean"
+          ? sessionUser.freelancerProfile.openToWork
+          : typeof sessionUser?.openToWork === "boolean"
+            ? sessionUser.openToWork
+            : typeof sessionUser?.available === "boolean"
+              ? sessionUser.available
+              : undefined,
     };
-  }, [sessionUser?.avatar, sessionUser?.email, sessionUser?.fullName, sessionUser?.name]);
+  }, [
+    sessionUser?.avatar,
+    sessionUser?.available,
+    sessionUser?.email,
+    sessionUser?.fullName,
+    sessionUser?.freelancerProfile?.openToWork,
+    sessionUser?.name,
+    sessionUser?.openToWork,
+  ]);
   const handleWorkspaceNav = useCallback(
     (key) => {
       if (key === "dashboard") {

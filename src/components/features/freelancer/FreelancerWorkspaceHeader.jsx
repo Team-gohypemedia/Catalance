@@ -65,18 +65,6 @@ const ProfileDropdown = ({ profile, displayName, profileInitial }) => {
                 Verified Freelancer
               </Badge>
             ) : null}
-            {typeof profile?.openToWork === "boolean" ? (
-              <Badge
-                title="Auto-managed from your active project count."
-                className={`h-5 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] ${
-                  profile.openToWork
-                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-                    : "border-amber-500/20 bg-amber-500/10 text-amber-300"
-                }`}
-              >
-                {profile.openToWork ? "Open to Work" : "At Capacity"}
-              </Badge>
-            ) : null}
           </span>
           <svg
             className={cn("h-3.5 w-3.5 text-white transition-transform duration-200", open ? "rotate-180" : "")}
