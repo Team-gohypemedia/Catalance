@@ -49,6 +49,7 @@ const ClientProjectDetailMainColumn = ({
   isProjectCompleted,
   handleTaskClick,
   verifyingTaskIds,
+  getTaskVerificationLockReason,
   promptVerifyTask,
   formatINR,
 }) => {
@@ -420,6 +421,11 @@ const ClientProjectDetailMainColumn = ({
                       {phaseGroup.tasks.map((task) => {
                         const isTaskVerificationPending =
                           verifyingTaskIds.has(task.uniqueKey);
+                        const taskVerificationLockReason =
+                          getTaskVerificationLockReason?.(task.uniqueKey);
+                        const isTaskVerificationDisabled =
+                          Boolean(taskVerificationLockReason) ||
+                          isTaskVerificationPending;
 
                         return (
                           <div
@@ -465,7 +471,15 @@ const ClientProjectDetailMainColumn = ({
                                 disabled={
                                   phaseGroup.isLocked ||
                                   isProjectCompleted ||
+                                  isTaskVerificationDisabled
+                                }
+                                title={
                                   isTaskVerificationPending
+                                    ? "Saving verification..."
+                                    : taskVerificationLockReason ||
+                                      (task.verified
+                                        ? "Remove verification"
+                                        : "Verify task")
                                 }
                                 className={`h-7 px-3 text-xs transition-all ${
                                   task.verified
@@ -474,6 +488,7 @@ const ClientProjectDetailMainColumn = ({
                                 }`}
                                 onClick={(event) =>
                                   !phaseGroup.isLocked &&
+                                  !isTaskVerificationDisabled &&
                                   promptVerifyTask(
                                     event,
                                     task.uniqueKey,

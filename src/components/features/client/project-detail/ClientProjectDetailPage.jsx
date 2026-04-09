@@ -560,6 +560,8 @@ const ProjectDashboard = () => {
   // Verify Confirmation State
   const [verifyConfirmOpen, setVerifyConfirmOpen] = useState(false);
   const [pendingVerifyTask, setPendingVerifyTask] = useState(null); // { uniqueKey, title, isVerified }
+  const taskVerificationLockRef = useRef(null);
+  const taskVerificationSubmittingRef = useRef(false);
 
   const renderProjectDescription = (options = {}) => {
     const { showExtended = false } = options;
@@ -2004,6 +2006,21 @@ const ProjectDashboard = () => {
     });
   }, [derivedPhases, activeSOP, completedTaskIds, verifiedTaskIds]);
 
+  const firstUnverifiedTaskKey = useMemo(
+    () => derivedTasks.find((task) => !task.verified)?.uniqueKey || null,
+    [derivedTasks],
+  );
+
+  const taskOrderByUniqueKey = useMemo(() => {
+    const orderMap = new Map();
+
+    derivedTasks.forEach((task, index) => {
+      orderMap.set(task.uniqueKey, index);
+    });
+
+    return orderMap;
+  }, [derivedTasks]);
+
   const phaseOrderMap = useMemo(
     () => buildPhaseOrderMap(derivedPhases),
     [derivedPhases]
@@ -2114,9 +2131,67 @@ const ProjectDashboard = () => {
     return lockMap;
   }, [isProjectCompleted, tasksByPhase]);
 
+  const activeVerificationTaskKey = useMemo(() => {
+    if (pendingVerifyTask?.uniqueKey) {
+      return pendingVerifyTask.uniqueKey;
+    }
+
+    const verifyingTaskKey = verifyingTaskIds.values().next().value;
+    return typeof verifyingTaskKey === "string" ? verifyingTaskKey : null;
+  }, [pendingVerifyTask?.uniqueKey, verifyingTaskIds]);
+
+  const taskVerificationLockReasonByUniqueKey = useMemo(() => {
+    const lockMap = {};
+    const firstUnverifiedTaskIndex = firstUnverifiedTaskKey
+      ? taskOrderByUniqueKey.get(firstUnverifiedTaskKey)
+      : -1;
+
+    derivedTasks.forEach((task) => {
+      if (isProjectCompleted) {
+        lockMap[task.uniqueKey] = "This project is completed and tasks are now locked.";
+        return;
+      }
+
+      if (
+        activeVerificationTaskKey &&
+        activeVerificationTaskKey !== task.uniqueKey
+      ) {
+        lockMap[task.uniqueKey] = "Finish verifying the current task first.";
+        return;
+      }
+
+      if (task.verified) {
+        return;
+      }
+
+      const taskIndex = taskOrderByUniqueKey.get(task.uniqueKey);
+      if (
+        firstUnverifiedTaskIndex !== -1 &&
+        typeof taskIndex === "number" &&
+        taskIndex > firstUnverifiedTaskIndex
+      ) {
+        lockMap[task.uniqueKey] =
+          "Verify tasks in order. Complete earlier tasks first.";
+      }
+    });
+
+    return lockMap;
+  }, [
+    activeVerificationTaskKey,
+    derivedTasks,
+    firstUnverifiedTaskKey,
+    isProjectCompleted,
+    taskOrderByUniqueKey,
+  ]);
+
   const getTaskLockReason = useCallback(
     (uniqueKey) => taskLockReasonByUniqueKey[uniqueKey] || null,
     [taskLockReasonByUniqueKey]
+  );
+
+  const getTaskVerificationLockReason = useCallback(
+    (uniqueKey) => taskVerificationLockReasonByUniqueKey[uniqueKey] || null,
+    [taskVerificationLockReasonByUniqueKey],
   );
 
   // Handle task click to toggle completion (just marks as checked, not verified)
@@ -2167,16 +2242,36 @@ const ProjectDashboard = () => {
 
   // Handle verify button click - this updates progress
   // First show confirmation dialog
+  const handleVerifyConfirmOpenChange = useCallback(
+    (open) => {
+      setVerifyConfirmOpen(open);
+
+      if (!open && !taskVerificationSubmittingRef.current) {
+        taskVerificationLockRef.current = null;
+        setPendingVerifyTask(null);
+      }
+    },
+    [],
+  );
+
   const promptVerifyTask = (e, uniqueKey, taskTitle, isCurrentlyVerified) => {
     e.stopPropagation();
     e.preventDefault();
     if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
-    const lockReason = getTaskLockReason(uniqueKey);
+    const activeLockKey = taskVerificationLockRef.current;
+    if (activeLockKey && activeLockKey !== uniqueKey) {
+      toast.info("Finish verifying the current task first.");
+      return;
+    }
+
+    const lockReason = getTaskVerificationLockReason(uniqueKey);
     if (lockReason) {
       toast.info(lockReason);
       return;
     }
-    if (verifyingTaskIds.has(uniqueKey)) return;
+
+    taskVerificationLockRef.current = uniqueKey;
+    taskVerificationSubmittingRef.current = false;
 
     setPendingVerifyTask({
       uniqueKey,
@@ -2192,10 +2287,19 @@ const ProjectDashboard = () => {
     taskTitle,
     _isCurrentlyVerified
   ) => {
-    const lockReason = getTaskLockReason(uniqueKey);
+    const activeLockKey = taskVerificationLockRef.current;
+    if (activeLockKey && activeLockKey !== uniqueKey) {
+      setVerifyConfirmOpen(false);
+      setPendingVerifyTask(null);
+      toast.info("Finish verifying the current task first.");
+      return;
+    }
+
+    const lockReason = getTaskVerificationLockReason(uniqueKey);
     if (lockReason) {
       setVerifyConfirmOpen(false);
       setPendingVerifyTask(null);
+      taskVerificationLockRef.current = null;
       toast.info(lockReason);
       return;
     }
@@ -2203,9 +2307,11 @@ const ProjectDashboard = () => {
     if (verifyingTaskIds.has(uniqueKey)) {
       setVerifyConfirmOpen(false);
       setPendingVerifyTask(null);
+      taskVerificationLockRef.current = null;
       return;
     }
 
+    taskVerificationSubmittingRef.current = true;
     setVerifyConfirmOpen(false);
     setPendingVerifyTask(null);
     setVerifyingTaskIds((prev) => {
@@ -2284,6 +2390,8 @@ const ProjectDashboard = () => {
         next.delete(uniqueKey);
         return next;
       });
+      taskVerificationSubmittingRef.current = false;
+      taskVerificationLockRef.current = null;
     }
   };
 
@@ -2406,6 +2514,7 @@ const ProjectDashboard = () => {
                   isProjectCompleted={isProjectCompleted}
                   handleTaskClick={handleTaskClick}
                   verifyingTaskIds={verifyingTaskIds}
+                  getTaskVerificationLockReason={getTaskVerificationLockReason}
                   promptVerifyTask={promptVerifyTask}
                   formatINR={formatINR}
                 />
@@ -2461,7 +2570,7 @@ const ProjectDashboard = () => {
       </div>
       <ClientProjectDetailDialogs
         verifyConfirmOpen={verifyConfirmOpen}
-        setVerifyConfirmOpen={setVerifyConfirmOpen}
+        setVerifyConfirmOpen={handleVerifyConfirmOpenChange}
         pendingVerifyTask={pendingVerifyTask}
         setPendingVerifyTask={setPendingVerifyTask}
         handleVerifyTask={handleVerifyTask}
