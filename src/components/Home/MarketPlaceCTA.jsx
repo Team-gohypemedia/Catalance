@@ -32,18 +32,17 @@ const MarketPlaceCTA = () => {
                 loading="eager"
                 decoding="async"
                 draggable="false"
-                className="w-full max-w-[15rem] select-none object-contain sm:max-w-[19rem] lg:max-w-[25rem]"
+                className="w-full max-w-[20rem] select-none object-contain sm:max-w-[30rem] lg:max-w-[40rem]"
               />
             </div>
 
             <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:text-left">
               <h2 className="text-[2.35rem] font-medium leading-[0.98] tracking-tight text-white sm:text-[3.2rem] lg:text-[4.4rem]">
-                <span className="block">Freelancers You Can</span>
-                <span className="block">Count On</span>
+                Work Done On Your Terms
               </h2>
 
-              <p className="mt-6 max-w-xl text-pretty text-[0.98rem] leading-relaxed text-white/78 sm:text-lg lg:max-w-2xl">
-                Trusted professionals delivering quality work on time, consistently.
+              <p className="mt-1 sm:mt-3 max-w-xl text-pretty text-[0.98rem] leading-relaxed text-white/78 sm:text-lg lg:max-w-2xl">
+                No delays, no excuses, just great work.
               </p>
 
               <Button

@@ -85,6 +85,10 @@ const resolveFreelancerCoverImage = (freelancer = {}) => {
   );
 };
 const getDeliveredProjectCount = (freelancer = {}) => {
+  if (Number.isFinite(Number(freelancer?.projectsDelivered))) {
+    return Math.max(0, Math.round(Number(freelancer.projectsDelivered)));
+  }
+
   if (
     Array.isArray(freelancer?.freelancerProjects) &&
     freelancer.freelancerProjects.length > 0
@@ -116,6 +120,49 @@ const getDeliveredProjectCount = (freelancer = {}) => {
   }
 
   return 0;
+};
+
+const formatDisplayLabel = (value = "") =>
+  String(value || "")
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b([a-z])/g, (match, char) => char.toUpperCase())
+    .trim();
+
+const getMatchedSkillBadges = (freelancer = {}) => {
+  const values = Array.isArray(freelancer?.matchedSkills) && freelancer.matchedSkills.length > 0
+    ? freelancer.matchedSkills
+    : Array.isArray(freelancer?.caseStudyMatch?.matchedSkills) &&
+        freelancer.caseStudyMatch.matchedSkills.length > 0
+      ? freelancer.caseStudyMatch.matchedSkills
+      : Array.isArray(freelancer?.matchedTechnologies)
+        ? freelancer.matchedTechnologies
+        : [];
+
+  return Array.from(new Set(values.map((entry) => String(entry || "").trim()).filter(Boolean))).slice(0, 3);
+};
+
+const getMatchedServiceLabel = (freelancer = {}) =>
+  formatDisplayLabel(
+    freelancer?.matchedService?.serviceName ||
+      freelancer?.matchedService?.serviceKey ||
+      freelancer?.serviceName ||
+      freelancer?.serviceKey ||
+      "",
+  );
+
+const getBudgetFitLabel = (freelancer = {}) => {
+  const budget = freelancer?.budgetCompatibility || {};
+  const percentage = Number.isFinite(Number(freelancer?.budgetMatchPercentage))
+    ? Math.max(0, Math.min(100, Math.round(Number(freelancer.budgetMatchPercentage))))
+    : Number.isFinite(Number(budget?.budgetMatchPercentage))
+      ? Math.max(0, Math.min(100, Math.round(Number(budget.budgetMatchPercentage))))
+      : Number.isFinite(Number(budget?.score))
+        ? Math.max(0, Math.min(100, Math.round(Number(budget.score) * 100)))
+        : 0;
+
+  return `${percentage}%`;
 };
 
 const FreelancerSelectionDialog = ({
@@ -267,13 +314,11 @@ const FreelancerSelectionDialog = ({
                   ? Math.round(Number(freelancer.matchScore))
                   : null;
                 const isBestMatch = bestMatchFreelancerIds.has(freelancer.id);
-                const budgetFit = Number.isFinite(
-                  Number(freelancer?.budgetCompatibility?.score),
-                )
-                  ? Math.round(Number(freelancer?.budgetCompatibility?.score) * 100)
-                  : null;
-                const clampedBudgetFit =
-                  budgetFit !== null ? Math.max(0, Math.min(100, budgetFit)) : null;
+                const matchedServiceLabel = getMatchedServiceLabel(freelancer);
+                const matchedSkillBadges = getMatchedSkillBadges(freelancer);
+                const budgetFitLabel = getBudgetFitLabel(freelancer);
+                const hasCaseStudyMatch = Boolean(freelancer?.caseStudyMatch?.hasCaseStudy);
+                const isVerified = freelancer?.isVerified === true;
                 const deliveredProjectCount = getDeliveredProjectCount(freelancer);
                 const cardBio = String(
                   freelancer?.cleanBio || freelancer?.bio || freelancer?.about || "",
@@ -291,7 +336,7 @@ const FreelancerSelectionDialog = ({
                   {
                     key: "budget-fit",
                     label: "Budget Fit",
-                    value: clampedBudgetFit !== null ? `${clampedBudgetFit}%` : "N/A",
+                    value: budgetFitLabel,
                   },
                   {
                     key: "projects-delivered",
@@ -299,17 +344,6 @@ const FreelancerSelectionDialog = ({
                     value: deliveredProjectCount,
                   },
                 ];
-
-                const freelancerSkillTokens =
-                  collectFreelancerSkillTokens(freelancer);
-                const requiredSkillsForCard =
-                  projectRequiredSkills.length > 0
-                    ? projectRequiredSkills.filter((skill) =>
-                        freelancerMatchesRequiredSkill(skill, freelancerSkillTokens),
-                      )
-                    : Array.isArray(freelancer.matchedTechnologies)
-                      ? freelancer.matchedTechnologies
-                      : [];
 
                 return (
                   <Card
@@ -375,6 +409,32 @@ const FreelancerSelectionDialog = ({
                           >
                             {cardBio || "No bio available."}
                           </p>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {matchedServiceLabel ? (
+                              <Badge
+                                variant="outline"
+                                className="h-5 border-primary/30 bg-primary/5 px-2 text-[9px] whitespace-nowrap text-primary"
+                              >
+                                {matchedServiceLabel}
+                              </Badge>
+                            ) : null}
+                            {isVerified ? (
+                              <Badge
+                                variant="outline"
+                                className="h-5 border-sky-400/25 bg-sky-500/10 px-2 text-[9px] whitespace-nowrap text-sky-300"
+                              >
+                                Verified
+                              </Badge>
+                            ) : null}
+                            {hasCaseStudyMatch ? (
+                              <Badge
+                                variant="outline"
+                                className="h-5 border-emerald-500/25 bg-emerald-500/10 px-2 text-[9px] whitespace-nowrap text-emerald-300"
+                              >
+                                Case Study Match
+                              </Badge>
+                            ) : null}
+                          </div>
                         </div>
 
                       </div>
@@ -384,10 +444,10 @@ const FreelancerSelectionDialog = ({
                           Project Skills Match
                         </p>
                         <div className="flex min-h-5 flex-wrap gap-1.5">
-                          {requiredSkillsForCard.length > 0 ? (
-                            requiredSkillsForCard.slice(0, 3).map((skill, index) => (
+                          {matchedSkillBadges.length > 0 ? (
+                            matchedSkillBadges.map((skill, index) => (
                               <Badge
-                                key={`${freelancer.id}-required-${index}`}
+                                key={`${freelancer.id}-matched-${index}`}
                                 variant="outline"
                                 className="h-4 px-1.5 text-[9px] whitespace-nowrap border-primary/45 bg-transparent text-primary"
                               >
@@ -396,7 +456,7 @@ const FreelancerSelectionDialog = ({
                             ))
                           ) : (
                             <span className="text-[11px] text-muted-foreground">
-                              No direct required skill match
+                              No direct skill match
                             </span>
                           )}
                         </div>

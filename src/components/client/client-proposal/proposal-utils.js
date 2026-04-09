@@ -1049,7 +1049,7 @@ export const buildUpdatedProposalContext = (
   nextContext.companyName = String(draft.businessName || "").trim();
   nextContext.clientName = String(draft.clientName || "").trim() || clientNameFallback;
   nextContext.serviceName = String(draft.service || "").trim();
-  nextContext.serviceType = String(draft.service || "").trim();
+  nextContext.serviceType = String(draft.serviceType || draft.service || currentContext?.serviceType || "").trim();
   nextContext.timeline = String(draft.timeline || "").trim();
 
   return nextContext;
@@ -1112,12 +1112,28 @@ export const mapApiProposal = (proposal) => {
     title: projectTitle || "Proposal",
     category: serviceLabel,
     service: serviceLabel,
+    serviceType:
+      normalizedProposal.serviceType ||
+      normalizedProposal.proposalContext?.serviceType ||
+      normalizedProposal.project?.serviceType ||
+      normalizedProposal.service ||
+      serviceLabel,
     serviceKey:
       normalizedProposal.serviceKey ||
       normalizedProposal.project?.serviceKey ||
       normalizedProposal.project?.category ||
       normalizedProposal.category ||
       "",
+    projectStack:
+      normalizedProposal.projectStack ||
+      normalizedProposal.project?.projectStack ||
+      normalizedProposal.project?.proposalJson?.projectStack ||
+      null,
+    techStack:
+      normalizedProposal.techStack ||
+      normalizedProposal.project?.techStack ||
+      normalizedProposal.project?.proposalJson?.techStack ||
+      null,
     status: normalizeProposalStatus(normalizedProposal.status || "PENDING"),
     recipientName: freelancerName,
     recipientId: normalizedProposal.freelancer?.id || "FREELANCER",
@@ -1172,7 +1188,23 @@ export const mapLocalDraftProposal = (proposal) => {
     title: projectTitle || "Proposal Draft",
     category: serviceLabel,
     service: serviceLabel,
+    serviceType:
+      normalizedProposal.serviceType ||
+      normalizedProposal.proposalContext?.serviceType ||
+      normalizedProposal.project?.serviceType ||
+      normalizedProposal.service ||
+      serviceLabel,
     serviceKey: normalizedProposal.serviceKey || normalizedProposal.service || "",
+    projectStack:
+      normalizedProposal.projectStack ||
+      normalizedProposal.project?.projectStack ||
+      normalizedProposal.project?.proposalJson?.projectStack ||
+      null,
+    techStack:
+      normalizedProposal.techStack ||
+      normalizedProposal.project?.techStack ||
+      normalizedProposal.project?.proposalJson?.techStack ||
+      null,
     status: "draft",
     recipientName:
       normalizedProposal.recipientName ||

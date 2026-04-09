@@ -3,6 +3,8 @@ import { Prisma, prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { syncFreelancerOpenToWorkStatus } from "../lib/freelancer-open-to-work.js";
+import { listUsers } from "../modules/users/user.service.js";
+import { rankFreelancersForProposal, extractMatchingRequirements } from "../../../src/shared/lib/freelancer-matching.js";
 
 const normalizeAmount = (value) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) {
@@ -26,6 +28,158 @@ const FREELANCER_REJECTION_REASON_KEYS = new Set([
   ...Object.keys(FREELANCER_REJECTION_REASON_PRESETS),
   CUSTOM_REJECTION_REASON_KEY,
 ]);
+
+const normalizeProposalMatchPayload = (proposal = {}) => {
+  const resolvedProposal = proposal && typeof proposal === "object" ? proposal : {};
+  const project =
+    resolvedProposal.project && typeof resolvedProposal.project === "object"
+      ? resolvedProposal.project
+      : {};
+
+  return {
+    ...resolvedProposal,
+    serviceType:
+      resolvedProposal.serviceType ||
+      resolvedProposal.proposalContext?.serviceType ||
+      project.serviceType ||
+      resolvedProposal.service ||
+      resolvedProposal.serviceName ||
+      project.serviceName ||
+      project.category ||
+      "",
+    projectStack:
+      resolvedProposal.projectStack ||
+      resolvedProposal.proposalContext?.projectStack ||
+      project.projectStack ||
+      project.proposalJson?.projectStack ||
+      null,
+    techStack:
+      resolvedProposal.techStack ||
+      resolvedProposal.proposalContext?.techStack ||
+      project.techStack ||
+      project.proposalJson?.techStack ||
+      null,
+    projectTitle:
+      resolvedProposal.projectTitle || resolvedProposal.title || project.title || "",
+    title: resolvedProposal.title || resolvedProposal.projectTitle || project.title || "",
+    summary:
+      resolvedProposal.summary ||
+      resolvedProposal.content ||
+      resolvedProposal.coverLetter ||
+      project.description ||
+      "",
+    content:
+      resolvedProposal.content ||
+      resolvedProposal.summary ||
+      resolvedProposal.coverLetter ||
+      project.description ||
+      "",
+    service:
+      resolvedProposal.service ||
+      resolvedProposal.serviceName ||
+      resolvedProposal.serviceKey ||
+      project.service ||
+      project.serviceName ||
+      project.category ||
+      "",
+    serviceKey:
+      resolvedProposal.serviceKey ||
+      project.serviceKey ||
+      resolvedProposal.service ||
+      resolvedProposal.serviceName ||
+      project.service ||
+      project.category ||
+      "",
+    budget:
+      resolvedProposal.amount ??
+      resolvedProposal.budget ??
+      resolvedProposal.proposalContext?.budget ??
+      project.budget ??
+      resolvedProposal.projectBudget ??
+      null,
+    proposalBudget:
+      resolvedProposal.amount ??
+      resolvedProposal.budget ??
+      resolvedProposal.proposalContext?.budget ??
+      project.budget ??
+      resolvedProposal.projectBudget ??
+      null,
+    syncedProjectId:
+      resolvedProposal.syncedProjectId || resolvedProposal.projectId || project.id || null,
+    projectId: resolvedProposal.projectId || project.id || null,
+  };
+};
+
+export const matchProposalFreelancers = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const proposalPayload =
+    req.body?.proposal && typeof req.body.proposal === "object"
+      ? req.body.proposal
+      : req.body && typeof req.body === "object"
+        ? req.body
+        : {};
+
+  const proposal = normalizeProposalMatchPayload(proposalPayload);
+  const requirements = extractMatchingRequirements(proposal);
+
+  const [activeFreelancers, pendingFreelancers] = await Promise.all([
+    listUsers({
+      role: "FREELANCER",
+      status: "ACTIVE",
+      onboardingComplete: "true",
+    }),
+    listUsers({
+      role: "FREELANCER",
+      status: "PENDING_APPROVAL",
+      onboardingComplete: "true",
+    }),
+  ]);
+
+  const mergedFreelancers = [
+    ...(Array.isArray(activeFreelancers) ? activeFreelancers : []),
+    ...(Array.isArray(pendingFreelancers) ? pendingFreelancers : []),
+  ].reduce((collection, freelancer) => {
+    if (!freelancer?.id) return collection;
+    if (collection.seen.has(freelancer.id)) return collection;
+    collection.seen.add(freelancer.id);
+    collection.items.push(freelancer);
+    return collection;
+  }, { seen: new Set(), items: [] }).items;
+
+  const matchedFreelancers = rankFreelancersForProposal(mergedFreelancers, proposal);
+
+  if (process.env.NODE_ENV !== "production") {
+    console.info("[Proposal Match]", {
+      userId,
+      serviceKey: requirements.serviceKey || null,
+      budget: requirements.budget ?? null,
+      candidates: mergedFreelancers.length,
+      matched: matchedFreelancers.length,
+    });
+  }
+
+  const serviceTypeLabel =
+    proposal.serviceType ||
+    proposal.service ||
+    proposal.serviceName ||
+    proposal.category ||
+    proposal.proposalContext?.serviceType ||
+    null;
+
+  res.json({
+    data: matchedFreelancers.map((freelancer) => ({
+      ...freelancer,
+      serviceType: serviceTypeLabel,
+      proposalBudget: proposal.budget ?? proposal.proposalBudget ?? null,
+      startingPrice: freelancer?.budgetCompatibility?.startingPrice ?? null,
+    })),
+  });
+});
 
 export const createProposal = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;

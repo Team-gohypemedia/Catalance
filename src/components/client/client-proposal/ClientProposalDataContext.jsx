@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
-import { listFreelancers } from "@/shared/lib/api-client";
+import { fetchMatchedFreelancersForProposal } from "@/shared/lib/api-client";
 import {
   getProposalStorageKeys,
   loadSavedProposalsFromStorage,
@@ -10,7 +10,6 @@ import {
   resolveActiveProposalId,
 } from "@/shared/lib/client-proposal-storage";
 import { isFreelancerOpenToWork } from "@/shared/lib/freelancer-availability";
-import { rankFreelancersForProposal } from "@/shared/lib/freelancer-matching";
 import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
 import { toast } from "sonner";
 import { ClientProposalDataContext } from "./client-proposal-data-context.js";
@@ -20,16 +19,13 @@ import {
 import {
   CLOSED_PROJECT_STATUSES,
   DRAFT_PROJECT_STATUSES,
-  MIN_FREELANCER_MATCH_SCORE,
   PROPOSAL_BLOCKED_STATUSES,
   buildEditableProposalDraft,
   buildProposalContentFromDraft,
   buildUpdatedProposalContext,
   canUnsendProposalInvitee,
-  collectFreelancerSkillTokens,
   deleteLocalDraftProposal,
   extractProjectRequiredSkills,
-  freelancerMatchesRequiredSkill,
   getDisplayName,
   getProposalDraftGroupKey,
   getProposalFreelancerRecipients,
@@ -79,6 +75,7 @@ export const ClientProposalDataProvider = ({ children }) => {
   const [selectedProposalForSend, setSelectedProposalForSend] = useState(null);
   const freelancerPoolCacheRef = useRef({
     userId: null,
+    queryKey: null,
     loaded: false,
     data: [],
   });
@@ -88,6 +85,47 @@ export const ClientProposalDataProvider = ({ children }) => {
   const deepLinkDraftId = searchParams.get("draftId");
   const deepLinkTab = (searchParams.get("tab") || "").toLowerCase();
   const deepLinkAction = (searchParams.get("action") || "").toLowerCase();
+
+  const buildProposalMatchCacheKey = useCallback((proposal = null) => {
+    if (!proposal || typeof proposal !== "object") return "";
+
+    const proposalId = String(proposal.id || proposal.projectId || proposal.syncedProjectId || "").trim();
+    const serviceKey = String(
+      proposal.serviceKey ||
+        proposal.serviceType ||
+        proposal.service ||
+        proposal.serviceName ||
+        proposal.category ||
+        proposal.proposalContext?.serviceType ||
+        "",
+    ).trim().toLowerCase();
+    const budget = String(
+      proposal.amount ||
+        proposal.budget ||
+        proposal.proposalContext?.budget ||
+        proposal.project?.budget ||
+        "",
+    ).trim();
+    const stackSignature = String(
+      proposal.projectStack ||
+        proposal.techStack ||
+        proposal.project?.projectStack ||
+        proposal.project?.techStack ||
+        proposal.proposalContext?.projectStack ||
+        proposal.proposalContext?.techStack ||
+        proposal.proposalContext?.requiredTechStack ||
+        "",
+    )
+      .trim()
+      .toLowerCase();
+    const title = String(proposal.projectTitle || proposal.title || proposal.project?.title || "").trim().toLowerCase();
+    const contentHash = String(proposal.content || proposal.summary || proposal.coverLetter || proposal.description || "")
+      .trim()
+      .slice(0, 120)
+      .toLowerCase();
+
+    return [proposalId, serviceKey, budget, stackSignature, title, contentHash].join("::");
+  }, []);
 
   const fetchProposals = useCallback(async () => {
     const { proposals: localSavedProposals } = loadSavedProposalsFromStorage(user?.id);
@@ -219,45 +257,63 @@ export const ClientProposalDataProvider = ({ children }) => {
     onBudgetUpdated: handleProposalBudgetUpdated,
   });
 
-  const fetchFreelancerPool = useCallback(async () => {
+  const fetchFreelancerPool = useCallback(async (proposal = null) => {
     if (!user?.id) return [];
 
+    const queryKey = buildProposalMatchCacheKey(proposal);
+
     const currentCache = freelancerPoolCacheRef.current;
-    if (currentCache.userId === user.id && currentCache.loaded) {
+    if (
+      currentCache.userId === user.id &&
+      currentCache.queryKey === queryKey &&
+      currentCache.loaded
+    ) {
       return currentCache.data;
     }
 
-    if (freelancerPoolPromiseRef.current) {
-      return freelancerPoolPromiseRef.current;
+    if (
+      freelancerPoolPromiseRef.current &&
+      freelancerPoolPromiseRef.current.queryKey === queryKey
+    ) {
+      return freelancerPoolPromiseRef.current.promise;
     }
 
-    freelancerPoolPromiseRef.current = (async () => {
-      const [activeFreelancers, pendingFreelancers] = await Promise.all([
-        listFreelancers({
-          onboardingComplete: "true",
-          status: "ACTIVE",
-        }),
-        listFreelancers({
-          onboardingComplete: "true",
-          status: "PENDING_APPROVAL",
-        }),
-      ]);
+    const promise = (async () => {
+      if (!proposal) {
+        return [];
+      }
 
-      const merged = [
-        ...(Array.isArray(activeFreelancers) ? activeFreelancers : []),
-        ...(Array.isArray(pendingFreelancers) ? pendingFreelancers : []),
-      ];
-      const uniqueById = merged.filter(
-        (freelancer, index, collection) =>
-          freelancer?.id &&
-          collection.findIndex((item) => item?.id === freelancer.id) === index,
-      );
+      const matchedFreelancers = await fetchMatchedFreelancersForProposal(proposal);
+      const uniqueById = Array.isArray(matchedFreelancers)
+        ? matchedFreelancers.filter(
+            (freelancer, index, collection) =>
+              freelancer?.id &&
+              collection.findIndex((item) => item?.id === freelancer.id) === index,
+          )
+        : [];
       const normalized = uniqueById.filter(
         (freelancer) => freelancer?.id !== user.id && hasFreelancerRole(freelancer),
       );
 
+      if (import.meta.env?.DEV) {
+        console.debug("[Proposal Match] Client proposal pool", {
+          proposalService: proposal?.serviceKey || proposal?.service || null,
+          proposalBudget: proposal?.amount || proposal?.budget || null,
+          candidateCount: normalized.length,
+          sample: normalized[0]
+            ? {
+                id: normalized[0].id,
+                service: normalized[0].matchedService || null,
+                budget: normalized[0].budgetCompatibility || null,
+                skills: normalized[0].matchedTechnologies || normalized[0].matchHighlights || [],
+              }
+            : null,
+        });
+      }
+
       freelancerPoolCacheRef.current = {
         userId: user.id,
+        queryKey,
         loaded: true,
         data: normalized,
       };
@@ -265,23 +321,29 @@ export const ClientProposalDataProvider = ({ children }) => {
       return normalized;
     })();
 
+    freelancerPoolPromiseRef.current = { queryKey, promise };
+
     try {
-      return await freelancerPoolPromiseRef.current;
+      return await promise;
     } finally {
-      freelancerPoolPromiseRef.current = null;
+      if (freelancerPoolPromiseRef.current?.queryKey === queryKey) {
+        freelancerPoolPromiseRef.current = null;
+      }
     }
-  }, [user?.id]);
+  }, [buildProposalMatchCacheKey, user?.id]);
 
   const openFreelancerSelection = useCallback(
     (proposal) => {
       if (!proposal) return;
       setSelectedProposalForSend(proposal);
       const cache = freelancerPoolCacheRef.current;
-      const hasCachedPool = cache.userId === user?.id && cache.loaded;
+      const queryKey = buildProposalMatchCacheKey(proposal);
+      const hasCachedPool =
+        cache.userId === user?.id && cache.queryKey === queryKey && cache.loaded;
       setIsFreelancersLoading(!hasCachedPool);
       setShowFreelancerSelect(true);
     },
-    [user?.id],
+    [buildProposalMatchCacheKey, user?.id],
   );
 
   const updateProposalProjectReference = useCallback(
@@ -289,6 +351,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       const now = new Date().toISOString();
 
       if (proposal?.isLocalDraft) {
+        queryKey: null,
         const storageKeys = getProposalStorageKeys(user?.id);
         const { proposals: savedProposals } = loadSavedProposalsFromStorage(user?.id);
         const updatedSavedProposals = savedProposals.map((savedProposal) =>
@@ -296,9 +359,10 @@ export const ClientProposalDataProvider = ({ children }) => {
             ? {
                 ...savedProposal,
                 ownerId: user?.id || savedProposal.ownerId || null,
-                syncedProjectId: projectId,
+    if (freelancerPoolCacheRef.current.userId !== user.id) {
                 projectId,
                 syncedAt: savedProposal.syncedAt || now,
+        queryKey: null,
               }
             : savedProposal,
         );
@@ -307,21 +371,19 @@ export const ClientProposalDataProvider = ({ children }) => {
       }
 
       const patch = {
-        projectId,
-        syncedProjectId: projectId,
-        projectStatus,
-        updatedAt: now,
-      };
-
-      setProposals((current) =>
-        current.map((entry) => (entry.id === proposal.id ? { ...entry, ...patch } : entry)),
+    if (!user?.id || !showFreelancerSelect || !selectedProposalForSend) return;
       );
       setSelectedProposalForSend((current) =>
         current?.id === proposal.id ? { ...current, ...patch } : current,
       );
       setActiveProposal((current) =>
+      const queryKey = buildProposalMatchCacheKey(selectedProposalForSend);
         current?.id === proposal.id ? { ...current, ...patch } : current,
-      );
+      if (
+        cache.userId === user.id &&
+        cache.queryKey === queryKey &&
+        cache.loaded
+      ) {
     },
     [user?.id],
   );
@@ -329,7 +391,7 @@ export const ClientProposalDataProvider = ({ children }) => {
   useEffect(() => {
     if (deepLinkProjectId) return;
     const validTabs = new Set(["draft", "pending", "rejected"]);
-    if (validTabs.has(deepLinkTab)) {
+        const pool = await fetchFreelancerPool(selectedProposalForSend);
       setActiveTab(deepLinkTab);
     }
   }, [deepLinkTab, deepLinkProjectId]);
@@ -379,48 +441,6 @@ export const ClientProposalDataProvider = ({ children }) => {
       setSuggestedFreelancers([]);
     }
   }, [user?.id]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    void fetchFreelancerPool().catch((error) => {
-      console.error("Failed to prefetch freelancers:", error);
-    });
-  }, [fetchFreelancerPool, user?.id]);
-
-  useEffect(() => {
-    if (!user?.id || !showFreelancerSelect) return;
-
-    let isCurrentRequest = true;
-
-    const hydrateFreelancers = async () => {
-      const cache = freelancerPoolCacheRef.current;
-
-      if (cache.userId === user.id && cache.loaded) {
-        setSuggestedFreelancers(cache.data);
-        setIsFreelancersLoading(false);
-        return;
-      }
-
-      setIsFreelancersLoading(true);
-      try {
-        const pool = await fetchFreelancerPool();
-        if (!isCurrentRequest) return;
-        setSuggestedFreelancers(pool);
-      } catch (error) {
-        if (!isCurrentRequest) return;
-        console.error("Failed to load suggested freelancers:", error);
-        setSuggestedFreelancers([]);
-      } finally {
-        if (isCurrentRequest) setIsFreelancersLoading(false);
-      }
-    };
-
-    void hydrateFreelancers();
-
-    return () => {
-      isCurrentRequest = false;
-    };
-  }, [fetchFreelancerPool, showFreelancerSelect, user?.id]);
 
   useEffect(() => {
     if (!showFreelancerSelect) {
@@ -1245,14 +1265,7 @@ export const ClientProposalDataProvider = ({ children }) => {
 
   const rankedSuggestedFreelancers = useMemo(() => {
     if (!showFreelancerSelect) return [];
-    if (!Array.isArray(suggestedFreelancers) || suggestedFreelancers.length === 0) {
-      return [];
-    }
-
-    return rankFreelancersForProposal(
-      suggestedFreelancers,
-      proposalForFreelancerSelection,
-    );
+    return Array.isArray(suggestedFreelancers) ? suggestedFreelancers : [];
   }, [proposalForFreelancerSelection, showFreelancerSelect, suggestedFreelancers]);
 
   const freelancerSelectionData = useMemo(() => {
@@ -1283,35 +1296,19 @@ export const ClientProposalDataProvider = ({ children }) => {
     const normalized = rankedSuggestedFreelancers.map((entry) =>
       normalizeFreelancerCardData(entry),
     );
-    const skillMatched = projectRequiredSkills.length
-      ? normalized.filter((freelancer) => {
-          const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
-          return projectRequiredSkills.some((requiredSkill) =>
-            freelancerMatchesRequiredSkill(requiredSkill, freelancerSkillTokens),
-          );
-        })
-      : normalized;
 
-    const matched =
-      projectRequiredSkills.length && skillMatched.length >= 3
-        ? skillMatched
-        : normalized;
-
-    const available = matched.filter((freelancer) => {
+    const available = normalized.filter((freelancer) => {
       if (alreadyInvitedIds.has(freelancer.id)) return false;
       if (!isFreelancerOpenToWork(freelancer)) return false;
-      const matchScore = Number(freelancer?.matchScore);
-      if (!Number.isFinite(matchScore)) return false;
-      return Math.round(matchScore) >= MIN_FREELANCER_MATCH_SCORE;
+      return true;
     });
 
     return {
-      totalRanked: matched.length,
+      totalRanked: normalized.length,
       invitedCount: alreadyInvitedIds.size,
       available,
     };
   }, [
-    projectRequiredSkills,
     proposalForFreelancerSelection?.projectId,
     proposalForFreelancerSelection?.syncedProjectId,
     proposals,
@@ -1332,6 +1329,7 @@ export const ClientProposalDataProvider = ({ children }) => {
         freelancer.role,
         freelancer.cleanBio,
         ...(Array.isArray(freelancer.skills) ? freelancer.skills : []),
+        ...(Array.isArray(freelancer.matchedSkills) ? freelancer.matchedSkills : []),
         ...(Array.isArray(freelancer.matchHighlights) ? freelancer.matchHighlights : []),
       ]
         .filter(Boolean)

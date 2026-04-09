@@ -321,6 +321,13 @@ export const listFreelancers = (params = {}) => {
   });
 };
 
+export const fetchMatchedFreelancersForProposal = (proposal = {}) => {
+  return request("/proposals/match-freelancers", {
+    method: "POST",
+    body: JSON.stringify({ proposal })
+  });
+};
+
 export const fetchStatesByCountry = (country) => {
   const normalizedCountry = String(country || "").trim();
   if (!normalizedCountry) {

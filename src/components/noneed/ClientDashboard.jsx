@@ -20,10 +20,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { getSession } from "@/shared/lib/auth-storage";
-import { rankFreelancersForProposal } from "@/shared/lib/freelancer-matching";
 import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
 import {
-  listFreelancers,
+  fetchMatchedFreelancersForProposal,
   fetchChatConversations,
 } from "@/shared/lib/api-client";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
@@ -59,7 +58,6 @@ import {
   RecentActivity,
 } from "@/components/client/client-dashboard";
 
-const MIN_FREELANCER_MATCH_SCORE = 50;
 const PROPOSAL_BLOCKED_STATUSES = new Set(["PENDING", "ACCEPTED"]);
 const CLOSED_PROJECT_STATUSES = new Set(["COMPLETED", "PAUSED"]);
 const ACTIVE_PROJECT_CHAT_STATUSES = new Set([
@@ -1052,20 +1050,6 @@ const resolveProjectServiceLabel = (project = {}, acceptedProposal = null) => {
   );
 };
 
-const scheduleIdleTask = (callback, timeout = 400) => {
-  if (typeof window === "undefined" || typeof callback !== "function") {
-    return () => {};
-  }
-
-  if (typeof window.requestIdleCallback === "function") {
-    const idleId = window.requestIdleCallback(() => callback(), { timeout: 1200 });
-    return () => window.cancelIdleCallback?.(idleId);
-  }
-
-  const timerId = window.setTimeout(() => callback(), timeout);
-  return () => window.clearTimeout(timerId);
-};
-
 // ==================== Main Dashboard Component ====================
 const ClientDashboardContent = () => {
   const [sessionUser, setSessionUser] = useState(null);
@@ -1117,6 +1101,7 @@ const ClientDashboardContent = () => {
   const [isFreelancersLoading, setIsFreelancersLoading] = useState(false);
   const freelancerPoolCacheRef = useRef({
     userId: null,
+    queryKey: null,
     loaded: false,
     data: [],
   });
@@ -1139,43 +1124,110 @@ const ClientDashboardContent = () => {
     return extractProjectRequiredSkills(savedProposal || {});
   }, [showFreelancerSelect, savedProposal]);
 
+  const buildProposalMatchCacheKey = useCallback((proposal = null) => {
+    if (!proposal || typeof proposal !== "object") return "";
+
+    const proposalId = String(
+      proposal.id || proposal.projectId || proposal.syncedProjectId || "",
+    ).trim();
+    const serviceKey = String(
+      proposal.serviceKey ||
+        proposal.serviceType ||
+        proposal.service ||
+        proposal.serviceName ||
+        proposal.category ||
+        proposal.proposalContext?.serviceType ||
+        "",
+    ).trim().toLowerCase();
+    const budget = String(
+      proposal.amount ||
+        proposal.budget ||
+        proposal.proposalContext?.budget ||
+        proposal.project?.budget ||
+        "",
+    ).trim();
+    const stackSignature = String(
+      proposal.projectStack ||
+        proposal.techStack ||
+        proposal.project?.projectStack ||
+        proposal.project?.techStack ||
+        proposal.proposalContext?.projectStack ||
+        proposal.proposalContext?.techStack ||
+        proposal.proposalContext?.requiredTechStack ||
+        "",
+    )
+      .trim()
+      .toLowerCase();
+    const title = String(
+      proposal.projectTitle || proposal.title || proposal.project?.title || "",
+    ).trim().toLowerCase();
+    const contentHash = String(
+      proposal.content || proposal.summary || proposal.coverLetter || proposal.description || "",
+    )
+      .trim()
+      .slice(0, 120)
+      .toLowerCase();
+
+    return [proposalId, serviceKey, budget, stackSignature, title, contentHash].join("::");
+  }, []);
+
   const fetchFreelancerPool = useCallback(async () => {
     if (!sessionUser?.id) return [];
 
+    const proposal = savedProposal || null;
+    const queryKey = buildProposalMatchCacheKey(proposal);
+
     const currentCache = freelancerPoolCacheRef.current;
-    if (currentCache.userId === sessionUser.id && currentCache.loaded) {
+    if (
+      currentCache.userId === sessionUser.id &&
+      currentCache.queryKey === queryKey &&
+      currentCache.loaded
+    ) {
       return currentCache.data;
     }
 
-    if (freelancerPoolPromiseRef.current) {
-      return freelancerPoolPromiseRef.current;
+    if (
+      freelancerPoolPromiseRef.current &&
+      freelancerPoolPromiseRef.current.queryKey === queryKey
+    ) {
+      return freelancerPoolPromiseRef.current.promise;
     }
 
-    freelancerPoolPromiseRef.current = (async () => {
-      const [activeFreelancers, pendingFreelancers] = await Promise.all([
-        listFreelancers({
-          onboardingComplete: "true",
-          status: "ACTIVE",
-        }),
-        listFreelancers({
-          onboardingComplete: "true",
-          status: "PENDING_APPROVAL",
-        }),
-      ]);
+    const promise = (async () => {
+      if (!proposal) return [];
 
-      const merged = [...(activeFreelancers || []), ...(pendingFreelancers || [])];
-      const uniqueById = merged.filter(
-        (freelancer, index, self) =>
-          freelancer?.id &&
-          self.findIndex((item) => item?.id === freelancer.id) === index,
-      );
+      const matchedFreelancers = await fetchMatchedFreelancersForProposal(proposal);
+      const uniqueById = Array.isArray(matchedFreelancers)
+        ? matchedFreelancers.filter(
+            (freelancer, index, self) =>
+              freelancer?.id &&
+              self.findIndex((item) => item?.id === freelancer.id) === index,
+          )
+        : [];
       const normalized = uniqueById.filter(
         (freelancer) =>
           freelancer?.id !== sessionUser.id && hasFreelancerRole(freelancer),
       );
 
+      if (import.meta.env?.DEV) {
+        console.debug("[Proposal Match] Client dashboard pool", {
+          proposalService: proposal?.serviceKey || proposal?.service || null,
+          proposalBudget: proposal?.amount || proposal?.budget || null,
+          candidateCount: normalized.length,
+          sample: normalized[0]
+            ? {
+                id: normalized[0].id,
+                service: normalized[0].matchedService || null,
+                budget: normalized[0].budgetCompatibility || null,
+                skills: normalized[0].matchedTechnologies || normalized[0].matchHighlights || [],
+              }
+            : null,
+        });
+      }
+
       freelancerPoolCacheRef.current = {
         userId: sessionUser.id,
+        queryKey,
         loaded: true,
         data: normalized,
       };
@@ -1183,33 +1235,29 @@ const ClientDashboardContent = () => {
       return normalized;
     })();
 
-    try {
-      return await freelancerPoolPromiseRef.current;
-    } finally {
-      freelancerPoolPromiseRef.current = null;
-    }
-  }, [sessionUser?.id]);
+    freelancerPoolPromiseRef.current = { queryKey, promise };
 
-  const primeFreelancerPool = useCallback(() => {
-    if (!sessionUser?.id) return;
-    void fetchFreelancerPool().catch((error) => {
-      console.error("Failed to prefetch freelancers:", error);
-    });
-  }, [sessionUser?.id, fetchFreelancerPool]);
+    try {
+      return await promise;
+    } finally {
+      if (freelancerPoolPromiseRef.current?.queryKey === queryKey) {
+        freelancerPoolPromiseRef.current = null;
+      }
+    }
+  }, [buildProposalMatchCacheKey, savedProposal, sessionUser?.id]);
 
   const openFreelancerSelection = useCallback(() => {
     const cache = freelancerPoolCacheRef.current;
-    const hasCachedPool = cache.userId === sessionUser?.id && cache.loaded;
+    const queryKey = buildProposalMatchCacheKey(savedProposal);
+    const hasCachedPool =
+      cache.userId === sessionUser?.id && cache.queryKey === queryKey && cache.loaded;
     setIsFreelancersLoading(!hasCachedPool);
     setShowFreelancerSelect(true);
-  }, [sessionUser?.id]);
+  }, [buildProposalMatchCacheKey, savedProposal, sessionUser?.id]);
 
   const rankedSuggestedFreelancers = useMemo(() => {
     if (!showFreelancerSelect) return [];
-    if (!Array.isArray(suggestedFreelancers) || suggestedFreelancers.length === 0) {
-      return [];
-    }
-    return rankFreelancersForProposal(suggestedFreelancers, savedProposal);
+    return Array.isArray(suggestedFreelancers) ? suggestedFreelancers : [];
   }, [showFreelancerSelect, suggestedFreelancers, savedProposal]);
 
   const freelancerSelectionData = useMemo(() => {
@@ -1241,40 +1289,25 @@ const ClientDashboardContent = () => {
     const normalized = rankedSuggestedFreelancers.map((entry) =>
       normalizeFreelancerCardData(entry),
     );
-    const skillMatched = projectRequiredSkills.length
-      ? normalized.filter((freelancer) => {
-        const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
-        return projectRequiredSkills.some((requiredSkill) =>
-          freelancerMatchesRequiredSkill(requiredSkill, freelancerSkillTokens),
-        );
-      })
-      : normalized;
 
-    const matched =
-      projectRequiredSkills.length && skillMatched.length >= 3
-        ? skillMatched
-        : normalized;
-
-    const available = matched.filter((freelancer) => {
+    const available = normalized.filter((freelancer) => {
       if (alreadyInvitedIds.has(freelancer.id)) return false;
       if (!isFreelancerOpenToWork(freelancer)) return false;
-      const matchScore = Number(freelancer?.matchScore);
-      if (!Number.isFinite(matchScore)) return false;
-      return Math.round(matchScore) >= MIN_FREELANCER_MATCH_SCORE;
+      return true;
     });
 
     return {
-      totalRanked: matched.length,
+      totalRanked: normalized.length,
       invitedCount: alreadyInvitedIds.size,
       available,
     };
   }, [
-    showFreelancerSelect,
-    rankedSuggestedFreelancers,
     projectRequiredSkills,
+    rankedSuggestedFreelancers,
     savedProposal?.syncedProjectId,
     savedProposal?.projectId,
     projects,
+    showFreelancerSelect,
   ]);
 
   const filteredFreelancers = useMemo(() => {
@@ -1289,6 +1322,7 @@ const ClientDashboardContent = () => {
         freelancer.role,
         freelancer.cleanBio,
         ...(Array.isArray(freelancer.skills) ? freelancer.skills : []),
+        ...(Array.isArray(freelancer.matchedSkills) ? freelancer.matchedSkills : []),
         ...(Array.isArray(freelancer.matchHighlights)
           ? freelancer.matchHighlights
           : []),
@@ -1341,6 +1375,7 @@ const ClientDashboardContent = () => {
     if (!sessionUser?.id) {
       freelancerPoolCacheRef.current = {
         userId: null,
+        queryKey: null,
         loaded: false,
         data: [],
       };
@@ -1351,6 +1386,7 @@ const ClientDashboardContent = () => {
     if (freelancerPoolCacheRef.current.userId !== sessionUser.id) {
       freelancerPoolCacheRef.current = {
         userId: sessionUser.id,
+        queryKey: null,
         loaded: false,
         data: [],
       };
@@ -1359,11 +1395,50 @@ const ClientDashboardContent = () => {
   }, [sessionUser?.id]);
 
   useEffect(() => {
-    if (!sessionUser?.id) return;
-    return scheduleIdleTask(() => {
-      primeFreelancerPool();
-    });
-  }, [sessionUser?.id, primeFreelancerPool]);
+    if (!sessionUser?.id || !showFreelancerSelect || !savedProposal) return;
+
+    let isCurrentRequest = true;
+
+    const hydrateFreelancers = async () => {
+      const cache = freelancerPoolCacheRef.current;
+      const queryKey = buildProposalMatchCacheKey(savedProposal);
+
+      if (
+        cache.userId === sessionUser.id &&
+        cache.queryKey === queryKey &&
+        cache.loaded
+      ) {
+        setSuggestedFreelancers(cache.data);
+        setIsFreelancersLoading(false);
+        return;
+      }
+
+      setIsFreelancersLoading(true);
+      try {
+        const pool = await fetchFreelancerPool();
+        if (!isCurrentRequest) return;
+        setSuggestedFreelancers(pool);
+      } catch (error) {
+        if (!isCurrentRequest) return;
+        console.error("Failed to load suggested freelancers:", error);
+        setSuggestedFreelancers([]);
+      } finally {
+        if (isCurrentRequest) setIsFreelancersLoading(false);
+      }
+    };
+
+    void hydrateFreelancers();
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [
+    buildProposalMatchCacheKey,
+    fetchFreelancerPool,
+    savedProposal,
+    sessionUser?.id,
+    showFreelancerSelect,
+  ]);
 
   // Load projects
   // Load session

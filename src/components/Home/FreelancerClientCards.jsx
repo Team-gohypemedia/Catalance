@@ -4,11 +4,7 @@ import Briefcase from "lucide-react/dist/esm/icons/briefcase-business";
 import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import Users from "lucide-react/dist/esm/icons/users";
-import Wallet from "lucide-react/dist/esm/icons/wallet";
 import UserRoundSearch from "lucide-react/dist/esm/icons/user-round-search";
-import Globe from "lucide-react/dist/esm/icons/globe";
-import Brain from "lucide-react/dist/esm/icons/brain";
-import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
 import Handshake from "lucide-react/dist/esm/icons/handshake";
 import ChartNoAxesCombined from "lucide-react/dist/esm/icons/chart-no-axes-combined";
 import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
@@ -17,17 +13,17 @@ import { Button } from "@/components/ui/button";
 import Mascot1 from "@/assets/mascot/mascot1.png";
 
 const businessFeatures = [
-  { icon: BadgeCheck, text: " Pre-vetted professionals only" },
+  { icon: BadgeCheck, text: "Only verified professionals" },
   { icon: Users, text: "AI-powered talent matching" },
   { icon: ShieldCheck, text: "Safe & secure payments" },
   { icon: Clock3, text: "Transparent project tracking" },
 ];
 
 const freelancerFeatures = [
-  { icon: Handshake, text: "Collaborate with vetted organizations" },
+  { icon: Handshake, text: "Work with trusted teams." },
   { icon: ChartNoAxesCombined, text: "Reliable high-quality opportunities" },
   { icon: ShieldCheck, text: "Secure structured payments" },
-  { icon: MessageSquareDot, text: "Professional dispute support" },
+  { icon: MessageSquareDot, text: "Quick problem help" },
 ];
 
 const featureClassName =
@@ -47,10 +43,10 @@ const FreelancerClientCards = () => {
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col items-center">
         <div className="mx-auto w-full max-w-7xl text-center">
           <h2 className="text-[2.1rem] font-medium leading-[1.05] tracking-tight whitespace-nowrap text-white sm:text-[2.75rem] md:text-[3.4rem] lg:text-[4.4rem]">
-            Hire <span className="text-primary">Freelancers</span> Who Don&apos;t Disappear
+            Built for<span className="text-primary">Who</span> You Are
           </h2>
-          <p className="mx-auto mt-6 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-7 sm:text-base md:text-lg">
-            Reliable talent focused on quality and timely delivery.
+          <p className="mx-auto mt-1 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-3 sm:text-base md:text-lg">
+            Designed to support your growth at every stage.
           </p>
         </div>
 

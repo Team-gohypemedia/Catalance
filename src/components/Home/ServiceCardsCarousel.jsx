@@ -347,7 +347,7 @@ const ServiceCardsCarousel = () => {
             Ghost You
           </h2>
 
-          <p className="mt-3 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-4 sm:text-base md:text-lg">
+          <p className="mt-1 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-3 sm:text-base md:text-lg">
             Trusted freelancers who deliver work on time.
           </p>
 

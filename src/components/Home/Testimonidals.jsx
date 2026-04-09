@@ -124,8 +124,8 @@ const Testimonidals = () => {
             <span className="block">Don&apos;t Just Take Our</span>
             <span className="block">Word For It</span>
           </h2>
-          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
-            At SocialLift, we take the stress out of social media management.
+          <p className="mx-auto mt-1 sm:mt-3 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
+            See what Experts say about their experience.
           </p>
         </header>
 
