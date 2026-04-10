@@ -45,6 +45,8 @@ const ClientProposalDialogs = ({
     sendingFreelancerId,
     freelancerSearch,
     isFreelancersLoading,
+    freelancerFetchStatus,
+    freelancerFetchError,
     proposalForFreelancerSelection,
     filteredFreelancers,
     freelancerSelectionData,
@@ -121,6 +123,8 @@ const ClientProposalDialogs = ({
         onOpenChange={setShowFreelancerSelect}
         savedProposal={proposalForFreelancerSelection}
         isLoadingFreelancers={isFreelancersLoading}
+        freelancerFetchStatus={freelancerFetchStatus}
+        freelancerFetchError={freelancerFetchError}
         isSendingProposal={
           sendingProposalId === (proposalForFreelancerSelection?.id ?? null)
         }

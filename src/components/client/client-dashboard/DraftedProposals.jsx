@@ -27,7 +27,8 @@ import {
   resolveActiveProposalId,
 } from "@/shared/lib/client-proposal-storage";
 import { formatINR } from "@/shared/lib/currency";
-import { listFreelancers } from "@/shared/lib/api-client";
+import { fetchMatchedFreelancersForProposal } from "@/shared/lib/api-client";
+import { isFreelancerOpenToWork } from "@/shared/lib/freelancer-availability";
 import {
   CLIENT_DASHBOARD_PROPOSAL_ACTION_PARAM,
   CLIENT_DASHBOARD_PROPOSAL_ACTION_SEND,
@@ -367,6 +368,8 @@ const DraftedProposals = memo(function DraftedProposals({
   const [selectedDraftForSend, setSelectedDraftForSend] = useState(null);
   const [suggestedFreelancers, setSuggestedFreelancers] = useState([]);
   const [isFreelancersLoading, setIsFreelancersLoading] = useState(false);
+  const [freelancerFetchStatus, setFreelancerFetchStatus] = useState("idle");
+  const [freelancerFetchError, setFreelancerFetchError] = useState("");
   const [sendingProposalId, setSendingProposalId] = useState(null);
   const [sendingFreelancerId, setSendingFreelancerId] = useState(null);
   const [freelancerSearch, setFreelancerSearch] = useState("");
@@ -433,6 +436,32 @@ const DraftedProposals = memo(function DraftedProposals({
     );
   }, [activeDraftId, visibleSavedDrafts]);
 
+  const proposalForFreelancerSelection = useMemo(() => {
+    if (!selectedDraftForSend) return null;
+
+    return {
+      ...selectedDraftForSend,
+      projectTitle: resolveDraftTitle(selectedDraftForSend),
+      title: resolveDraftTitle(selectedDraftForSend),
+      summary:
+        selectedDraftForSend.summary || selectedDraftForSend.content || "",
+      content:
+        selectedDraftForSend.content || selectedDraftForSend.summary || "",
+      service: resolveDraftService(selectedDraftForSend),
+      serviceKey:
+        selectedDraftForSend.serviceKey ||
+        resolveDraftService(selectedDraftForSend),
+      syncedProjectId:
+        selectedDraftForSend.syncedProjectId ||
+        selectedDraftForSend.projectId ||
+        null,
+      projectId:
+        selectedDraftForSend.projectId ||
+        selectedDraftForSend.syncedProjectId ||
+        null,
+    };
+  }, [selectedDraftForSend]);
+
   useEffect(() => {
     if (isControlled) return;
 
@@ -464,43 +493,53 @@ const DraftedProposals = memo(function DraftedProposals({
 
     const loadFreelancers = async () => {
       setIsFreelancersLoading(true);
+      setFreelancerFetchStatus("loading");
+      setFreelancerFetchError("");
 
       try {
-        const [activeFreelancers, pendingFreelancers] = await Promise.all([
-          listFreelancers({
-            onboardingComplete: "true",
-            status: "ACTIVE",
-          }),
-          listFreelancers({
-            onboardingComplete: "true",
-            status: "PENDING_APPROVAL",
-          }),
-        ]);
+        if (!proposalForFreelancerSelection) {
+          throw new Error("Proposal details are missing. Close the dialog and try again.");
+        }
+
+        const matchedFreelancerPayload = await fetchMatchedFreelancersForProposal(
+          proposalForFreelancerSelection,
+        );
 
         if (cancelled) return;
 
-        const merged = [
-          ...(Array.isArray(activeFreelancers) ? activeFreelancers : []),
-          ...(Array.isArray(pendingFreelancers) ? pendingFreelancers : []),
-        ];
-        const uniqueById = merged.filter(
+        const matchedFreelancers = Array.isArray(matchedFreelancerPayload?.freelancers)
+          ? matchedFreelancerPayload.freelancers
+          : Array.isArray(matchedFreelancerPayload?.data)
+            ? matchedFreelancerPayload.data
+            : Array.isArray(matchedFreelancerPayload)
+              ? matchedFreelancerPayload
+              : [];
+
+        const uniqueById = matchedFreelancers.filter(
           (freelancer, index, collection) =>
             freelancer?.id &&
             collection.findIndex((item) => item?.id === freelancer.id) === index,
         );
 
-        setSuggestedFreelancers(
-          uniqueById
-            .filter(
-              (freelancer) =>
-                freelancer?.id !== user.id && hasFreelancerRole(freelancer),
-            )
-            .map((freelancer) => normalizeFreelancerCardData(freelancer)),
+        const normalizedFreelancers = uniqueById
+          .filter(
+            (freelancer) =>
+              freelancer?.id !== user.id && hasFreelancerRole(freelancer),
+          )
+          .map((freelancer) => normalizeFreelancerCardData(freelancer));
+
+        setSuggestedFreelancers(normalizedFreelancers);
+        setFreelancerFetchStatus(
+          normalizedFreelancers.length > 0 ? "success" : "empty",
         );
       } catch (error) {
         if (cancelled) return;
         console.error("Failed to load suggested freelancers:", error);
         setSuggestedFreelancers([]);
+        setFreelancerFetchStatus("error");
+        setFreelancerFetchError(
+          error?.message || "Unable to load matched freelancers right now.",
+        );
       } finally {
         if (!cancelled) setIsFreelancersLoading(false);
       }
@@ -511,12 +550,21 @@ const DraftedProposals = memo(function DraftedProposals({
     return () => {
       cancelled = true;
     };
-  }, [isControlled, showFreelancerSelect, user?.id]);
+  }, [
+    isControlled,
+    proposalForFreelancerSelection,
+    showFreelancerSelect,
+    user?.id,
+  ]);
 
   useEffect(() => {
     if (!showFreelancerSelect) {
       setFreelancerSearch("");
+      setSuggestedFreelancers([]);
       setIsFreelancersLoading(false);
+      setFreelancerFetchStatus("idle");
+      setFreelancerFetchError("");
+      setSelectedDraftForSend(null);
     }
   }, [showFreelancerSelect]);
 
@@ -720,8 +768,8 @@ const DraftedProposals = memo(function DraftedProposals({
 
   const freelancerSelectionData = useMemo(() => {
     const sourceProjectId =
-      selectedDraftForSend?.syncedProjectId ||
-      selectedDraftForSend?.projectId ||
+      proposalForFreelancerSelection?.syncedProjectId ||
+      proposalForFreelancerSelection?.projectId ||
       null;
     const alreadyInvitedIds = new Set();
 
@@ -735,16 +783,18 @@ const DraftedProposals = memo(function DraftedProposals({
       });
     }
 
-    const available = suggestedFreelancers.filter(
-      (freelancer) => !alreadyInvitedIds.has(freelancer.id),
-    );
+    const available = suggestedFreelancers.filter((freelancer) => {
+      if (alreadyInvitedIds.has(freelancer.id)) return false;
+      if (!isFreelancerOpenToWork(freelancer)) return false;
+      return true;
+    });
 
     return {
       totalRanked: suggestedFreelancers.length,
       invitedCount: alreadyInvitedIds.size,
       available,
     };
-  }, [proposals, selectedDraftForSend, suggestedFreelancers]);
+  }, [proposalForFreelancerSelection, proposals, suggestedFreelancers]);
 
   const filteredFreelancers = useMemo(() => {
     const query = String(freelancerSearch || "").trim().toLowerCase();
@@ -768,6 +818,33 @@ const DraftedProposals = memo(function DraftedProposals({
       return searchable.includes(query);
     });
   }, [freelancerSearch, freelancerSelectionData.available]);
+
+  const bestMatchFreelancerIds = useMemo(() => {
+    const scoredFreelancers = freelancerSelectionData.available
+      .map((freelancer) => {
+        const score = Number.isFinite(Number(freelancer?.matchScore))
+          ? Math.round(Number(freelancer.matchScore))
+          : null;
+        if (!freelancer?.id || score === null) return null;
+        return { id: freelancer.id, score };
+      })
+      .filter(Boolean);
+
+    if (scoredFreelancers.length === 0) return new Set();
+
+    const topScore = scoredFreelancers.reduce(
+      (maxScore, freelancer) => Math.max(maxScore, freelancer.score),
+      Number.NEGATIVE_INFINITY,
+    );
+
+    if (!Number.isFinite(topScore) || topScore <= 0) return new Set();
+
+    return new Set(
+      scoredFreelancers
+        .filter((freelancer) => freelancer.score === topScore)
+        .map((freelancer) => freelancer.id),
+    );
+  }, [freelancerSelectionData.available]);
 
   return (
     <>
@@ -856,17 +933,19 @@ const DraftedProposals = memo(function DraftedProposals({
           <FreelancerSelectionDialog
             open={showFreelancerSelect}
             onOpenChange={setShowFreelancerSelect}
-            savedProposal={selectedDraftForSend}
+            savedProposal={proposalForFreelancerSelection}
             isLoadingFreelancers={isFreelancersLoading}
+            freelancerFetchStatus={freelancerFetchStatus}
+            freelancerFetchError={freelancerFetchError}
             isSendingProposal={
-              sendingProposalId === (selectedDraftForSend?.id ?? null)
+              sendingProposalId === (proposalForFreelancerSelection?.id ?? null)
             }
             sendingFreelancerId={sendingFreelancerId}
             freelancerSearch={freelancerSearch}
             onFreelancerSearchChange={setFreelancerSearch}
             filteredFreelancers={filteredFreelancers}
             freelancerSelectionData={freelancerSelectionData}
-            bestMatchFreelancerIds={new Set()}
+            bestMatchFreelancerIds={bestMatchFreelancerIds}
             projectRequiredSkills={[]}
             onViewFreelancer={(freelancer) => {
               setViewingFreelancer(freelancer);

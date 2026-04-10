@@ -3,8 +3,10 @@ import { Prisma, prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { syncFreelancerOpenToWorkStatus } from "../lib/freelancer-open-to-work.js";
-import { listUsers } from "../modules/users/user.service.js";
-import { rankFreelancersForProposal, extractMatchingRequirements } from "../../../src/shared/lib/freelancer-matching.js";
+import {
+  matchFreelancersForProposal,
+  matchFreelancersForProposalPayload,
+} from "../services/proposal-matching.service.js";
 
 const normalizeAmount = (value) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) {
@@ -110,6 +112,12 @@ const normalizeProposalMatchPayload = (proposal = {}) => {
   };
 };
 
+const clampPercentage = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return null;
+  return Math.max(0, Math.min(100, Math.round(numericValue)));
+};
+
 export const matchProposalFreelancers = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
 
@@ -117,49 +125,65 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
     throw new AppError("Authentication required", 401);
   }
 
+  const proposalId = String(req.body?.proposalId || "").trim();
   const proposalPayload =
     req.body?.proposal && typeof req.body.proposal === "object"
       ? req.body.proposal
       : req.body && typeof req.body === "object"
         ? req.body
         : {};
+  const hasProposalPayload = Object.keys(proposalPayload).length > 0;
+
+  if (!proposalId && !hasProposalPayload) {
+    throw new AppError("Proposal details are required to match freelancers.", 400);
+  }
 
   const proposal = normalizeProposalMatchPayload(proposalPayload);
-  const requirements = extractMatchingRequirements(proposal);
+  let matchingResult;
 
-  const [activeFreelancers, pendingFreelancers] = await Promise.all([
-    listUsers({
-      role: "FREELANCER",
-      status: "ACTIVE",
-      onboardingComplete: "true",
-    }),
-    listUsers({
-      role: "FREELANCER",
-      status: "PENDING_APPROVAL",
-      onboardingComplete: "true",
-    }),
-  ]);
+  if (proposalId) {
+    try {
+      matchingResult = await matchFreelancersForProposal(proposalId, {
+        limit: req.body?.limit,
+      });
+    } catch (error) {
+      const shouldFallbackToPayload =
+        hasProposalPayload &&
+        error instanceof AppError &&
+        [400, 404].includes(Number(error.statusCode));
 
-  const mergedFreelancers = [
-    ...(Array.isArray(activeFreelancers) ? activeFreelancers : []),
-    ...(Array.isArray(pendingFreelancers) ? pendingFreelancers : []),
-  ].reduce((collection, freelancer) => {
-    if (!freelancer?.id) return collection;
-    if (collection.seen.has(freelancer.id)) return collection;
-    collection.seen.add(freelancer.id);
-    collection.items.push(freelancer);
-    return collection;
-  }, { seen: new Set(), items: [] }).items;
+      if (!shouldFallbackToPayload) {
+        throw error;
+      }
 
-  const matchedFreelancers = rankFreelancersForProposal(mergedFreelancers, proposal);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[Proposal Match] Falling back to payload matching", {
+          proposalId,
+          reason: error?.message || null,
+        });
+      }
+
+      matchingResult = await matchFreelancersForProposalPayload(proposal, {
+        limit: req.body?.limit,
+      });
+    }
+  } else {
+    matchingResult = await matchFreelancersForProposalPayload(proposal, {
+      limit: req.body?.limit,
+    });
+  }
+  const matchedFreelancers = Array.isArray(matchingResult?.results)
+    ? matchingResult.results
+    : [];
 
   if (process.env.NODE_ENV !== "production") {
     console.info("[Proposal Match]", {
       userId,
-      serviceKey: requirements.serviceKey || null,
-      budget: requirements.budget ?? null,
-      candidates: mergedFreelancers.length,
+      serviceKey: proposal.serviceKey || proposal.project?.serviceKey || null,
+      budget: proposal.budget ?? proposal.proposalBudget ?? null,
+      candidates: matchedFreelancers.length,
       matched: matchedFreelancers.length,
+      levelCounts: matchingResult?.levelCounts || null,
     });
   }
 
@@ -169,15 +193,76 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
     proposal.serviceName ||
     proposal.category ||
     proposal.proposalContext?.serviceType ||
+    matchingResult?.source?.serviceType ||
+    matchingResult?.source?.serviceKey ||
+    null;
+  const resolvedProposalBudget =
+    proposal.budget ??
+    proposal.proposalBudget ??
+    matchingResult?.source?.budget ??
+    null;
+  const resolvedProposalId =
+    proposalId ||
+    proposal?.id ||
+    matchingResult?.proposalId ||
+    matchingResult?.sourceProjectId ||
     null;
 
+  const normalizedFreelancers = matchedFreelancers.map((freelancer) => ({
+    ...freelancer,
+    freelancerId: freelancer?.id || null,
+    name: freelancer?.fullName || freelancer?.name || "Freelancer",
+    title:
+      freelancer?.title ||
+      freelancer?.jobTitle ||
+      freelancer?.freelancerProfile?.jobTitle ||
+      freelancer?.professionalTitle ||
+      null,
+    bio:
+      freelancer?.bio ||
+      freelancer?.cleanBio ||
+      freelancer?.about ||
+      null,
+    avatarUrl: freelancer?.avatar || null,
+    service: serviceTypeLabel,
+    serviceType: serviceTypeLabel,
+    proposalBudget: resolvedProposalBudget,
+    startingPrice: freelancer?.budgetCompatibility?.startingPrice ?? null,
+    matchedSkills: Array.isArray(freelancer?.matchedSkills) ? freelancer.matchedSkills : [],
+    matchedCaseStudyTitles: Array.isArray(freelancer?.matchedCaseStudyTitles)
+      ? freelancer.matchedCaseStudyTitles
+      : Array.isArray(freelancer?.caseStudyMatch?.matchedCaseStudyTitles)
+        ? freelancer.caseStudyMatch.matchedCaseStudyTitles
+        : [],
+    budgetFitPercent: clampPercentage(
+      freelancer?.budgetFitPercent ??
+        freelancer?.budgetMatchPercentage ??
+        freelancer?.budgetCompatibility?.budgetMatchPercentage,
+    ),
+    skillsMatchPercent: clampPercentage(
+      Number(freelancer?.scoreBreakdown?.skillsScore) / 30 * 100,
+    ),
+    projectRelevanceScore: Number.isFinite(Number(freelancer?.matchScore))
+      ? Math.round(Number(freelancer.matchScore))
+      : null,
+    score: Number.isFinite(Number(freelancer?.score ?? freelancer?.matchScore))
+      ? Math.round(Number(freelancer?.score ?? freelancer?.matchScore))
+      : null,
+    serviceMatch: Boolean(freelancer?.serviceMatch),
+    isOpenToWork:
+      freelancer?.openToWork === undefined
+        ? freelancer?.available ?? null
+        : freelancer.openToWork,
+  }));
+
   res.json({
-    data: matchedFreelancers.map((freelancer) => ({
-      ...freelancer,
-      serviceType: serviceTypeLabel,
-      proposalBudget: proposal.budget ?? proposal.proposalBudget ?? null,
-      startingPrice: freelancer?.budgetCompatibility?.startingPrice ?? null,
-    })),
+    success: true,
+    proposalId: resolvedProposalId,
+    data: normalizedFreelancers,
+    freelancers: normalizedFreelancers,
+    total: normalizedFreelancers.length,
+    levelCounts: matchingResult?.levelCounts || null,
+    meta: matchingResult?.meta || null,
   });
 });
 

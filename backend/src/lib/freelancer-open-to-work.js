@@ -1,14 +1,14 @@
 import { prisma } from "./prisma.js";
 
-const ACTIVE_PROJECT_STATUSES = ["COMPLETED", "PAUSED", "DRAFT"];
-const OPEN_TO_WORK_MIN_ACTIVE_PROJECT_COUNT = 5;
+export const NON_ACTIVE_PROJECT_STATUSES = ["COMPLETED", "PAUSED", "DRAFT"];
+export const OPEN_TO_WORK_MIN_ACTIVE_PROJECT_COUNT = 5;
 
 const normalizeFreelancerId = (freelancerId) => String(freelancerId || "").trim();
 
-const collectActiveProjectCounts = async () => {
+export const collectActiveProjectCounts = async () => {
   const activeProjects = await prisma.project.findMany({
     where: {
-      status: { notIn: ACTIVE_PROJECT_STATUSES },
+      status: { notIn: NON_ACTIVE_PROJECT_STATUSES },
       proposals: {
         some: {
           status: "ACCEPTED",
@@ -51,7 +51,7 @@ export const syncFreelancerOpenToWorkStatus = async (freelancerId) => {
 
   const activeProjectCount = await prisma.project.count({
     where: {
-      status: { notIn: ACTIVE_PROJECT_STATUSES },
+      status: { notIn: NON_ACTIVE_PROJECT_STATUSES },
       proposals: {
         some: {
           status: "ACCEPTED",

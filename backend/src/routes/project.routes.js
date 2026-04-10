@@ -10,6 +10,7 @@ import {
   verifyProjectPayment,
   verifyUpfrontPayment,
   payProjectInstallment,
+  completeProject,
   requestFreelancerChange,
   submitProjectFreelancerReview,
 } from "../controllers/project.controller.js";
@@ -23,6 +24,7 @@ projectRouter.get("/", requireAuth, listProjects);
 projectRouter.post("/", requireAuth, validateResource(createProjectSchema), createProject);
 projectRouter.get("/:id", requireAuth, getProject);
 projectRouter.patch("/:id", requireAuth, updateProject);
+projectRouter.post("/:id/complete", requireAuth, completeProject);
 projectRouter.post("/:id/payments/order", requireAuth, createProjectPaymentOrder);
 projectRouter.post("/:id/payments/verify", requireAuth, verifyProjectPayment);
 projectRouter.post("/:id/payments/direct", requireAuth, payProjectInstallment);

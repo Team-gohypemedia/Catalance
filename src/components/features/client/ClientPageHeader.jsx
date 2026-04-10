@@ -40,18 +40,18 @@ const ClientPageHeader = ({
   return (
     <section
       className={cn(
-        "mt-14 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between",
+        "mt-14 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between",
         className,
       )}
     >
       {mobileDateFirst && resolvedDateLabel ? (
-        <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#64748b] lg:hidden">
+        <p className="mb-2 text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:hidden">
           {resolvedDateLabel}
         </p>
       ) : null}
 
       <div className="max-w-[40rem]">
-        <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold tracking-[-0.05em] text-white">
+        <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
           {title}
         </h1>
         {description ? (
@@ -69,7 +69,7 @@ const ClientPageHeader = ({
           {resolvedDateLabel ? (
             <p
               className={cn(
-                "text-xs font-medium uppercase tracking-[0.24em] text-[#64748b]",
+                "hidden text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:block",
                 mobileDateFirst && "hidden lg:block",
               )}
             >

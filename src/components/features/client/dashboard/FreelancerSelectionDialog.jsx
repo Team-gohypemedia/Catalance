@@ -130,6 +130,13 @@ const formatDisplayLabel = (value = "") =>
     .replace(/\b([a-z])/g, (match, char) => char.toUpperCase())
     .trim();
 
+const MATCH_SOURCE_LABELS = Object.freeze({
+  completed_project: "Completed Project Match",
+  case_study: "Case Study Match",
+  global_skills: "Global Skills Match",
+  profile_skills: "Profile Skills Match",
+});
+
 const getMatchedSkillBadges = (freelancer = {}) => {
   const values = Array.isArray(freelancer?.matchedSkills) && freelancer.matchedSkills.length > 0
     ? freelancer.matchedSkills
@@ -138,6 +145,8 @@ const getMatchedSkillBadges = (freelancer = {}) => {
       ? freelancer.caseStudyMatch.matchedSkills
       : Array.isArray(freelancer?.matchedTechnologies)
         ? freelancer.matchedTechnologies
+        : Array.isArray(freelancer?.matchHighlights)
+          ? freelancer.matchHighlights
         : [];
 
   return Array.from(new Set(values.map((entry) => String(entry || "").trim()).filter(Boolean))).slice(0, 3);
@@ -154,22 +163,41 @@ const getMatchedServiceLabel = (freelancer = {}) =>
 
 const getBudgetFitLabel = (freelancer = {}) => {
   const budget = freelancer?.budgetCompatibility || {};
-  const percentage = Number.isFinite(Number(freelancer?.budgetMatchPercentage))
-    ? Math.max(0, Math.min(100, Math.round(Number(freelancer.budgetMatchPercentage))))
-    : Number.isFinite(Number(budget?.budgetMatchPercentage))
-      ? Math.max(0, Math.min(100, Math.round(Number(budget.budgetMatchPercentage))))
-      : Number.isFinite(Number(budget?.score))
-        ? Math.max(0, Math.min(100, Math.round(Number(budget.score) * 100)))
-        : 0;
+  const percentage = Number.isFinite(Number(freelancer?.budgetFitPercent))
+    ? Math.max(0, Math.min(100, Math.round(Number(freelancer.budgetFitPercent))))
+    : Number.isFinite(Number(freelancer?.budgetMatchPercentage))
+      ? Math.max(0, Math.min(100, Math.round(Number(freelancer.budgetMatchPercentage))))
+      : Number.isFinite(Number(budget?.budgetMatchPercentage))
+        ? Math.max(0, Math.min(100, Math.round(Number(budget.budgetMatchPercentage))))
+        : null;
 
-  return `${percentage}%`;
+  if (percentage !== null) {
+    return `${percentage}%`;
+  }
+
+  if (typeof budget?.displayLabel === "string" && budget.displayLabel.trim()) {
+    return budget.displayLabel.trim();
+  }
+
+  if (budget?.withinRange === false && budget?.hardRejected) {
+    return "0%";
+  }
+
+  return "Flexible";
 };
+
+const getMatchSourceLabel = (freelancer = {}) =>
+  MATCH_SOURCE_LABELS[freelancer?.matchSource] ||
+  MATCH_SOURCE_LABELS[freelancer?.sourceLabel] ||
+  formatDisplayLabel(freelancer?.matchSource || freelancer?.sourceLabel || "");
 
 const FreelancerSelectionDialog = ({
   open,
   onOpenChange,
   savedProposal,
   isLoadingFreelancers,
+  freelancerFetchStatus = "idle",
+  freelancerFetchError = "",
   isSendingProposal = false,
   sendingFreelancerId = null,
   freelancerSearch,
@@ -177,11 +205,11 @@ const FreelancerSelectionDialog = ({
   filteredFreelancers,
   freelancerSelectionData,
   bestMatchFreelancerIds,
-  projectRequiredSkills,
+  _projectRequiredSkills,
   onViewFreelancer,
   onSendProposal,
-  collectFreelancerSkillTokens,
-  freelancerMatchesRequiredSkill,
+  _collectFreelancerSkillTokens,
+  _freelancerMatchesRequiredSkill,
   generateGradient,
   formatRating,
 }) => (
@@ -256,12 +284,23 @@ const FreelancerSelectionDialog = ({
                 );
               }
 
+              if (freelancerFetchStatus === "error") {
+                return (
+                  <Card className="col-span-full border-dashed">
+                    <CardContent className="p-8 text-center text-muted-foreground">
+                      {freelancerFetchError ||
+                        "We could not load matched freelancers for this proposal right now."}
+                    </CardContent>
+                  </Card>
+                );
+              }
+
               if (filteredFreelancers.length === 0) {
                 if (freelancerSelectionData.totalRanked === 0) {
                   return (
                     <Card className="col-span-full border-dashed">
                       <CardContent className="p-8 text-center text-muted-foreground">
-                        We are not able to find a freelancer within your requirements.
+                        We could not find freelancers who match this proposal yet.
                       </CardContent>
                     </Card>
                   );
@@ -317,7 +356,7 @@ const FreelancerSelectionDialog = ({
                 const matchedServiceLabel = getMatchedServiceLabel(freelancer);
                 const matchedSkillBadges = getMatchedSkillBadges(freelancer);
                 const budgetFitLabel = getBudgetFitLabel(freelancer);
-                const hasCaseStudyMatch = Boolean(freelancer?.caseStudyMatch?.hasCaseStudy);
+                const matchSourceLabel = getMatchSourceLabel(freelancer);
                 const isVerified = freelancer?.isVerified === true;
                 const deliveredProjectCount = getDeliveredProjectCount(freelancer);
                 const cardBio = String(
@@ -426,12 +465,12 @@ const FreelancerSelectionDialog = ({
                                 Verified
                               </Badge>
                             ) : null}
-                            {hasCaseStudyMatch ? (
+                            {matchSourceLabel ? (
                               <Badge
                                 variant="outline"
                                 className="h-5 border-emerald-500/25 bg-emerald-500/10 px-2 text-[9px] whitespace-nowrap text-emerald-300"
                               >
-                                Case Study Match
+                                {matchSourceLabel}
                               </Badge>
                             ) : null}
                           </div>

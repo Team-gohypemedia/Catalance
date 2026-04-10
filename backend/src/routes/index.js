@@ -18,6 +18,7 @@ import { paymentRouter } from "./payment.routes.js";
 import guestRouter from "./guest.routes.js";
 import { contactRouter } from "./contact.routes.js";
 import { marketplaceRouter } from "./marketplace.routes.js";
+import { matchingRouter } from "./matching.routes.js";
 import pmRouter from "./pm.routes.js";
 
 export const apiRouter = Router();
@@ -41,4 +42,5 @@ apiRouter.use("/payments", paymentRouter);
 apiRouter.use("/guest", guestRouter);
 apiRouter.use("/contact", contactRouter);
 apiRouter.use("/marketplace", marketplaceRouter);
+apiRouter.use("/matching", matchingRouter);
 apiRouter.use("/pm", pmRouter);
