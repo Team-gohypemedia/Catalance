@@ -3798,6 +3798,7 @@ const GuestAIDemo = () => {
             }
         }
 
+        
         try {
             const requestStartedAt = getNowTimestamp();
             setIsTyping(true);
