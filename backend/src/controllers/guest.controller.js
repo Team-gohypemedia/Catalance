@@ -3522,12 +3522,122 @@ const normalizeSessionPrefillName = (value = "") =>
         .slice(0, 120)
         .trim();
 
+const normalizeSharedSessionStartValue = (value = "", maxLength = 600) =>
+    String(value || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, maxLength)
+        .trim();
+
+const getQuestionSharedStartType = (question = {}) => {
+    const identityType = getQuestionIdentityType(question);
+    if (identityType !== "other") return identityType;
+
+    const content = [
+        question?.slug || "",
+        question?.id || "",
+        question?.text || "",
+        question?.subtitle || "",
+    ]
+        .join(" ")
+        .toLowerCase();
+
+    if (
+        (
+            /\b(brand|business|company)\b/.test(content)
+            && /\b(brief|overview|summary|description|about|offer)\b/.test(content)
+        )
+        || /\b(brand_brief|business_brief|company_brief|brand_description|business_description|company_description|brand_overview|business_overview|company_overview|about_business|about_company|business_info|company_info|what_you_offer)\b/.test(content)
+    ) {
+        return "business_summary";
+    }
+
+    if (
+        /\b(website|url|link)\b/.test(content)
+        && /\b(current|existing|business|brand|company|reference|site|website|url|link)\b/.test(content)
+    ) {
+        return "website_url";
+    }
+
+    return "other";
+};
+
+const normalizeSharedSessionAnswers = (sharedAnswers = {}) => {
+    if (!sharedAnswers || typeof sharedAnswers !== "object" || Array.isArray(sharedAnswers)) {
+        return {};
+    }
+
+    const nextSharedAnswers = {};
+    const personName = normalizeSessionPrefillName(
+        sharedAnswers.personName || sharedAnswers.person_name || ""
+    );
+    const businessName = normalizeSharedSessionStartValue(
+        sharedAnswers.businessName || sharedAnswers.business_name || "",
+        160
+    );
+    const businessSummary = normalizeSharedSessionStartValue(
+        sharedAnswers.businessSummary || sharedAnswers.business_summary || "",
+        600
+    );
+    const websiteUrl = normalizeSharedSessionStartValue(
+        sharedAnswers.websiteUrl || sharedAnswers.website_url || "",
+        400
+    );
+
+    if (personName) nextSharedAnswers.personName = personName;
+    if (businessName) nextSharedAnswers.businessName = businessName;
+    if (businessSummary) nextSharedAnswers.businessSummary = businessSummary;
+    if (websiteUrl) nextSharedAnswers.websiteUrl = websiteUrl;
+
+    return nextSharedAnswers;
+};
+
+const buildSharedSessionAnswers = ({
+    questions = [],
+    sessionAnswers = {},
+} = {}) => {
+    const answersBySlug = getAnswersBySlug(sessionAnswers, questions);
+    const sharedAnswers = {};
+
+    for (const question of questions) {
+        if (!question?.slug) continue;
+        const answerValue = answersBySlug[question.slug];
+        if (!hasAnswerValue(answerValue)) continue;
+
+        const sharedStartType = getQuestionSharedStartType(question);
+        if (sharedStartType === "person_name" && !sharedAnswers.personName) {
+            const normalizedName = normalizeSessionPrefillName(answerValue);
+            if (normalizedName) sharedAnswers.personName = normalizedName;
+            continue;
+        }
+
+        if (sharedStartType === "business_name" && !sharedAnswers.businessName) {
+            const normalizedBusinessName = normalizeSharedSessionStartValue(answerValue, 160);
+            if (normalizedBusinessName) sharedAnswers.businessName = normalizedBusinessName;
+            continue;
+        }
+
+        if (sharedStartType === "business_summary" && !sharedAnswers.businessSummary) {
+            const normalizedBusinessSummary = normalizeSharedSessionStartValue(answerValue, 600);
+            if (normalizedBusinessSummary) sharedAnswers.businessSummary = normalizedBusinessSummary;
+            continue;
+        }
+
+        if (sharedStartType === "website_url" && !sharedAnswers.websiteUrl) {
+            const normalizedWebsiteUrl = normalizeSharedSessionStartValue(answerValue, 400);
+            if (normalizedWebsiteUrl) sharedAnswers.websiteUrl = normalizedWebsiteUrl;
+        }
+    }
+
+    return sharedAnswers;
+};
+
 const buildSessionStartPrefill = ({
     questions = [],
-    prefillName = ""
+    prefillName = "",
+    sharedAnswers = {},
 } = {}) => {
-    const normalizedName = normalizeSessionPrefillName(prefillName);
-    if (!normalizedName || !Array.isArray(questions) || questions.length === 0) {
+    if (!Array.isArray(questions) || questions.length === 0) {
         return {
             answersBySlug: {},
             acknowledgedQuestion: null,
@@ -3535,22 +3645,51 @@ const buildSessionStartPrefill = ({
         };
     }
 
-    const targetQuestion = questions.find(
-        (question) => question?.slug && getQuestionIdentityType(question) === "person_name"
-    );
+    const normalizedSharedAnswers = normalizeSharedSessionAnswers(sharedAnswers);
+    const normalizedName = normalizedSharedAnswers.personName || normalizeSessionPrefillName(prefillName);
+    const answersBySlug = {};
+    let acknowledgedQuestion = null;
+    let acknowledgedAnswer = "";
+    let consumedBusinessSummary = false;
+    let consumedWebsiteUrl = false;
 
-    if (!targetQuestion?.slug) {
-        return {
-            answersBySlug: {},
-            acknowledgedQuestion: null,
-            acknowledgedAnswer: ""
-        };
+    for (const question of questions) {
+        if (!question?.slug) continue;
+
+        const sharedStartType = getQuestionSharedStartType(question);
+        let answerValue = "";
+
+        if (sharedStartType === "person_name") {
+            answerValue = normalizedName;
+        } else if (sharedStartType === "business_name") {
+            answerValue = normalizedSharedAnswers.businessName || "";
+        } else if (sharedStartType === "business_summary" && !consumedBusinessSummary) {
+            answerValue = normalizedSharedAnswers.businessSummary || "";
+        } else if (sharedStartType === "website_url" && !consumedWebsiteUrl) {
+            answerValue = normalizedSharedAnswers.websiteUrl || "";
+        }
+
+        if (!hasAnswerValue(answerValue)) continue;
+        answersBySlug[question.slug] = answerValue;
+
+        if (!acknowledgedQuestion && sharedStartType === "person_name") {
+            acknowledgedQuestion = question;
+            acknowledgedAnswer = answerValue;
+        }
+
+        if (sharedStartType === "business_summary") {
+            consumedBusinessSummary = true;
+        }
+
+        if (sharedStartType === "website_url") {
+            consumedWebsiteUrl = true;
+        }
     }
 
     return {
-        answersBySlug: { [targetQuestion.slug]: normalizedName },
-        acknowledgedQuestion: targetQuestion,
-        acknowledgedAnswer: normalizedName
+        answersBySlug,
+        acknowledgedQuestion,
+        acknowledgedAnswer
     };
 };
 
@@ -5917,7 +6056,7 @@ export const startGuestSession = asyncHandler(async (req, res) => {
         routeLabel: "/guest/start",
         requestLabel: `service=${String(req.body?.serviceId || "").trim() || "unknown"}`,
     });
-    const { serviceId, prefillName = "" } = req.body; // Can be slug or ID
+    const { serviceId, prefillName = "", sharedAnswers = {} } = req.body; // Can be slug or ID
 
     if (!serviceId) {
         throw new AppError("Service ID is required", 400);
@@ -5945,7 +6084,8 @@ export const startGuestSession = asyncHandler(async (req, res) => {
     const startedAt = new Date().toISOString();
     const sessionStartPrefill = buildSessionStartPrefill({
         questions: service.questions,
-        prefillName
+        prefillName,
+        sharedAnswers,
     });
     const {
         answersPayload,
@@ -6011,7 +6151,11 @@ export const startGuestSession = asyncHandler(async (req, res) => {
         sessionId: session.id,
         message: firstQuestion,
         inputConfig: firstQuestionConfig,
-        history: [{ role: "assistant", content: firstQuestion }]
+        history: [{ role: "assistant", content: firstQuestion }],
+        sharedAnswers: buildSharedSessionAnswers({
+            questions: service.questions,
+            sessionAnswers: answersPayload,
+        }),
     });
 });
 
@@ -6369,7 +6513,11 @@ export const guestChat = asyncHandler(async (req, res) => {
             message: regeneratedProposal,
             inputConfig: { type: "text", options: [] },
             history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
-            serviceMeta: { serviceId: service.slug, serviceName: service.name }
+            serviceMeta: { serviceId: service.slug, serviceName: service.name },
+            sharedAnswers: buildSharedSessionAnswers({
+                questions,
+                sessionAnswers: sessionReload.answers || session.answers || {},
+            }),
         });
     }
 
@@ -6444,7 +6592,11 @@ export const guestChat = asyncHandler(async (req, res) => {
             message: responseMessage,
             inputConfig: nextInputConfig,
             history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
-            serviceMeta: { serviceId: service.slug, serviceName: service.name }
+            serviceMeta: { serviceId: service.slug, serviceName: service.name },
+            sharedAnswers: buildSharedSessionAnswers({
+                questions,
+                sessionAnswers: nextAnswers,
+            }),
         });
     }
 
@@ -7666,7 +7818,12 @@ export const guestChat = asyncHandler(async (req, res) => {
         success: true,
         message: responseContent,
         inputConfig: nextInputConfig,
-        history: newHistory
+        history: newHistory,
+        serviceMeta: { serviceId: service.slug, serviceName: service.name },
+        sharedAnswers: buildSharedSessionAnswers({
+            questions,
+            sessionAnswers: persistedAnswers,
+        }),
     });
 });
 

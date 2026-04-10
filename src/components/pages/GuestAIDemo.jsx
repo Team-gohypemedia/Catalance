@@ -170,6 +170,206 @@ const resolveServiceLogoSrc = (service = {}) => {
 
 const isBrowser = typeof window !== 'undefined';
 
+const SERVICE_SELECTION_MODES = Object.freeze({
+    FREELANCER: 'freelancer',
+    AGENCY: 'agency',
+});
+
+const getServiceIdentifier = (service = {}) =>
+    String(service?.slug || service?.id || service?.name || '').trim();
+
+const createEmptyAgencyFlowState = () => ({
+    active: false,
+    selectedServices: [],
+    currentServiceIndex: 0,
+    currentSessionStartIndex: 0,
+    serviceProposals: [],
+    serviceSessions: [],
+    sharedAnswers: {},
+    followupTargetServiceId: '',
+    awaitingFollowupServiceSelection: false,
+    pendingFollowupMessage: '',
+    completed: false,
+});
+
+const normalizeAgencySharedAnswers = (value = {}) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return {};
+    }
+
+    const normalizeValue = (input = '', maxLength = 600) =>
+        String(input || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, maxLength)
+            .trim();
+
+    const nextSharedAnswers = {};
+    const personName = normalizeValue(value.personName || value.person_name || '', 120);
+    const businessName = normalizeValue(value.businessName || value.business_name || '', 160);
+    const businessSummary = normalizeValue(value.businessSummary || value.business_summary || '', 600);
+    const websiteUrl = normalizeValue(value.websiteUrl || value.website_url || '', 400);
+
+    if (personName) nextSharedAnswers.personName = personName;
+    if (businessName) nextSharedAnswers.businessName = businessName;
+    if (businessSummary) nextSharedAnswers.businessSummary = businessSummary;
+    if (websiteUrl) nextSharedAnswers.websiteUrl = websiteUrl;
+
+    return nextSharedAnswers;
+};
+
+const mergeAgencySharedAnswers = (current = {}, incoming = {}) => ({
+    ...normalizeAgencySharedAnswers(current),
+    ...normalizeAgencySharedAnswers(incoming),
+});
+
+const upsertAgencyServiceSession = (serviceSessions = [], service = {}, sessionId = '') => {
+    const nextSessionId = String(sessionId || '').trim();
+    const serviceId = getServiceIdentifier(service);
+    if (!serviceId || !nextSessionId) {
+        return Array.isArray(serviceSessions) ? serviceSessions : [];
+    }
+
+    const nextEntry = {
+        serviceId,
+        serviceName: String(service?.name || '').trim(),
+        sessionId: nextSessionId,
+    };
+
+    const existingSessions = Array.isArray(serviceSessions) ? serviceSessions : [];
+    const remaining = existingSessions.filter((entry) => entry?.serviceId !== serviceId);
+    return [...remaining, nextEntry];
+};
+
+const getAgencyServiceSessionEntry = (serviceSessions = [], serviceOrId = null) => {
+    const serviceId = typeof serviceOrId === 'string'
+        ? String(serviceOrId || '').trim()
+        : getServiceIdentifier(serviceOrId || {});
+    if (!serviceId) return null;
+
+    return (Array.isArray(serviceSessions) ? serviceSessions : []).find((entry) => entry?.serviceId === serviceId) || null;
+};
+
+const replaceAgencyServiceProposal = (serviceProposals = [], nextProposal = {}) => {
+    const serviceId = getServiceIdentifier(nextProposal?.service || {});
+    if (!serviceId || !nextProposal?.content) {
+        return Array.isArray(serviceProposals) ? serviceProposals : [];
+    }
+
+    const existingRows = Array.isArray(serviceProposals) ? serviceProposals : [];
+    const normalizedNextProposal = {
+        service: nextProposal.service,
+        content: normalizeMarkdownContent(nextProposal.content || ''),
+        parsed: nextProposal.parsed || parseProposalContent(nextProposal.content || ''),
+    };
+    const existingIndex = existingRows.findIndex((row) => getServiceIdentifier(row?.service || {}) === serviceId);
+
+    if (existingIndex >= 0) {
+        const nextRows = [...existingRows];
+        nextRows[existingIndex] = normalizedNextProposal;
+        return nextRows;
+    }
+
+    return [...existingRows, normalizedNextProposal];
+};
+
+const normalizeAgencyServiceMatchText = (value = '') =>
+    normalizeServiceLogoKey(String(value || '').replace(/\band\b/gi, ' '));
+
+const buildAgencyServiceMatchCandidates = (service = {}) => {
+    const normalizedName = normalizeAgencyServiceMatchText(service?.name || '');
+    const normalizedSlug = normalizeAgencyServiceMatchText(
+        String(service?.slug || service?.id || '').replace(/_/g, ' ')
+    );
+    const candidates = new Set([normalizedName, normalizedSlug]);
+
+    if (/\bwriting\b|\bcontent\b/.test(normalizedName)) {
+        candidates.add('writing');
+        candidates.add('content');
+        candidates.add('writing content');
+    }
+    if (/\bugc\b/.test(normalizedName)) {
+        candidates.add('ugc');
+        candidates.add('ugc marketing');
+    }
+    if (/\bpaid advertising\b|\bperformance marketing\b/.test(normalizedName) || /\bpaid advertising\b/.test(normalizedSlug)) {
+        candidates.add('paid advertising');
+        candidates.add('performance marketing');
+        candidates.add('paid ads');
+        candidates.add('ads');
+    }
+    if (/\b3d\b/.test(normalizedName)) {
+        candidates.add('3d');
+        candidates.add('3d modeling');
+        candidates.add('3d modelling');
+    }
+    if (/\bai\b|\bautomation\b/.test(normalizedName)) {
+        candidates.add('ai');
+        candidates.add('automation');
+        candidates.add('ai automation');
+    }
+
+    return [...candidates].filter((candidate) => candidate && candidate.length >= 2);
+};
+
+const findAgencyServiceMatch = ({
+    message = '',
+    services = [],
+}) => {
+    const normalizedMessage = normalizeAgencyServiceMatchText(message);
+    if (!normalizedMessage) return null;
+
+    const rankedMatches = (Array.isArray(services) ? services : [])
+        .map((service) => {
+            const candidates = buildAgencyServiceMatchCandidates(service);
+            const score = candidates.reduce((bestScore, candidate) => {
+                const phraseHit = normalizedMessage.includes(candidate);
+                const wordHits = candidate
+                    .split(' ')
+                    .filter((token) => token.length >= 2)
+                    .filter((token) => normalizedMessage.includes(token))
+                    .length;
+                const candidateScore = phraseHit ? wordHits + 2 : wordHits;
+                return Math.max(bestScore, candidateScore);
+            }, 0);
+
+            return { service, score };
+        })
+        .filter((entry) => entry.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+    if (rankedMatches.length === 0) return null;
+    if (rankedMatches.length === 1) return rankedMatches[0].service;
+    if (rankedMatches[0].score === rankedMatches[1].score) return null;
+    return rankedMatches[0].service;
+};
+
+const isAgencyConfirmationPrompt = (inputConfig = {}) => {
+    const normalizedOptions = (Array.isArray(inputConfig?.options) ? inputConfig.options : [])
+        .map((option) => String(option || '').trim().toLowerCase())
+        .filter(Boolean);
+    return normalizedOptions.includes('yes') && normalizedOptions.includes('no');
+};
+
+const buildAgencyServiceClarificationMessage = (selectedServices = []) => {
+    const labels = (Array.isArray(selectedServices) ? selectedServices : [])
+        .map((service) => String(service?.name || '').trim())
+        .filter(Boolean);
+
+    if (labels.length === 0) {
+        return 'This agency proposal covers multiple services. Tell me which service you want to update.';
+    }
+
+    return [
+        'This agency proposal covers multiple services. Which service do you want to update?',
+        '',
+        ...labels.map((label, index) => `${index + 1}. ${label}`),
+    ].join('\n');
+};
+
+const buildAgencyServiceSelectionMessage = (serviceName = '') =>
+    `Got it. Tell me what you want to change for ${serviceName || 'that service'}, and I will refresh the combined proposal.`;
+
 const safeParseArray = (value) => {
     if (!value) return [];
     try {
@@ -984,6 +1184,11 @@ const extractServices = (value) => {
 const isProposalMessage = (content = "") => {
     if (typeof content !== "string") return false;
     return /client name\s*:|project overview\s*:|primary objectives\s*:|features\/deliverables included\s*:/i.test(content);
+};
+
+const isAgencyProposalMessage = (content = "") => {
+    if (!isProposalMessage(content)) return false;
+    return /(^|\n)\s*service breakdown\s*:/i.test(String(content || ""));
 };
 
 const normalizeMarkdownContent = (content = "") =>
@@ -1934,6 +2139,139 @@ const parseProposalContent = (content = '') => {
     };
 };
 
+const getProposalSectionByTitles = (parsed = {}, titles = []) => {
+    const titleSet = new Set(
+        (Array.isArray(titles) ? titles : [])
+            .map((title) => normalizeProposalKey(title))
+            .filter(Boolean)
+    );
+
+    if (titleSet.size === 0) return null;
+    return (Array.isArray(parsed?.sections) ? parsed.sections : []).find((section) =>
+        titleSet.has(normalizeProposalKey(section?.title || ''))
+    ) || null;
+};
+
+const getProposalSectionItems = (parsed = {}, titles = []) => {
+    const section = getProposalSectionByTitles(parsed, titles);
+    if (!section) return [];
+
+    return [...(Array.isArray(section.lines) ? section.lines : []), ...(Array.isArray(section.list) ? section.list : [])]
+        .map((item) => formatProposalDisplaySentenceCase(item))
+        .filter(Boolean);
+};
+
+const uniqueProposalListItems = (items = []) =>
+    Array.from(
+        new Set(
+            (Array.isArray(items) ? items : [])
+                .map((item) => formatProposalDisplaySentenceCase(item))
+                .filter(Boolean)
+        )
+    );
+
+const buildAgencyCombinedProposal = ({
+    selectedServices = [],
+    serviceProposals = [],
+}) => {
+    const normalizedRows = (Array.isArray(serviceProposals) ? serviceProposals : [])
+        .map((row) => ({
+            service: row?.service || {},
+            parsed: row?.parsed || parseProposalContent(row?.content || ''),
+            content: normalizeMarkdownContent(row?.content || ''),
+        }))
+        .filter((row) => row.content);
+    const selectedServiceNames = (Array.isArray(selectedServices) ? selectedServices : [])
+        .map((service) => String(service?.name || '').trim())
+        .filter(Boolean);
+    const serviceLabel = selectedServiceNames.join(', ');
+    const firstParsed = normalizedRows[0]?.parsed || {};
+    const clientName = firstParsed?.fields?.clientName || 'To be confirmed';
+    const businessName = firstParsed?.fields?.businessName || firstParsed?.fields?.companyName || 'To be confirmed';
+
+    const objectiveItems = uniqueProposalListItems(
+        normalizedRows.flatMap((row) => getProposalSectionItems(row.parsed, ['Primary Objectives']))
+    );
+    const deliverableItems = uniqueProposalListItems(
+        normalizedRows.flatMap((row) =>
+            getProposalSectionItems(row.parsed, [
+                'Features/Deliverables Included',
+                'App Features',
+                'Platform Requirements',
+                'Additional Confirmed Inputs',
+            ])
+        )
+    );
+    const overviewSnippets = uniqueProposalListItems(
+        normalizedRows.flatMap((row) => getProposalSectionItems(row.parsed, ['Project Overview']))
+    );
+    const timelineSummary = normalizedRows
+        .map((row) => {
+            const value = String(row?.parsed?.fields?.launchTimeline || '').trim();
+            const serviceName = String(row?.service?.name || '').trim();
+            return value && serviceName ? `${serviceName} - ${value}` : '';
+        })
+        .filter(Boolean)
+        .join(' | ');
+    const budgetSummary = normalizedRows
+        .map((row) => {
+            const value = String(row?.parsed?.fields?.budget || '').trim();
+            const serviceName = String(row?.service?.name || '').trim();
+            return value && serviceName ? `${serviceName} - ${value}` : '';
+        })
+        .filter(Boolean)
+        .join(' | ');
+    const serviceBreakdownItems = normalizedRows.map((row) => {
+        const serviceName = String(row?.service?.name || row?.parsed?.fields?.serviceType || 'Selected Service').trim();
+        const summaryItems = uniqueProposalListItems([
+            ...getProposalSectionItems(row.parsed, ['Features/Deliverables Included', 'App Features']),
+            ...getProposalSectionItems(row.parsed, ['Platform Requirements', 'Additional Confirmed Inputs']),
+        ]);
+        const fallbackOverview = getProposalSectionItems(row.parsed, ['Project Overview'])[0] || '';
+        const summary = summaryItems.slice(0, 3).join('; ') || fallbackOverview || `Scope aligned to the confirmed ${serviceName.toLowerCase()} requirements.`;
+        return `${serviceName}: ${summary}`;
+    });
+
+    const combinedObjectives = objectiveItems.length > 0
+        ? objectiveItems
+        : selectedServiceNames.map((serviceName) => `Deliver the confirmed ${serviceName} scope with coordinated execution.`);
+    const combinedDeliverables = deliverableItems.length > 0
+        ? deliverableItems
+        : serviceBreakdownItems;
+    const projectOverview = [
+        serviceLabel
+            ? `This proposal combines ${serviceLabel} into one coordinated engagement for ${businessName}.`
+            : `This proposal combines the selected services into one coordinated engagement for ${businessName}.`,
+        overviewSnippets[0] || '',
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+
+    return [
+        `Client Name: ${clientName}`,
+        `Business Name: ${businessName}`,
+        `Service Type: ${serviceLabel || 'Multi-service engagement'}`,
+        timelineSummary ? `Launch Timeline: ${timelineSummary}` : '',
+        budgetSummary ? `Budget: ${budgetSummary}` : '',
+        '',
+        'Project Overview:',
+        projectOverview || 'This proposal aligns the selected services into one structured engagement based on the captured requirements.',
+        '',
+        'Primary Objectives:',
+        ...combinedObjectives.map((item) => `- ${item}`),
+        '',
+        'Features/Deliverables Included:',
+        ...combinedDeliverables.map((item) => `- ${item}`),
+        '',
+        'Service Breakdown:',
+        ...serviceBreakdownItems.map((item) => `- ${item}`),
+    ]
+        .filter(Boolean)
+        .join('\n')
+        .trim();
+};
+
 /**
  * Extracts business/brand name from chat history by scanning the latest proposal.
  * @param {Array} messages
@@ -2083,10 +2421,15 @@ const GuestAIDemo = () => {
     const navigate = useNavigate();
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
+    const [serviceSelectionMode, setServiceSelectionMode] = useState(
+        SERVICE_SELECTION_MODES.FREELANCER
+    );
     const [services, setServices] = useState([]);
     const [servicesError, setServicesError] = useState("");
     const [loading, setLoading] = useState(true);
     const [selectedService, setSelectedService] = useState(null);
+    const [agencySelectedServiceIds, setAgencySelectedServiceIds] = useState([]);
+    const [agencyFlowState, setAgencyFlowState] = useState(() => createEmptyAgencyFlowState());
     const [sessionId, setSessionId] = useState(null);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
@@ -2118,12 +2461,20 @@ const GuestAIDemo = () => {
     const attachmentInputRef = useRef(null);
     const recognitionRef = useRef(null);
     const thinkingIntervalRef = useRef(null);
+    const messagesRef = useRef(messages);
+    const agencyFlowStateRef = useRef(agencyFlowState);
     const dismissedAutoHelperKeysRef = useRef(new Set());
     const speechBaseInputRef = useRef("");
     const speechFinalRef = useRef("");
     const suppressSpeechCommitRef = useRef(false);
     const normalizedInputType = (inputConfig.type || 'text').toLowerCase();
     const isSidebarCompact = sidebarSize === 'small';
+    const isAgencySelectionMode = serviceSelectionMode === SERVICE_SELECTION_MODES.AGENCY;
+    const isAgencyFlowActive = agencyFlowState.active;
+    const isAgencyFlowCompleted = isAgencyFlowActive && agencyFlowState.completed;
+    const agencySelectedServices = agencySelectedServiceIds
+        .map((serviceId) => services.find((service) => getServiceIdentifier(service) === serviceId))
+        .filter(Boolean);
     const isMultiInput = normalizedInputType === 'multi_select'
         || normalizedInputType === 'multi_option'
         || normalizedInputType === 'grouped_multi_select';
@@ -2154,6 +2505,39 @@ const GuestAIDemo = () => {
     const userDisplayName = userPrefillName || "Logged-in user";
     const userDisplayEmail = user?.email || "";
     const userAvatar = user?.avatar || user?.profileImage || user?.image || "";
+    const selectedProposalPreviewCtaLabel = isAgencyProposalMessage(selectedProposalPreview?.content || '')
+        ? 'Find Agency for this proposal'
+        : 'Find Freelancer for this proposal';
+
+    useEffect(() => {
+        messagesRef.current = messages;
+    }, [messages]);
+
+    useEffect(() => {
+        agencyFlowStateRef.current = agencyFlowState;
+    }, [agencyFlowState]);
+
+    const replaceMessages = useCallback((nextValue) => {
+        const resolvedMessages = typeof nextValue === 'function'
+            ? nextValue(messagesRef.current)
+            : nextValue;
+        const normalizedMessages = Array.isArray(resolvedMessages) ? resolvedMessages : [];
+        messagesRef.current = normalizedMessages;
+        setMessages(normalizedMessages);
+        return normalizedMessages;
+    }, []);
+
+    const updateAgencyFlowState = useCallback((nextValue) => {
+        const resolvedState = typeof nextValue === 'function'
+            ? nextValue(agencyFlowStateRef.current)
+            : nextValue;
+        const normalizedState = resolvedState && typeof resolvedState === 'object'
+            ? resolvedState
+            : createEmptyAgencyFlowState();
+        agencyFlowStateRef.current = normalizedState;
+        setAgencyFlowState(normalizedState);
+        return normalizedState;
+    }, []);
 
     const refreshPreviousChats = useCallback(() => {
         setPreviousChats(readStoredGuestSessions());
@@ -2893,80 +3277,52 @@ const GuestAIDemo = () => {
         }
     };
 
-    const handleLoadPreviousChat = async (chatMeta) => {
-        if (!chatMeta?.sessionId) return;
-        dismissedAutoHelperKeysRef.current = new Set();
-        expandSidebar();
-        const fallbackServiceId = chatMeta.serviceId || chatMeta.sessionId;
-        const serviceMatch = services.find((service) => (
-            service.slug === chatMeta.serviceId
-            || service.id === chatMeta.serviceId
-            || service.name === chatMeta.serviceName
-        ));
-        const resolvedService = serviceMatch || {
-            id: fallbackServiceId,
-            slug: fallbackServiceId,
-            name: chatMeta.serviceName || 'AI Consultation',
-            description: chatMeta.serviceDescription || '',
-        };
-
-        setSelectedService(resolvedService);
-        setLoading(true);
-        setLoadingHistoryId(chatMeta.sessionId);
+    const resetChatComposerState = useCallback(() => {
         setInput('');
         setPendingAttachments([]);
         setSelectedOptions([]);
         setPendingOptionFollowup(null);
-        setMessages([]);
         setInputConfig({ type: 'text', options: [] });
+    }, []);
 
-        try {
-            const response = await request(`/guest/history/${chatMeta.sessionId}`, {
-                method: 'GET',
-                timeout: 120000,
-                cache: 'no-store',
-            });
-            const data = unwrapPayload(response);
-            const restored = Array.isArray(data?.messages)
-                ? data.messages.map((message) => ({
-                    role: message.role,
-                    content: message.content,
-                }))
-                : [];
+    const resetAgencyFlow = useCallback(() => {
+        updateAgencyFlowState(createEmptyAgencyFlowState());
+    }, [updateAgencyFlowState]);
 
-            setSessionId(chatMeta.sessionId);
-            setInputConfig(data?.inputConfig || { type: 'text', options: [] });
-            if (restored.length > 0) {
-                setMessages(restored);
-            } else {
-                setMessages([{
-                    role: 'assistant',
-                    content: 'Welcome back. Continue with your requirement and I will assist you.',
-                }]);
-            }
-        } catch (error) {
-            console.error('[GuestAIDemo] Failed to load previous chat:', error);
-            if (/session not found/i.test(String(error?.message || ''))) {
-                const filtered = readStoredGuestSessions().filter((item) => item.sessionId !== chatMeta.sessionId);
-                writeStoredGuestSessions(filtered);
-                setPreviousChats(filtered);
-            }
-            toast.error(error?.message || 'Failed to load previous chat');
-        } finally {
-            setLoadingHistoryId(null);
-            setLoading(false);
-        }
-    };
+    const toggleAgencyServiceSelection = useCallback((service) => {
+        const serviceId = getServiceIdentifier(service);
+        if (!serviceId) return;
 
-    const handleServiceSelect = async (service) => {
+        setAgencySelectedServiceIds((current) => (
+            current.includes(serviceId)
+                ? current.filter((value) => value !== serviceId)
+                : [...current, serviceId]
+        ));
+    }, []);
+
+    const startServiceConversation = useCallback(async (service, options = {}) => {
+        if (!service) return null;
+
+        const preserveExistingMessages = Boolean(options.preserveExistingMessages);
+        const baseMessages = Array.isArray(options.baseMessages)
+            ? options.baseMessages
+            : (preserveExistingMessages ? messagesRef.current : []);
+        const nextSessionStartIndex = Number.isInteger(options.sessionStartIndex)
+            ? options.sessionStartIndex
+            : (preserveExistingMessages ? baseMessages.length : 0);
+        const flowMode = options.flowMode || SERVICE_SELECTION_MODES.FREELANCER;
+        const sharedAnswers = normalizeAgencySharedAnswers(options.sharedAnswers);
+
         dismissedAutoHelperKeysRef.current = new Set();
         expandSidebar();
         setSelectedService(service);
         setLoading(true);
-        setInput('');
-        setPendingAttachments([]);
-        setSelectedOptions([]);
-        setPendingOptionFollowup(null);
+        resetChatComposerState();
+
+        if (!preserveExistingMessages) {
+            replaceMessages([]);
+        }
+
         try {
             const requestStartedAt = getNowTimestamp();
             const response = await request('/guest/start', {
@@ -2974,7 +3330,8 @@ const GuestAIDemo = () => {
                 timeout: 120000,
                 body: JSON.stringify({
                     serviceId: service.slug || service.id,
-                    ...(userPrefillName ? { prefillName: userPrefillName } : {})
+                    ...(userPrefillName ? { prefillName: userPrefillName } : {}),
+                    ...(Object.keys(sharedAnswers).length > 0 ? { sharedAnswers } : {}),
                 })
             });
             const data = unwrapPayload(response);
@@ -2996,37 +3353,388 @@ const GuestAIDemo = () => {
                 serviceName: service?.name || '',
             });
 
-            if (data?.sessionId) {
-                setSessionId(data.sessionId);
-                if (Array.isArray(data.history) && data.history.length > 0) {
-                    setMessages(mergeMessagesWithThinkingMeta(
-                        data.history,
-                        [],
-                        completedThinkingMeta
-                    ));
-                } else {
-                    const initialHistory = [
-                        {
-                            role: "assistant",
-                            content: data.message || `Hello! I see you're interested in **${service.name}**.`,
-                            thinkingMeta: completedThinkingMeta,
-                        }
-                    ];
-                    setMessages(initialHistory);
-                }
-                setInputConfig(data.inputConfig || { type: 'text', options: [] });
-            } else {
+            if (!data?.sessionId) {
                 console.warn('[GuestAIDemo] Unexpected start payload:', response);
                 throw new Error('Failed to start chat session');
             }
+
+            setSessionId(data.sessionId);
+
+            const nextSessionHistory = Array.isArray(data.history) && data.history.length > 0
+                ? mergeMessagesWithThinkingMeta(
+                    data.history,
+                    [],
+                    completedThinkingMeta
+                )
+                : [{
+                    role: 'assistant',
+                    content: data.message || `Hello! I see you're interested in **${service.name}**.`,
+                    thinkingMeta: completedThinkingMeta,
+                }];
+
+            if (preserveExistingMessages) {
+                replaceMessages([...baseMessages, ...nextSessionHistory]);
+            } else {
+                replaceMessages(nextSessionHistory);
+            }
+
+            setInputConfig(data.inputConfig || { type: 'text', options: [] });
+
+            if (flowMode === SERVICE_SELECTION_MODES.AGENCY) {
+                const nextSharedAnswers = mergeAgencySharedAnswers(sharedAnswers, data?.sharedAnswers);
+                updateAgencyFlowState((current) => ({
+                    ...current,
+                    active: true,
+                    completed: false,
+                    currentSessionStartIndex: nextSessionStartIndex,
+                    serviceSessions: upsertAgencyServiceSession(current.serviceSessions, service, data.sessionId),
+                    sharedAnswers: Object.keys(nextSharedAnswers).length > 0
+                        ? mergeAgencySharedAnswers(current.sharedAnswers, nextSharedAnswers)
+                        : current.sharedAnswers,
+                }));
+            }
+
+            return {
+                sessionId: data.sessionId,
+                history: nextSessionHistory,
+                service,
+            };
         } catch (error) {
             console.error('[GuestAIDemo] Failed to start chat session:', error);
             toast.error(error?.message || "Failed to start chat session");
-            setSelectedService(null);
+            if (!preserveExistingMessages) {
+                setSelectedService(null);
+            }
+            return null;
         } finally {
             setLoading(false);
         }
+    }, [
+        expandSidebar,
+        replaceMessages,
+        resetChatComposerState,
+        updateAgencyFlowState,
+        userPrefillName,
+    ]);
+
+    const startAgencyFlow = useCallback(async (selectedServicesOverride = null) => {
+        const resolvedServices = Array.isArray(selectedServicesOverride) && selectedServicesOverride.length > 0
+            ? selectedServicesOverride
+            : agencySelectedServices;
+        if (resolvedServices.length === 0) {
+            toast.info('Select at least one service to continue with the agency flow.');
+            return;
+        }
+
+        setServiceSelectionMode(SERVICE_SELECTION_MODES.AGENCY);
+        setAgencySelectedServiceIds(resolvedServices.map((service) => getServiceIdentifier(service)));
+        updateAgencyFlowState({
+            active: true,
+            selectedServices: resolvedServices,
+            currentServiceIndex: 0,
+            currentSessionStartIndex: 0,
+            serviceProposals: [],
+            serviceSessions: [],
+            sharedAnswers: {},
+            followupTargetServiceId: '',
+            awaitingFollowupServiceSelection: false,
+            pendingFollowupMessage: '',
+            completed: false,
+        });
+
+        const startedSession = await startServiceConversation(resolvedServices[0], {
+            preserveExistingMessages: false,
+            flowMode: SERVICE_SELECTION_MODES.AGENCY,
+            sessionStartIndex: 0,
+        });
+        if (!startedSession) {
+            resetAgencyFlow();
+        }
+    }, [agencySelectedServices, resetAgencyFlow, startServiceConversation, updateAgencyFlowState]);
+
+    const handleRestartCurrentFlow = useCallback(async () => {
+        const currentAgencyFlow = agencyFlowStateRef.current;
+        if (currentAgencyFlow.active && currentAgencyFlow.selectedServices.length > 0) {
+            await startAgencyFlow(currentAgencyFlow.selectedServices);
+            return;
+        }
+
+        if (selectedService) {
+            setServiceSelectionMode(SERVICE_SELECTION_MODES.FREELANCER);
+            setAgencySelectedServiceIds([]);
+            resetAgencyFlow();
+            await startServiceConversation(selectedService, {
+                preserveExistingMessages: false,
+                flowMode: SERVICE_SELECTION_MODES.FREELANCER,
+            });
+        }
+    }, [resetAgencyFlow, selectedService, startAgencyFlow, startServiceConversation]);
+
+    const handleLoadPreviousChat = async (chatMeta) => {
+        if (!chatMeta?.sessionId) return;
+        dismissedAutoHelperKeysRef.current = new Set();
+        expandSidebar();
+        setServiceSelectionMode(SERVICE_SELECTION_MODES.FREELANCER);
+        setAgencySelectedServiceIds([]);
+        resetAgencyFlow();
+        const fallbackServiceId = chatMeta.serviceId || chatMeta.sessionId;
+        const serviceMatch = services.find((service) => (
+            service.slug === chatMeta.serviceId
+            || service.id === chatMeta.serviceId
+            || service.name === chatMeta.serviceName
+        ));
+        const resolvedService = serviceMatch || {
+            id: fallbackServiceId,
+            slug: fallbackServiceId,
+            name: chatMeta.serviceName || 'AI Consultation',
+            description: chatMeta.serviceDescription || '',
+        };
+
+        setSelectedService(resolvedService);
+        setLoading(true);
+        setLoadingHistoryId(chatMeta.sessionId);
+        resetChatComposerState();
+        replaceMessages([]);
+
+        try {
+            const response = await request(`/guest/history/${chatMeta.sessionId}`, {
+                method: 'GET',
+                timeout: 120000,
+                cache: 'no-store',
+            });
+            const data = unwrapPayload(response);
+            const restored = Array.isArray(data?.messages)
+                ? data.messages.map((message) => ({
+                    role: message.role,
+                    content: message.content,
+                }))
+                : [];
+
+            setSessionId(chatMeta.sessionId);
+            setInputConfig(data?.inputConfig || { type: 'text', options: [] });
+            if (restored.length > 0) {
+                replaceMessages(restored);
+            } else {
+                replaceMessages([{
+                    role: 'assistant',
+                    content: 'Welcome back. Continue with your requirement and I will assist you.',
+                }]);
+            }
+        } catch (error) {
+            console.error('[GuestAIDemo] Failed to load previous chat:', error);
+            if (/session not found/i.test(String(error?.message || ''))) {
+                const filtered = readStoredGuestSessions().filter((item) => item.sessionId !== chatMeta.sessionId);
+                writeStoredGuestSessions(filtered);
+                setPreviousChats(filtered);
+            }
+            toast.error(error?.message || 'Failed to load previous chat');
+        } finally {
+            setLoadingHistoryId(null);
+            setLoading(false);
+        }
     };
+
+    const handleServiceSelect = async (service) => {
+        setServiceSelectionMode(SERVICE_SELECTION_MODES.FREELANCER);
+        setAgencySelectedServiceIds([]);
+        resetAgencyFlow();
+        await startServiceConversation(service, {
+            preserveExistingMessages: false,
+            flowMode: SERVICE_SELECTION_MODES.FREELANCER,
+        });
+    };
+
+    const handleAgencyServiceProposal = useCallback(async ({
+        activeService,
+        sessionHistory,
+        proposalContent,
+        thinkingMeta,
+        sharedAnswers = {},
+    }) => {
+        const currentAgencyFlow = agencyFlowStateRef.current;
+        if (!currentAgencyFlow.active) return false;
+        const nextSharedAnswers = mergeAgencySharedAnswers(
+            currentAgencyFlow.sharedAnswers,
+            sharedAnswers
+        );
+
+        let proposalMessageIndex = -1;
+        for (let index = sessionHistory.length - 1; index >= 0; index -= 1) {
+            const message = sessionHistory[index];
+            if (message?.role === 'assistant' && isProposalMessage(message?.content || '')) {
+                proposalMessageIndex = index;
+                break;
+            }
+        }
+
+        const trimmedSessionHistory = proposalMessageIndex >= 0
+            ? sessionHistory.slice(0, proposalMessageIndex)
+            : sessionHistory;
+        const nextServiceProposals = [
+            ...currentAgencyFlow.serviceProposals,
+            {
+                service: activeService,
+                content: proposalContent,
+                parsed: parseProposalContent(proposalContent),
+            },
+        ];
+        const hasNextService = currentAgencyFlow.currentServiceIndex < currentAgencyFlow.selectedServices.length - 1;
+
+        if (hasNextService) {
+            const nextService = currentAgencyFlow.selectedServices[currentAgencyFlow.currentServiceIndex + 1];
+            const transitionMessage = {
+                role: 'assistant',
+                content: `I have captured the ${activeService?.name || 'current service'} requirements. Next, let's cover ${nextService?.name || 'the next service'}.`,
+                thinkingMeta,
+            };
+            const nextDisplayedMessages = [
+                ...messagesRef.current.slice(0, currentAgencyFlow.currentSessionStartIndex),
+                ...trimmedSessionHistory,
+                transitionMessage,
+            ];
+
+            replaceMessages(nextDisplayedMessages);
+            persistCurrentSessionSummary(trimmedSessionHistory, activeService);
+            updateAgencyFlowState((current) => ({
+                ...current,
+                serviceProposals: nextServiceProposals,
+                currentServiceIndex: current.currentServiceIndex + 1,
+                currentSessionStartIndex: nextDisplayedMessages.length,
+                sharedAnswers: nextSharedAnswers,
+                followupTargetServiceId: '',
+                awaitingFollowupServiceSelection: false,
+                pendingFollowupMessage: '',
+                completed: false,
+            }));
+
+            await startServiceConversation(nextService, {
+                preserveExistingMessages: true,
+                baseMessages: nextDisplayedMessages,
+                sessionStartIndex: nextDisplayedMessages.length,
+                flowMode: SERVICE_SELECTION_MODES.AGENCY,
+                sharedAnswers: nextSharedAnswers,
+            });
+            return true;
+        }
+
+        const combinedProposal = buildAgencyCombinedProposal({
+            selectedServices: currentAgencyFlow.selectedServices,
+            serviceProposals: nextServiceProposals,
+        });
+        const finalMessages = [
+            ...messagesRef.current.slice(0, currentAgencyFlow.currentSessionStartIndex),
+            ...trimmedSessionHistory,
+            {
+                role: 'assistant',
+                content: `I have gathered the requirements for all ${currentAgencyFlow.selectedServices.length} selected services. Here is your combined proposal.`,
+            },
+            {
+                role: 'assistant',
+                content: combinedProposal,
+                thinkingMeta,
+            },
+        ];
+
+        replaceMessages(finalMessages);
+        persistCurrentSessionSummary(trimmedSessionHistory, activeService);
+        setInputConfig({ type: 'text', options: [] });
+        updateAgencyFlowState((current) => ({
+            ...current,
+            serviceProposals: nextServiceProposals,
+            sharedAnswers: nextSharedAnswers,
+            followupTargetServiceId: '',
+            awaitingFollowupServiceSelection: false,
+            pendingFollowupMessage: '',
+            completed: true,
+        }));
+        return true;
+    }, [
+        persistCurrentSessionSummary,
+        replaceMessages,
+        startServiceConversation,
+        updateAgencyFlowState,
+    ]);
+
+    const getAgencyServiceSelectionOptions = useCallback((selectedServices = []) => (
+        (Array.isArray(selectedServices) ? selectedServices : [])
+            .map((service) => String(service?.name || '').trim())
+            .filter(Boolean)
+    ), []);
+
+    const appendAssistantMessage = useCallback((content, thinkingMeta = null) => (
+        replaceMessages((prev) => [
+            ...prev,
+            thinkingMeta
+                ? { role: 'assistant', content, thinkingMeta }
+                : { role: 'assistant', content },
+        ])
+    ), [replaceMessages]);
+
+    const handleAgencyCompletedFollowupResponse = useCallback(({
+        data,
+        targetService,
+        thinkingMeta,
+    }) => {
+        const currentAgencyFlow = agencyFlowStateRef.current;
+        const responseSharedAnswers = normalizeAgencySharedAnswers(data?.sharedAnswers);
+        const nextSharedAnswers = Object.keys(responseSharedAnswers).length > 0
+            ? mergeAgencySharedAnswers(currentAgencyFlow.sharedAnswers, responseSharedAnswers)
+            : currentAgencyFlow.sharedAnswers;
+        const latestAssistantReply = Array.isArray(data?.history)
+            ? [...data.history].reverse().find((message) => message?.role === 'assistant')
+            : (typeof data?.message === 'string' && data.message.trim()
+                ? { role: 'assistant', content: data.message.trim() }
+                : null);
+
+        if (!latestAssistantReply?.content) {
+            setInputConfig(data?.inputConfig || { type: 'text', options: [] });
+            updateAgencyFlowState((current) => ({
+                ...current,
+                sharedAnswers: nextSharedAnswers,
+            }));
+            return;
+        }
+
+        if (isProposalMessage(latestAssistantReply.content || '')) {
+            const nextServiceProposals = replaceAgencyServiceProposal(currentAgencyFlow.serviceProposals, {
+                service: targetService,
+                content: latestAssistantReply.content || '',
+                parsed: parseProposalContent(latestAssistantReply.content || ''),
+            });
+            const combinedProposal = buildAgencyCombinedProposal({
+                selectedServices: currentAgencyFlow.selectedServices,
+                serviceProposals: nextServiceProposals,
+            });
+
+            appendAssistantMessage(
+                `Updated ${targetService?.name || 'the selected service'} in the agency proposal. Here is the refreshed combined proposal.`
+            );
+            appendAssistantMessage(combinedProposal, thinkingMeta);
+            setInputConfig({ type: 'text', options: [] });
+            updateAgencyFlowState((current) => ({
+                ...current,
+                serviceProposals: nextServiceProposals,
+                sharedAnswers: nextSharedAnswers,
+                followupTargetServiceId: '',
+                awaitingFollowupServiceSelection: false,
+                pendingFollowupMessage: '',
+                completed: true,
+            }));
+            return;
+        }
+
+        appendAssistantMessage(latestAssistantReply.content || '', thinkingMeta);
+        setInputConfig(data?.inputConfig || { type: 'text', options: [] });
+        updateAgencyFlowState((current) => ({
+            ...current,
+            sharedAnswers: nextSharedAnswers,
+            followupTargetServiceId: isAgencyConfirmationPrompt(data?.inputConfig)
+                ? getServiceIdentifier(targetService)
+                : '',
+            awaitingFollowupServiceSelection: false,
+            pendingFollowupMessage: '',
+        }));
+    }, [appendAssistantMessage, updateAgencyFlowState]);
 
     const handleSendMessage = async (e, forcedContent = null, options = {}) => {
         if (e) e.preventDefault();
@@ -3090,6 +3798,7 @@ const GuestAIDemo = () => {
             }
         }
 
+        
         try {
             const requestStartedAt = getNowTimestamp();
             setIsTyping(true);
@@ -3113,7 +3822,7 @@ const GuestAIDemo = () => {
                 .trim();
 
             const userMsg = { role: 'user', content: composedContent };
-            setMessages((prev) => [...prev, userMsg]);
+            replaceMessages((prev) => [...prev, userMsg]);
             setInput("");
             clearSpeechDraftRefs();
             setPendingAttachments([]);
@@ -3121,15 +3830,139 @@ const GuestAIDemo = () => {
             setSelectedOptions([]);
             setPendingOptionFollowup(null);
 
+            const currentAgencyFlow = agencyFlowStateRef.current;
+            const isAgencyCompletedFollowup = currentAgencyFlow.active && currentAgencyFlow.completed;
+            const selectedAgencyServiceOptions = getAgencyServiceSelectionOptions(currentAgencyFlow.selectedServices);
+            let agencyCompletedFollowupRoute = null;
+
+            if (isAgencyCompletedFollowup) {
+                const normalizedAgencyMessage = String(composedContent || normalizedTextPayload || trimmedTextPayload).trim();
+                const matchedAgencyService = findAgencyServiceMatch({
+                    message: normalizedAgencyMessage,
+                    services: currentAgencyFlow.selectedServices,
+                });
+                const activeFollowupService = currentAgencyFlow.followupTargetServiceId
+                    ? currentAgencyFlow.selectedServices.find((service) =>
+                        getServiceIdentifier(service) === currentAgencyFlow.followupTargetServiceId
+                    ) || null
+                    : null;
+
+                if (currentAgencyFlow.awaitingFollowupServiceSelection) {
+                    if (!matchedAgencyService) {
+                        appendAssistantMessage(buildAgencyServiceClarificationMessage(currentAgencyFlow.selectedServices));
+                        setInputConfig({ type: 'text', options: selectedAgencyServiceOptions });
+                        return;
+                    }
+
+                    const pendingAgencyMessage = String(currentAgencyFlow.pendingFollowupMessage || '').trim();
+                    if (!pendingAgencyMessage) {
+                        updateAgencyFlowState((current) => ({
+                            ...current,
+                            followupTargetServiceId: getServiceIdentifier(matchedAgencyService),
+                            awaitingFollowupServiceSelection: false,
+                            pendingFollowupMessage: '',
+                        }));
+                        appendAssistantMessage(buildAgencyServiceSelectionMessage(matchedAgencyService?.name || 'that service'));
+                        setInputConfig({ type: 'text', options: [] });
+                        return;
+                    }
+
+                    const targetSessionEntry = getAgencyServiceSessionEntry(
+                        currentAgencyFlow.serviceSessions,
+                        matchedAgencyService
+                    );
+                    if (!targetSessionEntry?.sessionId) {
+                        appendAssistantMessage('I could not reopen that service flow. Please restart the agency flow and try again.');
+                        setInputConfig({ type: 'text', options: [] });
+                        return;
+                    }
+
+                    agencyCompletedFollowupRoute = {
+                        service: matchedAgencyService,
+                        sessionId: targetSessionEntry.sessionId,
+                        message: pendingAgencyMessage,
+                    };
+                    updateAgencyFlowState((current) => ({
+                        ...current,
+                        followupTargetServiceId: getServiceIdentifier(matchedAgencyService),
+                        awaitingFollowupServiceSelection: false,
+                        pendingFollowupMessage: '',
+                    }));
+                } else {
+                    const singleSelectedService = currentAgencyFlow.selectedServices.length === 1
+                        ? currentAgencyFlow.selectedServices[0]
+                        : null;
+                    const resolvedAgencyTargetService = matchedAgencyService
+                        || (isAgencyConfirmationPrompt(inputConfig) ? activeFollowupService : null)
+                        || singleSelectedService;
+                    const normalizedAgencySelection = normalizeAgencyServiceMatchText(normalizedAgencyMessage);
+                    const isServiceSelectionOnlyMessage = Boolean(
+                        matchedAgencyService
+                        && normalizedAgencySelection
+                        && buildAgencyServiceMatchCandidates(matchedAgencyService).includes(normalizedAgencySelection)
+                    );
+
+                    if (!resolvedAgencyTargetService && currentAgencyFlow.selectedServices.length > 1) {
+                        updateAgencyFlowState((current) => ({
+                            ...current,
+                            followupTargetServiceId: '',
+                            awaitingFollowupServiceSelection: true,
+                            pendingFollowupMessage: normalizedAgencyMessage,
+                        }));
+                        appendAssistantMessage(buildAgencyServiceClarificationMessage(currentAgencyFlow.selectedServices));
+                        setInputConfig({ type: 'text', options: selectedAgencyServiceOptions });
+                        return;
+                    }
+
+                    if (isServiceSelectionOnlyMessage) {
+                        updateAgencyFlowState((current) => ({
+                            ...current,
+                            followupTargetServiceId: getServiceIdentifier(matchedAgencyService),
+                            awaitingFollowupServiceSelection: false,
+                            pendingFollowupMessage: '',
+                        }));
+                        appendAssistantMessage(buildAgencyServiceSelectionMessage(matchedAgencyService?.name || 'that service'));
+                        setInputConfig({ type: 'text', options: [] });
+                        return;
+                    }
+
+                    if (resolvedAgencyTargetService) {
+                        const targetSessionEntry = getAgencyServiceSessionEntry(
+                            currentAgencyFlow.serviceSessions,
+                            resolvedAgencyTargetService
+                        );
+                        if (!targetSessionEntry?.sessionId) {
+                            appendAssistantMessage('I could not reopen that service flow. Please restart the agency flow and try again.');
+                            setInputConfig({ type: 'text', options: [] });
+                            return;
+                        }
+
+                        agencyCompletedFollowupRoute = {
+                            service: resolvedAgencyTargetService,
+                            sessionId: targetSessionEntry.sessionId,
+                            message: normalizedAgencyMessage,
+                        };
+                        updateAgencyFlowState((current) => ({
+                            ...current,
+                            followupTargetServiceId: getServiceIdentifier(resolvedAgencyTargetService),
+                            awaitingFollowupServiceSelection: false,
+                            pendingFollowupMessage: '',
+                        }));
+                    }
+                }
+            }
+
             const apiRequestStartedAt = getNowTimestamp();
             const response = await request('/guest/chat', {
                 method: 'POST',
                 timeout: 120000,
                 body: JSON.stringify({
-                    sessionId,
-                    message: isArrayPayload && serializedAttachments.length === 0 && serializedUrls.length === 0
-                        ? normalizedArray
-                        : composedContent
+                    sessionId: agencyCompletedFollowupRoute?.sessionId || sessionId,
+                    message: agencyCompletedFollowupRoute
+                        ? agencyCompletedFollowupRoute.message
+                        : (isArrayPayload && serializedAttachments.length === 0 && serializedUrls.length === 0
+                            ? normalizedArray
+                            : composedContent)
                 })
             });
             const data = unwrapPayload(response);
@@ -3151,10 +3984,20 @@ const GuestAIDemo = () => {
             );
             logGuestAiBrowserDebug('guest/chat', {
                 timingMeta: data?.timingMeta || null,
-                sessionId,
-                serviceId: data?.serviceMeta?.serviceId || selectedService?.slug || selectedService?.id || '',
-                serviceName: data?.serviceMeta?.serviceName || selectedService?.name || '',
+                sessionId: agencyCompletedFollowupRoute?.sessionId || sessionId,
+                serviceId: data?.serviceMeta?.serviceId || agencyCompletedFollowupRoute?.service?.slug || selectedService?.slug || selectedService?.id || '',
+                serviceName: data?.serviceMeta?.serviceName || agencyCompletedFollowupRoute?.service?.name || selectedService?.name || '',
             });
+
+            if (agencyCompletedFollowupRoute) {
+                handleAgencyCompletedFollowupResponse({
+                    data,
+                    targetService: agencyCompletedFollowupRoute.service,
+                    thinkingMeta: completedThinkingMeta,
+                });
+                return;
+            }
+
             const responseServiceId = data?.serviceMeta?.serviceId || '';
             const responseServiceName = data?.serviceMeta?.serviceName || '';
             let activeService = selectedService;
@@ -3174,27 +4017,80 @@ const GuestAIDemo = () => {
                 setSelectedService(activeService);
             }
 
+            const responseSharedAnswers = normalizeAgencySharedAnswers(data?.sharedAnswers);
+
+            let shouldApplyResponseInputConfig = true;
             if (data?.history) {
+                const currentAgencyFlow = agencyFlowStateRef.current;
+                const nextAgencySharedAnswers = currentAgencyFlow.active
+                    ? mergeAgencySharedAnswers(currentAgencyFlow.sharedAnswers, responseSharedAnswers)
+                    : responseSharedAnswers;
+                if (currentAgencyFlow.active && Object.keys(responseSharedAnswers).length > 0) {
+                    updateAgencyFlowState((current) => ({
+                        ...current,
+                        sharedAnswers: mergeAgencySharedAnswers(current.sharedAnswers, responseSharedAnswers),
+                    }));
+                }
+                const existingSessionMessages = currentAgencyFlow.active
+                    ? messagesRef.current.slice(currentAgencyFlow.currentSessionStartIndex)
+                    : messagesRef.current;
                 const nextHistory = mergeMessagesWithThinkingMeta(
                     data.history,
-                    messages,
+                    existingSessionMessages,
                     completedThinkingMeta
                 );
-                setMessages(nextHistory);
-                persistCurrentSessionSummary(nextHistory, activeService);
+                const latestAssistantReply = [...nextHistory]
+                    .reverse()
+                    .find((message) => message?.role === 'assistant');
+                let agencyProposalHandled = false;
+
+                if (
+                    currentAgencyFlow.active
+                    && latestAssistantReply
+                    && isProposalMessage(latestAssistantReply.content || '')
+                ) {
+                    const agencyActiveService =
+                        currentAgencyFlow.selectedServices[currentAgencyFlow.currentServiceIndex]
+                        || activeService;
+                    agencyProposalHandled = await handleAgencyServiceProposal({
+                        activeService: agencyActiveService,
+                        sessionHistory: nextHistory,
+                        proposalContent: latestAssistantReply.content || '',
+                        thinkingMeta: completedThinkingMeta,
+                        sharedAnswers: nextAgencySharedAnswers,
+                    });
+                    if (agencyProposalHandled) {
+                        shouldApplyResponseInputConfig = false;
+                    }
+                }
+
+                if (!agencyProposalHandled && currentAgencyFlow.active) {
+                    const nextDisplayedMessages = [
+                        ...messagesRef.current.slice(0, currentAgencyFlow.currentSessionStartIndex),
+                        ...nextHistory,
+                    ];
+                    replaceMessages(nextDisplayedMessages);
+                    persistCurrentSessionSummary(nextHistory, activeService);
+                } else if (!agencyProposalHandled) {
+                    replaceMessages(nextHistory);
+                    persistCurrentSessionSummary(nextHistory, activeService);
+                }
             } else if (typeof data?.message === 'string' && data.message.trim()) {
                 const aiMsg = {
                     role: 'assistant',
                     content: data.message,
                     thinkingMeta: completedThinkingMeta,
                 };
-                setMessages(prev => [...prev, aiMsg]);
-                persistCurrentSessionSummary([...messages, userMsg, aiMsg], activeService);
+                const nextMessages = replaceMessages((prev) => [...prev, aiMsg]);
+                persistCurrentSessionSummary(nextMessages, activeService);
             } else {
                 console.warn('[GuestAIDemo] Unexpected chat payload:', response);
             }
 
-            if (data?.inputConfig) {
+            if (
+                shouldApplyResponseInputConfig
+                && data?.inputConfig
+            ) {
                 setInputConfig(data.inputConfig);
             }
         } catch (error) {
@@ -3229,12 +4125,9 @@ const GuestAIDemo = () => {
         dismissedAutoHelperKeysRef.current = new Set();
         setSelectedService(null);
         setSessionId(null);
-        setMessages([]);
-        setInput('');
-        setPendingAttachments([]);
-        setSelectedOptions([]);
-        setPendingOptionFollowup(null);
-        setInputConfig({ type: 'text', options: [] });
+        replaceMessages([]);
+        resetChatComposerState();
+        resetAgencyFlow();
     };
 
     const handleOpenProposalPreview = (proposal) => {
@@ -3265,7 +4158,7 @@ const GuestAIDemo = () => {
 
         if (targetSessionId === sessionId) {
             if (selectedService) {
-                handleServiceSelect(selectedService);
+                void handleRestartCurrentFlow();
             } else {
                 handleBackToServices();
             }
@@ -3306,13 +4199,83 @@ const GuestAIDemo = () => {
                     </div>
 
                     <div className="relative z-10 max-w-[90rem] mx-auto px-6 py-8">
-                        <div className="text-center space-y-2 relative z-10 mb-10">
+                        <div className="text-center space-y-4 relative z-10 mb-10">
                             <span className="inline-block px-6 py-2 text-3xl uppercase tracking-[0.4em] bg-background text-primary rounded-full font-semibold shadow-md border border-white/10">
                                 Services
                             </span>
                             <h2 className="text-3xl font-semibold text-white">
                                 Clarity across every step of the freelance lifecycle.
                             </h2>
+                            <p className="mx-auto max-w-3xl text-sm text-zinc-400">
+                                {isAgencySelectionMode
+                                    ? 'Agency mode lets you bundle multiple services into one guided intake. We will ask each selected service flow in sequence and show one final combined proposal at the end.'
+                                    : 'Freelancer mode keeps the current flow unchanged. Pick one service to start the guided chat immediately.'}
+                            </p>
+                            <div className="flex justify-center">
+                                <div className="inline-flex rounded-full border border-white/10 bg-white/[0.04] p-1">
+                                    {[
+                                        { key: SERVICE_SELECTION_MODES.FREELANCER, label: 'Freelancer' },
+                                        { key: SERVICE_SELECTION_MODES.AGENCY, label: 'Agency' },
+                                    ].map((modeOption) => (
+                                        <button
+                                            key={modeOption.key}
+                                            type="button"
+                                            onClick={() => setServiceSelectionMode(modeOption.key)}
+                                            className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
+                                                serviceSelectionMode === modeOption.key
+                                                    ? 'bg-[#ffc800] text-black shadow-[0_8px_24px_-12px_rgba(255,200,0,0.85)]'
+                                                    : 'text-zinc-300 hover:text-white'
+                                            }`}
+                                        >
+                                            {modeOption.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            {isAgencySelectionMode ? (
+                                <div className="mt-5 flex flex-col items-center gap-3">
+                                    <div className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-zinc-400">
+                                        <span
+                                            className={`h-2.5 w-2.5 rounded-full transition-colors ${
+                                                agencySelectedServices.length > 0
+                                                    ? 'bg-[#ffc800] shadow-[0_0_18px_rgba(255,200,0,0.75)]'
+                                                    : 'bg-zinc-600'
+                                            }`}
+                                        />
+                                        <span className="text-zinc-300">
+                                            {agencySelectedServices.length > 0
+                                                ? `${agencySelectedServices.length} service${agencySelectedServices.length === 1 ? '' : 's'} selected`
+                                                : 'Select services below to start the agency flow'}
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => startAgencyFlow()}
+                                        disabled={agencySelectedServices.length === 0}
+                                        className={`inline-flex min-w-[280px] items-center justify-center gap-3 rounded-full border px-6 py-3 text-sm font-semibold transition-all ${
+                                            agencySelectedServices.length > 0
+                                                ? 'border-[#ffc800]/40 bg-[#ffc800] text-black shadow-[0_20px_40px_-20px_rgba(255,200,0,0.95)] hover:-translate-y-0.5 hover:bg-[#ffd740]'
+                                                : 'cursor-not-allowed border-white/10 bg-white/[0.04] text-zinc-500'
+                                        }`}
+                                    >
+                                        <span>
+                                            {agencySelectedServices.length > 0
+                                                ? `Continue with ${agencySelectedServices.length} selected service${agencySelectedServices.length === 1 ? '' : 's'}`
+                                                : 'Select services to continue'}
+                                        </span>
+                                        <span
+                                            className={`inline-flex min-w-7 items-center justify-center rounded-full px-2 py-1 text-[11px] font-bold ${
+                                                agencySelectedServices.length > 0
+                                                    ? 'bg-black/10 text-black'
+                                                    : 'bg-white/[0.05] text-zinc-500'
+                                            }`}
+                                        >
+                                            {agencySelectedServices.length}
+                                        </span>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                    </button>
+                                </div>
+                            ) : null}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 relative z-10">
@@ -3321,16 +4284,41 @@ const GuestAIDemo = () => {
                                     {servicesError || "No services available."}
                                 </div>
                             ) : (
-                                services.map((feature, index) => (
-                                    <div
+                                services.map((feature, index) => {
+                                    const featureId = getServiceIdentifier(feature);
+                                    const isAgencyCardSelected = agencySelectedServiceIds.includes(featureId);
+
+                                    return (
+                                        <div
                                         key={feature.id || index}
-                                        onClick={() => handleServiceSelect(feature)}
-                                        className={`group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full border-white/20 bg-black shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] hover:border-[#ffc800]/50 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:-translate-y-2`}
+                                        onClick={() => (
+                                            isAgencySelectionMode
+                                                ? toggleAgencyServiceSelection(feature)
+                                                : handleServiceSelect(feature)
+                                        )}
+                                        className={`group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full bg-black shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:-translate-y-2 ${
+                                            isAgencyCardSelected
+                                                ? 'border-[#ffc800] shadow-[0_20px_40px_-18px_rgba(255,200,0,0.45)]'
+                                                : 'border-white/20 hover:border-[#ffc800]/50'
+                                        }`}
                                     >
-                                        <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                                        <div className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                                        {isAgencySelectionMode ? (
+                                            <div className="absolute right-4 top-4 z-20">
+                                                <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
+                                                    isAgencyCardSelected
+                                                        ? 'bg-[#ffc800] text-black'
+                                                        : 'border border-white/10 bg-black/40 text-zinc-400'
+                                                }`}>
+                                                    {isAgencyCardSelected ? 'Selected' : 'Select'}
+                                                </span>
+                                            </div>
+                                        ) : null}
                                         <div className="flex flex-col h-full p-5 relative z-10">
                                             <div className="h-32 w-full flex items-center justify-center mb-3 relative">
-                                                <div className="absolute left-1/2 -translate-x-1/2 -top-4 w-40 h-40 bg-[#ffc800]/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                                <div className={`absolute left-1/2 -translate-x-1/2 -top-4 w-40 h-40 blur-3xl rounded-full transition-opacity duration-700 ${
+                                                    isAgencyCardSelected ? 'bg-[#ffc800]/20 opacity-100' : 'bg-[#ffc800]/10 opacity-0 group-hover:opacity-100'
+                                                }`} />
                                                 <img
                                                     src={resolveServiceLogoSrc(feature)}
                                                     alt={feature.title || feature.name}
@@ -3339,7 +4327,9 @@ const GuestAIDemo = () => {
                                             </div>
 
                                             <div className="flex flex-col grow items-center text-center">
-                                                <h3 className="text-lg font-bold text-white mb-2 leading-tight group-hover:text-[#ffc800] transition-colors duration-300">
+                                                <h3 className={`text-lg font-bold mb-2 leading-tight transition-colors duration-300 ${
+                                                    isAgencyCardSelected ? 'text-[#ffc800]' : 'text-white group-hover:text-[#ffc800]'
+                                                }`}>
                                                     {feature.title || feature.name}
                                                 </h3>
 
@@ -3352,18 +4342,25 @@ const GuestAIDemo = () => {
                                                         <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">
                                                             Starting at
                                                         </p>
-                                                        <p className="text-white text-lg font-bold group-hover:text-[#ffc800] transition-colors duration-300">
+                                                        <p className={`text-lg font-bold transition-colors duration-300 ${
+                                                            isAgencyCardSelected ? 'text-[#ffc800]' : 'text-white group-hover:text-[#ffc800]'
+                                                        }`}>
                                                             {feature.price || (feature.min_budget ? `₹${feature.min_budget.toLocaleString('en-IN')}/-` : '₹10,000/-')}
                                                         </p>
                                                     </div>
-                                                    <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-white group-hover:border-[#ffc800] group-hover:text-[#ffc800] group-hover:bg-[#ffc800]/10 transition-colors duration-300">
+                                                    <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors duration-300 ${
+                                                        isAgencyCardSelected
+                                                            ? 'border-[#ffc800] text-[#ffc800] bg-[#ffc800]/10'
+                                                            : 'border-white/10 text-white group-hover:border-[#ffc800] group-hover:text-[#ffc800] group-hover:bg-[#ffc800]/10'
+                                                    }`}>
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))
+                                        </div>
+                                    );
+                                })
                             )}
                         </div>
 
@@ -3413,9 +4410,14 @@ const GuestAIDemo = () => {
                         {/* CTA */}
                         <div className="relative z-10 mt-14 mb-8 text-center space-y-4">
                             <h3 className="text-2xl font-bold text-white">Ready to get started?</h3>
-                            <p className="text-zinc-400 text-sm max-w-md mx-auto">Pick a service above, chat with CATA AI, and receive a professional proposal — completely free.</p>
+                            <p className="text-zinc-400 text-sm max-w-md mx-auto" hidden={isAgencySelectionMode}>Pick a service above, chat with CATA AI, and receive a professional proposal — completely free.</p>
+                            {isAgencySelectionMode ? (
+                                <p className="text-zinc-400 text-sm max-w-md mx-auto">
+                                    Select your services above, let CATA AI run through each scope, and receive one combined proposal at the end.
+                                </p>
+                            ) : null}
                             <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-[#ffc800] text-black font-bold text-sm hover:bg-[#ffd740] transition-colors shadow-[0_8px_30px_-8px_rgba(255,200,0,0.6)]">
-                                Choose a Service
+                                {isAgencySelectionMode ? 'Choose Services' : 'Choose a Service'}
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                             </button>
                         </div>
@@ -3430,6 +4432,9 @@ const GuestAIDemo = () => {
 
     const renderChatInput = () => {
         if (!shouldShowTextInput) return null;
+        const composerPlaceholder = isAgencyFlowCompleted
+            ? 'Refine the combined proposal by naming a service or asking for a change...'
+            : contextualPendingOptionPlaceholder;
 
         return (
             <form
@@ -3439,6 +4444,14 @@ const GuestAIDemo = () => {
                     : 'border-slate-200 bg-[#F4F4F4]'
                     }`}
             >
+                {isAgencyFlowCompleted && (
+                    <div className={`mb-3 rounded-2xl border px-3.5 py-3 text-sm ${isDark
+                        ? 'border-[#ffc800]/20 bg-[#ffc800]/[0.08] text-zinc-200'
+                        : 'border-amber-200 bg-amber-50 text-slate-700'
+                        }`}>
+                        The combined agency proposal is ready. Keep chatting below to refine it. If you want a service-specific change like budget or timeline, name the service first.
+                    </div>
+                )}
                 {isPendingOptionFollowup && (
                     <div className={`mb-3 flex items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5 text-sm ${isDark
                         ? 'bg-white/5 text-slate-200'
@@ -3520,7 +4533,7 @@ const GuestAIDemo = () => {
                                     }
                                 }}
                                 rows={1}
-                                placeholder={contextualPendingOptionPlaceholder}
+                                placeholder={composerPlaceholder}
                                 className={`max-h-[120px] min-h-[44px] w-full resize-none bg-transparent px-4 py-3 text-base outline-none ${isDark
                                     ? 'text-white placeholder:text-slate-400'
                                     : 'text-slate-900 placeholder:text-slate-500'
@@ -3609,7 +4622,7 @@ const GuestAIDemo = () => {
                             <img src={cataLogo} alt="CATA" className="h-4 w-4 object-contain" />
                         </div>
                         <span className={`truncate text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                            {selectedService?.name || 'Catalance AI'}
+                            {isAgencyFlowActive ? 'Agency Brief' : (selectedService?.name || 'Catalance AI')}
                         </span>
                     </div>
                     <button
@@ -3635,7 +4648,9 @@ const GuestAIDemo = () => {
                     </button>
                     <button
                         type="button"
-                        onClick={() => selectedService && handleServiceSelect(selectedService)}
+                        onClick={() => {
+                            void handleRestartCurrentFlow();
+                        }}
                         className={`flex flex-1 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${isDark ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                         title="Start a new chat"
                     >
@@ -3933,7 +4948,11 @@ const GuestAIDemo = () => {
                                 msg.content,
                                 msg.attachments
                             );
-                            const proposalCard = msg.role === 'assistant' && isProposalMessage(messageContent || msg.content);
+                            const proposalCardContent = messageContent || msg.content;
+                            const proposalCard = msg.role === 'assistant' && isProposalMessage(proposalCardContent);
+                            const proposalCtaLabel = isAgencyProposalMessage(proposalCardContent)
+                                ? 'Find an Agency'
+                                : 'Find a Freelancer';
                             const messageKey = `${msg.role}-${idx}`;
                             const isLatestAssistantMessage = msg.role === 'assistant' && idx === messages.length - 1;
                             const shouldEnableOptionClick = isLatestAssistantMessage && !isTyping && hasOptionInput;
@@ -4035,12 +5054,12 @@ const GuestAIDemo = () => {
                                                 </div>
                                                 <div className={`pt-3 border-t ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
                                                     <Button
-                                                        onClick={() => handleProceed(messageContent || msg.content)}
+                                                        onClick={() => handleProceed(proposalCardContent)}
                                                         variant="outline"
                                                         className={`rounded-xl px-5 py-2 h-9 text-sm font-medium transition-all ${isDark ? 'border-white/15 text-white hover:bg-white/10' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
                                                     >
                                                         <Sparkles className="mr-2 h-3.5 w-3.5 text-primary" />
-                                                        Find a Freelancer
+                                                        {proposalCtaLabel}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -4408,7 +5427,7 @@ const GuestAIDemo = () => {
                                     onClick={() => handleProceed(selectedProposalPreview.content)}
                                     className="w-full sm:w-auto rounded-xl bg-primary px-8 py-2.5 font-semibold text-primary-foreground hover:bg-primary/90"
                                 >
-                                    Find Freelancer for this proposal
+                                    {selectedProposalPreviewCtaLabel}
                                 </Button>
                             </div>
                         </div>
