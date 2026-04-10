@@ -328,7 +328,7 @@ const ClientProjectDetailSidebar = ({
             })}
           </div>
         ) : (
-          <div className={cn(insetPanelClassName, "text-sm text-white/72")}>
+          <div className={cn(insetPanelClassName, "!bg-card text-sm text-white/72")}>
             No documents attached yet. Upload project documentation here.
           </div>
         )}
@@ -391,7 +391,7 @@ const ClientProjectDetailSidebar = ({
                 key={installment.sequence}
                 className={cn(
                   insetPanelClassName,
-                  "space-y-3 p-4",
+                  "space-y-3 p-4 bg-card",
                   installment.isDue && "border-primary/25 bg-primary/10",
                   installment.isPaid && "border-emerald-500/20 bg-emerald-500/10",
                 )}
@@ -438,7 +438,7 @@ const ClientProjectDetailSidebar = ({
         )}
 
         {dueInstallment ? (
-          <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
+          <div className="rounded-lg border border-primary/30 bg-card p-3">
             <p className="text-sm font-semibold text-foreground">
               Current payment due: {dueInstallment.label}
             </p>
@@ -462,11 +462,11 @@ const ClientProjectDetailSidebar = ({
             </Button>
           </div>
         ) : paymentPlan?.isFullyPaid ? (
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400">
+          <div className="rounded-lg border border-emerald-500/30 bg-card p-3 text-sm text-emerald-400">
             All scheduled client payments are complete.
           </div>
         ) : paymentPlan ? (
-          <div className="rounded-lg border border-border/60 bg-transparent p-3 text-sm text-muted-foreground">
+          <div className="rounded-lg border border-border/60 bg-card p-3 text-sm text-muted-foreground">
             No payment is due right now. The next installment will unlock
             automatically when its phase gate is complete.
           </div>

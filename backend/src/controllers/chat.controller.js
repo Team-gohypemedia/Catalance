@@ -119,6 +119,27 @@ const serializeMessage = (message) => ({
       : message.createdAt
 });
 
+const findBestConversationByService = async (service = "") => {
+  if (!service) return null;
+
+  const withMessages = await prisma.chatConversation.findFirst({
+    where: {
+      service,
+      messages: { some: {} },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  if (withMessages) {
+    return withMessages;
+  }
+
+  return prisma.chatConversation.findFirst({
+    where: { service },
+    orderBy: { updatedAt: "desc" },
+  });
+};
+
 // List conversations for the authenticated user (from DB) with latest message.
 export const listUserConversations = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
@@ -351,15 +372,7 @@ export const createConversation = asyncHandler(async (req, res) => {
   let conversation = null;
 
   if (serviceKey) {
-    const candidates = await prisma.chatConversation.findMany({
-      where: { service: serviceKey },
-      include: {
-        _count: { select: { messages: true } }
-      },
-      orderBy: { updatedAt: "desc" }
-    });
-
-    conversation = candidates.find((c) => c._count.messages > 0) || candidates[0];
+    conversation = await findBestConversationByService(serviceKey);
 
     if (!conversation && serviceKey.startsWith("CHAT:")) {
       const parts = serviceKey.split(":");
@@ -367,17 +380,7 @@ export const createConversation = asyncHandler(async (req, res) => {
         const [, , clientId, freelancerId] = parts;
         const legacyKey = `CHAT:${clientId}:${freelancerId}`;
 
-        const legacyCandidates = await prisma.chatConversation.findMany({
-          where: { service: legacyKey },
-          include: {
-            _count: { select: { messages: true } }
-          },
-          orderBy: { updatedAt: "desc" }
-        });
-
-        const legacyConvo =
-          legacyCandidates.find((c) => c._count.messages > 0) ||
-          legacyCandidates[0];
+        const legacyConvo = await findBestConversationByService(legacyKey);
 
         if (legacyConvo) {
           conversation = await prisma.chatConversation.update({
@@ -412,6 +415,10 @@ export const createConversation = asyncHandler(async (req, res) => {
 
 export const getConversationMessages = asyncHandler(async (req, res) => {
   const conversationId = req.params?.id;
+  const afterRaw = String(req.query?.after || "").trim();
+  const parsedAfter = afterRaw ? new Date(afterRaw) : null;
+  const isAfterValid =
+    parsedAfter instanceof Date && !Number.isNaN(parsedAfter.getTime());
 
   if (!req.user?.sub) {
     throw new AppError("Authentication required", 401);
@@ -430,8 +437,17 @@ export const getConversationMessages = asyncHandler(async (req, res) => {
     userId: req.user?.sub
   });
 
+  const messageWhere = isAfterValid
+    ? {
+      conversationId,
+      createdAt: {
+        gt: parsedAfter,
+      },
+    }
+    : { conversationId };
+
   const messages = await prisma.chatMessage.findMany({
-    where: { conversationId },
+    where: messageWhere,
     orderBy: { createdAt: "asc" },
     take: 5000
   });

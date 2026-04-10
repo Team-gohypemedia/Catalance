@@ -2,12 +2,9 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Users from "lucide-react/dist/esm/icons/users";
-import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
@@ -379,29 +376,6 @@ const ClientProjectsPage = () => {
                         }}
                         className="w-full"
                       >
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground md:hidden"
-                          onClick={() => projectCarouselApi?.scrollPrev()}
-                          disabled={!canGoToPreviousProject}
-                          aria-label="Show previous project"
-                        >
-                          <ChevronLeft className="size-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground md:hidden"
-                          onClick={() => projectCarouselApi?.scrollNext()}
-                          disabled={!canGoToNextProject}
-                          aria-label="Show next project"
-                        >
-                          <ChevronRight className="size-4" />
-                        </Button>
-
                         <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
                           {carouselProjectCards.map((item) => {
                             const isStaticCard =

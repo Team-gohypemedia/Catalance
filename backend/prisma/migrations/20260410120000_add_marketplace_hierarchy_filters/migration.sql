@@ -1,0 +1,3 @@
+-- Placeholder migration to reconcile history across environments.
+-- This migration name exists in the target database but not in this repository history.
+-- Intentionally no schema changes.

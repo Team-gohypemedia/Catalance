@@ -422,9 +422,14 @@ const flattenFreelancerProfile = (freelancer = null) => {
     profile.profileDetails && typeof profile.profileDetails === "object"
       ? profile.profileDetails
       : {};
+  const profilePhotoAvatar = extractAvatarUrl(profile.profilePhoto);
   const identityAvatar = extractAvatarUrl(profileDetails?.identity?.profilePhoto);
   const resolvedAvatar =
-    freelancer.avatar || identityAvatar || buildFreelancerUnsplashAvatarUrl(freelancer);
+    freelancer.avatar ||
+    profilePhotoAvatar ||
+    identityAvatar ||
+    buildFreelancerUnsplashAvatarUrl(freelancer);
+  const hasProfileDetails = Object.keys(profileDetails).length > 0;
 
   return {
     ...freelancer,
@@ -435,7 +440,7 @@ const flattenFreelancerProfile = (freelancer = null) => {
     portfolio: profile.portfolio || null,
     linkedin: profile.linkedin || null,
     github: profile.github || null,
-    profileDetails,
+    profileDetails: hasProfileDetails ? profileDetails : undefined,
   };
 };
 
@@ -502,7 +507,7 @@ const PROJECT_RESPONSE_INCLUDE = {
               portfolio: true,
               linkedin: true,
               github: true,
-              profileDetails: true,
+              profilePhoto: true,
             },
           },
         },
@@ -537,7 +542,8 @@ const findLeastLoadedActiveProjectManager = async () => {
         where: {
           status: { notIn: ["COMPLETED", "PAUSED", "DRAFT"] }
         },
-        select: { id: true }
+        select: { id: true },
+        take: 11,
       }
     }
   });
@@ -936,6 +942,10 @@ export const getProject = asyncHandler(async (req, res) => {
     throw new AppError("Authentication required", 401);
   }
 
+  const userRolePromise = prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
   let project = await getProjectForResponse(id);
 
   if (!project) {
@@ -971,10 +981,7 @@ export const getProject = asyncHandler(async (req, res) => {
     }
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
+  const user = await userRolePromise;
 
   if (user?.role === "PROJECT_MANAGER" && project.managerId !== userId) {
     throw new AppError("Access denied. You are not assigned to this project.", 403);
