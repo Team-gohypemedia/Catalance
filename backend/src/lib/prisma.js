@@ -235,21 +235,12 @@ const useDirectUrlFlag = ["1", "true", "yes", "on"].includes(
     .trim()
     .toLowerCase()
 );
-
-const shouldPreferDirectUrlInDev =
-  env.NODE_ENV !== "production" &&
-  Boolean(directDatabaseUrl) &&
-  isPoolerUrl(databaseUrl) &&
-  !isPoolerUrl(directDatabaseUrl);
-
 const runtimeDatabaseUrl =
-  (useDirectUrlFlag || shouldPreferDirectUrlInDev) && directDatabaseUrl
-    ? directDatabaseUrl
-    : databaseUrl;
+  useDirectUrlFlag && directDatabaseUrl ? directDatabaseUrl : databaseUrl;
 
-if (shouldPreferDirectUrlInDev) {
-  console.log(
-    "[Prisma] Development runtime is using Neon direct endpoint to reduce pooler disconnects."
+if (useDirectUrlFlag && directDatabaseUrl) {
+  console.warn(
+    "[Prisma] Using DIRECT_DATABASE_URL at runtime because PRISMA_USE_DIRECT_DATABASE_URL is enabled."
   );
 }
 

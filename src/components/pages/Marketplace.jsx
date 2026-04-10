@@ -425,12 +425,16 @@ const Marketplace = () => {
   const [favorites, setFavorites] = useState({});
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
-  const [browseData, setBrowseData] = useState({ services: [], selectedService: null });
-  const [browseLoading, setBrowseLoading] = useState(true);
-  const [serviceCatalog, setServiceCatalog] = useState([]);
-  const [serviceCatalogLoading, setServiceCatalogLoading] = useState(true);
+  const [filterServices, setFilterServices] = useState([]);
+  const [filterServicesLoading, setFilterServicesLoading] = useState(true);
+  const [subCategoryOptions, setSubCategoryOptions] = useState([]);
+  const [subCategoriesLoading, setSubCategoriesLoading] = useState(false);
+  const [toolOptions, setToolOptions] = useState([]);
+  const [toolsLoading, setToolsLoading] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState(null);
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState(null);
+  const [selectedToolId, setSelectedToolId] = useState(null);
   const [selectedBuildModes, setSelectedBuildModes] = useState([]);
-  const [selectedTechFilters, setSelectedTechFilters] = useState([]);
   const [minBudget, setMinBudget] = useState("");
   const [maxBudget, setMaxBudget] = useState("");
   const [sort, setSort] = useState("newest");
@@ -479,22 +483,41 @@ const Marketplace = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const serviceCategories = (
-    serviceCatalog.length
-      ? dedupeServiceCategories(serviceCatalog.map((service) => buildServiceCategoryEntry(service)))
-      : FALLBACK_CATEGORIES
-  ).map((entry) => {
-    if (entry.icon) return entry;
+  const serviceCategories = (filterServices.length
+    ? dedupeServiceCategories(
+        filterServices.map((service) =>
+          buildServiceCategoryEntry({
+            id: service.id,
+            key: service.key,
+            name: service.name,
+            label: service.label || service.name,
+            value: service.key,
+            slug: service.key,
+          })
+        )
+      )
+    : FALLBACK_CATEGORIES).map((entry) => {
+    if (entry.icon) {
+      return {
+        ...entry,
+        key: entry.key || entry.value,
+      };
+    }
     const value = resolveMarketplaceServiceKey(entry);
-    return buildServiceCategoryEntry({ ...entry, value });
+    const normalized = buildServiceCategoryEntry({ ...entry, value });
+    return {
+      ...normalized,
+      key: normalized.key || normalized.value,
+    };
   });
 
   const activeService = serviceCategories.find((service) => service.value === category) || null;
-  const activeBrowseService = browseData.selectedService;
+  const activeBrowseService = activeService;
 
-  const debouncedQ = useDebounce(q, 400);
+  const debouncedQ = useDebounce(q, 180);
   const debouncedMin = useDebounce(minBudget, 400);
   const debouncedMax = useDebounce(maxBudget, 400);
+  const shouldShowResults = category !== "all" || Boolean(String(debouncedQ || "").trim());
 
   useEffect(() => {
     try {
@@ -510,24 +533,24 @@ const Marketplace = () => {
   useEffect(() => {
     let cancelled = false;
 
-    const fetchServiceCatalog = async () => {
-      setServiceCatalogLoading(true);
+    const fetchFilterServices = async () => {
+      setFilterServicesLoading(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/ai/services`);
-        if (!res.ok) throw new Error("Failed to fetch services");
+        const res = await fetch(`${API_BASE_URL}/marketplace/filters/services`);
+        if (!res.ok) throw new Error("Failed to fetch marketplace filter services");
         const json = await res.json();
         if (cancelled) return;
-        const services = Array.isArray(json?.services) ? json.services : [];
-        setServiceCatalog(services);
+        const services = Array.isArray(json?.data) ? json.data : [];
+        setFilterServices(services);
       } catch (error) {
-        console.error("[Marketplace] Failed to load service catalog:", error);
-        if (!cancelled) setServiceCatalog([]);
+        console.error("[Marketplace] Failed to load filter services:", error);
+        if (!cancelled) setFilterServices([]);
       } finally {
-        if (!cancelled) setServiceCatalogLoading(false);
+        if (!cancelled) setFilterServicesLoading(false);
       }
     };
 
-    void fetchServiceCatalog();
+    void fetchFilterServices();
 
     return () => {
       cancelled = true;
@@ -536,51 +559,107 @@ const Marketplace = () => {
 
   useEffect(() => {
     setSelectedBuildModes([]);
-    setSelectedTechFilters([]);
   }, [category]);
 
   useEffect(() => {
     let cancelled = false;
 
-    const fetchBrowseData = async () => {
-      setBrowseLoading(true);
+    if (category === "all") {
+      setSelectedServiceId(null);
+      setSelectedSubCategoryId(null);
+      setSelectedToolId(null);
+      setSubCategoryOptions([]);
+      setToolOptions([]);
+      setSubCategoriesLoading(false);
+      setToolsLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const selectedService =
+      filterServices.find(
+        (service) =>
+          resolveMarketplaceServiceKey({
+            ...service,
+            value: service.key,
+            slug: service.key,
+          }) === category
+      ) || null;
+    const nextServiceId = Number.isInteger(selectedService?.id) ? selectedService.id : null;
+
+    setSelectedServiceId(nextServiceId);
+    setSelectedSubCategoryId(null);
+    setSelectedToolId(null);
+    setToolOptions([]);
+
+    if (!nextServiceId) {
+      setSubCategoryOptions([]);
+      setSubCategoriesLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const fetchSubCategories = async () => {
+      setSubCategoriesLoading(true);
       try {
-        const query = new URLSearchParams();
-        if (category !== "all") {
-          query.append("service", category);
-        }
-        const res = await fetch(
-          `${API_BASE_URL}/marketplace/browse${query.toString() ? `?${query.toString()}` : ""}`
-        );
-        if (!res.ok) throw new Error("Failed to fetch marketplace browse data");
+        const query = new URLSearchParams({ serviceId: String(nextServiceId) });
+        const res = await fetch(`${API_BASE_URL}/marketplace/filters/sub-categories?${query.toString()}`);
+        if (!res.ok) throw new Error("Failed to fetch sub-categories");
         const json = await res.json();
         if (cancelled) return;
-        const nextData = json?.data || {};
-        setBrowseData({
-          services: Array.isArray(nextData.services) ? nextData.services : [],
-          selectedService:
-            nextData.selectedService && typeof nextData.selectedService === "object"
-              ? nextData.selectedService
-              : null,
-        });
+        setSubCategoryOptions(Array.isArray(json?.data) ? json.data : []);
       } catch (error) {
-        console.error("[Marketplace] Failed to load browse data:", error);
-        if (!cancelled) {
-          setBrowseData({ services: [], selectedService: null });
-        }
+        console.error("[Marketplace] Failed to load sub-categories:", error);
+        if (!cancelled) setSubCategoryOptions([]);
       } finally {
-        if (!cancelled) {
-          setBrowseLoading(false);
-        }
+        if (!cancelled) setSubCategoriesLoading(false);
       }
     };
 
-    void fetchBrowseData();
+    void fetchSubCategories();
 
     return () => {
       cancelled = true;
     };
-  }, [category]);
+  }, [category, filterServices]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selectedSubCategoryId) {
+      setSelectedToolId(null);
+      setToolOptions([]);
+      setToolsLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const fetchTools = async () => {
+      setToolsLoading(true);
+      try {
+        const query = new URLSearchParams({ subCategoryId: String(selectedSubCategoryId) });
+        const res = await fetch(`${API_BASE_URL}/marketplace/filters/tools?${query.toString()}`);
+        if (!res.ok) throw new Error("Failed to fetch tools");
+        const json = await res.json();
+        if (cancelled) return;
+        setToolOptions(Array.isArray(json?.data) ? json.data : []);
+      } catch (error) {
+        console.error("[Marketplace] Failed to load tools:", error);
+        if (!cancelled) setToolOptions([]);
+      } finally {
+        if (!cancelled) setToolsLoading(false);
+      }
+    };
+
+    void fetchTools();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSubCategoryId]);
 
   const toggleFavorite = (event, id) => {
     event.preventDefault();
@@ -599,7 +678,7 @@ const Marketplace = () => {
   };
 
   const fetchResults = useCallback(async () => {
-    if (category === "all") {
+    if (!shouldShowResults) {
       setData([]);
       setTotal(0);
       setTotalPages(0);
@@ -611,8 +690,10 @@ const Marketplace = () => {
     try {
       const query = new URLSearchParams({ q: debouncedQ, sort, page: String(page), limit: String(MARKETPLACE_PAGE_SIZE) });
       if (category !== "all") query.append("category", category);
+      if (selectedServiceId) query.append("serviceId", String(selectedServiceId));
+      if (selectedSubCategoryId) query.append("subCategoryId", String(selectedSubCategoryId));
+      if (selectedToolId) query.append("toolId", String(selectedToolId));
       if (selectedBuildModes.length) query.append("buildMode", selectedBuildModes.join(","));
-      if (selectedTechFilters.length) query.append("tech", selectedTechFilters.join(","));
       if (debouncedMin) query.append("minBudget", debouncedMin);
       if (debouncedMax) query.append("maxBudget", debouncedMax);
       if (duration) query.append("duration", duration);
@@ -631,16 +712,20 @@ const Marketplace = () => {
     } finally {
       setLoading(false);
     }
-  }, [category, debouncedMax, debouncedMin, debouncedQ, duration, page, rating, selectedBuildModes, selectedTechFilters, sort]);
+  }, [category, debouncedMax, debouncedMin, debouncedQ, duration, page, rating, selectedBuildModes, selectedServiceId, selectedSubCategoryId, selectedToolId, shouldShowResults, sort]);
 
-  useEffect(() => setPage(1), [debouncedQ, category, debouncedMin, debouncedMax, duration, rating, selectedBuildModes, selectedTechFilters, sort]);
+  useEffect(() => setPage(1), [debouncedQ, category, debouncedMin, debouncedMax, duration, rating, selectedBuildModes, selectedServiceId, selectedSubCategoryId, selectedToolId, sort]);
   useEffect(() => void fetchResults(), [fetchResults]);
 
   const resetFilters = () => {
     setQ("");
     setCategory("all");
     setSelectedBuildModes([]);
-    setSelectedTechFilters([]);
+    setSelectedServiceId(null);
+    setSelectedSubCategoryId(null);
+    setSelectedToolId(null);
+    setSubCategoryOptions([]);
+    setToolOptions([]);
     setMinBudget("");
     setMaxBudget("");
     setDuration("");
@@ -649,16 +734,28 @@ const Marketplace = () => {
   };
 
   const handleCategorySelect = (nextCategory) => {
+    if (nextCategory === category) {
+      setCategory("all");
+      return;
+    }
     setCategory(nextCategory);
   };
 
-  const toggleTechnologyFilter = (nextValue) => {
-    setSelectedTechFilters((current) => toggleSelection(current, nextValue));
+  const handleSubCategorySelect = (nextValue) => {
+    setSelectedSubCategoryId((current) => {
+      if (current === nextValue) return null;
+      return nextValue;
+    });
+    setSelectedToolId(null);
   };
 
-  const visibleBrowseServices = browseData.services.filter((service) => {
+  const handleToolSelect = (nextValue) => {
+    setSelectedToolId((current) => (current === nextValue ? null : nextValue));
+  };
+
+  const visibleBrowseServices = serviceCategories.filter((service) => {
     if (!debouncedQ || category !== "all") return true;
-    const blob = [service.label, service.description, ...(service.subcategoryPreview || []), ...(service.technologyPreview || [])]
+    const blob = [service.label, service.description]
       .join(" ")
       .toLowerCase();
     return blob.includes(debouncedQ.toLowerCase());
@@ -881,9 +978,9 @@ const Marketplace = () => {
       >
         <MarketplaceServicesSection
           services={visibleBrowseServices}
-          loading={browseLoading || serviceCatalogLoading}
+          loading={filterServicesLoading}
           searchValue={q}
-          searchPlaceholder={category === "all" ? "Search services" : "Search freelancers"}
+          searchPlaceholder="Search freelancers or services"
           onSearchChange={setQ}
           onSelectService={handleCategorySelect}
           activeServiceKey={category}
@@ -898,13 +995,19 @@ const Marketplace = () => {
             <>
               <SubcategorySection
                 service={activeBrowseService || activeService}
-                selectedTechnologies={selectedTechFilters}
-                onToggleTechnology={toggleTechnologyFilter}
+                subCategories={subCategoryOptions}
+                tools={toolOptions}
+                selectedSubCategoryId={selectedSubCategoryId}
+                selectedToolId={selectedToolId}
+                onSelectSubCategory={handleSubCategorySelect}
+                onSelectTool={handleToolSelect}
+                subCategoriesLoading={subCategoriesLoading}
+                toolsLoading={toolsLoading}
               />
             </>
           ) : null}
 
-          {category !== "all" ? (
+          {shouldShowResults ? (
           <AnimatePresence mode="wait">
             {loading ? (
               <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
@@ -947,7 +1050,10 @@ const Marketplace = () => {
                     Freelancer listings
                   </h3>
                   <p className="text-sm text-slate-400">
-                    {total} result{total === 1 ? "" : "s"} in {activeBrowseService?.label || activeService?.label || "this service"}.
+                    {total} result{total === 1 ? "" : "s"}
+                    {activeBrowseService?.label || activeService?.label
+                      ? ` in ${activeBrowseService?.label || activeService?.label}.`
+                      : "."}
                   </p>
                 </div>
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -1015,7 +1121,7 @@ const Marketplace = () => {
           </AnimatePresence>
           ) : null}
 
-          {category !== "all" && !loading && totalPages > 1 && (
+          {shouldShowResults && !loading && totalPages > 1 && (
             <div className="flex flex-col gap-4 rounded-[30px] border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[0_24px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-400">
                 Page <span className="font-semibold text-white">{page}</span> of{" "}

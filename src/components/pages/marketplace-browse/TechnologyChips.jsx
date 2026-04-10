@@ -12,6 +12,7 @@ const TechnologyChips = ({
   limit = DEFAULT_LIMIT,
   horizontal = false,
   chipStyle = "default",
+  itemClassName,
   emptyLabel = "No technologies surfaced yet.",
   className,
 }) => {
@@ -71,22 +72,22 @@ const TechnologyChips = ({
             onClick={() => onToggle?.(item.key)}
             className={cn(
               isSubtypeStyle
-                ? "group inline-flex min-h-[52px] min-w-[180px] items-center gap-2 rounded-full border px-3 py-2 text-left text-sm transition-all"
+                ? "group inline-flex min-h-[50px] min-w-[170px] items-center gap-2 rounded-full border px-3 py-2 text-left text-sm transition-all duration-200"
                 : "group inline-flex min-h-[62px] min-w-[200px] items-center gap-2.5 rounded-full border px-3.5 py-2.5 text-left text-sm transition-all",
               horizontal ? "shrink-0" : "flex-1",
               active
-                ? "border-[#fbcc15]/55 bg-[#fbcc15]/14 text-white shadow-[0_0_0_1px_rgba(251,204,21,0.14)]"
+                ? "border-primary/50 bg-primary/12 text-white shadow-[0_0_0_1px_rgba(250,204,21,0.16)]"
                 : isSubtypeStyle
-                  ? "border-white/10 bg-[#11151d]/90 text-slate-200 hover:border-[#fbcc15]/35 hover:bg-[#171d28] hover:text-white"
+                  ? "border-white/12 bg-white/[0.015] text-slate-200 hover:border-white/20 hover:bg-white/[0.045] hover:text-white"
                   : "border-white/10 bg-white/[0.05] text-slate-200 hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
-            )}
+            , itemClassName)}
           >
             <span
               className={cn(
                 isSubtypeStyle
-                  ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors"
+                  ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors"
                   : "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
-                active ? "bg-[#fbcc15]/95 text-black" : "bg-white/[0.08] text-[#fbcc15]"
+                active ? "bg-primary text-primary-foreground" : "bg-white/[0.06] text-primary"
               )}
             >
               <Wrench className="h-4 w-4" />
@@ -95,7 +96,7 @@ const TechnologyChips = ({
               <span
                 className={cn(
                   "block truncate font-semibold leading-tight text-white",
-                  isSubtypeStyle ? "text-[15px] sm:text-[15px]" : "text-[17px] sm:text-base"
+                  isSubtypeStyle ? "text-[14px] sm:text-[15px]" : "text-[17px] sm:text-base"
                 )}
               >
                 {item.label}
@@ -107,44 +108,39 @@ const TechnologyChips = ({
 
   if (horizontal) {
     return (
-      <div className={cn("relative", className)}>
-        <button
-          type="button"
-          aria-label="Scroll technologies left"
-          onClick={() => scrollRail(-1)}
-          disabled={!railState.left}
-          className="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-slate-300 backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          aria-label="Scroll technologies right"
-          onClick={() => scrollRail(1)}
-          disabled={!railState.right}
-          className="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-slate-300 backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+      <div className={cn("space-y-2", className)}>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            aria-label="Scroll technologies left"
+            onClick={() => scrollRail(-1)}
+            disabled={!railState.left}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/55 text-slate-300 backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Scroll technologies right"
+            onClick={() => scrollRail(1)}
+            disabled={!railState.right}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/55 text-slate-300 backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
 
         <div
           ref={railRef}
           onScroll={updateRailState}
           onWheel={handleWheel}
           className={cn(
-            "no-scrollbar flex flex-nowrap items-center overflow-x-auto scroll-smooth px-12 py-1",
+            "no-scrollbar flex flex-nowrap items-center overflow-x-auto scroll-smooth px-1 py-1",
             isSubtypeStyle ? "gap-2.5" : "gap-3"
           )}
         >
           {content}
         </div>
-
-        {railState.left ? (
-          <div className="pointer-events-none absolute bottom-0 left-10 top-0 w-14 bg-gradient-to-r from-[#111111] via-[#111111]/82 to-transparent" />
-        ) : null}
-        {railState.right ? (
-          <div className="pointer-events-none absolute bottom-0 right-10 top-0 w-14 bg-gradient-to-l from-[#111111] via-[#111111]/82 to-transparent" />
-        ) : null}
       </div>
     );
   }

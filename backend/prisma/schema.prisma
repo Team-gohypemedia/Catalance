@@ -74,6 +74,7 @@ model User {
   managerProfile       ManagerProfile?
   freelancerProjects   FreelancerProject[]
   marketplace          Marketplace[]
+  freelancerSkills     FreelancerSkill[]
 
   ownedProjects           Project[]          @relation("ProjectOwner")
   managedProjects         Project[]          @relation("ProjectManager")
@@ -548,6 +549,60 @@ model ServiceQuestion {
   updatedAt DateTime @updatedAt
 
   @@unique([serviceId, slug])
+}
+
+model MarketplaceFilterService {
+  id              Int                           @id @default(autoincrement())
+  name            String                        @unique
+  subCategories   MarketplaceFilterSubCategory[]
+  freelancerSkills FreelancerSkill[]
+
+  @@map("services")
+}
+
+model MarketplaceFilterSubCategory {
+  id              Int                    @id @default(autoincrement())
+  serviceId       Int                    @map("service_id")
+  name            String
+  service         MarketplaceFilterService @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  tools           MarketplaceFilterTool[]
+  freelancerSkills FreelancerSkill[]
+
+  @@unique([serviceId, name])
+  @@index([serviceId])
+  @@map("sub_categories")
+}
+
+model MarketplaceFilterTool {
+  id              Int                          @id @default(autoincrement())
+  subCategoryId   Int                          @map("sub_category_id")
+  name            String
+  subCategory     MarketplaceFilterSubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  freelancerSkills FreelancerSkill[]
+
+  @@unique([subCategoryId, name])
+  @@index([subCategoryId])
+  @@map("tools")
+}
+
+model FreelancerSkill {
+  id            Int                      @id @default(autoincrement())
+  userId        String                   @map("user_id")
+  serviceId     Int                      @map("service_id")
+  subCategoryId Int                      @map("sub_category_id")
+  toolId        Int                      @map("tool_id")
+  createdAt     DateTime                 @default(now()) @map("created_at")
+  user          User                     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  service       MarketplaceFilterService @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  subCategory   MarketplaceFilterSubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tool          MarketplaceFilterTool    @relation(fields: [toolId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, serviceId, subCategoryId, toolId])
+  @@index([userId])
+  @@index([serviceId])
+  @@index([subCategoryId])
+  @@index([toolId])
+  @@map("freelancer_skills")
 }
 
 model AiGuestSession {
