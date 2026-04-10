@@ -12,12 +12,31 @@ import {
 
 const DEFAULT_MATCH_LIMIT = 20;
 const DEFAULT_MIN_RESULTS = 5;
+const SKILLS_MATCH_MAX_SCORE = 42;
 
 const SOURCE_PRIORITY_SCORES = Object.freeze({
-  level_1_completed_project: 100,
-  level_2_case_study: 60,
-  level_3_profile_skills: 30,
+  level_1_completed_project: 45,
+  level_2_case_study: 30,
+  level_3_profile_skills: 15,
 });
+
+const SERVICE_EQUIVALENCE_GROUPS = Object.freeze([
+  ["web_development", "website_development", "web_dev", "web_design_development"],
+  ["app_development", "mobile_app_development", "android_app_development", "ios_app_development"],
+  ["seo", "search_engine_optimization"],
+  ["social_media_marketing", "smm"],
+  ["ui_ux_design", "ux_ui_design", "product_design"],
+  ["graphic_design", "branding", "brand_design"],
+  ["video_editing", "video_production"],
+]);
+
+const SERVICE_ALIAS_MAP = SERVICE_EQUIVALENCE_GROUPS.reduce((accumulator, group) => {
+  const canonical = group[0];
+  group.forEach((value) => {
+    accumulator[value] = canonical;
+  });
+  return accumulator;
+}, {});
 
 const LEVEL_METADATA = Object.freeze({
   level_1_completed_project: {
@@ -118,6 +137,25 @@ const PROFILE_BUDGET_DETAIL_KEYS = Object.freeze([
   "budget",
 ]);
 
+const TECHNOLOGY_KEYWORD_PATTERNS = Object.freeze([
+  { label: "React.js", pattern: /\breact(?:\.js)?\b/i },
+  { label: "Next.js", pattern: /\bnext(?:\.js)?\b/i },
+  { label: "Node.js", pattern: /\bnode(?:\.js)?\b/i },
+  { label: "Express.js", pattern: /\bexpress(?:\.js)?\b/i },
+  { label: "TypeScript", pattern: /\btypescript\b|\bts\b/i },
+  { label: "JavaScript", pattern: /\bjavascript\b|\bjs\b/i },
+  { label: "PostgreSQL", pattern: /\bpostgres(?:ql)?\b/i },
+  { label: "MySQL", pattern: /\bmysql\b/i },
+  { label: "MongoDB", pattern: /\bmongo(?:db)?\b/i },
+  { label: "Tailwind CSS", pattern: /\btailwind\b/i },
+  { label: "Shopify", pattern: /\bshopify\b/i },
+  { label: "WordPress", pattern: /\bwordpress\b/i },
+  { label: "Flutter", pattern: /\bflutter\b/i },
+  { label: "React Native", pattern: /\breact native\b/i },
+  { label: "Firebase", pattern: /\bfirebase\b/i },
+  { label: "Supabase", pattern: /\bsupabase\b/i },
+]);
+
 const isPlainObject = (value) =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
@@ -156,6 +194,18 @@ const normalizeServiceKey = (value = "") =>
     .replace(/^_+|_+$/g, "")
     .trim();
 
+const normalizeServiceSignal = (value = "") => {
+  const normalized = normalizeServiceKey(value);
+  if (!normalized) return "";
+
+  return SERVICE_ALIAS_MAP[normalized] || normalized;
+};
+
+const collectServiceSignals = (...values) =>
+  uniqueItems(values.flatMap((value) => normalizeList(value)))
+    .map((value) => normalizeServiceSignal(value))
+    .filter(Boolean);
+
 const splitListValue = (value = "") =>
   String(value || "")
     .split(/\r?\n|;|,(?=\s*[A-Za-z0-9])|\/(?=\s*[A-Za-z0-9])|\band\b|&/i)
@@ -186,6 +236,25 @@ const collectTextValues = (value) => {
 
 const normalizeList = (value) => {
   return uniqueItems(collectTextValues(value));
+};
+
+const inferTechnologySkills = (...values) => {
+  const sourceText = values
+    .flatMap((value) => collectTextValues(value))
+    .join(" ");
+
+  if (!sourceText.trim()) {
+    return [];
+  }
+
+  const inferred = [];
+  TECHNOLOGY_KEYWORD_PATTERNS.forEach(({ label, pattern }) => {
+    if (pattern.test(sourceText)) {
+      inferred.push(label);
+    }
+  });
+
+  return uniqueItems(inferred);
 };
 
 const parseBudgetPoint = (value) => {
@@ -305,6 +374,17 @@ const buildMatchingProfile = (source = {}) => {
     ? matchingSeed.fitProfile
     : {};
 
+  const serviceKeys = collectServiceSignals(
+    source?.serviceKey,
+    source?.serviceType,
+    source?.service,
+    source?.serviceName,
+    source?.category,
+    project?.serviceKey,
+    project?.serviceType,
+    matchingQuery?.category,
+  );
+
   return {
     id: source?.id || null,
     title:
@@ -312,11 +392,8 @@ const buildMatchingProfile = (source = {}) => {
       cleanText(source?.projectTitle) ||
       cleanText(project?.title) ||
       "Proposal",
-    serviceKey:
-      normalizeServiceKey(source?.serviceKey) ||
-      normalizeServiceKey(project?.serviceKey) ||
-      normalizeServiceKey(matchingQuery?.category) ||
-      "",
+    serviceKey: serviceKeys[0] || "",
+    serviceKeys,
     serviceType:
       cleanText(source?.serviceType) ||
       cleanText(source?.service) ||
@@ -334,6 +411,17 @@ const buildMatchingProfile = (source = {}) => {
       ...normalizeList(fitProfile?.requiredSkills),
       ...normalizeList(matchingQuery?.techStack),
       ...normalizeList(fitProfile?.preferredSkills),
+      ...normalizeList(source?.techStack),
+      ...normalizeList(source?.projectStack),
+      ...normalizeList(source?.frontendFramework),
+      ...normalizeList(source?.backendTechnology),
+      ...normalizeList(source?.databaseType),
+      ...inferTechnologySkills(
+        source?.title,
+        source?.summary,
+        source?.content,
+        source?.proposalContent,
+      ),
     ]),
     niches: uniqueItems([
       ...normalizeList(matchingQuery?.industriesOrNiches),
@@ -387,13 +475,17 @@ const buildCompletedProjectProfile = (completedProject = {}) => {
     ? matchingSeed.fitProfile
     : {};
 
+  const serviceKeys = collectServiceSignals(
+    completedProject?.serviceKey,
+    completedProject?.serviceType,
+    matchingQuery?.category,
+  );
+
   return {
     recordId: completedProject?.id || null,
     recordTitle: cleanText(completedProject?.title) || "Completed project",
-    serviceKey:
-      normalizeServiceKey(completedProject?.serviceKey) ||
-      normalizeServiceKey(matchingQuery?.category) ||
-      "",
+    serviceKey: serviceKeys[0] || "",
+    serviceKeys,
     serviceType:
       cleanText(completedProject?.serviceType) ||
       cleanText(matchingSeed?.project?.serviceType) ||
@@ -448,15 +540,17 @@ const buildCaseStudyProfile = (portfolioProject = {}, index = 0) => {
       caseStudy?.serviceType ||
       "",
   );
-  const primaryServiceKey = normalizeServiceKey(caseStudy?.serviceKey || service);
-  const serviceKeys = uniqueItems([
-    ...normalizeList(caseStudy?.serviceKeys),
-    ...normalizeList(caseStudy?.services),
-    ...normalizeList(caseStudy?.serviceTags),
+  const primaryServiceKey = normalizeServiceSignal(caseStudy?.serviceKey || service);
+  const serviceKeys = collectServiceSignals(
+    caseStudy?.serviceKeys,
+    caseStudy?.services,
+    caseStudy?.serviceTags,
+    caseStudy?.serviceKey,
+    caseStudy?.serviceName,
+    caseStudy?.serviceType,
+    service,
     primaryServiceKey,
-  ])
-    .map((value) => normalizeServiceKey(value))
-    .filter(Boolean);
+  );
   const tags = uniqueItems([
     ...normalizeList(caseStudy?.tags),
     ...normalizeList(caseStudy?.deliverables),
@@ -467,6 +561,13 @@ const buildCaseStudyProfile = (portfolioProject = {}, index = 0) => {
     ...normalizeList(caseStudy?.technologies),
     ...normalizeList(caseStudy?.activeTechnologies),
     ...normalizeList(caseStudy?.stack),
+    ...inferTechnologySkills(
+      caseStudy?.title,
+      caseStudy?.description,
+      caseStudy?.summary,
+      caseStudy?.overview,
+      caseStudy?.content,
+    ),
   ]);
   const skills = uniqueItems([...tags, ...techStack]);
   const budget = parseBudgetPoint(
@@ -480,7 +581,6 @@ const buildCaseStudyProfile = (portfolioProject = {}, index = 0) => {
   );
   const niches = uniqueItems(normalizeList(caseStudy?.industriesOrNiches));
   const projectTypes = uniqueItems([
-    service,
     ...normalizeList(caseStudy?.serviceSpecializations),
     ...normalizeList(caseStudy?.projectTypes),
     ...niches,
@@ -546,7 +646,7 @@ const pickServiceDetails = (freelancer = {}, targetServiceKey = "") => {
     .filter(([, detail]) => isPlainObject(detail))
     .map(([key, detail]) => ({
       key,
-      normalizedKey: normalizeServiceKey(key),
+      normalizedKey: normalizeServiceSignal(key),
       detail,
     }));
 
@@ -554,7 +654,7 @@ const pickServiceDetails = (freelancer = {}, targetServiceKey = "") => {
     return entries;
   }
 
-  const normalizedTargetServiceKey = normalizeServiceKey(targetServiceKey);
+  const normalizedTargetServiceKey = normalizeServiceSignal(targetServiceKey);
   const matchingEntries = entries.filter(
     (entry) => entry.normalizedKey === normalizedTargetServiceKey,
   );
@@ -591,28 +691,28 @@ const resolveProfileServiceKey = ({
   detailEntries = [],
   targetServiceKey = "",
 } = {}) => {
-  const serviceCandidates = uniqueItems([
+  const serviceCandidates = collectServiceSignals(
     ...detailEntries.map(({ key }) => cleanText(key)),
-    ...normalizeList(freelancer?.services),
-    cleanText(freelancer?.serviceKey),
-    cleanText(freelancer?.service),
-  ]);
+    freelancer?.services,
+    freelancer?.serviceKey,
+    freelancer?.service,
+  );
 
   if (serviceCandidates.length === 0) {
     return "";
   }
 
-  const normalizedTargetServiceKey = normalizeServiceKey(targetServiceKey);
+  const normalizedTargetServiceKey = normalizeServiceSignal(targetServiceKey);
   if (normalizedTargetServiceKey) {
     const exactMatch = serviceCandidates.find(
-      (candidate) => normalizeServiceKey(candidate) === normalizedTargetServiceKey,
+      (candidate) => candidate === normalizedTargetServiceKey,
     );
     if (exactMatch) {
-      return normalizeServiceKey(exactMatch);
+      return exactMatch;
     }
   }
 
-  return normalizeServiceKey(serviceCandidates[0]);
+  return serviceCandidates[0];
 };
 
 const buildProfileSkillsSource = (freelancer = {}, targetServiceKey = "") => {
@@ -626,11 +726,16 @@ const buildProfileSkillsSource = (freelancer = {}, targetServiceKey = "") => {
       detailEntries,
       targetServiceKey,
     }),
+    serviceKeys: collectServiceSignals(
+      detailEntries.map(({ key }) => key),
+      freelancer?.services,
+      freelancer?.serviceKey,
+      freelancer?.service,
+    ),
     serviceType:
       cleanText(freelancer?.jobTitle) || cleanText(freelancer?.services?.[0]) || "",
     skills: uniqueItems([
       ...normalizeList(freelancer?.skills),
-      ...normalizeList(freelancer?.services),
       ...collectDetailValues(detailEntries, PROFILE_SKILL_DETAIL_KEYS),
     ]),
     niches: uniqueItems([
@@ -639,7 +744,6 @@ const buildProfileSkillsSource = (freelancer = {}, targetServiceKey = "") => {
       ...collectDetailValues(detailEntries, PROFILE_NICHE_DETAIL_KEYS),
     ]),
     projectTypes: uniqueItems([
-      ...normalizeList(freelancer?.services),
       ...collectDetailValues(detailEntries, PROFILE_TAG_DETAIL_KEYS),
     ]),
     tags: uniqueItems([
@@ -653,11 +757,16 @@ const buildProfileSkillsSource = (freelancer = {}, targetServiceKey = "") => {
 const valuesLooselyMatch = (left = "", right = "") => {
   const normalizedLeft = normalizeToken(left);
   const normalizedRight = normalizeToken(right);
+  const compactLeft = normalizedLeft.replace(/\s+/g, "");
+  const compactRight = normalizedRight.replace(/\s+/g, "");
 
   if (!normalizedLeft || !normalizedRight) return false;
   if (normalizedLeft === normalizedRight) return true;
+  if (compactLeft && compactRight && compactLeft === compactRight) return true;
   if (normalizedLeft.length >= 4 && normalizedRight.includes(normalizedLeft)) return true;
   if (normalizedRight.length >= 4 && normalizedLeft.includes(normalizedRight)) return true;
+  if (compactLeft.length >= 4 && compactRight.includes(compactLeft)) return true;
+  if (compactRight.length >= 4 && compactLeft.includes(compactRight)) return true;
   return false;
 };
 
@@ -859,6 +968,16 @@ const scoreRecencyBonus = (value = null, now = new Date()) => {
   return 1;
 };
 
+const scoreRatingSignal = (rating = null) => {
+  const normalized = Number(rating);
+  if (!Number.isFinite(normalized) || normalized <= 0) {
+    return 0;
+  }
+
+  const clamped = Math.max(0, Math.min(5, normalized));
+  return Math.round((clamped / 5) * 8);
+};
+
 const buildMatchReasons = ({
   levelKey = "",
   recordTitle = "",
@@ -919,17 +1038,17 @@ const evaluateCandidateMatch = ({
   const skills = scoreListOverlap({
     targetValues: targetProfile.skills,
     sourceValues: sourceProfile.skills,
-    maxScore: 30,
+    maxScore: SKILLS_MATCH_MAX_SCORE,
   });
   const niches = scoreListOverlap({
     targetValues: targetProfile.niches,
     sourceValues: sourceProfile.niches,
-    maxScore: 15,
+    maxScore: 10,
   });
   const projectTypes = scoreListOverlap({
     targetValues: [...(targetProfile.projectTypes || []), ...(targetProfile.tags || [])],
     sourceValues: [...(sourceProfile.projectTypes || []), ...(sourceProfile.tags || [])],
-    maxScore: 10,
+    maxScore: 8,
   });
   const budgetCompatibility = scoreBudgetCompatibility(
     targetProfile.budgetRange,
@@ -940,17 +1059,35 @@ const evaluateCandidateMatch = ({
     return null;
   }
 
-  const normalizedTargetServiceKey = normalizeServiceKey(targetProfile.serviceKey);
-  const normalizedSourceServiceKeys = uniqueItems([
+  const targetServiceSignals = collectServiceSignals(
+    targetProfile.serviceKey,
+    targetProfile.serviceType,
+    targetProfile.serviceKeys,
+  );
+  const sourceServiceSignals = collectServiceSignals(
     sourceProfile.serviceKey,
-    ...(Array.isArray(sourceProfile.serviceKeys) ? sourceProfile.serviceKeys : []),
-  ])
-    .map((value) => normalizeServiceKey(value))
-    .filter(Boolean);
-  const hasSourceServiceSignal = normalizedSourceServiceKeys.length > 0;
-  const serviceMatch = normalizedTargetServiceKey
-    ? normalizedSourceServiceKeys.includes(normalizedTargetServiceKey)
+    sourceProfile.serviceType,
+    sourceProfile.service,
+    sourceProfile.serviceKeys,
+    sourceEvidence?.serviceKey,
+    sourceEvidence?.serviceType,
+    freelancer?.services,
+    freelancer?.service,
+    freelancer?.serviceKey,
+  );
+  const hasTargetServiceSignal = targetServiceSignals.length > 0;
+  const hasSourceServiceSignal = sourceServiceSignals.length > 0;
+  const sourceServiceSignalSet = new Set(sourceServiceSignals);
+  const serviceMatch = hasTargetServiceSignal
+    ? targetServiceSignals.some((signal) => sourceServiceSignalSet.has(signal))
     : hasSourceServiceSignal;
+  const serviceScore = hasTargetServiceSignal
+    ? serviceMatch
+      ? 28
+      : -18
+    : hasSourceServiceSignal
+      ? 8
+      : 0;
   const timelineCompatibility = scoreTimelineCompatibility(
     targetProfile.timeline,
     sourceProfile.timeline,
@@ -967,6 +1104,11 @@ const evaluateCandidateMatch = ({
     niches.matchedValues.length > 0 ||
     projectTypes.matchedValues.length > 0 ||
     textRelevance.score > 0;
+  const hasConcreteOverlap =
+    skills.matchedValues.length > 0 ||
+    niches.matchedValues.length > 0 ||
+    projectTypes.matchedValues.length > 0 ||
+    textRelevance.score > 0;
 
   if (!hasSignalMatch) {
     return null;
@@ -974,7 +1116,16 @@ const evaluateCandidateMatch = ({
 
   if (
     ["level_2_case_study", "level_3_profile_skills"].includes(levelKey) &&
-    normalizedTargetServiceKey &&
+    hasTargetServiceSignal &&
+    serviceMatch &&
+    !hasConcreteOverlap
+  ) {
+    return null;
+  }
+
+  if (
+    ["level_2_case_study", "level_3_profile_skills"].includes(levelKey) &&
+    hasTargetServiceSignal &&
     !serviceMatch &&
     skills.matchedValues.length === 0
   ) {
@@ -983,8 +1134,22 @@ const evaluateCandidateMatch = ({
 
   const sourcePriorityScore =
     SOURCE_PRIORITY_SCORES[levelKey] || SOURCE_PRIORITY_SCORES.level_3_profile_skills;
-  const serviceScore = serviceMatch ? 16 : 0;
+  const ratingScore = scoreRatingSignal(freelancer?.rating);
   const recencyBonus = scoreRecencyBonus(sourceProfile.recordDate, now);
+  let weakMatchPenalty = 0;
+
+  if (hasTargetServiceSignal && !serviceMatch) {
+    weakMatchPenalty += 24;
+  }
+
+  if (skills.matchedValues.length === 0) {
+    weakMatchPenalty += levelKey === "level_1_completed_project" ? 10 : 16;
+  }
+
+  if (!serviceMatch && skills.matchedValues.length === 0 && textRelevance.score === 0) {
+    weakMatchPenalty += 8;
+  }
+
   const finalScore =
     sourcePriorityScore +
     serviceScore +
@@ -995,7 +1160,9 @@ const evaluateCandidateMatch = ({
     timelineCompatibility.score +
     textRelevance.score +
     availability.score +
-    recencyBonus;
+    ratingScore +
+    recencyBonus -
+    weakMatchPenalty;
   const levelMeta = LEVEL_METADATA[levelKey] || LEVEL_METADATA.level_3_profile_skills;
   const budgetMatchPercentage = budgetCompatibility.budgetMatchPercentage;
   const scoreBreakdown = {
@@ -1009,7 +1176,9 @@ const evaluateCandidateMatch = ({
     relevanceScore: textRelevance.score,
     matchedKeywordCount: textRelevance.matchedKeywords.length,
     availabilityScore: availability.score,
+    ratingScore,
     recencyBonus,
+    weakMatchPenalty,
     finalScore,
   };
   const matchedSkills = uniqueItems(skills.matchedValues);
@@ -1066,7 +1235,7 @@ const evaluateCandidateMatch = ({
     },
     matchedService: {
       serviceKey:
-        normalizedSourceServiceKeys[0] || sourceProfile.serviceKey || targetProfile.serviceKey || null,
+        sourceServiceSignals[0] || sourceProfile.serviceKey || targetProfile.serviceKey || null,
       serviceName: sourceProfile.serviceType || targetProfile.serviceType || null,
       averageProjectPriceRange:
         budgetCompatibility.range?.min !== null &&
@@ -1094,14 +1263,31 @@ const preferCandidate = (currentCandidate = null, nextCandidate = null) => {
   if (!currentCandidate) return nextCandidate;
   if (!nextCandidate) return currentCandidate;
 
-  if (nextCandidate.sourcePriorityScore !== currentCandidate.sourcePriorityScore) {
-    return nextCandidate.sourcePriorityScore > currentCandidate.sourcePriorityScore
+  if (nextCandidate.finalScore !== currentCandidate.finalScore) {
+    return nextCandidate.finalScore > currentCandidate.finalScore
       ? nextCandidate
       : currentCandidate;
   }
 
-  if (nextCandidate.finalScore !== currentCandidate.finalScore) {
-    return nextCandidate.finalScore > currentCandidate.finalScore
+  if (nextCandidate.serviceMatch !== currentCandidate.serviceMatch) {
+    return nextCandidate.serviceMatch ? nextCandidate : currentCandidate;
+  }
+
+  const nextMatchedSkillsCount = Array.isArray(nextCandidate.matchedSkills)
+    ? nextCandidate.matchedSkills.length
+    : 0;
+  const currentMatchedSkillsCount = Array.isArray(currentCandidate.matchedSkills)
+    ? currentCandidate.matchedSkills.length
+    : 0;
+
+  if (nextMatchedSkillsCount !== currentMatchedSkillsCount) {
+    return nextMatchedSkillsCount > currentMatchedSkillsCount
+      ? nextCandidate
+      : currentCandidate;
+  }
+
+  if (nextCandidate.sourcePriorityScore !== currentCandidate.sourcePriorityScore) {
+    return nextCandidate.sourcePriorityScore > currentCandidate.sourcePriorityScore
       ? nextCandidate
       : currentCandidate;
   }
@@ -1147,7 +1333,13 @@ const mapFreelancerToMatchResult = (freelancer = {}, candidate = {}) => ({
     candidate.budgetCompatibility?.budgetMatchPercentage ?? null,
   skillsMatchPercent:
     Number.isFinite(Number(candidate?.scoreBreakdown?.skillsScore))
-      ? Math.max(0, Math.min(100, Math.round((Number(candidate.scoreBreakdown.skillsScore) / 30) * 100)))
+      ? Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round((Number(candidate.scoreBreakdown.skillsScore) / SKILLS_MATCH_MAX_SCORE) * 100),
+        ),
+      )
       : null,
   matchedCaseStudyTitles: Array.isArray(candidate.matchedCaseStudyTitles)
     ? candidate.matchedCaseStudyTitles
@@ -1165,6 +1357,21 @@ const mapFreelancerToMatchResult = (freelancer = {}, candidate = {}) => ({
 const sortMatches = (left = {}, right = {}) => {
   if (right.matchScore !== left.matchScore) {
     return right.matchScore - left.matchScore;
+  }
+
+  if (right.serviceMatch !== left.serviceMatch) {
+    return right.serviceMatch ? 1 : -1;
+  }
+
+  const rightMatchedSkillsCount = Array.isArray(right?.matchedSkills)
+    ? right.matchedSkills.length
+    : 0;
+  const leftMatchedSkillsCount = Array.isArray(left?.matchedSkills)
+    ? left.matchedSkills.length
+    : 0;
+
+  if (rightMatchedSkillsCount !== leftMatchedSkillsCount) {
+    return rightMatchedSkillsCount - leftMatchedSkillsCount;
   }
 
   if ((right.sourceLevel || 0) !== (left.sourceLevel || 0)) {

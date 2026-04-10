@@ -390,6 +390,77 @@ export const formatRating = (value) => {
   return numeric.toFixed(1);
 };
 
+const getFreelancerMatchScore = (freelancer = {}) => {
+  const score = Number(freelancer?.matchScore ?? freelancer?.projectRelevanceScore);
+  return Number.isFinite(score) ? Math.round(score) : null;
+};
+
+const getFreelancerMatchedSkills = (freelancer = {}) => {
+  const values = [
+    ...(Array.isArray(freelancer?.matchedSkills) ? freelancer.matchedSkills : []),
+    ...(Array.isArray(freelancer?.caseStudyMatch?.matchedSkills)
+      ? freelancer.caseStudyMatch.matchedSkills
+      : []),
+    ...(Array.isArray(freelancer?.matchedTechnologies) ? freelancer.matchedTechnologies : []),
+  ];
+
+  return Array.from(
+    new Set(values.map((value) => String(value || "").trim()).filter(Boolean)),
+  );
+};
+
+const isFreelancerBestMatchEligible = (freelancer = {}) => {
+  const score = getFreelancerMatchScore(freelancer);
+  if (score === null || score < MIN_FREELANCER_MATCH_SCORE) {
+    return false;
+  }
+
+  const hasServiceMatch = freelancer?.serviceMatch === true;
+  if (!hasServiceMatch) {
+    return false;
+  }
+
+  const matchedSkills = getFreelancerMatchedSkills(freelancer);
+  const hasStrongCompletedProjectEvidence =
+    freelancer?.matchSource === "completed_project" &&
+    score >= MIN_FREELANCER_MATCH_SCORE + 18;
+
+  return matchedSkills.length > 0 || hasStrongCompletedProjectEvidence;
+};
+
+export const resolveBestMatchFreelancerIds = (freelancers = []) => {
+  const normalized = Array.isArray(freelancers) ? freelancers : [];
+  if (!normalized.length) return new Set();
+
+  const eligible = normalized
+    .filter((freelancer) => Boolean(freelancer?.id))
+    .filter((freelancer) => isFreelancerBestMatchEligible(freelancer))
+    .sort((left, right) => {
+      const scoreDiff = (getFreelancerMatchScore(right) || 0) - (getFreelancerMatchScore(left) || 0);
+      if (scoreDiff !== 0) return scoreDiff;
+
+      const skillDiff =
+        getFreelancerMatchedSkills(right).length - getFreelancerMatchedSkills(left).length;
+      if (skillDiff !== 0) return skillDiff;
+
+      const rightRating = Number(right?.rating);
+      const leftRating = Number(left?.rating);
+      const normalizedRightRating = Number.isFinite(rightRating) && rightRating > 0 ? rightRating : 0;
+      const normalizedLeftRating = Number.isFinite(leftRating) && leftRating > 0 ? leftRating : 0;
+      if (normalizedRightRating !== normalizedLeftRating) {
+        return normalizedRightRating - normalizedLeftRating;
+      }
+
+      return String(left?.id || "").localeCompare(String(right?.id || ""));
+    });
+
+  if (!eligible.length) {
+    return new Set();
+  }
+
+  return new Set([eligible[0].id]);
+};
+
 export const normalizeProposalRecord = (proposal) => proposal ?? {};
 
 export const getFirstNonEmptyText = (...values) => {

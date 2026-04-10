@@ -240,7 +240,8 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
         freelancer?.budgetCompatibility?.budgetMatchPercentage,
     ),
     skillsMatchPercent: clampPercentage(
-      Number(freelancer?.scoreBreakdown?.skillsScore) / 30 * 100,
+      freelancer?.skillsMatchPercent ??
+        (Number(freelancer?.scoreBreakdown?.skillsScore) / 42) * 100,
     ),
     projectRelevanceScore: Number.isFinite(Number(freelancer?.matchScore))
       ? Math.round(Number(freelancer.matchScore))

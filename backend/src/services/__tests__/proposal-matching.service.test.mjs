@@ -47,6 +47,8 @@ const createFreelancer = ({
   services = ["web-development"],
   portfolioProjects = [],
   profileDetails = {},
+  rating = 4.8,
+  reviewCount = 10,
 } = {}) => ({
   id,
   fullName,
@@ -58,8 +60,8 @@ const createFreelancer = ({
   services,
   portfolioProjects,
   profileDetails,
-  rating: 4.8,
-  reviewCount: 10,
+  rating,
+  reviewCount,
   updatedAt: "2026-04-10T00:00:00.000Z",
   createdAt: "2026-03-01T00:00:00.000Z",
 });
@@ -362,4 +364,155 @@ test("duplicate freelancer handling keeps the strongest source level", () => {
   assert.equal(ranked.results.length, 1);
   assert.equal(ranked.results[0].id, "freelancer-9");
   assert.equal(ranked.results[0].sourceLevel, 1);
+});
+
+test("service-aligned skill matches outrank weak completed-project signals", () => {
+  const targetProfile = createTargetProfile();
+  const freelancers = [
+    createFreelancer({
+      id: "freelancer-weak-level1",
+      fullName: "Weak Completed Match",
+      skills: ["Brand Identity"],
+      services: ["graphic-design"],
+      profileDetails: {
+        serviceDetails: {
+          "graphic-design": {
+            startingPrice: "80000",
+            skillsAndTechnologies: ["Figma", "Illustrator"],
+            serviceSpecializations: ["Brand Identity"],
+          },
+        },
+      },
+    }),
+    createFreelancer({
+      id: "freelancer-strong-level2",
+      fullName: "Strong Case Study Match",
+      services: ["web-development"],
+      skills: ["Next.js", "Node.js", "PostgreSQL"],
+      portfolioProjects: [
+        {
+          id: "case-strong-1",
+          title: "Fashion ecommerce platform",
+          service: "Web Development",
+          serviceKey: "web-development",
+          serviceKeys: ["web-development"],
+          techStack: ["Next.js", "Node.js", "PostgreSQL"],
+          tags: ["Admin dashboard", "Shopify integration"],
+          industriesOrNiches: ["Fashion"],
+          serviceSpecializations: ["E-commerce store"],
+          budget: 80000,
+        },
+      ],
+    }),
+  ];
+
+  const completedProjects = [
+    createCompletedProject({
+      id: "completed-weak-1",
+      freelancerIds: ["freelancer-weak-level1"],
+      skills: ["Brand Identity"],
+      niche: "Fashion",
+      projectType: "Brand Website",
+      serviceKey: "graphic-design",
+      budgetMin: 80000,
+      budgetMax: 80000,
+    }),
+  ];
+
+  const ranked = rankFreelancersFromData({
+    targetProfile,
+    freelancers,
+    completedProjects,
+    activeProjectCounts: new Map(),
+  });
+
+  assert.equal(ranked.results[0].id, "freelancer-strong-level2");
+  assert.equal(ranked.results[0].serviceMatch, true);
+  assert.ok((ranked.results[0].matchedSkills || []).length > 0);
+});
+
+test("missing rating does not outrank equally matched rated freelancer", () => {
+  const targetProfile = createTargetProfile();
+  const freelancers = [
+    createFreelancer({
+      id: "freelancer-no-rating",
+      fullName: "No Rating",
+      rating: 0,
+      reviewCount: 0,
+      portfolioProjects: [
+        {
+          id: "case-rating-1",
+          title: "Ecommerce site build",
+          service: "Web Development",
+          serviceKey: "web-development",
+          serviceKeys: ["web-development"],
+          techStack: ["Next.js", "Node.js", "PostgreSQL"],
+          tags: ["Admin dashboard"],
+          industriesOrNiches: ["Fashion"],
+          serviceSpecializations: ["E-commerce store"],
+          budget: 80000,
+          timeline: "6 weeks",
+        },
+      ],
+    }),
+    createFreelancer({
+      id: "freelancer-rated",
+      fullName: "Rated Match",
+      rating: 4.9,
+      reviewCount: 25,
+      portfolioProjects: [
+        {
+          id: "case-rating-2",
+          title: "Ecommerce site build",
+          service: "Web Development",
+          serviceKey: "web-development",
+          serviceKeys: ["web-development"],
+          techStack: ["Next.js", "Node.js", "PostgreSQL"],
+          tags: ["Admin dashboard"],
+          industriesOrNiches: ["Fashion"],
+          serviceSpecializations: ["E-commerce store"],
+          budget: 80000,
+          timeline: "6 weeks",
+        },
+      ],
+    }),
+  ];
+
+  const ranked = rankFreelancersFromData({
+    targetProfile,
+    freelancers,
+    completedProjects: [],
+    activeProjectCounts: new Map(),
+  });
+
+  assert.equal(ranked.results[0].id, "freelancer-rated");
+});
+
+test("service-only sparse case studies are excluded without overlap evidence", () => {
+  const targetProfile = createTargetProfile();
+  const freelancers = [
+    createFreelancer({
+      id: "freelancer-sparse-case-study",
+      fullName: "Sparse Evidence",
+      services: ["web-development"],
+      skills: [],
+      portfolioProjects: [
+        {
+          id: "case-sparse-1",
+          title: "Astrophotography Portfolio Revamp",
+          service: "Web Development",
+          serviceKey: "web-development",
+        },
+      ],
+    }),
+  ];
+
+  const ranked = rankFreelancersFromData({
+    targetProfile,
+    freelancers,
+    completedProjects: [],
+    activeProjectCounts: new Map(),
+  });
+
+  assert.equal(ranked.results.length, 0);
 });

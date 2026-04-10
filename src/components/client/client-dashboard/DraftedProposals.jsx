@@ -34,6 +34,7 @@ import {
   CLIENT_DASHBOARD_PROPOSAL_ACTION_SEND,
 } from "@/shared/lib/proposal-dashboard-intent";
 import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
+import { resolveBestMatchFreelancerIds } from "@/components/client/client-proposal/proposal-utils.js";
 import { toast } from "sonner";
 
 const draftProposalSurfaceToneClassName =
@@ -820,30 +821,7 @@ const DraftedProposals = memo(function DraftedProposals({
   }, [freelancerSearch, freelancerSelectionData.available]);
 
   const bestMatchFreelancerIds = useMemo(() => {
-    const scoredFreelancers = freelancerSelectionData.available
-      .map((freelancer) => {
-        const score = Number.isFinite(Number(freelancer?.matchScore))
-          ? Math.round(Number(freelancer.matchScore))
-          : null;
-        if (!freelancer?.id || score === null) return null;
-        return { id: freelancer.id, score };
-      })
-      .filter(Boolean);
-
-    if (scoredFreelancers.length === 0) return new Set();
-
-    const topScore = scoredFreelancers.reduce(
-      (maxScore, freelancer) => Math.max(maxScore, freelancer.score),
-      Number.NEGATIVE_INFINITY,
-    );
-
-    if (!Number.isFinite(topScore) || topScore <= 0) return new Set();
-
-    return new Set(
-      scoredFreelancers
-        .filter((freelancer) => freelancer.score === topScore)
-        .map((freelancer) => freelancer.id),
-    );
+    return resolveBestMatchFreelancerIds(freelancerSelectionData.available);
   }, [freelancerSelectionData.available]);
 
   return (
