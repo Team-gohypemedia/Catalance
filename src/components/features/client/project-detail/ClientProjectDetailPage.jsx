@@ -381,6 +381,7 @@ const ProjectDashboard = () => {
   const completedTaskIdsRef = useRef(new Set());
   const verifiedTaskIdsRef = useRef(new Set());
   const latestProgressMutationIdRef = useRef(0);
+  const latestMessageCreatedAtRef = useRef(null);
 
   // Catalyst Request State
   const [reportOpen, setReportOpen] = useState(false);
@@ -1040,48 +1041,34 @@ const ProjectDashboard = () => {
   // Chat & Conversation Logic
   const [conversationId, setConversationId] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  const acceptedProposal = useMemo(
+    () => project?.proposals?.find((proposal) => proposal?.status === "ACCEPTED") || null,
+    [project?.proposals],
+  );
+  const chatServiceKey = useMemo(() => {
+    if (!project?.id) return null;
+
+    if (acceptedProposal?.freelancerId) {
+      const clientId = user?.id || project?.ownerId;
+      if (clientId) {
+        return `CHAT:${project.id}:${clientId}:${acceptedProposal.freelancerId}`;
+      }
+    }
+
+    return `project:${project.id}`;
+  }, [acceptedProposal?.freelancerId, project?.id, project?.ownerId, user?.id]);
   const isChatLockedUntilPayment = useMemo(() => {
     return !hasUnlockedProjectChat(project);
   }, [project]);
 
   // 1. Ensure Conversation Exists
   useEffect(() => {
-    if (!project?.id || !authFetch) return;
-    if (isChatLockedUntilPayment) {
+    if (!authFetch || !chatServiceKey || isChatLockedUntilPayment) {
       setConversationId(null);
       return;
     }
 
-    let key = `project:${project.id}`;
-    // Check for accepted proposal to sync with DM chat
-    const acceptedProposal = project.proposals?.find(
-      (p) => p.status === "ACCEPTED"
-    );
-
-    console.log(
-      "Chat Init - Project:",
-      project?.id,
-      "User:",
-      user?.id,
-      "Owner:",
-      project?.ownerId
-    );
-
-    // Logic matches ClientChat.jsx: CHAT:PROJECT_ID:CLIENT_ID:FREELANCER_ID
-    if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
-      key = `CHAT:${project.id}:${user.id}:${acceptedProposal.freelancerId}`;
-      console.log("Using Project-Based Chat Key (User):", key);
-    } else if (
-      acceptedProposal &&
-      project.ownerId &&
-      acceptedProposal.freelancerId
-    ) {
-      // Fallback to ownerId if user isn't loaded yet (though auth should prevent this)
-      key = `CHAT:${project.id}:${project.ownerId}:${acceptedProposal.freelancerId}`;
-      console.log("Using Project-Based Chat Key (Owner Fallback):", key);
-    } else {
-      console.log("Using Project Chat Key (Fallback):", key);
-    }
+    let isActive = true;
 
     const initChat = async () => {
       try {
@@ -1089,25 +1076,40 @@ const ProjectDashboard = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            service: key,
+            service: chatServiceKey,
             projectTitle: project?.title || "Project Chat",
           }),
         });
         const payload = await res.json().catch(() => null);
         const convo = payload?.data || payload;
-        if (convo?.id) setConversationId(convo.id);
+        if (isActive && convo?.id) {
+          setConversationId(convo.id);
+        }
       } catch (e) {
         console.error("Chat init error:", e);
       }
     };
     initChat();
-  }, [project, authFetch, user, isChatLockedUntilPayment]);
+
+    return () => {
+      isActive = false;
+    };
+  }, [authFetch, chatServiceKey, isChatLockedUntilPayment, project?.title]);
+
+  useEffect(() => {
+    latestMessageCreatedAtRef.current = null;
+    setMessages(initialMessages);
+  }, [conversationId]);
 
   const fetchMessages = useCallback(async () => {
     if (!conversationId || !authFetch) return;
     try {
+      const after = latestMessageCreatedAtRef.current;
+      const query = after
+        ? `?after=${encodeURIComponent(after)}`
+        : "";
       const res = await authFetch(
-        `/chat/conversations/${conversationId}/messages`
+        `/chat/conversations/${conversationId}/messages${query}`
       );
       const payload = await res.json().catch(() => null);
       const msgs = payload?.data?.messages || [];
@@ -1128,10 +1130,43 @@ const ProjectDashboard = () => {
         };
       });
 
+      if (mapped.length > 0) {
+        const latestCreatedAt = mapped[mapped.length - 1]?.createdAt;
+        const latestDate = latestCreatedAt ? new Date(latestCreatedAt) : null;
+        if (latestDate && !Number.isNaN(latestDate.getTime())) {
+          const currentDate = latestMessageCreatedAtRef.current
+            ? new Date(latestMessageCreatedAtRef.current)
+            : null;
+          if (!currentDate || latestDate > currentDate) {
+            latestMessageCreatedAtRef.current = latestDate.toISOString();
+          }
+        }
+      }
+
       setMessages((prev) => {
         const pending = prev.filter((m) => m.pending);
+        const persisted = after ? prev.filter((m) => !m.pending) : [];
+
+        const mergedMessages = after
+          ? (() => {
+            const byId = new Map(
+              persisted.map((message) => [message.id, message])
+            );
+
+            mapped.forEach((message) => {
+              byId.set(message.id, message);
+            });
+
+            return Array.from(byId.values()).sort(
+              (left, right) =>
+                new Date(left.createdAt || left.timestamp || 0).getTime() -
+                new Date(right.createdAt || right.timestamp || 0).getTime(),
+            );
+          })()
+          : mapped;
+
         const backendSignatures = new Set(
-          mapped.map(
+          mergedMessages.map(
             (m) => `${m.sender}:${m.text}:${m.attachment?.name || ""}`
           )
         );
@@ -1140,7 +1175,7 @@ const ProjectDashboard = () => {
           const signature = `${p.sender}:${p.text}:${p.attachment?.name || ""}`;
           return !backendSignatures.has(signature);
         });
-        return [...mapped, ...stillPending];
+        return [...mergedMessages, ...stillPending];
       });
     } catch (e) {
       console.error("Fetch messages error:", e);
@@ -1177,10 +1212,6 @@ const ProjectDashboard = () => {
     setIsSending(true);
 
     try {
-      // Build the correct service key for notifications
-      const acceptedProposal = project?.proposals?.find(
-        (p) => p.status === "ACCEPTED"
-      );
       let serviceKey = `project:${project?.id || projectId}`;
       if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
         serviceKey = `CHAT:${project?.id || projectId}:${user.id}:${acceptedProposal.freelancerId
@@ -1198,8 +1229,7 @@ const ProjectDashboard = () => {
           skipAssistant: true, // Force persistence to DB
         }),
       });
-      // Optionally refetch or let poller handle it.
-      // The API returns the assistant response too, we could append it immediately.
+      fetchMessages();
     } catch (error) {
       console.error("Send message error:", error);
       // setMessages(prev => prev.filter(m => m.id !== tempId)); // Revert on fail?
@@ -1262,9 +1292,6 @@ const ProjectDashboard = () => {
         setInput("");
 
         // Build the correct service key for notifications
-        const acceptedProposal = project?.proposals?.find(
-          (p) => p.status === "ACCEPTED"
-        );
         let serviceKey = `project:${project?.id || projectId}`;
         if (acceptedProposal && user?.id && acceptedProposal.freelancerId) {
           serviceKey = `CHAT:${project?.id || projectId}:${user.id}:${acceptedProposal.freelancerId
@@ -2472,12 +2499,14 @@ const ProjectDashboard = () => {
                 projectId={projectId}
               />
 
-              <BookAppointment
-                isOpen={bookAppointmentOpen}
-                onClose={() => setBookAppointmentOpen(false)}
-                projectId={project?.id || projectId}
-                projectTitle={project?.title}
-              />
+              {bookAppointmentOpen ? (
+                <BookAppointment
+                  isOpen={bookAppointmentOpen}
+                  onClose={() => setBookAppointmentOpen(false)}
+                  projectId={project?.id || projectId}
+                  projectTitle={project?.title}
+                />
+              ) : null}
               {!isLoading && !project ? (
                 <div className="rounded-lg border border-border/60 bg-accent/40 px-4 py-3 text-sm text-muted-foreground">
                   No project data found for this link. Showing sample progress so
@@ -2568,52 +2597,54 @@ const ProjectDashboard = () => {
           </main>
         </div>
       </div>
-      <ClientProjectDetailDialogs
-        verifyConfirmOpen={verifyConfirmOpen}
-        setVerifyConfirmOpen={handleVerifyConfirmOpenChange}
-        pendingVerifyTask={pendingVerifyTask}
-        setPendingVerifyTask={setPendingVerifyTask}
-        handleVerifyTask={handleVerifyTask}
-        reportOpen={reportOpen}
-        setReportOpen={setReportOpen}
-        isReporting={isReporting}
-        reportDialogContentRef={reportDialogContentRef}
-        catalystDialogTitle={catalystDialogTitle}
-        catalystDialogDescription={catalystDialogDescription}
-        activeProjectManager={activeProjectManager}
-        isFreelancerChangeRequest={isFreelancerChangeRequest}
-        handleCatalystRequestTypeChange={handleCatalystRequestTypeChange}
-        catalystRequestTypes={CATALYST_REQUEST_TYPES}
-        freelancer={freelancer}
-        pendingFreelancerChangeRequest={pendingFreelancerChangeRequest}
-        latestFreelancerChangeRequest={latestFreelancerChangeRequest}
-        freelancerChangeCount={freelancerChangeCount}
-        catalystDialogNoteLabel={catalystDialogNoteLabel}
-        catalystDialogNotePlaceholder={catalystDialogNotePlaceholder}
-        issueText={issueText}
-        setIssueText={setIssueText}
-        date={date}
-        setDate={setDate}
-        time={time}
-        setTime={setTime}
-        datePopoverOpen={datePopoverOpen}
-        setDatePopoverOpen={setDatePopoverOpen}
-        effectiveTimeSlots={effectiveTimeSlots}
-        availableTimeSlots={availableTimeSlots}
-        handleCatalystSubmit={handleCatalystSubmit}
-        catalystDialogSubmitLabel={catalystDialogSubmitLabel}
-        assetsDialogOpen={assetsDialogOpen}
-        setAssetsDialogOpen={setAssetsDialogOpen}
-        eyebrowClassName={projectSectionEyebrowClassName}
-        clientDocs={clientDocs}
-        formatAttachmentSize={formatAttachmentSize}
-        getProjectDocumentPresentation={getProjectDocumentPresentation}
-        formatProjectDocumentTimestamp={formatProjectDocumentTimestamp}
-        insetPanelClassName={projectInsetPanelClassName}
-        detailOpen={detailOpen}
-        setDetailOpen={setDetailOpen}
-        renderProjectDescription={renderProjectDescription}
-      />
+      {verifyConfirmOpen || reportOpen || assetsDialogOpen || detailOpen ? (
+        <ClientProjectDetailDialogs
+          verifyConfirmOpen={verifyConfirmOpen}
+          setVerifyConfirmOpen={handleVerifyConfirmOpenChange}
+          pendingVerifyTask={pendingVerifyTask}
+          setPendingVerifyTask={setPendingVerifyTask}
+          handleVerifyTask={handleVerifyTask}
+          reportOpen={reportOpen}
+          setReportOpen={setReportOpen}
+          isReporting={isReporting}
+          reportDialogContentRef={reportDialogContentRef}
+          catalystDialogTitle={catalystDialogTitle}
+          catalystDialogDescription={catalystDialogDescription}
+          activeProjectManager={activeProjectManager}
+          isFreelancerChangeRequest={isFreelancerChangeRequest}
+          handleCatalystRequestTypeChange={handleCatalystRequestTypeChange}
+          catalystRequestTypes={CATALYST_REQUEST_TYPES}
+          freelancer={freelancer}
+          pendingFreelancerChangeRequest={pendingFreelancerChangeRequest}
+          latestFreelancerChangeRequest={latestFreelancerChangeRequest}
+          freelancerChangeCount={freelancerChangeCount}
+          catalystDialogNoteLabel={catalystDialogNoteLabel}
+          catalystDialogNotePlaceholder={catalystDialogNotePlaceholder}
+          issueText={issueText}
+          setIssueText={setIssueText}
+          date={date}
+          setDate={setDate}
+          time={time}
+          setTime={setTime}
+          datePopoverOpen={datePopoverOpen}
+          setDatePopoverOpen={setDatePopoverOpen}
+          effectiveTimeSlots={effectiveTimeSlots}
+          availableTimeSlots={availableTimeSlots}
+          handleCatalystSubmit={handleCatalystSubmit}
+          catalystDialogSubmitLabel={catalystDialogSubmitLabel}
+          assetsDialogOpen={assetsDialogOpen}
+          setAssetsDialogOpen={setAssetsDialogOpen}
+          eyebrowClassName={projectSectionEyebrowClassName}
+          clientDocs={clientDocs}
+          formatAttachmentSize={formatAttachmentSize}
+          getProjectDocumentPresentation={getProjectDocumentPresentation}
+          formatProjectDocumentTimestamp={formatProjectDocumentTimestamp}
+          insetPanelClassName={projectInsetPanelClassName}
+          detailOpen={detailOpen}
+          setDetailOpen={setDetailOpen}
+          renderProjectDescription={renderProjectDescription}
+        />
+      ) : null}
 
     </>
   );

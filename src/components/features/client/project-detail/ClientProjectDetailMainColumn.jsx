@@ -76,7 +76,7 @@ const ClientProjectDetailMainColumn = ({
 
   return (
     <div className="space-y-4">
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
       {[
         { label: "Service Type", value: projectDetailSnapshot.service },
         { label: "Budget", value: projectDetailSnapshot.budget },
@@ -84,7 +84,10 @@ const ClientProjectDetailMainColumn = ({
       ].map((item) => (
         <div
           key={item.label}
-          className={`${insetPanelClassName} min-w-0 bg-[#171717]`}
+          className={cn(
+            `${insetPanelClassName} min-w-0 bg-[#171717]`,
+            item.label === "Timeline" ? "col-span-2 lg:col-span-1" : "",
+          )}
         >
           <p className={eyebrowClassName}>{item.label}</p>
           <p className="mt-3 break-words text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
@@ -124,11 +127,11 @@ const ClientProjectDetailMainColumn = ({
         </CardHeader>
         <CardContent className="pt-0">
           {projectDetailSnapshot.deliverablesItems.length > 0 ? (
-            <ul className="space-y-5 px-2 pb-2 sm:px-2">
+            <ul className="grid grid-cols-2 gap-4 px-2 pb-2 sm:block sm:space-y-5 sm:px-2">
               {projectDetailSnapshot.deliverablesItems.map((item) => (
                 <li
                   key={item}
-                  className="flex items-start gap-3 text-sm leading-7 text-[#e4e4e7]"
+                  className="flex min-w-0 items-start gap-3 text-sm leading-7 text-[#e4e4e7]"
                 >
                   <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#ffd400]" />
                   <span>{item}</span>
@@ -149,7 +152,7 @@ const ClientProjectDetailMainColumn = ({
           <CardTitle className={eyebrowClassName}>Website Type</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
             {projectDetailSnapshot.websiteDetails
               .filter((item) => {
                 if (!projectDetailSnapshot.deliverablesItems.length) return true;
@@ -163,7 +166,7 @@ const ClientProjectDetailMainColumn = ({
               .map((item) => (
                 <div
                   key={item.label}
-                  className="min-h-[98px] rounded-[12px] bg-[#262626] px-4 py-4"
+                  className="min-h-[98px] min-w-0 rounded-[12px] bg-[#262626] px-4 py-4"
                 >
                   <p className="text-[0.66rem] font-medium uppercase tracking-[0.15em] text-white/45">
                     {item.label}
@@ -179,9 +182,9 @@ const ClientProjectDetailMainColumn = ({
     </div>
 
     <Card className={panelClassName}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-5 px-6">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-6 pt-5 px-6">
         <CardTitle className={eyebrowClassName}>Project Progress</CardTitle>
-        <span className="text-[1.1rem] font-semibold text-yellow-400">
+        <span className="ml-auto text-right text-[1.1rem] font-semibold leading-tight whitespace-nowrap text-yellow-400">
           {Math.round(overallProgress)}% Complete
         </span>
       </CardHeader>
@@ -199,7 +202,7 @@ const ClientProjectDetailMainColumn = ({
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => {
             const phase = derivedPhases[index];
             const phaseValue = phase?.id != null ? String(phase.id) : "";
@@ -535,7 +538,7 @@ const ClientProjectDetailMainColumn = ({
                         <div
                           key={`installment-${phaseGroup.phaseId}-${installment.sequence}`}
                           className={cn(
-                            "rounded-xl border px-3.5 py-2 transition-colors",
+                            "rounded-2xl border p-4 pb-5 transition-colors sm:rounded-xl sm:px-3.5 sm:py-2",
                             isPaid
                               ? "border-emerald-500/30 bg-emerald-500/10"
                               : isDueNow
@@ -543,41 +546,55 @@ const ClientProjectDetailMainColumn = ({
                                 : "border-border/60 bg-accent/65",
                           )}
                         >
-                          <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                            <div className="flex items-start gap-2 sm:items-center">
+                          <div className="space-y-3 sm:grid sm:gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                            <div className="flex items-start gap-3 sm:items-center sm:gap-2">
                               <div
                                 className={cn(
-                                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
+                                  "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border sm:mt-0 sm:h-8 sm:w-8",
                                   isPaid || isDueNow
                                     ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-400"
                                     : "border-border/60 bg-background/70 text-muted-foreground",
                                 )}
                               >
-                                <CreditCard className="h-3 w-3" />
+                                <CreditCard className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
                               </div>
-                              <div className="min-w-0 flex-1 space-y-0">
-                                <div className="flex flex-wrap items-center gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-2">
                                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                                     Payment Milestone
                                   </p>
+                                  <Badge
+                                    variant={isDueNow ? "secondary" : "outline"}
+                                    className={cn(
+                                      "shrink-0 sm:hidden",
+                                      isPaid
+                                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                                        : isDueNow
+                                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                                          : "border-border/60 bg-background/70 text-muted-foreground",
+                                    )}
+                                  >
+                                    {milestoneStatusLabel}
+                                  </Badge>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                                  <p className="text-sm font-semibold leading-tight text-foreground sm:text-[15px]">
-                                    {installment.label}
-                                  </p>
+                                <p className="pt-1 text-[15px] font-semibold leading-snug text-foreground">
+                                  {installment.label}
+                                </p>
+                                <div className="pt-1.5">
                                   <span className="inline-flex items-center rounded-full border border-border/50 bg-background/50 px-2 py-0 text-[10px] font-medium leading-5 text-muted-foreground">
-                                    {installment.percentage}% of project budget
+                                    <span className="sm:hidden">
+                                      {installment.percentage}% budget
+                                    </span>
+                                    <span className="hidden sm:inline">
+                                      {installment.percentage}% of project budget
+                                    </span>
                                   </span>
                                 </div>
-                                <p className="pt-0.5 text-xs leading-snug text-muted-foreground sm:text-[13px]">
-                                  {installment.dueLabel ||
-                                    "This payment unlocks once the phase is fully completed."}
-                                </p>
                               </div>
                               <Badge
                                 variant={isDueNow ? "secondary" : "outline"}
                                 className={cn(
-                                  "mt-0.5 shrink-0 self-start sm:mt-0 sm:self-center",
+                                  "hidden shrink-0 sm:inline-flex sm:self-center",
                                   isPaid
                                     ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
                                     : isDueNow
@@ -589,34 +606,48 @@ const ClientProjectDetailMainColumn = ({
                               </Badge>
                             </div>
 
-                            <div className="flex flex-col gap-1 sm:min-w-[118px] sm:border-l sm:border-border/50 sm:pl-3 sm:items-end">
-                              <div className="text-left sm:text-right">
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                                  Amount
-                                </p>
-                                <p className="text-base font-semibold leading-tight text-foreground sm:text-[17px]">
-                                  {formatINR(installment.amount || 0)}
+                            <div className="border-t border-border/50 pt-3 sm:min-w-[118px] sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
+                              <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 sm:block">
+                                <div className="text-left sm:text-right">
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                                    Amount
+                                  </p>
+                                  <p className="text-base font-semibold leading-tight text-foreground sm:text-[17px]">
+                                    {formatINR(installment.amount || 0)}
+                                  </p>
+                                </div>
+
+                                <p className="text-[13px] leading-snug text-muted-foreground sm:hidden">
+                                  {installment.dueLabel ||
+                                    "This payment unlocks once the phase is fully completed."}
                                 </p>
                               </div>
 
-                              {canPayInstallment ? (
-                                <Button
-                                  size="sm"
-                                  className="h-7 w-fit px-2.5 text-[11px] sm:self-end"
-                                  onClick={handlePayDueInstallment}
-                                  disabled={isProcessingInstallment}
-                                >
-                                  {isProcessingInstallment ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <CreditCard className="h-3 w-3" />
-                                  )}
-                                  {isProcessingInstallment
-                                    ? "Processing"
-                                    : `Pay ${installment.percentage}%`}
-                                </Button>
-                              ) : null}
+                              <div className="mt-2 flex items-center justify-start sm:mt-1 sm:justify-end">
+                                {canPayInstallment ? (
+                                  <Button
+                                    size="sm"
+                                    className="h-7 w-fit px-2.5 text-[11px] sm:self-end"
+                                    onClick={handlePayDueInstallment}
+                                    disabled={isProcessingInstallment}
+                                  >
+                                    {isProcessingInstallment ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <CreditCard className="h-3 w-3" />
+                                    )}
+                                    {isProcessingInstallment
+                                      ? "Processing"
+                                      : `Pay ${installment.percentage}%`}
+                                  </Button>
+                                ) : null}
+                              </div>
                             </div>
+
+                            <p className="hidden border-t border-border/50 pt-3 text-[13px] leading-snug text-muted-foreground sm:col-span-2 sm:block sm:pt-2.5">
+                              {installment.dueLabel ||
+                                "This payment unlocks once the phase is fully completed."}
+                            </p>
                           </div>
                           </div>
                         );

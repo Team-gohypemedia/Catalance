@@ -261,6 +261,9 @@ model Project {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([ownerId])
+  @@index([managerId])
+  @@index([managerId, status])
   @@map("OnGoingProjects")
 }
 
@@ -353,6 +356,10 @@ model Proposal {
   projectId          String
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
+
+  @@index([freelancerId])
+  @@index([projectId, createdAt])
+  @@index([projectId, status, createdAt])
 }
 
 model Dispute {
@@ -375,6 +382,8 @@ model Dispute {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([projectId])
 }
 
 model ServiceCatalog {
@@ -397,6 +406,8 @@ model ChatConversation {
   messages     ChatMessage[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
+  @@index([service])
 }
 
 model ChatMessage {
@@ -674,6 +685,7 @@ model Review {
   createdAt  DateTime @default(now())
 
   @@index([serviceId])
+  @@index([serviceId, clientId, createdAt])
 }
 
 model MilestoneApproval {
