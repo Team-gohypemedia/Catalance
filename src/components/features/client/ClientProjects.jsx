@@ -717,7 +717,7 @@ export const normalizeClientProjects = (remote = []) =>
 
 export const buildProjectCardModel = (project) => {
   const statusMeta = resolveProjectStatusMeta(project);
-  const progressValue = resolveProjectProgress(project);
+  const baseProgressValue = resolveProjectProgress(project);
   const phases = buildProjectPhases(project);
   const currentPhaseIndex = determineCurrentPhaseIndex(project, phases);
   const projectCompleted = isProjectFullyCompleted(project);
@@ -749,8 +749,22 @@ export const buildProjectCardModel = (project) => {
         };
       })
     : [];
-  const phaseProgressValue = resolveCurrentPhaseProgress(currentPhase, currentPhaseSteps, progressValue);
+  const phaseProgressValue = resolveCurrentPhaseProgress(
+    currentPhase,
+    currentPhaseSteps,
+    baseProgressValue,
+  );
   const totalPhases = Math.max(phases.length, 1);
+  const derivedProgressValue =
+    projectCompleted
+      ? 100
+      : Number.isFinite(currentPhaseIndex)
+        ? clampProgress(
+          ((Math.min(currentPhaseIndex, totalPhases - 1) + phaseProgressValue / 100) /
+            totalPhases) *
+            100,
+        )
+        : baseProgressValue;
   const phaseNumber = Math.min(currentPhaseIndex + 1, totalPhases);
   const currentPhaseCountLabel = `Phase ${phaseNumber} of ${totalPhases}`;
 
@@ -758,8 +772,9 @@ export const buildProjectCardModel = (project) => {
     return {
       ...project,
       statusMeta,
-      progressValue,
+      progressValue: derivedProgressValue,
       phaseProgressValue,
+      currentPhaseIndex,
       currentPhaseCountLabel,
       currentPhase,
       currentPhaseSteps,
@@ -776,8 +791,9 @@ export const buildProjectCardModel = (project) => {
     return {
       ...project,
       statusMeta,
-      progressValue,
+      progressValue: derivedProgressValue,
       phaseProgressValue,
+      currentPhaseIndex,
       currentPhaseCountLabel,
       currentPhase,
       currentPhaseSteps,
@@ -794,8 +810,9 @@ export const buildProjectCardModel = (project) => {
     return {
       ...project,
       statusMeta,
-      progressValue,
+      progressValue: derivedProgressValue,
       phaseProgressValue,
+      currentPhaseIndex,
       currentPhaseCountLabel,
       currentPhase,
       currentPhaseSteps,
@@ -811,8 +828,9 @@ export const buildProjectCardModel = (project) => {
   return {
     ...project,
     statusMeta,
-    progressValue,
+    progressValue: derivedProgressValue,
     phaseProgressValue,
+    currentPhaseIndex,
     currentPhaseCountLabel,
     currentPhase,
     currentPhaseSteps,

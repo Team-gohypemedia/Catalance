@@ -13,7 +13,10 @@ import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Upload from "lucide-react/dist/esm/icons/upload";
+import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +51,7 @@ const ProfileHeroCard = ({
   displayHeadline,
   displayBio,
   displayLocation,
+  isVerified = false,
   onboardingIdentity,
   onboardingLanguages,
   openEditPersonalModal,
@@ -75,7 +79,11 @@ const ProfileHeroCard = ({
   const resolvedBio = String(displayBio || personal.bio || "").trim();
   const profileName = String(personal.name || "").trim() || "Your Name";
   const profileHandle = username ? `@${username}` : "@add-username";
-  const availabilityLabel = personal.available ? "Open to Work" : "Offline";
+  const isOpenToWorkActive =
+    typeof personal.openToWork === "boolean"
+      ? personal.openToWork
+      : Boolean(personal.available);
+  const openToWorkLabel = isOpenToWorkActive ? "Open to Work" : "Offline";
   const [hasCoverImageError, setHasCoverImageError] = useState(false);
   const [isCoverDragActive, setIsCoverDragActive] = useState(false);
 
@@ -220,14 +228,14 @@ const ProfileHeroCard = ({
           >
             <div
               className={`rounded-full transition-all duration-200 ${
-                personal.available
+                isOpenToWorkActive
                   ? "bg-background p-1"
                   : "border-2 border-background bg-background p-0.5 shadow-md"
               }`}
             >
               <div
                 className={`relative h-24 w-24 overflow-hidden rounded-full bg-muted sm:h-32 sm:w-32 md:h-36 md:w-36 ${
-                  personal.available
+                  isOpenToWorkActive
                     ? "border border-background bg-background"
                     : "border-2 border-border/70"
                 }`}
@@ -275,13 +283,40 @@ const ProfileHeroCard = ({
         </div>
 
         <div className="mt-5 min-w-0 space-y-1 sm:mt-0">
-          <h1
-            title={profileName}
-            className="min-w-0 max-w-full truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl"
-          >
-            {profileName}
-          </h1>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1
+                title={profileName}
+                className="min-w-0 max-w-full truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl"
+              >
+                {profileName}
+              </h1>
+
+              {isVerified ? (
+                <Badge
+                  title="This freelancer has successfully completed at least one project on our platform."
+                  className="h-6 border-emerald-500/20 bg-emerald-500/10 px-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300"
+                >
+                  <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                  Verified Freelancer
+                </Badge>
+              ) : null}
+              {typeof personal.openToWork === "boolean" ? (
+                <Badge
+                  title="Auto-managed from your active project count."
+                  className={`h-6 px-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                    isOpenToWorkActive
+                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                      : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                  }`}
+                >
+                  {openToWorkLabel}
+                </Badge>
+              ) : null}
+            </div>
+
           <p className="text-sm text-muted-foreground sm:text-base">{profileHandle}</p>
+          </div>
           <p className="max-w-5xl text-[15px] leading-7 text-foreground sm:text-base sm:leading-relaxed">
             {resolvedBio || "Add a short professional bio to showcase your expertise."}
           </p>
@@ -343,38 +378,24 @@ const ProfileHeroCard = ({
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:absolute sm:right-5 sm:top-4 sm:mt-0 sm:flex sm:flex-wrap sm:items-center sm:justify-end md:right-6">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onToggleAvailability}
-            disabled={availabilitySaving}
-            className={`h-10 w-full justify-center rounded-md px-3 text-sm font-semibold sm:w-auto ${
-              personal.available
-                ? "border-emerald-600 bg-emerald-600 text-white hover:border-emerald-500 hover:bg-emerald-500 dark:border-emerald-600 dark:bg-emerald-600 dark:text-white dark:hover:border-emerald-500 dark:hover:bg-emerald-500"
-                : "border-border/70 bg-background text-muted-foreground hover:bg-muted"
-            }`}
-            title={`Set profile status to ${
-              personal.available ? "Offline" : "Open to Work"
-            }`}
-          >
-            {availabilitySaving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <span
-                  className={`h-2.5 w-2.5 rounded-full ${
-                    personal.available ? "bg-white" : "bg-muted-foreground/80"
-                  }`}
-                  aria-hidden="true"
-                />
-                {availabilityLabel}
-              </>
-            )}
-          </Button>
+          <div className="flex h-12 w-full items-center justify-between gap-4 rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-200 sm:w-auto sm:min-w-[16rem]">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold tracking-[-0.02em] text-foreground">
+                {openToWorkLabel}
+              </p>
+            </div>
+
+            <Switch
+              checked={isOpenToWorkActive}
+              onCheckedChange={onToggleAvailability}
+              disabled={availabilitySaving}
+              aria-label="Toggle open to work status"
+              title={`Set profile status to ${
+                isOpenToWorkActive ? "Offline" : "Open to Work"
+              }`}
+              className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-white/15"
+            />
+          </div>
           <Button
             type="button"
             variant="outline"

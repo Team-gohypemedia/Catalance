@@ -32,6 +32,7 @@ const {
   normalizeAnswerForQuestion,
   parseKnownBrandAffiliationResponse,
   parseAdminControlText,
+  shouldSkipMessageAnswerExtraction,
   toChronologicalGuestHistory,
 } = __testables;
 
@@ -393,6 +394,57 @@ test("classifies personal-name and business-name questions separately", () => {
   assert.equal(
     getQuestionIdentityType({ slug: "company_name", text: "What is your company or brand name?" }),
     "business_name",
+  );
+});
+
+test("skips extractor for an obvious single name answer", () => {
+  assert.equal(
+    shouldSkipMessageAnswerExtraction({
+      message: "ravindra",
+      currentQuestion: { slug: "client_name", text: "What is your name?" },
+      runtimeOptionsByQuestionSlug: {},
+      hasAttachmentContext: false,
+      hasUrlContext: false,
+      correctionIntent: false,
+    }),
+    true,
+  );
+});
+
+test("does not skip extractor when a name reply also contains future answers", () => {
+  assert.equal(
+    shouldSkipMessageAnswerExtraction({
+      message: "my name is ravindra and my brand is cleclo and we provide laundry services",
+      currentQuestion: { slug: "client_name", text: "What is your name?" },
+      runtimeOptionsByQuestionSlug: {},
+      hasAttachmentContext: false,
+      hasUrlContext: false,
+      correctionIntent: false,
+    }),
+    false,
+  );
+});
+
+test("skips extractor for an exact single option reply", () => {
+  assert.equal(
+    shouldSkipMessageAnswerExtraction({
+      message: "Website content",
+      currentQuestion: {
+        slug: "content_type",
+        text: "What type of content do you need?",
+        type: "single_select",
+        options: [
+          { label: "Website content", value: "website_content" },
+          { label: "Blog articles", value: "blog_articles" },
+          { label: "Social media content", value: "social_media_content" },
+        ],
+      },
+      runtimeOptionsByQuestionSlug: {},
+      hasAttachmentContext: false,
+      hasUrlContext: false,
+      correctionIntent: false,
+    }),
+    true,
   );
 });
 

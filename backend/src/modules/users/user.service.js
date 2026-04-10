@@ -168,6 +168,7 @@ const FREELANCER_PROFILE_FIELD_KEYS = new Set([
   "companyName",
   "location",
   "available",
+  "openToWork",
   "rating",
   "reviewCount",
   "experienceYears",
@@ -227,6 +228,7 @@ const resolveFreelancerProfileRecord = (user = null) => {
       rating: 0,
       experienceYears: 0,
       available: true,
+      openToWork: true,
       profileDetails: {}
     };
   }
@@ -258,6 +260,10 @@ const resolveFreelancerProfileRecord = (user = null) => {
       typeof read("available") === "boolean"
         ? read("available")
         : user?.status === "ACTIVE",
+    openToWork:
+      typeof read("openToWork") === "boolean"
+        ? read("openToWork")
+        : true,
     rating: read("rating") ?? 0,
     reviewCount: Number.isFinite(Number(reviewCountRaw)) ? Number(reviewCountRaw) : 0,
     experienceYears: Number.isFinite(Number(experienceYearsRaw))
@@ -2661,10 +2667,12 @@ export const sanitizeUser = (user) => {
     profileDetails: resolvedProfileDetails,
     skills: mergedSkills.length ? mergedSkills : fallbackSkills,
     avatar: freelancerAvatar,
+    isVerified: Boolean(resolvedFreelancerProfile.isVerified),
     location: identityLocation || resolvedFreelancerProfile.location || null,
     jobTitle: identityJobTitle || resolvedFreelancerProfile.jobTitle || null,
     companyName: resolvedFreelancerProfile.companyName || null,
     available: resolvedFreelancerProfile.available,
+    openToWork: resolvedFreelancerProfile.openToWork,
     rating: resolvedFreelancerProfile.rating ?? 0,
     reviewCount: resolvedFreelancerProfile.reviewCount ?? 0,
     experienceYears: resolvedFreelancerProfile.experienceYears ?? 0,

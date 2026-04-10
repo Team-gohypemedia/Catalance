@@ -6,6 +6,8 @@ export const FREELANCER_PROFILE_SAFE_SELECT = Object.freeze({
   companyName: true,
   location: true,
   available: true,
+  openToWork: true,
+  isVerified: true,
   rating: true,
   reviewCount: true,
   experienceYears: true,

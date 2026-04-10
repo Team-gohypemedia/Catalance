@@ -1,19 +1,39 @@
 import React from 'react'
+import { Button } from '@/components/ui/button'
 
 const ClientCTA = () => {
   return (
     <section className="bg-background px-4 py-4 sm:px-6 lg:px-8">
-      <div className="mx-auto flex min-h-45 w-full max-w-310 flex-col items-center justify-center rounded-[2.5rem] bg-[#e0b700] px-6 py-10 text-center shadow-[0_24px_60px_rgba(0,0,0,0.2)] sm:px-10 sm:py-12">
-        <h2 className="max-w-3xl text-2xl font-medium tracking-tight text-black sm:text-3xl lg:text-[2.2rem]">
-          Freelance services at your fingertips
-        </h2>
+      <div className="mx-auto max-w-[1240px]">
+        <div className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-background px-6 py-12 sm:px-10 sm:py-14 lg:min-h-[460px] lg:px-16">
+          <div className="absolute inset-0 bg-background" />
 
-        <button
-          type="button"
-          className="mt-6 inline-flex items-center justify-center rounded-full bg-black px-8 py-3 text-base font-semibold text-white transition-transform duration-200 hover:-translate-y-0.5 hover:bg-neutral-950 focus:outline-none focus:ring-2 focus:ring-black/20"
-        >
-          Connect Collaborate Create
-        </button>
+          <div className="absolute -left-28 top-1/2 h-[440px] w-[440px] -translate-y-1/2 rounded-full bg-primary/70 blur-[120px]" />
+          <div className="absolute -right-28 top-1/2 h-[440px] w-[440px] -translate-y-1/2 rounded-full bg-primary/70 blur-[120px]" />
+
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--primary)/0.28)_0%,hsl(var(--background))_50%,hsl(var(--primary)/0.28)_100%)]" />
+
+          <div className="relative z-10 flex min-h-[360px] items-center justify-center">
+            <div className="w-full max-w-[760px] text-center">
+              <h2 className="text-[3rem] font-semibold leading-[0.9] tracking-[-0.07em] text-foreground sm:text-[4rem] lg:text-[5rem]">
+                <span className="block">Freelance services</span>
+                <span className="block">at your fingertips</span>
+              </h2>
+
+              <p className="mx-auto mt-6 max-w-[26ch] text-[1.05rem] leading-[1.45] text-foreground/82 sm:text-[1.1rem]">
+                On-demand expert freelancers for every project
+              </p>
+
+              <Button
+              type="button"
+              size="lg"
+              className="mt-5"
+              >
+                Connect Collaborate Create
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )

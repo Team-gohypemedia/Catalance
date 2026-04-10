@@ -3,6 +3,7 @@
 import PropTypes from "prop-types";
 import React from "react";
 import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
+import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import HandPlatter from "lucide-react/dist/esm/icons/hand-platter";
 import House from "lucide-react/dist/esm/icons/house";
@@ -18,6 +19,7 @@ import WalletCards from "lucide-react/dist/esm/icons/wallet-cards";
 import X from "lucide-react/dist/esm/icons/x";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logos/logo.svg";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -192,6 +194,27 @@ const MobileProfileSwitchCard = ({
               <p className="truncate text-[0.88rem] font-semibold text-white">
                 {displayName}
               </p>
+              {profile?.isVerified ? (
+                <Badge
+                  title="This freelancer has successfully completed at least one project on our platform."
+                  className="mt-1 h-5 border-emerald-500/20 bg-emerald-500/10 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-300"
+                >
+                  <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                  Verified Freelancer
+                </Badge>
+              ) : null}
+              {typeof profile?.openToWork === "boolean" ? (
+                <Badge
+                  title="Auto-managed from your active project count."
+                  className={`mt-1 h-5 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] ${
+                    profile.openToWork
+                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                      : "border-amber-500/20 bg-amber-500/10 text-amber-300"
+                  }`}
+                >
+                  {profile.openToWork ? "Open to Work" : "At Capacity"}
+                </Badge>
+              ) : null}
               <p className="mt-0.5 text-[10px] text-[#6f7688]">View profile</p>
             </div>
           </button>
@@ -222,6 +245,8 @@ MobileProfileSwitchCard.propTypes = {
   displayName: PropTypes.string.isRequired,
   profile: PropTypes.shape({
     avatar: PropTypes.string,
+    isVerified: PropTypes.bool,
+    openToWork: PropTypes.bool,
   }),
   profileInitial: PropTypes.string.isRequired,
   profileTo: PropTypes.string.isRequired,

@@ -2,6 +2,9 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { getSopFromTitle } from "../../../src/shared/data/sopTemplates.js";
+import { markFreelancerVerifiedAfterProjectCompletion } from "../lib/freelancer-verification.js";
+import { syncFreelancerOpenToWorkStatus } from "../lib/freelancer-open-to-work.js";
+import { archiveCompletedProject } from "../services/completed-projects.service.js";
 
 const PM_ROLE = "PROJECT_MANAGER";
 const getUserId = (req) => req.user?.id || req.user?.sub || null;
@@ -467,12 +470,41 @@ export const verifyProjectClosure = asyncHandler(async (req, res) => {
     });
 
     // Verify if fully closed
+    let responseProject = project;
+
     if (project.closureHandoverConfirmed && project.closureDeliverablesConfirmed && project.closureReceiptConfirmed && project.closureNoIssuesConfirmed) {
-        await prisma.project.update({
+        responseProject = await prisma.project.update({
             where: { id: projectId },
             data: { status: "COMPLETED" }
         });
+
+        await archiveCompletedProject({
+            projectId,
+            completedAt: responseProject?.updatedAt || new Date(),
+        });
+
+        if (acceptedProposal?.freelancerId) {
+            await syncFreelancerOpenToWorkStatus(acceptedProposal.freelancerId).catch(() => null);
+        }
+
+                if (acceptedProposal?.freelancerId) {
+                    try {
+                        const verified = await markFreelancerVerifiedAfterProjectCompletion(
+                            acceptedProposal.freelancerId
+                        );
+                        if (verified) {
+                            console.log(
+                                `[Verification] Marked freelancer ${acceptedProposal.freelancerId} as verified after PM closed project ${projectId}.`
+                            );
+                        }
+                    } catch (verificationError) {
+                        console.error(
+                            `[Verification] Failed to mark freelancer ${acceptedProposal.freelancerId} as verified after PM closed project ${projectId}:`,
+                            verificationError
+                        );
+                    }
+                }
     }
 
-    res.json({ data: project, message: "Closure verification updated." });
+    res.json({ data: responseProject, message: "Closure verification updated." });
 });

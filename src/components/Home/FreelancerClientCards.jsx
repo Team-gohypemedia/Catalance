@@ -4,27 +4,26 @@ import Briefcase from "lucide-react/dist/esm/icons/briefcase-business";
 import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import Users from "lucide-react/dist/esm/icons/users";
-import Wallet from "lucide-react/dist/esm/icons/wallet";
 import UserRoundSearch from "lucide-react/dist/esm/icons/user-round-search";
-import Globe from "lucide-react/dist/esm/icons/globe";
-import Brain from "lucide-react/dist/esm/icons/brain";
-import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
-import Coins from "lucide-react/dist/esm/icons/coins";
+import Handshake from "lucide-react/dist/esm/icons/handshake";
+import ChartNoAxesCombined from "lucide-react/dist/esm/icons/chart-no-axes-combined";
+import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
+import MessageSquareDot from "lucide-react/dist/esm/icons/message-square-dot";
 import { Button } from "@/components/ui/button";
 import Mascot1 from "@/assets/mascot/mascot1.png";
 
 const businessFeatures = [
-  { icon: BadgeCheck, text: "Verified expertise & portfolios" },
-  { icon: Users, text: "50K+ vetted professionals" },
-  { icon: Wallet, text: "Secure escrow protection" },
-  { icon: Clock3, text: "Real-time project tracking" },
+  { icon: BadgeCheck, text: "Only verified professionals" },
+  { icon: Users, text: "AI-powered talent matching" },
+  { icon: ShieldCheck, text: "Safe & secure payments" },
+  { icon: Clock3, text: "Transparent project tracking" },
 ];
 
 const freelancerFeatures = [
-  { icon: Coins, text: "0% commission on first project" },
-  { icon: Globe, text: "Global network of startups" },
-  { icon: Brain, text: "Smart job matching AI" },
-  { icon: ShieldAlert, text: "Contract dispute protection" },
+  { icon: Handshake, text: "Work with trusted teams." },
+  { icon: ChartNoAxesCombined, text: "Reliable high-quality opportunities" },
+  { icon: ShieldCheck, text: "Secure structured payments" },
+  { icon: MessageSquareDot, text: "Quick problem help" },
 ];
 
 const featureClassName =
@@ -44,11 +43,10 @@ const FreelancerClientCards = () => {
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col items-center">
         <div className="mx-auto w-full max-w-7xl text-center">
           <h2 className="text-[2.1rem] font-medium leading-[1.05] tracking-tight whitespace-nowrap text-white sm:text-[2.75rem] md:text-[3.4rem] lg:text-[4.4rem]">
-            Hire <span className="text-primary">Freelancers</span> Who Don&apos;t Disappear
+            Built for<span className="text-primary">Who</span> You Are
           </h2>
-          <p className="mx-auto mt-6 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-7 sm:text-base md:text-lg">
-            Verified experts. Clear timelines. Protected payments. Dedicated
-            support. Finally, a platform that actually works.
+          <p className="mx-auto mt-1 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-3 sm:text-base md:text-lg">
+            Designed to support your growth at every stage.
           </p>
         </div>
 
@@ -66,13 +64,13 @@ const FreelancerClientCards = () => {
               <div className="relative z-10 flex h-full flex-col">
                 <div className="mb-11 flex items-center justify-between gap-4">
                   <Briefcase className="size-7 text-primary" />
-                  <span className="text-sm font-semibold uppercase tracking-[0.28em] text-white/58">
+                  <span className="text-sm font-semibold uppercase tracking-[0.28em] text-white">
                     For Businesses
                   </span>
                 </div>
 
                 <h3 className="max-w-xs text-[2.05rem] font-semibold leading-tight text-white">
-                  Find Talent You Can Count On
+                  Hire Reliable Talent Faster
                 </h3>
 
                 <div className="mt-10 space-y-5">
@@ -121,13 +119,13 @@ const FreelancerClientCards = () => {
               <div className="relative z-10 flex h-full flex-col">
                 <div className="mb-11 flex items-center justify-between gap-4">
                   <UserRoundSearch className="size-7 text-primary" />
-                  <span className="text-sm font-semibold uppercase tracking-[0.28em] text-white/58">
+                  <span className="text-sm font-semibold uppercase tracking-[0.28em] text-white">
                     For Freelancers
                   </span>
                 </div>
 
                 <h3 className="max-w-sm text-[2.05rem] font-semibold leading-tight text-white">
-                  Find Clients Who Value Your Work
+                  Grow Your Career with Trusted Clients
                 </h3>
 
                 <div className="mt-10 space-y-5">

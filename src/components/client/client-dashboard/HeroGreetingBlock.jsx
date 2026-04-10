@@ -1,14 +1,38 @@
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import { cn } from "@/shared/lib/utils";
+import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
+import {
+  formatDashboardDate,
+  getDashboardGreeting,
+} from "./dashboard-utils.js";
 
 const HeroGreetingBlock = memo(function HeroGreetingBlock({
   hero,
   className = "",
 }) {
-  const dateLabel = hero?.dateLabel || "";
-  const greeting = hero?.greeting || "Hello";
-  const firstName = hero?.firstName || "Client";
-  const description = hero?.description || "";
+  const dashboardData = useOptionalClientDashboardData();
+  const sessionUser = dashboardData?.sessionUser ?? null;
+  const resolvedHero = useMemo(() => {
+    if (hero) {
+      return hero;
+    }
+
+    return {
+      greeting: getDashboardGreeting(),
+      firstName: sessionUser?.fullName?.split(" ")[0] || "Client",
+      dateLabel: formatDashboardDate(new Date(), {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      }).toUpperCase(),
+      description: "",
+    };
+  }, [hero, sessionUser?.fullName]);
+
+  const dateLabel = resolvedHero?.dateLabel || "";
+  const greeting = resolvedHero?.greeting || "Hello";
+  const firstName = resolvedHero?.firstName || "Client";
+  const description = resolvedHero?.description || "";
 
   return (
     <section

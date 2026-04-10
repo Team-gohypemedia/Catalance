@@ -1,4 +1,5 @@
-import React, { memo, useMemo } from "react";
+import React, { memo, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import FolderKanban from "lucide-react/dist/esm/icons/folder-kanban";
 import MessageSquareText from "lucide-react/dist/esm/icons/message-square-text";
@@ -7,6 +8,7 @@ import {
   DashboardPanel,
   DashboardSkeletonBlock,
 } from "@/components/client/client-dashboard/shared.jsx";
+import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
 import { cn } from "@/shared/lib/utils";
 
 const AcceptedFreelancerRow = memo(function AcceptedFreelancerRow({
@@ -14,6 +16,7 @@ const AcceptedFreelancerRow = memo(function AcceptedFreelancerRow({
   onOpenMessages,
 }) {
   const handleMessageClick = item.onMessage || onOpenMessages;
+  const actionLabel = item.actionLabel || "MESSAGE";
 
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 sm:gap-4">
@@ -33,7 +36,7 @@ const AcceptedFreelancerRow = memo(function AcceptedFreelancerRow({
         </p>
 
         <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 text-[13px] leading-none text-muted-foreground">
-          <FolderKanban className="size-[12px] shrink-0 text-[#7a7f89]" />
+          <FolderKanban className="h-3 w-3 shrink-0 text-[#7a7f89]" />
           <span className="min-w-0 truncate">{item.projectLabel}</span>
           <span className="shrink-0 text-[#7a7f89]">&bull;</span>
           <span className="truncate">{item.activityLabel}</span>
@@ -43,9 +46,9 @@ const AcceptedFreelancerRow = memo(function AcceptedFreelancerRow({
       <button
         type="button"
         onClick={handleMessageClick}
-        className="inline-flex h-10 min-w-[94px] shrink-0 items-center justify-center rounded-[8px] bg-white px-4 text-[13px] font-medium uppercase tracking-[0.01em] text-black transition-colors hover:bg-[#f2f2f2]"
+        className="inline-flex h-10 min-w-23.5 shrink-0 items-center justify-center rounded-xl bg-white px-4 text-[13px] font-medium uppercase tracking-[0.01em] text-black transition-colors hover:bg-[#f2f2f2]"
       >
-        MESSAGE
+        {actionLabel}
       </button>
     </div>
   );
@@ -53,15 +56,54 @@ const AcceptedFreelancerRow = memo(function AcceptedFreelancerRow({
 
 const ActiveChats = memo(function ActiveChats({
   acceptedFreelancers,
-  acceptedFreelancersCount = 0,
+  acceptedFreelancersCount,
+  acceptedFreelancersTotalCount,
   onOpenMessages,
   isLoading = false,
   className = "",
 }) {
+  const navigate = useNavigate();
+  const dashboardData = useOptionalClientDashboardData();
   const items = useMemo(
-    () => (Array.isArray(acceptedFreelancers) ? acceptedFreelancers : []),
-    [acceptedFreelancers],
+    () =>
+      Array.isArray(acceptedFreelancers)
+        ? acceptedFreelancers
+        : dashboardData?.acceptedFreelancers || [],
+    [acceptedFreelancers, dashboardData?.acceptedFreelancers],
   );
+  const resolvedAcceptedFreelancersCount = useMemo(() => {
+    if (Number.isFinite(acceptedFreelancersCount)) {
+      return acceptedFreelancersCount;
+    }
+
+    if (Number.isFinite(dashboardData?.acceptedFreelancersCount)) {
+      return dashboardData.acceptedFreelancersCount;
+    }
+
+    return items.filter((item) => item?.chatUnlocked !== false).length;
+  }, [acceptedFreelancersCount, dashboardData?.acceptedFreelancersCount, items]);
+  const resolvedAcceptedFreelancersTotalCount = useMemo(() => {
+    if (Number.isFinite(acceptedFreelancersTotalCount)) {
+      return acceptedFreelancersTotalCount;
+    }
+
+    if (Number.isFinite(dashboardData?.acceptedFreelancersTotalCount)) {
+      return dashboardData.acceptedFreelancersTotalCount;
+    }
+
+    return items.length;
+  }, [acceptedFreelancersTotalCount, dashboardData?.acceptedFreelancersTotalCount, items.length]);
+  const resolvedIsLoading = isLoading || dashboardData?.isLoading;
+  const hasUnlockedChats = resolvedAcceptedFreelancersCount > 0;
+  const hasMoreProjectsInMessages = resolvedAcceptedFreelancersTotalCount > items.length;
+  const handleOpenMessages = useCallback(() => {
+    if (typeof onOpenMessages === "function") {
+      onOpenMessages();
+      return;
+    }
+
+    navigate("/client/messages");
+  }, [navigate, onOpenMessages]);
 
   return (
     <section className={cn("w-full min-w-0", className)}>
@@ -74,7 +116,7 @@ const ActiveChats = memo(function ActiveChats({
       </div>
 
       <DashboardPanel className="w-full overflow-hidden bg-card px-5 pb-5 pt-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:pb-6 sm:pt-6">
-        {isLoading ? (
+        {resolvedIsLoading ? (
           <>
             <DashboardSkeletonBlock className="h-7 w-44 rounded-full" />
             <DashboardSkeletonBlock className="mt-3 h-4 w-64 rounded-full" />
@@ -92,8 +134,8 @@ const ActiveChats = memo(function ActiveChats({
                       <DashboardSkeletonBlock className="h-3 w-44 rounded-full" />
                     </div>
                     <div className="row-span-2 flex flex-col justify-end gap-2">
-                      <DashboardSkeletonBlock className="h-7 w-full rounded-[8px]" />
-                      <DashboardSkeletonBlock className="h-7 w-full rounded-[8px]" />
+                      <DashboardSkeletonBlock className="h-7 w-full rounded-xl" />
+                      <DashboardSkeletonBlock className="h-7 w-full rounded-xl" />
                     </div>
                   </div>
                 </div>
@@ -102,12 +144,12 @@ const ActiveChats = memo(function ActiveChats({
             <DashboardSkeletonBlock className="mt-9 h-4 w-40 rounded-full" />
           </>
         ) : items.length === 0 ? (
-          <div className="flex min-h-[220px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[260px] sm:py-10">
-            <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-14">
+          <div className="flex min-h-55 flex-col items-center justify-center px-4 py-8 text-center sm:min-h-65 sm:py-10">
+            <div className="flex size-12 items-center justify-center rounded-full bg-white/6 text-[#94a3b8] sm:size-14">
               <MessageSquareText className="size-6" />
             </div>
             <p className="mt-5 text-sm text-white">No active project chats yet</p>
-            <p className="mt-2 max-w-[220px] text-xs text-[#8f8f8f]">
+            <p className="mt-2 max-w-55 text-xs text-[#8f8f8f]">
               Chat shortcuts appear here once a project becomes active and
               messaging is unlocked.
             </p>
@@ -123,25 +165,40 @@ const ActiveChats = memo(function ActiveChats({
                     index === 0 ? "pt-0" : "",
                     index === items.length - 1
                       ? "pb-0"
-                      : "border-b border-white/[0.08]",
+                      : "border-b border-white/8",
                   )}
                 >
                   <AcceptedFreelancerRow
                     item={item}
-                    onOpenMessages={onOpenMessages}
+                    onOpenMessages={handleOpenMessages}
                   />
                 </div>
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={onOpenMessages}
-              className="mt-5 flex w-full items-center justify-center gap-2 border-t border-white/[0.08] pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-[#d6d6d6] transition-colors hover:text-white"
-            >
-              <span>Open Messages ({acceptedFreelancersCount || items.length})</span>
-              <ChevronRight className="size-[15px] stroke-[1.75]" />
-            </button>
+            {hasMoreProjectsInMessages ? (
+              <button
+                type="button"
+                onClick={handleOpenMessages}
+                className="mt-5 flex w-full items-center justify-center gap-2 border-t border-white/8 pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-[#d6d6d6] transition-colors hover:text-white"
+              >
+                <span>View All Projects In Messages ({resolvedAcceptedFreelancersTotalCount})</span>
+                <ChevronRight className="size-3.75 stroke-[1.75]" />
+              </button>
+            ) : hasUnlockedChats ? (
+              <button
+                type="button"
+                onClick={handleOpenMessages}
+                className="mt-5 flex w-full items-center justify-center gap-2 border-t border-white/8 pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-[#d6d6d6] transition-colors hover:text-white"
+              >
+                <span>Open Messages ({resolvedAcceptedFreelancersCount})</span>
+                <ChevronRight className="size-3.75 stroke-[1.75]" />
+              </button>
+            ) : (
+              <p className="mt-5 border-t border-white/8 pt-5 text-center text-[12px] font-medium uppercase tracking-[0.12em] text-[#8f8f8f]">
+                Messages unlock after kickoff payment
+              </p>
+            )}
           </>
         )}
       </DashboardPanel>

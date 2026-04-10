@@ -606,7 +606,12 @@ export const getProfile = asyncHandler(async (req, res) => {
         available:
           typeof freelancerProfile?.available === "boolean"
             ? freelancerProfile.available
-            : user.status === "ACTIVE"
+            : user.status === "ACTIVE",
+          openToWork:
+            typeof freelancerProfile?.openToWork === "boolean"
+              ? freelancerProfile.openToWork
+              : true,
+        isVerified: Boolean(freelancerProfile?.isVerified)
       },
       skills: mergedSkills.length ? mergedSkills : fallbackSkills,
       workExperience: userWorkExperience,

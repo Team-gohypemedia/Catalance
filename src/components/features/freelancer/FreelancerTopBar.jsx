@@ -6,6 +6,96 @@ import { getSession } from "@/shared/lib/auth-storage";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 
+const buildFreelancerProjectDestination = (projectId = "") => {
+  const normalizedProjectId = String(projectId || "").trim();
+
+  return normalizedProjectId
+    ? `/freelancer/project/${encodeURIComponent(normalizedProjectId)}`
+    : "/freelancer/project";
+};
+
+const buildFreelancerProposalDestination = ({ projectId = "" } = {}) => {
+  const normalizedProjectId = String(projectId || "").trim();
+  const params = new URLSearchParams();
+
+  if (normalizedProjectId) {
+    params.set("projectId", normalizedProjectId);
+  }
+
+  const query = params.toString();
+  return query ? `/freelancer/proposals?${query}` : "/freelancer/proposals";
+};
+
+const resolveFreelancerNotificationDestination = (notification) => {
+  const explicitDestination = String(
+    notification?.data?.route ||
+      notification?.data?.redirectTo ||
+      notification?.data?.href ||
+      notification?.data?.url ||
+      notification?.data?.path ||
+      "",
+  ).trim();
+
+  if (explicitDestination) {
+    return explicitDestination;
+  }
+
+  const type = String(notification?.type || "").trim().toLowerCase();
+  const projectId = String(
+    notification?.data?.projectId || notification?.data?.syncedProjectId || "",
+  ).trim();
+  const status = String(notification?.data?.status || "").trim().toUpperCase();
+
+  if (type === "chat") {
+    const service = String(notification?.data?.service || "");
+    const parts = service.split(":");
+    let chatProjectId = projectId;
+
+    if (!chatProjectId && parts.length >= 4 && parts[0] === "CHAT") {
+      chatProjectId = parts[1];
+    }
+
+    return chatProjectId
+      ? `/freelancer/messages?projectId=${encodeURIComponent(chatProjectId)}`
+      : "/freelancer/messages";
+  }
+
+  if (
+    type === "proposal" ||
+    type === "proposal_followup" ||
+    type === "budget_suggestion" ||
+    type === "proposal_expired"
+  ) {
+    if (status === "ACCEPTED" && projectId) {
+      return buildFreelancerProjectDestination(projectId);
+    }
+
+    if (status === "ACCEPTED") {
+      return "/freelancer/proposals/accepted";
+    }
+
+    return buildFreelancerProposalDestination({ projectId });
+  }
+
+  if (type === "payment") {
+    return "/freelancer/payments";
+  }
+
+  if (
+    type === "meeting_scheduled" ||
+    type === "task_completed" ||
+    type === "task_verified" ||
+    type === "task_unverified" ||
+    type === "project_assigned" ||
+    type === "freelancer_change_resolved" ||
+    type === "freelancer_review"
+  ) {
+    return buildFreelancerProjectDestination(projectId);
+  }
+
+  return "/freelancer";
+};
+
 export const FreelancerTopBar = () => {
   const [sessionUser, setSessionUser] = useState(null);
   const { pathname } = useLocation();
@@ -37,8 +127,25 @@ export const FreelancerTopBar = () => {
       name: displayName,
       avatar: sessionUser?.avatar || "",
       initial: String(displayName).charAt(0).toUpperCase(),
+      available: sessionUser?.available,
+      openToWork:
+        typeof sessionUser?.freelancerProfile?.openToWork === "boolean"
+          ? sessionUser.freelancerProfile.openToWork
+          : typeof sessionUser?.openToWork === "boolean"
+            ? sessionUser.openToWork
+            : typeof sessionUser?.available === "boolean"
+              ? sessionUser.available
+              : undefined,
     };
-  }, [sessionUser?.avatar, sessionUser?.email, sessionUser?.fullName, sessionUser?.name]);
+  }, [
+    sessionUser?.avatar,
+    sessionUser?.available,
+    sessionUser?.email,
+    sessionUser?.fullName,
+    sessionUser?.freelancerProfile?.openToWork,
+    sessionUser?.name,
+    sessionUser?.openToWork,
+  ]);
   const handleWorkspaceNav = useCallback(
     (key) => {
       if (key === "dashboard") {
@@ -71,44 +178,7 @@ export const FreelancerTopBar = () => {
   const handleNotificationClick = (notification) => {
     markAsRead(notification.id);
 
-    if (notification.type === "chat" && notification.data) {
-      const service = notification.data.service || "";
-      const parts = service.split(":");
-      let projectId = notification.data.projectId;
-
-      if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
-        projectId = parts[1];
-      }
-
-      if (projectId) {
-        navigate(`/freelancer/messages?projectId=${projectId}`);
-      } else {
-        navigate("/freelancer/messages");
-      }
-      return;
-    }
-
-    if (notification.type === "proposal") {
-      const { status, projectId } = notification.data || {};
-      if (status === "ACCEPTED" && projectId) {
-        navigate(`/freelancer/project/${projectId}`);
-      } else if (status === "ACCEPTED") {
-        navigate("/freelancer/proposals/accepted");
-      } else {
-        navigate("/freelancer/proposals");
-      }
-      return;
-    }
-
-    if (
-      (notification.type === "meeting_scheduled" ||
-        notification.type === "task_completed" ||
-        notification.type === "task_verified" ||
-        notification.type === "task_unverified") &&
-      notification.data?.projectId
-    ) {
-      navigate(`/freelancer/project/${notification.data.projectId}`);
-    }
+    navigate(resolveFreelancerNotificationDestination(notification));
   };
 
   return (

@@ -1,53 +1,41 @@
 import React from 'react'
-import { Wormhole } from '../ui/Whomehole'
+import { Wormhole } from '@/components/ui/Wormhole'
 import { Marquee } from '@/components/ui/marquee'
+import testimonial1 from '@/assets/images/testimonials/Ajay-prajapati.jpg'
+import testimonial2 from '@/assets/images/testimonials/mohd-kaif.jpg'
+import testimonial3 from '@/assets/images/testimonials/nitin-nayak.jpg'
+import testimonial4 from '@/assets/images/testimonials/aniket-thakur.jpg'
 
 const testimonials = [
   {
     quote:
-      "The insights we get from SocialLift's analytics are invaluable. They've helped us fine-tune our strategy.",
-    name: 'Tom J.',
-    role: 'E-commerce Entrepreneur',
-    handle: '@tomj',
-    image:
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+    'Since using the platform, our brand visibility and engagement have grown consistently across platforms.',
+    name: 'Ajay Prajapati',
+    role: 'UX Designer',
+    image: testimonial1,
   },
   {
     quote:
-      'Managing multiple platforms was overwhelming before SocialLift. Now, it is effortless, and our brand looks cohesive.',
-    name: 'Jenna L.',
-    role: 'Fashion Brand Manager',
-    handle: '@jennal',
-    image:
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
+    'Our brand visibility and audience interaction improved significantly thanks to Catalance.',
+    name: 'Mohd Kaif',
+    role: 'Software Engineer',
+    image: testimonial2,
+  },
+    {
+    quote:
+      'Go hype media best social media agency in Delhi and best digital market agency in Delhi I am recommended it always',
+    name: 'Nitin Nayak',
+    role: 'Video Editor',
+    image: testimonial3,
   },
   {
     quote:
-      'We finally have a workflow that keeps our content consistent without burning out the team.',
-    name: 'Aiden R.',
-    role: 'Founder, Studio North',
-    handle: '@aidenr',
-    image:
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
+      'We saw a complete shift in our online presence, with doubled engagement and deeper audience connection.',
+    name: 'Aniket Thakur',
+    role: 'Software Engineer',
+    image: testimonial4,
   },
-  {
-    quote:
-      'SocialLift gave us a clearer weekly rhythm and the reports are easy for the whole team to understand.',
-    name: 'Maya K.',
-    role: 'Marketing Lead',
-    handle: '@mayak',
-    image:
-      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    quote:
-      'Our engagement started climbing almost immediately after we moved our campaigns here.',
-    name: 'Noah P.',
-    role: 'Creative Director',
-    handle: '@noahp',
-    image:
-      'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?auto=format&fit=crop&w=400&q=80',
-  },
+
 ]
 
 function StarRating() {
@@ -104,7 +92,7 @@ const Testimonidals = () => {
             duration: 1.4,
             stroke: 1.1,
             opacity: [0.18, 1, 0.45],
-            colors: ["var(--primary)", "var(--primary)", "var(--primary)"],
+            colors: ["rgb(135, 72, 0)", "rgb(135, 72, 0)", "rgb(135, 72, 0)"],
           }}
           rings={{
             delay: 0.4,
@@ -112,8 +100,8 @@ const Testimonidals = () => {
             stagger: 0.06,
             offset: -30,
             stroke: 1.1,
-            opacity: [0.16, 1, 0.35],
-            colors: ["var(--primary)", "var(--primary)", "var(--primary)"],
+            opacity: [0.18, 1, 0.45],
+            colors: ["rgb(255, 255, 255)", "rgb(255, 255, 255)", "rgb(255, 255, 255)"],
           }}
           pulse={{
             delay: 1.4,
@@ -136,8 +124,8 @@ const Testimonidals = () => {
             <span className="block">Don&apos;t Just Take Our</span>
             <span className="block">Word For It</span>
           </h2>
-          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
-            At SocialLift, we take the stress out of social media management.
+          <p className="mx-auto mt-1 sm:mt-3 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
+            See what Experts say about their experience.
           </p>
         </header>
 

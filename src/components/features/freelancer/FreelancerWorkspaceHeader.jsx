@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/sheet";
 import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import logo from "@/assets/logos/logo.svg";
+import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
 
@@ -52,7 +54,18 @@ const ProfileDropdown = ({ profile, displayName, profileInitial }) => {
               {profileInitial}
             </AvatarFallback>
           </Avatar>
-          <span className="max-w-[120px] truncate">{displayName}</span>
+          <span className="flex min-w-0 flex-col items-start gap-0.5 leading-none">
+            <span className="max-w-[120px] truncate">{displayName}</span>
+            {profile?.isVerified ? (
+              <Badge
+                title="This freelancer has successfully completed at least one project on our platform."
+                className="h-5 border-emerald-500/20 bg-emerald-500/10 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-300"
+              >
+                <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                Verified Freelancer
+              </Badge>
+            ) : null}
+          </span>
           <svg
             className={cn("h-3.5 w-3.5 text-white transition-transform duration-200", open ? "rotate-180" : "")}
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}

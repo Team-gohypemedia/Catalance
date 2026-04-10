@@ -10,6 +10,8 @@ import {
   isCompletedPhaseLockedAfterAdvance,
   isTaskPhaseLockedByPayment,
 } from "../../../src/shared/lib/project-verification-gates.js";
+import { markFreelancerVerifiedAfterProjectCompletion } from "../lib/freelancer-verification.js";
+import { syncFreelancerOpenToWorkStatus } from "../lib/freelancer-open-to-work.js";
 import {
   buildProjectProposalJson,
   PROJECT_PROPOSAL_FIELD_KEYS,
@@ -18,6 +20,7 @@ import {
   extractProjectProposalFields,
 } from "../../../src/shared/lib/project-proposal-fields.js";
 import { generateFreelancerMatchingJson } from "../services/ai.service.js";
+import { archiveCompletedProject } from "../services/completed-projects.service.js";
 import crypto from "crypto";
 
 const MAX_INT = 2147483647; // PostgreSQL INT4 upper bound
@@ -79,10 +82,10 @@ const normalizeBudget = (value) => {
   }
 
   if (typeof value === "string") {
-    // Handle currency symbols, commas, and ranges like "â‚¹60,001â€“1,00,000"
+    // Strip currency symbols, commas, and pull the first number if a range is provided.
     const sanitized = value
-      .replace(/[â‚¹,\s]/g, "")
-      .replace(/[â€“â€”]/g, "-"); // normalize dash variants
+      .replace(/[–—]/g, "-")
+      .replace(/[^\d.-]/g, "");
 
     const rangePart = sanitized.includes("-")
       ? sanitized.split("-")[0]
@@ -558,6 +561,89 @@ const getProjectForResponse = (projectId, tx = prisma) =>
     include: PROJECT_RESPONSE_INCLUDE,
   });
 
+const canTreatAsIdempotentCompletionRequest = (existingStatus = "", updates = {}) => {
+  const normalizedStatus = String(existingStatus || "").toUpperCase();
+  const updateKeys = Object.keys(updates || {});
+  if (normalizedStatus !== "COMPLETED" || updateKeys.length !== 1) {
+    return false;
+  }
+
+  return (
+    updateKeys[0] === "status" &&
+    String(updates?.status || "").toUpperCase() === "COMPLETED"
+  );
+};
+
+const assertProjectCanBeCompleted = ({
+  project = null,
+  actorId = "",
+  actorRole = "",
+} = {}) => {
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  const normalizedActorRole = String(actorRole || "").toUpperCase();
+  const isAdmin = normalizedActorRole === "ADMIN";
+  const isOwner = String(project.ownerId || "") === String(actorId || "");
+
+  if (!isOwner && !isAdmin) {
+    throw new AppError("Only the project owner can complete this project.", 403);
+  }
+
+  const completionPlan = resolveProjectPaymentPlan(project);
+  const completionPhases = Array.isArray(completionPlan?.phases)
+    ? completionPlan.phases
+    : [];
+  const allPhasesComplete =
+    completionPhases.length > 0 &&
+    completionPhases.every((phase) => Boolean(phase?.isComplete));
+
+  if (!allPhasesComplete) {
+    throw new AppError(
+      "All project phases must be verified before marking the project as completed.",
+      400,
+    );
+  }
+};
+
+const applyProjectCompletionSideEffects = async ({
+  projectId = "",
+  acceptedFreelancerId = "",
+} = {}) => {
+  const normalizedProjectId = String(projectId || "").trim();
+  if (!normalizedProjectId) {
+    throw new AppError("Project ID is required for completion.", 400);
+  }
+
+  await archiveCompletedProject({
+    projectId: normalizedProjectId,
+  });
+
+  const normalizedFreelancerId = String(acceptedFreelancerId || "").trim();
+  if (!normalizedFreelancerId) {
+    return;
+  }
+
+  try {
+    const verified = await markFreelancerVerifiedAfterProjectCompletion(
+      normalizedFreelancerId,
+    );
+    if (verified) {
+      console.log(
+        `[Verification] Marked freelancer ${normalizedFreelancerId} as verified after project ${normalizedProjectId} completion.`,
+      );
+    }
+  } catch (verificationError) {
+    console.error(
+      `[Verification] Failed to mark freelancer ${normalizedFreelancerId} as verified after project ${normalizedProjectId} completion:`,
+      verificationError,
+    );
+  }
+
+  await syncFreelancerOpenToWorkStatus(normalizedFreelancerId).catch(() => null);
+};
+
 const getFreelancerChangeRequests = (project = {}) =>
   Array.isArray(project?.freelancerChangeRequests)
     ? project.freelancerChangeRequests
@@ -750,6 +836,13 @@ export const createProject = asyncHandler(async (req, res) => {
         projectId: project.id,
       },
     });
+  }
+
+  if (
+    createdProposal?.status === "ACCEPTED" &&
+    String(project.status || status || "").toUpperCase() !== "DRAFT"
+  ) {
+    await syncFreelancerOpenToWorkStatus(createdProposal.freelancerId).catch(() => null);
   }
 
   res.status(201).json({
@@ -951,7 +1044,12 @@ export const updateProject = asyncHandler(async (req, res) => {
   const hasRequestedUpdates = Object.keys(updates || {}).length > 0;
   const existingStatus = String(existing.status || "").toUpperCase();
 
-  if (!isAdmin && existingStatus === "COMPLETED" && hasRequestedUpdates) {
+  if (
+    !isAdmin &&
+    existingStatus === "COMPLETED" &&
+    hasRequestedUpdates &&
+    !canTreatAsIdempotentCompletionRequest(existingStatus, updates)
+  ) {
     throw new AppError(
       "This project has been completed and can no longer be changed.",
       400
@@ -998,28 +1096,14 @@ export const updateProject = asyncHandler(async (req, res) => {
       sanitizedUpdates.status = nextStatus;
 
       if (nextStatus === "COMPLETED") {
-        if (!isOwner && !isAdmin) {
-          throw new AppError("Only the project owner can complete this project.", 403);
-        }
-
-        const completionState = {
-          ...existing,
-          ...sanitizedUpdates,
-        };
-        const completionPlan = resolveProjectPaymentPlan(completionState);
-        const completionPhases = Array.isArray(completionPlan?.phases)
-          ? completionPlan.phases
-          : [];
-        const allPhasesComplete =
-          completionPhases.length > 0 &&
-          completionPhases.every((phase) => Boolean(phase?.isComplete));
-
-        if (!allPhasesComplete) {
-          throw new AppError(
-            "All project phases must be verified before marking the project as completed.",
-            400
-          );
-        }
+        assertProjectCanBeCompleted({
+          project: {
+            ...existing,
+            ...sanitizedUpdates,
+          },
+          actorId: userId,
+          actorRole: user?.role,
+        });
       }
     }
 
@@ -1166,6 +1250,18 @@ export const updateProject = asyncHandler(async (req, res) => {
     });
     console.log("DEBUG: Update successful");
 
+    if (String(sanitizedUpdates.status || "").toUpperCase() === "COMPLETED") {
+      await applyProjectCompletionSideEffects({
+        projectId: id,
+        acceptedFreelancerId: acceptedProposal?.freelancerId,
+      });
+    } else if (
+      Object.prototype.hasOwnProperty.call(sanitizedUpdates, "status") &&
+      acceptedProposal?.freelancerId
+    ) {
+      await syncFreelancerOpenToWorkStatus(acceptedProposal.freelancerId).catch(() => null);
+    }
+
     // Send notification based on notificationMeta
     if (notificationMeta?.type && notificationMeta?.taskName) {
       const taskName = notificationMeta.taskName;
@@ -1222,6 +1318,74 @@ export const updateProject = asyncHandler(async (req, res) => {
     console.error("Error meta:", error.meta);
     throw new AppError(`Failed to update project: ${error.message}`, 500);
   }
+});
+
+export const completeProject = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const [project, user] = await Promise.all([
+    prisma.project.findUnique({
+      where: { id },
+      include: {
+        proposals: true,
+      },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    }),
+  ]);
+
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  const acceptedProposal = Array.isArray(project?.proposals)
+    ? project.proposals.find((proposal) => proposal?.status === "ACCEPTED")
+    : null;
+  const currentStatus = String(project.status || "").toUpperCase();
+  const normalizedActorRole = String(user?.role || "").toUpperCase();
+  const isAdmin = normalizedActorRole === "ADMIN";
+  const isOwner = String(project.ownerId || "") === String(userId || "");
+
+  if (!isOwner && !isAdmin) {
+    throw new AppError("Only the project owner can complete this project.", 403);
+  }
+
+  if (currentStatus !== "COMPLETED") {
+    assertProjectCanBeCompleted({
+      project,
+      actorId: userId,
+      actorRole: user?.role,
+    });
+
+    await prisma.project.update({
+      where: { id },
+      data: {
+        status: "COMPLETED",
+      },
+    });
+  }
+
+  await applyProjectCompletionSideEffects({
+    projectId: id,
+    acceptedFreelancerId: acceptedProposal?.freelancerId,
+  });
+
+  const completedProject = await getProjectForResponse(id);
+
+  res.json({
+    data: hydrateProjectForResponse(completedProject),
+    message:
+      currentStatus === "COMPLETED"
+        ? "Project was already completed."
+        : "Project marked as completed.",
+  });
 });
 
 export const requestFreelancerChange = asyncHandler(async (req, res) => {
@@ -1654,6 +1818,10 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
     },
   });
 
+  if (acceptedProposal?.freelancerId) {
+    await syncFreelancerOpenToWorkStatus(acceptedProposal.freelancerId).catch(() => null);
+  }
+
   const updatedProject = hydrateProjectForResponse({
     ...project,
     ...updatedProjectRecord,
@@ -1736,6 +1904,10 @@ export const payUpfront = asyncHandler(async (req, res) => {
       status: nextStatus,
     },
   });
+
+  if (acceptedProposal?.freelancerId) {
+    await syncFreelancerOpenToWorkStatus(acceptedProposal.freelancerId).catch(() => null);
+  }
 
   const updatedProject = hydrateProjectForResponse({
     ...project,
@@ -1981,10 +2153,25 @@ export const pauseProject = asyncHandler(async (req, res) => {
   if (!userId) throw new AppError("Authentication required", 401);
   await requirePmOrAdmin(userId, id);
 
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      proposals: {
+        where: { status: "ACCEPTED" },
+        select: { freelancerId: true },
+      },
+    },
+  });
+
   const updated = await prisma.project.update({
     where: { id },
     data: { status: "PAUSED" }
   });
+
+  const pausedFreelancerId = project?.proposals?.[0]?.freelancerId;
+  if (pausedFreelancerId) {
+    await syncFreelancerOpenToWorkStatus(pausedFreelancerId).catch(() => null);
+  }
 
   res.json({ data: updated, message: "Project has been paused." });
 });
@@ -2010,6 +2197,8 @@ export const removeFreelancer = asyncHandler(async (req, res) => {
     where: { id: acceptedProposal.id },
     data: { status: "REPLACED" }
   });
+
+  await syncFreelancerOpenToWorkStatus(acceptedProposal.freelancerId).catch(() => null);
 
   res.json({
     data: { projectId: id },
@@ -2208,6 +2397,13 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
       },
     });
   });
+
+  await Promise.allSettled([
+    currentAssignment?.freelancerId
+      ? syncFreelancerOpenToWorkStatus(currentAssignment.freelancerId)
+      : Promise.resolve(null),
+    syncFreelancerOpenToWorkStatus(freelancer.id),
+  ]);
 
   try {
     await sendNotificationToUser(project.ownerId, {

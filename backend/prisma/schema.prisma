@@ -110,6 +110,8 @@ model FreelancerProfile {
   companyName                 String?
   location                    String?
   available                   Boolean  @default(true)
+  openToWork                  Boolean  @default(true)
+  isVerified                  Boolean  @default(false)
   rating                      Decimal? @default(0) @db.Decimal(3, 1)
   reviewCount                 Int      @default(0)
   experienceYears             Int?     @default(0)
@@ -298,22 +300,41 @@ model FreelancerProject {
 }
 
 model CompletedProject {
-  id               String   @id @default(cuid())
-  ongoingProjectId String?
-  title            String
-  description      String?  @db.Text
-  budget           Int?
-  spent            Int      @default(0)
-  ownerId          String?
-  managerId        String?
-  completedAt      DateTime @default(now())
-  archivedData     Json?    @default("{}")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  originalProjectId   String?  @map("ongoingProjectId")
+  title               String
+  description         String?  @db.Text
+  budget              Int?
+  budgetMin           Int?
+  budgetMax           Int?
+  spent               Int      @default(0)
+  ownerId             String?
+  managerId           String?
+  clientSnapshot      Json     @default("{}")
+  freelancerIds       String[] @default([])
+  freelancerSnapshots Json     @default("[]")
+  serviceKey          String?
+  serviceType         String?
+  niche               String?
+  projectType         String?
+  timeline            String?
+  skills              String[] @default([])
+  tags                String[] @default([])
+  matchingSeed        Json     @default("{}")
+  completedAt         DateTime @default(now())
+  archivedData        Json?    @default("{}")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  @@index([ongoingProjectId])
+  @@index([originalProjectId])
   @@index([ownerId])
   @@index([managerId])
+  @@index([serviceKey])
+  @@index([niche])
+  @@index([projectType])
+  @@index([budgetMin])
+  @@index([budgetMax])
+  @@index([completedAt])
   @@map("CompletedProjects")
 }
 
@@ -324,6 +345,7 @@ model Proposal {
   status             ProposalStatus @default(PENDING)
   rejectionReason    String?        @db.Text
   rejectionReasonKey String?
+  followupGuidanceSent Boolean       @default(false)
   budgetReminderSent Boolean        @default(false)
   freelancer         User           @relation(fields: [freelancerId], references: [id])
   freelancerId       String
@@ -622,6 +644,8 @@ model AiGuestMessage {
   role      String // "user" or "assistant"
   content   String         @db.Text
   createdAt DateTime       @default(now())
+
+  @@index([sessionId, createdAt])
 }
 
 model ProjectTask {

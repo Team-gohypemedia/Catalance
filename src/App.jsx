@@ -22,7 +22,7 @@ const ProposalDrafts = lazy(
   () => import("@/components/features/client/ProposalDrafts.jsx"),
 );
 const ClientProjects = lazy(
-  () => import("@/components/features/client/ClientProjects.jsx"),
+  () => import("@/pages/client/ClientProjects.jsx"),
 );
 const ClientProjectDetail = lazy(
   () => import("@/components/pages/ClientProjectDetailPage.jsx"),

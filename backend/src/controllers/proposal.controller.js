@@ -2,6 +2,11 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { Prisma, prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
+import { syncFreelancerOpenToWorkStatus } from "../lib/freelancer-open-to-work.js";
+import {
+  matchFreelancersForProposal,
+  matchFreelancersForProposalPayload,
+} from "../services/proposal-matching.service.js";
 
 const normalizeAmount = (value) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) {
@@ -25,6 +30,258 @@ const FREELANCER_REJECTION_REASON_KEYS = new Set([
   ...Object.keys(FREELANCER_REJECTION_REASON_PRESETS),
   CUSTOM_REJECTION_REASON_KEY,
 ]);
+
+const normalizeProposalMatchPayload = (proposal = {}) => {
+  const resolvedProposal = proposal && typeof proposal === "object" ? proposal : {};
+  const project =
+    resolvedProposal.project && typeof resolvedProposal.project === "object"
+      ? resolvedProposal.project
+      : {};
+
+  return {
+    ...resolvedProposal,
+    serviceType:
+      resolvedProposal.serviceType ||
+      resolvedProposal.proposalContext?.serviceType ||
+      project.serviceType ||
+      resolvedProposal.service ||
+      resolvedProposal.serviceName ||
+      project.serviceName ||
+      project.category ||
+      "",
+    projectStack:
+      resolvedProposal.projectStack ||
+      resolvedProposal.proposalContext?.projectStack ||
+      project.projectStack ||
+      project.proposalJson?.projectStack ||
+      null,
+    techStack:
+      resolvedProposal.techStack ||
+      resolvedProposal.proposalContext?.techStack ||
+      project.techStack ||
+      project.proposalJson?.techStack ||
+      null,
+    projectTitle:
+      resolvedProposal.projectTitle || resolvedProposal.title || project.title || "",
+    title: resolvedProposal.title || resolvedProposal.projectTitle || project.title || "",
+    summary:
+      resolvedProposal.summary ||
+      resolvedProposal.content ||
+      resolvedProposal.coverLetter ||
+      project.description ||
+      "",
+    content:
+      resolvedProposal.content ||
+      resolvedProposal.summary ||
+      resolvedProposal.coverLetter ||
+      project.description ||
+      "",
+    service:
+      resolvedProposal.service ||
+      resolvedProposal.serviceName ||
+      resolvedProposal.serviceKey ||
+      project.service ||
+      project.serviceName ||
+      project.category ||
+      "",
+    serviceKey:
+      resolvedProposal.serviceKey ||
+      project.serviceKey ||
+      resolvedProposal.service ||
+      resolvedProposal.serviceName ||
+      project.service ||
+      project.category ||
+      "",
+    budget:
+      resolvedProposal.amount ??
+      resolvedProposal.budget ??
+      resolvedProposal.proposalContext?.budget ??
+      project.budget ??
+      resolvedProposal.projectBudget ??
+      null,
+    proposalBudget:
+      resolvedProposal.amount ??
+      resolvedProposal.budget ??
+      resolvedProposal.proposalContext?.budget ??
+      project.budget ??
+      resolvedProposal.projectBudget ??
+      null,
+    syncedProjectId:
+      resolvedProposal.syncedProjectId || resolvedProposal.projectId || project.id || null,
+    projectId: resolvedProposal.projectId || project.id || null,
+  };
+};
+
+const clampPercentage = (value, fallback = null) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(numericValue)));
+};
+
+export const matchProposalFreelancers = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const proposalId = String(req.body?.proposalId || "").trim();
+  const proposalPayload =
+    req.body?.proposal && typeof req.body.proposal === "object"
+      ? req.body.proposal
+      : req.body && typeof req.body === "object"
+        ? req.body
+        : {};
+  const hasProposalPayload = Object.keys(proposalPayload).length > 0;
+
+  if (!proposalId && !hasProposalPayload) {
+    throw new AppError("Proposal details are required to match freelancers.", 400);
+  }
+
+  const proposal = normalizeProposalMatchPayload(proposalPayload);
+  let matchingResult;
+
+  if (proposalId) {
+    try {
+      matchingResult = await matchFreelancersForProposal(proposalId, {
+        limit: req.body?.limit,
+      });
+    } catch (error) {
+      const shouldFallbackToPayload =
+        hasProposalPayload &&
+        error instanceof AppError &&
+        [400, 404].includes(Number(error.statusCode));
+
+      if (!shouldFallbackToPayload) {
+        throw error;
+      }
+
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[Proposal Match] Falling back to payload matching", {
+          proposalId,
+          reason: error?.message || null,
+        });
+      }
+
+      matchingResult = await matchFreelancersForProposalPayload(proposal, {
+        limit: req.body?.limit,
+      });
+    }
+  } else {
+    matchingResult = await matchFreelancersForProposalPayload(proposal, {
+      limit: req.body?.limit,
+    });
+  }
+  const matchedFreelancers = Array.isArray(matchingResult?.results)
+    ? matchingResult.results
+    : [];
+
+  if (process.env.NODE_ENV !== "production") {
+    console.info("[Proposal Match]", {
+      userId,
+      serviceKey: proposal.serviceKey || proposal.project?.serviceKey || null,
+      budget: proposal.budget ?? proposal.proposalBudget ?? null,
+      candidates: matchedFreelancers.length,
+      matched: matchedFreelancers.length,
+      levelCounts: matchingResult?.levelCounts || null,
+    });
+  }
+
+  const resolvedProposalBudget =
+    proposal.budget ??
+    proposal.proposalBudget ??
+    matchingResult?.source?.budget ??
+    null;
+  const resolvedProposalId =
+    proposalId ||
+    proposal?.id ||
+    matchingResult?.proposalId ||
+    matchingResult?.sourceProjectId ||
+    null;
+
+  const normalizedFreelancers = matchedFreelancers.map((freelancer) => {
+    const matchPercent = clampPercentage(
+      freelancer?.matchPercent ??
+        freelancer?.matchScore ??
+        freelancer?.projectRelevanceScore ??
+        freelancer?.score,
+      0,
+    );
+    const rawMatchScore = Number.isFinite(Number(freelancer?.rawMatchScore))
+      ? Math.round(Number(freelancer.rawMatchScore))
+      : Number.isFinite(Number(freelancer?.scoreMetadata?.rawMatchScore))
+        ? Math.round(Number(freelancer.scoreMetadata.rawMatchScore))
+        : null;
+    const matchedServiceName =
+      freelancer?.matchedService?.serviceName ||
+      freelancer?.serviceType ||
+      freelancer?.serviceName ||
+      freelancer?.service ||
+      null;
+    const matchedServiceKey =
+      freelancer?.matchedService?.serviceKey ||
+      freelancer?.serviceKey ||
+      null;
+
+    return {
+      ...freelancer,
+      freelancerId: freelancer?.id || null,
+      name: freelancer?.fullName || freelancer?.name || "Freelancer",
+      title:
+        freelancer?.title ||
+        freelancer?.jobTitle ||
+        freelancer?.freelancerProfile?.jobTitle ||
+        freelancer?.professionalTitle ||
+        null,
+      bio:
+        freelancer?.bio ||
+        freelancer?.cleanBio ||
+        freelancer?.about ||
+        null,
+      avatarUrl: freelancer?.avatar || null,
+      service: matchedServiceName || matchedServiceKey,
+      serviceType: matchedServiceName,
+      serviceKey: matchedServiceKey,
+      proposalBudget: resolvedProposalBudget,
+      startingPrice: freelancer?.budgetCompatibility?.startingPrice ?? null,
+      matchedSkills: Array.isArray(freelancer?.matchedSkills) ? freelancer.matchedSkills : [],
+      matchedCaseStudyTitles: Array.isArray(freelancer?.matchedCaseStudyTitles)
+        ? freelancer.matchedCaseStudyTitles
+        : Array.isArray(freelancer?.caseStudyMatch?.matchedCaseStudyTitles)
+          ? freelancer.caseStudyMatch.matchedCaseStudyTitles
+          : [],
+      budgetFitPercent: clampPercentage(
+        freelancer?.budgetFitPercent ??
+          freelancer?.budgetMatchPercentage ??
+          freelancer?.budgetCompatibility?.budgetMatchPercentage,
+      ),
+      skillsMatchPercent: clampPercentage(
+        freelancer?.skillsMatchPercent ??
+          (Number(freelancer?.scoreBreakdown?.skillsScore) / 42) * 100,
+      ),
+      matchPercent,
+      matchScore: matchPercent,
+      projectRelevanceScore: matchPercent,
+      score: matchPercent,
+      rawMatchScore,
+      serviceMatch: Boolean(freelancer?.serviceMatch),
+      isOpenToWork:
+        freelancer?.openToWork === undefined
+          ? freelancer?.available ?? null
+          : freelancer.openToWork,
+    };
+  });
+
+  res.json({
+    success: true,
+    proposalId: resolvedProposalId,
+    data: normalizedFreelancers,
+    freelancers: normalizedFreelancers,
+    total: normalizedFreelancers.length,
+    levelCounts: matchingResult?.levelCounts || null,
+    meta: matchingResult?.meta || null,
+  });
+});
 
 export const createProposal = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
@@ -114,6 +371,8 @@ export const createProposal = asyncHandler(async (req, res) => {
               status: nextStatus,
               rejectionReason: null,
               rejectionReasonKey: null,
+              followupGuidanceSent: false,
+              budgetReminderSent: false,
             },
           });
         }
@@ -135,6 +394,10 @@ export const createProposal = asyncHandler(async (req, res) => {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     }
   );
+
+  if (nextStatus === "ACCEPTED" && proposal?.freelancerId) {
+    await syncFreelancerOpenToWorkStatus(proposal.freelancerId).catch(() => null);
+  }
 
   // Determine who should receive the notification:
   // - If CLIENT (project owner) is sending the proposal TO a freelancer -> notify the FREELANCER
@@ -317,7 +580,7 @@ export const updateProposal = asyncHandler(async (req, res) => {
         audience: "freelancer",
         type: "proposal",
         title: "Budget Increased",
-        message: `Your proposal for "${updatedProposal?.project?.title || "this project"}" now has a higher budget.`,
+        message: `Your proposal for "${updatedProposal?.project?.title || "this project"}" now has a higher budget. Check your proposal section to review the updated amount.`,
         data: {
           projectId: updatedProposal?.project?.id || proposal?.projectId || null,
           proposalId: updatedProposal?.id || proposalId,
@@ -820,10 +1083,15 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
           where: { id: updated.projectId },
           data: { status: "AWAITING_PAYMENT" }
         });
+        await syncFreelancerOpenToWorkStatus(updated.freelancerId).catch(() => null);
       } catch (projError) {
         console.error("Failed to update project status:", projError);
       }
 
+    }
+
+    if (normalizedStatus === "ACCEPTED" && updated?.freelancerId) {
+      await syncFreelancerOpenToWorkStatus(updated.freelancerId).catch(() => null);
     }
 
     res.json({ data: updated });

@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createProposal,
   getProposal,
+  matchProposalFreelancers,
   listProposals,
   updateProposal,
   updateProposalStatus
@@ -31,6 +32,20 @@ proposalRouter.post(
   requireAuth,
   validateResource(createProposalSchema),
   createProposal
+);
+
+const matchProposalFreelancersSchema = z.object({
+  body: z.object({
+    proposal: z.any().optional(),
+    proposalId: z.string().min(1).optional(),
+  }).passthrough(),
+});
+
+proposalRouter.post(
+  "/match-freelancers",
+  requireAuth,
+  validateResource(matchProposalFreelancersSchema),
+  matchProposalFreelancers
 );
 
 proposalRouter.patch(

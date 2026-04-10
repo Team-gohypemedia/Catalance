@@ -153,8 +153,7 @@ const Hero = () => {
         </h1>
 
         <p className="mt-6 max-w-4xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-7 sm:text-base md:text-lg">
-          98% success rate | Protected payments | Dedicated Project Managers
-          tracking every deadline | This is freelancing without the friction
+          Hire trusted experts focused on reliable and timely delivery.
         </p>
 
         <Button
@@ -162,7 +161,7 @@ const Hero = () => {
           size="lg"
           className="px-8 text-lg font-semibold shadow-[0_14px_36px_rgba(255,204,0,0.22)] sm:mt-11"
         >
-          <Link to="/talent">Browse Talent</Link>
+          <Link to="/service">Hire Expert</Link>
         </Button>
       </div>
     </section>

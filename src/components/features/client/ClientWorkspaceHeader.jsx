@@ -19,7 +19,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import logo from "@/assets/logos/logo.svg";
@@ -195,6 +194,102 @@ const getInitials = (value = "") => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
+const buildClientProjectDestination = (projectId = "") => {
+  const normalizedProjectId = String(projectId || "").trim();
+
+  return normalizedProjectId
+    ? `/client/project/${encodeURIComponent(normalizedProjectId)}`
+    : "/client/project";
+};
+
+const buildClientProposalDestination = ({ projectId = "", tab = "pending" } = {}) => {
+  const normalizedProjectId = String(projectId || "").trim();
+  const params = new URLSearchParams();
+
+  if (normalizedProjectId) {
+    params.set("projectId", normalizedProjectId);
+  }
+
+  if (tab) {
+    params.set("tab", tab);
+  }
+
+  const query = params.toString();
+  return query ? `/client/proposal?${query}` : "/client/proposal";
+};
+
+const resolveNotificationDestination = (notification, fallbackTo = "/client/project") => {
+  const explicitDestination = String(
+    notification?.data?.route ||
+      notification?.data?.redirectTo ||
+      notification?.data?.href ||
+      notification?.data?.url ||
+      notification?.data?.path ||
+      "",
+  ).trim();
+
+  if (explicitDestination) {
+    return explicitDestination;
+  }
+
+  const type = String(notification?.type || "").trim().toLowerCase();
+  const projectId = String(
+    notification?.data?.projectId || notification?.data?.syncedProjectId || "",
+  ).trim();
+  const status = String(notification?.data?.status || "").trim().toUpperCase();
+
+  if (type === "chat") {
+    const service = String(notification?.data?.service || "");
+    const parts = service.split(":");
+    let chatProjectId = projectId;
+
+    if (!chatProjectId && parts.length >= 4 && parts[0] === "CHAT") {
+      chatProjectId = parts[1];
+    }
+
+    return chatProjectId
+      ? `/client/messages?projectId=${encodeURIComponent(chatProjectId)}`
+      : "/client/messages";
+  }
+
+  if (
+    type === "proposal" ||
+    type === "proposal_followup" ||
+    type === "budget_suggestion" ||
+    type === "proposal_expired"
+  ) {
+    if (status === "ACCEPTED" && projectId) {
+      return buildClientProjectDestination(projectId);
+    }
+
+    const proposalTab =
+      type === "proposal_expired" ||
+      status === "REJECTED" ||
+      status === "DECLINED" ||
+      status === "EXPIRED"
+        ? "rejected"
+        : "pending";
+
+    return buildClientProposalDestination({ projectId, tab: proposalTab });
+  }
+
+  if (
+    type === "task_completed" ||
+    type === "task_verified" ||
+    type === "task_unverified" ||
+    type === "freelancer_change_resolved" ||
+    type === "freelancer_change_request" ||
+    type === "project_assigned" ||
+    type === "meeting_scheduled" ||
+    type === "payment" ||
+    type === "freelancer_review"
+  ) {
+    return buildClientProjectDestination(projectId);
+  }
+
+  return fallbackTo;
+};
+
 const BrandMark = () => (
   <div className="flex items-center gap-2">
     <div className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary">
@@ -210,10 +305,7 @@ const BrandMark = () => (
   </div>
 );
 
-const DefaultNotificationPopoverButton = ({
-  unreadCount: unreadCountProp,
-  notificationTo = "/client/messages",
-}) => {
+const NotificationSheetController = ({ notificationTo = "/client/project" }) => {
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(false);
   const {
@@ -222,8 +314,7 @@ const DefaultNotificationPopoverButton = ({
     markAsRead,
     markAllAsRead,
   } = useNotifications();
-
-  const unreadCount = unreadCountProp ?? contextUnreadCount;
+  const unreadCount = contextUnreadCount;
 
   React.useEffect(() => {
     if (typeof window === "undefined") {
@@ -247,59 +338,11 @@ const DefaultNotificationPopoverButton = ({
     markAsRead(notification.id);
     setOpen(false);
 
-    if (notification.type === "chat" && notification.data) {
-      const service = notification.data.service || "";
-      const parts = service.split(":");
-      let projectId = notification.data.projectId;
-
-      if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
-        projectId = parts[1];
-      }
-
-      navigate(projectId ? `/client/messages?projectId=${projectId}` : "/client/messages");
-      return;
-    }
-
-    if (notification.type === "proposal") {
-      const proposalStatus = String(notification.data?.status || "").toUpperCase();
-      if (proposalStatus === "ACCEPTED" && notification.data?.projectId) {
-        navigate("/client/project");
-        return;
-      }
-
-      navigate("/client/proposal");
-      return;
-    }
-
-    if (
-      (notification.type === "task_completed" ||
-        notification.type === "task_verified" ||
-        notification.type === "freelancer_change_resolved") &&
-      notification.data?.projectId
-    ) {
-      navigate(`/client/project/${notification.data.projectId}`);
-      return;
-    }
-
-    navigate(notificationTo);
+    navigate(resolveNotificationDestination(notification, notificationTo));
   };
 
   return (
-      <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="relative size-9 rounded-full text-[#94a3b8] transition-colors hover:bg-white/5 hover:text-white"
-          aria-label="Open notifications"
-        >
-          <Bell className="size-4.5" />
-          {unreadCount > 0 ? (
-            <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
-          ) : null}
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
         side="right"
         className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-white shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
@@ -390,6 +433,32 @@ const DefaultNotificationPopoverButton = ({
         </div>
       </SheetContent>
       </Sheet>
+  );
+};
+
+const NotificationTriggerButton = ({ unreadCount = 0 }) => {
+  const handleOpenNotifications = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent("client-notifications:open"));
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      onClick={handleOpenNotifications}
+      className="relative size-9 rounded-full text-[#94a3b8] transition-colors hover:bg-white/5 hover:text-white"
+      aria-label="Open notifications"
+    >
+      <Bell className="size-4.5" />
+      {unreadCount > 0 ? (
+        <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
+      ) : null}
+    </Button>
   );
 };
 
@@ -486,17 +555,11 @@ const ClientWorkspaceHeader = ({
     </>
   );
 
-  const notificationButton = notificationNode || (() => {
-    return (
-      <DefaultNotificationPopoverButton
-        unreadCount={unreadCount}
-        notificationTo={notificationTo}
-      />
-    );
-  })();
+  const notificationButton = notificationNode || <NotificationTriggerButton unreadCount={unreadCount} />;
 
   return (
     <header className={cn("sticky top-0 z-50 bg-background", className)}>
+      <NotificationSheetController notificationTo={notificationTo} />
       <WorkspaceMobileSidebar
         currentDashboard="client"
         displayName={displayName}
@@ -512,12 +575,7 @@ const ClientWorkspaceHeader = ({
         onLogout={() => {
           logout();
         }}
-        renderNotificationButton={() => notificationNode || (
-          <DefaultNotificationPopoverButton
-            unreadCount={unreadCount}
-            notificationTo={notificationTo}
-          />
-        )}
+        renderNotificationButton={() => notificationNode || <NotificationTriggerButton unreadCount={unreadCount} />}
       />
 
       <div className="hidden space-y-4 pb-3 pt-3 lg:block">

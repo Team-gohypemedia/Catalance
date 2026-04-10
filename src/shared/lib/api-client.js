@@ -77,6 +77,11 @@ const defaultHeaders = {
 };
 
 export const request = async (path, options = {}) => {
+  const {
+    returnFullPayload = false,
+    timeout = 15000,
+    ...fetchOptions
+  } = options;
   const session = getSession();
   const authHeaders = session?.accessToken
     ? { Authorization: `Bearer ${session.accessToken}` }
@@ -84,17 +89,17 @@ export const request = async (path, options = {}) => {
 
 
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), options.timeout || 15000);
+  const id = setTimeout(() => controller.abort(), timeout);
 
   let response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
+      ...fetchOptions,
       signal: controller.signal,
       headers: {
         ...defaultHeaders,
         ...authHeaders,
-        ...(options.headers || {})
+        ...(fetchOptions.headers || {})
       }
     });
   } catch (error) {
@@ -127,6 +132,10 @@ export const request = async (path, options = {}) => {
 
   if (payload === null) {
     throw new Error("Received an empty response from the API. Please try again.");
+  }
+
+  if (returnFullPayload) {
+    return payload;
   }
 
   return payload?.data ?? payload ?? {};
@@ -318,6 +327,39 @@ export const listFreelancers = (params = {}) => {
   const query = new URLSearchParams({ role: "FREELANCER", ...params }).toString();
   return request(`/users?${query}`, {
     method: "GET"
+  });
+};
+
+const isLikelyPersistedProposalIdentifier = (value = "") => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return false;
+
+  // Ignore local draft/session keys and temporary identifiers.
+  if (/^(saved|local|draft|tmp|temp)[-_]/i.test(normalized)) {
+    return false;
+  }
+
+  return normalized.length >= 10;
+};
+
+export const fetchMatchedFreelancersForProposal = (proposal = {}) => {
+  const proposalIdCandidates = [
+    !proposal?.isLocalDraft ? proposal?.id : "",
+    proposal?.syncedProjectId,
+    proposal?.projectId,
+  ];
+
+  const proposalId = proposalIdCandidates
+    .map((value) => String(value || "").trim())
+    .find((value) => isLikelyPersistedProposalIdentifier(value));
+
+  return request("/proposals/match-freelancers", {
+    method: "POST",
+    returnFullPayload: true,
+    body: JSON.stringify({
+      proposal,
+      ...(proposalId ? { proposalId } : {}),
+    })
   });
 };
 
