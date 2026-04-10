@@ -6,6 +6,10 @@ import {
   resolveActiveProposalId,
 } from "@/shared/lib/client-proposal-storage";
 import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
+import {
+  isFreelancerServiceAligned,
+  resolveFreelancerMatchPercent,
+} from "@/shared/lib/proposal-match";
 
 export const MIN_FREELANCER_MATCH_SCORE = 50;
 export const PROPOSAL_BLOCKED_STATUSES = new Set(["pending", "accepted", "sent"]);
@@ -381,6 +385,13 @@ export const normalizeFreelancerCardData = (candidate = {}) => {
     freelancer.cleanBio = rawBio || "No bio available for this freelancer.";
   }
 
+  const matchPercent = resolveFreelancerMatchPercent(freelancer, null);
+  if (Number.isFinite(Number(matchPercent))) {
+    freelancer.matchPercent = Number(matchPercent);
+    freelancer.matchScore = Number(matchPercent);
+    freelancer.projectRelevanceScore = Number(matchPercent);
+  }
+
   return freelancer;
 };
 
@@ -391,8 +402,8 @@ export const formatRating = (value) => {
 };
 
 const getFreelancerMatchScore = (freelancer = {}) => {
-  const score = Number(freelancer?.matchScore ?? freelancer?.projectRelevanceScore);
-  return Number.isFinite(score) ? Math.round(score) : null;
+  const score = resolveFreelancerMatchPercent(freelancer, null);
+  return Number.isFinite(Number(score)) ? Number(score) : null;
 };
 
 const getFreelancerMatchedSkills = (freelancer = {}) => {
@@ -409,13 +420,16 @@ const getFreelancerMatchedSkills = (freelancer = {}) => {
   );
 };
 
-const isFreelancerBestMatchEligible = (freelancer = {}) => {
+const isFreelancerBestMatchEligible = (
+  freelancer = {},
+  proposalService = "",
+) => {
   const score = getFreelancerMatchScore(freelancer);
   if (score === null || score < MIN_FREELANCER_MATCH_SCORE) {
     return false;
   }
 
-  const hasServiceMatch = freelancer?.serviceMatch === true;
+  const hasServiceMatch = isFreelancerServiceAligned(freelancer, proposalService);
   if (!hasServiceMatch) {
     return false;
   }
@@ -428,13 +442,16 @@ const isFreelancerBestMatchEligible = (freelancer = {}) => {
   return matchedSkills.length > 0 || hasStrongCompletedProjectEvidence;
 };
 
-export const resolveBestMatchFreelancerIds = (freelancers = []) => {
+export const resolveBestMatchFreelancerIds = (
+  freelancers = [],
+  proposalService = "",
+) => {
   const normalized = Array.isArray(freelancers) ? freelancers : [];
   if (!normalized.length) return new Set();
 
   const eligible = normalized
     .filter((freelancer) => Boolean(freelancer?.id))
-    .filter((freelancer) => isFreelancerBestMatchEligible(freelancer))
+    .filter((freelancer) => isFreelancerBestMatchEligible(freelancer, proposalService))
     .sort((left, right) => {
       const scoreDiff = (getFreelancerMatchScore(right) || 0) - (getFreelancerMatchScore(left) || 0);
       if (scoreDiff !== 0) return scoreDiff;

@@ -12,6 +12,7 @@ process.env.PASSWORD_PEPPER =
 const { __testables } = await import("../proposal-matching.service.js");
 const {
   buildTargetProfileFromPayload,
+  normalizeMatchPercentage,
   rankFreelancersFromData,
 } = __testables;
 
@@ -515,4 +516,106 @@ test("service-only sparse case studies are excluded without overlap evidence", (
   });
 
   assert.equal(ranked.results.length, 0);
+});
+
+test("normalizeMatchPercentage clamps percentage boundaries", () => {
+  assert.equal(normalizeMatchPercentage(100.8, 100), 100);
+  assert.equal(normalizeMatchPercentage(-7, 100), 0);
+  assert.equal(normalizeMatchPercentage("invalid", 100), 0);
+});
+
+test("normalized web development service keys resolve as a service match", () => {
+  const targetProfile = createTargetProfile();
+  const freelancers = [
+    createFreelancer({
+      id: "freelancer-webdev-normalized",
+      fullName: "Normalized Service Fit",
+      services: ["web_development"],
+      portfolioProjects: [
+        {
+          id: "case-webdev-normalized",
+          title: "Fashion storefront migration",
+          service: "web-development",
+          serviceKey: "web_development",
+          serviceKeys: ["web_development"],
+          techStack: ["Next.js", "Node.js", "PostgreSQL"],
+          industriesOrNiches: ["Fashion"],
+          serviceSpecializations: ["E-commerce store"],
+          budget: 80000,
+        },
+      ],
+    }),
+  ];
+
+  const ranked = rankFreelancersFromData({
+    targetProfile,
+    freelancers,
+    completedProjects: [],
+    activeProjectCounts: new Map(),
+  });
+
+  assert.equal(ranked.results.length, 1);
+  assert.equal(ranked.results[0].id, "freelancer-webdev-normalized");
+  assert.equal(ranked.results[0].serviceMatch, true);
+});
+
+test("service-aligned candidates rank ahead of mismatched fallback candidates", () => {
+  const targetProfile = createTargetProfile();
+  const freelancers = [
+    createFreelancer({
+      id: "freelancer-service-fit",
+      fullName: "Service Fit",
+      services: ["web-development"],
+      rating: 0,
+      reviewCount: 0,
+      portfolioProjects: [
+        {
+          id: "case-service-fit",
+          title: "Small storefront refresh",
+          service: "Web Development",
+          serviceKey: "web-development",
+          serviceKeys: ["web-development"],
+          techStack: ["Next.js"],
+        },
+      ],
+    }),
+    createFreelancer({
+      id: "freelancer-service-mismatch-strong",
+      fullName: "Mismatch Strong",
+      services: ["graphic-design"],
+      skills: ["Next.js", "Node.js", "PostgreSQL"],
+      profileDetails: {
+        serviceDetails: {
+          "graphic-design": {
+            startingPrice: "80000",
+            skillsAndTechnologies: ["Next.js", "Node.js", "PostgreSQL"],
+            serviceSpecializations: ["E-commerce store"],
+          },
+        },
+      },
+    }),
+  ];
+
+  const ranked = rankFreelancersFromData({
+    targetProfile,
+    freelancers,
+    completedProjects: [
+      createCompletedProject({
+        id: "completed-service-mismatch-strong",
+        freelancerIds: ["freelancer-service-mismatch-strong"],
+        serviceKey: "graphic-design",
+      }),
+    ],
+    activeProjectCounts: new Map([["freelancer-service-fit", 2]]),
+  });
+
+  assert.equal(ranked.results.length, 2);
+  assert.equal(ranked.results[0].id, "freelancer-service-fit");
+  assert.equal(ranked.results[0].serviceMatch, true);
+  assert.equal(ranked.results[1].id, "freelancer-service-mismatch-strong");
+  assert.equal(ranked.results[1].serviceMatch, false);
+  assert.ok(ranked.results[1].rawMatchScore > ranked.results[0].rawMatchScore);
+  ranked.results.forEach((result) => {
+    assert.ok(result.matchScore >= 0 && result.matchScore <= 100);
+  });
 });

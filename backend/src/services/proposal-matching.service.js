@@ -20,6 +20,19 @@ const SOURCE_PRIORITY_SCORES = Object.freeze({
   level_3_profile_skills: 15,
 });
 
+const MATCH_SCORE_MAX_RAW =
+  Math.max(...Object.values(SOURCE_PRIORITY_SCORES)) +
+  28 + // service
+  SKILLS_MATCH_MAX_SCORE +
+  10 + // niches
+  15 + // budget
+  8 + // project type
+  8 + // timeline
+  8 + // text relevance
+  10 + // availability
+  8 + // rating
+  10; // recency
+
 const SERVICE_EQUIVALENCE_GROUPS = Object.freeze([
   ["web_development", "website_development", "web_dev", "web_design_development"],
   ["app_development", "mobile_app_development", "android_app_development", "ios_app_development"],
@@ -255,6 +268,34 @@ const inferTechnologySkills = (...values) => {
   });
 
   return uniqueItems(inferred);
+};
+
+const clampPercentage = (value, fallback = 0) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return fallback;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(numericValue)));
+};
+
+const normalizeMatchPercentage = (
+  rawScore,
+  maxRawScore = MATCH_SCORE_MAX_RAW,
+) => {
+  const numericRawScore = Number(rawScore);
+  const numericMaxRawScore = Number(maxRawScore);
+
+  if (!Number.isFinite(numericRawScore) || !Number.isFinite(numericMaxRawScore)) {
+    return 0;
+  }
+
+  if (numericMaxRawScore <= 0) {
+    return 0;
+  }
+
+  const normalized = (numericRawScore / numericMaxRawScore) * 100;
+  return clampPercentage(normalized, 0);
 };
 
 const parseBudgetPoint = (value) => {
@@ -717,23 +758,29 @@ const resolveProfileServiceKey = ({
 
 const buildProfileSkillsSource = (freelancer = {}, targetServiceKey = "") => {
   const detailEntries = pickServiceDetails(freelancer, targetServiceKey);
+  const resolvedServiceKey = resolveProfileServiceKey({
+    freelancer,
+    detailEntries,
+    targetServiceKey,
+  });
+  const resolvedServiceLabel =
+    cleanText(detailEntries?.[0]?.key) ||
+    cleanText(freelancer?.service) ||
+    cleanText(freelancer?.services?.[0]) ||
+    "";
 
   return {
     recordId: freelancer?.id || null,
     recordTitle: cleanText(freelancer?.fullName) || "Freelancer profile",
-    serviceKey: resolveProfileServiceKey({
-      freelancer,
-      detailEntries,
-      targetServiceKey,
-    }),
+    serviceKey: resolvedServiceKey,
     serviceKeys: collectServiceSignals(
       detailEntries.map(({ key }) => key),
       freelancer?.services,
       freelancer?.serviceKey,
       freelancer?.service,
     ),
-    serviceType:
-      cleanText(freelancer?.jobTitle) || cleanText(freelancer?.services?.[0]) || "",
+    serviceType: resolvedServiceLabel,
+    service: resolvedServiceLabel,
     skills: uniqueItems([
       ...normalizeList(freelancer?.skills),
       ...collectDetailValues(detailEntries, PROFILE_SKILL_DETAIL_KEYS),
@@ -1077,10 +1124,22 @@ const evaluateCandidateMatch = ({
   );
   const hasTargetServiceSignal = targetServiceSignals.length > 0;
   const hasSourceServiceSignal = sourceServiceSignals.length > 0;
+  const targetPrimaryServiceSignal = normalizeServiceSignal(
+    targetProfile.serviceKey || targetProfile.serviceType || "",
+  );
+  const sourcePrimaryServiceSignal = normalizeServiceSignal(
+    sourceProfile.serviceKey || sourceEvidence?.serviceKey || freelancer?.serviceKey || "",
+  );
+  const hasExplicitServiceKeyMismatch =
+    Boolean(targetPrimaryServiceSignal) &&
+    Boolean(sourcePrimaryServiceSignal) &&
+    targetPrimaryServiceSignal !== sourcePrimaryServiceSignal;
   const sourceServiceSignalSet = new Set(sourceServiceSignals);
-  const serviceMatch = hasTargetServiceSignal
-    ? targetServiceSignals.some((signal) => sourceServiceSignalSet.has(signal))
-    : hasSourceServiceSignal;
+  const serviceMatch = hasExplicitServiceKeyMismatch
+    ? false
+    : hasTargetServiceSignal
+      ? targetServiceSignals.some((signal) => sourceServiceSignalSet.has(signal))
+      : hasSourceServiceSignal;
   const serviceScore = hasTargetServiceSignal
     ? serviceMatch
       ? 28
@@ -1163,6 +1222,7 @@ const evaluateCandidateMatch = ({
     ratingScore +
     recencyBonus -
     weakMatchPenalty;
+  const matchPercent = normalizeMatchPercentage(finalScore);
   const levelMeta = LEVEL_METADATA[levelKey] || LEVEL_METADATA.level_3_profile_skills;
   const budgetMatchPercentage = budgetCompatibility.budgetMatchPercentage;
   const scoreBreakdown = {
@@ -1180,6 +1240,7 @@ const evaluateCandidateMatch = ({
     recencyBonus,
     weakMatchPenalty,
     finalScore,
+    matchPercent,
   };
   const matchedSkills = uniqueItems(skills.matchedValues);
   const matchedNiches = uniqueItems(niches.matchedValues);
@@ -1203,6 +1264,7 @@ const evaluateCandidateMatch = ({
     sourcePriorityScore,
     score: finalScore,
     finalScore,
+    matchPercent,
     scoreBreakdown,
     matchBreakdown: scoreBreakdown,
     matchedSkills,
@@ -1235,8 +1297,10 @@ const evaluateCandidateMatch = ({
     },
     matchedService: {
       serviceKey:
-        sourceServiceSignals[0] || sourceProfile.serviceKey || targetProfile.serviceKey || null,
-      serviceName: sourceProfile.serviceType || targetProfile.serviceType || null,
+        sourceServiceSignals[0] || sourceProfile.serviceKey || null,
+      serviceName: hasExplicitServiceKeyMismatch
+        ? sourceProfile.serviceKey || sourcePrimaryServiceSignal || null
+        : sourceProfile.service || sourceProfile.serviceType || null,
       averageProjectPriceRange:
         budgetCompatibility.range?.min !== null &&
         budgetCompatibility.range?.min !== undefined
@@ -1263,14 +1327,14 @@ const preferCandidate = (currentCandidate = null, nextCandidate = null) => {
   if (!currentCandidate) return nextCandidate;
   if (!nextCandidate) return currentCandidate;
 
+  if (nextCandidate.serviceMatch !== currentCandidate.serviceMatch) {
+    return nextCandidate.serviceMatch ? nextCandidate : currentCandidate;
+  }
+
   if (nextCandidate.finalScore !== currentCandidate.finalScore) {
     return nextCandidate.finalScore > currentCandidate.finalScore
       ? nextCandidate
       : currentCandidate;
-  }
-
-  if (nextCandidate.serviceMatch !== currentCandidate.serviceMatch) {
-    return nextCandidate.serviceMatch ? nextCandidate : currentCandidate;
   }
 
   const nextMatchedSkillsCount = Array.isArray(nextCandidate.matchedSkills)
@@ -1314,9 +1378,11 @@ const mapFreelancerToMatchResult = (freelancer = {}, candidate = {}) => ({
   sourceLabel: candidate.sourceLabel,
   matchSource: candidate.matchSource,
   serviceMatch: candidate.serviceMatch,
-  score: candidate.finalScore,
-  matchScore: candidate.finalScore,
-  projectRelevanceScore: candidate.finalScore,
+  score: candidate.matchPercent,
+  matchPercent: candidate.matchPercent,
+  matchScore: candidate.matchPercent,
+  projectRelevanceScore: candidate.matchPercent,
+  rawMatchScore: candidate.finalScore,
   scoreBreakdown: candidate.scoreBreakdown,
   matchBreakdown: candidate.matchBreakdown,
   matchedSkills: candidate.matchedSkills,
@@ -1347,6 +1413,8 @@ const mapFreelancerToMatchResult = (freelancer = {}, candidate = {}) => ({
   matchedService: candidate.matchedService,
   caseStudyMatch: candidate.caseStudyMatch,
   scoreMetadata: {
+    rawMatchScore: candidate.finalScore,
+    matchPercent: candidate.matchPercent,
     sourcePriorityScore: candidate.sourcePriorityScore,
     sourceLevel: candidate.sourceLevel,
     sourceLabel: candidate.sourceLabel,
@@ -1355,12 +1423,25 @@ const mapFreelancerToMatchResult = (freelancer = {}, candidate = {}) => ({
 });
 
 const sortMatches = (left = {}, right = {}) => {
-  if (right.matchScore !== left.matchScore) {
-    return right.matchScore - left.matchScore;
-  }
-
   if (right.serviceMatch !== left.serviceMatch) {
     return right.serviceMatch ? 1 : -1;
+  }
+
+  const rightRawMatchScore = Number(right?.rawMatchScore);
+  const leftRawMatchScore = Number(left?.rawMatchScore);
+  const normalizedRightRawMatchScore = Number.isFinite(rightRawMatchScore)
+    ? rightRawMatchScore
+    : Number(right?.matchScore || 0);
+  const normalizedLeftRawMatchScore = Number.isFinite(leftRawMatchScore)
+    ? leftRawMatchScore
+    : Number(left?.matchScore || 0);
+
+  if (normalizedRightRawMatchScore !== normalizedLeftRawMatchScore) {
+    return normalizedRightRawMatchScore - normalizedLeftRawMatchScore;
+  }
+
+  if (right.matchScore !== left.matchScore) {
+    return right.matchScore - left.matchScore;
   }
 
   const rightMatchedSkillsCount = Array.isArray(right?.matchedSkills)
@@ -1817,11 +1898,13 @@ export const matchFreelancersForProposal = async (
 
 export const __testables = {
   buildCaseStudyProfile,
+  clampPercentage,
   buildCompletedProjectProfile,
   buildMatchingProfile,
   buildProfileSkillsSource,
   buildTargetProfileFromPayload,
   evaluateCandidateMatch,
+  normalizeMatchPercentage,
   parseBudgetPoint,
   parseBudgetRange,
   preferCandidate,

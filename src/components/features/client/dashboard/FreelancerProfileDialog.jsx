@@ -22,6 +22,10 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getFreelancerAvailabilityMeta } from "@/shared/lib/freelancer-availability";
+import {
+  normalizeServiceIdentity,
+  resolveFreelancerMatchPercent,
+} from "@/shared/lib/proposal-match";
 
 const PROJECT_IMAGE_PLACEHOLDER = `data:image/svg+xml;utf8,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" fill="none">
@@ -210,11 +214,7 @@ const SERVICE_EXPERIENCE_LABELS = {
   "10_plus": "10+ years",
 };
 
-const normalizeServiceIdentifier = (value = "") =>
-  normalizePlainText(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+const normalizeServiceIdentifier = normalizeServiceIdentity;
 
 const formatExperienceValue = (value) => {
   const raw = normalizePlainText(value);
@@ -514,8 +514,12 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
   const displayInitials = getDisplayInitials(displayName);
   const avatarSrc = resolveAvatarSrc(viewingFreelancer);
   const ratingLabel = formatRating(viewingFreelancer?.rating);
-  const matchScore = Number.isFinite(Number(viewingFreelancer?.matchScore))
-    ? `${Math.round(Number(viewingFreelancer.matchScore))}%`
+  const normalizedMatchPercent = resolveFreelancerMatchPercent(
+    viewingFreelancer,
+    null,
+  );
+  const matchScore = Number.isFinite(Number(normalizedMatchPercent))
+    ? `${normalizedMatchPercent}%`
     : null;
   const roleValue = firstNonEmptyText(
     viewingFreelancer?.role,

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { resolveFreelancerMatchPercent } from "@/shared/lib/proposal-match";
 
 
 const getDisplayInitials = (name = "") => {
@@ -349,9 +350,7 @@ const FreelancerSelectionDialog = ({
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 };
-                const matchScore = Number.isFinite(Number(freelancer.matchScore))
-                  ? Math.round(Number(freelancer.matchScore))
-                  : null;
+                const matchScore = resolveFreelancerMatchPercent(freelancer, null);
                 const isBestMatch = bestMatchFreelancerIds.has(freelancer.id);
                 const matchedServiceLabel = getMatchedServiceLabel(freelancer);
                 const matchedSkillBadges = getMatchedSkillBadges(freelancer);

@@ -35,6 +35,7 @@ import {
 } from "@/shared/lib/proposal-dashboard-intent";
 import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
 import { resolveBestMatchFreelancerIds } from "@/components/client/client-proposal/proposal-utils.js";
+import { resolveFreelancerMatchPercent } from "@/shared/lib/proposal-match";
 import { toast } from "sonner";
 
 const draftProposalSurfaceToneClassName =
@@ -146,6 +147,13 @@ const normalizeFreelancerCardData = (candidate = {}) => {
     }
   } else {
     freelancer.cleanBio = rawBio || "No bio available for this freelancer.";
+  }
+
+  const matchPercent = resolveFreelancerMatchPercent(freelancer, null);
+  if (Number.isFinite(Number(matchPercent))) {
+    freelancer.matchPercent = Number(matchPercent);
+    freelancer.matchScore = Number(matchPercent);
+    freelancer.projectRelevanceScore = Number(matchPercent);
   }
 
   return freelancer;
@@ -821,8 +829,22 @@ const DraftedProposals = memo(function DraftedProposals({
   }, [freelancerSearch, freelancerSelectionData.available]);
 
   const bestMatchFreelancerIds = useMemo(() => {
-    return resolveBestMatchFreelancerIds(freelancerSelectionData.available);
-  }, [freelancerSelectionData.available]);
+    const proposalService =
+      proposalForFreelancerSelection?.serviceKey ||
+      proposalForFreelancerSelection?.serviceType ||
+      proposalForFreelancerSelection?.service ||
+      "";
+
+    return resolveBestMatchFreelancerIds(
+      freelancerSelectionData.available,
+      proposalService,
+    );
+  }, [
+    freelancerSelectionData.available,
+    proposalForFreelancerSelection?.service,
+    proposalForFreelancerSelection?.serviceKey,
+    proposalForFreelancerSelection?.serviceType,
+  ]);
 
   return (
     <>

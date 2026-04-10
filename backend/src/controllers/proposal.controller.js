@@ -112,9 +112,9 @@ const normalizeProposalMatchPayload = (proposal = {}) => {
   };
 };
 
-const clampPercentage = (value) => {
+const clampPercentage = (value, fallback = null) => {
   const numericValue = Number(value);
-  if (!Number.isFinite(numericValue)) return null;
+  if (!Number.isFinite(numericValue)) return fallback;
   return Math.max(0, Math.min(100, Math.round(numericValue)));
 };
 
@@ -187,15 +187,6 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
     });
   }
 
-  const serviceTypeLabel =
-    proposal.serviceType ||
-    proposal.service ||
-    proposal.serviceName ||
-    proposal.category ||
-    proposal.proposalContext?.serviceType ||
-    matchingResult?.source?.serviceType ||
-    matchingResult?.source?.serviceKey ||
-    null;
   const resolvedProposalBudget =
     proposal.budget ??
     proposal.proposalBudget ??
@@ -208,53 +199,78 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
     matchingResult?.sourceProjectId ||
     null;
 
-  const normalizedFreelancers = matchedFreelancers.map((freelancer) => ({
-    ...freelancer,
-    freelancerId: freelancer?.id || null,
-    name: freelancer?.fullName || freelancer?.name || "Freelancer",
-    title:
-      freelancer?.title ||
-      freelancer?.jobTitle ||
-      freelancer?.freelancerProfile?.jobTitle ||
-      freelancer?.professionalTitle ||
-      null,
-    bio:
-      freelancer?.bio ||
-      freelancer?.cleanBio ||
-      freelancer?.about ||
-      null,
-    avatarUrl: freelancer?.avatar || null,
-    service: serviceTypeLabel,
-    serviceType: serviceTypeLabel,
-    proposalBudget: resolvedProposalBudget,
-    startingPrice: freelancer?.budgetCompatibility?.startingPrice ?? null,
-    matchedSkills: Array.isArray(freelancer?.matchedSkills) ? freelancer.matchedSkills : [],
-    matchedCaseStudyTitles: Array.isArray(freelancer?.matchedCaseStudyTitles)
-      ? freelancer.matchedCaseStudyTitles
-      : Array.isArray(freelancer?.caseStudyMatch?.matchedCaseStudyTitles)
-        ? freelancer.caseStudyMatch.matchedCaseStudyTitles
-        : [],
-    budgetFitPercent: clampPercentage(
-      freelancer?.budgetFitPercent ??
-        freelancer?.budgetMatchPercentage ??
-        freelancer?.budgetCompatibility?.budgetMatchPercentage,
-    ),
-    skillsMatchPercent: clampPercentage(
-      freelancer?.skillsMatchPercent ??
-        (Number(freelancer?.scoreBreakdown?.skillsScore) / 42) * 100,
-    ),
-    projectRelevanceScore: Number.isFinite(Number(freelancer?.matchScore))
-      ? Math.round(Number(freelancer.matchScore))
-      : null,
-    score: Number.isFinite(Number(freelancer?.score ?? freelancer?.matchScore))
-      ? Math.round(Number(freelancer?.score ?? freelancer?.matchScore))
-      : null,
-    serviceMatch: Boolean(freelancer?.serviceMatch),
-    isOpenToWork:
-      freelancer?.openToWork === undefined
-        ? freelancer?.available ?? null
-        : freelancer.openToWork,
-  }));
+  const normalizedFreelancers = matchedFreelancers.map((freelancer) => {
+    const matchPercent = clampPercentage(
+      freelancer?.matchPercent ??
+        freelancer?.matchScore ??
+        freelancer?.projectRelevanceScore ??
+        freelancer?.score,
+      0,
+    );
+    const rawMatchScore = Number.isFinite(Number(freelancer?.rawMatchScore))
+      ? Math.round(Number(freelancer.rawMatchScore))
+      : Number.isFinite(Number(freelancer?.scoreMetadata?.rawMatchScore))
+        ? Math.round(Number(freelancer.scoreMetadata.rawMatchScore))
+        : null;
+    const matchedServiceName =
+      freelancer?.matchedService?.serviceName ||
+      freelancer?.serviceType ||
+      freelancer?.serviceName ||
+      freelancer?.service ||
+      null;
+    const matchedServiceKey =
+      freelancer?.matchedService?.serviceKey ||
+      freelancer?.serviceKey ||
+      null;
+
+    return {
+      ...freelancer,
+      freelancerId: freelancer?.id || null,
+      name: freelancer?.fullName || freelancer?.name || "Freelancer",
+      title:
+        freelancer?.title ||
+        freelancer?.jobTitle ||
+        freelancer?.freelancerProfile?.jobTitle ||
+        freelancer?.professionalTitle ||
+        null,
+      bio:
+        freelancer?.bio ||
+        freelancer?.cleanBio ||
+        freelancer?.about ||
+        null,
+      avatarUrl: freelancer?.avatar || null,
+      service: matchedServiceName || matchedServiceKey,
+      serviceType: matchedServiceName,
+      serviceKey: matchedServiceKey,
+      proposalBudget: resolvedProposalBudget,
+      startingPrice: freelancer?.budgetCompatibility?.startingPrice ?? null,
+      matchedSkills: Array.isArray(freelancer?.matchedSkills) ? freelancer.matchedSkills : [],
+      matchedCaseStudyTitles: Array.isArray(freelancer?.matchedCaseStudyTitles)
+        ? freelancer.matchedCaseStudyTitles
+        : Array.isArray(freelancer?.caseStudyMatch?.matchedCaseStudyTitles)
+          ? freelancer.caseStudyMatch.matchedCaseStudyTitles
+          : [],
+      budgetFitPercent: clampPercentage(
+        freelancer?.budgetFitPercent ??
+          freelancer?.budgetMatchPercentage ??
+          freelancer?.budgetCompatibility?.budgetMatchPercentage,
+      ),
+      skillsMatchPercent: clampPercentage(
+        freelancer?.skillsMatchPercent ??
+          (Number(freelancer?.scoreBreakdown?.skillsScore) / 42) * 100,
+      ),
+      matchPercent,
+      matchScore: matchPercent,
+      projectRelevanceScore: matchPercent,
+      score: matchPercent,
+      rawMatchScore,
+      serviceMatch: Boolean(freelancer?.serviceMatch),
+      isOpenToWork:
+        freelancer?.openToWork === undefined
+          ? freelancer?.available ?? null
+          : freelancer.openToWork,
+    };
+  });
 
   res.json({
     success: true,

@@ -1502,8 +1502,22 @@ export const ClientProposalDataProvider = ({ children }) => {
   ]);
 
   const bestMatchFreelancerIds = useMemo(() => {
-    return resolveBestMatchFreelancerIds(freelancerSelectionData.available);
-  }, [freelancerSelectionData.available]);
+    const proposalService =
+      proposalForFreelancerSelection?.serviceKey ||
+      proposalForFreelancerSelection?.serviceType ||
+      proposalForFreelancerSelection?.service ||
+      "";
+
+    return resolveBestMatchFreelancerIds(
+      freelancerSelectionData.available,
+      proposalService,
+    );
+  }, [
+    freelancerSelectionData.available,
+    proposalForFreelancerSelection?.service,
+    proposalForFreelancerSelection?.serviceKey,
+    proposalForFreelancerSelection?.serviceType,
+  ]);
 
   useEffect(() => {
     if (isLoading || hasHandledDeepLink) return;
