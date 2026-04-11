@@ -229,7 +229,7 @@ const SectionHeader = ({ icon: Icon, title, description, onEdit }) => (
       </div>
       <div className="space-y-1">
         <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-white sm:text-[1.1rem]">{title}</h2>
-        {description ? <p className="text-sm leading-6 text-[#94a3b8]">{description}</p> : null}
+        {description ? <p className="text-sm leading-6 text-muted-foreground">{description}</p> : null}
       </div>
     </div>
     {onEdit ? (
@@ -256,7 +256,7 @@ const StatBlock = ({ value, label, tone = "default" }) => (
     >
       {value}
     </p>
-    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#94a3b8] sm:text-[11px] sm:tracking-[0.22em]">
+    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px] sm:tracking-[0.22em]">
       {label}
     </p>
   </div>
@@ -273,7 +273,7 @@ const ProfileField = ({
   type = "text",
 }) => (
   <div className="space-y-3">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6ba]">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
       {label}
     </p>
     <div className="relative">
@@ -286,8 +286,8 @@ const ProfileField = ({
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
-          "h-12 rounded-[14px] border-white/[0.06] bg-white/[0.03] pl-12 text-sm text-white placeholder:text-[#677489] focus-visible:border-primary/35 focus-visible:ring-primary/15",
-          disabled && "cursor-not-allowed text-[#b6b6b6] opacity-80",
+          "h-12 rounded-[14px] border-white/[0.06] bg-white/[0.03] pl-12 text-sm text-muted-foreground placeholder:text-muted-foreground focus-visible:border-primary/35 focus-visible:ring-primary/15",
+          disabled && "cursor-not-allowed text-muted-foreground opacity-80",
         )}
       />
     </div>
@@ -296,16 +296,13 @@ const ProfileField = ({
 
 const ProfileDisplayField = ({ icon: Icon, label, value, placeholder }) => (
   <div className="space-y-3">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6ba]">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
       {label}
     </p>
     <div className="flex min-h-12 items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-4 sm:px-5">
       <Icon className="size-4 shrink-0 text-primary" />
       <span
-        className={cn(
-          "min-w-0 flex-1 truncate text-sm",
-          value ? "text-white" : "text-[#677489]",
-        )}
+        className="min-w-0 flex-1 truncate text-sm text-muted-foreground"
       >
         {value || placeholder}
       </span>
@@ -315,13 +312,13 @@ const ProfileDisplayField = ({ icon: Icon, label, value, placeholder }) => (
 
 const ProfileTextDisplay = ({ label, value, placeholder, className }) => (
   <div className="space-y-3">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6ba]">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
       {label}
     </p>
     <div
       className={cn(
         "rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-4 py-4 text-sm leading-7 whitespace-pre-wrap sm:px-6 sm:py-5",
-        value ? "text-white" : "text-[#677489]",
+        "text-muted-foreground",
         className,
       )}
     >
@@ -332,7 +329,7 @@ const ProfileTextDisplay = ({ label, value, placeholder, className }) => (
 
 const ReadonlyActionField = ({ icon: Icon, label, value, actionLabel, onClick }) => (
   <div className="space-y-3">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6ba]">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
       {label}
     </p>
     <button
@@ -342,7 +339,7 @@ const ReadonlyActionField = ({ icon: Icon, label, value, actionLabel, onClick })
     >
       <div className="flex w-full min-w-0 items-center gap-3">
         <Icon className="size-4 shrink-0 text-primary" />
-        <span className="min-w-0 flex-1 truncate text-sm text-white">{value}</span>
+        <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{value}</span>
       </div>
       <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary sm:ml-auto">
         {actionLabel}
@@ -380,11 +377,11 @@ const BillingShortcutCard = ({
 
     <div className="mt-6">
       <p className="text-[1.4rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.75rem]">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-[#94a3b8]">{description}</p>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
     </div>
 
     <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-sm text-[#7f8ca1]">{meta}</p>
+      <p className="text-sm text-muted-foreground">{meta}</p>
       <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary sm:justify-end">
         {actionLabel}
         <ExternalLink className="size-3.5 transition group-hover:translate-x-0.5" />
@@ -407,8 +404,8 @@ const NotificationToggleRow = ({
         <Icon className="size-4" />
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-white">{title}</p>
-        <p className="mt-1 text-xs leading-5 text-[#7a7a7a]">{description}</p>
+        <p className="text-sm font-semibold text-muted-foreground">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
       </div>
     </div>
 
@@ -847,8 +844,8 @@ const ClientProfileContent = () => {
             </button>
 
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-white">Profile Photo</p>
-              <p className="text-xs text-[#94a3b8]">Upload a clear square image up to 5MB.</p>
+                <p className="text-sm font-semibold text-muted-foreground">Profile Photo</p>
+                <p className="text-xs text-muted-foreground">Upload a clear square image up to 5MB.</p>
             </div>
           </div>
 
@@ -895,7 +892,7 @@ const ClientProfileContent = () => {
     if (activeEditor === "bio") {
       return (
         <div className="space-y-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6ba]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             Professional Bio
           </p>
           <Textarea
@@ -903,7 +900,7 @@ const ClientProfileContent = () => {
             value={formData.bio}
             onChange={handleChange}
             placeholder="Share the kind of projects you run, the outcomes you care about, and how your team likes to collaborate."
-            className="min-h-[220px] rounded-[14px] border-white/[0.06] bg-white/[0.03] px-6 py-5 text-sm leading-7 text-white placeholder:text-[#677489] focus-visible:border-primary/35 focus-visible:ring-primary/15"
+            className="min-h-[220px] rounded-[14px] border-white/[0.06] bg-white/[0.03] px-6 py-5 text-sm leading-7 text-muted-foreground placeholder:text-muted-foreground focus-visible:border-primary/35 focus-visible:ring-primary/15"
           />
         </div>
       );
@@ -937,7 +934,7 @@ const ClientProfileContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-[#f1f5f9]">
+    <div className="min-h-screen bg-background text-muted-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
         <ClientWorkspaceHeader
           profile={{
@@ -974,10 +971,10 @@ const ClientProfileContent = () => {
                     <h2 className="mt-6 text-[1.8rem] font-semibold tracking-[-0.05em] text-white sm:mt-7 sm:text-[2rem] lg:mt-8 lg:text-[2.15rem]">
                       {formData.fullName || headerDisplayName}
                     </h2>
-                    <p className="mt-2 text-sm text-[#94a3b8] sm:text-base">
+                    <p className="mt-2 text-sm text-muted-foreground sm:text-base">
                       {formData.email || "Add an email address"}
                     </p>
-                    <p className="mt-5 text-sm text-[#7f8ca1]">
+                    <p className="mt-5 text-sm text-muted-foreground">
                       {formData.companyName || "Workspace identity ready for new client projects."}
                     </p>
                   </div>
@@ -1125,7 +1122,7 @@ const ClientProfileContent = () => {
 
               <div className="mt-6 space-y-7 sm:mt-8 sm:space-y-8">
                 <div className="space-y-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d2d0cb]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                     Project Notifications
                   </p>
                   <NotificationToggleRow
@@ -1149,7 +1146,7 @@ const ClientProfileContent = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d2d0cb]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                     Communication
                   </p>
                   <NotificationToggleRow
@@ -1164,7 +1161,7 @@ const ClientProfileContent = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d2d0cb]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                     Alerts
                   </p>
                   <NotificationToggleRow
@@ -1201,13 +1198,13 @@ const ClientProfileContent = () => {
           }
         }}
       >
-        <DialogContent className="max-w-3xl gap-0 overflow-hidden rounded-[32px] border-white/[0.08] bg-[#2d2d2d] p-0 text-white">
+        <DialogContent className="max-w-3xl gap-0 overflow-hidden rounded-[32px] border-white/[0.08] bg-[#2d2d2d] p-0 text-muted-foreground">
           <div className="border-b border-white/[0.06] px-6 py-5 sm:px-8">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold tracking-[-0.03em] text-white">
                 {activeEditor ? activeEditorMeta[activeEditor]?.title : ""}
               </DialogTitle>
-              <DialogDescription className="text-sm leading-6 text-[#94a3b8]">
+              <DialogDescription className="text-sm leading-6 text-muted-foreground">
                 {activeEditor ? activeEditorMeta[activeEditor]?.description : ""}
               </DialogDescription>
             </DialogHeader>

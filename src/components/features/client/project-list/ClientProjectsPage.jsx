@@ -313,7 +313,7 @@ const ClientProjectsPage = () => {
                 </div>
 
                 <div className="flex flex-col items-end gap-3 sm:gap-2">
-                  <div className="inline-flex h-auto w-full flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-card p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
+                  <div className="inline-flex h-auto w-full flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-background p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                     {projectFilterOptions.map((option) => {
                       const count =
                         option.key === "completed" ? completedProjectCount : ongoingProjectCount;

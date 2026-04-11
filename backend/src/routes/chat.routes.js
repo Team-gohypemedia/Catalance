@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getClientChatBootstrap,
   listUserConversations,
   createConversation,
   getConversationMessages,
@@ -13,6 +14,7 @@ import { optionalAuth } from "../middlewares/optional-auth.js";
 export const chatRouter = Router();
 
 // Protected conversation routes
+chatRouter.get("/client-bootstrap", requireAuth, getClientChatBootstrap);
 chatRouter.get("/conversations", requireAuth, listUserConversations);
 chatRouter.post("/conversations", optionalAuth, createConversation);
 chatRouter.get("/conversations/:id/messages", optionalAuth, getConversationMessages);

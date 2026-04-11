@@ -1430,7 +1430,7 @@ const ClientProjects = () => {
             title="Project Proposals"
             dateLabel={false}
             actions={
-              <div className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-card p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
+              <div className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-background p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                 {projectFilterOptions.map((option) => {
                   const count =
                     option.key === "completed" ? completedProjectCount : ongoingProjectCount;

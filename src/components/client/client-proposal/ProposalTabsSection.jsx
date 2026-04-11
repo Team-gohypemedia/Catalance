@@ -42,6 +42,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
       <ClientPageHeader
         title="Project Proposals"
         dateLabel={false}
+        className="lg:items-start"
         actions={
           <TabsList className="inline-flex h-auto w-full max-w-[24rem] flex-nowrap items-stretch justify-between gap-1 rounded-[32px] border border-border bg-background p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
             {tabConfig.map((item) => (
