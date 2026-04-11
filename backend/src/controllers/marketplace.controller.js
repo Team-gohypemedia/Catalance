@@ -36,6 +36,29 @@ const CATEGORY_ALIAS_MAP = new Map([
   ["publicrelations", "public_relations"],
 ]);
 
+const FILTER_SERVICE_KEY_BY_NAME = new Map([
+  ["Branding", "branding"],
+  ["Web Development", "web_development"],
+  ["SEO", "seo"],
+  ["Social Media Management", "social_media_marketing"],
+  ["Performance Marketing", "paid_advertising"],
+  ["App Development", "app_development"],
+  ["Software Development", "software_development"],
+  ["Lead Generation", "lead_generation"],
+  ["Video Services", "video_services"],
+  ["Writing & Content", "writing_content"],
+  ["Customer Support", "customer_support"],
+  ["Influencer Marketing", "influencer_marketing"],
+  ["UGC Marketing", "ugc_marketing"],
+  ["AI Automation", "ai_automation"],
+  ["WhatsApp Chatbot", "whatsapp_chatbot"],
+  ["Creative & Design", "creative_design"],
+  ["3D Modeling", "3d_modeling"],
+  ["CGI / VFX", "cgi_videos"],
+  ["CRM & ERP", "crm_erp"],
+  ["Voice AI / AI Calling", "voice_agent"],
+]);
+
 const TECH_ALIAS_MAP = new Map([
   ["react", "reactjs"],
   ["reactjs", "reactjs"],
@@ -261,6 +284,9 @@ const getConfiguredCandidateCap = () => {
 
 const normalizeQuery = (rawQuery = {}) => {
   const category = normalizeCategory(rawQuery.category);
+  const serviceId = parseOptionalInteger(rawQuery.serviceId);
+  const subCategoryId = parseOptionalInteger(rawQuery.subCategoryId);
+  const toolId = parseOptionalInteger(rawQuery.toolId);
 
   const minBudgetRaw = parseOptionalInteger(rawQuery.minBudget);
   const maxBudgetRaw = parseOptionalInteger(rawQuery.maxBudget);
@@ -298,6 +324,9 @@ const normalizeQuery = (rawQuery = {}) => {
 
   return {
     category,
+    serviceId,
+    subCategoryId,
+    toolId,
     subcategories,
     techStack,
     techFilterTokens,
@@ -310,6 +339,91 @@ const normalizeQuery = (rawQuery = {}) => {
     limit,
     searchTerm,
   };
+};
+
+const hasHierarchyFilters = (query = {}) =>
+  query.serviceId !== null || query.subCategoryId !== null || query.toolId !== null;
+
+const hasHierarchyNarrowingFilters = (query = {}) =>
+  query.subCategoryId !== null || query.toolId !== null;
+
+const buildFreelancerSkillWhere = (query = {}) => {
+  const where = {};
+
+  if (query.serviceId !== null) where.serviceId = query.serviceId;
+  if (query.subCategoryId !== null) where.subCategoryId = query.subCategoryId;
+  if (query.toolId !== null) where.toolId = query.toolId;
+
+  return where;
+};
+
+const resolveHierarchyFreelancerIds = async (query = {}) => {
+  if (!hasHierarchyNarrowingFilters(query)) return null;
+
+  const rows = await prisma.freelancerSkill.findMany({
+    where: buildFreelancerSkillWhere(query),
+    select: { userId: true },
+    distinct: ["userId"],
+  });
+
+  return new Set(rows.map((row) => row.userId).filter(Boolean));
+};
+
+const enrichQueryWithHierarchyLabels = async (query = {}) => {
+  if (!hasHierarchyFilters(query)) return query;
+
+  const [serviceRow, subCategoryRow, toolRow] = await Promise.all([
+    query.serviceId !== null
+      ? prisma.marketplaceFilterService.findUnique({
+          where: { id: query.serviceId },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve(null),
+    query.subCategoryId !== null
+      ? prisma.marketplaceFilterSubCategory.findUnique({
+          where: { id: query.subCategoryId },
+          select: { id: true, serviceId: true, name: true },
+        })
+      : Promise.resolve(null),
+    query.toolId !== null
+      ? prisma.marketplaceFilterTool.findUnique({
+          where: { id: query.toolId },
+          select: { id: true, subCategoryId: true, name: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const next = {
+    ...query,
+    subcategories: [...(query.subcategories || [])],
+    techStack: [...(query.techStack || [])],
+  };
+
+  if (!next.category && serviceRow?.name) {
+    next.category =
+      FILTER_SERVICE_KEY_BY_NAME.get(serviceRow.name) ||
+      normalizeCategory(serviceRow.name) ||
+      normalizeSlug(serviceRow.name);
+  }
+
+  if (subCategoryRow?.name) {
+    const facet = normalizeFacetToken(subCategoryRow.name);
+    if (facet && !next.subcategories.includes(facet)) {
+      next.subcategories.push(facet);
+    }
+  }
+
+  if (toolRow?.name) {
+    const toolToken = normalizeTechToken(toolRow.name);
+    if (toolToken && !next.techStack.includes(toolToken)) {
+      next.techStack.push(toolToken);
+    }
+  }
+
+  next.techFilterTokens = expandTechFilterTokens(next.techStack);
+  next.strictTech = next.techStack.length > 0;
+
+  return next;
 };
 
 const buildCandidateSearchBlob = (candidate = {}) =>
@@ -340,7 +454,14 @@ const detectCandidateBuildMode = (candidate = {}) => {
   return null;
 };
 
-const buildTier1Where = (query, profileAvailabilityConditions) => {
+const buildTier1Where = (
+  query,
+  profileAvailabilityConditions = [
+    { freelancerProfile: { is: null } },
+    { freelancerProfile: { is: { available: true } } },
+  ],
+  hierarchyFreelancerIds = null
+) => {
   const andConditions = [
     {
       freelancer: {
@@ -369,20 +490,29 @@ const buildTier1Where = (query, profileAvailabilityConditions) => {
     });
   }
 
+  if (hierarchyFreelancerIds instanceof Set) {
+    const ids = Array.from(hierarchyFreelancerIds).filter(Boolean);
+    if (!ids.length) {
+      andConditions.push({ freelancerId: "__none__" });
+    } else {
+      andConditions.push({ freelancerId: { in: ids } });
+    }
+  }
+
   return { AND: andConditions };
 };
 
-const buildTier1DiscoveryWhere = (query) =>
+const buildTier1DiscoveryWhere = (query, hierarchyFreelancerIds = null) =>
   buildTier1Where(query, [
     { freelancerProfile: { is: null } },
     { freelancerProfile: { is: { available: true } } },
-  ]);
+  ], hierarchyFreelancerIds);
 
-const buildTier1BrowseWhere = (query) =>
+const buildTier1BrowseWhere = (query, hierarchyFreelancerIds = null) =>
   buildTier1Where(query, [
     { freelancerProfile: { is: null } },
     { freelancerProfile: { is: { available: true } } },
-  ]);
+  ], hierarchyFreelancerIds);
 
 const getScoreWeights = (query) => {
   if (query.strictTech) {
@@ -1346,11 +1476,33 @@ const createMarketplaceCandidate = (row) => {
 };
 
 export const getMarketplace = asyncHandler(async (req, res) => {
-  const query = normalizeQuery(req.query || {});
+  const rawQuery = normalizeQuery(req.query || {});
+  const query = await enrichQueryWithHierarchyLabels(rawQuery);
   const configuredCap = getConfiguredCandidateCap();
   const candidateLimit = configuredCap;
+  const hierarchyFreelancerIds = await resolveHierarchyFreelancerIds(query);
+  const strictHierarchyFreelancerIds =
+    hierarchyFreelancerIds instanceof Set && hierarchyFreelancerIds.size > 0
+      ? hierarchyFreelancerIds
+      : null;
+  const useHierarchyMapping =
+    hasHierarchyNarrowingFilters(query) && strictHierarchyFreelancerIds instanceof Set;
 
-  const where = buildTier1DiscoveryWhere(query);
+  const queryForCandidateFiltering = useHierarchyMapping
+    ? {
+        ...query,
+        subcategories: [],
+        techStack: [],
+        techFilterTokens: [],
+        strictTech: false,
+      }
+    : query;
+
+  const where = buildTier1DiscoveryWhere(
+    query,
+    undefined,
+    useHierarchyMapping ? strictHierarchyFreelancerIds : null
+  );
 
   const marketplaceRows = await prisma.marketplace.findMany({
     where,
@@ -1388,22 +1540,22 @@ export const getMarketplace = asyncHandler(async (req, res) => {
 
   const tier1Candidates = marketplaceRows
     .map(createMarketplaceCandidate)
-    .filter((candidate) => matchesCandidateQuery(candidate, query));
+    .filter((candidate) => matchesCandidateQuery(candidate, queryForCandidateFiltering));
 
   if (!tier1Candidates.length) {
     return res.json({
       data: [],
       total: 0,
-      page: query.page,
-      limit: query.limit,
+      page: queryForCandidateFiltering.page,
+      limit: queryForCandidateFiltering.limit,
       totalPages: 0,
       reason: "no_match",
     });
   }
 
-  const weights = getScoreWeights(query);
+  const weights = getScoreWeights(queryForCandidateFiltering);
   const scored = tier1Candidates.map((candidate) =>
-    scoreCandidate(candidate, query, weights)
+    scoreCandidate(candidate, queryForCandidateFiltering, weights)
   );
 
   scored.sort((a, b) => {
@@ -1417,31 +1569,35 @@ export const getMarketplace = asyncHandler(async (req, res) => {
   });
 
   const total = scored.length;
-  const totalPages = Math.ceil(total / query.limit);
-  const safePage = clampInteger(query.page, 1, Math.max(totalPages, 1));
-  const startIndex = (safePage - 1) * query.limit;
-  const paginated = scored.slice(startIndex, startIndex + query.limit);
+  const totalPages = Math.ceil(total / queryForCandidateFiltering.limit);
+  const safePage = clampInteger(queryForCandidateFiltering.page, 1, Math.max(totalPages, 1));
+  const startIndex = (safePage - 1) * queryForCandidateFiltering.limit;
+  const paginated = scored.slice(startIndex, startIndex + queryForCandidateFiltering.limit);
   const mappedData = paginated.map(mapToMarketplaceRow);
 
   return res.json({
     data: mappedData,
     total,
     page: safePage,
-    limit: query.limit,
+    limit: queryForCandidateFiltering.limit,
     totalPages,
     meta: {
-      strictTech: query.strictTech,
-      strictBudget: query.strictBudget,
+      strictTech: queryForCandidateFiltering.strictTech,
+      strictBudget: queryForCandidateFiltering.strictBudget,
       weights,
       maxCandidates: candidateLimit,
       normalizedQuery: {
         category: query.category,
+        serviceId: query.serviceId,
+        subCategoryId: query.subCategoryId,
+        toolId: query.toolId,
         subcategories: query.subcategories,
         buildModes: query.buildModes,
         techStack: query.techStack,
         minBudget: query.minBudget,
         maxBudget: query.maxBudget,
       },
+      hierarchyFiltering: useHierarchyMapping ? "mapping_table" : "content_fallback",
     },
   });
 });
@@ -1502,6 +1658,82 @@ export const getMarketplaceBrowse = asyncHandler(async (req, res) => {
     meta: {
       service: selectedServiceKey,
     },
+  });
+});
+
+export const getMarketplaceFilterServices = asyncHandler(async (_req, res) => {
+  const services = await prisma.marketplaceFilterService.findMany({
+    select: {
+      id: true,
+      name: true,
+    },
+    orderBy: { name: "asc" },
+  });
+
+  res.json({
+    data: services.map((service) => ({
+      id: service.id,
+      key:
+        FILTER_SERVICE_KEY_BY_NAME.get(service.name) ||
+        normalizeCategory(service.name) ||
+        normalizeSlug(service.name),
+      name: service.name,
+      label: service.name,
+    })),
+  });
+});
+
+export const getMarketplaceFilterSubCategories = asyncHandler(async (req, res) => {
+  const serviceId = parseOptionalInteger(req.query?.serviceId);
+
+  if (serviceId === null) {
+    return res.json({ data: [] });
+  }
+
+  const subCategories = await prisma.marketplaceFilterSubCategory.findMany({
+    where: { serviceId },
+    select: {
+      id: true,
+      serviceId: true,
+      name: true,
+    },
+    orderBy: { name: "asc" },
+  });
+
+  res.json({
+    data: subCategories.map((subCategory) => ({
+      id: subCategory.id,
+      serviceId: subCategory.serviceId,
+      name: subCategory.name,
+      label: subCategory.name,
+    })),
+  });
+});
+
+export const getMarketplaceFilterTools = asyncHandler(async (req, res) => {
+  const subCategoryId = parseOptionalInteger(req.query?.subCategoryId);
+
+  if (subCategoryId === null) {
+    return res.json({ data: [] });
+  }
+
+  const tools = await prisma.marketplaceFilterTool.findMany({
+    where: { subCategoryId },
+    select: {
+      id: true,
+      subCategoryId: true,
+      name: true,
+    },
+    orderBy: { name: "asc" },
+  });
+
+  res.json({
+    data: tools.map((tool) => ({
+      id: tool.id,
+      subCategoryId: tool.subCategoryId,
+      name: tool.name,
+      label: tool.name,
+    })),
   });
 });
 
