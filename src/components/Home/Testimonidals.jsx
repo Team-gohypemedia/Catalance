@@ -23,7 +23,7 @@ const testimonials = [
   },
     {
     quote:
-      'Go hype media best social media agency in Delhi and best digital market agency in Delhi I am recommended it always',
+      'Our digital presence improved significantly, leading to a strong rise in engagement and audience interaction.',
     name: 'Nitin Nayak',
     role: 'Video Editor',
     image: testimonial3,

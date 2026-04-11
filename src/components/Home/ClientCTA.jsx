@@ -19,15 +19,10 @@ const ClientCTA = () => {
                 <span className="block">Freelance services</span>
                 <span className="block">at your fingertips</span>
               </h2>
-
-              <p className="mx-auto mt-6 max-w-[26ch] text-[1.05rem] leading-[1.45] text-foreground/82 sm:text-[1.1rem]">
-                On-demand expert freelancers for every project
-              </p>
-
               <Button
               type="button"
               size="lg"
-              className="mt-5"
+              className="mt-10"
               >
                 Connect Collaborate Create
               </Button>
