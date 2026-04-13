@@ -1,8 +1,29 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import LightRays from '@/components/ui/LightRays'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
+
+const CTA_WORDS = ['Connect', 'Collaborate', 'Create']
+const CTA_WORD_ROTATION_MS = 1700
+const CTA_LONGEST_WORD = CTA_WORDS.reduce(
+  (longestWord, word) => (word.length > longestWord.length ? word : longestWord),
+  CTA_WORDS[0] || ''
+)
 
 const ClientCTA = () => {
+  const [activeWordIndex, setActiveWordIndex] = useState(0)
+
+  useEffect(() => {
+    if (CTA_WORDS.length <= 1) return undefined
+
+    const intervalId = window.setInterval(() => {
+      setActiveWordIndex((currentIndex) => (currentIndex + 1) % CTA_WORDS.length)
+    }, CTA_WORD_ROTATION_MS)
+
+    return () => window.clearInterval(intervalId)
+  }, [])
+
   return (
     <section className="bg-background px-4 py-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1240px]">
@@ -51,11 +72,31 @@ const ClientCTA = () => {
                 <span className="block">at your fingertips</span>
               </h2>
               <Button
-              type="button"
-              size="lg"
-              className="mt-10"
+                asChild
+                size="lg"
+                aria-label={CTA_WORDS.join(', ')}
+                className="mt-10 h-12 rounded-xl px-8 text-lg font-semibold shadow-[0_14px_36px_rgba(255,204,0,0.22)]"
               >
-                Connect Collaborate Create
+                <Link to="/service">
+                  <span
+                    aria-hidden="true"
+                    className="relative inline-grid h-[1.1em] min-w-[11ch] place-items-center overflow-hidden leading-none"
+                  >
+                    <span className="invisible col-start-1 row-start-1">{CTA_LONGEST_WORD}</span>
+                    <AnimatePresence initial={false} mode="sync">
+                      <motion.span
+                        key={CTA_WORDS[activeWordIndex]}
+                        initial={{ y: '115%', opacity: 0 }}
+                        animate={{ y: '0%', opacity: 1 }}
+                        exit={{ y: '-115%', opacity: 0 }}
+                        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute inset-0 flex items-center justify-center whitespace-nowrap"
+                      >
+                        {CTA_WORDS[activeWordIndex]}
+                      </motion.span>
+                    </AnimatePresence>
+                  </span>
+                </Link>
               </Button>
             </div>
           </div>
