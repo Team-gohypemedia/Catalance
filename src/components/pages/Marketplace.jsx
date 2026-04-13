@@ -1,15 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight, BadgeCheck, Bot, BriefcaseBusiness, Banknote, Tag, Check,
   ChevronLeft, ChevronRight, Clock, Cloud, Code2,
   Database, Heart, LineChart, MessageSquare,
-  Rocket, Search, ShieldCheck, SlidersHorizontal,
+  Plus, Rocket, Search, SlidersHorizontal,
   Sparkles, Star, Users, Workflow, X
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +21,7 @@ import { Sparkles as SparklesBackground } from "@/components/ui/sparkles";
 import MarketplaceServicesSection from "@/components/pages/marketplace-browse/MarketplaceServicesSection";
 import SubcategorySection from "@/components/pages/marketplace-browse/SubcategorySection";
 import { getSession } from "@/shared/lib/auth-storage";
+import { useAuth } from "@/shared/context/AuthContext";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { cn } from "@/shared/lib/utils";
 
@@ -126,23 +126,12 @@ const WEB_CODE_FALLBACK_OPTIONS = [
   "Supabase",
 ];
 
-const spotlights = [
-  ["AI & Machine Learning", "ai automation", Bot],
-  ["Cloud Infrastructure", "cloud infrastructure", Cloud],
-  ["Cybersecurity", "cybersecurity", ShieldCheck],
-  ["Data Engineering", "data engineering", Database]
-].map(([title, search, icon]) => ({ title, search, icon }));
-
-const valueProps = [
-  ["Specialists, not generalists", "Service-led cards make it easier to compare real outcomes."],
-  ["Faster shortlisting", "Search, filters, pricing, and delivery cues sit in one flow."],
-  ["Marketplace clarity", "The layout keeps proof, trust, and action paths obvious."]
-];
-
 const faqs = [
   ["How are freelancers vetted?", "Listings combine verified freelancer data with service-specific marketplace details."],
   ["Can I compare multiple services first?", "Yes. The page is structured around quick filtering and dense service comparison before you open a detail page."],
-  ["What if I need a custom scope?", "Use the marketplace to identify the best specialist, then continue through the service detail flow to shape the engagement."]
+  ["What if I need a custom scope?", "Use the marketplace to identify the best specialist, then continue through the service detail flow to shape the engagement."],
+  ["Let me know more about moneyback guarantee?", "Our money-back guarantee ensures peace of mind by offering a full refund if you're not satisfied with the final product within a specified time frame."],
+  ["Do I need to know how to code?", "No, you don't need to know how to code. Our platform offers intuitive tools and templates that allow you to create and manage your website with ease."]
 ];
 
 const glassPanelClass = "border border-white/10 bg-white/[0.04] shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl";
@@ -200,6 +189,58 @@ const formatPrice = (price, range) => {
   }
   return "Contact for pricing";
 };
+
+const normalizeRoleToken = (value = "") =>
+  String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const getRelativePostedLabel = (value) => {
+  if (!value) return "Recently posted";
+
+  const postedAt = new Date(value);
+  if (Number.isNaN(postedAt.getTime())) return "Recently posted";
+
+  const diffMs = Date.now() - postedAt.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) return "Posted just now";
+  if (diffMinutes < 60) return `Posted ${diffMinutes}m ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `Posted ${diffHours}h ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `Posted ${diffDays}d ago`;
+
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) return `Posted ${diffMonths}mo ago`;
+
+  const diffYears = Math.floor(diffMonths / 12);
+  return `Posted ${diffYears}y ago`;
+};
+
+const formatProjectBudget = (project = {}) => {
+  const numericBudget = Number(project?.budget);
+  if (Number.isFinite(numericBudget) && numericBudget > 0) {
+    return `Rs. ${numericBudget.toLocaleString("en-IN")}`;
+  }
+  const budgetSummary = String(project?.budgetSummary || "").trim();
+  if (budgetSummary) return budgetSummary;
+  return "Budget on request";
+};
+
+const resolveProjectCardCta = (project = {}) =>
+  project?.hasSubmittedProposal
+    ? {
+        label: "View Details",
+        to: `/freelancer/project/${project.id}`,
+      }
+    : {
+        label: "Send Proposal",
+        to: "/freelancer/proposals",
+      };
 
 const scrollToSection = (id) => {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -422,7 +463,18 @@ const toggleSelection = (values = [], nextValue = "") =>
     : [...values, nextValue];
 
 const Marketplace = () => {
+  const { isAuthenticated, user, authFetch } = useAuth();
+
   const [favorites, setFavorites] = useState({});
+  const [activeMarketplaceView, setActiveMarketplaceView] = useState(() => {
+    const sessionUser = getSession()?.user;
+    const roles = Array.isArray(sessionUser?.roles) ? sessionUser.roles : [];
+    const roleTokens = [
+      normalizeRoleToken(sessionUser?.role),
+      ...roles.map((entry) => normalizeRoleToken(entry)),
+    ].filter(Boolean);
+    return roleTokens.includes("FREELANCER") ? "projects" : "freelancers";
+  });
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
   const [filterServices, setFilterServices] = useState([]);
@@ -482,6 +534,30 @@ const Marketplace = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const [projectData, setProjectData] = useState([]);
+  const [projectTotal, setProjectTotal] = useState(0);
+  const [projectTotalPages, setProjectTotalPages] = useState(0);
+  const [projectLoading, setProjectLoading] = useState(false);
+  const [projectAccessError, setProjectAccessError] = useState("");
+  const [openFaqItems, setOpenFaqItems] = useState({});
+
+  const roleTokens = useMemo(() => {
+    const tokens = new Set();
+    const primaryRole = normalizeRoleToken(user?.role);
+    if (primaryRole) tokens.add(primaryRole);
+
+    if (Array.isArray(user?.roles)) {
+      user.roles.forEach((entry) => {
+        const role = normalizeRoleToken(entry);
+        if (role) tokens.add(role);
+      });
+    }
+
+    return Array.from(tokens);
+  }, [user]);
+
+  const canViewProjectsMarketplace = isAuthenticated && roleTokens.includes("FREELANCER");
 
   const serviceCategories = (filterServices.length
     ? dedupeServiceCategories(
@@ -560,6 +636,16 @@ const Marketplace = () => {
   useEffect(() => {
     setSelectedBuildModes([]);
   }, [category]);
+
+  useEffect(() => {
+    if (canViewProjectsMarketplace && activeMarketplaceView !== "projects") {
+      setActiveMarketplaceView("projects");
+      return;
+    }
+    if (!canViewProjectsMarketplace && activeMarketplaceView === "projects") {
+      setActiveMarketplaceView("freelancers");
+    }
+  }, [activeMarketplaceView, canViewProjectsMarketplace]);
 
   useEffect(() => {
     let cancelled = false;
@@ -678,6 +764,11 @@ const Marketplace = () => {
   };
 
   const fetchResults = useCallback(async () => {
+    if (activeMarketplaceView !== "freelancers") {
+      setLoading(false);
+      return;
+    }
+
     if (!shouldShowResults) {
       setData([]);
       setTotal(0);
@@ -712,10 +803,81 @@ const Marketplace = () => {
     } finally {
       setLoading(false);
     }
-  }, [category, debouncedMax, debouncedMin, debouncedQ, duration, page, rating, selectedBuildModes, selectedServiceId, selectedSubCategoryId, selectedToolId, shouldShowResults, sort]);
+  }, [activeMarketplaceView, category, debouncedMax, debouncedMin, debouncedQ, duration, page, rating, selectedBuildModes, selectedServiceId, selectedSubCategoryId, selectedToolId, shouldShowResults, sort]);
 
-  useEffect(() => setPage(1), [debouncedQ, category, debouncedMin, debouncedMax, duration, rating, selectedBuildModes, selectedServiceId, selectedSubCategoryId, selectedToolId, sort]);
+  const fetchProjectResults = useCallback(async () => {
+    const projectsModeActive = canViewProjectsMarketplace || activeMarketplaceView === "projects";
+    if (!projectsModeActive) {
+      setProjectLoading(false);
+      return;
+    }
+
+    if (!canViewProjectsMarketplace) {
+      setProjectData([]);
+      setProjectTotal(0);
+      setProjectTotalPages(0);
+      setProjectAccessError("Only logged-in freelancers can view live client projects.");
+      setProjectLoading(false);
+      return;
+    }
+
+    setProjectLoading(true);
+    setProjectAccessError("");
+    try {
+      const query = new URLSearchParams({
+        q: debouncedQ,
+        page: String(page),
+        limit: String(MARKETPLACE_PAGE_SIZE),
+      });
+      if (category !== "all") query.append("category", category);
+      if (selectedServiceId) query.append("serviceId", String(selectedServiceId));
+      if (selectedSubCategoryId) query.append("subCategoryId", String(selectedSubCategoryId));
+      if (selectedToolId) query.append("toolId", String(selectedToolId));
+      if (debouncedMin) query.append("minBudget", debouncedMin);
+      if (debouncedMax) query.append("maxBudget", debouncedMax);
+
+      const response = await authFetch(`/marketplace/projects/live?${query.toString()}`, {
+        method: "GET",
+        suppressToast: true,
+        skipLogoutOn401: true,
+      });
+
+      if (response.status === 403) {
+        setProjectData([]);
+        setProjectTotal(0);
+        setProjectTotalPages(0);
+        setProjectAccessError("Only logged-in freelancers can view live client projects.");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch marketplace projects");
+      }
+
+      const payload = await response.json();
+      const nextData = Array.isArray(payload?.data) ? payload.data : [];
+
+      setProjectData(nextData);
+      setProjectTotal(Number(payload?.total || 0));
+      setProjectTotalPages(Number(payload?.totalPages || 0));
+    } catch (error) {
+      if (error?.code === 401) {
+        setProjectAccessError("Log in as freelancer to view live client projects.");
+      } else {
+        console.error("[Marketplace] Failed to load live projects:", error);
+        setProjectAccessError("Unable to load live projects right now.");
+      }
+      setProjectData([]);
+      setProjectTotal(0);
+      setProjectTotalPages(0);
+    } finally {
+      setProjectLoading(false);
+    }
+  }, [activeMarketplaceView, authFetch, canViewProjectsMarketplace, category, debouncedMax, debouncedMin, debouncedQ, page, selectedServiceId, selectedSubCategoryId, selectedToolId]);
+
+  useEffect(() => setPage(1), [activeMarketplaceView, debouncedQ, category, debouncedMin, debouncedMax, duration, rating, selectedBuildModes, selectedServiceId, selectedSubCategoryId, selectedToolId, sort]);
   useEffect(() => void fetchResults(), [fetchResults]);
+  useEffect(() => void fetchProjectResults(), [fetchProjectResults]);
 
   const resetFilters = () => {
     setQ("");
@@ -753,6 +915,13 @@ const Marketplace = () => {
     setSelectedToolId((current) => (current === nextValue ? null : nextValue));
   };
 
+  const toggleFaqItem = (question) => {
+    setOpenFaqItems((current) => ({
+      ...current,
+      [question]: !current[question],
+    }));
+  };
+
   const visibleBrowseServices = serviceCategories.filter((service) => {
     if (!debouncedQ || category !== "all") return true;
     const blob = [service.label, service.description]
@@ -760,6 +929,12 @@ const Marketplace = () => {
       .toLowerCase();
     return blob.includes(debouncedQ.toLowerCase());
   });
+  const isProjectsView = canViewProjectsMarketplace || activeMarketplaceView === "projects";
+  const shouldRenderFreelancerResults =
+    !canViewProjectsMarketplace &&
+    activeMarketplaceView === "freelancers" &&
+    shouldShowResults;
+  const activeTotalPages = isProjectsView ? projectTotalPages : totalPages;
 
   const marketplaceBrowseActions = category !== "all" ? (
     <Dialog open={isFilterOpen} onOpenChange={(open) => { setIsFilterOpen(open); if (open) syncDraftFilters(); }}>
@@ -980,7 +1155,11 @@ const Marketplace = () => {
           services={visibleBrowseServices}
           loading={filterServicesLoading}
           searchValue={q}
-          searchPlaceholder="Search freelancers or services"
+          searchPlaceholder={
+            canViewProjectsMarketplace || isProjectsView
+              ? "Search live projects, services, or keywords"
+              : "Search freelancers or services"
+          }
           onSearchChange={setQ}
           onSelectService={handleCategorySelect}
           activeServiceKey={category}
@@ -991,7 +1170,7 @@ const Marketplace = () => {
       {/* Main Content Container Restored for content below hero */}
       <div className="relative z-20 mx-auto mt-5 flex w-full max-w-[1280px] flex-col gap-10 px-4 pb-20 sm:mt-6 sm:px-6 lg:px-8">
         <section className="space-y-5">
-          {category !== "all" ? (
+          {(shouldRenderFreelancerResults || isProjectsView) && category !== "all" ? (
             <>
               <SubcategorySection
                 service={activeBrowseService || activeService}
@@ -1003,11 +1182,13 @@ const Marketplace = () => {
                 onSelectTool={handleToolSelect}
                 subCategoriesLoading={subCategoriesLoading}
                 toolsLoading={toolsLoading}
+                hideHeadings
+                hideEmptyMessages
               />
             </>
           ) : null}
 
-          {shouldShowResults ? (
+          {shouldRenderFreelancerResults ? (
           <AnimatePresence mode="wait">
             {loading ? (
               <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
@@ -1121,11 +1302,148 @@ const Marketplace = () => {
           </AnimatePresence>
           ) : null}
 
-          {shouldShowResults && !loading && totalPages > 1 && (
+          {isProjectsView ? (
+            <AnimatePresence mode="wait">
+              {projectLoading ? (
+                <motion.div key="projects-loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#fbcc15]">
+                      Live projects
+                    </p>
+                    <h3 className="text-2xl font-semibold tracking-[-0.04em] text-white">
+                      Client project listings
+                    </h3>
+                  </div>
+                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+                    {Array.from({ length: MARKETPLACE_PAGE_SIZE }).map((_, index) => (
+                      <Card key={`project-skeleton-${index}`} className={cn(glassCardClass, "overflow-hidden rounded-[28px]")}>
+                        <Skeleton className="h-44 w-full rounded-none" />
+                        <CardContent className="space-y-4 p-5">
+                          <Skeleton className="h-4 w-3/5" />
+                          <Skeleton className="h-6 w-full" />
+                          <Skeleton className="h-4 w-5/6" />
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-10 w-full rounded-full" />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : projectAccessError ? (
+                <motion.div key="projects-access-error" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="rounded-[34px] border border-dashed border-white/10 bg-white/[0.04] px-6 py-16 text-center shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)]">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.06] text-slate-400"><X className="h-7 w-7" /></div>
+                  <h2 className="mt-6 text-2xl font-semibold tracking-tight text-white">Projects marketplace unavailable</h2>
+                  <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-400">{projectAccessError}</p>
+                </motion.div>
+              ) : projectData.length === 0 ? (
+                <motion.div key="projects-empty" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="rounded-[34px] border border-dashed border-white/10 bg-white/[0.04] px-6 py-20 text-center shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)]">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.06] text-slate-400"><Search className="h-7 w-7" /></div>
+                  <h2 className="mt-6 text-2xl font-semibold tracking-tight text-white">No live projects match this filter yet</h2>
+                  <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-400">Try broadening service or budget filters to view more client opportunities.</p>
+                  <Button variant="outline" className="mt-7 rounded-full border-white/10 bg-white/[0.04] px-6 py-5 text-sm font-semibold text-white hover:bg-white/[0.08]" onClick={resetFilters}>Clear all filters</Button>
+                </motion.div>
+              ) : (
+                <motion.div key="projects-grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#fbcc15]">
+                      Live projects
+                    </p>
+                    <h3 className="text-2xl font-semibold tracking-[-0.04em] text-white">
+                      Client project listings
+                    </h3>
+                    <p className="text-sm text-slate-400">
+                      {projectTotal} result{projectTotal === 1 ? "" : "s"}
+                      {activeBrowseService?.label || activeService?.label
+                        ? ` in ${activeBrowseService?.label || activeService?.label}.`
+                        : "."}
+                    </p>
+                  </div>
+                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+                    {projectData.map((item) => {
+                      const timeline = String(item?.timeline || item?.duration || "").trim();
+                      const clientLabel = String(item?.companyName || item?.clientName || "").trim();
+                      const summary = String(item?.summary || item?.description || "").trim();
+                      const cta = resolveProjectCardCta(item);
+                      return (
+                        <motion.article key={item.id} className="h-full">
+                          <Card className="group h-full overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_28px_90px_-40px_color-mix(in_srgb,var(--primary)_22%,transparent)]">
+                            <div className="relative h-44 overflow-hidden border-b border-white/10 bg-slate-950">
+                              <div className={cn("absolute inset-0 bg-gradient-to-br", getGradient(item.serviceKey || item.id))} />
+                              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/35 to-transparent" />
+                              <div className="absolute inset-x-0 bottom-0 space-y-2 p-4">
+                                <Badge className="inline-flex w-fit rounded-full border border-white/20 bg-white/12 px-3 py-1 text-[11px] font-semibold text-white">
+                                  {item.serviceName || "General service"}
+                                </Badge>
+                                <p className="text-xs text-white/80">
+                                  {getRelativePostedLabel(item.postedAt || item.createdAt)}
+                                </p>
+                              </div>
+                            </div>
+                            <CardContent className="flex min-h-[252px] flex-col p-5">
+                              <h3 className="line-clamp-2 text-base font-semibold leading-6 text-white">
+                                {item.title || "Untitled project"}
+                              </h3>
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
+                                {item.subCategory ? (
+                                  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-slate-300">
+                                    {item.subCategory}
+                                  </span>
+                                ) : null}
+                                {timeline ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-slate-300">
+                                    <Clock className="h-3 w-3" />
+                                    {timeline}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="mt-3 line-clamp-3 text-xs leading-6 text-slate-400">
+                                {summary || "No project summary provided yet."}
+                              </p>
+                              {clientLabel ? (
+                                <p className="mt-3 truncate text-xs font-medium text-slate-300">
+                                  Client: {clientLabel}
+                                </p>
+                              ) : null}
+                              <div className="mt-auto flex items-end justify-between border-t border-white/10 pt-4">
+                                <div>
+                                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                    Budget
+                                  </p>
+                                  <p className="mt-1 text-lg font-semibold tracking-tight text-white">
+                                    {formatProjectBudget(item)}
+                                  </p>
+                                </div>
+                                <div className="flex flex-col items-end gap-2">
+                                  {item.hasSubmittedProposal && item.proposalStatus ? (
+                                    <Badge className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
+                                      {formatTokenLabel(item.proposalStatus)}
+                                    </Badge>
+                                  ) : null}
+                                  <Link
+                                    to={cta.to}
+                                    className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:border-primary hover:bg-primary/90"
+                                  >
+                                    {cta.label}
+                                    <ArrowRight className="h-3.5 w-3.5" />
+                                  </Link>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.article>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          ) : null}
+
+          {((shouldRenderFreelancerResults && !loading) || (isProjectsView && !projectLoading)) && activeTotalPages > 1 && (
             <div className="flex flex-col gap-4 rounded-[30px] border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[0_24px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-400">
                 Page <span className="font-semibold text-white">{page}</span> of{" "}
-                <span className="font-semibold text-white">{totalPages}</span>
+                <span className="font-semibold text-white">{activeTotalPages}</span>
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
@@ -1138,10 +1456,10 @@ const Marketplace = () => {
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                {Array.from({ length: totalPages }, (_, index) => index + 1)
+                {Array.from({ length: activeTotalPages }, (_, index) => index + 1)
                   .filter((pageNumber) => {
-                    if (totalPages <= 7) return true;
-                    if (pageNumber === 1 || pageNumber === totalPages) return true;
+                    if (activeTotalPages <= 7) return true;
+                    if (pageNumber === 1 || pageNumber === activeTotalPages) return true;
                     return Math.abs(pageNumber - page) <= 1;
                   })
                   .map((pageNumber, index, visiblePages) => {
@@ -1171,8 +1489,8 @@ const Marketplace = () => {
                   variant="outline"
                   size="icon"
                   className="h-11 w-11 rounded-full border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={page >= activeTotalPages}
+                  onClick={() => setPage((current) => Math.min(activeTotalPages, current + 1))}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -1181,170 +1499,66 @@ const Marketplace = () => {
           )}
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-3">
-          {[
-            ["1", "Brief the outcome", "Choose a service lane, filter by price and delivery, and scan the strongest matches fast."],
-            ["2", "Compare proof", "Review positioning, ratings, pricing cues, and profile signals without leaving the shortlist."],
-            ["3", "Move with confidence", "Open a service detail, align on scope, and take the conversation into delivery."],
-          ].map(([step, title, copy]) => (
-            <Card key={step} className={cn(glassCardClass, "rounded-[30px]")}>
-              <CardContent className="space-y-5 p-7">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground">
-                  {step}
-                </div>
-                <div className="space-y-2">
-                  <h2 className="text-xl font-semibold tracking-tight text-white">How it works</h2>
-                  <h3 className="text-lg font-semibold text-white">{title}</h3>
-                  <p className="text-sm leading-7 text-slate-400">{copy}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
-
-        <section className="overflow-hidden rounded-[36px] border border-primary/20 bg-gradient-to-br from-black via-black to-primary/18 shadow-[0_34px_100px_-44px_rgba(2,6,23,0.8)]">
-          <div className="grid gap-8 px-6 py-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] lg:px-10 lg:py-10">
-            <div className="space-y-5">
-              <Badge className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                Trust and testimonials
-              </Badge>
-              <h2 className="max-w-2xl text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-                Built for teams that want premium outcomes without a slow procurement loop.
-              </h2>
-              <p className="max-w-2xl text-base leading-8 text-white/70">
-                The Marketplace experience pairs structured comparison with editorial clarity, so buyers can move from discovery to a confident shortlist in one session.
-              </p>
-              <div className="grid gap-4 sm:grid-cols-3">
-                {[
-                  ["4.9/5", "Average service rating"],
-                  ["48 hrs", "Typical shortlist speed"],
-                  ["Curated", "Capability-first categories"],
-                ].map(([value, label]) => (
-                  <div key={label} className="rounded-[26px] border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur-md">
-                    <p className="text-2xl font-semibold tracking-tight text-white">{value}</p>
-                    <p className="mt-1 text-sm text-white/65">{label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="grid gap-4 self-center">
-              {[
-                ["Product lead, SaaS", "We used the marketplace filters to narrow down automation talent in under ten minutes. The shortlist felt curated, not crowded."],
-                ["Operations manager, agency", "Pricing and delivery cues were clear enough to compare real fit before we opened a single profile in detail."],
-              ].map(([author, quote]) => (
-                <div key={author} className="rounded-[30px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-md">
-                  <div className="flex items-center gap-2 text-primary">
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <Star key={`${author}-${index}`} className="h-4 w-4 fill-current" />
-                    ))}
-                  </div>
-                  <p className="mt-4 text-sm leading-7 text-white/78">{quote}</p>
-                  <p className="mt-5 text-sm font-semibold text-white">{author}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="space-y-2">
-              <Badge className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-                Popular categories
-              </Badge>
-              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white">Explore high-demand capability lanes.</h2>
-            </div>
-            <Button
-              variant="outline"
-              className="rounded-full border-white/10 bg-white/[0.04] px-6 text-sm font-semibold text-white hover:bg-white/[0.08]"
-              onClick={() => scrollToSection("marketplace-results")}
-            >
-              Browse all services
-            </Button>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-            {spotlights.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.title}
-                  type="button"
-                  onClick={() => {
-                    setQ(item.search);
-                    scrollToSection("marketplace-results");
-                  }}
-                  className="group overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.05] text-left shadow-[0_24px_70px_-42px_rgba(2,6,23,0.82)] transition hover:-translate-y-1.5 hover:border-white/20 hover:bg-white/[0.06]"
-                >
-                  <div className={cn("h-32 bg-gradient-to-br px-6 py-6 text-white", [
-                    "from-sky-500 to-cyan-400",
-                    "from-emerald-500 to-teal-400",
-                    "from-rose-500 to-orange-400",
-                    "from-indigo-500 to-blue-400",
-                  ][index % 4])}>
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md">
-                      <Icon className="h-6 w-6" />
-                    </div>
-                  </div>
-                  <div className="space-y-3 p-6">
-                    <h3 className="text-xl font-semibold tracking-tight text-white transition-colors group-hover:text-sky-300">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm leading-7 text-slate-400">
-                      Launch directly into specialists who work in this lane and compare offers without losing context.
-                    </p>
-                    <span className="inline-flex items-center gap-2 text-sm font-semibold text-white">
-                      Search this lane <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-3">
-          {valueProps.map(([title, copy], index) => {
-            const icons = [ShieldCheck, Rocket, Sparkles];
-            const Icon = icons[index % icons.length];
-            return (
-              <Card key={title} className={cn(glassCardClass, "rounded-[30px]")}>
-                <CardContent className="space-y-5 p-7">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.06] text-white">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-2">
-                    <h2 className="text-xl font-semibold tracking-tight text-white">{title}</h2>
-                    <p className="text-sm leading-7 text-slate-400">{copy}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </section>
-
-        <section className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
-          <div className="space-y-4">
-            <Badge className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+        <section className="grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-10 lg:items-start">
+          <div className="space-y-6 lg:sticky lg:top-24">
+            <Badge className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-slate-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-200" />
               FAQ
             </Badge>
-            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white">Questions buyers usually ask before they shortlist.</h2>
-            <p className="max-w-xl text-base leading-8 text-slate-400">
-              The marketplace is meant to reduce uncertainty early. These are the signals most teams look for before moving deeper into a service.
-            </p>
+            <div className="space-y-4">
+              <h2 className="text-4xl font-semibold tracking-[-0.03em] text-white sm:text-5xl">
+                Frequently
+                <br />
+                <span className="text-slate-400">Asked Questions</span>
+              </h2>
+              <p className="max-w-md text-base leading-8 text-slate-400">
+                The marketplace is meant to reduce uncertainty early. These are the signals most teams look for before moving deeper into a service.
+              </p>
+            </div>
           </div>
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.05] px-6 py-4 shadow-[0_24px_70px_-42px_rgba(2,6,23,0.82)]">
-            <Accordion type="single" collapsible className="w-full">
-              {faqs.map(([question, answer]) => (
-                <AccordionItem key={question} value={question} className="border-white/10">
-                  <AccordionTrigger className="text-left text-base font-semibold text-white hover:no-underline">
-                    {question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-sm leading-7 text-slate-400">
-                    {answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+          <div className="space-y-4">
+            {faqs.map(([question, answer]) => {
+              const isOpen = Boolean(openFaqItems[question]);
+              return (
+                <div
+                  key={question}
+                  className={cn(
+                    "rounded-[24px] border transition-all duration-300",
+                    isOpen
+                      ? "border-white/15 bg-black/45 shadow-[0_20px_50px_-30px_rgba(2,6,23,0.95)]"
+                      : "border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/35"
+                  )}
+                >
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-4 px-7 py-6 text-left"
+                    onClick={() => toggleFaqItem(question)}
+                    aria-expanded={isOpen}
+                  >
+                    <span className="text-xl font-medium leading-tight text-white">{question}</span>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-white/90">
+                      {isOpen ? <X className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                    </span>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        key={`${question}-content`}
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-7 pb-7">
+                          <p className="max-w-3xl text-[18px] leading-8 text-slate-400">{answer}</p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
           </div>
         </section>
 
