@@ -23,38 +23,52 @@ import video6 from "@/assets/videos/moc/video6.mp4";
 import video7 from "@/assets/videos/moc/video7.mp4";
 
 const imageSources = [
-  project1,
-  project2,
-  project3,
-  project4,
-  project5,
-  project6,
-  project7,
-  project8,
-  project9,
-  project10,
-  project11,
-  project12,
-  project13,
-  project14,
+  { src: project1, width: 1200, height: 1200 },
+  { src: project2, width: 1200, height: 900 },
+  { src: project3, width: 960, height: 720 },
+  { src: project4, width: 1200, height: 900 },
+  { src: project5, width: 1200, height: 1200 },
+  { src: project6, width: 1200, height: 1200 },
+  { src: project7, width: 1000, height: 1911 },
+  { src: project8, width: 1000, height: 1379 },
+  { src: project9, width: 1000, height: 1164 },
+  { src: project10, width: 1200, height: 900 },
+  { src: project11, width: 1200, height: 1200 },
+  { src: project12, width: 1200, height: 1200 },
+  { src: project13, width: 960, height: 960 },
+  { src: project14, width: 960, height: 960 },
 ];
 
-const videoSources = [video1, video2, video3, video4, video5, video6, video7];
+const videoSources = [
+  { src: video1, width: 1920, height: 1080 },
+  { src: video2, width: 1920, height: 1080 },
+  { src: video3, width: 1920, height: 1080 },
+  { src: video4, width: 1920, height: 1080 },
+  { src: video5, width: 1920, height: 1080 },
+  { src: video6, width: 1920, height: 1080 },
+  { src: video7, width: 1920, height: 1080 },
+];
 
-const placeCards = imageSources.flatMap((src, index) => {
+const placeCards = imageSources.flatMap((image, index) => {
   const cards = [
     {
       type: "image",
-      src,
+      src: image.src,
+      width: image.width,
+      height: image.height,
       alt: `Catalance project showcase ${index + 1}`,
     },
   ];
 
   if (index % 2 === 1) {
     const videoIndex = Math.floor(index / 2);
+    const video = videoSources[videoIndex];
+
     cards.push({
       type: "video",
-      src: videoSources[videoIndex],
+      src: video.src,
+      width: video.width,
+      height: video.height,
       alt: `Catalance project video showcase ${videoIndex + 1}`,
     });
   }
@@ -64,13 +78,16 @@ const placeCards = imageSources.flatMap((src, index) => {
 
 function PlaceCard({ place }) {
   return (
-    <article className="group relative overflow-hidden rounded-4xl border border-border bg-background">
-      <div className="relative aspect-4/5 overflow-hidden bg-muted">
+    <article
+      className="group relative overflow-hidden rounded-4xl border border-border bg-background"
+      style={{ aspectRatio: `${place.width} / ${place.height}` }}
+    >
+      <div className="relative h-full w-full overflow-hidden bg-muted">
         {place.type === "video" ? (
           <video
             src={place.src}
             aria-label={place.alt}
-            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            className="block h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
             autoPlay
             loop
             muted
@@ -90,7 +107,7 @@ function PlaceCard({ place }) {
           <img
             src={place.src}
             alt={place.alt}
-            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            className="block h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
             loading="lazy"
             decoding="async"
           />
