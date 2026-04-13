@@ -6,7 +6,7 @@
     "Web Development",
     "SEO (Search Engine Optimisation)",
     "Social Media Marketing (Organic)",
-    "Paid Advertising / Performance Marketing",
+    "Paid Advertising",
     "App Development (Android / iOS / Cross-Platform)",
     "Software Development (Web / SaaS / Custom Systems)",
     "Lead Generation",
@@ -955,7 +955,7 @@
     },
     {
       "service_key": "paid_advertising_performance_marketing",
-      "service_name": "Paid Advertising / Performance Marketing",
+      "service_name": "Paid Advertising",
       "flow_name": "4 STAGE FLOW",
       "stages": [
         {

@@ -1414,7 +1414,7 @@
         {
             "number": 5,
             "id": "paid_advertising_performance",
-            "name": "Paid Advertising / Performance Marketing",
+            "name": "Paid Advertising",
             "budget": {
                 "min_required_amount": 15000,
                 "unit": "per_month_ad_spend"
@@ -1422,7 +1422,7 @@
             "questions": [
                 {
                     "id": "project_requirements_detail",
-                    "question": "What are your requirements for this Paid Advertising / Performance Marketing project in detail?"
+                    "question": "What are your requirements for this Paid Advertising project in detail?"
                 },
                 {
                     "id": "platforms",

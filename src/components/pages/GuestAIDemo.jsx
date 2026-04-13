@@ -1181,6 +1181,24 @@ const extractServices = (value) => {
     return [];
 };
 
+const normalizeServiceDisplayName = (value = '') => {
+    const label = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!label) return '';
+    if (/^paid advertising\s*\/\s*performance marketing$/i.test(label)) {
+        return 'Paid Advertising';
+    }
+    return label;
+};
+
+const normalizeServiceItem = (service = {}) => {
+    if (!service || typeof service !== 'object') return service;
+    return {
+        ...service,
+        name: normalizeServiceDisplayName(service?.name),
+        title: normalizeServiceDisplayName(service?.title),
+    };
+};
+
 const isProposalMessage = (content = "") => {
     if (typeof content !== "string") return false;
     return /client name\s*:|project overview\s*:|primary objectives\s*:|features\/deliverables included\s*:/i.test(content);
@@ -2416,6 +2434,13 @@ const GuestAIDemo = () => {
         return () => window.removeEventListener("mousemove", handleMouseMove);
     }, [mouseX, mouseY]);
 
+    const handleCardGlowMouseMove = useCallback((event) => {
+        const cardElement = event.currentTarget;
+        const bounds = cardElement.getBoundingClientRect();
+        cardElement.style.setProperty('--card-glow-x', `${event.clientX - bounds.left}px`);
+        cardElement.style.setProperty('--card-glow-y', `${event.clientY - bounds.top}px`);
+    }, []);
+
     const { theme } = useTheme();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
@@ -3259,7 +3284,7 @@ const GuestAIDemo = () => {
                 method: 'GET',
                 cache: 'no-store',
             });
-            const normalizedServices = extractServices(response);
+            const normalizedServices = extractServices(response).map(normalizeServiceItem);
             if (normalizedServices.length > 0) {
                 setServices(normalizedServices);
             } else {
@@ -4200,19 +4225,21 @@ const GuestAIDemo = () => {
 
                     <div className="relative z-10 max-w-[90rem] mx-auto px-6 py-8">
                         <div className="text-center space-y-4 relative z-10 mb-10">
-                            <span className="inline-block px-6 py-2 text-3xl uppercase tracking-[0.4em] bg-background text-primary rounded-full font-semibold shadow-md border border-white/10">
+                            <span className="inline-block px-6 py-2 text-3xl uppercase tracking-[0.4em] bg-background text-primary rounded-full font-semibold shadow-md">
                                 Services
                             </span>
-                            <h2 className="text-3xl font-semibold text-white">
-                                Clarity across every step of the freelance lifecycle.
-                            </h2>
-                            <p className="mx-auto max-w-3xl text-sm text-zinc-400">
-                                {isAgencySelectionMode
-                                    ? 'Agency mode lets you bundle multiple services into one guided intake. We will ask each selected service flow in sequence and show one final combined proposal at the end.'
-                                    : 'Freelancer mode keeps the current flow unchanged. Pick one service to start the guided chat immediately.'}
-                            </p>
+                            <div className="mx-auto flex max-w-4xl flex-col items-center gap-3 rounded-2xl bg-background px-5 py-4">
+                                <h2 className="text-3xl font-semibold text-white">
+                                    Clarity across every step of the freelance lifecycle.
+                                </h2>
+                                <p className="mx-auto max-w-3xl text-sm text-muted-foreground">
+                                    {isAgencySelectionMode
+                                        ? 'Agency mode lets you bundle multiple services into one guided intake. We will ask each selected service flow in sequence and show one final combined proposal at the end.'
+                                        : 'Freelancer mode keeps the current flow unchanged. Pick one service to start the guided chat immediately.'}
+                                </p>
+                            </div>
                             <div className="flex justify-center">
-                                <div className="inline-flex rounded-full border border-white/10 bg-white/[0.04] p-1">
+                                <div className="inline-flex rounded-full bg-background p-1">
                                     {[
                                         { key: SERVICE_SELECTION_MODES.FREELANCER, label: 'Freelancer' },
                                         { key: SERVICE_SELECTION_MODES.AGENCY, label: 'Agency' },
@@ -4223,7 +4250,7 @@ const GuestAIDemo = () => {
                                             onClick={() => setServiceSelectionMode(modeOption.key)}
                                             className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
                                                 serviceSelectionMode === modeOption.key
-                                                    ? 'bg-[#ffc800] text-black shadow-[0_8px_24px_-12px_rgba(255,200,0,0.85)]'
+                                                    ? 'bg-[#ffc800] text-black'
                                                     : 'text-zinc-300 hover:text-white'
                                             }`}
                                         >
@@ -4234,7 +4261,7 @@ const GuestAIDemo = () => {
                             </div>
                             {isAgencySelectionMode ? (
                                 <div className="mt-5 flex flex-col items-center gap-3">
-                                    <div className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-zinc-400">
+                                    <div className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-background px-4 py-2 text-xs font-medium text-zinc-400">
                                         <span
                                             className={`h-2.5 w-2.5 rounded-full transition-colors ${
                                                 agencySelectedServices.length > 0
@@ -4252,10 +4279,10 @@ const GuestAIDemo = () => {
                                         type="button"
                                         onClick={() => startAgencyFlow()}
                                         disabled={agencySelectedServices.length === 0}
-                                        className={`inline-flex min-w-[280px] items-center justify-center gap-3 rounded-full border px-6 py-3 text-sm font-semibold transition-all ${
+                                        className={`inline-flex min-w-[280px] items-center justify-center gap-3 rounded-full border bg-background px-6 py-3 text-sm font-semibold transition-all ${
                                             agencySelectedServices.length > 0
                                                 ? 'border-[#ffc800]/40 bg-[#ffc800] text-black shadow-[0_20px_40px_-20px_rgba(255,200,0,0.95)] hover:-translate-y-0.5 hover:bg-[#ffd740]'
-                                                : 'cursor-not-allowed border-white/10 bg-white/[0.04] text-zinc-500'
+                                            : 'cursor-not-allowed border-white/10 text-zinc-500'
                                         }`}
                                     >
                                         <span>
@@ -4267,7 +4294,7 @@ const GuestAIDemo = () => {
                                             className={`inline-flex min-w-7 items-center justify-center rounded-full px-2 py-1 text-[11px] font-bold ${
                                                 agencySelectedServices.length > 0
                                                     ? 'bg-black/10 text-black'
-                                                    : 'bg-white/[0.05] text-zinc-500'
+                                                    : 'bg-background text-zinc-500'
                                             }`}
                                         >
                                             {agencySelectedServices.length}
@@ -4296,13 +4323,22 @@ const GuestAIDemo = () => {
                                                 ? toggleAgencyServiceSelection(feature)
                                                 : handleServiceSelect(feature)
                                         )}
-                                        className={`group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full bg-black shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:-translate-y-2 ${
+                                        onMouseMove={handleCardGlowMouseMove}
+                                        style={{ '--card-glow-x': '50%', '--card-glow-y': '50%' }}
+                                        className={`group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full bg-card hover:-translate-y-2 ${
                                             isAgencyCardSelected
-                                                ? 'border-[#ffc800] shadow-[0_20px_40px_-18px_rgba(255,200,0,0.45)]'
+                                            ? 'border-[#ffc800]'
                                                 : 'border-white/20 hover:border-[#ffc800]/50'
                                         }`}
                                     >
                                         <div className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                                        <div
+                                            className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                                            style={{
+                                                background:
+                                                    'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(255, 200, 0, 0.18) 0%, rgba(255, 200, 0, 0.08) 30%, transparent 65%)',
+                                            }}
+                                        />
                                         {isAgencySelectionMode ? (
                                             <div className="absolute right-4 top-4 z-20">
                                                 <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
@@ -4316,9 +4352,6 @@ const GuestAIDemo = () => {
                                         ) : null}
                                         <div className="flex flex-col h-full p-5 relative z-10">
                                             <div className="h-32 w-full flex items-center justify-center mb-3 relative">
-                                                <div className={`absolute left-1/2 -translate-x-1/2 -top-4 w-40 h-40 blur-3xl rounded-full transition-opacity duration-700 ${
-                                                    isAgencyCardSelected ? 'bg-[#ffc800]/20 opacity-100' : 'bg-[#ffc800]/10 opacity-0 group-hover:opacity-100'
-                                                }`} />
                                                 <img
                                                     src={resolveServiceLogoSrc(feature)}
                                                     alt={feature.title || feature.name}
@@ -4333,7 +4366,7 @@ const GuestAIDemo = () => {
                                                     {feature.title || feature.name}
                                                 </h3>
 
-                                                <p className="text-sm text-zinc-400 font-medium leading-relaxed mb-4 line-clamp-3 group-hover:text-zinc-300 transition-colors">
+                                                <p className="text-sm text-muted-foreground font-medium leading-relaxed mb-4 line-clamp-3 transition-colors">
                                                     {feature.description}
                                                 </p>
 
@@ -4366,25 +4399,39 @@ const GuestAIDemo = () => {
 
                         {/* WHY CATALANCE AI */}
                         <div className="relative z-10 mt-24">
-                            <div className="text-center mb-12">
+                            <div className="mx-auto mb-12 flex max-w-4xl flex-col items-center gap-3 rounded-2xl bg-background px-5 py-4 text-center">
                                 <p className="text-xs font-bold uppercase tracking-[0.35em] text-[#ffc800] mb-3">Our Edge</p>
                                 <h2 className="text-4xl font-bold text-white">Why Catalance AI?</h2>
-                                <p className="text-zinc-400 mt-3 text-base max-w-xl mx-auto">We&apos;ve reimagined how businesses discover and hire freelance talent.</p>
+                                <p className="text-muted-foreground mt-3 text-base max-w-xl mx-auto">We&apos;ve reimagined how businesses discover and hire freelance talent.</p>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                                 {[
-                                    { icon: '⚡', title: 'Instant Qualification', desc: 'AI filters your requirements in real-time — no back-and-forth emails, no wasted calls.', gradient: 'from-amber-500/10 to-orange-500/5', border: 'border-amber-500/20' },
-                                    { icon: '🔒', title: 'Verified Professionals', desc: 'Every freelancer is vetted with portfolio review, skill assessments, and client references.', gradient: 'from-blue-500/10 to-indigo-500/5', border: 'border-blue-500/20' },
-                                    { icon: '💰', title: 'Transparent Pricing', desc: 'No hidden fees. Budgets are defined upfront in your AI-generated proposal.', gradient: 'from-green-500/10 to-emerald-500/5', border: 'border-green-500/20' },
-                                    { icon: '📈', title: 'Scope-Driven Matching', desc: 'Your project scope drives freelancer matching — we connect you with specialists.', gradient: 'from-purple-500/10 to-violet-500/5', border: 'border-purple-500/20' },
-                                    { icon: '🕐', title: 'Save Hours of Discovery', desc: 'CATA AI compresses the entire discovery and briefing phase into minutes.', gradient: 'from-rose-500/10 to-pink-500/5', border: 'border-rose-500/20' },
-                                    { icon: '🌐', title: 'Multi-Service Support', desc: 'From SEO to app dev, branding to CRM — one platform, one AI, unlimited combinations.', gradient: 'from-cyan-500/10 to-teal-500/5', border: 'border-cyan-500/20' },
+                                    { icon: '⚡', title: 'Instant Qualification', desc: 'AI filters your requirements in real-time — no back-and-forth emails, no wasted calls.' },
+                                    { icon: '🔒', title: 'Verified Professionals', desc: 'Every freelancer is vetted with portfolio review, skill assessments, and client references.' },
+                                    { icon: '💰', title: 'Transparent Pricing', desc: 'No hidden fees. Budgets are defined upfront in your AI-generated proposal.' },
+                                    { icon: '📈', title: 'Scope-Driven Matching', desc: 'Your project scope drives freelancer matching — we connect you with specialists.' },
+                                    { icon: '🕐', title: 'Save Hours of Discovery', desc: 'CATA AI compresses the entire discovery and briefing phase into minutes.' },
+                                    { icon: '🌐', title: 'Multi-Service Support', desc: 'From SEO to app dev, branding to CRM — one platform, one AI, unlimited combinations.' },
                                 ].map((card, i) => (
-                                    <div key={i} className={`relative overflow-hidden rounded-2xl border ${card.border} bg-gradient-to-br ${card.gradient} p-6 hover:scale-[1.02] transition-transform duration-300 group`}>
-                                        <div className="text-3xl mb-4">{card.icon}</div>
-                                        <h3 className="text-white font-bold text-base mb-2">{card.title}</h3>
-                                        <p className="text-zinc-400 text-sm leading-relaxed">{card.desc}</p>
-                                        <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-20 bg-white group-hover:opacity-30 transition-opacity duration-500" />
+                                    <div
+                                        key={i}
+                                        onMouseMove={handleCardGlowMouseMove}
+                                        style={{ '--card-glow-x': '50%', '--card-glow-y': '50%' }}
+                                        className="group relative overflow-hidden rounded-2xl border border-white/10 bg-card p-6 transition-transform duration-300 hover:scale-[1.02]"
+                                    >
+                                        <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                                        <div
+                                            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-700 group-hover:opacity-100"
+                                            style={{
+                                                background:
+                                                    'radial-gradient(240px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(255, 200, 0, 0.16) 0%, rgba(255, 200, 0, 0.07) 30%, transparent 65%)',
+                                            }}
+                                        />
+                                        <div className="relative z-10">
+                                            <div className="text-3xl mb-4">{card.icon}</div>
+                                            <h3 className="text-white font-bold text-base mb-2">{card.title}</h3>
+                                            <p className="text-muted-foreground text-sm leading-relaxed">{card.desc}</p>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -4392,14 +4439,25 @@ const GuestAIDemo = () => {
 
                         {/* STATS BAR */}
                         <div className="relative z-10 mt-24">
-                            <div className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-md px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                            <div
+                                onMouseMove={handleCardGlowMouseMove}
+                                style={{ '--card-glow-x': '50%', '--card-glow-y': '50%' }}
+                                className="group relative overflow-hidden rounded-3xl border border-white/10 bg-card px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center"
+                            >
+                                <div
+                                    className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                                    style={{
+                                        background:
+                                            'radial-gradient(340px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(255, 200, 0, 0.18) 0%, rgba(255, 200, 0, 0.08) 30%, transparent 70%)',
+                                    }}
+                                />
                                 {[
                                     { value: '500+', label: 'Verified Freelancers' },
                                     { value: '1,200+', label: 'Projects Delivered' },
                                     { value: '4.9★', label: 'Average Client Rating' },
                                     { value: '15+', label: 'Service Categories' },
                                 ].map((stat, i) => (
-                                    <div key={i} className="flex flex-col items-center gap-1">
+                                    <div key={i} className="relative z-10 flex flex-col items-center gap-1">
                                         <span className="text-4xl font-extrabold text-[#ffc800] tracking-tight">{stat.value}</span>
                                         <span className="text-zinc-400 text-sm font-medium">{stat.label}</span>
                                     </div>
@@ -4408,18 +4466,31 @@ const GuestAIDemo = () => {
                         </div>
 
                         {/* CTA */}
-                        <div className="relative z-10 mt-14 mb-8 text-center space-y-4">
-                            <h3 className="text-2xl font-bold text-white">Ready to get started?</h3>
-                            <p className="text-zinc-400 text-sm max-w-md mx-auto" hidden={isAgencySelectionMode}>Pick a service above, chat with CATA AI, and receive a professional proposal — completely free.</p>
-                            {isAgencySelectionMode ? (
-                                <p className="text-zinc-400 text-sm max-w-md mx-auto">
-                                    Select your services above, let CATA AI run through each scope, and receive one combined proposal at the end.
-                                </p>
-                            ) : null}
-                            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-[#ffc800] text-black font-bold text-sm hover:bg-[#ffd740] transition-colors shadow-[0_8px_30px_-8px_rgba(255,200,0,0.6)]">
-                                {isAgencySelectionMode ? 'Choose Services' : 'Choose a Service'}
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
-                            </button>
+                        <div className="relative z-10 mt-14 mb-8 px-4 py-4 sm:px-6 lg:px-8">
+                            <div className="mx-auto max-w-[1240px]">
+                                <div className="relative overflow-hidden rounded-[2rem] bg-background px-6 py-12 sm:px-10 sm:py-14 lg:min-h-[460px] lg:px-16">
+                                    <div className="absolute inset-0 bg-background" />
+                                    <div className="pointer-events-none absolute -left-28 top-1/2 h-[440px] w-[440px] -translate-y-1/2 rounded-full bg-primary/70 blur-[120px]" />
+                                    <div className="pointer-events-none absolute -right-28 top-1/2 h-[440px] w-[440px] -translate-y-1/2 rounded-full bg-primary/70 blur-[120px]" />
+                                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--primary)/0.28)_0%,hsl(var(--primary)/0.08)_50%,hsl(var(--primary)/0.28)_100%)]" />
+
+                                    <div className="relative z-10 flex min-h-[360px] items-center justify-center">
+                                        <div className="w-full max-w-[760px] text-center">
+                                            <h3 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">Ready to get started?</h3>
+                                            <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground" hidden={isAgencySelectionMode}>Pick a service above, chat with CATA AI, and receive a professional proposal — completely free.</p>
+                                            {isAgencySelectionMode ? (
+                                                <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground">
+                                                    Select your services above, let CATA AI run through each scope, and receive one combined proposal at the end.
+                                                </p>
+                                            ) : null}
+                                            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-10 inline-flex items-center gap-2 rounded-full bg-[#ffc800] px-8 py-3 text-sm font-bold text-black shadow-[0_8px_30px_-8px_rgba(255,200,0,0.6)] transition-colors hover:bg-[#ffd740]">
+                                                {isAgencySelectionMode ? 'Choose Services' : 'Choose a Service'}
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </main>
@@ -4599,11 +4670,7 @@ const GuestAIDemo = () => {
     };
 
     return (
-        <div className={`mt-16 flex h-[calc(100svh-4rem)] overflow-hidden lg:mt-20 lg:h-[calc(100svh-5rem)] ${isDark
-            ? 'bg-[#212121]'
-            : 'bg-white'
-            }`}
-        >
+        <div className="mt-16 flex h-[calc(100svh-4rem)] overflow-hidden bg-background lg:mt-20 lg:h-[calc(100svh-5rem)]">
             {/* Backdrop — closes sidebar when clicking outside */}
             {!isSidebarCompact && (
                 <div
