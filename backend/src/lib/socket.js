@@ -3,6 +3,13 @@ import { env } from "../config/env.js";
 import { prisma } from "./prisma.js";
 import { sendNotificationToUser } from "./notification-util.js";
 import { setIo } from "./socket-manager.js";
+import {
+  ensureProjectChatAccess,
+  normalizeChatService,
+  resolveConversationByService,
+  resolveProjectChatRecipientIds,
+  serializeChatMessage,
+} from "./chat-conversation.js";
 
 const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
 const parseOrigins = (value = "") =>
@@ -21,72 +28,21 @@ const allowedOrigins = [
   "https://www.catalance.in"
 ].filter(Boolean);
 
-const serializeMessage = (message) => ({
-  id: message.id,
-  conversationId: message.conversationId,
-  content: message.content,
-  role: message.role, // CRITICAL: frontend uses this to identify assistant messages
-  senderId: message.senderId,
-  senderRole: message.senderRole,
-  senderName: message.senderName,
-  readAt: message.readAt,
-  attachment: message.attachment, // Include attachment data
-  createdAt:
-    message.createdAt instanceof Date
-      ? message.createdAt.toISOString()
-      : message.createdAt
-});
+const buildLegacyRecipientIds = (serviceKey = "", senderId = null) => {
+  const parts = String(serviceKey || "").split(":");
+  let recipientId = null;
 
-const parseProjectIdFromChatService = (service = "") => {
-  if (!service || typeof service !== "string") return null;
-  const parts = service.split(":");
-  if (parts.length < 4 || parts[0] !== "CHAT") return null;
-  return parts[1] || null;
-};
-
-const ensureProjectChatAllowed = async ({ serviceKey, userId }) => {
-  const projectId = parseProjectIdFromChatService(serviceKey);
-  if (!projectId) return null;
-  if (!userId) {
-    throw new Error("Authentication required for project chat.");
+  if (parts.length === 4) {
+    const [, , clientId, freelancerId] = parts;
+    recipientId =
+      String(senderId) === String(clientId) ? freelancerId : clientId;
+  } else if (parts.length >= 3) {
+    const [, firstId, secondId] = parts;
+    recipientId =
+      String(senderId) === String(firstId) ? secondId : firstId;
   }
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: {
-      id: true,
-      ownerId: true,
-      status: true,
-      spent: true,
-      proposals: {
-        where: { status: "ACCEPTED" },
-        select: { freelancerId: true },
-        take: 1
-      }
-    }
-  });
-
-  if (!project) {
-    throw new Error("Project not found for this chat.");
-  }
-
-  const acceptedFreelancerId = project.proposals?.[0]?.freelancerId || null;
-  const isParticipant =
-    String(userId) === String(project.ownerId) ||
-    (acceptedFreelancerId &&
-      String(userId) === String(acceptedFreelancerId));
-
-  if (!isParticipant) {
-    throw new Error("You do not have access to this chat.");
-  }
-
-  const isPaymentPending =
-    project.status === "AWAITING_PAYMENT" || Number(project.spent || 0) <= 0;
-  if (isPaymentPending) {
-    throw new Error("Chat will start after upfront payment is completed.");
-  }
-
-  return project;
+  return recipientId ? [String(recipientId)] : [];
 };
 
 let ioInstance;
@@ -136,15 +92,26 @@ export const initSocket = (server) => {
       });
     };
 
-    // Helper to send notification to a specific user
-    const sendNotification = (userId, notification) => {
-      if (!userId) return;
-      const roomName = `user:${userId}`;
-      io.to(roomName).emit("notification:new", {
-        id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        ...notification,
-        createdAt: new Date().toISOString()
-      });
+    const leaveConversationRoom = (conversationId) => {
+      if (!conversationId) return;
+
+      socket.leave(conversationId);
+      joinedConversations.delete(conversationId);
+
+      const set = conversationPresence.get(conversationId);
+      if (!set) return;
+
+      const key = presenceKeys.get(conversationId) || socket.id;
+      set.delete(key);
+      presenceKeys.delete(conversationId);
+
+      if (set.size === 0) {
+        conversationPresence.delete(conversationId);
+      } else {
+        conversationPresence.set(conversationId, set);
+      }
+
+      broadcastPresence(conversationId);
     };
 
     // Join user's personal notification room
@@ -152,48 +119,25 @@ export const initSocket = (server) => {
     // instead of trusting client-provided userId to ensure users only join their own room
 
 
-    socket.on("chat:join", async ({ conversationId, service, senderId }) => {
+    socket.on("chat:join", async ({ conversationId, service, senderId, includeHistory = true, projectTitle = null }) => {
       console.log(`[Socket] chat:join request:`, { conversationId, service, senderId, socketId: socket.id });
       try {
-        const serviceKey = service ? service.toString().trim() : null;
+        const serviceKey = normalizeChatService(service);
         const requesterId = handshakeUserId || senderId || null;
-        let conversation = null;
-
-        if (conversationId) {
-          conversation = await prisma.chatConversation.findUnique({
-            where: { id: conversationId }
-          });
-        }
-
-        if (!conversation) {
-          if (serviceKey) {
-            await ensureProjectChatAllowed({
-              serviceKey,
-              userId: requesterId
-            });
-            const candidates = await prisma.chatConversation.findMany({
-              where: { service: serviceKey },
-              include: {
-                _count: { select: { messages: true } }
-              },
-              orderBy: { updatedAt: "desc" }
-            });
-            conversation = candidates.find(c => c._count.messages > 0) || candidates[0];
-          }
-        }
-
-        await ensureProjectChatAllowed({
-          serviceKey: conversation?.service || serviceKey,
-          userId: requesterId
+        const conversation = await resolveConversationByService({
+          conversationId,
+          serviceKey,
+          projectTitle,
+          createdById: requesterId,
+          allowCreate: true,
         });
 
-        if (!conversation) {
-          // Default to persisted conversation for client/freelancer chat.
-          console.log(`[Socket] Creating new conversation for service: ${serviceKey}`);
-          conversation = await prisma.chatConversation.create({
-            data: { service: serviceKey || null, createdById: senderId || null }
-          });
-        }
+        await ensureProjectChatAccess({
+          serviceKey: conversation?.service || serviceKey,
+          userId: requesterId,
+          errorFactory: (message, statusCode = 500) =>
+            Object.assign(new Error(message), { statusCode }),
+        });
 
         console.log(`[Socket] Joining conversation: ${conversation.id} for service: ${serviceKey}`);
         socket.join(conversation.id);
@@ -208,17 +152,19 @@ export const initSocket = (server) => {
         presenceKeys.set(conversation.id, userKey);
         broadcastPresence(conversation.id);
 
-        const history = await prisma.chatMessage.findMany({
-          where: { conversationId: conversation.id },
-          orderBy: { createdAt: "asc" },
-          take: 100
-        });
+        if (includeHistory !== false) {
+          const history = await prisma.chatMessage.findMany({
+            where: { conversationId: conversation.id },
+            orderBy: { createdAt: "asc" },
+            take: 100,
+          });
 
-        if (history.length) {
-          socket.emit(
-            "chat:history",
-            history.map((msg) => serializeMessage(msg))
-          );
+          if (history.length) {
+            socket.emit(
+              "chat:history",
+              history.map((message) => serializeChatMessage(message)),
+            );
+          }
         }
       } catch (error) {
         console.error("chat:join failed", error);
@@ -233,6 +179,10 @@ export const initSocket = (server) => {
           message: error?.message || "Unable to join chat. Please try again."
         });
       }
+    });
+
+    socket.on("chat:leave", ({ conversationId }) => {
+      leaveConversationRoom(conversationId);
     });
 
     socket.on("chat:read", async ({ conversationId, userId }) => {
@@ -281,49 +231,21 @@ export const initSocket = (server) => {
         }
 
         try {
-          const serviceKey = service ? service.toString().trim() : null;
+          const serviceKey = normalizeChatService(service);
           const requesterId = handshakeUserId || senderId || null;
-
-          // Persisted client/freelancer chat path
-          let conversation = null;
-
-          if (conversationId) {
-            conversation = await prisma.chatConversation.findUnique({
-              where: { id: conversationId }
-            });
-          }
-
-          if (!conversation) {
-            if (serviceKey) {
-              await ensureProjectChatAllowed({
-                serviceKey,
-                userId: requesterId
-              });
-              const candidates = await prisma.chatConversation.findMany({
-                where: { service: serviceKey },
-                include: {
-                  _count: { select: { messages: true } }
-                },
-                orderBy: { updatedAt: "desc" }
-              });
-              conversation = candidates.find(c => c._count.messages > 0) || candidates[0];
-            }
-          }
-
-          await ensureProjectChatAllowed({
-            serviceKey: conversation?.service || serviceKey,
-            userId: requesterId
+          const conversation = await resolveConversationByService({
+            conversationId,
+            serviceKey,
+            createdById: requesterId,
+            allowCreate: true,
           });
 
-          if (!conversation) {
-            conversation = await prisma.chatConversation.create({
-              data: {
-                service: serviceKey || null,
-                createdById: senderId || null
-              }
-            });
-            socket.emit("chat:joined", { conversationId: conversation.id });
-          }
+          await ensureProjectChatAccess({
+            serviceKey: conversation?.service || serviceKey,
+            userId: requesterId,
+            errorFactory: (message, statusCode = 500) =>
+              Object.assign(new Error(message), { statusCode }),
+          });
 
           socket.join(conversation.id);
 
@@ -347,7 +269,7 @@ export const initSocket = (server) => {
 
           io.to(conversation.id).emit(
             "chat:message",
-            serializeMessage(userMessage)
+            serializeChatMessage(userMessage)
           );
 
           // Send notification to the other participant
@@ -355,41 +277,41 @@ export const initSocket = (server) => {
           console.log(`[Socket] Checking notification for service: ${convService}, senderId: ${senderId}`);
 
           if (convService.startsWith("CHAT:")) {
-            const parts = convService.split(":");
-            let recipientId = null;
+            let recipientIds = await resolveProjectChatRecipientIds({
+              serviceKey: convService,
+              senderId: requesterId,
+            });
 
-            // Support both formats:
-            // Old: CHAT:clientId:freelancerId (3 parts)
-            // New: CHAT:projectId:clientId:freelancerId (4 parts)
-            if (parts.length === 4) {
-              // New format: CHAT:projectId:clientId:freelancerId
-              const [, , clientId, freelancerId] = parts;
-              recipientId = String(senderId) === String(clientId) ? freelancerId : clientId;
-            } else if (parts.length >= 3) {
-              // Old format: CHAT:id1:id2
-              const [, id1, id2] = parts;
-              recipientId = String(senderId) === String(id1) ? id2 : id1;
+            if (!recipientIds.length) {
+              recipientIds = buildLegacyRecipientIds(convService, requesterId);
             }
 
-            console.log(`[Socket] Notification recipient: ${recipientId}, sender: ${senderId}`);
+            console.log(`[Socket] Notification recipients: ${recipientIds.join(",")}, sender: ${senderId}`);
 
-            if (recipientId && String(recipientId) !== String(senderId)) {
+            if (recipientIds.length) {
               const preview =
                 typeof content === "string" && content.trim()
                   ? content.trim()
                   : attachment?.name || "Sent an attachment";
-              sendNotificationToUser(recipientId, {
-                audience: null,
-                type: "chat",
-                title: "New Message",
-                message: `${senderName || "Someone"}: ${preview.slice(0, 50)}${preview.length > 50 ? "..." : ""}`,
-                data: {
-                  conversationId: conversation.id,
-                  messageId: userMessage.id,
-                  service: convService,
-                  senderId
-                }
-              }, false); // No email for chat messages
+
+              await Promise.all(
+                recipientIds
+                  .filter((recipientId) => String(recipientId) !== String(requesterId))
+                  .map((recipientId) =>
+                    sendNotificationToUser(recipientId, {
+                      audience: null,
+                      type: "chat",
+                      title: "New Message",
+                      message: `${senderName || "Someone"}: ${preview.slice(0, 50)}${preview.length > 50 ? "..." : ""}`,
+                      data: {
+                        conversationId: conversation.id,
+                        messageId: userMessage.id,
+                        service: convService,
+                        senderId: requesterId,
+                      },
+                    }, false).catch(() => null),
+                  ),
+              );
             }
           } else {
             console.log(`[Socket] Skipping notification - service doesn't start with CHAT: ${convService}`);
@@ -424,17 +346,8 @@ export const initSocket = (server) => {
     );
 
     socket.on("disconnect", () => {
-      joinedConversations.forEach((conversationId) => {
-        const set = conversationPresence.get(conversationId);
-        if (!set) return;
-        const key = presenceKeys.get(conversationId) || socket.id;
-        set.delete(key);
-        if (set.size === 0) {
-          conversationPresence.delete(conversationId);
-        } else {
-          conversationPresence.set(conversationId, set);
-        }
-        broadcastPresence(conversationId);
+      Array.from(joinedConversations).forEach((conversationId) => {
+        leaveConversationRoom(conversationId);
       });
     });
   });

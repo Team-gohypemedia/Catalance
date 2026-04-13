@@ -3,9 +3,51 @@ import { Renderer, Program, Triangle, Mesh } from 'ogl';
 
 const DEFAULT_COLOR = '#ffffff';
 
+const colorCache = new Map();
+
 const hexToRgb = hex => {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return m ? [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255] : [1, 1, 1];
+};
+
+const rgbStringToRgb = rgbString => {
+  const match = rgbString.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)$/i);
+  if (!match) return null;
+  return [Number(match[1]) / 255, Number(match[2]) / 255, Number(match[3]) / 255];
+};
+
+const resolveCssColor = color => {
+  if (typeof document === 'undefined') return color;
+  if (colorCache.has(color)) return colorCache.get(color);
+
+  const probe = document.createElement('span');
+  probe.style.color = color;
+  probe.style.position = 'absolute';
+  probe.style.opacity = '0';
+  probe.style.pointerEvents = 'none';
+  probe.style.left = '-9999px';
+  document.body.appendChild(probe);
+
+  const resolved = window.getComputedStyle(probe).color || color;
+  document.body.removeChild(probe);
+  colorCache.set(color, resolved);
+  return resolved;
+};
+
+const colorToRgb = color => {
+  if (!color) return [1, 1, 1];
+
+  if (color.startsWith('#')) {
+    return hexToRgb(color);
+  }
+
+  const resolvedColor = resolveCssColor(color);
+  const rgb = rgbStringToRgb(resolvedColor);
+
+  if (rgb) return rgb;
+  if (resolvedColor.startsWith('#')) return hexToRgb(resolvedColor);
+
+  return [1, 1, 1];
 };
 
 const getAnchorAndDir = (origin, w, h) => {
@@ -216,7 +258,7 @@ void main() {
         rayPos: { value: [0, 0] },
         rayDir: { value: [0, 1] },
 
-        raysColor: { value: hexToRgb(raysColor) },
+        raysColor: { value: colorToRgb(raysColor) },
         raysSpeed: { value: raysSpeed },
         lightSpread: { value: lightSpread },
         rayLength: { value: rayLength },
@@ -343,7 +385,7 @@ void main() {
     const u = uniformsRef.current;
     const renderer = rendererRef.current;
 
-    u.raysColor.value = hexToRgb(raysColor);
+    u.raysColor.value = colorToRgb(raysColor);
     u.raysSpeed.value = raysSpeed;
     u.lightSpread.value = lightSpread;
     u.rayLength.value = rayLength;

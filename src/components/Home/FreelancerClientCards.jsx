@@ -43,7 +43,7 @@ const FreelancerClientCards = () => {
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col items-center">
         <div className="mx-auto w-full max-w-7xl text-center">
           <h2 className="text-[2.1rem] font-medium leading-[1.05] tracking-tight whitespace-nowrap text-white sm:text-[2.75rem] md:text-[3.4rem] lg:text-[4.4rem]">
-            Built for<span className="text-primary">Who</span> You Are
+            Built for <span className="text-primary">Who</span> You Are
           </h2>
           <p className="mx-auto mt-1 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-3 sm:text-base md:text-lg">
             Designed to support your growth at every stage.

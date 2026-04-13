@@ -32,7 +32,7 @@ const MarketPlaceCTA = () => {
                 loading="eager"
                 decoding="async"
                 draggable="false"
-                className="w-full max-w-[20rem] select-none object-contain sm:max-w-[30rem] lg:max-w-[40rem]"
+                className="block w-full max-w-[20rem] select-none object-contain sm:max-w-[30rem] lg:max-w-[40rem]"
               />
             </div>
 
