@@ -44,6 +44,7 @@ import {
     ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import LightRays from '@/components/ui/LightRays';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -4192,23 +4193,6 @@ const GuestAIDemo = () => {
         toast.success('Chat removed');
     };
 
-    if (loading && !selectedService) {
-        return (
-            <>
-                <Navbar />
-                <div className="flex min-h-screen items-center justify-center bg-background px-4 pb-10 pt-28">
-                    <div className="flex flex-col items-center gap-3">
-                        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                        <p className={isDark ? 'text-sm text-slate-300' : 'text-sm text-slate-600'}>
-                            Loading AI workspace...
-                        </p>
-                    </div>
-                </div>
-                <Footer />
-            </>
-        );
-    }
-
     if (!selectedService) {
         return (
             <>
@@ -4308,7 +4292,7 @@ const GuestAIDemo = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 relative z-10">
                             {services.length === 0 ? (
                                 <div className="col-span-1 sm:col-span-2 lg:col-span-5 text-center text-white/60 py-10">
-                                    {servicesError || "No services available."}
+                                    {servicesError || (loading ? 'Loading services...' : 'No services available.')}
                                 </div>
                             ) : (
                                 services.map((feature, index) => {
@@ -4468,11 +4452,41 @@ const GuestAIDemo = () => {
                         {/* CTA */}
                         <div className="relative z-10 mt-14 mb-8 px-4 py-4 sm:px-6 lg:px-8">
                             <div className="mx-auto max-w-[1240px]">
-                                <div className="relative overflow-hidden rounded-[2rem] bg-background px-6 py-12 sm:px-10 sm:py-14 lg:min-h-[460px] lg:px-16">
+                                <div className="relative overflow-hidden rounded-[2rem] border bg-background px-6 py-12 sm:px-10 sm:py-14 lg:min-h-[460px] lg:px-16">
                                     <div className="absolute inset-0 bg-background" />
-                                    <div className="pointer-events-none absolute -left-28 top-1/2 h-[440px] w-[440px] -translate-y-1/2 rounded-full bg-primary/70 blur-[120px]" />
-                                    <div className="pointer-events-none absolute -right-28 top-1/2 h-[440px] w-[440px] -translate-y-1/2 rounded-full bg-primary/70 blur-[120px]" />
-                                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--primary)/0.28)_0%,hsl(var(--primary)/0.08)_50%,hsl(var(--primary)/0.28)_100%)]" />
+                                    <div
+                                        className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-[70%]"
+                                        style={{
+                                            background: 'linear-gradient(180deg, var(--primary) 0%, var(--background) 100%)',
+                                            opacity: 1,
+                                        }}
+                                    />
+
+                                    <div
+                                        className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex justify-center"
+                                        style={{
+                                            WebkitMaskImage:
+                                                'linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.96) 34%, rgba(0,0,0,0.76) 58%, rgba(0,0,0,0.34) 82%, rgba(0,0,0,0) 100%)',
+                                            maskImage:
+                                                'linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.96) 34%, rgba(0,0,0,0.76) 58%, rgba(0,0,0,0.34) 82%, rgba(0,0,0,0) 100%)',
+                                        }}
+                                    >
+                                        <div className="h-[440px] w-full">
+                                            <LightRays
+                                                raysOrigin="top-center"
+                                                raysColor="#000000"
+                                                raysSpeed={0.9}
+                                                lightSpread={0.9}
+                                                rayLength={2}
+                                                fadeDistance={1}
+                                                followMouse={false}
+                                                mouseInfluence={0}
+                                                noiseAmount={0}
+                                                distortion={0}
+                                                className="h-full w-full opacity-70"
+                                            />
+                                        </div>
+                                    </div>
 
                                     <div className="relative z-10 flex min-h-[360px] items-center justify-center">
                                         <div className="w-full max-w-[760px] text-center">
