@@ -6,6 +6,7 @@ import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Send from "lucide-react/dist/esm/icons/send";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
   ProposalStructuredList,
   ProposalSummaryItem,
 } from "./ProposalShared.jsx";
+import ProposalAIChatSidebar from "./ProposalAIChatSidebar.jsx";
 import {
   buildProposalStructuredData,
   extractProposalDetails,
@@ -58,6 +60,8 @@ const ProposalDetailsDialog = ({
   openFreelancerSelection,
   startEditingProposal,
 }) => {
+  const [isAIChatOpen, setIsAIChatOpen] = React.useState(false);
+
   const headerDisplayName = getDisplayName(user);
   const activeProposalDetails = activeProposal ? extractProposalDetails(activeProposal) : null;
   const activeProposalStructuredData = useMemo(
@@ -160,6 +164,21 @@ const ProposalDetailsDialog = ({
                     </Button>
                   )
                 ) : null}
+
+                {canEditActiveProposal && !isEditingProposal && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      startEditingProposal();
+                      setIsAIChatOpen(true);
+                    }}
+                    className="h-11 rounded-full border-primary/25 bg-background/30 px-5 text-white hover:bg-primary/20 hover:text-primary transition-colors"
+                  >
+                    <Sparkles className="mr-2 h-4 w-4 text-primary" />
+                    Edit with AI
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -556,6 +575,13 @@ const ProposalDetailsDialog = ({
             ) : null}
           </div>
         </DialogFooter>
+
+        <ProposalAIChatSidebar 
+          open={isAIChatOpen} 
+          onClose={() => setIsAIChatOpen(false)} 
+          editableProposalDraft={editableProposalDraft} 
+          onDraftChange={handleEditableProposalDraftChange} 
+        />
       </DialogContent>
     </Dialog>
   );
