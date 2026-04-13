@@ -5,6 +5,7 @@ import {
   getMarketplaceFilterServices,
   getMarketplaceFilterSubCategories,
   getMarketplaceFilterTools,
+  getMarketplaceLiveProjects,
   getServiceById,
   getServiceReviews,
   createServiceReview
@@ -17,6 +18,7 @@ marketplaceRouter.get("/filters/services", getMarketplaceFilterServices);
 marketplaceRouter.get("/filters/sub-categories", getMarketplaceFilterSubCategories);
 marketplaceRouter.get("/filters/tools", getMarketplaceFilterTools);
 marketplaceRouter.get("/browse", getMarketplaceBrowse);
+marketplaceRouter.get("/projects/live", requireAuth, getMarketplaceLiveProjects);
 marketplaceRouter.get("/", getMarketplace);
 marketplaceRouter.get("/:id", getServiceById);
 marketplaceRouter.get("/:id/reviews", getServiceReviews);

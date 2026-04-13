@@ -5,6 +5,8 @@ import { FREELANCER_PROFILE_SAFE_SELECT } from "../modules/users/freelancer-prof
 
 const DEFAULT_PAGE_LIMIT = 20;
 const DEFAULT_MAX_CANDIDATES = 80;
+const LIVE_PROJECT_DEFAULT_LIMIT = 12;
+const LIVE_PROJECT_MAX_CANDIDATES = 400;
 
 const CATEGORY_ALIAS_MAP = new Map([
   ["web_dev", "web_development"],
@@ -280,6 +282,303 @@ const getConfiguredCandidateCap = () => {
   const configured = parseOptionalInteger(process.env.MAX_CANDIDATES);
   if (configured === null) return DEFAULT_MAX_CANDIDATES;
   return clampInteger(configured, 50, 80);
+};
+
+const toTitleCaseLabel = (value = "") =>
+  String(value || "")
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b[a-z]/gi, (char) => char.toUpperCase());
+
+const flattenTextValues = (value) => {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => flattenTextValues(entry));
+  }
+
+  if (value === undefined || value === null) return [];
+
+  if (typeof value === "string" || typeof value === "number") {
+    const normalized = normalizeDisplayLabel(String(value || ""));
+    return normalized ? [normalized] : [];
+  }
+
+  return [];
+};
+
+const firstTextValue = (...values) => {
+  for (const value of values) {
+    const resolved = flattenTextValues(value)[0];
+    if (resolved) return resolved;
+  }
+  return "";
+};
+
+const parseBudgetValue = (value) => {
+  if (value === undefined || value === null) return null;
+
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric >= 0) {
+    return Math.round(numeric);
+  }
+
+  const match = String(value)
+    .replace(/,/g, "")
+    .match(/\d+(?:\.\d+)?/);
+  if (!match) return null;
+
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? Math.round(parsed) : null;
+};
+
+const resolveLiveProjectServiceKey = (project = {}) =>
+  normalizeCategory(
+    firstTextValue(
+      project?.serviceKey,
+      asObject(project?.proposalJson)?.serviceKey,
+      asObject(asObject(project?.proposalJson)?.contextSnapshot)?.serviceKey,
+      project?.serviceType
+    )
+  ) || null;
+
+const resolveLiveProjectServiceName = (project = {}, serviceKey = "") => {
+  const label = firstTextValue(
+    project?.serviceType,
+    asObject(project?.proposalJson)?.serviceType,
+    asObject(asObject(project?.proposalJson)?.contextSnapshot)?.serviceType
+  );
+
+  if (label) return label;
+  if (serviceKey) return toTitleCaseLabel(serviceKey);
+  return "General Service";
+};
+
+const resolveLiveProjectSubCategory = (project = {}) => {
+  const proposalJson = asObject(project?.proposalJson);
+  const contextSnapshot = asObject(proposalJson?.contextSnapshot);
+
+  return firstTextValue(
+    proposalJson?.subCategory,
+    proposalJson?.subcategory,
+    proposalJson?.sub_category,
+    proposalJson?.serviceSubCategory,
+    proposalJson?.service_sub_category,
+    contextSnapshot?.subCategory,
+    contextSnapshot?.subcategory,
+    contextSnapshot?.sub_category,
+    project?.projectType,
+    project?.websiteType,
+    project?.creativeType,
+    project?.appType,
+    project?.businessCategory
+  );
+};
+
+const resolveLiveProjectTimeline = (project = {}) => {
+  const proposalJson = asObject(project?.proposalJson);
+  const contextSnapshot = asObject(proposalJson?.contextSnapshot);
+
+  return firstTextValue(
+    project?.timeline,
+    project?.duration,
+    proposalJson?.timeline,
+    proposalJson?.duration,
+    contextSnapshot?.timeline,
+    contextSnapshot?.duration
+  );
+};
+
+const resolveLiveProjectSummary = (project = {}) => {
+  const proposalJson = asObject(project?.proposalJson);
+  const summary = firstTextValue(
+    project?.projectOverview,
+    proposalJson?.projectOverview,
+    project?.description
+  );
+  if (!summary) return "";
+  return summary.length > 260 ? `${summary.slice(0, 257)}...` : summary;
+};
+
+const mapLiveProjectCardPayload = (project = {}) => {
+  const serviceKey = resolveLiveProjectServiceKey(project);
+  const serviceName = resolveLiveProjectServiceName(project, serviceKey || "");
+  const subCategory = resolveLiveProjectSubCategory(project);
+  const timeline = resolveLiveProjectTimeline(project);
+  const budget = parseBudgetValue(project?.budget) ?? parseBudgetValue(project?.budgetSummary);
+  const proposal = Array.isArray(project?.proposals) ? project.proposals[0] : null;
+
+  return {
+    id: project.id,
+    title: firstTextValue(project?.title) || "Untitled Project",
+    serviceKey: serviceKey || "",
+    serviceName,
+    subCategory: subCategory || null,
+    budget,
+    budgetSummary: firstTextValue(project?.budgetSummary) || null,
+    timeline: timeline || null,
+    duration: firstTextValue(project?.duration) || null,
+    summary: resolveLiveProjectSummary(project),
+    description: firstTextValue(project?.description) || "",
+    clientName: firstTextValue(project?.clientName) || null,
+    companyName: firstTextValue(project?.businessName) || null,
+    createdAt: project.createdAt,
+    postedAt: project.createdAt,
+    status: String(project?.status || "").toUpperCase(),
+    hasSubmittedProposal: Boolean(proposal?.id),
+    proposalStatus: proposal?.status || null,
+    proposalId: proposal?.id || null,
+  };
+};
+
+const resolveServiceKeyFromFilterServiceName = (value = "") => {
+  const label = normalizeDisplayLabel(value);
+  if (!label) return null;
+  const mapped = FILTER_SERVICE_KEY_BY_NAME.get(label) || label;
+  return normalizeCategory(mapped) || null;
+};
+
+const collectTextTokensFromUnknown = (value, bucket = [], depth = 0) => {
+  if (depth > 6 || value === undefined || value === null) return bucket;
+
+  if (Array.isArray(value)) {
+    value.forEach((entry) => collectTextTokensFromUnknown(entry, bucket, depth + 1));
+    return bucket;
+  }
+
+  if (typeof value === "object") {
+    Object.values(value).forEach((entry) => collectTextTokensFromUnknown(entry, bucket, depth + 1));
+    return bucket;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const token = normalizeSearchText(String(value));
+    if (token) bucket.push(token);
+  }
+
+  return bucket;
+};
+
+const buildLiveProjectSearchBlob = (project = {}, mappedProject = {}) => {
+  const proposalJson = asObject(project?.proposalJson);
+  const rawTokens = collectTextTokensFromUnknown([
+    mappedProject?.title,
+    mappedProject?.serviceName,
+    mappedProject?.subCategory,
+    mappedProject?.summary,
+    mappedProject?.description,
+    mappedProject?.timeline,
+    mappedProject?.duration,
+    mappedProject?.clientName,
+    mappedProject?.companyName,
+    project?.serviceType,
+    project?.proposalContent,
+    project?.projectOverview,
+    project?.businessCategory,
+    project?.websiteType,
+    project?.creativeType,
+    project?.appType,
+    project?.frontendFramework,
+    project?.backendTechnology,
+    project?.databaseType,
+    project?.hosting,
+    project?.targetAudience,
+    project?.proposalJson,
+    proposalJson?.contextSnapshot,
+    proposalJson?.projectStack,
+    proposalJson?.techStack,
+    project?.appFeatures,
+    project?.featuresDeliverables,
+    project?.brandDeliverables,
+    project?.primaryObjectives,
+    project?.platformRequirements,
+    project?.targetLocations,
+    project?.seoGoals,
+  ]);
+
+  return normalizeSearchText(rawTokens.join(" "));
+};
+
+const buildFreelancerSkillProfile = ({ skillRows = [], profile = {} } = {}) => {
+  const allowedServiceKeys = new Set();
+  const subCategoryTokens = new Set();
+  const toolTokens = new Set();
+  const keywordTokens = new Set();
+
+  skillRows.forEach((entry) => {
+    const serviceKey = resolveServiceKeyFromFilterServiceName(entry?.service?.name);
+    if (serviceKey) allowedServiceKeys.add(serviceKey);
+
+    const subCategoryToken = normalizeFacetToken(entry?.subCategory?.name);
+    if (subCategoryToken) {
+      subCategoryTokens.add(subCategoryToken);
+      keywordTokens.add(subCategoryToken);
+    }
+
+    const toolToken = normalizeFacetToken(entry?.tool?.name);
+    if (toolToken) {
+      toolTokens.add(toolToken);
+      keywordTokens.add(toolToken);
+    }
+  });
+
+  const profileSkills = Array.isArray(profile?.skills) ? profile.skills : [];
+  profileSkills.forEach((skill) => {
+    const token = normalizeFacetToken(skill);
+    if (token) keywordTokens.add(token);
+  });
+
+  const profileServices = Array.isArray(profile?.services) ? profile.services : [];
+  profileServices.forEach((service) => {
+    const serviceKey =
+      normalizeCategory(service) || resolveServiceKeyFromFilterServiceName(service);
+    if (serviceKey) allowedServiceKeys.add(serviceKey);
+  });
+
+  const profileServiceDetails = asObject(profile?.serviceDetails);
+  [
+    profileServiceDetails?.skillsAndTechnologies,
+    profileServiceDetails?.serviceSpecializations,
+    profileServiceDetails?.techStack,
+  ]
+    .flatMap((entry) => flattenTextValues(entry))
+    .forEach((token) => {
+      const normalized = normalizeFacetToken(token);
+      if (normalized) keywordTokens.add(normalized);
+    });
+
+  return {
+    allowedServiceKeys,
+    subCategoryTokens,
+    toolTokens,
+    keywordTokens,
+  };
+};
+
+const matchesFreelancerSkillProfile = (project = {}, skillProfile = {}) => {
+  const allowedServiceKeys = skillProfile?.allowedServiceKeys || new Set();
+  const subCategoryTokens = skillProfile?.subCategoryTokens || new Set();
+  const toolTokens = skillProfile?.toolTokens || new Set();
+  const keywordTokens = skillProfile?.keywordTokens || new Set();
+
+  if (allowedServiceKeys.size && !allowedServiceKeys.has(project?.serviceKey)) {
+    return false;
+  }
+
+  const hasAdvancedSkillFilters =
+    subCategoryTokens.size > 0 || toolTokens.size > 0 || keywordTokens.size > 0;
+
+  if (!hasAdvancedSkillFilters) return true;
+
+  const blob = normalizeSearchText(project?.searchBlob || "");
+  if (!blob) return false;
+
+  const hasToolMatch = Array.from(toolTokens).some((token) => blob.includes(token));
+  if (hasToolMatch) return true;
+
+  const hasSubCategoryMatch = Array.from(subCategoryTokens).some((token) => blob.includes(token));
+  if (hasSubCategoryMatch) return true;
+
+  return Array.from(keywordTokens).some((token) => blob.includes(token));
 };
 
 const normalizeQuery = (rawQuery = {}) => {
@@ -1598,6 +1897,244 @@ export const getMarketplace = asyncHandler(async (req, res) => {
         maxBudget: query.maxBudget,
       },
       hierarchyFiltering: useHierarchyMapping ? "mapping_table" : "content_fallback",
+    },
+  });
+});
+
+export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub || req.user?.id;
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      role: true,
+      roles: true,
+      status: true,
+      freelancerProfile: {
+        select: {
+          skills: true,
+          services: true,
+          serviceDetails: true,
+        },
+      },
+    },
+  });
+
+  const tokenRole = String(req.user?.role || "").toUpperCase();
+  const primaryRole = String(dbUser?.role || "").toUpperCase();
+  const additionalRoles = Array.isArray(dbUser?.roles)
+    ? dbUser.roles.map((entry) => String(entry || "").toUpperCase()).filter(Boolean)
+    : [];
+  const effectiveRoles = new Set([tokenRole, primaryRole, ...additionalRoles]);
+
+  if (!dbUser || dbUser.status !== "ACTIVE" || !effectiveRoles.has("FREELANCER")) {
+    throw new AppError("Access denied. Freelancer permissions required.", 403);
+  }
+
+  const page = clampInteger(parseOptionalInteger(req.query?.page) ?? 1, 1, 100000);
+  const limit = clampInteger(
+    parseOptionalInteger(req.query?.limit) ?? LIVE_PROJECT_DEFAULT_LIMIT,
+    1,
+    50
+  );
+  const category = normalizeCategory(req.query?.category);
+  const selectedServiceId = parseOptionalInteger(req.query?.serviceId);
+  const selectedSubCategoryId = parseOptionalInteger(req.query?.subCategoryId);
+  const selectedToolId = parseOptionalInteger(req.query?.toolId);
+
+  const searchTerm = normalizeSearchText(req.query?.q || req.query?.search || "");
+
+  let minBudget = parseOptionalInteger(req.query?.minBudget);
+  let maxBudget = parseOptionalInteger(req.query?.maxBudget);
+  if (minBudget !== null && maxBudget !== null && minBudget > maxBudget) {
+    const swapMin = minBudget;
+    minBudget = maxBudget;
+    maxBudget = swapMin;
+  }
+
+  const [selectedServiceRow, selectedSubCategoryRow, selectedToolRow, freelancerSkillRows] =
+    await Promise.all([
+      selectedServiceId
+        ? prisma.marketplaceFilterService.findUnique({
+            where: { id: selectedServiceId },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve(null),
+      selectedSubCategoryId
+        ? prisma.marketplaceFilterSubCategory.findUnique({
+            where: { id: selectedSubCategoryId },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve(null),
+      selectedToolId
+        ? prisma.marketplaceFilterTool.findUnique({
+            where: { id: selectedToolId },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve(null),
+      prisma.freelancerSkill.findMany({
+        where: { userId },
+        include: {
+          service: {
+            select: { id: true, name: true },
+          },
+          subCategory: {
+            select: { id: true, name: true },
+          },
+          tool: {
+            select: { id: true, name: true },
+          },
+        },
+      }),
+    ]);
+
+  const selectedServiceKey =
+    resolveServiceKeyFromFilterServiceName(selectedServiceRow?.name) ||
+    category ||
+    null;
+  const selectedSubCategory = normalizeFacetToken(
+    selectedSubCategoryRow?.name || req.query?.subcategory
+  );
+  const selectedTool = normalizeFacetToken(
+    selectedToolRow?.name || req.query?.tool || req.query?.toolName
+  );
+
+  const freelancerSkillProfile = buildFreelancerSkillProfile({
+    skillRows: freelancerSkillRows,
+    profile: dbUser?.freelancerProfile || {},
+  });
+
+  const rows = await prisma.project.findMany({
+    where: {
+      status: "OPEN",
+      proposals: {
+        none: { status: "ACCEPTED" },
+      },
+      owner: {
+        role: "CLIENT",
+        status: "ACTIVE",
+      },
+    },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          role: true,
+          status: true,
+        },
+      },
+      proposals: {
+        where: {
+          freelancerId: userId,
+        },
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: LIVE_PROJECT_MAX_CANDIDATES,
+  });
+
+  const mappedRows = rows
+    .map((project) => {
+      const mappedProject = mapLiveProjectCardPayload(project);
+      return {
+        ...mappedProject,
+        searchBlob: buildLiveProjectSearchBlob(project, mappedProject),
+      };
+    })
+    .filter((project) => Boolean(project?.id));
+
+  const baseFiltered = mappedRows.filter((project) => {
+    if (selectedServiceKey && project.serviceKey !== selectedServiceKey) return false;
+    if (!matchesFreelancerSkillProfile(project, freelancerSkillProfile)) return false;
+
+    if (minBudget !== null) {
+      if (!Number.isFinite(project?.budget) || Number(project.budget) < minBudget) return false;
+    }
+
+    if (maxBudget !== null) {
+      if (!Number.isFinite(project?.budget) || Number(project.budget) > maxBudget) return false;
+    }
+
+    if (searchTerm) {
+      const haystack = normalizeSearchText(project.searchBlob || "");
+
+      if (!haystack.includes(searchTerm)) return false;
+    }
+
+    if (selectedSubCategory) {
+      const haystack = normalizeSearchText(
+        [project.subCategory, project.searchBlob].filter(Boolean).join(" ")
+      );
+      if (!haystack.includes(selectedSubCategory)) return false;
+    }
+
+    if (selectedTool) {
+      const haystack = normalizeSearchText(project.searchBlob || "");
+      if (!haystack.includes(selectedTool)) return false;
+    }
+
+    return true;
+  });
+
+  const subCategoryMap = new Map();
+  baseFiltered.forEach((project) => {
+    const token = normalizeFacetToken(project?.subCategory);
+    if (!token) return;
+    const existing = subCategoryMap.get(token);
+    if (existing) {
+      existing.count += 1;
+      return;
+    }
+    subCategoryMap.set(token, {
+      value: token,
+      label: project.subCategory,
+      count: 1,
+    });
+  });
+
+  const subCategories = Array.from(subCategoryMap.values()).sort((left, right) => {
+    if (right.count !== left.count) return right.count - left.count;
+    return String(left.label || "").localeCompare(String(right.label || ""));
+  });
+
+  const filteredRows = selectedSubCategory
+    ? baseFiltered.filter(
+        (project) => normalizeFacetToken(project?.subCategory) === selectedSubCategory
+      )
+    : baseFiltered;
+
+  const total = filteredRows.length;
+  const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+  const safePage = clampInteger(page, 1, Math.max(totalPages, 1));
+  const startIndex = (safePage - 1) * limit;
+  const data = filteredRows.slice(startIndex, startIndex + limit).map((project) => {
+    const { searchBlob, ...safeProject } = project;
+    return safeProject;
+  });
+
+  return res.json({
+    data,
+    total,
+    page: safePage,
+    limit,
+    totalPages,
+    meta: {
+      category: selectedServiceKey || null,
+      subcategory: selectedSubCategory || null,
+      tool: selectedTool || null,
+      subcategories: subCategories,
+      skillMatchedOnly: true,
+      source: "project_table_open_status",
     },
   });
 });
