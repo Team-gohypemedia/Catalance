@@ -6,7 +6,7 @@ import { FREELANCER_PROFILE_SAFE_SELECT } from "../modules/users/freelancer-prof
 const DEFAULT_PAGE_LIMIT = 20;
 const DEFAULT_MAX_CANDIDATES = 80;
 const LIVE_PROJECT_DEFAULT_LIMIT = 12;
-const LIVE_PROJECT_MAX_CANDIDATES = 400;
+const LIVE_PROJECT_MAX_CANDIDATES = 220;
 
 const CATEGORY_ALIAS_MAP = new Map([
   ["web_dev", "web_development"],
@@ -437,30 +437,19 @@ const resolveServiceKeyFromFilterServiceName = (value = "") => {
   return normalizeCategory(mapped) || null;
 };
 
-const collectTextTokensFromUnknown = (value, bucket = [], depth = 0) => {
-  if (depth > 6 || value === undefined || value === null) return bucket;
-
-  if (Array.isArray(value)) {
-    value.forEach((entry) => collectTextTokensFromUnknown(entry, bucket, depth + 1));
-    return bucket;
-  }
-
+const flattenShallowStructuredValues = (value) => {
+  if (value === undefined || value === null) return [];
+  if (Array.isArray(value)) return flattenTextValues(value);
   if (typeof value === "object") {
-    Object.values(value).forEach((entry) => collectTextTokensFromUnknown(entry, bucket, depth + 1));
-    return bucket;
+    return Object.values(value).flatMap((entry) => flattenTextValues(entry));
   }
-
-  if (typeof value === "string" || typeof value === "number") {
-    const token = normalizeSearchText(String(value));
-    if (token) bucket.push(token);
-  }
-
-  return bucket;
+  return flattenTextValues(value);
 };
 
 const buildLiveProjectSearchBlob = (project = {}, mappedProject = {}) => {
   const proposalJson = asObject(project?.proposalJson);
-  const rawTokens = collectTextTokensFromUnknown([
+  const contextSnapshot = asObject(proposalJson?.contextSnapshot);
+  const rawTokens = [
     mappedProject?.title,
     mappedProject?.serviceName,
     mappedProject?.subCategory,
@@ -482,10 +471,6 @@ const buildLiveProjectSearchBlob = (project = {}, mappedProject = {}) => {
     project?.databaseType,
     project?.hosting,
     project?.targetAudience,
-    project?.proposalJson,
-    proposalJson?.contextSnapshot,
-    proposalJson?.projectStack,
-    proposalJson?.techStack,
     project?.appFeatures,
     project?.featuresDeliverables,
     project?.brandDeliverables,
@@ -493,9 +478,25 @@ const buildLiveProjectSearchBlob = (project = {}, mappedProject = {}) => {
     project?.platformRequirements,
     project?.targetLocations,
     project?.seoGoals,
-  ]);
+    proposalJson?.subCategory,
+    proposalJson?.subcategory,
+    proposalJson?.serviceSubCategory,
+    proposalJson?.serviceType,
+    contextSnapshot?.subCategory,
+    contextSnapshot?.subcategory,
+    contextSnapshot?.serviceSubCategory,
+    contextSnapshot?.serviceType,
+    ...flattenShallowStructuredValues(proposalJson?.projectStack),
+    ...flattenShallowStructuredValues(proposalJson?.techStack),
+    ...flattenShallowStructuredValues(contextSnapshot?.projectStack),
+    ...flattenShallowStructuredValues(contextSnapshot?.techStack),
+    ...flattenShallowStructuredValues(proposalJson?.services),
+    ...flattenShallowStructuredValues(contextSnapshot?.services),
+    ...flattenShallowStructuredValues(proposalJson?.deliverables),
+    ...flattenShallowStructuredValues(contextSnapshot?.deliverables),
+  ];
 
-  return normalizeSearchText(rawTokens.join(" "));
+  return normalizeSearchText(flattenTextValues(rawTokens).join(" "));
 };
 
 const buildFreelancerSkillProfile = ({ skillRows = [], profile = {} } = {}) => {
@@ -551,34 +552,46 @@ const buildFreelancerSkillProfile = ({ skillRows = [], profile = {} } = {}) => {
     subCategoryTokens,
     toolTokens,
     keywordTokens,
+    hasAdvancedFilters:
+      subCategoryTokens.size > 0 || toolTokens.size > 0 || keywordTokens.size > 0,
+    subCategoryTokenList: Array.from(subCategoryTokens),
+    toolTokenList: Array.from(toolTokens),
+    keywordTokenList: Array.from(keywordTokens),
   };
 };
 
 const matchesFreelancerSkillProfile = (project = {}, skillProfile = {}) => {
   const allowedServiceKeys = skillProfile?.allowedServiceKeys || new Set();
-  const subCategoryTokens = skillProfile?.subCategoryTokens || new Set();
-  const toolTokens = skillProfile?.toolTokens || new Set();
-  const keywordTokens = skillProfile?.keywordTokens || new Set();
+  const subCategoryTokenList = Array.isArray(skillProfile?.subCategoryTokenList)
+    ? skillProfile.subCategoryTokenList
+    : [];
+  const toolTokenList = Array.isArray(skillProfile?.toolTokenList)
+    ? skillProfile.toolTokenList
+    : [];
+  const keywordTokenList = Array.isArray(skillProfile?.keywordTokenList)
+    ? skillProfile.keywordTokenList
+    : [];
 
   if (allowedServiceKeys.size && !allowedServiceKeys.has(project?.serviceKey)) {
     return false;
   }
 
-  const hasAdvancedSkillFilters =
-    subCategoryTokens.size > 0 || toolTokens.size > 0 || keywordTokens.size > 0;
+  const hasAdvancedSkillFilters = Boolean(skillProfile?.hasAdvancedFilters);
 
   if (!hasAdvancedSkillFilters) return true;
 
   const blob = normalizeSearchText(project?.searchBlob || "");
   if (!blob) return false;
 
-  const hasToolMatch = Array.from(toolTokens).some((token) => blob.includes(token));
+  const hasToolMatch = toolTokenList.some((token) => blob.includes(token));
   if (hasToolMatch) return true;
 
-  const hasSubCategoryMatch = Array.from(subCategoryTokens).some((token) => blob.includes(token));
+  const hasSubCategoryMatch = subCategoryTokenList.some((token) =>
+    blob.includes(token)
+  );
   if (hasSubCategoryMatch) return true;
 
-  return Array.from(keywordTokens).some((token) => blob.includes(token));
+  return keywordTokenList.some((token) => blob.includes(token));
 };
 
 const normalizeQuery = (rawQuery = {}) => {
@@ -2006,6 +2019,12 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
     skillRows: freelancerSkillRows,
     profile: dbUser?.freelancerProfile || {},
   });
+  const hasAdvancedSkillFilters = Boolean(freelancerSkillProfile.hasAdvancedFilters);
+  const shouldBuildSearchBlob =
+    hasAdvancedSkillFilters ||
+    Boolean(searchTerm) ||
+    Boolean(selectedSubCategory) ||
+    Boolean(selectedTool);
 
   const rows = await prisma.project.findMany({
     where: {
@@ -2018,14 +2037,39 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
         status: "ACTIVE",
       },
     },
-    include: {
-      owner: {
-        select: {
-          id: true,
-          role: true,
-          status: true,
-        },
-      },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      budget: true,
+      proposalContent: true,
+      proposalJson: true,
+      serviceKey: true,
+      clientName: true,
+      businessName: true,
+      serviceType: true,
+      projectOverview: true,
+      primaryObjectives: true,
+      featuresDeliverables: true,
+      timeline: true,
+      budgetSummary: true,
+      websiteType: true,
+      frontendFramework: true,
+      backendTechnology: true,
+      databaseType: true,
+      hosting: true,
+      creativeType: true,
+      brandDeliverables: true,
+      targetAudience: true,
+      businessCategory: true,
+      targetLocations: true,
+      seoGoals: true,
+      duration: true,
+      appType: true,
+      appFeatures: true,
+      platformRequirements: true,
+      status: true,
+      createdAt: true,
       proposals: {
         where: {
           freelancerId: userId,
@@ -2048,7 +2092,9 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
       const mappedProject = mapLiveProjectCardPayload(project);
       return {
         ...mappedProject,
-        searchBlob: buildLiveProjectSearchBlob(project, mappedProject),
+        searchBlob: shouldBuildSearchBlob
+          ? buildLiveProjectSearchBlob(project, mappedProject)
+          : "",
       };
     })
     .filter((project) => Boolean(project?.id));
