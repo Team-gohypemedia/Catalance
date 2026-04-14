@@ -2,7 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import MascotCTA from "@/assets/videos/mascot-cta.gif";
+import MascotCTA from "@/assets/videos/mascot-cta.mp4";
+import MascotPoster from "@/assets/mascot.png";
 
 const MARKETPLACE_STATS = [
   {
@@ -26,18 +27,31 @@ const MarketPlaceCTA = () => {
         <div className="flex items-center">
           <div className="grid w-full items-center gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
             <div className="flex justify-center lg:justify-start">
-              <img
+              <video
                 src={MascotCTA}
-                alt="Mascot animation"
-                loading="eager"
-                decoding="async"
+                poster={MascotPoster}
+                aria-label="Mascot animation"
                 draggable="false"
                 className="block w-full max-w-[20rem] select-none object-contain sm:max-w-[30rem] lg:max-w-[40rem]"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                disablePictureInPicture
+                onEnded={(event) => {
+                  event.currentTarget.currentTime = 0;
+                  const playPromise = event.currentTarget.play();
+
+                  if (playPromise && typeof playPromise.catch === "function") {
+                    playPromise.catch(() => {});
+                  }
+                }}
               />
             </div>
 
             <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:text-left">
-              <h2 className="text-[2.35rem] font-medium leading-[0.98] tracking-tight text-white sm:text-[3.2rem] lg:text-[4.4rem]">
+              <h2 className="whitespace-nowrap text-[clamp(1.5rem,5vw,4rem)] font-medium leading-[0.98] tracking-tight text-white">
                 Work Done On Your Terms
               </h2>
 
