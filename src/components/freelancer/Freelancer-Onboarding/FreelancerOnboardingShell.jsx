@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import Settings from "lucide-react/dist/esm/icons/settings";
 
@@ -126,7 +127,7 @@ const FreelancerOnboardingShell = () => {
     : isContinueDisabled;
 
   return (
-    <main className="relative flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-[#f1f5f9]">
+    <main className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-background text-[#f1f5f9] h-[100dvh]">
       <header className="relative z-20 shrink-0 border-b border-white/8 bg-card">
         <div
           className="absolute left-0 top-0 h-1 bg-[#facc15] transition-all duration-300"
@@ -169,20 +170,31 @@ const FreelancerOnboardingShell = () => {
         </div>
       </header>
 
-      <section className="subtle-scrollbar relative flex-1 overflow-y-auto">
+      <section className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto">
         <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-          <ActiveSlide
-            slide={currentSlide}
-            selectedWorkPreference={selectedWorkPreference}
-            onSelectWorkPreference={handleWorkPreferenceSelect}
-            basicProfileForm={basicProfileForm}
-            onBasicProfileFieldChange={handleBasicProfileFieldChange}
-            selectedServices={selectedServices}
-            onToggleService={handleServiceToggle}
-            onBasicProfileBack={handleBack}
-            onBasicProfileSkip={handleBasicProfileSkip}
-            onBasicProfileNext={handleBasicProfileNext}
-          />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentSlide.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="w-full"
+            >
+              <ActiveSlide
+                slide={currentSlide}
+                selectedWorkPreference={selectedWorkPreference}
+                onSelectWorkPreference={handleWorkPreferenceSelect}
+                basicProfileForm={basicProfileForm}
+                onBasicProfileFieldChange={handleBasicProfileFieldChange}
+                selectedServices={selectedServices}
+                onToggleService={handleServiceToggle}
+                onBasicProfileBack={handleBack}
+                onBasicProfileSkip={handleBasicProfileSkip}
+                onBasicProfileNext={handleBasicProfileNext}
+              />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </section>
 

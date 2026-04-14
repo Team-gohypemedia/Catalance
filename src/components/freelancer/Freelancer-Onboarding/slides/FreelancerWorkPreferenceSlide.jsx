@@ -23,7 +23,7 @@ const FreelancerWorkPreferenceSlide = ({
               "bg-card",
               selectedWorkPreference === "individual"
                 ? "border-primary ring-1 ring-primary/25"
-                : "border-white/10 hover:border-white/20"
+                : "border-white/10 hover:border-primary"
             )}
             aria-pressed={selectedWorkPreference === "individual"}
           >
@@ -63,7 +63,7 @@ const FreelancerWorkPreferenceSlide = ({
               "bg-card",
               selectedWorkPreference === "agency"
                 ? "border-primary ring-1 ring-primary/25"
-                : "border-white/10 hover:border-white/20"
+                : "border-white/10 hover:border-primary"
             )}
             aria-pressed={selectedWorkPreference === "agency"}
           >
