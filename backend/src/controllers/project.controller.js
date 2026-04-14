@@ -18,6 +18,8 @@ import {
   PROJECT_PROPOSAL_LIST_FIELDS,
   PROJECT_PROPOSAL_TEXT_FIELDS,
   extractProjectProposalFields,
+  mergeProposalStructureDefinitions,
+  resolveProjectAgencyProposalFlag,
 } from "../../../src/shared/lib/project-proposal-fields.js";
 import { generateFreelancerMatchingJson } from "../services/ai.service.js";
 import { archiveCompletedProject } from "../services/completed-projects.service.js";
@@ -208,7 +210,59 @@ const uniqueTextValues = (values = []) => {
   return result;
 };
 
-const resolveProjectServiceDefinition = async ({
+const extractProjectSelectedServiceLookupCandidates = (payload = {}) => {
+  const proposalContext =
+    payload?.proposalContext && typeof payload.proposalContext === "object" && !Array.isArray(payload.proposalContext)
+      ? payload.proposalContext
+      : {};
+  const directCandidates = [];
+
+  [
+    proposalContext?.selectedServiceIds,
+    proposalContext?.selectedServiceNames,
+    proposalContext?.serviceIds,
+    proposalContext?.serviceNames,
+  ].forEach((value) => {
+    if (Array.isArray(value)) {
+      directCandidates.push(...value);
+    }
+  });
+
+  if (Array.isArray(proposalContext?.selectedServices)) {
+    proposalContext.selectedServices.forEach((service) => {
+      if (typeof service === "string") {
+        directCandidates.push(service);
+        return;
+      }
+
+      if (service && typeof service === "object") {
+        directCandidates.push(
+          service.id,
+          service.slug,
+          service.name,
+          service.serviceId,
+          service.serviceName,
+        );
+      }
+    });
+  }
+
+  return uniqueTextValues(directCandidates);
+};
+
+const splitCombinedServiceLookupValue = (value = "") => {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) return [];
+
+  const commaSeparatedValues = normalizedValue
+    .split(/\s*,\s*/)
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean);
+
+  return commaSeparatedValues.length > 1 ? commaSeparatedValues : [normalizedValue];
+};
+
+const collectProjectServiceLookupCandidates = ({
   input = {},
   fallback = null,
 } = {}) => {
@@ -220,7 +274,25 @@ const resolveProjectServiceDefinition = async ({
     input?.category,
     fallback?.serviceKey,
     fallback?.serviceType,
+    fallback?.service,
+    fallback?.serviceName,
+    fallback?.category,
+    ...extractProjectSelectedServiceLookupCandidates(input),
+    ...extractProjectSelectedServiceLookupCandidates(fallback),
   ]);
+  return uniqueTextValues(
+    lookupCandidates.flatMap((candidate) => splitCombinedServiceLookupValue(candidate)),
+  );
+};
+
+const resolveProjectServiceDefinitions = async ({
+  input = {},
+  fallback = null,
+} = {}) => {
+  const lookupCandidates = collectProjectServiceLookupCandidates({
+    input,
+    fallback,
+  });
   if (lookupCandidates.length === 0) return null;
 
   const services = await prisma.service.findMany({
@@ -232,6 +304,9 @@ const resolveProjectServiceDefinition = async ({
     },
   });
   if (!Array.isArray(services) || services.length === 0) return null;
+
+  const matchedServices = [];
+  const matchedServiceSlugs = new Set();
 
   for (const candidate of lookupCandidates) {
     const normalizedCandidate = normalizeServiceLookupValue(candidate);
@@ -246,10 +321,35 @@ const resolveProjectServiceDefinition = async ({
       );
     });
 
-    if (match) return match;
+    if (match && !matchedServiceSlugs.has(match.slug)) {
+      matchedServiceSlugs.add(match.slug);
+      matchedServices.push(match);
+    }
   }
 
-  return null;
+  return matchedServices;
+};
+
+const resolveProjectProposalStructure = async ({
+  input = {},
+  fallback = null,
+} = {}) => {
+  const serviceDefinitions = await resolveProjectServiceDefinitions({
+    input,
+    fallback,
+  });
+
+  return {
+    serviceDefinitions,
+    proposalStructure: mergeProposalStructureDefinitions(
+      (serviceDefinitions || []).map(
+        (serviceDefinition) =>
+          serviceDefinition?.internalProposalStructure
+          || serviceDefinition?.proposalStructure
+          || "",
+      ),
+    ),
+  };
 };
 
 const buildProjectProposalData = (input = {}, { fallback = null, preserveFallback = false } = {}) => {
@@ -792,13 +892,10 @@ export const createProject = asyncHandler(async (req, res) => {
   }
 
   const { title, description, budget, status, proposal } = req.body;
-  const serviceDefinition = await resolveProjectServiceDefinition({
+  const { proposalStructure: resolvedInternalProposalStructure } =
+    await resolveProjectProposalStructure({
     input: req.body,
   });
-  const resolvedInternalProposalStructure =
-    serviceDefinition?.internalProposalStructure
-    || serviceDefinition?.proposalStructure
-    || "";
   const proposalPayload = resolvedInternalProposalStructure
     ? {
       ...req.body,
@@ -806,6 +903,9 @@ export const createProject = asyncHandler(async (req, res) => {
     }
     : req.body;
   const structuredProposalData = buildProjectProposalData(proposalPayload);
+  const isAgencyProposal = resolveProjectAgencyProposalFlag({
+    payload: req.body,
+  });
   const freelancerMatchingData = await buildProjectFreelancerMatchingData(req.body, {
     proposalData: structuredProposalData,
   });
@@ -821,6 +921,7 @@ export const createProject = asyncHandler(async (req, res) => {
       budget: normalizeBudget(budget),
       ...structuredProposalData,
       ...freelancerMatchingData,
+      isAgencyProposal,
       status: status || "DRAFT",
       progress: 0,
       ownerId: userId,
@@ -1126,8 +1227,8 @@ export const updateProject = asyncHandler(async (req, res) => {
       || hasOwnField(updates, "title")
       || hasOwnField(updates, "budget");
 
-    const serviceDefinition = shouldRefreshProposalFields
-      ? await resolveProjectServiceDefinition({
+    const resolvedProposalStructure = shouldRefreshProposalFields
+      ? await resolveProjectProposalStructure({
         input: updates,
         fallback: existing,
       })
@@ -1135,9 +1236,7 @@ export const updateProject = asyncHandler(async (req, res) => {
 
     if (shouldRefreshProposalFields) {
       const resolvedInternalProposalStructure =
-        serviceDefinition?.internalProposalStructure
-        || serviceDefinition?.proposalStructure
-        || "";
+        resolvedProposalStructure?.proposalStructure || "";
       const proposalPayload = resolvedInternalProposalStructure
         ? {
           ...updates,
@@ -1151,6 +1250,10 @@ export const updateProject = asyncHandler(async (req, res) => {
           preserveFallback: true,
         }),
       );
+      sanitizedUpdates.isAgencyProposal = resolveProjectAgencyProposalFlag({
+        payload: updates,
+        fallback: existing,
+      });
     }
 
     if (shouldRefreshFreelancerMatching) {

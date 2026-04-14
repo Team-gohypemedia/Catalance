@@ -162,7 +162,7 @@ const dedupeProposalTemplateFields = (definitions = []) => {
   return rows;
 };
 
-const parseProposalStructureDefinitions = (proposalStructure = "") => {
+export const parseProposalStructureDefinitions = (proposalStructure = "") => {
   const jsonConfig = parseProposalStructureJson(proposalStructure);
   if (Array.isArray(jsonConfig?.fields) && jsonConfig.fields.length > 0) {
     return dedupeProposalTemplateFields(jsonConfig.fields);
@@ -204,6 +204,31 @@ const parseProposalStructureDefinitions = (proposalStructure = "") => {
 
   return dedupeProposalTemplateFields(parsedDefinitions);
 };
+
+export const stringifyProposalStructureDefinitions = (definitions = []) => {
+  const fields = dedupeProposalTemplateFields(definitions);
+  if (fields.length === 0) return "";
+
+  return JSON.stringify(
+    {
+      version: 1,
+      fields: fields.map(({ key, label, type }) => ({
+        key,
+        label,
+        type,
+      })),
+    },
+    null,
+    2,
+  );
+};
+
+export const mergeProposalStructureDefinitions = (proposalStructures = []) =>
+  stringifyProposalStructureDefinitions(
+    (Array.isArray(proposalStructures) ? proposalStructures : []).flatMap(
+      (proposalStructure) => parseProposalStructureDefinitions(proposalStructure),
+    ),
+  );
 
 const PROPOSAL_FIELD_DEFINITION_BY_LABEL = PROPOSAL_FIELD_DEFINITIONS.reduce(
   (acc, definition) => {
@@ -292,6 +317,94 @@ const getProposalContext = (payload = {}) => {
     return payload.proposalJson.contextSnapshot;
   }
   return {};
+};
+
+const normalizeAgencyProposalBoolean = (value) => {
+  if (typeof value === "boolean") return value;
+
+  if (typeof value === "number") {
+    if (value === 1) return true;
+    if (value === 0) return false;
+    return null;
+  }
+
+  const normalized = cleanProposalText(value).toLowerCase();
+  if (!normalized) return null;
+  if (["true", "yes", "1"].includes(normalized)) return true;
+  if (["false", "no", "0"].includes(normalized)) return false;
+  return null;
+};
+
+const splitCombinedServiceLookupValue = (value = "") =>
+  String(value || "")
+    .split(/[,|]/)
+    .map((part) => cleanProposalText(part))
+    .filter(Boolean);
+
+const collectAgencyProposalServiceCandidates = (proposalContext = {}) => {
+  const candidates = [];
+  const pushCandidate = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach((entry) => pushCandidate(entry));
+      return;
+    }
+
+    if (isNonArrayObject(value)) {
+      pushCandidate(value.id);
+      pushCandidate(value.slug);
+      pushCandidate(value.name);
+      return;
+    }
+
+    splitCombinedServiceLookupValue(value).forEach((entry) => {
+      candidates.push(entry);
+    });
+  };
+
+  [
+    proposalContext?.selectedServiceIds,
+    proposalContext?.selectedServiceNames,
+    proposalContext?.serviceIds,
+    proposalContext?.serviceNames,
+  ].forEach((value) => pushCandidate(value));
+
+  if (Array.isArray(proposalContext?.selectedServices)) {
+    proposalContext.selectedServices.forEach((service) => pushCandidate(service));
+  }
+
+  return uniqueItems(candidates);
+};
+
+const inferAgencyProposalFlagFromPayload = (payload = {}) => {
+  const explicitValue = normalizeAgencyProposalBoolean(payload?.isAgencyProposal);
+  if (explicitValue !== null) return explicitValue;
+
+  const proposalContext = getProposalContext(payload);
+  const flowMode = cleanProposalText(proposalContext?.flowMode).toLowerCase();
+  if (flowMode === "agency") return true;
+  if (flowMode === "freelancer" || flowMode === "individual") return false;
+
+  const selectedServices = collectAgencyProposalServiceCandidates(proposalContext);
+  if (selectedServices.length > 1) return true;
+
+  const serviceKeyParts = splitCombinedServiceLookupValue(payload?.serviceKey || "");
+  if (serviceKeyParts.length > 1) return true;
+  if (serviceKeyParts.length === 1) return false;
+
+  return null;
+};
+
+export const resolveProjectAgencyProposalFlag = ({
+  payload = {},
+  fallback = null,
+} = {}) => {
+  const directValue = inferAgencyProposalFlagFromPayload(payload);
+  if (directValue !== null) return directValue;
+
+  const fallbackValue = inferAgencyProposalFlagFromPayload(fallback || {});
+  if (fallbackValue !== null) return fallbackValue;
+
+  return false;
 };
 
 const labelsLooselyMatch = (left = "", right = "") => {

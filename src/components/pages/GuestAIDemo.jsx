@@ -56,6 +56,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/context/AuthContext';
 import { getSession } from '@/shared/lib/auth-storage';
 import {
+    mergeProposalStructureDefinitions,
+    parseProposalStructureDefinitions,
+} from '@/shared/lib/project-proposal-fields';
+import {
     getGuestChatSidebarSizeStorageKeys,
     getGuestChatStorageKeys,
     getProposalListStoragePrefixes,
@@ -178,6 +182,23 @@ const SERVICE_SELECTION_MODES = Object.freeze({
 
 const getServiceIdentifier = (service = {}) =>
     String(service?.slug || service?.id || service?.name || '').trim();
+
+const toStoredProposalServiceEntry = (service = {}) => {
+    const id = getServiceIdentifier(service);
+    const slug = String(service?.slug || service?.id || '').trim();
+    const name = String(service?.name || '').trim();
+
+    if (!id && !slug && !name) return null;
+
+    return {
+        id: id || slug || name,
+        ...(slug ? { slug } : {}),
+        ...(name ? { name } : {}),
+        ...(typeof service?.agencyProposalStructure === 'string' && service.agencyProposalStructure.trim()
+            ? { agencyProposalStructure: service.agencyProposalStructure }
+            : {}),
+    };
+};
 
 const createEmptyAgencyFlowState = () => ({
     active: false,
@@ -1110,7 +1131,7 @@ const readStoredGeneratedProposals = (userId) => {
     return sortStoredGeneratedProposals([...scopedRows, ...guestRows]);
 };
 
-const upsertStoredGeneratedProposal = (proposalContent, userId) => {
+const upsertStoredGeneratedProposal = (proposalContent, userId, extraMetadata = {}) => {
     if (!isBrowser) return [];
     migrateProposalStorageNamespace();
     if (userId) {
@@ -1127,14 +1148,28 @@ const upsertStoredGeneratedProposal = (proposalContent, userId) => {
     const fingerprint = toProposalFingerprint(normalizedContent);
     const { listKey, singleKey, syncedKey } = getProposalStorageKeys(userId);
     const existingProposals = safeParseArray(window.localStorage.getItem(listKey));
+    const normalizedExtraMetadata = extraMetadata && typeof extraMetadata === 'object'
+        ? extraMetadata
+        : {};
     const existingIndex = existingProposals.findIndex((proposal) => {
         const existingFingerprint = proposal?.fingerprint
             || toProposalFingerprint(proposal?.content || proposal?.summary || proposal?.projectTitle || '');
         return existingFingerprint === fingerprint;
     });
+    const existingProposal = existingIndex >= 0 ? existingProposals[existingIndex] : null;
+    const nextProposalContext = normalizedExtraMetadata?.proposalContext
+        && typeof normalizedExtraMetadata.proposalContext === 'object'
+        && !Array.isArray(normalizedExtraMetadata.proposalContext)
+        ? normalizedExtraMetadata.proposalContext
+        : existingProposal?.proposalContext
+            && typeof existingProposal.proposalContext === 'object'
+            && !Array.isArray(existingProposal.proposalContext)
+            ? existingProposal.proposalContext
+            : null;
 
     const proposalToSave = {
-        id: existingProposals[existingIndex]?.id || `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        ...(existingProposal && typeof existingProposal === 'object' ? existingProposal : {}),
+        id: existingProposal?.id || `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
         businessName: parsed.fields?.businessName || parsed.fields?.companyName || "",
         companyName: parsed.fields?.companyName || parsed.fields?.businessName || "",
         projectTitle: parsed.fields?.businessName || parsed.fields?.companyName || parsed.fields?.serviceType || "AI Generated Proposal",
@@ -1151,6 +1186,7 @@ const upsertStoredGeneratedProposal = (proposalContent, userId) => {
         createdAt: existingProposals[existingIndex]?.createdAt || now,
         updatedAt: now,
         fingerprint,
+        ...(nextProposalContext ? { proposalContext: nextProposalContext } : {}),
     };
 
     if (existingIndex >= 0) {
@@ -1635,6 +1671,7 @@ const PROPOSAL_SECTION_ORDER = [
     'App Features',
     'Platform Requirements',
     'Additional Confirmed Inputs',
+    'Service Breakdown',
 ];
 
 const normalizeProposalKey = (value = '') =>
@@ -2189,17 +2226,56 @@ const uniqueProposalListItems = (items = []) =>
         )
     );
 
-const buildAgencyCombinedProposal = ({
-    selectedServices = [],
-    serviceProposals = [],
-}) => {
-    const normalizedRows = (Array.isArray(serviceProposals) ? serviceProposals : [])
-        .map((row) => ({
-            service: row?.service || {},
-            parsed: row?.parsed || parseProposalContent(row?.content || ''),
-            content: normalizeMarkdownContent(row?.content || ''),
+const AGENCY_CORE_PREFIX_FIELD_DEFINITIONS = [
+    { label: 'Client Name', type: 'text' },
+    { label: 'Business Name', type: 'text' },
+    { label: 'Service Type', type: 'text' },
+    { label: 'Project Overview', type: 'text' },
+    { label: 'Primary Objectives', type: 'list' },
+    { label: 'Features/Deliverables Included', type: 'list' },
+];
+
+const AGENCY_CORE_SUFFIX_FIELD_DEFINITIONS = [
+    { label: 'Service Breakdown', type: 'list' },
+    { label: 'Launch Timeline', type: 'text' },
+    { label: 'Budget', type: 'text' },
+];
+
+const normalizeAgencyProposalFieldType = (value = 'text') =>
+    String(value || '').trim().toLowerCase() === 'list' ? 'list' : 'text';
+
+const buildAgencyProposalFieldDefinitions = (selectedServices = []) => {
+    const mergedStructure = mergeProposalStructureDefinitions(
+        (Array.isArray(selectedServices) ? selectedServices : []).map((service) => service?.agencyProposalStructure || '')
+    );
+    const customDefinitions = parseProposalStructureDefinitions(mergedStructure)
+        .map((definition) => ({
+            label: String(definition?.label || '').trim(),
+            type: normalizeAgencyProposalFieldType(definition?.type),
         }))
-        .filter((row) => row.content);
+        .filter((definition) => definition.label);
+
+    if (customDefinitions.length === 0) {
+        return [];
+    }
+
+    const customKeys = new Set(
+        customDefinitions
+            .map((definition) => normalizeProposalKey(definition.label))
+            .filter(Boolean)
+    );
+
+    return [
+        ...AGENCY_CORE_PREFIX_FIELD_DEFINITIONS.filter((definition) => !customKeys.has(normalizeProposalKey(definition.label))),
+        ...customDefinitions,
+        ...AGENCY_CORE_SUFFIX_FIELD_DEFINITIONS.filter((definition) => !customKeys.has(normalizeProposalKey(definition.label))),
+    ];
+};
+
+const buildAgencyProposalSummary = ({
+    selectedServices = [],
+    normalizedRows = [],
+}) => {
     const selectedServiceNames = (Array.isArray(selectedServices) ? selectedServices : [])
         .map((service) => String(service?.name || '').trim())
         .filter(Boolean);
@@ -2267,24 +2343,180 @@ const buildAgencyCombinedProposal = ({
         .join(' ')
         .trim();
 
+    return {
+        clientName,
+        businessName,
+        serviceLabel,
+        projectOverview: projectOverview || 'This proposal aligns the selected services into one structured engagement based on the captured requirements.',
+        combinedObjectives,
+        combinedDeliverables,
+        timelineSummary,
+        budgetSummary,
+        serviceBreakdownItems,
+        defaultCustomText: serviceLabel
+            ? `Delivery details for ${serviceLabel} will be aligned during the detailed agency planning phase.`
+            : 'Delivery details will be aligned during the detailed agency planning phase.',
+        defaultCustomList: serviceBreakdownItems.length > 0
+            ? serviceBreakdownItems
+            : ['Coordinate delivery across the selected services in one structured engagement.'],
+    };
+};
+
+const collectAgencyFieldMatches = (normalizedRows = [], label = '') =>
+    (Array.isArray(normalizedRows) ? normalizedRows : [])
+        .map((row) => {
+            const items = uniqueProposalListItems(getProposalSectionItems(row?.parsed, [label]));
+            if (items.length === 0) return null;
+
+            return {
+                serviceName: String(row?.service?.name || row?.parsed?.fields?.serviceType || 'Selected Service').trim(),
+                items,
+            };
+        })
+        .filter(Boolean);
+
+const buildAgencyFieldPayload = (definition = {}, { text = '', items = [] } = {}) => {
+    const type = normalizeAgencyProposalFieldType(definition?.type);
+    const normalizedItems = uniqueProposalListItems(items);
+
+    if (type === 'list') {
+        if (normalizedItems.length > 0) {
+            return { type: 'list', items: normalizedItems };
+        }
+        const fallbackText = String(text || '').trim();
+        return fallbackText ? { type: 'list', items: [fallbackText] } : null;
+    }
+
+    const normalizedText = String(text || '').trim() || normalizedItems.join(' | ');
+    return normalizedText ? { type: 'text', text: normalizedText } : null;
+};
+
+const resolveAgencyCustomFieldPayload = (definition = {}, normalizedRows = [], summary = {}) => {
+    const matches = collectAgencyFieldMatches(normalizedRows, definition?.label);
+    if (matches.length === 0) {
+        return buildAgencyFieldPayload(definition, {
+            text: summary.defaultCustomText,
+            items: summary.defaultCustomList,
+        });
+    }
+
+    if (normalizeAgencyProposalFieldType(definition?.type) === 'list') {
+        const items = matches.length > 1
+            ? matches.flatMap((match) => match.items.map((item) => `${match.serviceName}: ${item}`))
+            : matches[0].items;
+        return buildAgencyFieldPayload(definition, { items });
+    }
+
+    const text = matches.length > 1
+        ? matches.map((match) => `${match.serviceName}: ${match.items.join('; ')}`).join(' | ')
+        : matches[0].items.join('; ');
+    return buildAgencyFieldPayload(definition, { text });
+};
+
+const resolveAgencyFieldPayload = (definition = {}, normalizedRows = [], summary = {}) => {
+    const normalizedLabel = normalizeProposalKey(definition?.label);
+
+    if (normalizedLabel === 'client name') {
+        return buildAgencyFieldPayload(definition, { text: summary.clientName || 'To be confirmed' });
+    }
+    if (normalizedLabel === 'business name') {
+        return buildAgencyFieldPayload(definition, { text: summary.businessName || 'To be confirmed' });
+    }
+    if (normalizedLabel === 'service type') {
+        return buildAgencyFieldPayload(definition, { text: summary.serviceLabel || 'Multi-service engagement' });
+    }
+    if (normalizedLabel === 'project overview') {
+        return buildAgencyFieldPayload(definition, { text: summary.projectOverview });
+    }
+    if (normalizedLabel === 'primary objectives') {
+        return buildAgencyFieldPayload(definition, { items: summary.combinedObjectives });
+    }
+    if (normalizedLabel === 'features deliverables included') {
+        return buildAgencyFieldPayload(definition, { items: summary.combinedDeliverables });
+    }
+    if (normalizedLabel === 'service breakdown') {
+        return buildAgencyFieldPayload(definition, { items: summary.serviceBreakdownItems });
+    }
+    if (normalizedLabel === 'launch timeline') {
+        return buildAgencyFieldPayload(definition, { text: summary.timelineSummary || 'To be confirmed' });
+    }
+    if (normalizedLabel === 'budget') {
+        return buildAgencyFieldPayload(definition, { text: summary.budgetSummary || 'To be confirmed' });
+    }
+
+    return resolveAgencyCustomFieldPayload(definition, normalizedRows, summary);
+};
+
+const renderAgencyProposalFromDefinitions = ({
+    definitions = [],
+    normalizedRows = [],
+    summary = {},
+}) =>
+    (Array.isArray(definitions) ? definitions : [])
+        .flatMap((definition) => {
+            const payload = resolveAgencyFieldPayload(definition, normalizedRows, summary);
+            if (!payload) return [];
+
+            if (payload.type === 'list') {
+                return [
+                    `${definition.label}:`,
+                    ...payload.items.map((item) => `- ${item}`),
+                    '',
+                ];
+            }
+
+            return [
+                `${definition.label}: ${payload.text}`,
+                '',
+            ];
+        })
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+const buildAgencyCombinedProposal = ({
+    selectedServices = [],
+    serviceProposals = [],
+}) => {
+    const normalizedRows = (Array.isArray(serviceProposals) ? serviceProposals : [])
+        .map((row) => ({
+            service: row?.service || {},
+            parsed: row?.parsed || parseProposalContent(row?.content || ''),
+            content: normalizeMarkdownContent(row?.content || ''),
+        }))
+        .filter((row) => row.content);
+    const summary = buildAgencyProposalSummary({
+        selectedServices,
+        normalizedRows,
+    });
+    const agencyFieldDefinitions = buildAgencyProposalFieldDefinitions(selectedServices);
+
+    if (agencyFieldDefinitions.length > 0) {
+        return renderAgencyProposalFromDefinitions({
+            definitions: agencyFieldDefinitions,
+            normalizedRows,
+            summary,
+        });
+    }
+
     return [
-        `Client Name: ${clientName}`,
-        `Business Name: ${businessName}`,
-        `Service Type: ${serviceLabel || 'Multi-service engagement'}`,
-        timelineSummary ? `Launch Timeline: ${timelineSummary}` : '',
-        budgetSummary ? `Budget: ${budgetSummary}` : '',
+        `Client Name: ${summary.clientName}`,
+        `Business Name: ${summary.businessName}`,
+        `Service Type: ${summary.serviceLabel || 'Multi-service engagement'}`,
+        summary.timelineSummary ? `Launch Timeline: ${summary.timelineSummary}` : '',
+        summary.budgetSummary ? `Budget: ${summary.budgetSummary}` : '',
         '',
         'Project Overview:',
-        projectOverview || 'This proposal aligns the selected services into one structured engagement based on the captured requirements.',
+        summary.projectOverview,
         '',
         'Primary Objectives:',
-        ...combinedObjectives.map((item) => `- ${item}`),
+        ...summary.combinedObjectives.map((item) => `- ${item}`),
         '',
         'Features/Deliverables Included:',
-        ...combinedDeliverables.map((item) => `- ${item}`),
+        ...summary.combinedDeliverables.map((item) => `- ${item}`),
         '',
         'Service Breakdown:',
-        ...serviceBreakdownItems.map((item) => `- ${item}`),
+        ...summary.serviceBreakdownItems.map((item) => `- ${item}`),
     ]
         .filter(Boolean)
         .join('\n')
@@ -2572,6 +2804,79 @@ const GuestAIDemo = () => {
     const refreshGeneratedProposals = useCallback(() => {
         setGeneratedProposals(readStoredGeneratedProposals(user?.id));
     }, [user?.id]);
+
+    const buildProposalSaveMetadata = useCallback((proposalContent, sourceProposal = null) => {
+        const sourceProposalContext = sourceProposal?.proposalContext
+            && typeof sourceProposal.proposalContext === 'object'
+            && !Array.isArray(sourceProposal.proposalContext)
+            ? sourceProposal.proposalContext
+            : {};
+        const nextProposalContext = { ...sourceProposalContext };
+        const normalizedProposalContent = normalizeMarkdownContent(proposalContent);
+
+        if (isAgencyProposalMessage(normalizedProposalContent)) {
+            const currentAgencyFlow = agencyFlowStateRef.current;
+            const selectedServices = Array.isArray(sourceProposalContext?.selectedServices)
+                && sourceProposalContext.selectedServices.length > 0
+                ? sourceProposalContext.selectedServices
+                : currentAgencyFlow.selectedServices;
+            const normalizedSelectedServices = selectedServices
+                .map((service) => toStoredProposalServiceEntry(service))
+                .filter(Boolean);
+            const sharedAnswers = Object.keys(normalizeAgencySharedAnswers(sourceProposalContext?.sharedAnswers)).length > 0
+                ? normalizeAgencySharedAnswers(sourceProposalContext.sharedAnswers)
+                : normalizeAgencySharedAnswers(currentAgencyFlow.sharedAnswers);
+
+            nextProposalContext.flowMode = SERVICE_SELECTION_MODES.AGENCY;
+            if (normalizedSelectedServices.length > 0) {
+                nextProposalContext.selectedServices = normalizedSelectedServices;
+                nextProposalContext.selectedServiceIds = normalizedSelectedServices
+                    .map((service) => String(service?.id || service?.slug || service?.name || '').trim())
+                    .filter(Boolean);
+                nextProposalContext.selectedServiceNames = normalizedSelectedServices
+                    .map((service) => String(service?.name || service?.id || service?.slug || '').trim())
+                    .filter(Boolean);
+                const mergedAgencyProposalStructure = mergeProposalStructureDefinitions(
+                    normalizedSelectedServices.map((service) => service?.agencyProposalStructure || '')
+                );
+                if (mergedAgencyProposalStructure) {
+                    nextProposalContext.proposalStructure = mergedAgencyProposalStructure;
+                }
+            }
+            if (Object.keys(sharedAnswers).length > 0) {
+                nextProposalContext.sharedAnswers = sharedAnswers;
+            }
+        } else {
+            const normalizedSelectedServices = (
+                Array.isArray(sourceProposalContext?.selectedServices)
+                    && sourceProposalContext.selectedServices.length > 0
+                    ? sourceProposalContext.selectedServices
+                    : [selectedService]
+            )
+                .map((service) => toStoredProposalServiceEntry(service))
+                .filter(Boolean);
+            const primarySelectedService = normalizedSelectedServices[0] || null;
+
+            if (primarySelectedService) {
+                nextProposalContext.flowMode = SERVICE_SELECTION_MODES.FREELANCER;
+                nextProposalContext.selectedServices = normalizedSelectedServices;
+                nextProposalContext.selectedServiceIds = normalizedSelectedServices
+                    .map((service) => service.id)
+                    .filter(Boolean);
+                nextProposalContext.selectedServiceNames = normalizedSelectedServices
+                    .map((service) => service.name || service.id)
+                    .filter(Boolean);
+                nextProposalContext.serviceId = primarySelectedService.id;
+                if (primarySelectedService.name) {
+                    nextProposalContext.serviceName = primarySelectedService.name;
+                }
+            }
+        }
+
+        return Object.keys(nextProposalContext).length > 0
+            ? { proposalContext: nextProposalContext }
+            : {};
+    }, [selectedService]);
 
     const toggleSidebarDropdown = useCallback((section) => {
         setSidebarDropdowns((current) => ({
@@ -4129,8 +4434,12 @@ const GuestAIDemo = () => {
         }
     };
 
-    const handleProceed = (proposalContent) => {
-        const nextProposals = upsertStoredGeneratedProposal(proposalContent, user?.id);
+    const handleProceed = (proposalContent, sourceProposal = null) => {
+        const nextProposals = upsertStoredGeneratedProposal(
+            proposalContent,
+            user?.id,
+            buildProposalSaveMetadata(proposalContent, sourceProposal),
+        );
         setGeneratedProposals(nextProposals);
 
         if (user) {
@@ -5505,7 +5814,7 @@ const GuestAIDemo = () => {
                             <ProposalPreview content={selectedProposalPreview.content} isDark={isDark} />
                             <div className={`mt-6 flex justify-end border-t pt-4 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
                                 <Button
-                                    onClick={() => handleProceed(selectedProposalPreview.content)}
+                                    onClick={() => handleProceed(selectedProposalPreview.content, selectedProposalPreview)}
                                     className="w-full sm:w-auto rounded-xl bg-primary px-8 py-2.5 font-semibold text-primary-foreground hover:bg-primary/90"
                                 >
                                     {selectedProposalPreviewCtaLabel}

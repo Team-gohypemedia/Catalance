@@ -32,6 +32,74 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+const parseProjectProposalJson = (value) => {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return typeof value === "object" ? value : null;
+};
+
+const buildAdminStructuredBriefRows = (proposalJson) => {
+  if (!proposalJson || typeof proposalJson !== "object") return [];
+
+  const sections = Array.isArray(proposalJson.sections) ? proposalJson.sections : [];
+  if (sections.length > 0) {
+    return sections
+      .map((section) => {
+        const label = String(section?.label || section?.key || "").trim();
+        const items = Array.isArray(section?.items)
+          ? section.items
+              .map((item) => String(item || "").trim())
+              .filter(Boolean)
+          : [];
+        const value = String(section?.value || "").trim();
+
+        if (!label || (!value && items.length === 0)) return null;
+
+        return {
+          key: String(section?.fieldKey || section?.key || label).trim(),
+          label,
+          type: items.length > 0 ? "list" : "text",
+          value,
+          items,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  const structuredFields =
+    proposalJson?.structuredFields && typeof proposalJson.structuredFields === "object"
+      ? proposalJson.structuredFields
+      : {};
+
+  return Object.entries(structuredFields)
+    .map(([key, field]) => {
+      const label = String(field?.label || key || "").trim();
+      const items = Array.isArray(field?.items)
+        ? field.items
+            .map((item) => String(item || "").trim())
+            .filter(Boolean)
+        : [];
+      const value = String(field?.value || "").trim();
+
+      if (!label || (!value && items.length === 0)) return null;
+
+      return {
+        key,
+        label,
+        type: items.length > 0 ? "list" : "text",
+        value,
+        items,
+      };
+    })
+    .filter(Boolean);
+};
+
 const AdminProjectDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -108,6 +176,32 @@ const AdminProjectDetail = () => {
     if (overallProgress >= 100) return "COMPLETED";
     return project?.status;
   }, [overallProgress, project?.status]);
+
+  const projectProposalJson = useMemo(
+    () => parseProjectProposalJson(project?.proposalJson),
+    [project?.proposalJson]
+  );
+
+  const adminStructuredBriefRows = useMemo(
+    () => buildAdminStructuredBriefRows(projectProposalJson),
+    [projectProposalJson]
+  );
+
+  const adminStructuredBriefMeta = useMemo(() => {
+    const templateFieldCount = Array.isArray(projectProposalJson?.template?.fields)
+      ? projectProposalJson.template.fields.length
+      : 0;
+    const selectedServiceNames = Array.isArray(projectProposalJson?.contextSnapshot?.selectedServiceNames)
+      ? projectProposalJson.contextSnapshot.selectedServiceNames
+          .map((value) => String(value || "").trim())
+          .filter(Boolean)
+      : [];
+
+    return {
+      templateFieldCount,
+      selectedServiceNames,
+    };
+  }, [projectProposalJson]);
 
   const derivedPhases = useMemo(() => {
     const phases = activeSOP.phases;
@@ -265,6 +359,9 @@ const AdminProjectDetail = () => {
                   {project.title}
                 </h1>
                 {getStatusBadge(effectiveStatus)}
+                <Badge variant={project.isAgencyProposal ? "default" : "outline"}>
+                  Agency Proposal: {project.isAgencyProposal ? "Yes" : "No"}
+                </Badge>
               </div>
               <p className="text-muted-foreground">
                 Created on {format(new Date(project.createdAt), "PPP")}
@@ -292,7 +389,7 @@ const AdminProjectDetail = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t mt-4">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-4 border-t mt-4">
                   <div>
                     <span className="text-xs text-muted-foreground block mb-1">
                       Client Budget
@@ -339,9 +436,72 @@ const AdminProjectDetail = () => {
                         .length || 0}
                     </span>
                   </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground block mb-1">
+                      Agency Proposal
+                    </span>
+                    <span className={`font-semibold text-lg ${project.isAgencyProposal ? "text-primary" : ""}`}>
+                      {project.isAgencyProposal ? "Yes" : "No"}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
+
+            {adminStructuredBriefRows.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle>Admin Structured Brief</CardTitle>
+                    {adminStructuredBriefMeta.templateFieldCount > 0 && (
+                      <Badge variant="secondary">
+                        {adminStructuredBriefMeta.templateFieldCount} template fields
+                      </Badge>
+                    )}
+                    {adminStructuredBriefMeta.selectedServiceNames.length > 1 && (
+                      <Badge variant="outline">
+                        {adminStructuredBriefMeta.selectedServiceNames.length} services
+                      </Badge>
+                    )}
+                  </div>
+                  <CardDescription>
+                    {adminStructuredBriefMeta.selectedServiceNames.length > 0
+                      ? `Internal project structure for ${adminStructuredBriefMeta.selectedServiceNames.join(", ")}.`
+                      : "Internal proposal data captured for operations, matching, and downstream workflows."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="max-h-[460px] overflow-y-auto pr-1">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {adminStructuredBriefRows.map((field) => (
+                        <div
+                          key={field.key}
+                          className="rounded-lg border border-border/60 bg-muted/20 p-3"
+                        >
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                            {field.label}
+                          </p>
+                          {field.type === "list" ? (
+                            <ul className="mt-2 space-y-1 text-sm leading-relaxed">
+                              {field.items.map((item, index) => (
+                                <li key={`${field.key}-${index}`} className="flex gap-2">
+                                  <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-primary/80" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                              {field.value}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Disputes Section */}
             {project.disputes?.length > 0 && (

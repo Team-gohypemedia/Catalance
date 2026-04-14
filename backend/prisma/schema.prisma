@@ -196,6 +196,7 @@ model Project {
   proposalContent          String?       @db.Text
   proposalJson             Json?
   freelancerMatchingJson   Json?
+  isAgencyProposal         Boolean       @default(false)
   serviceKey               String?
   clientName               String?
   businessName             String?
@@ -544,6 +545,7 @@ model Service {
   active      Boolean @default(true)
   aiPrompt    String? @db.Text // Custom AI instructions for this service
   proposalStructure String? @db.Text // Admin-managed proposal field order/template
+  agencyProposalStructure String? @db.Text // Admin-managed multi-service agency proposal template
   internalProposalStructure String? @db.Text // Internal-only project proposalJson structure/template
   proposalPrompt    String? @db.Text // Proposal-specific AI instructions for this service
 

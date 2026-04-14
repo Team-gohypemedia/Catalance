@@ -234,7 +234,37 @@ const generateGradient = (id) => {
   return `linear-gradient(135deg, hsl(${firstHue}, 78%, 58%), hsl(${secondHue}, 78%, 48%))`;
 };
 
+const resolveProjectServiceKey = (proposal = {}) => {
+  const proposalContext =
+    proposal?.proposalContext && typeof proposal.proposalContext === "object"
+      ? proposal.proposalContext
+      : {};
+  const selectedServiceIds = Array.isArray(proposalContext?.selectedServiceIds)
+    ? proposalContext.selectedServiceIds
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    : [];
+
+  if (selectedServiceIds.length > 1) {
+    return selectedServiceIds.join(", ");
+  }
+
+  if (selectedServiceIds.length === 1) {
+    return selectedServiceIds[0];
+  }
+
+  return proposal.serviceKey || resolveDraftService(proposal);
+};
+
 const buildProjectUpsertPayload = (proposal, normalizedBudget) => {
+  const proposalContext =
+    proposal?.proposalContext && typeof proposal.proposalContext === "object"
+      ? proposal.proposalContext
+      : {};
+  const isAgencyProposal =
+    String(proposalContext?.flowMode || "").trim().toLowerCase() === "agency"
+    || (Array.isArray(proposalContext?.selectedServiceIds)
+      && proposalContext.selectedServiceIds.filter(Boolean).length > 1);
   const payload = {
     title: resolveDraftTitle(proposal),
     description: proposal.summary || proposal.content || "",
@@ -242,12 +272,14 @@ const buildProjectUpsertPayload = (proposal, normalizedBudget) => {
       proposal.proposalContent || proposal.content || proposal.summary || "",
     budget: normalizedBudget,
     timeline: proposal.timeline || "1 month",
-    serviceKey: proposal.serviceKey || resolveDraftService(proposal),
+    serviceKey: resolveProjectServiceKey(proposal),
+    serviceType: proposal.service || resolveDraftService(proposal),
+    isAgencyProposal,
     status: "OPEN",
   };
 
-  if (proposal?.proposalContext && typeof proposal.proposalContext === "object") {
-    payload.proposalContext = proposal.proposalContext;
+  if (proposalContext && typeof proposalContext === "object") {
+    payload.proposalContext = proposalContext;
   }
 
   return payload;
