@@ -5,6 +5,7 @@ import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import Settings from "lucide-react/dist/esm/icons/settings";
 
 import { Button } from "@/components/ui/button";
+import { updateProfile } from "@/shared/lib/api-client";
 
 import { FREELANCER_ONBOARDING_SLIDES } from "./constants";
 import FreelancerWelcomeSlide from "./slides/FreelancerWelcomeSlide";
@@ -33,6 +34,8 @@ const FreelancerOnboardingShell = () => {
     language: "",
   });
   const [selectedServices, setSelectedServices] = useState([]);
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
 
   const totalSlides = FREELANCER_ONBOARDING_SLIDES.length;
   const currentSlide =
@@ -98,22 +101,46 @@ const FreelancerOnboardingShell = () => {
     }));
   };
 
+  const handleServiceToggle = (serviceId) => {
+    setSelectedServices((current) =>
+      current.includes(serviceId)
+        ? current.filter((id) => id !== serviceId)
+        : [...current, serviceId]
+    );
+  };
+
   const handleBasicProfileSkip = () => {
     navigate("/freelancer");
   };
 
-  const handleBasicProfileNext = () => {
-    setCurrentSlideIndex((currentIndex) =>
-      Math.min(currentIndex + 1, totalSlides - 1)
-    );
-  };
-
-  const handleServiceToggle = (serviceId) => {
-    setSelectedServices((currentServices) =>
-      currentServices.includes(serviceId)
-        ? currentServices.filter((value) => value !== serviceId)
-        : [...currentServices, serviceId]
-    );
+  const handleBasicProfileNext = async () => {
+    setProfileError("");
+    if (currentSlide.id === "basicProfile") {
+      setIsProfileSaving(true);
+      try {
+        await updateProfile({
+          freelancerProfile: {
+            username: basicProfileForm.username,
+            profileDetails: basicProfileForm.profileDetails,
+            country: basicProfileForm.country,
+            state: basicProfileForm.state,
+            language: basicProfileForm.language,
+            profileRole: selectedWorkPreference || "individual",
+          },
+        });
+        setIsProfileSaving(false);
+        setCurrentSlideIndex((currentIndex) =>
+          Math.min(currentIndex + 1, totalSlides - 1)
+        );
+      } catch (err) {
+        setIsProfileSaving(false);
+        setProfileError(err.message || "Failed to save profile");
+      }
+    } else {
+      setCurrentSlideIndex((currentIndex) =>
+        Math.min(currentIndex + 1, totalSlides - 1)
+      );
+    }
   };
 
   const footerPrimaryAction = isProfileActionFooter
@@ -172,6 +199,11 @@ const FreelancerOnboardingShell = () => {
 
       <section className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto">
         <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+          {profileError && (
+            <div className="mb-4 rounded-xl bg-red-900/60 px-4 py-3 text-sm text-red-200">
+              {profileError}
+            </div>
+          )}
           <AnimatePresence mode="wait">
             <motion.div
               key={currentSlide.id}
@@ -192,6 +224,7 @@ const FreelancerOnboardingShell = () => {
                 onBasicProfileBack={handleBack}
                 onBasicProfileSkip={handleBasicProfileSkip}
                 onBasicProfileNext={handleBasicProfileNext}
+                isProfileSaving={isProfileSaving}
               />
             </motion.div>
           </AnimatePresence>

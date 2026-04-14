@@ -2,6 +2,7 @@ import Check from "lucide-react/dist/esm/icons/check";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
+import { Loader2 } from "lucide-react";
 
 import { Avatar, AvatarBadge, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -19,16 +20,18 @@ import { Textarea } from "@/components/ui/textarea";
 const fieldLabelClassName =
   "text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground";
 const inputClassName =
-  "h-14 rounded-2xl border-white/8 bg-accent px-5 text-base text-white shadow-none placeholder:text-muted-foreground/55 focus-visible:border-[#facc15]/45 focus-visible:ring-[#facc15]/15";
+  "h-14 rounded-2xl border-white/8 bg-accent px-5 text-base text-white shadow-none placeholder:text-muted-foreground/55 focus-visible:border-primary/45 focus-visible:ring-primary/15";
 const selectTriggerClassName =
-  "h-14 w-full rounded-2xl border-white/8 bg-accent px-5 text-left text-base text-white shadow-none data-[placeholder]:text-muted-foreground/55 focus-visible:border-[#facc15]/45 focus-visible:ring-[#facc15]/15";
+  "h-14 w-full rounded-2xl border-white/8 bg-accent px-5 text-left text-base text-white shadow-none data-[placeholder]:text-muted-foreground/55 focus-visible:border-primary/45 focus-visible:ring-primary/15";
 const textAreaClassName =
-  "min-h-[164px] rounded-[22px] border-white/8 bg-accent px-5 py-4 text-base text-white shadow-none placeholder:text-muted-foreground/45 focus-visible:border-[#facc15]/45 focus-visible:ring-[#facc15]/15";
+  "min-h-[164px] rounded-[22px] border-white/8 bg-accent px-5 py-4 text-base text-white shadow-none placeholder:text-muted-foreground/45 focus-visible:border-primary/45 focus-visible:ring-primary/15";
 
 const FreelancerBasicProfileSlide = ({
   slide,
   basicProfileForm,
   onBasicProfileFieldChange,
+  onBasicProfileNext,
+  isProfileSaving = false,
 }) => {
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
@@ -46,11 +49,11 @@ const FreelancerBasicProfileSlide = ({
           <div className="space-y-8">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
               <div className="relative">
-                <Avatar className="size-28 border-4 border-white/80 bg-white shadow-[0_18px_40px_rgba(0,0,0,0.28)] sm:size-32">
-                  <AvatarFallback className="bg-white text-[#171717]">
+                <Avatar className="size-28 border border-white/8 bg-accent dark:bg-input/30 sm:size-32">
+                  <AvatarFallback className="bg-accent text-muted-foreground dark:bg-input/30">
                     <UserRound className="size-14" />
                   </AvatarFallback>
-                  <AvatarBadge className="bottom-1 right-0 size-9 border-[3px] border-card bg-[#facc15] text-black ring-0 [&>svg]:size-4 sm:size-10">
+                  <AvatarBadge className="bottom-1 right-0 size-9 border-[3px] border-card bg-primary text-primary-foreground ring-0 [&>svg]:size-4 sm:size-10">
                     <Pencil className="size-4" />
                   </AvatarBadge>
                 </Avatar>
@@ -59,7 +62,7 @@ const FreelancerBasicProfileSlide = ({
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 rounded-xl border-[#facc15] bg-transparent px-6 text-sm font-semibold text-[#facc15] shadow-none hover:bg-[#facc15]/10 hover:text-[#facc15]"
+                className="h-12 rounded-xl border-primary bg-transparent px-6 text-sm font-semibold text-primary shadow-none hover:bg-primary/10 hover:text-primary"
               >
                 <Upload className="size-4" />
                 Upload
@@ -80,14 +83,14 @@ const FreelancerBasicProfileSlide = ({
                   autoCorrect="off"
                   spellCheck={false}
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-[#facc15] text-black">
+                <span className="pointer-events-none absolute right-4 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <Check className="size-4" />
                 </span>
               </div>
             </div>
 
             <div className="space-y-3">
-              <Label className={fieldLabelClassName}>Profile Details</Label>
+              <Label className={fieldLabelClassName}>Professional Bio </Label>
               <Textarea
                 value={basicProfileForm.profileDetails}
                 onChange={(event) =>
@@ -161,6 +164,20 @@ const FreelancerBasicProfileSlide = ({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button
+                type="button"
+                onClick={onBasicProfileNext}
+                disabled={isProfileSaving}
+                className="min-w-[120px]"
+              >
+                {isProfileSaving ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Continue
+              </Button>
             </div>
           </div>
         </div>
