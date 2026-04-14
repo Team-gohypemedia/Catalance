@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight, BadgeCheck, Bot, BriefcaseBusiness, Banknote, Tag, Check,
@@ -7,7 +7,7 @@ import {
   Plus, Rocket, Search, SlidersHorizontal,
   Sparkles, Star, Users, Workflow, X
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -464,6 +464,10 @@ const toggleSelection = (values = [], nextValue = "") =>
 
 const Marketplace = () => {
   const { isAuthenticated, user, authFetch } = useAuth();
+  const shouldReduceMotion = useReducedMotion();
+  const resultsRequestIdRef = useRef(0);
+  const projectRequestIdRef = useRef(0);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   const [favorites, setFavorites] = useState({});
   const [activeMarketplaceView, setActiveMarketplaceView] = useState(() => {
@@ -559,33 +563,38 @@ const Marketplace = () => {
 
   const canViewProjectsMarketplace = isAuthenticated && roleTokens.includes("FREELANCER");
 
-  const serviceCategories = (filterServices.length
-    ? dedupeServiceCategories(
-        filterServices.map((service) =>
-          buildServiceCategoryEntry({
-            id: service.id,
-            key: service.key,
-            name: service.name,
-            label: service.label || service.name,
-            value: service.key,
-            slug: service.key,
-          })
-        )
-      )
-    : FALLBACK_CATEGORIES).map((entry) => {
-    if (entry.icon) {
-      return {
-        ...entry,
-        key: entry.key || entry.value,
-      };
-    }
-    const value = resolveMarketplaceServiceKey(entry);
-    const normalized = buildServiceCategoryEntry({ ...entry, value });
-    return {
-      ...normalized,
-      key: normalized.key || normalized.value,
-    };
-  });
+  const serviceCategories = useMemo(
+    () =>
+      (filterServices.length
+        ? dedupeServiceCategories(
+            filterServices.map((service) =>
+              buildServiceCategoryEntry({
+                id: service.id,
+                key: service.key,
+                name: service.name,
+                label: service.label || service.name,
+                value: service.key,
+                slug: service.key,
+              })
+            )
+          )
+        : FALLBACK_CATEGORIES
+      ).map((entry) => {
+        if (entry.icon) {
+          return {
+            ...entry,
+            key: entry.key || entry.value,
+          };
+        }
+        const value = resolveMarketplaceServiceKey(entry);
+        const normalized = buildServiceCategoryEntry({ ...entry, value });
+        return {
+          ...normalized,
+          key: normalized.key || normalized.value,
+        };
+      }),
+    [filterServices]
+  );
 
   const activeService = serviceCategories.find((service) => service.value === category) || null;
   const activeBrowseService = activeService;
@@ -594,6 +603,9 @@ const Marketplace = () => {
   const debouncedMin = useDebounce(minBudget, 400);
   const debouncedMax = useDebounce(maxBudget, 400);
   const shouldShowResults = category !== "all" || Boolean(String(debouncedQ || "").trim());
+  const sparklesEnabled = !shouldReduceMotion && !isMobileViewport;
+  const sparklesDensity = isMobileViewport ? 90 : 220;
+  const sparklesSpeed = isMobileViewport ? 0.35 : 0.55;
 
   useEffect(() => {
     try {
@@ -604,6 +616,22 @@ const Marketplace = () => {
     } catch {
       // Ignore storage access failures in private browsing or restricted contexts.
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const mediaQuery = window.matchMedia("(max-width: 1024px)");
+    const syncViewport = () => setIsMobileViewport(mediaQuery.matches);
+    syncViewport();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncViewport);
+      return () => mediaQuery.removeEventListener("change", syncViewport);
+    }
+
+    mediaQuery.addListener(syncViewport);
+    return () => mediaQuery.removeListener(syncViewport);
   }, []);
 
   useEffect(() => {
@@ -764,16 +792,23 @@ const Marketplace = () => {
   };
 
   const fetchResults = useCallback(async () => {
+    const requestId = resultsRequestIdRef.current + 1;
+    resultsRequestIdRef.current = requestId;
+
     if (activeMarketplaceView !== "freelancers") {
-      setLoading(false);
+      if (requestId === resultsRequestIdRef.current) {
+        setLoading(false);
+      }
       return;
     }
 
     if (!shouldShowResults) {
-      setData([]);
-      setTotal(0);
-      setTotalPages(0);
-      setLoading(false);
+      if (requestId === resultsRequestIdRef.current) {
+        setData([]);
+        setTotal(0);
+        setTotalPages(0);
+        setLoading(false);
+      }
       return;
     }
 
@@ -792,32 +827,43 @@ const Marketplace = () => {
       const res = await fetch(`${API_BASE_URL}/marketplace?${query.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch marketplace");
       const json = await res.json();
+      if (requestId !== resultsRequestIdRef.current) return;
       setData(json?.data || []);
       setTotal(json?.total || 0);
       setTotalPages(json?.totalPages || 0);
     } catch (error) {
+      if (requestId !== resultsRequestIdRef.current) return;
       console.error(error);
       setData([]);
       setTotal(0);
       setTotalPages(0);
     } finally {
-      setLoading(false);
+      if (requestId === resultsRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [activeMarketplaceView, category, debouncedMax, debouncedMin, debouncedQ, duration, page, rating, selectedBuildModes, selectedServiceId, selectedSubCategoryId, selectedToolId, shouldShowResults, sort]);
 
   const fetchProjectResults = useCallback(async () => {
+    const requestId = projectRequestIdRef.current + 1;
+    projectRequestIdRef.current = requestId;
+
     const projectsModeActive = canViewProjectsMarketplace || activeMarketplaceView === "projects";
     if (!projectsModeActive) {
-      setProjectLoading(false);
+      if (requestId === projectRequestIdRef.current) {
+        setProjectLoading(false);
+      }
       return;
     }
 
     if (!canViewProjectsMarketplace) {
-      setProjectData([]);
-      setProjectTotal(0);
-      setProjectTotalPages(0);
-      setProjectAccessError("Only logged-in freelancers can view live client projects.");
-      setProjectLoading(false);
+      if (requestId === projectRequestIdRef.current) {
+        setProjectData([]);
+        setProjectTotal(0);
+        setProjectTotalPages(0);
+        setProjectAccessError("Only logged-in freelancers can view live client projects.");
+        setProjectLoading(false);
+      }
       return;
     }
 
@@ -843,6 +889,7 @@ const Marketplace = () => {
       });
 
       if (response.status === 403) {
+        if (requestId !== projectRequestIdRef.current) return;
         setProjectData([]);
         setProjectTotal(0);
         setProjectTotalPages(0);
@@ -855,12 +902,14 @@ const Marketplace = () => {
       }
 
       const payload = await response.json();
+      if (requestId !== projectRequestIdRef.current) return;
       const nextData = Array.isArray(payload?.data) ? payload.data : [];
 
       setProjectData(nextData);
       setProjectTotal(Number(payload?.total || 0));
       setProjectTotalPages(Number(payload?.totalPages || 0));
     } catch (error) {
+      if (requestId !== projectRequestIdRef.current) return;
       if (error?.code === 401) {
         setProjectAccessError("Log in as freelancer to view live client projects.");
       } else {
@@ -871,7 +920,9 @@ const Marketplace = () => {
       setProjectTotal(0);
       setProjectTotalPages(0);
     } finally {
-      setProjectLoading(false);
+      if (requestId === projectRequestIdRef.current) {
+        setProjectLoading(false);
+      }
     }
   }, [activeMarketplaceView, authFetch, canViewProjectsMarketplace, category, debouncedMax, debouncedMin, debouncedQ, page, selectedServiceId, selectedSubCategoryId, selectedToolId]);
 
@@ -922,13 +973,15 @@ const Marketplace = () => {
     }));
   };
 
-  const visibleBrowseServices = serviceCategories.filter((service) => {
-    if (!debouncedQ || category !== "all") return true;
-    const blob = [service.label, service.description]
-      .join(" ")
-      .toLowerCase();
-    return blob.includes(debouncedQ.toLowerCase());
-  });
+  const visibleBrowseServices = useMemo(
+    () =>
+      serviceCategories.filter((service) => {
+        if (!debouncedQ || category !== "all") return true;
+        const blob = [service.label, service.description].join(" ").toLowerCase();
+        return blob.includes(debouncedQ.toLowerCase());
+      }),
+    [category, debouncedQ, serviceCategories]
+  );
   const isProjectsView = canViewProjectsMarketplace || activeMarketplaceView === "projects";
   const shouldRenderFreelancerResults =
     !canViewProjectsMarketplace &&
@@ -1086,19 +1139,22 @@ const Marketplace = () => {
       {/* Full Screen Hero Section */}
       <section className="relative flex min-h-[100vh] w-full flex-col items-center justify-center overflow-hidden bg-background">
         {/* Sparkles Background */}
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-60">
-          <SparklesBackground
-            className="h-full w-full"
-            density={600}
-            speed={0.8}
-            minSpeed={0.2}
-            size={1.2}
-            minSize={0.4}
-            opacity={0.8}
-            minOpacity={0.1}
-            color="#ffffff"
-          />
-        </div>
+        {sparklesEnabled ? (
+          <div className="absolute inset-0 z-0 pointer-events-none opacity-45">
+            <SparklesBackground
+              className="h-full w-full"
+              density={sparklesDensity}
+              speed={sparklesSpeed}
+              minSpeed={0.12}
+              size={0.9}
+              minSize={0.35}
+              opacity={0.45}
+              minOpacity={0.08}
+              color="#ffffff"
+              options={{ fpsLimit: 60 }}
+            />
+          </div>
+        ) : null}
 
         {/* Glow Behind Planet */}
         <div className="pointer-events-none absolute bottom-[15%] left-1/2 h-[600px] w-[100%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(250,204,21,0.45)_0%,rgba(250,204,21,0.15)_45%,transparent_70%)] blur-[60px]" />
@@ -1249,7 +1305,7 @@ const Marketplace = () => {
                       <Link to={`/marketplace/service/${item.id}`} className="block h-full">
                         <Card className="group h-full overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_28px_90px_-40px_color-mix(in_srgb,var(--primary)_22%,transparent)]">
                           <div className="relative h-44 overflow-hidden border-b border-white/10 bg-slate-950">
-                            {image ? <img src={image} alt={item.service || "Marketplace service"} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" /> : <div className={cn("absolute inset-0 bg-gradient-to-br", getGradient(item.serviceKey || item.id))} />}
+                            {image ? <img src={image} alt={item.service || "Marketplace service"} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" /> : <div className={cn("absolute inset-0 bg-gradient-to-br", getGradient(item.serviceKey || item.id))} />}
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
                             <div className="absolute inset-x-0 top-0 flex items-start justify-end p-4">
                               <button type="button" onClick={(event) => toggleFavorite(event, item.id)} aria-label={favorites[item.id] ? "Remove from favorites" : "Add to favorites"} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-slate-950/72 text-white shadow-sm backdrop-blur-md transition hover:bg-slate-900/90">
@@ -1260,7 +1316,7 @@ const Marketplace = () => {
                           </div>
                           <CardContent className="flex min-h-[252px] flex-col p-5">
                             <div className="flex min-h-12 items-center gap-3">
-                              {item.freelancer?.avatar ? <img src={item.freelancer.avatar} alt={item.freelancer.fullName || "Freelancer"} className="h-11 w-11 rounded-full border border-white/10 object-cover shadow-sm" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-xs font-semibold text-slate-200 shadow-sm">{getInitials(item.freelancer?.fullName)}</div>}
+                              {item.freelancer?.avatar ? <img src={item.freelancer.avatar} alt={item.freelancer.fullName || "Freelancer"} loading="lazy" decoding="async" className="h-11 w-11 rounded-full border border-white/10 object-cover shadow-sm" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-xs font-semibold text-slate-200 shadow-sm">{getInitials(item.freelancer?.fullName)}</div>}
                               <div className="min-w-0 flex-1">
                                 <div className="flex min-h-12 items-center justify-between gap-3">
                                   <div className="flex min-w-0 items-center gap-1.5">

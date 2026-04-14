@@ -30,6 +30,7 @@ const EMPTY_FORM = {
     active: true,
     aiPrompt: "",
     proposalStructure: "",
+    agencyProposalStructure: "",
     internalProposalStructure: "",
     proposalPrompt: "",
     minBudget: 0,
@@ -59,6 +60,7 @@ const SERVICE_FILTERS = [
     { id: "active", label: "Active" },
     { id: "draft", label: "Draft" },
     { id: "client", label: "Client Custom" },
+    { id: "agency", label: "Agency Custom" },
     { id: "internal", label: "JSON Custom" }
 ];
 const STATUS_OPTIONS = [
@@ -140,6 +142,18 @@ const defaultConfig = (service = {}) => {
         ...CORE_SUFFIX.map((label) => ({ label, type: MULTI_VALUE_FIELDS.has(label) ? "list" : "text" }))
     ]);
 };
+
+const defaultAgencyConfig = () => makeConfig([
+    { label: "Client Name", type: "text" },
+    { label: "Business Name", type: "text" },
+    { label: "Service Type", type: "text" },
+    { label: "Project Overview", type: "text" },
+    { label: "Primary Objectives", type: "list" },
+    { label: "Features/Deliverables Included", type: "list" },
+    { label: "Service Breakdown", type: "list" },
+    { label: "Launch Timeline", type: "text" },
+    { label: "Budget", type: "text" }
+]);
 
 const parseJsonConfig = (value = "") => {
     const source = cleanBlock(value);
@@ -397,19 +411,26 @@ const AdminServices = () => {
     const [currentService, setCurrentService] = useState(null);
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [proposalEditor, setProposalEditor] = useState(() => buildEditorState(defaultConfig({}), "default"));
+    const [agencyEditor, setAgencyEditor] = useState(() => buildEditorState(defaultAgencyConfig(), "default"));
     const [internalEditor, setInternalEditor] = useState(() => buildEditorState(defaultConfig({}), "inherit"));
 
     const cleanProposalConfig = useMemo(() => sanitizeConfig(proposalEditor.config), [proposalEditor.config]);
     const previewText = useMemo(() => configPreview(proposalEditor.config), [proposalEditor.config]);
+    const cleanAgencyConfig = useMemo(() => sanitizeConfig(agencyEditor.config), [agencyEditor.config]);
+    const agencyPreviewText = useMemo(() => configPreview(agencyEditor.config), [agencyEditor.config]);
     const cleanInternalConfig = useMemo(() => sanitizeConfig(internalEditor.config), [internalEditor.config]);
     const internalPreviewText = useMemo(() => configPreview(internalEditor.config), [internalEditor.config]);
     const serviceCards = useMemo(
         () => services.map((service) => ({
             ...service,
             hasCustomProposalStructure: Boolean(cleanBlock(service.proposalStructure)),
+            hasCustomAgencyProposalStructure: Boolean(cleanBlock(service.agencyProposalStructure)),
             hasCustomInternalProposalStructure: Boolean(cleanBlock(service.internalProposalStructure)),
             hasProposalPrompt: Boolean(cleanBlock(service.proposalPrompt)),
             proposalLabels: configLabels(service.proposalStructure, service),
+            agencyProposalLabels: cleanBlock(service.agencyProposalStructure)
+                ? configLabels(service.agencyProposalStructure, service)
+                : [],
             internalProposalLabels: cleanBlock(service.internalProposalStructure)
                 ? configLabels(service.internalProposalStructure, service)
                 : []
@@ -420,6 +441,7 @@ const AdminServices = () => {
         total: serviceCards.length,
         active: serviceCards.filter((service) => service.active).length,
         clientCustom: serviceCards.filter((service) => service.hasCustomProposalStructure).length,
+        agencyCustom: serviceCards.filter((service) => service.hasCustomAgencyProposalStructure).length,
         internalCustom: serviceCards.filter((service) => service.hasCustomInternalProposalStructure).length
     }), [serviceCards]);
     const filteredServiceCards = useMemo(() => {
@@ -434,6 +456,7 @@ const AdminServices = () => {
             if (serviceFilter === "active") return service.active;
             if (serviceFilter === "draft") return !service.active;
             if (serviceFilter === "client") return service.hasCustomProposalStructure;
+            if (serviceFilter === "agency") return service.hasCustomAgencyProposalStructure;
             if (serviceFilter === "internal") return service.hasCustomInternalProposalStructure;
             return true;
         });
@@ -443,8 +466,9 @@ const AdminServices = () => {
         active: overviewStats.active,
         draft: Math.max(serviceCards.length - overviewStats.active, 0),
         client: overviewStats.clientCustom,
+        agency: overviewStats.agencyCustom,
         internal: overviewStats.internalCustom
-    }), [overviewStats.active, overviewStats.clientCustom, overviewStats.internalCustom, serviceCards.length]);
+    }), [overviewStats.active, overviewStats.agencyCustom, overviewStats.clientCustom, overviewStats.internalCustom, serviceCards.length]);
 
     useEffect(() => {
         fetchServices();
@@ -500,6 +524,18 @@ const AdminServices = () => {
         setFormData((current) => ({ ...current, proposalStructure: nextMode === "custom" ? storedConfig(normalized) : "" }));
     };
 
+    const syncAgencyEditor = (nextConfig, nextMode = agencyEditor.mode) => {
+        const normalized = makeConfig(nextConfig?.fields || []);
+        setAgencyEditor((current) => ({
+            ...current,
+            config: normalized,
+            json: stringifyConfig(normalized),
+            jsonError: "",
+            mode: nextMode
+        }));
+        setFormData((current) => ({ ...current, agencyProposalStructure: nextMode === "custom" ? storedConfig(normalized) : "" }));
+    };
+
     const syncInternalEditor = (nextConfig, nextMode = internalEditor.mode) => {
         const normalized = makeConfig(nextConfig?.fields || []);
         setInternalEditor((current) => ({
@@ -521,14 +557,17 @@ const AdminServices = () => {
             active: service.active !== undefined ? service.active : true,
             aiPrompt: service.aiPrompt || "",
             proposalStructure: service.proposalStructure || "",
+            agencyProposalStructure: service.agencyProposalStructure || "",
             internalProposalStructure: service.internalProposalStructure || "",
             proposalPrompt: service.proposalPrompt || "",
             minBudget: service.minBudget || 0,
             currency: service.currency || "INR"
         } : { ...EMPTY_FORM };
         const hasCustomProposal = Boolean(cleanBlock(nextForm.proposalStructure));
+        const hasCustomAgency = Boolean(cleanBlock(nextForm.agencyProposalStructure));
         const hasCustomInternal = Boolean(cleanBlock(nextForm.internalProposalStructure));
         const proposalConfig = hasCustomProposal ? parseStoredConfig(nextForm.proposalStructure, nextForm) : defaultConfig(nextForm);
+        const agencyConfig = hasCustomAgency ? parseStoredConfig(nextForm.agencyProposalStructure, nextForm) : defaultAgencyConfig();
         const inheritedInternalConfig = hasCustomProposal ? proposalConfig : defaultConfig(nextForm);
         const internalConfig = hasCustomInternal
             ? parseStoredConfig(nextForm.internalProposalStructure, nextForm)
@@ -536,6 +575,7 @@ const AdminServices = () => {
         setCurrentService(service);
         setFormData(nextForm);
         setProposalEditor(buildEditorState(proposalConfig, hasCustomProposal ? "custom" : "default"));
+        setAgencyEditor(buildEditorState(agencyConfig, hasCustomAgency ? "custom" : "default"));
         setInternalEditor(buildEditorState(internalConfig, hasCustomInternal ? "custom" : "inherit"));
         setOpen(true);
     };
@@ -545,6 +585,13 @@ const AdminServices = () => {
         setProposalEditor(buildEditorState(defaults, "default"));
         setFormData((current) => ({ ...current, proposalStructure: "" }));
         if (showToast) toast.success("Proposal structure reset to platform defaults");
+    };
+
+    const resetAgencyStructure = (showToast = true) => {
+        const defaults = defaultAgencyConfig();
+        setAgencyEditor(buildEditorState(defaults, "default"));
+        setFormData((current) => ({ ...current, agencyProposalStructure: "" }));
+        if (showToast) toast.success("Agency proposal structure reset to the default combined layout");
     };
 
     const resetInternalStructure = (showToast = true) => {
@@ -585,6 +632,35 @@ const AdminServices = () => {
         toast.success("Proposal JSON applied");
     };
 
+    const changeAgencyField = (id, patch) => syncAgencyEditor({ fields: agencyEditor.config.fields.map((field) => field.id === id ? { ...field, ...patch } : field) }, "custom");
+    const moveAgencyField = (id, direction) => {
+        const index = agencyEditor.config.fields.findIndex((field) => field.id === id);
+        const nextIndex = index + direction;
+        if (index < 0 || nextIndex < 0 || nextIndex >= agencyEditor.config.fields.length) return;
+        const fields = [...agencyEditor.config.fields];
+        [fields[index], fields[nextIndex]] = [fields[nextIndex], fields[index]];
+        syncAgencyEditor({ fields }, "custom");
+    };
+    const removeAgencyField = (id) => syncAgencyEditor({ fields: agencyEditor.config.fields.filter((field) => field.id !== id) }, "custom");
+    const addAgencyField = () => syncAgencyEditor({
+        fields: [...agencyEditor.config.fields, makeField({ label: `Agency Field ${agencyEditor.config.fields.length + 1}`, type: "text" })]
+    }, "custom");
+
+    const applyAgencyJson = () => {
+        const parsed = parseJsonConfig(agencyEditor.json);
+        if (parsed.error) {
+            setAgencyEditor((current) => ({ ...current, jsonError: parsed.error }));
+            return;
+        }
+        if (parsed.empty || !sanitizeConfig(parsed.config).fields.length) {
+            resetAgencyStructure(false);
+            toast.success("Empty JSON cleared the agency template");
+            return;
+        }
+        syncAgencyEditor(parsed.config, "custom");
+        toast.success("Agency JSON applied");
+    };
+
     const changeInternalField = (id, patch) => syncInternalEditor({ fields: internalEditor.config.fields.map((field) => field.id === id ? { ...field, ...patch } : field) }, "custom");
     const moveInternalField = (id, direction) => {
         const index = internalEditor.config.fields.findIndex((field) => field.id === id);
@@ -616,14 +692,19 @@ const AdminServices = () => {
 
     const submit = async (event) => {
         event.preventDefault();
-        if (proposalEditor.jsonError || internalEditor.jsonError) {
+        if (proposalEditor.jsonError || agencyEditor.jsonError || internalEditor.jsonError) {
             toast.error("Fix the invalid JSON before saving");
             return;
         }
         const proposalStructure = proposalEditor.mode === "custom" ? storedConfig(proposalEditor.config) : "";
+        const agencyProposalStructure = agencyEditor.mode === "custom" ? storedConfig(agencyEditor.config) : "";
         const internalProposalStructure = internalEditor.mode === "custom" ? storedConfig(internalEditor.config) : "";
         if (proposalEditor.mode === "custom" && !proposalStructure) {
             toast.error("Add at least one valid proposal field or reset to defaults");
+            return;
+        }
+        if (agencyEditor.mode === "custom" && !agencyProposalStructure) {
+            toast.error("Add at least one valid agency field or reset to the default agency layout");
             return;
         }
         if (internalEditor.mode === "custom" && !internalProposalStructure) {
@@ -639,6 +720,7 @@ const AdminServices = () => {
             aiPrompt: formData.aiPrompt.trim(),
             proposalPrompt: formData.proposalPrompt.trim(),
             proposalStructure,
+            agencyProposalStructure,
             internalProposalStructure,
             minBudget: Number(formData.minBudget) || 0
         };
@@ -678,7 +760,7 @@ const AdminServices = () => {
                                     Shape What Clients See And What Your System Stores
                                 </h1>
                                 <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                                    Manage service cards, AI rules, the client-facing proposal format, and the internal project JSON template from one place without losing the difference between them.
+                                    Manage service cards, AI rules, freelancer proposal output, agency proposal output, and the internal project JSON template from one place without losing the difference between them.
                                 </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
@@ -689,7 +771,7 @@ const AdminServices = () => {
                             </div>
                         </div>
 
-                        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
                             <OverviewMetricCard
                                 label="Total Services"
                                 value={overviewStats.total}
@@ -701,9 +783,14 @@ const AdminServices = () => {
                                 note="Services currently visible to users"
                             />
                             <OverviewMetricCard
-                                label="Client Templates"
+                                label="Freelancer"
                                 value={overviewStats.clientCustom}
                                 note="Services with custom client-facing output"
+                            />
+                            <OverviewMetricCard
+                                label="Agency"
+                                value={overviewStats.agencyCustom}
+                                note="Services with custom multi-service agency output"
                             />
                             <OverviewMetricCard
                                 label="Internal JSON"
@@ -783,7 +870,7 @@ const AdminServices = () => {
                         </div>
                         <h3 className="text-2xl font-semibold tracking-tight">No services found</h3>
                         <p className="mt-3 max-w-xl text-muted-foreground">
-                            Add your first service to control its AI behavior, client proposal structure, and internal project JSON schema.
+                            Add your first service to control its AI behavior, freelancer proposal structure, agency proposal structure, and internal project JSON schema.
                         </p>
                     </div>
                 ) : filteredServiceCards.length === 0 ? (
@@ -831,6 +918,9 @@ const AdminServices = () => {
                                                     </Badge>
                                                     <Badge variant={service.hasCustomProposalStructure ? "default" : "outline"} className="rounded-full">
                                                         {service.hasCustomProposalStructure ? "Client Custom" : "Client Default"}
+                                                    </Badge>
+                                                    <Badge variant={service.hasCustomAgencyProposalStructure ? "default" : "outline"} className="rounded-full">
+                                                        {service.hasCustomAgencyProposalStructure ? "Agency Custom" : "Agency Default"}
                                                     </Badge>
                                                     <Badge variant={service.hasCustomInternalProposalStructure ? "default" : "outline"} className="rounded-full">
                                                         {service.hasCustomInternalProposalStructure ? "JSON Custom" : "JSON Fallback"}
@@ -892,6 +982,36 @@ const AdminServices = () => {
                                                 </div>
                                             ) : (
                                                 <p className="text-sm text-muted-foreground">No client-facing proposal structure has been configured yet.</p>
+                                            )}
+                                        </div>
+
+                                        <div className="rounded-2xl border border-white/10 bg-black/25 p-3.5">
+                                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                                <div>
+                                                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">Agency Proposal</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {service.hasCustomAgencyProposalStructure ? `${service.agencyProposalLabels.length} fields define the combined agency proposal` : "Uses the platform default combined proposal layout"}
+                                                    </p>
+                                                </div>
+                                                <Badge variant={service.hasCustomAgencyProposalStructure ? "default" : "outline"} className="rounded-full">
+                                                    {service.hasCustomAgencyProposalStructure ? "Custom" : "Default"}
+                                                </Badge>
+                                            </div>
+                                            {service.hasCustomAgencyProposalStructure ? (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {service.agencyProposalLabels.slice(0, 5).map((label) => (
+                                                        <Badge key={`${service.id}-agency-${label}`} variant="outline" className="rounded-full">
+                                                            {label}
+                                                        </Badge>
+                                                    ))}
+                                                    {service.agencyProposalLabels.length > 5 ? (
+                                                        <Badge variant="outline" className="rounded-full">+{service.agencyProposalLabels.length - 5} more</Badge>
+                                                    ) : null}
+                                                </div>
+                                            ) : (
+                                                <p className="max-w-xl text-sm leading-7 text-muted-foreground">
+                                                    Agency mode still works without this, but it uses the default combined proposal structure until you add a dedicated agency template here.
+                                                </p>
                                             )}
                                         </div>
 
@@ -1090,6 +1210,45 @@ const AdminServices = () => {
                                         onApplyJson={applyProposalJson}
                                         previewText={previewText}
                                         guidanceFields={cleanProposalConfig.fields.filter((field) => field.guidance)}
+                                    />
+
+                                    <StructureEditorCard
+                                        title="Agency Proposal Structure"
+                                        description="Controls how this service contributes to the combined proposal shown in agency mode."
+                                        mode={agencyEditor.mode}
+                                        customBadgeLabel="Custom Agency JSON"
+                                        fallbackBadgeLabel="Agency Defaults"
+                                        fieldCount={cleanAgencyConfig.fields.length}
+                                        resetLabel="Use Agency Defaults"
+                                        emptyStateLabel="Add a field to start the agency proposal structure."
+                                        statusNote={agencyEditor.mode === "default"
+                                            ? "No dedicated agency template is saved yet. The multi-service agency flow uses the default combined proposal layout until you add one here."
+                                            : null}
+                                        tab={agencyEditor.tab}
+                                        onTabChange={(value) => setAgencyEditor((current) => ({ ...current, tab: value }))}
+                                        fields={agencyEditor.config.fields}
+                                        onChangeField={changeAgencyField}
+                                        onMoveField={moveAgencyField}
+                                        onRemoveField={removeAgencyField}
+                                        onReset={() => resetAgencyStructure()}
+                                        onAddField={addAgencyField}
+                                        json={agencyEditor.json}
+                                        onJsonChange={(event) => {
+                                            const nextValue = event.target.value;
+                                            setAgencyEditor((current) => ({
+                                                ...current,
+                                                json: nextValue,
+                                                jsonError: ""
+                                            }));
+                                        }}
+                                        jsonError={agencyEditor.jsonError}
+                                        onFormatJson={() => setAgencyEditor((current) => ({
+                                            ...current,
+                                            json: stringifyConfig(parseJsonConfig(current.json).config || current.config)
+                                        }))}
+                                        onApplyJson={applyAgencyJson}
+                                        previewText={agencyPreviewText}
+                                        guidanceFields={cleanAgencyConfig.fields.filter((field) => field.guidance)}
                                     />
 
                                     <StructureEditorCard
