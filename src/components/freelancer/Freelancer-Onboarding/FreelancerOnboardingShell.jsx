@@ -33,6 +33,11 @@ import FreelancerWorkPreferenceSlide from "./slides/FreelancerWorkPreferenceSlid
 import FreelancerIndividualProofSlide from "./slides/FreelancerIndividualProofSlide";
 import FreelancerBasicProfileSlide from "./slides/FreelancerBasicProfileSlide";
 import FreelancerServicesSlide from "./slides/FreelancerServicesSlide";
+import FreelancerServiceSetupSlide from "./slides/FreelancerServiceSetupSlide";
+import FreelancerServiceInfoSlide from "./slides/FreelancerServiceInfoSlide";
+import FreelancerServicePricingSlide from "./slides/FreelancerServicePricingSlide";
+import FreelancerServiceVisualsSlide from "./slides/FreelancerServiceVisualsSlide";
+import FreelancerCaseStudySlide from "./slides/FreelancerCaseStudySlide";
 
 const slideRegistry = {
   welcome: FreelancerWelcomeSlide,
@@ -40,6 +45,11 @@ const slideRegistry = {
   individualProof: FreelancerIndividualProofSlide,
   basicProfile: FreelancerBasicProfileSlide,
   services: FreelancerServicesSlide,
+  serviceSetup: FreelancerServiceSetupSlide,
+  serviceInfo: FreelancerServiceInfoSlide,
+  servicePricing: FreelancerServicePricingSlide,
+  serviceVisuals: FreelancerServiceVisualsSlide,
+  caseStudy: FreelancerCaseStudySlide,
 };
 
 const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
@@ -161,6 +171,33 @@ const FreelancerOnboardingShell = () => {
     createInitialBasicProfileForm(),
   );
   const [selectedServices, setSelectedServices] = useState([]);
+  const [dbServices, setDbServices] = useState([]);
+  const [serviceInfoForm, setServiceInfoForm] = useState({
+    title: "",
+    category: "",
+    technologies: [],
+    experience: "",
+    complexity: "",
+  });
+  const [servicePricingForm, setServicePricingForm] = useState({
+    description: "",
+    deliveryTimeline: "",
+    priceRange: "",
+  });
+  const [serviceVisualsForm, setServiceVisualsForm] = useState({
+    keywords: [],
+    mediaFiles: [],
+  });
+  const [caseStudyForm, setCaseStudyForm] = useState({
+    title: "",
+    description: "",
+    projectLink: "",
+    projectFile: null,
+    role: "",
+    timeline: "",
+    budget: "",
+    niche: "",
+  });
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [basicProfileErrors, setBasicProfileErrors] = useState({});
@@ -954,6 +991,24 @@ const FreelancerOnboardingShell = () => {
                 onProfilePhotoRemove={handleProfilePhotoRemove}
                 selectedServices={selectedServices}
                 onToggleService={handleServiceToggle}
+                dbServices={dbServices}
+                onDbServicesLoaded={setDbServices}
+                serviceInfoForm={serviceInfoForm}
+                onServiceInfoFieldChange={(field, value) =>
+                  setServiceInfoForm((prev) => ({ ...prev, [field]: value }))
+                }
+                servicePricingForm={servicePricingForm}
+                onServicePricingFieldChange={(field, value) =>
+                  setServicePricingForm((prev) => ({ ...prev, [field]: value }))
+                }
+                serviceVisualsForm={serviceVisualsForm}
+                onServiceVisualsFieldChange={(field, value) =>
+                  setServiceVisualsForm((prev) => ({ ...prev, [field]: value }))
+                }
+                caseStudyForm={caseStudyForm}
+                onCaseStudyFieldChange={(field, value) =>
+                  setCaseStudyForm((prev) => ({ ...prev, [field]: value }))
+                }
               />
             </motion.div>
           </AnimatePresence>

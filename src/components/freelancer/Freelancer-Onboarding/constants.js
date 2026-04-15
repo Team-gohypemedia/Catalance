@@ -1,54 +1,3 @@
-export const FREELANCER_SERVICE_OPTIONS = [
-  { id: "branding", label: "Branding", icon: "sparkles" },
-  { id: "web_development", label: "Web Development", icon: "globe" },
-  { id: "seo", label: "SEO", icon: "search" },
-  {
-    id: "social_media_marketing",
-    label: "Social Media Management",
-    icon: "share2",
-  },
-  {
-    id: "paid_advertising",
-    label: "Performance Marketing",
-    icon: "trendingUp",
-  },
-  { id: "app_development", label: "App Development", icon: "smartphone" },
-  {
-    id: "software_development",
-    label: "Software Development",
-    icon: "code",
-  },
-  { id: "lead_generation", label: "Lead Generation", icon: "target" },
-  { id: "video_services", label: "Video Services", icon: "video" },
-  { id: "writing_content", label: "Writing & Content", icon: "penTool" },
-  {
-    id: "customer_support",
-    label: "Customer Support Services",
-    icon: "messageCircle",
-  },
-  {
-    id: "influencer_marketing",
-    label: "Influencer Marketing",
-    icon: "star",
-  },
-  { id: "ugc_marketing", label: "UGC Marketing", icon: "clapperboard" },
-  { id: "ai_automation", label: "AI Automation", icon: "bot" },
-  {
-    id: "whatsapp_chatbot",
-    label: "WhatsApp Chatbot",
-    icon: "messageSquare",
-  },
-  {
-    id: "creative_design",
-    label: "Creative & Design",
-    icon: "palette",
-  },
-  { id: "3d_modeling", label: "3D Modeling", icon: "box" },
-  { id: "cgi_videos", label: "CGI Video Services", icon: "film" },
-  { id: "crm_erp", label: "CRM & ERP Solutions", icon: "barChart3" },
-  { id: "voice_agent", label: "Voice Agent / AI Calling", icon: "mic" },
-];
-
 export const FREELANCER_ONBOARDING_SLIDES = [
   {
     id: "welcome",
@@ -79,8 +28,37 @@ export const FREELANCER_ONBOARDING_SLIDES = [
     id: "services",
     title: "Which Services Do You Want To Offer?",
     description: "Select at least 1 service. You can choose as many as you want.",
-    progressValue: 20,
+    progressValue: 18,
     continueLabel: "Continue",
-    services: FREELANCER_SERVICE_OPTIONS,
+  },
+  {
+    id: "serviceSetup",
+    title: "Let's Start Your Setup",
+    progressValue: 22,
+    continueLabel: "Continue",
+  },
+  {
+    id: "serviceInfo",
+    title: "Fill Your Service Info",
+    progressValue: 30,
+    continueLabel: "Continue",
+  },
+  {
+    id: "servicePricing",
+    title: "Set Your Service Price",
+    progressValue: 38,
+    continueLabel: "Continue",
+  },
+  {
+    id: "serviceVisuals",
+    title: "Add Keywords & Media",
+    progressValue: 46,
+    continueLabel: "Continue",
+  },
+  {
+    id: "caseStudy",
+    title: "Tell Us About Your Previous Work",
+    progressValue: 54,
+    continueLabel: "Continue",
   },
 ];
