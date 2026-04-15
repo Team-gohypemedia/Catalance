@@ -53,7 +53,7 @@ const FreelancerServicesSlide = ({
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
       <div className="w-full max-w-5xl space-y-8">
         <div className="space-y-3 text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-[#facc15] sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-primary sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
             {slide.title}
           </h1>
           <p className="text-base text-muted-foreground sm:text-lg">
@@ -61,7 +61,7 @@ const FreelancerServicesSlide = ({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid justify-center gap-3.5 [grid-template-columns:repeat(2,minmax(0,172px))] md:[grid-template-columns:repeat(3,172px)] xl:[grid-template-columns:repeat(5,172px)]">
           {slide.services.map((service) => {
             const Icon = iconRegistry[service.icon];
             const isSelected = selectedServices.includes(service.id);
@@ -72,24 +72,24 @@ const FreelancerServicesSlide = ({
                 type="button"
                 onClick={() => onToggleService(service.id)}
                 className={cn(
-                  "flex aspect-[1.08] w-full flex-col items-center justify-center rounded-[18px] border bg-card px-4 py-5 text-center transition-all duration-200",
+                  "flex aspect-[1.18] w-full flex-col items-center justify-center rounded-[18px] border bg-card px-3 py-2.5 text-center transition-all duration-200",
                   isSelected
-                    ? "border-[#facc15] shadow-[0_0_0_1px_rgba(250,204,21,0.22)]"
+                    ? "border-primary shadow-[0_0_0_1px_rgba(250,204,21,0.22)]"
                     : "border-white/10 hover:border-white/20"
                 )}
                 aria-pressed={isSelected}
               >
                 <Icon
                   className={cn(
-                    "mb-6 h-6 w-6",
-                    isSelected ? "text-[#facc15]" : "text-white/80"
+                    "mb-3 h-5 w-5",
+                    isSelected ? "text-primary" : "text-white/80"
                   )}
                 />
 
                 <span
                   className={cn(
-                    "text-sm font-semibold leading-5",
-                    isSelected ? "text-[#facc15]" : "text-white"
+                    "text-[13px] font-semibold leading-[1.3]",
+                    isSelected ? "text-primary" : "text-white"
                   )}
                 >
                   {service.label}

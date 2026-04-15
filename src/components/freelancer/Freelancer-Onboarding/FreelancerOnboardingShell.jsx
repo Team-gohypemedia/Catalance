@@ -1,11 +1,31 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import Settings from "lucide-react/dist/esm/icons/settings";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { updateProfile } from "@/shared/lib/api-client";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
+import {
+  fetchStatesByCountry,
+  listFreelancers,
+  updateProfile,
+} from "@/shared/lib/api-client";
+import { useAuth } from "@/shared/context/AuthContext";
+import {
+  COUNTRY_OPTIONS,
+  LANGUAGE_OPTIONS,
+} from "@/components/features/freelancer/onboarding/constants";
+import { normalizeUsernameInput } from "@/components/features/freelancer/onboarding/utils";
 
 import { FREELANCER_ONBOARDING_SLIDES } from "./constants";
 import FreelancerWelcomeSlide from "./slides/FreelancerWelcomeSlide";
@@ -22,20 +42,146 @@ const slideRegistry = {
   services: FreelancerServicesSlide,
 };
 
+const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const MIN_USERNAME_LENGTH = 3;
+const BASIC_PROFILE_FIELD_ORDER = [
+  "username",
+  "professionalBio",
+  "country",
+  "state",
+  "languages",
+];
+
+const createInitialBasicProfileForm = () => ({
+  username: "",
+  professionalBio: "",
+  country: "India",
+  state: "",
+  languages: [],
+  profilePhoto: null,
+});
+
+const extractProfilePhotoUrl = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "object") {
+    return String(value.uploadedUrl || value.url || "").trim();
+  }
+  return "";
+};
+
+const extractProfilePhotoFile = (value) =>
+  typeof File !== "undefined" && value?.file instanceof File ? value.file : null;
+
+const buildRemoteProfilePhoto = (url, name = "Profile Photo") => {
+  const normalizedUrl = String(url || "").trim();
+  if (!normalizedUrl) return null;
+  return {
+    name,
+    url: normalizedUrl,
+    uploadedUrl: normalizedUrl,
+    file: null,
+  };
+};
+
+const isBlobUrl = (value = "") => String(value || "").startsWith("blob:");
+
+const revokeObjectUrlIfNeeded = (value) => {
+  if (isBlobUrl(value)) {
+    URL.revokeObjectURL(value);
+  }
+};
+
+const buildLocationLabel = ({ state, country }) =>
+  [String(state || "").trim(), String(country || "").trim()]
+    .filter(Boolean)
+    .join(", ");
+
+const USERNAME_AVAILABILITY_ERROR = "That username is already taken.";
+const USERNAME_CHECK_ERROR = "Unable to verify username right now.";
+
+const getBasicProfileFieldError = (field, form) => {
+  switch (field) {
+    case "username": {
+      const username = normalizeUsernameInput(form.username);
+
+      if (!username) {
+        return "Please enter a username.";
+      }
+      if (username.length < MIN_USERNAME_LENGTH) {
+        return `Username must be at least ${MIN_USERNAME_LENGTH} characters long.`;
+      }
+      if (!/[a-z]/.test(username) || !/\d/.test(username)) {
+        return "Username must include at least one letter and one number.";
+      }
+      return "";
+    }
+    case "professionalBio":
+      return String(form.professionalBio || "").trim()
+        ? ""
+        : "Please enter your professional bio.";
+    case "country":
+      return String(form.country || "").trim() ? "" : "Please select your country.";
+    case "state":
+      return String(form.state || "").trim()
+        ? ""
+        : "Please select or enter your state / province.";
+    case "languages":
+      return Array.isArray(form.languages) && form.languages.length > 0
+        ? ""
+        : "Please select at least one language.";
+    default:
+      return "";
+  }
+};
+
+const buildBasicProfileValidationErrors = (form) =>
+  BASIC_PROFILE_FIELD_ORDER.reduce((errors, field) => {
+    const fieldError = getBasicProfileFieldError(field, form);
+
+    if (fieldError) {
+      errors[field] = fieldError;
+    }
+
+    return errors;
+  }, {});
+
+const getFirstBasicProfileError = (errors) =>
+  BASIC_PROFILE_FIELD_ORDER.map((field) => errors[field]).find(Boolean) || "";
+
 const FreelancerOnboardingShell = () => {
   const navigate = useNavigate();
+  const { authFetch, refreshUser, user } = useAuth();
+  const usernameCheckRequestRef = useRef(0);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [selectedWorkPreference, setSelectedWorkPreference] = useState("");
-  const [basicProfileForm, setBasicProfileForm] = useState({
-    username: "artisan_max",
-    profileDetails: "",
-    country: "India",
-    state: "Maharashtra",
-    language: "",
-  });
+  const [basicProfileForm, setBasicProfileForm] = useState(
+    createInitialBasicProfileForm(),
+  );
   const [selectedServices, setSelectedServices] = useState([]);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState("");
+  const [basicProfileErrors, setBasicProfileErrors] = useState({});
+  const [stateOptions, setStateOptions] = useState([]);
+  const [isStateOptionsLoading, setIsStateOptionsLoading] = useState(false);
+  const [pendingProfilePhotoFile, setPendingProfilePhotoFile] = useState(null);
+  const [isProfileCropOpen, setIsProfileCropOpen] = useState(false);
+  const [hasHydratedFromUser, setHasHydratedFromUser] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState("idle");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isResettingOnboarding, setIsResettingOnboarding] = useState(false);
+  const countryOptions = COUNTRY_OPTIONS;
+  const languageOptions = LANGUAGE_OPTIONS.filter(
+    (option) => option.value !== "Other",
+  );
+  const currentUsername = normalizeUsernameInput(
+    user?.profileDetails?.identity?.username ||
+      user?.profileDetails?.username ||
+      user?.username ||
+      "",
+  );
 
   const totalSlides = FREELANCER_ONBOARDING_SLIDES.length;
   const currentSlide =
@@ -56,6 +202,388 @@ const FreelancerOnboardingShell = () => {
       ? selectedServices.length === 0
       : false;
 
+  useEffect(() => {
+    if (!user || hasHydratedFromUser) {
+      return;
+    }
+
+    const profileDetails =
+      user.profileDetails && typeof user.profileDetails === "object"
+        ? user.profileDetails
+        : {};
+    const identity =
+      profileDetails.identity && typeof profileDetails.identity === "object"
+        ? profileDetails.identity
+        : {};
+    const currentLanguages = Array.isArray(identity.languages)
+      ? identity.languages
+      : [];
+    const existingPhoto =
+      identity.profilePhoto || user.avatar || user.profilePhoto || "";
+    const nextServices = Array.isArray(profileDetails.services)
+      ? profileDetails.services
+      : Array.isArray(user.services)
+        ? user.services
+        : [];
+
+    setBasicProfileForm((currentForm) => ({
+      ...currentForm,
+      username: normalizeUsernameInput(
+        identity.username || user.username || currentForm.username,
+      ),
+      professionalBio: String(
+        profileDetails.professionalBio || user.professionalBio || user.bio || "",
+      ).trim(),
+      country: String(identity.country || currentForm.country || "India").trim(),
+      state: String(identity.city || user.city || "").trim(),
+      languages: currentLanguages.filter(Boolean),
+      profilePhoto:
+        buildRemoteProfilePhoto(existingPhoto) || currentForm.profilePhoto,
+    }));
+    setSelectedWorkPreference(
+      String(profileDetails.role || selectedWorkPreference || "individual").trim(),
+    );
+    setSelectedServices(nextServices);
+    setHasHydratedFromUser(true);
+  }, [hasHydratedFromUser, selectedWorkPreference, user]);
+
+  useEffect(() => {
+    const currentPhotoUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
+    return () => {
+      revokeObjectUrlIfNeeded(currentPhotoUrl);
+    };
+  }, [basicProfileForm.profilePhoto]);
+
+  useEffect(() => {
+    const selectedCountry = String(basicProfileForm.country || "").trim();
+    if (!selectedCountry) {
+      setStateOptions([]);
+      setIsStateOptionsLoading(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsStateOptionsLoading(true);
+
+    fetchStatesByCountry(selectedCountry)
+      .then((response) => {
+        if (isCancelled) return;
+
+        const nextStates = Array.isArray(response?.states)
+          ? response.states.filter(Boolean)
+          : [];
+        setStateOptions(nextStates);
+
+        setBasicProfileForm((currentForm) => {
+          if (!currentForm.state || !nextStates.length) {
+            return currentForm;
+          }
+
+          return nextStates.includes(currentForm.state)
+            ? currentForm
+            : { ...currentForm, state: "" };
+        });
+      })
+      .catch((error) => {
+        if (isCancelled) return;
+        console.error("Failed to fetch states for country:", error);
+        setStateOptions([]);
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsStateOptionsLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [basicProfileForm.country]);
+
+  const syncUsernameErrorState = useCallback((message = "", usernameValue = "") => {
+    setBasicProfileErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors };
+      const localUsernameError = getBasicProfileFieldError("username", {
+        username: usernameValue,
+      });
+
+      if (message) {
+        nextErrors.username = message;
+        return nextErrors;
+      }
+
+      if (localUsernameError) {
+        nextErrors.username = localUsernameError;
+        return nextErrors;
+      }
+
+      delete nextErrors.username;
+      return nextErrors;
+    });
+  }, []);
+
+  const checkUsernameAvailability = useCallback(async (value) => {
+    const normalizedUsername = normalizeUsernameInput(value ?? basicProfileForm.username);
+    const localUsernameError = getBasicProfileFieldError("username", {
+      username: normalizedUsername,
+    });
+
+    if (!normalizedUsername || localUsernameError) {
+      setUsernameStatus("idle");
+      return "idle";
+    }
+
+    if (currentUsername && currentUsername === normalizedUsername) {
+      setUsernameStatus("available");
+      syncUsernameErrorState("", normalizedUsername);
+      return "available";
+    }
+
+    const requestId = usernameCheckRequestRef.current + 1;
+    usernameCheckRequestRef.current = requestId;
+    setUsernameStatus("checking");
+
+    try {
+      const freelancers = await listFreelancers();
+      if (usernameCheckRequestRef.current !== requestId) {
+        return "stale";
+      }
+
+      const isTaken =
+        Array.isArray(freelancers) &&
+        freelancers.some((freelancer) => {
+          const existingUsername = normalizeUsernameInput(
+            freelancer?.profileDetails?.identity?.username ||
+              freelancer?.profileDetails?.username ||
+              freelancer?.username ||
+              "",
+          );
+
+          return existingUsername === normalizedUsername;
+        });
+
+      if (isTaken) {
+        setUsernameStatus("unavailable");
+        syncUsernameErrorState(USERNAME_AVAILABILITY_ERROR, normalizedUsername);
+        return "unavailable";
+      }
+
+      setUsernameStatus("available");
+      syncUsernameErrorState("", normalizedUsername);
+      return "available";
+    } catch (error) {
+      if (usernameCheckRequestRef.current !== requestId) {
+        return "stale";
+      }
+
+      console.error("Failed to check username availability:", error);
+      setUsernameStatus("error");
+      syncUsernameErrorState(USERNAME_CHECK_ERROR, normalizedUsername);
+      return "error";
+    }
+  }, [basicProfileForm.username, currentUsername, syncUsernameErrorState]);
+
+  useEffect(() => {
+    const normalizedUsername = normalizeUsernameInput(basicProfileForm.username);
+    const localUsernameError = getBasicProfileFieldError("username", {
+      username: normalizedUsername,
+    });
+
+    if (!normalizedUsername || localUsernameError) {
+      setUsernameStatus("idle");
+      return undefined;
+    }
+
+    if (currentUsername && currentUsername === normalizedUsername) {
+      setUsernameStatus("available");
+      syncUsernameErrorState("", normalizedUsername);
+      return undefined;
+    }
+
+    const timeoutId = setTimeout(() => {
+      void checkUsernameAvailability(normalizedUsername);
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [basicProfileForm.username, currentUsername, checkUsernameAvailability, syncUsernameErrorState]);
+
+  const syncBasicProfileValidationErrors = (validationErrors) => {
+    setBasicProfileErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors };
+
+      BASIC_PROFILE_FIELD_ORDER.forEach((field) => {
+        delete nextErrors[field];
+      });
+
+      return { ...nextErrors, ...validationErrors };
+    });
+  };
+
+  const syncBasicProfileFieldError = (field, nextForm) => {
+    setBasicProfileErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors };
+      const fieldsToValidate = [field];
+
+      if (field === "country" && currentErrors.state) {
+        fieldsToValidate.push("state");
+      }
+
+      fieldsToValidate.forEach((fieldName) => {
+        const fieldError = getBasicProfileFieldError(fieldName, nextForm);
+
+        if (fieldError) {
+          nextErrors[fieldName] = fieldError;
+        } else {
+          delete nextErrors[fieldName];
+        }
+      });
+
+      return nextErrors;
+    });
+  };
+
+  const uploadProfilePhoto = async (file) => {
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+
+    const response = await authFetch("/upload", {
+      method: "POST",
+      body: uploadData,
+    });
+
+    if (!response.ok) {
+      const payload = await response
+        .json()
+        .catch(() => ({ message: "Failed to upload profile image." }));
+      throw new Error(
+        payload?.error?.message || payload?.message || "Failed to upload profile image.",
+      );
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    const uploadedUrl = String(payload?.data?.url || "").trim();
+
+    if (!uploadedUrl) {
+      throw new Error("Image upload completed without a usable URL.");
+    }
+
+    return uploadedUrl;
+  };
+
+  const buildMergedProfileDetails = (resolvedAvatarUrl = "") => {
+    const currentProfileDetails =
+      user?.profileDetails && typeof user.profileDetails === "object"
+        ? user.profileDetails
+        : {};
+    const currentIdentity =
+      currentProfileDetails.identity &&
+      typeof currentProfileDetails.identity === "object"
+        ? currentProfileDetails.identity
+        : {};
+    const mergedServices =
+      selectedServices.length > 0
+        ? selectedServices
+        : Array.isArray(currentProfileDetails.services)
+          ? currentProfileDetails.services
+          : [];
+
+    return {
+      ...currentProfileDetails,
+      role: selectedWorkPreference || currentProfileDetails.role || "individual",
+      professionalBio: basicProfileForm.professionalBio.trim(),
+      services: mergedServices,
+      identity: {
+        ...currentIdentity,
+        username: normalizeUsernameInput(basicProfileForm.username),
+        country: basicProfileForm.country.trim(),
+        city: basicProfileForm.state.trim(),
+        languages: Array.isArray(basicProfileForm.languages)
+          ? basicProfileForm.languages.filter(Boolean)
+          : [],
+        profilePhoto:
+          resolvedAvatarUrl ||
+          extractProfilePhotoUrl(basicProfileForm.profilePhoto) ||
+          currentIdentity.profilePhoto ||
+          null,
+      },
+    };
+  };
+
+  const persistOnboardingProfile = async ({ markComplete = false } = {}) => {
+    if (!user?.id) {
+      throw new Error("You need to be logged in to save your freelancer profile.");
+    }
+
+    const validationErrors = buildBasicProfileValidationErrors(basicProfileForm);
+    const firstValidationError = getFirstBasicProfileError(validationErrors);
+
+    syncBasicProfileValidationErrors(validationErrors);
+
+    if (firstValidationError) {
+      setProfileError(firstValidationError);
+      throw new Error(firstValidationError);
+    }
+
+    const usernameAvailability = await checkUsernameAvailability(
+      basicProfileForm.username,
+    );
+
+    if (usernameAvailability === "checking" || usernameAvailability === "stale") {
+      throw new Error("Checking username availability. Please try again.");
+    }
+    if (usernameAvailability === "unavailable") {
+      setProfileError(USERNAME_AVAILABILITY_ERROR);
+      throw new Error(USERNAME_AVAILABILITY_ERROR);
+    }
+    if (usernameAvailability === "error") {
+      setProfileError(USERNAME_CHECK_ERROR);
+      throw new Error(USERNAME_CHECK_ERROR);
+    }
+
+    const professionalBio = basicProfileForm.professionalBio.trim();
+    const country = basicProfileForm.country.trim();
+    const state = basicProfileForm.state.trim();
+
+    const localProfilePhotoFile = extractProfilePhotoFile(basicProfileForm.profilePhoto);
+    let resolvedAvatarUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
+
+    if (localProfilePhotoFile) {
+      resolvedAvatarUrl = await uploadProfilePhoto(localProfilePhotoFile);
+    }
+
+    const profileDetails = buildMergedProfileDetails(resolvedAvatarUrl);
+    const updatePayload = {
+      profileDetails,
+      bio: professionalBio,
+      location: buildLocationLabel({ state, country }),
+      services:
+        selectedServices.length > 0
+          ? selectedServices
+          : Array.isArray(profileDetails.services)
+            ? profileDetails.services
+            : [],
+    };
+
+    if (resolvedAvatarUrl) {
+      updatePayload.avatar = resolvedAvatarUrl;
+    }
+
+    if (markComplete) {
+      updatePayload.onboardingComplete = true;
+    }
+
+    await updateProfile(updatePayload);
+
+    if (resolvedAvatarUrl && localProfilePhotoFile) {
+      setBasicProfileForm((currentForm) => ({
+        ...currentForm,
+        profilePhoto: buildRemoteProfilePhoto(resolvedAvatarUrl, localProfilePhotoFile.name),
+      }));
+    }
+  };
+
   const handleBack = () => {
     if (isFirstSlide) {
       return;
@@ -70,7 +598,22 @@ const FreelancerOnboardingShell = () => {
     }
 
     if (isLastSlide) {
-      navigate("/freelancer");
+      setIsProfileSaving(true);
+      setProfileError("");
+
+      persistOnboardingProfile({ markComplete: true })
+        .then(async () => {
+          await refreshUser();
+          toast.success("Freelancer onboarding saved.");
+          navigate("/freelancer");
+        })
+        .catch((error) => {
+          setProfileError(error?.message || "Failed to save freelancer onboarding.");
+          toast.error(error?.message || "Failed to save freelancer onboarding.");
+        })
+        .finally(() => {
+          setIsProfileSaving(false);
+        });
       return;
     }
 
@@ -92,21 +635,117 @@ const FreelancerOnboardingShell = () => {
   const handleBasicProfileFieldChange = (field, value) => {
     const normalizedValue =
       field === "username"
-        ? value.toLowerCase().replace(/[^a-z0-9_]/g, "")
+        ? normalizeUsernameInput(value)
         : value;
+    const nextForm = {
+      ...basicProfileForm,
+      ...(field === "country"
+        ? { country: normalizedValue, state: "" }
+        : { [field]: normalizedValue }),
+    };
 
-    setBasicProfileForm((currentForm) => ({
-      ...currentForm,
-      [field]: normalizedValue,
-    }));
+    setProfileError("");
+    setBasicProfileForm(nextForm);
+    syncBasicProfileFieldError(field, nextForm);
+
+    if (field === "username") {
+      usernameCheckRequestRef.current += 1;
+      setUsernameStatus("idle");
+    }
+  };
+
+  const handleUsernameBlur = () => {
+    void checkUsernameAvailability(basicProfileForm.username);
   };
 
   const handleServiceToggle = (serviceId) => {
+    setProfileError("");
     setSelectedServices((current) =>
       current.includes(serviceId)
         ? current.filter((id) => id !== serviceId)
         : [...current, serviceId]
     );
+  };
+
+  const handleProfilePhotoSelect = (file) => {
+    if (!(typeof File !== "undefined" && file instanceof File)) {
+      return;
+    }
+
+    if (!String(file.type || "").startsWith("image/")) {
+      const message = "Please select a valid image file.";
+      setProfileError(message);
+      setBasicProfileErrors((currentErrors) => ({
+        ...currentErrors,
+        profilePhoto: message,
+      }));
+      toast.error(message);
+      return;
+    }
+
+    if (file.size > AVATAR_UPLOAD_MAX_BYTES) {
+      const message = "Profile image must be 5MB or smaller.";
+      setProfileError(message);
+      setBasicProfileErrors((currentErrors) => ({
+        ...currentErrors,
+        profilePhoto: message,
+      }));
+      toast.error(message);
+      return;
+    }
+
+    setBasicProfileErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors };
+      delete nextErrors.profilePhoto;
+      return nextErrors;
+    });
+    setPendingProfilePhotoFile(file);
+    setIsProfileCropOpen(true);
+  };
+
+  const handleProfilePhotoCropped = async (croppedFile) => {
+    const nextPreviewUrl = URL.createObjectURL(croppedFile);
+    const previousPreviewUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
+
+    revokeObjectUrlIfNeeded(previousPreviewUrl);
+    setBasicProfileForm((currentForm) => ({
+      ...currentForm,
+      profilePhoto: {
+        name: croppedFile.name,
+        url: nextPreviewUrl,
+        file: croppedFile,
+      },
+    }));
+    setProfileError("");
+    setBasicProfileErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors };
+      delete nextErrors.profilePhoto;
+      return nextErrors;
+    });
+    setPendingProfilePhotoFile(null);
+    setIsProfileCropOpen(false);
+    return true;
+  };
+
+  const handleProfilePhotoRemove = () => {
+    const previousPreviewUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
+    revokeObjectUrlIfNeeded(previousPreviewUrl);
+
+    setBasicProfileForm((currentForm) => ({
+      ...currentForm,
+      profilePhoto: null,
+    }));
+    setProfileError("");
+    setBasicProfileErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors };
+      delete nextErrors.profilePhoto;
+      return nextErrors;
+    });
+  };
+
+  const closeProfileCropDialog = () => {
+    setPendingProfilePhotoFile(null);
+    setIsProfileCropOpen(false);
   };
 
   const handleBasicProfileSkip = () => {
@@ -115,33 +754,71 @@ const FreelancerOnboardingShell = () => {
 
   const handleBasicProfileNext = async () => {
     setProfileError("");
-    if (currentSlide.id === "basicProfile") {
-      setIsProfileSaving(true);
-      try {
-        await updateProfile({
-          freelancerProfile: {
-            username: basicProfileForm.username,
-            profileDetails: basicProfileForm.profileDetails,
-            country: basicProfileForm.country,
-            state: basicProfileForm.state,
-            language: basicProfileForm.language,
-            profileRole: selectedWorkPreference || "individual",
-          },
-        });
-        setIsProfileSaving(false);
-        setCurrentSlideIndex((currentIndex) =>
-          Math.min(currentIndex + 1, totalSlides - 1)
-        );
-      } catch (err) {
-        setIsProfileSaving(false);
-        setProfileError(err.message || "Failed to save profile");
-      }
-    } else {
+    if (currentSlide.id !== "basicProfile") {
       setCurrentSlideIndex((currentIndex) =>
-        Math.min(currentIndex + 1, totalSlides - 1)
+        Math.min(currentIndex + 1, totalSlides - 1),
       );
+      return;
+    }
+
+    setIsProfileSaving(true);
+    try {
+      await persistOnboardingProfile();
+      await refreshUser();
+      toast.success("Basic profile saved.");
+      setCurrentSlideIndex((currentIndex) =>
+        Math.min(currentIndex + 1, totalSlides - 1),
+      );
+    } catch (error) {
+      setProfileError(error?.message || "Failed to save profile.");
+      toast.error(error?.message || "Failed to save profile.");
+    } finally {
+      setIsProfileSaving(false);
     }
   };
+
+  const resetOnboardingLocally = useCallback(() => {
+    const currentPhotoUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
+
+    revokeObjectUrlIfNeeded(currentPhotoUrl);
+    usernameCheckRequestRef.current += 1;
+
+    setCurrentSlideIndex(0);
+    setSelectedWorkPreference("");
+    setBasicProfileForm(createInitialBasicProfileForm());
+    setSelectedServices([]);
+    setProfileError("");
+    setBasicProfileErrors({});
+    setStateOptions([]);
+    setIsStateOptionsLoading(false);
+    setPendingProfilePhotoFile(null);
+    setIsProfileCropOpen(false);
+    setUsernameStatus("idle");
+  }, [basicProfileForm.profilePhoto]);
+
+  const handleResetOnboarding = useCallback(async () => {
+    if (isResettingOnboarding) {
+      return;
+    }
+
+    setIsResettingOnboarding(true);
+    setIsSettingsOpen(false);
+    resetOnboardingLocally();
+
+    try {
+      if (user?.id) {
+        await updateProfile({ onboardingComplete: false });
+        await refreshUser();
+      }
+
+      toast.success("Onboarding has been reset.");
+    } catch (error) {
+      console.error("Failed to sync onboarding reset:", error);
+      toast.error("Onboarding reset locally, but account sync failed.");
+    } finally {
+      setIsResettingOnboarding(false);
+    }
+  }, [isResettingOnboarding, refreshUser, resetOnboardingLocally, user?.id]);
 
   const footerPrimaryAction = isProfileActionFooter
     ? handleBasicProfileNext
@@ -150,8 +827,8 @@ const FreelancerOnboardingShell = () => {
     ? "Continue"
     : currentSlide.continueLabel || "Continue";
   const footerPrimaryDisabled = isProfileActionFooter
-    ? false
-    : isContinueDisabled;
+    ? isProfileSaving
+    : isContinueDisabled || isProfileSaving;
 
   return (
     <main className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-background text-[#f1f5f9] h-[100dvh]">
@@ -185,15 +862,59 @@ const FreelancerOnboardingShell = () => {
             </Button>
           )}
 
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
-            aria-label={`Onboarding settings for slide ${currentSlideIndex + 1} of ${totalSlides}`}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
+          <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+            <SheetTrigger asChild>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                aria-label={`Onboarding settings for slide ${currentSlideIndex + 1} of ${totalSlides}`}
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              className="w-[92vw] border-white/10 bg-card p-0 text-foreground sm:max-w-sm"
+            >
+              <SheetHeader className="border-b border-white/10 px-5 py-4 text-left">
+                <SheetTitle className="text-white">Onboarding settings</SheetTitle>
+                <SheetDescription className="text-white/60">
+                  Manage the current onboarding session.
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="space-y-4 px-5 py-5">
+                <div className="rounded-2xl border border-white/10 bg-background/40 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-white/45">
+                    Current progress
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-white">
+                    Slide {currentSlideIndex + 1} of {totalSlides}
+                  </p>
+                  <p className="mt-1 text-sm text-white/60">
+                    {currentSlide.title || "Freelancer onboarding"}
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleResetOnboarding}
+                  disabled={isResettingOnboarding || isProfileSaving}
+                  className="h-auto w-full justify-start rounded-2xl px-4 py-3 text-left"
+                >
+                  Reset onboarding
+                </Button>
+
+                <p className="text-sm leading-6 text-white/55">
+                  This restarts the onboarding flow from the first slide and clears
+                  the current in-progress form values in this session.
+                </p>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </header>
 
@@ -219,12 +940,20 @@ const FreelancerOnboardingShell = () => {
                 onSelectWorkPreference={handleWorkPreferenceSelect}
                 basicProfileForm={basicProfileForm}
                 onBasicProfileFieldChange={handleBasicProfileFieldChange}
+                onUsernameBlur={handleUsernameBlur}
+                basicProfileErrors={basicProfileErrors}
+                usernameStatus={usernameStatus}
+                countryOptions={countryOptions}
+                stateOptions={stateOptions}
+                languageOptions={languageOptions}
+                isStateOptionsLoading={isStateOptionsLoading}
+                profilePhotoPreviewUrl={extractProfilePhotoUrl(
+                  basicProfileForm.profilePhoto,
+                )}
+                onProfilePhotoSelect={handleProfilePhotoSelect}
+                onProfilePhotoRemove={handleProfilePhotoRemove}
                 selectedServices={selectedServices}
                 onToggleService={handleServiceToggle}
-                onBasicProfileBack={handleBack}
-                onBasicProfileSkip={handleBasicProfileSkip}
-                onBasicProfileNext={handleBasicProfileNext}
-                isProfileSaving={isProfileSaving}
               />
             </motion.div>
           </AnimatePresence>
@@ -259,6 +988,13 @@ const FreelancerOnboardingShell = () => {
           )}
         </div>
       </footer>
+      <ProfileImageCropDialog
+        open={isProfileCropOpen}
+        file={pendingProfilePhotoFile}
+        maxUploadBytes={AVATAR_UPLOAD_MAX_BYTES}
+        onApply={handleProfilePhotoCropped}
+        onCancel={closeProfileCropDialog}
+      />
     </main>
   );
 };

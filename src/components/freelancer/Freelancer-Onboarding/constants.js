@@ -9,7 +9,7 @@ export const FREELANCER_SERVICE_OPTIONS = [
   },
   {
     id: "paid_advertising",
-    label: "Performance Marketing / Paid Ads",
+    label: "Performance Marketing",
     icon: "trendingUp",
   },
   { id: "app_development", label: "App Development", icon: "smartphone" },
