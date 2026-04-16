@@ -144,6 +144,15 @@ model FreelancerProfile {
   skillLevels                 Json     @default("{}")
   education                   Json     @default("[]")
   serviceDetails              Json     @default("{}")
+  serviceTitle               String?
+  serviceCategory            String?   @map("ServiceCategory")
+  serviceExperience          String?
+  projectComplexity          String?
+  serviceDescription         String?   @db.Text
+  deliveryTimeline           String?
+  startingPrice              String?
+  serviceKeywords            String[]  @default([])
+  serviceMedia               Json?     @default("[]")
   globalIndustryFocus         String[] @default([])
   availabilityHoursPerWeek    String?
   availabilityStartTimeline   String?

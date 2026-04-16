@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
 import {
+  API_BASE_URL,
   fetchStatesByCountry,
   listFreelancers,
   updateProfile,
@@ -96,6 +97,67 @@ const buildRemoteProfilePhoto = (url, name = "Profile Photo") => {
   };
 };
 
+const extractServiceMediaUrl = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "object") {
+    return String(value.uploadedUrl || value.url || "").trim();
+  }
+  return "";
+};
+
+const extractServiceMediaFile = (value) => {
+  if (typeof File === "undefined") return null;
+  if (value instanceof File) return value;
+  return value?.file instanceof File ? value.file : null;
+};
+
+const buildRemoteServiceMedia = (value, index = 0) => {
+  const uploadedUrl = extractServiceMediaUrl(value);
+  if (!uploadedUrl) return null;
+
+  const mimeType = String(
+    value?.mimeType || value?.type || value?.contentType || "",
+  )
+    .trim()
+    .toLowerCase();
+  const kind =
+    String(value?.kind || "").trim().toLowerCase() ||
+    (mimeType.startsWith("video/") ? "video" : "image");
+
+  return {
+    name:
+      String(value?.name || "").trim() ||
+      `${kind === "video" ? "Video" : "Image"} ${index + 1}`,
+    url: uploadedUrl,
+    uploadedUrl,
+    key: String(value?.key || "").trim(),
+    kind,
+    mimeType: mimeType || (kind === "video" ? "video/mp4" : "image/jpeg"),
+    size:
+      Number.isFinite(Number(value?.size)) && Number(value.size) > 0
+        ? Number(value.size)
+        : null,
+    file: null,
+  };
+};
+
+const buildPersistedServiceMedia = (value, index = 0) => {
+  const remoteMedia = buildRemoteServiceMedia(value, index);
+  if (!remoteMedia) return null;
+
+  return {
+    url: remoteMedia.uploadedUrl,
+    key: remoteMedia.key || null,
+    name: remoteMedia.name || null,
+    kind: remoteMedia.kind,
+    mimeType: remoteMedia.mimeType || null,
+    size: remoteMedia.size ?? null,
+  };
+};
+
 const isBlobUrl = (value = "") => String(value || "").startsWith("blob:");
 
 const revokeObjectUrlIfNeeded = (value) => {
@@ -111,6 +173,78 @@ const buildLocationLabel = ({ state, country }) =>
 
 const USERNAME_AVAILABILITY_ERROR = "That username is already taken.";
 const USERNAME_CHECK_ERROR = "Unable to verify username right now.";
+const SERVICE_EXPERIENCE_STORAGE_LABELS = {
+  entry: "Entry 0–1 years",
+  intermediate: "Intermediate 1–3 years",
+  experienced: "Experienced 3–5 years",
+  expert: "Expert 5–10 years",
+  veteran: "Veteran 10+ years",
+};
+
+const PROJECT_COMPLEXITY_STORAGE_LABELS = {
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  expert: "Expert",
+};
+
+const DELIVERY_TIMELINE_STORAGE_LABELS = {
+  "1_week": "1 Week",
+  "2_weeks": "2 Weeks",
+  "3_weeks": "3 Weeks",
+  "4_weeks": "4 Weeks",
+  "6_weeks": "6 Weeks",
+  "8_weeks": "8 Weeks",
+  "12_weeks": "12 Weeks",
+  ongoing: "Ongoing / Retainer",
+};
+
+const STARTING_PRICE_STORAGE_LABELS = {
+  under_5k: "Under ₹5,000",
+  "5k_10k": "₹5,000 – ₹10,000",
+  "5k_15k": "₹5,000 – ₹15,000",
+  "15k_20k": "₹15,000 – ₹20,000",
+  "15k_30k": "₹15,000 – ₹30,000",
+  "30k_40k": "₹30,000 – ₹40,000",
+  "30k_50k": "₹30,000 – ₹50,000",
+  "50k_75k": "₹50,000 – ₹75,000",
+  "50k_1l": "₹50,000 – ₹1,00,000",
+  "1l_2l": "₹1,00,000 – ₹2,00,000",
+  "1l_3l": "₹1,00,000 – ₹3,00,000",
+  "3l_plus": "₹3,00,000+",
+};
+
+const findStorageKeyByLabel = (map, label) =>
+  Object.entries(map).find(([, value]) => value === String(label || "").trim())?.[0] || "";
+let cachedMarketplaceServices = [];
+let marketplaceServicesRequest = null;
+
+const fetchMarketplaceServices = async () => {
+  if (cachedMarketplaceServices.length) {
+    return cachedMarketplaceServices;
+  }
+
+  if (!marketplaceServicesRequest) {
+    marketplaceServicesRequest = fetch(`${API_BASE_URL}/marketplace/filters/services`)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch services");
+        }
+
+        const payload = await response.json();
+        const services = Array.isArray(payload?.data)
+          ? payload.data.slice().sort((a, b) => a.id - b.id)
+          : [];
+
+        cachedMarketplaceServices = services;
+        return services;
+      })
+      .finally(() => {
+        marketplaceServicesRequest = null;
+      });
+  }
+
+  return marketplaceServicesRequest;
+};
 
 const getBasicProfileFieldError = (field, form) => {
   switch (field) {
@@ -171,10 +305,11 @@ const FreelancerOnboardingShell = () => {
     createInitialBasicProfileForm(),
   );
   const [selectedServices, setSelectedServices] = useState([]);
-  const [dbServices, setDbServices] = useState([]);
+  const [dbServices, setDbServices] = useState(cachedMarketplaceServices);
   const [serviceInfoForm, setServiceInfoForm] = useState({
     title: "",
     category: "",
+    categoryLabel: "",
     technologies: [],
     experience: "",
     complexity: "",
@@ -281,8 +416,77 @@ const FreelancerOnboardingShell = () => {
       String(profileDetails.role || selectedWorkPreference || "individual").trim(),
     );
     setSelectedServices(nextServices);
+    setServiceInfoForm((currentForm) => ({
+      ...currentForm,
+      title: String(user?.serviceTitle || currentForm.title || "").trim(),
+      categoryLabel: String(
+        user?.serviceCategory || currentForm.categoryLabel || "",
+      ).trim(),
+      technologies: Array.isArray(user?.skills) ? user.skills : currentForm.technologies,
+      experience:
+        findStorageKeyByLabel(
+          SERVICE_EXPERIENCE_STORAGE_LABELS,
+          user?.serviceExperience,
+        ) || currentForm.experience,
+      complexity:
+        findStorageKeyByLabel(
+          PROJECT_COMPLEXITY_STORAGE_LABELS,
+          user?.projectComplexity,
+        ) || currentForm.complexity,
+    }));
+    setServicePricingForm((currentForm) => ({
+      ...currentForm,
+      description: String(
+        user?.serviceDescription || currentForm.description || "",
+      ).trim(),
+      deliveryTimeline:
+        findStorageKeyByLabel(
+          DELIVERY_TIMELINE_STORAGE_LABELS,
+          user?.deliveryTimeline,
+        ) || currentForm.deliveryTimeline,
+      priceRange:
+        findStorageKeyByLabel(
+          STARTING_PRICE_STORAGE_LABELS,
+          user?.startingPrice,
+        ) || currentForm.priceRange,
+    }));
+    setServiceVisualsForm((currentForm) => ({
+      ...currentForm,
+      keywords: Array.isArray(user?.serviceKeywords)
+        ? user.serviceKeywords.filter(Boolean)
+        : currentForm.keywords,
+      mediaFiles: Array.isArray(user?.serviceMedia)
+        ? user.serviceMedia
+            .map((entry, index) => buildRemoteServiceMedia(entry, index))
+            .filter(Boolean)
+        : currentForm.mediaFiles,
+    }));
     setHasHydratedFromUser(true);
   }, [hasHydratedFromUser, selectedWorkPreference, user]);
+
+  useEffect(() => {
+    if (dbServices.length) {
+      return undefined;
+    }
+
+    let isCancelled = false;
+
+    fetchMarketplaceServices()
+      .then((services) => {
+        if (!isCancelled) {
+          setDbServices(services);
+        }
+      })
+      .catch((error) => {
+        if (!isCancelled) {
+          console.error("Failed to preload marketplace services:", error);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [dbServices.length]);
 
   useEffect(() => {
     const currentPhotoUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
@@ -509,6 +713,73 @@ const FreelancerOnboardingShell = () => {
     return uploadedUrl;
   };
 
+  const uploadServiceMediaFile = async (file) => {
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+
+    const response = await authFetch("/upload/service-media", {
+      method: "POST",
+      body: uploadData,
+    });
+
+    if (!response.ok) {
+      const payload = await response
+        .json()
+        .catch(() => ({ message: "Failed to upload service media." }));
+      throw new Error(
+        payload?.error?.message || payload?.message || "Failed to upload service media.",
+      );
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    const uploadedUrl = String(payload?.data?.url || "").trim();
+
+    if (!uploadedUrl) {
+      throw new Error("Service media upload completed without a usable URL.");
+    }
+
+    const mimeType = String(
+      payload?.data?.mimeType || file?.type || "",
+    )
+      .trim()
+      .toLowerCase();
+
+    return {
+      url: uploadedUrl,
+      key: String(payload?.data?.key || "").trim() || null,
+      name: String(payload?.data?.name || file?.name || "").trim() || null,
+      kind:
+        String(payload?.data?.kind || "").trim().toLowerCase() ||
+        (mimeType.startsWith("video/") ? "video" : "image"),
+      mimeType: mimeType || null,
+      size:
+        Number.isFinite(Number(payload?.data?.size)) && Number(payload.data.size) > 0
+          ? Number(payload.data.size)
+          : Number.isFinite(Number(file?.size)) && Number(file.size) > 0
+            ? Number(file.size)
+            : null,
+    };
+  };
+
+  const persistServiceMediaEntries = async (entries = []) => {
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return [];
+    }
+
+    const resolvedEntries = await Promise.all(
+      entries.slice(0, 3).map(async (entry, index) => {
+        const localFile = extractServiceMediaFile(entry);
+        if (localFile) {
+          return uploadServiceMediaFile(localFile);
+        }
+
+        return buildPersistedServiceMedia(entry, index);
+      }),
+    );
+
+    return resolvedEntries.filter(Boolean);
+  };
+
   const buildMergedProfileDetails = (resolvedAvatarUrl = "") => {
     const currentProfileDetails =
       user?.profileDetails && typeof user.profileDetails === "object"
@@ -548,11 +819,7 @@ const FreelancerOnboardingShell = () => {
     };
   };
 
-  const persistOnboardingProfile = async ({ markComplete = false } = {}) => {
-    if (!user?.id) {
-      throw new Error("You need to be logged in to save your freelancer profile.");
-    }
-
+  const validateBasicProfileBeforeContinue = async () => {
     const validationErrors = buildBasicProfileValidationErrors(basicProfileForm);
     const firstValidationError = getFirstBasicProfileError(validationErrors);
 
@@ -578,17 +845,45 @@ const FreelancerOnboardingShell = () => {
       setProfileError(USERNAME_CHECK_ERROR);
       throw new Error(USERNAME_CHECK_ERROR);
     }
+  };
+
+  const persistOnboardingProfile = async ({ markComplete = false } = {}) => {
+    if (!user?.id) {
+      throw new Error("You need to be logged in to save your freelancer profile.");
+    }
+
+    await validateBasicProfileBeforeContinue();
 
     const professionalBio = basicProfileForm.professionalBio.trim();
     const country = basicProfileForm.country.trim();
     const state = basicProfileForm.state.trim();
+    const serviceTitle = String(serviceInfoForm.title || "").trim();
+    const serviceCategory = String(
+      serviceInfoForm.categoryLabel || serviceInfoForm.category || "",
+    ).trim();
+    const serviceExperience =
+      SERVICE_EXPERIENCE_STORAGE_LABELS[serviceInfoForm.experience] || null;
+    const projectComplexity =
+      PROJECT_COMPLEXITY_STORAGE_LABELS[serviceInfoForm.complexity] || null;
+    const serviceDescription = String(
+      servicePricingForm.description || "",
+    ).trim();
+    const deliveryTimeline =
+      DELIVERY_TIMELINE_STORAGE_LABELS[servicePricingForm.deliveryTimeline] || null;
+    const startingPrice =
+      STARTING_PRICE_STORAGE_LABELS[servicePricingForm.priceRange] || null;
+    const serviceKeywords = Array.isArray(serviceVisualsForm.keywords)
+      ? serviceVisualsForm.keywords.filter(Boolean).slice(0, 5)
+      : [];
 
     const localProfilePhotoFile = extractProfilePhotoFile(basicProfileForm.profilePhoto);
-    let resolvedAvatarUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
-
-    if (localProfilePhotoFile) {
-      resolvedAvatarUrl = await uploadProfilePhoto(localProfilePhotoFile);
-    }
+    const initialAvatarUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
+    const [resolvedAvatarUrl, serviceMedia] = await Promise.all([
+      localProfilePhotoFile
+        ? uploadProfilePhoto(localProfilePhotoFile)
+        : Promise.resolve(initialAvatarUrl),
+      persistServiceMediaEntries(serviceVisualsForm.mediaFiles),
+    ]);
 
     const profileDetails = buildMergedProfileDetails(resolvedAvatarUrl);
     const updatePayload = {
@@ -601,6 +896,18 @@ const FreelancerOnboardingShell = () => {
           : Array.isArray(profileDetails.services)
             ? profileDetails.services
             : [],
+      skills: Array.isArray(serviceInfoForm.technologies)
+        ? serviceInfoForm.technologies.filter(Boolean)
+        : [],
+      serviceTitle: serviceTitle || null,
+      serviceCategory: serviceCategory || null,
+      serviceExperience,
+      projectComplexity,
+      serviceDescription: serviceDescription || null,
+      deliveryTimeline,
+      startingPrice,
+      serviceKeywords,
+      serviceMedia,
     };
 
     if (resolvedAvatarUrl) {
@@ -619,7 +926,26 @@ const FreelancerOnboardingShell = () => {
         profilePhoto: buildRemoteProfilePhoto(resolvedAvatarUrl, localProfilePhotoFile.name),
       }));
     }
+
+    if (serviceMedia.length > 0 || serviceVisualsForm.mediaFiles.length > 0) {
+      setServiceVisualsForm((currentForm) => ({
+        ...currentForm,
+        mediaFiles: serviceMedia
+          .map((entry, index) => buildRemoteServiceMedia(entry, index))
+          .filter(Boolean),
+      }));
+    }
   };
+
+  const ensureMarketplaceServicesLoaded = useCallback(async () => {
+    if (dbServices.length) {
+      return dbServices;
+    }
+
+    const services = await fetchMarketplaceServices();
+    setDbServices(services);
+    return services;
+  }, [dbServices]);
 
   const handleBack = () => {
     if (isFirstSlide) {
@@ -800,15 +1126,14 @@ const FreelancerOnboardingShell = () => {
 
     setIsProfileSaving(true);
     try {
-      await persistOnboardingProfile();
-      await refreshUser();
-      toast.success("Basic profile saved.");
+      await validateBasicProfileBeforeContinue();
+      await ensureMarketplaceServicesLoaded();
       setCurrentSlideIndex((currentIndex) =>
         Math.min(currentIndex + 1, totalSlides - 1),
       );
     } catch (error) {
-      setProfileError(error?.message || "Failed to save profile.");
-      toast.error(error?.message || "Failed to save profile.");
+      setProfileError(error?.message || "Please complete your basic profile.");
+      toast.error(error?.message || "Please complete your basic profile.");
     } finally {
       setIsProfileSaving(false);
     }
@@ -992,7 +1317,6 @@ const FreelancerOnboardingShell = () => {
                 selectedServices={selectedServices}
                 onToggleService={handleServiceToggle}
                 dbServices={dbServices}
-                onDbServicesLoaded={setDbServices}
                 serviceInfoForm={serviceInfoForm}
                 onServiceInfoFieldChange={(field, value) =>
                   setServiceInfoForm((prev) => ({ ...prev, [field]: value }))

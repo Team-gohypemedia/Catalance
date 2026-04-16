@@ -4,25 +4,29 @@ import {
 } from "./shared/ServiceInfoComponents";
 
 const DELIVERY_TIMELINE_OPTIONS = [
-  { value: "1_day", label: "1 Day" },
-  { value: "2_3_days", label: "2–3 Days" },
   { value: "1_week", label: "1 Week" },
   { value: "2_weeks", label: "2 Weeks" },
-  { value: "1_month", label: "1 Month" },
-  { value: "2_months", label: "2 Months" },
-  { value: "3_months", label: "3+ Months" },
+  { value: "3_weeks", label: "3 Weeks" },
+  { value: "4_weeks", label: "4 Weeks" },
+  { value: "6_weeks", label: "6 Weeks" },
+  { value: "8_weeks", label: "8 Weeks" },
+  { value: "12_weeks", label: "12 Weeks" },
   { value: "ongoing", label: "Ongoing / Retainer" },
 ];
 
 const PRICE_RANGE_OPTIONS = [
   { value: "under_5k", label: "Under ₹5,000" },
+  { value: "5k_10k", label: "₹5,000 – ₹10,000" },
   { value: "5k_15k", label: "₹5,000 – ₹15,000" },
+  { value: "15k_20k", label: "₹15,000 – ₹20,000" },
   { value: "15k_30k", label: "₹15,000 – ₹30,000" },
+  { value: "30k_40k", label: "₹30,000 – ₹40,000" },
   { value: "30k_50k", label: "₹30,000 – ₹50,000" },
+  { value: "50k_75k", label: "₹50,000 – ₹75,000" },
   { value: "50k_1l", label: "₹50,000 – ₹1,00,000" },
+  { value: "1l_2l", label: "₹1,00,000 – ₹2,00,000" },
   { value: "1l_3l", label: "₹1,00,000 – ₹3,00,000" },
   { value: "3l_plus", label: "₹3,00,000+" },
-  { value: "custom", label: "Custom / Negotiable" },
 ];
 
 /* ──────────────────── Main Slide ──────────────────── */
@@ -105,10 +109,10 @@ const FreelancerServicePricingSlide = ({
               />
             </div>
 
-            {/* Price */}
+            {/* Starting Price */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                Price
+                Starting Price
               </label>
               <CustomSelect
                 value={servicePricingForm.priceRange}
@@ -116,7 +120,7 @@ const FreelancerServicePricingSlide = ({
                   onServicePricingFieldChange("priceRange", val)
                 }
                 options={PRICE_RANGE_OPTIONS}
-                placeholder="Select price range"
+                placeholder="Select starting price"
               />
             </div>
           </div>

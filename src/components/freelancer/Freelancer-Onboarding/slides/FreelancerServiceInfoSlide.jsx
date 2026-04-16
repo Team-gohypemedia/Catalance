@@ -3,7 +3,6 @@ import Search from "lucide-react/dist/esm/icons/search";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import X from "lucide-react/dist/esm/icons/x";
 
-import { cn } from "@/shared/lib/utils";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import {
   ServiceInfoStepper,
@@ -19,13 +18,19 @@ const EXPERIENCE_OPTIONS = [
 ];
 
 const COMPLEXITY_OPTIONS = [
-  { value: "simple", label: "Simple" },
-  { value: "moderate", label: "Moderate" },
-  { value: "complex", label: "Complex" },
-  { value: "enterprise", label: "Enterprise-grade" },
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "expert", label: "Expert" },
 ];
 
 const SERVICE_TITLE_MAX = 80;
+
+const normalizeServiceLookupKey = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 
 /* ──────────────────── Autocomplete Tag Input ──────────────────── */
 
@@ -77,9 +82,6 @@ const TechnologiesInput = ({ tools = [], selected, onChange, isLoading }) => {
       } else if (!alreadyAdded) {
         addTool(trimmed);
       }
-    }
-    if (e.key === "Backspace" && !query && selected.length > 0) {
-      removeTool(selected[selected.length - 1]);
     }
   };
 
@@ -188,21 +190,31 @@ const FreelancerServiceInfoSlide = ({
   const [toolOptions, setToolOptions] = useState([]);
   const [isToolsLoading, setIsToolsLoading] = useState(false);
 
-  const firstServiceId =
+  const firstSelectedService =
     Array.isArray(selectedServices) && selectedServices.length > 0
       ? selectedServices[0]
       : null;
 
   const firstService =
-    firstServiceId && Array.isArray(dbServices)
-      ? dbServices.find((s) => s.id === firstServiceId)
+    firstSelectedService && Array.isArray(dbServices)
+      ? dbServices.find((service) => {
+          if (service.id === firstSelectedService) {
+            return true;
+          }
+
+          return (
+            normalizeServiceLookupKey(service.name) ===
+            normalizeServiceLookupKey(firstSelectedService)
+          );
+        })
       : null;
+  const resolvedServiceId = firstService?.id ?? null;
 
   const serviceName = firstService?.name ?? "Service";
 
   // Fetch sub-categories from DB when the selected service changes
   useEffect(() => {
-    if (!firstServiceId) {
+    if (!resolvedServiceId) {
       setCategoryOptions([]);
       return;
     }
@@ -212,7 +224,7 @@ const FreelancerServiceInfoSlide = ({
       try {
         setIsCategoriesLoading(true);
         const res = await fetch(
-          `${API_BASE_URL}/marketplace/filters/sub-categories?serviceId=${firstServiceId}`
+          `${API_BASE_URL}/marketplace/filters/sub-categories?serviceId=${resolvedServiceId}`
         );
         if (!res.ok) throw new Error("Failed to fetch sub-categories");
         const json = await res.json();
@@ -222,11 +234,21 @@ const FreelancerServiceInfoSlide = ({
         }));
         if (!cancelled) {
           setCategoryOptions(data);
+          const matchingStoredLabel = data.find(
+            (opt) =>
+              !serviceInfoForm.category &&
+              serviceInfoForm.categoryLabel &&
+              opt.label === serviceInfoForm.categoryLabel
+          );
+          if (matchingStoredLabel) {
+            onServiceInfoFieldChange("category", matchingStoredLabel.value);
+          }
           const currentValid = data.some(
             (opt) => opt.value === serviceInfoForm.category
           );
           if (!currentValid && serviceInfoForm.category) {
             onServiceInfoFieldChange("category", "");
+            onServiceInfoFieldChange("categoryLabel", "");
           }
         }
       } catch {
@@ -238,7 +260,7 @@ const FreelancerServiceInfoSlide = ({
 
     fetchSubCategories();
     return () => { cancelled = true; };
-  }, [firstServiceId]);
+  }, [resolvedServiceId]);
 
   // Fetch tools from DB when the selected category (sub-category) changes
   useEffect(() => {
@@ -331,7 +353,16 @@ const FreelancerServiceInfoSlide = ({
               </label>
               <CustomSelect
                 value={serviceInfoForm.category}
-                onChange={(val) => onServiceInfoFieldChange("category", val)}
+                onChange={(val) => {
+                  const selectedOption = categoryOptions.find(
+                    (option) => option.value === val
+                  );
+                  onServiceInfoFieldChange("category", val);
+                  onServiceInfoFieldChange(
+                    "categoryLabel",
+                    selectedOption?.label || ""
+                  );
+                }}
                 options={categoryOptions}
                 placeholder={
                   isCategoriesLoading
@@ -344,7 +375,7 @@ const FreelancerServiceInfoSlide = ({
             {/* Technologies */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                Technologies
+                Skills
               </label>
               <TechnologiesInput
                 tools={toolOptions}

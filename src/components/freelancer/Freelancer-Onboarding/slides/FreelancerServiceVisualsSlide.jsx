@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import X from "lucide-react/dist/esm/icons/x";
 import Image from "lucide-react/dist/esm/icons/image";
@@ -9,6 +9,30 @@ import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";
 const MAX_KEYWORDS = 5;
 const MAX_IMAGES = 2;
 const MAX_VIDEOS = 1;
+
+const getMediaFile = (value) => {
+  if (typeof File === "undefined") return null;
+  if (value instanceof File) return value;
+  return value?.file instanceof File ? value.file : null;
+};
+
+const getMediaUrl = (value) =>
+  String(value?.uploadedUrl || value?.url || "").trim();
+
+const getMediaMimeType = (value) => {
+  const file = getMediaFile(value);
+  if (file?.type) {
+    return String(file.type).trim().toLowerCase();
+  }
+
+  return String(value?.mimeType || value?.type || value?.contentType || "")
+    .trim()
+    .toLowerCase();
+};
+
+const isVideoMedia = (value) =>
+  String(value?.kind || "").trim().toLowerCase() === "video" ||
+  getMediaMimeType(value).startsWith("video/");
 
 /* ──────────────────── Keyword Input ──────────────────── */
 
@@ -40,9 +64,6 @@ const KeywordInput = ({ keywords, onChange }) => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       addKeywords(inputValue);
-    }
-    if (e.key === "Backspace" && !inputValue && keywords.length > 0) {
-      removeKeyword(keywords[keywords.length - 1]);
     }
   };
 
@@ -85,12 +106,41 @@ const UploadArea = ({ files, onChange }) => {
   const inputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const imageCount = files.filter((f) =>
-    f.type.startsWith("image/")
-  ).length;
-  const videoCount = files.filter((f) =>
-    f.type.startsWith("video/")
-  ).length;
+  const previewItems = useMemo(
+    () =>
+      files.map((entry, index) => {
+        const localFile = getMediaFile(entry);
+        const isVideo = isVideoMedia(entry);
+        const remoteUrl = getMediaUrl(entry);
+        const previewUrl =
+          !isVideo && localFile
+            ? URL.createObjectURL(localFile)
+            : !isVideo
+              ? remoteUrl
+              : "";
+
+        return {
+          id:
+            String(entry?.key || "").trim() ||
+            `${String(entry?.name || localFile?.name || "media")}-${index}`,
+          name: String(entry?.name || localFile?.name || "Media").trim(),
+          isVideo,
+          previewUrl,
+          revokePreviewUrl: localFile && previewUrl ? () => URL.revokeObjectURL(previewUrl) : null,
+        };
+      }),
+    [files],
+  );
+
+  useEffect(
+    () => () => {
+      previewItems.forEach((item) => item.revokePreviewUrl?.());
+    },
+    [previewItems],
+  );
+
+  const imageCount = files.filter((file) => !isVideoMedia(file)).length;
+  const videoCount = files.filter((file) => isVideoMedia(file)).length;
 
   const canAddImage = imageCount < MAX_IMAGES;
   const canAddVideo = videoCount < MAX_VIDEOS;
@@ -103,9 +153,17 @@ const UploadArea = ({ files, onChange }) => {
 
   const processFiles = useCallback(
     (incoming) => {
+      let nextImageCount = imageCount;
+      let nextVideoCount = videoCount;
       const valid = Array.from(incoming).filter((file) => {
-        if (file.type.startsWith("image/") && imageCount < MAX_IMAGES) return true;
-        if (file.type.startsWith("video/") && videoCount < MAX_VIDEOS) return true;
+        if (file.type.startsWith("image/") && nextImageCount < MAX_IMAGES) {
+          nextImageCount += 1;
+          return true;
+        }
+        if (file.type.startsWith("video/") && nextVideoCount < MAX_VIDEOS) {
+          nextVideoCount += 1;
+          return true;
+        }
         return false;
       });
 
@@ -134,17 +192,17 @@ const UploadArea = ({ files, onChange }) => {
   return (
     <div className="space-y-3">
       {/* Existing file previews */}
-      {files.length > 0 && (
+      {previewItems.length > 0 && (
         <div className="flex flex-wrap gap-3">
-          {files.map((file, idx) => (
+          {previewItems.map((item, idx) => (
             <div
-              key={`${file.name}-${idx}`}
+              key={item.id}
               className="group relative h-24 w-24 overflow-hidden rounded-xl border border-white/10 bg-card"
             >
-              {file.type.startsWith("image/") ? (
+              {!item.isVideo && item.previewUrl ? (
                 <img
-                  src={URL.createObjectURL(file)}
-                  alt={file.name}
+                  src={item.previewUrl}
+                  alt={item.name}
                   className="h-full w-full object-cover"
                 />
               ) : (

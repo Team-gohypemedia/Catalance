@@ -4,6 +4,7 @@ import {
   uploadImage,
   uploadProfileCover,
   uploadProjectImage,
+  uploadServiceMedia,
   createProjectPreview,
   uploadChatFile,
   deleteChatAttachment,
@@ -49,6 +50,20 @@ const projectImageUpload = multer({
   }
 });
 
+const serviceMediaUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only images and videos are allowed"), false);
+    }
+  }
+});
+
 // Chat file upload - any file type, 10MB limit
 const chatUpload = multer({
   storage: multer.memoryStorage(),
@@ -88,6 +103,13 @@ router.post(
   requireAuth,
   projectImageUpload.single("file"),
   uploadProjectImage
+);
+
+router.post(
+  "/service-media",
+  requireAuth,
+  serviceMediaUpload.single("file"),
+  uploadServiceMedia
 );
 
 // Freelancer profile cover upload endpoint

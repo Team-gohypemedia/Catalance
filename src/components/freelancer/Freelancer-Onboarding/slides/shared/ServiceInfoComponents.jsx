@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 
 import { cn } from "@/shared/lib/utils";
@@ -54,13 +54,95 @@ export const ServiceInfoStepper = ({ activeStepId }) => (
 
 /* ──────────────────── Custom Select ──────────────────── */
 
-export const CustomSelect = ({ value, onChange, options, placeholder }) => {
+export const CustomSelect = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+  popupMode = "attached",
+  popupClassName = "",
+}) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [attachedPopupStyle, setAttachedPopupStyle] = useState({});
+  const [attachedPopupMaxHeight, setAttachedPopupMaxHeight] = useState(208);
+  const triggerRef = useRef(null);
   const selectedOption = options.find((option) => option.value === value);
+  const isCenteredPopup = popupMode === "centered";
+
+  useEffect(() => {
+    if (!isOpen || isCenteredPopup) {
+      return undefined;
+    }
+
+    let frameId = 0;
+
+    const updatePopupPosition = () => {
+      if (!triggerRef.current || typeof window === "undefined") {
+        return;
+      }
+
+      const rect = triggerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      const margin = 12;
+      const gap = 6;
+      const minVisibleHeight = 140;
+      const preferredMaxHeight = 320;
+      const spaceBelow = Math.max(0, viewportHeight - rect.bottom - margin - gap);
+      const spaceAbove = Math.max(0, rect.top - margin - gap);
+      const shouldOpenAbove =
+        spaceBelow < minVisibleHeight && spaceAbove > spaceBelow;
+      const nextMaxHeight = Math.max(
+        Math.min(
+          preferredMaxHeight,
+          shouldOpenAbove ? spaceAbove : spaceBelow,
+        ),
+        120,
+      );
+      const nextWidth = Math.min(rect.width, viewportWidth - margin * 2);
+      const nextLeft = Math.min(
+        Math.max(rect.left, margin),
+        viewportWidth - nextWidth - margin,
+      );
+
+      setAttachedPopupStyle(
+        shouldOpenAbove
+          ? {
+              position: "fixed",
+              left: `${nextLeft}px`,
+              bottom: `${Math.max(viewportHeight - rect.top + gap, margin)}px`,
+              width: `${nextWidth}px`,
+            }
+          : {
+              position: "fixed",
+              left: `${nextLeft}px`,
+              top: `${Math.min(rect.bottom + gap, viewportHeight - margin)}px`,
+              width: `${nextWidth}px`,
+            },
+      );
+      setAttachedPopupMaxHeight(nextMaxHeight);
+    };
+
+    const requestPositionUpdate = () => {
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(updatePopupPosition);
+    };
+
+    requestPositionUpdate();
+    window.addEventListener("resize", requestPositionUpdate);
+    window.addEventListener("scroll", requestPositionUpdate, true);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", requestPositionUpdate);
+      window.removeEventListener("scroll", requestPositionUpdate, true);
+    };
+  }, [isCenteredPopup, isOpen]);
 
   return (
     <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
@@ -84,26 +166,42 @@ export const CustomSelect = ({ value, onChange, options, placeholder }) => {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40">
-            <div className="max-h-52 overflow-y-auto">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={cn(
-                  "flex w-full items-center px-4 py-3 text-left text-sm transition-colors hover:bg-white/5",
-                  value === option.value
-                    ? "bg-primary/10 text-primary"
-                    : "text-white/80"
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div
+            className={cn(
+              "z-50 overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40",
+              isCenteredPopup
+                ? "fixed left-1/2 top-1/2 w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2"
+                : "",
+              popupClassName
+            )}
+            style={isCenteredPopup ? undefined : attachedPopupStyle}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className={cn(
+                "overflow-y-auto",
+                isCenteredPopup ? "max-h-[min(60vh,320px)]" : "",
+              )}
+              style={isCenteredPopup ? undefined : { maxHeight: `${attachedPopupMaxHeight}px` }}
+            >
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(option.value);
+                    setIsOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center px-4 py-3 text-left text-sm transition-colors hover:bg-white/5",
+                    value === option.value
+                      ? "bg-primary/10 text-primary"
+                      : "text-white/80"
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
         </>

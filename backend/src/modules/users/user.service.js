@@ -178,7 +178,16 @@ const FREELANCER_PROFILE_FIELD_KEYS = new Set([
   "linkedin",
   "github",
   "portfolioProjects",
-  "resume"
+  "resume",
+  "serviceTitle",
+  "serviceCategory",
+  "serviceExperience",
+  "projectComplexity",
+  "serviceDescription",
+  "deliveryTimeline",
+  "startingPrice",
+  "serviceKeywords",
+  "serviceMedia"
 ]);
 
 const pickFreelancerProfileUpdates = (updates = {}) =>
@@ -229,6 +238,15 @@ const resolveFreelancerProfileRecord = (user = null) => {
       experienceYears: 0,
       available: true,
       openToWork: true,
+      serviceTitle: null,
+      serviceCategory: null,
+      serviceExperience: null,
+      projectComplexity: null,
+      serviceDescription: null,
+      deliveryTimeline: null,
+      startingPrice: null,
+      serviceKeywords: [],
+      serviceMedia: [],
       profileDetails: {}
     };
   }
@@ -276,6 +294,17 @@ const resolveFreelancerProfileRecord = (user = null) => {
     github: read("github") ?? null,
     portfolioProjects,
     resume: read("resume") ?? null,
+    serviceTitle: read("serviceTitle") ?? null,
+    serviceCategory: read("serviceCategory") ?? null,
+    serviceExperience: read("serviceExperience") ?? null,
+    projectComplexity: read("projectComplexity") ?? null,
+    serviceDescription: read("serviceDescription") ?? null,
+    deliveryTimeline: read("deliveryTimeline") ?? null,
+    startingPrice: read("startingPrice") ?? null,
+    serviceKeywords: Array.isArray(read("serviceKeywords"))
+      ? normalizeStringList(read("serviceKeywords"), { max: 5 })
+      : [],
+    serviceMedia: normalizeServiceMedia(read("serviceMedia"), { max: 3 }),
     profileDetails: resolveFreelancerProfileDetails(user)
   };
 };
@@ -476,6 +505,60 @@ const normalizePortfolioProjects = (projects) => {
   });
 
   return Array.from(projectMap.values()).slice(0, 24);
+};
+
+const normalizeServiceMedia = (media, { max = 3 } = {}) => {
+  if (!Array.isArray(media)) return [];
+
+  const mediaMap = new Map();
+  let imageCount = 0;
+  let videoCount = 0;
+
+  media.forEach((entry, index) => {
+    const item =
+      entry && typeof entry === "object" ? entry : { url: String(entry || "") };
+    const url = extractAvatarUrl(item);
+    if (!url) return;
+
+    const mimeType = String(
+      item.mimeType || item.type || item.contentType || ""
+    )
+      .trim()
+      .toLowerCase();
+    const explicitKind = String(item.kind || "").trim().toLowerCase();
+    const kind =
+      explicitKind === "video" || mimeType.startsWith("video/")
+        ? "video"
+        : "image";
+
+    if (kind === "image" && imageCount >= 2) return;
+    if (kind === "video" && videoCount >= 1) return;
+
+    const dedupKey =
+      String(item.key || "").trim() ||
+      `${kind}:${url.toLowerCase()}:${String(item.name || "").trim().toLowerCase()}:${index}`;
+    if (mediaMap.has(dedupKey)) return;
+
+    mediaMap.set(dedupKey, {
+      url,
+      key: normalizeOptionalText(item.key),
+      name: normalizeOptionalText(item.name) || `${kind}-${index + 1}`,
+      kind,
+      mimeType: mimeType || (kind === "video" ? "video/mp4" : "image/jpeg"),
+      size:
+        Number.isFinite(Number(item.size)) && Number(item.size) > 0
+          ? Number(item.size)
+          : null
+    });
+
+    if (kind === "image") {
+      imageCount += 1;
+    } else {
+      videoCount += 1;
+    }
+  });
+
+  return Array.from(mediaMap.values()).slice(0, max);
 };
 
 const buildLocationFromIdentity = (identity = {}) => {
@@ -1740,7 +1823,16 @@ export const updateUserProfile = async (userId, updates) => {
     "available",
     "experienceYears",
     "workExperience",
-    "resume"
+    "resume",
+    "serviceTitle",
+    "serviceCategory",
+    "serviceExperience",
+    "projectComplexity",
+    "serviceDescription",
+    "deliveryTimeline",
+    "startingPrice",
+    "serviceKeywords",
+    "serviceMedia"
   ];
   const cleanUpdates = {};
 
@@ -1756,6 +1848,10 @@ export const updateUserProfile = async (userId, updates) => {
           strictTech: true,
           max: 120
         });
+      } else if (key === "serviceKeywords") {
+        cleanUpdates[key] = normalizeStringList(updates[key], { max: 5 });
+      } else if (key === "serviceMedia") {
+        cleanUpdates[key] = normalizeServiceMedia(updates[key], { max: 3 });
       } else if (key === "avatar") {
         cleanUpdates[key] = extractAvatarUrl(updates[key]);
       } else if (key === "portfolioProjects") {
@@ -1784,8 +1880,16 @@ export const updateUserProfile = async (userId, updates) => {
         key === "github" ||
         key === "jobTitle" ||
         key === "companyName" ||
-        key === "resume"
+        key === "resume" ||
+        key === "serviceTitle" ||
+        key === "serviceCategory" ||
+        key === "serviceExperience" ||
+        key === "projectComplexity" ||
+        key === "deliveryTimeline" ||
+        key === "startingPrice"
       ) {
+        cleanUpdates[key] = normalizeOptionalText(updates[key]);
+      } else if (key === "serviceDescription") {
         cleanUpdates[key] = normalizeOptionalText(updates[key]);
       } else {
         cleanUpdates[key] = updates[key];
@@ -2682,6 +2786,19 @@ export const sanitizeUser = (user) => {
     github: resolvedFreelancerProfile.github || null,
     portfolioProjects: normalizedPortfolioProjects,
     resume: resolvedFreelancerProfile.resume || null,
+    serviceTitle: resolvedFreelancerProfile.serviceTitle || null,
+    serviceCategory: resolvedFreelancerProfile.serviceCategory || null,
+    serviceExperience: resolvedFreelancerProfile.serviceExperience || null,
+    projectComplexity: resolvedFreelancerProfile.projectComplexity || null,
+    serviceDescription: resolvedFreelancerProfile.serviceDescription || null,
+    deliveryTimeline: resolvedFreelancerProfile.deliveryTimeline || null,
+    startingPrice: resolvedFreelancerProfile.startingPrice || null,
+    serviceKeywords: Array.isArray(resolvedFreelancerProfile.serviceKeywords)
+      ? resolvedFreelancerProfile.serviceKeywords
+      : [],
+    serviceMedia: Array.isArray(resolvedFreelancerProfile.serviceMedia)
+      ? resolvedFreelancerProfile.serviceMedia
+      : [],
     headline:
       identityJobTitle ||
       resolvedFreelancerProfile.jobTitle ||

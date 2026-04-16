@@ -57,6 +57,9 @@ const normalizePathSegment = (value) =>
 const buildFreelancerProfilePrefix = (userId) =>
   `freelancers/${normalizePathSegment(userId)}/profile`;
 
+const buildFreelancerServiceMediaPrefix = (userId) =>
+  `${buildFreelancerProfilePrefix(userId)}/service-media`;
+
 const toPlainObject = (value) =>
   value && typeof value === "object" && !Array.isArray(value) ? value : {};
 
@@ -367,6 +370,51 @@ export const uploadProjectImage = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error("Project image upload failed:", error);
     throw new AppError("Failed to upload project image", 500);
+  }
+});
+
+export const uploadServiceMedia = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new AppError("No file uploaded", 400);
+  }
+
+  const userId = req.user?.sub;
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const file = req.file;
+  const fileExt = inferFileExtension({
+    originalName: file.originalname,
+    mimeType: file.mimetype,
+    fallback: ".bin"
+  });
+  const kind = file.mimetype.startsWith("video/") ? "video" : "image";
+  const key = `${buildFreelancerServiceMediaPrefix(userId)}/${kind}/${uuidv4()}${fileExt}`;
+
+  try {
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype
+      })
+    );
+
+    return res.json({
+      data: {
+        url: buildPublicUrl(key),
+        key,
+        name: file.originalname,
+        kind,
+        mimeType: file.mimetype,
+        size: file.size ?? null
+      }
+    });
+  } catch (error) {
+    console.error("Service media upload failed:", error);
+    throw new AppError("Failed to upload service media", 500);
   }
 });
 

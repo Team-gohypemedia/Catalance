@@ -712,6 +712,42 @@ const buildSaveProfileUpdates = (payload = {}) => {
     updates.workExperience = payload.workExperience;
   }
 
+  if (hasOwn(payload, "serviceTitle")) {
+    updates.serviceTitle = payload.serviceTitle;
+  }
+
+  if (hasOwn(payload, "serviceCategory")) {
+    updates.serviceCategory = payload.serviceCategory;
+  }
+
+  if (hasOwn(payload, "serviceExperience")) {
+    updates.serviceExperience = payload.serviceExperience;
+  }
+
+  if (hasOwn(payload, "projectComplexity")) {
+    updates.projectComplexity = payload.projectComplexity;
+  }
+
+  if (hasOwn(payload, "serviceDescription")) {
+    updates.serviceDescription = payload.serviceDescription;
+  }
+
+  if (hasOwn(payload, "deliveryTimeline")) {
+    updates.deliveryTimeline = payload.deliveryTimeline;
+  }
+
+  if (hasOwn(payload, "startingPrice")) {
+    updates.startingPrice = payload.startingPrice;
+  }
+
+  if (hasOwn(payload, "serviceKeywords")) {
+    updates.serviceKeywords = payload.serviceKeywords;
+  }
+
+  if (hasOwn(payload, "serviceMedia")) {
+    updates.serviceMedia = payload.serviceMedia;
+  }
+
   const resolvedPortfolio = hasOwn(portfolio, "portfolioUrl")
     ? portfolio.portfolioUrl
     : hasOwn(payload, "website")
