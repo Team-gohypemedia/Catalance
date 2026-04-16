@@ -134,6 +134,100 @@ const faqs = [
   ["Do I need to know how to code?", "No, you don't need to know how to code. Our platform offers intuitive tools and templates that allow you to create and manage your website with ease."]
 ];
 
+const HOW_IT_WORKS_STEPS = [
+  {
+    id: "discover",
+    step: "01",
+    title: "Explore services and open briefs",
+    description: "Use focused categories, tools, and budget filters to discover relevant specialists in minutes.",
+    icon: Search,
+  },
+  {
+    id: "shortlist",
+    step: "02",
+    title: "Shortlist proven specialists",
+    description: "Review expertise, delivery windows, and trust signals before narrowing to your best-fit talent.",
+    icon: Users,
+  },
+  {
+    id: "launch",
+    step: "03",
+    title: "Connect and launch execution",
+    description: "Move from discovery to execution with structured project details and clear deliverable expectations.",
+    icon: Rocket,
+  },
+];
+
+const TRUST_PILLARS = [
+  {
+    id: "verified",
+    title: "Verified specialists",
+    description: "Credibility signals and profile quality checks keep quality discovery high.",
+    icon: BadgeCheck,
+  },
+  {
+    id: "curated",
+    title: "Curated service lanes",
+    description: "Categories, sub-categories, and tools make discovery focused instead of noisy.",
+    icon: Workflow,
+  },
+  {
+    id: "discovery",
+    title: "Faster discovery",
+    description: "Structured cards surface pricing, delivery speed, and fit signals instantly.",
+    icon: Sparkles,
+  },
+  {
+    id: "execution",
+    title: "Execution-ready briefs",
+    description: "Open project context makes it easier for specialists to respond with aligned proposals.",
+    icon: Clock,
+  },
+];
+
+const FALLBACK_OPEN_PROJECTS = [
+  {
+    id: "fallback-project-1",
+    title: "Launch-ready Shopify redesign for premium wellness brand",
+    serviceName: "Web Development",
+    timeline: "4-6 weeks",
+    budgetLabel: "Rs. 2,20,000",
+    summary: "Need storefront redesign, PDP optimization, and conversion-focused checkout flow.",
+    ctaLabel: "View Details",
+    ctaTo: "/marketplace",
+  },
+  {
+    id: "fallback-project-2",
+    title: "AI lead qualification flow for B2B SaaS outbound team",
+    serviceName: "AI Automation",
+    timeline: "3-4 weeks",
+    budgetLabel: "Rs. 1,40,000",
+    summary: "Build lead scoring and routing automation connected to CRM and WhatsApp workflow.",
+    ctaLabel: "View Details",
+    ctaTo: "/marketplace",
+  },
+  {
+    id: "fallback-project-3",
+    title: "Performance creative sprint for fintech paid acquisition",
+    serviceName: "Performance Marketing",
+    timeline: "2-3 weeks",
+    budgetLabel: "Rs. 95,000",
+    summary: "Need static and short-form ad creatives with hooks mapped to funnel stages.",
+    ctaLabel: "View Details",
+    ctaTo: "/marketplace",
+  },
+  {
+    id: "fallback-project-4",
+    title: "SEO content cluster for HR-tech product launch campaign",
+    serviceName: "SEO",
+    timeline: "6-8 weeks",
+    budgetLabel: "Rs. 1,10,000",
+    summary: "Looking for technical SEO and topic clusters aligned to buyer-intent keywords.",
+    ctaLabel: "View Details",
+    ctaTo: "/marketplace",
+  },
+];
+
 const glassPanelClass = "border border-white/10 bg-white/[0.04] shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl";
 const glassCardClass = "border border-white/10 bg-white/[0.05] shadow-[0_24px_70px_-42px_rgba(2,6,23,0.78)]";
 const controlSurfaceClass = "border-white/10 bg-black/20 text-white placeholder:text-slate-500";
@@ -989,6 +1083,58 @@ const Marketplace = () => {
     shouldShowResults;
   const activeTotalPages = isProjectsView ? projectTotalPages : totalPages;
 
+  const openProjectsShowcase = useMemo(() => {
+    if (Array.isArray(projectData) && projectData.length) {
+      return {
+        isFallback: false,
+        items: projectData.slice(0, 4).map((item, index) => {
+          const timeline = String(item?.timeline || item?.duration || "").trim();
+          const cta = resolveProjectCardCta(item);
+          return {
+            id: item?.id || `project-${index}`,
+            title: item?.title || "Untitled project",
+            serviceName: item?.serviceName || activeBrowseService?.label || activeService?.label || "General service",
+            timeline: timeline || "Timeline shared on discussion",
+            budgetLabel: formatProjectBudget(item),
+            summary: String(item?.summary || item?.description || "").trim() || "No project summary provided yet.",
+            ctaLabel: cta.label,
+            ctaTo: cta.to,
+          };
+        }),
+      };
+    }
+
+    return {
+      isFallback: true,
+      items: FALLBACK_OPEN_PROJECTS.map((entry) => ({
+        ...entry,
+        ctaLabel: canViewProjectsMarketplace ? "Explore Marketplace" : "Join as freelancer",
+        ctaTo: canViewProjectsMarketplace ? "/marketplace" : "/signup?role=freelancer",
+      })),
+    };
+  }, [activeBrowseService?.label, activeService?.label, canViewProjectsMarketplace, projectData]);
+
+  const browseCategoryGrid = useMemo(() => serviceCategories.slice(0, 8), [serviceCategories]);
+
+  const categorySignalMap = useMemo(() => {
+    const counts = new Map();
+    data.forEach((item) => {
+      const key = resolveMarketplaceServiceKey({
+        value: item?.serviceKey,
+        slug: item?.serviceKey,
+        name: item?.service,
+      });
+      if (!key) return;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return counts;
+  }, [data]);
+
+  const handleCategoryGridSelect = (nextCategory) => {
+    setCategory(nextCategory);
+    scrollToSection("marketplace-results");
+  };
+
   const marketplaceBrowseActions = category !== "all" ? (
     <Dialog open={isFilterOpen} onOpenChange={(open) => { setIsFilterOpen(open); if (open) syncDraftFilters(); }}>
       <DialogTrigger asChild>
@@ -1224,7 +1370,7 @@ const Marketplace = () => {
       </section>
 
       {/* Main Content Container Restored for content below hero */}
-      <div className="relative z-20 mx-auto mt-5 flex w-full max-w-[1280px] flex-col gap-10 px-4 pb-20 sm:mt-6 sm:px-6 lg:px-8">
+      <div className="relative z-20 mx-auto mt-5 flex w-full max-w-[1280px] flex-col gap-14 px-4 pb-24 sm:mt-6 sm:gap-16 sm:px-6 lg:px-8">
         <section className="space-y-5">
           {(shouldRenderFreelancerResults || isProjectsView) && category !== "all" ? (
             <>
@@ -1553,6 +1699,188 @@ const Marketplace = () => {
               </div>
             </div>
           )}
+        </section>
+
+        <section id="open-projects" className="space-y-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-2">
+              <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+                Live Projects
+              </Badge>
+              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+                Open client briefs in active demand
+              </h2>
+              <p className="max-w-2xl text-sm leading-7 text-slate-400">
+                Real project context helps specialists respond with sharper proposals and gives buyers clearer match quality.
+              </p>
+            </div>
+            {openProjectsShowcase.isFallback ? (
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-slate-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Marketplace preview
+              </span>
+            ) : null}
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            {openProjectsShowcase.items.map((project) => (
+              <article key={project.id} className="h-full">
+                <Card className="group h-full rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_28px_90px_-40px_color-mix(in_srgb,var(--primary)_22%,transparent)]">
+                  <CardContent className="flex h-full min-h-[264px] flex-col p-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge className="rounded-full border border-white/15 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-slate-200">
+                        {project.serviceName}
+                      </Badge>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-slate-300">
+                        <Clock className="h-3 w-3" />
+                        {project.timeline}
+                      </span>
+                    </div>
+                    <h3 className="mt-4 line-clamp-2 text-base font-semibold leading-6 text-white">
+                      {project.title}
+                    </h3>
+                    <p className="mt-3 line-clamp-3 text-xs leading-6 text-slate-400">
+                      {project.summary}
+                    </p>
+
+                    <div className="mt-auto flex items-end justify-between border-t border-white/10 pt-4">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Budget
+                        </p>
+                        <p className="mt-1 text-lg font-semibold tracking-tight text-white">
+                          {project.budgetLabel}
+                        </p>
+                      </div>
+                      <Link
+                        to={project.ctaTo}
+                        className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:border-primary hover:bg-primary/90"
+                      >
+                        {project.ctaLabel}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="browse-categories" className="rounded-[34px] border border-white/10 bg-white/[0.035] p-6 shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl sm:p-8">
+          <div className="space-y-2">
+            <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+              Browse by Category
+            </Badge>
+            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+              Explore premium service lanes
+            </h2>
+            <p className="max-w-2xl text-sm leading-7 text-slate-400">
+              Move beyond sliders and browse categories in a structured grid with direct entry into focused discovery.
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {browseCategoryGrid.map((service) => {
+              const Icon = service.icon || Sparkles;
+              const active = category === service.value;
+              const categorySignals = categorySignalMap.get(service.value) || 0;
+              return (
+                <button
+                  key={service.value}
+                  type="button"
+                  onClick={() => handleCategoryGridSelect(service.value)}
+                  className={cn(
+                    "group rounded-[22px] border p-4 text-left transition-all duration-300",
+                    active
+                      ? "border-primary/45 bg-primary/10"
+                      : "border-white/10 bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.05]"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-flex h-10 w-10 items-center justify-center rounded-xl border text-slate-200 transition-colors",
+                      active ? "border-primary/35 bg-primary/12 text-primary" : "border-white/12 bg-white/[0.04] group-hover:text-white"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <h3 className="mt-4 text-base font-semibold text-white">{service.label}</h3>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
+                    {service.description || "Browse specialists in this service lane."}
+                  </p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-[11px] font-medium text-slate-400">
+                      {categorySignals > 0 ? `${categorySignals} specialist signals` : "Curated lane"}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                      Explore
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section id="how-it-works" className="space-y-6">
+          <div className="space-y-2">
+            <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+              How It Works
+            </Badge>
+            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+              A cleaner path from search to execution
+            </h2>
+          </div>
+          <div className="grid gap-5 md:grid-cols-3">
+            {HOW_IT_WORKS_STEPS.map((step) => {
+              const Icon = step.icon;
+              return (
+                <Card key={step.id} className="h-full rounded-[26px] border border-white/10 bg-white/[0.035] shadow-[0_20px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl">
+                  <CardContent className="p-5 sm:p-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold tracking-[0.2em] text-primary">{step.step}</span>
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-white/[0.04] text-slate-200">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                    </div>
+                    <h3 className="mt-4 text-lg font-semibold leading-6 text-white">{step.title}</h3>
+                    <p className="mt-2 text-sm leading-7 text-slate-400">{step.description}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+
+        <section id="why-catalance" className="space-y-6">
+          <div className="space-y-2">
+            <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+              Why Catalance
+            </Badge>
+            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+              Built for trust, clarity, and premium discovery
+            </h2>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            {TRUST_PILLARS.map((pillar) => {
+              const Icon = pillar.icon;
+              return (
+                <Card key={pillar.id} className="h-full rounded-[24px] border border-white/10 bg-white/[0.03] shadow-[0_20px_65px_-44px_rgba(2,6,23,0.82)] backdrop-blur-xl">
+                  <CardContent className="space-y-4 p-5">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="space-y-2">
+                      <h3 className="text-base font-semibold text-white">{pillar.title}</h3>
+                      <p className="text-xs leading-6 text-slate-400">{pillar.description}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </section>
 
         <section className="grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-10 lg:items-start">

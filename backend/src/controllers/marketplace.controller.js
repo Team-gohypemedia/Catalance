@@ -430,6 +430,100 @@ const mapLiveProjectCardPayload = (project = {}) => {
   };
 };
 
+const MARKETPLACE_LIVE_TRUE_VALUES = new Set([
+  "true",
+  "1",
+  "yes",
+  "y",
+  "on",
+  "live",
+  "public",
+  "marketplace",
+  "marketplace_live",
+  "open",
+]);
+
+const MARKETPLACE_LIVE_FALSE_VALUES = new Set([
+  "false",
+  "0",
+  "no",
+  "n",
+  "off",
+  "hidden",
+  "private",
+  "internal",
+  "draft",
+  "closed",
+]);
+
+const parseMarketplaceLiveBoolean = (value) => {
+  if (typeof value === "boolean") return value;
+
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return null;
+    return value > 0;
+  }
+
+  if (typeof value !== "string") return null;
+
+  const normalized = normalizeSlug(value);
+  if (!normalized) return null;
+  if (MARKETPLACE_LIVE_TRUE_VALUES.has(normalized)) return true;
+  if (MARKETPLACE_LIVE_FALSE_VALUES.has(normalized)) return false;
+  return null;
+};
+
+const resolveProjectMarketplaceLiveState = (project = {}) => {
+  const proposalJson = asObject(project?.proposalJson);
+  const contextSnapshot = asObject(proposalJson?.contextSnapshot);
+  const structuredFields = asObject(proposalJson?.structuredFields);
+  const visibilitySection = Array.isArray(proposalJson?.sections)
+    ? proposalJson.sections.find((section) => {
+        const sectionKey = normalizeSlug(
+          section?.fieldKey || section?.key || section?.label
+        );
+        return [
+          "visibility",
+          "marketplace_visibility",
+          "live_to_marketplace",
+          "marketplace_live",
+        ].includes(sectionKey);
+      })
+    : null;
+
+  const candidates = [
+    contextSnapshot?.liveToMarketplace,
+    contextSnapshot?.live_to_marketplace,
+    contextSnapshot?.marketplaceLive,
+    contextSnapshot?.marketplace_live,
+    contextSnapshot?.isMarketplaceLive,
+    contextSnapshot?.isLiveToMarketplace,
+    contextSnapshot?.marketplaceVisibility,
+    contextSnapshot?.visibility,
+    proposalJson?.liveToMarketplace,
+    proposalJson?.marketplaceLive,
+    proposalJson?.marketplaceVisibility,
+    proposalJson?.visibility,
+    proposalJson?.fields?.liveToMarketplace,
+    proposalJson?.fields?.marketplaceLive,
+    proposalJson?.fields?.marketplaceVisibility,
+    proposalJson?.fields?.visibility,
+    structuredFields?.live_to_marketplace?.value,
+    structuredFields?.marketplace_live?.value,
+    structuredFields?.marketplace_visibility?.value,
+    structuredFields?.visibility?.value,
+    visibilitySection?.value,
+    ...(Array.isArray(visibilitySection?.items) ? visibilitySection.items : []),
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = parseMarketplaceLiveBoolean(candidate);
+    if (parsed !== null) return parsed;
+  }
+
+  return false;
+};
+
 const resolveServiceKeyFromFilterServiceName = (value = "") => {
   const label = normalizeDisplayLabel(value);
   if (!label) return null;
@@ -2088,6 +2182,7 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
   });
 
   const mappedRows = rows
+    .filter((project) => resolveProjectMarketplaceLiveState(project))
     .map((project) => {
       const mappedProject = mapLiveProjectCardPayload(project);
       return {
@@ -2180,7 +2275,8 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
       tool: selectedTool || null,
       subcategories: subCategories,
       skillMatchedOnly: true,
-      source: "project_table_open_status",
+      liveOnly: true,
+      source: "project_table_open_status_live_flagged",
     },
   });
 });

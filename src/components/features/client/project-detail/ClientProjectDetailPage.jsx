@@ -120,6 +120,112 @@ const CATALYST_REQUEST_TYPES = {
   FREELANCER_CHANGE: "freelancer-change",
 };
 
+const MARKETPLACE_LIVE_TRUE_VALUES = new Set([
+  "true",
+  "1",
+  "yes",
+  "y",
+  "on",
+  "live",
+  "public",
+  "marketplace",
+  "marketplace_live",
+  "open",
+]);
+
+const MARKETPLACE_LIVE_FALSE_VALUES = new Set([
+  "false",
+  "0",
+  "no",
+  "n",
+  "off",
+  "hidden",
+  "private",
+  "internal",
+  "draft",
+  "closed",
+]);
+
+const normalizeMarketplaceFlagToken = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const parseMarketplaceLiveBoolean = (value) => {
+  if (typeof value === "boolean") return value;
+
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return null;
+    return value > 0;
+  }
+
+  if (typeof value !== "string") return null;
+  const normalized = normalizeMarketplaceFlagToken(value);
+  if (!normalized) return null;
+  if (MARKETPLACE_LIVE_TRUE_VALUES.has(normalized)) return true;
+  if (MARKETPLACE_LIVE_FALSE_VALUES.has(normalized)) return false;
+  return null;
+};
+
+const asPlainObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : {};
+
+const getProjectMarketplaceContextSnapshot = (project = {}) =>
+  asPlainObject(asPlainObject(project?.proposalJson)?.contextSnapshot);
+
+const resolveProjectMarketplaceLiveState = (project = {}) => {
+  const proposalJson = asPlainObject(project?.proposalJson);
+  const contextSnapshot = getProjectMarketplaceContextSnapshot(project);
+  const structuredFields = asPlainObject(proposalJson?.structuredFields);
+  const visibilitySection = Array.isArray(proposalJson?.sections)
+    ? proposalJson.sections.find((section) => {
+        const sectionKey = normalizeMarketplaceFlagToken(
+          section?.fieldKey || section?.key || section?.label,
+        );
+        return [
+          "visibility",
+          "marketplace_visibility",
+          "live_to_marketplace",
+          "marketplace_live",
+        ].includes(sectionKey);
+      })
+    : null;
+
+  const candidates = [
+    contextSnapshot?.liveToMarketplace,
+    contextSnapshot?.live_to_marketplace,
+    contextSnapshot?.marketplaceLive,
+    contextSnapshot?.marketplace_live,
+    contextSnapshot?.isMarketplaceLive,
+    contextSnapshot?.isLiveToMarketplace,
+    contextSnapshot?.marketplaceVisibility,
+    contextSnapshot?.visibility,
+    proposalJson?.liveToMarketplace,
+    proposalJson?.marketplaceLive,
+    proposalJson?.marketplaceVisibility,
+    proposalJson?.visibility,
+    proposalJson?.fields?.liveToMarketplace,
+    proposalJson?.fields?.marketplaceLive,
+    proposalJson?.fields?.marketplaceVisibility,
+    proposalJson?.fields?.visibility,
+    structuredFields?.live_to_marketplace?.value,
+    structuredFields?.marketplace_live?.value,
+    structuredFields?.marketplace_visibility?.value,
+    structuredFields?.visibility?.value,
+    visibilitySection?.value,
+    ...(Array.isArray(visibilitySection?.items) ? visibilitySection.items : []),
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = parseMarketplaceLiveBoolean(candidate);
+    if (parsed !== null) return parsed;
+  }
+
+  return false;
+};
+
 const projectPanelClassName =
   "rounded-[26px] border border-white/[0.08] bg-[#171717] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 const projectInsetPanelClassName =
@@ -407,6 +513,8 @@ const ProjectDashboard = () => {
   const [isSubmittingFreelancerReview, setIsSubmittingFreelancerReview] =
     useState(false);
   const [reviewPromptDeferred, setReviewPromptDeferred] = useState(false);
+  const [isUpdatingMarketplaceLive, setIsUpdatingMarketplaceLive] =
+    useState(false);
 
   const syncProjectState = useCallback((data) => {
     if (!data) return;
@@ -515,6 +623,68 @@ const ProjectDashboard = () => {
     }
     return null;
   }, [project?.manager, availabilityManager]);
+
+  const isMarketplaceLive = useMemo(
+    () => resolveProjectMarketplaceLiveState(project),
+    [project],
+  );
+
+  const canToggleMarketplaceLive = useMemo(() => {
+    if (!project?.id || !user?.id) return false;
+    return String(project.ownerId || "") === String(user.id);
+  }, [project?.id, project?.ownerId, user?.id]);
+
+  const handleToggleMarketplaceLive = useCallback(async () => {
+    if (!project?.id || !canToggleMarketplaceLive || isUpdatingMarketplaceLive) {
+      return;
+    }
+
+    const nextLiveState = !isMarketplaceLive;
+    const existingContext = getProjectMarketplaceContextSnapshot(project);
+
+    setIsUpdatingMarketplaceLive(true);
+    try {
+      const response = await authFetch(`/projects/${project.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proposalContext: {
+            ...existingContext,
+            liveToMarketplace: nextLiveState,
+            marketplaceLive: nextLiveState,
+            marketplaceVisibility: nextLiveState ? "live" : "hidden",
+            visibility: nextLiveState ? "marketplace" : "internal",
+          },
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to update marketplace visibility.");
+      }
+
+      if (payload?.data) {
+        syncProjectState(payload.data);
+      }
+
+      toast.success(
+        nextLiveState
+          ? "Project is now live to marketplace."
+          : "Project removed from marketplace feed.",
+      );
+    } catch (error) {
+      toast.error(error?.message || "Failed to update marketplace visibility.");
+    } finally {
+      setIsUpdatingMarketplaceLive(false);
+    }
+  }, [
+    authFetch,
+    canToggleMarketplaceLive,
+    isMarketplaceLive,
+    isUpdatingMarketplaceLive,
+    project,
+    syncProjectState,
+  ]);
 
   const isFreelancerChangeRequest =
     catalystRequestType === CATALYST_REQUEST_TYPES.FREELANCER_CHANGE;
@@ -2497,6 +2667,10 @@ const ProjectDashboard = () => {
                 catalystRequestTypes={CATALYST_REQUEST_TYPES}
                 project={project}
                 projectId={projectId}
+                isMarketplaceLive={isMarketplaceLive}
+                canToggleMarketplaceLive={canToggleMarketplaceLive}
+                isUpdatingMarketplaceLive={isUpdatingMarketplaceLive}
+                onToggleMarketplaceLive={handleToggleMarketplaceLive}
               />
 
               {bookAppointmentOpen ? (

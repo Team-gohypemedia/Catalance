@@ -180,7 +180,7 @@ const ProfileDropdown = ({ profile, displayName, profileInitial }) => {
 
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
-  { label: "Marketplace", key: "marketplace", to: "/marketplace" },
+  { label: "Opportunity", key: "marketplace", to: "/marketplace" },
   { label: "Service", mobileLabel: "Services", key: "service", to: "/service" },
   { label: "Contact", key: "contact", to: "/contact" },
 ];

@@ -16,9 +16,12 @@ import {
 } from "@/components/ui/resizable-navbar-fixed";
 import { useAuth } from "@/shared/context/AuthContext";
 
-const navItems = [
+const buildNavItems = ({ isFreelancer = false } = {}) => [
   { name: "Home", link: "/" },
-  { name: "Marketplace", link: "/marketplace" },
+  {
+    name: isFreelancer ? "Opportunity" : "Marketplace",
+    link: isFreelancer ? "/opportunity" : "/marketplace",
+  },
   { name: "Service", link: "/service" },
   { name: "Contact", link: "/contact" },
 ];
@@ -276,6 +279,14 @@ const Navbar = () => {
   const isHome = location.pathname === "/";
   const { user, isAuthenticated } = useAuth();
   const dashboardPath = useMemo(() => getDashboardPath(user?.role), [user?.role]);
+  const isFreelancerUser = useMemo(
+    () => isAuthenticated && String(user?.role || "").toUpperCase() === "FREELANCER",
+    [isAuthenticated, user?.role],
+  );
+  const navItems = useMemo(
+    () => buildNavItems({ isFreelancer: isFreelancerUser }),
+    [isFreelancerUser],
+  );
 
   const toggleMobileMenu = () => setMobileOpen((prev) => !prev);
   const closeMobileMenu = () => setMobileOpen(false);

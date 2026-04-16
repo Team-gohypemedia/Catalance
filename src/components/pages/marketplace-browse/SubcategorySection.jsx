@@ -16,8 +16,14 @@ const SubcategorySection = ({
   <div className="relative pl-1.5 sm:pl-3.5">
     <div className="pointer-events-none absolute bottom-8 left-0 top-8 w-[2px] rounded-full bg-gradient-to-b from-primary/75 via-primary/40 to-transparent sm:left-1.5" />
 
-    <div className="space-y-6 rounded-[28px] border border-white/12 bg-gradient-to-br from-slate-950/92 via-slate-950/84 to-slate-900/70 p-5 shadow-[0_24px_72px_-44px_rgba(2,6,23,0.92)] backdrop-blur-xl sm:p-6">
-      <div className="space-y-3">
+    <div
+      className={
+        hideHeadings
+          ? "space-y-3 rounded-[28px] border border-white/12 bg-gradient-to-br from-slate-950/92 via-slate-950/84 to-slate-900/70 p-4 shadow-[0_24px_72px_-44px_rgba(2,6,23,0.92)] backdrop-blur-xl sm:p-5"
+          : "space-y-6 rounded-[28px] border border-white/12 bg-gradient-to-br from-slate-950/92 via-slate-950/84 to-slate-900/70 p-5 shadow-[0_24px_72px_-44px_rgba(2,6,23,0.92)] backdrop-blur-xl sm:p-6"
+      }
+    >
+      <div className={hideHeadings ? "space-y-2" : "space-y-3"}>
         {!hideHeadings ? (
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
             Sub-categories
@@ -53,7 +59,7 @@ const SubcategorySection = ({
       <div
         className={
           hideHeadings
-            ? "space-y-3"
+            ? "space-y-2 border-t border-white/8 pt-3"
             : "space-y-3 border-t border-white/8 pt-5"
         }
       >

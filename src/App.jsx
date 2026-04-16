@@ -180,6 +180,7 @@ const App = () => {
                 </LayoutWithNavbar>
               }
             />
+            <Route path="/opportunity" element={<OpportunityRoute />} />
             <Route
               path="/marketplace/service/:id"
               element={
@@ -719,6 +720,22 @@ const App = () => {
         <CataButton />
       </ThemeProvider>
     </main>
+  );
+};
+
+const OpportunityRoute = () => {
+  const { isAuthenticated, user } = useAuth();
+  const isFreelancer =
+    isAuthenticated && String(user?.role || "").toUpperCase() === "FREELANCER";
+
+  if (!isFreelancer) {
+    return <Navigate to="/marketplace" replace />;
+  }
+
+  return (
+    <LayoutWithNavbar>
+      <Marketplace />
+    </LayoutWithNavbar>
   );
 };
 
