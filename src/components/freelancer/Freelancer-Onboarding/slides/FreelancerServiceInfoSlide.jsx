@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import Search from "lucide-react/dist/esm/icons/search";
+import Check from "lucide-react/dist/esm/icons/check";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import X from "lucide-react/dist/esm/icons/x";
 
@@ -32,125 +33,202 @@ const normalizeServiceLookupKey = (value = "") =>
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 
-/* ──────────────────── Autocomplete Tag Input ──────────────────── */
+const normalizeStringArray = (values) => {
+  if (!Array.isArray(values)) {
+    return [];
+  }
 
-const TechnologiesInput = ({ tools = [], selected, onChange, isLoading }) => {
-  const [query, setQuery] = useState("");
-  const [isFocused, setIsFocused] = useState(false);
-  const inputRef = useRef(null);
-  const containerRef = useRef(null);
-
-  const suggestions = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    return tools
-      .filter(
-        (t) => t.toLowerCase().includes(q) && !selected.includes(t)
-      )
-      .slice(0, 8);
-  }, [query, tools, selected]);
-
-  const queryExactMatch = tools.some(
-    (t) => t.toLowerCase() === query.trim().toLowerCase()
+  return Array.from(
+    new Set(
+      values
+        .map((value) => String(value || "").trim())
+        .filter(Boolean),
+    ),
   );
-  const alreadyAdded = selected.some(
-    (t) => t.toLowerCase() === query.trim().toLowerCase()
+};
+
+const normalizeSubcategorySkillMap = (value) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce((accumulator, [subcategoryId, skills]) => {
+    const normalizedSubcategoryId = String(subcategoryId || "").trim();
+    if (!normalizedSubcategoryId) {
+      return accumulator;
+    }
+
+    const normalizedSkills = normalizeStringArray(skills);
+    if (normalizedSkills.length > 0) {
+      accumulator[normalizedSubcategoryId] = normalizedSkills;
+    }
+
+    return accumulator;
+  }, {});
+};
+
+const flattenSubcategorySkillMap = (skillMap) =>
+  normalizeStringArray(
+    Object.values(skillMap || {}).flatMap((skills) =>
+      Array.isArray(skills) ? skills : [],
+    ),
   );
-  const showAddCustom =
-    query.trim().length > 0 && !queryExactMatch && !alreadyAdded;
+
+const buildSubcategorySkillMapSignature = (skillMap) =>
+  Object.keys(skillMap || {})
+    .sort()
+    .map((subcategoryId) => {
+      const normalizedSkills = normalizeStringArray(skillMap[subcategoryId]);
+      return `${subcategoryId}:${normalizedSkills.join("|")}`;
+    })
+    .join("||");
+
+/* ──────────────────── Tool Selection Input ──────────────────── */
+
+const TechnologiesInput = ({
+  tools = [],
+  selected,
+  onChange,
+  isLoading,
+}) => {
+  const [customToolQuery, setCustomToolQuery] = useState("");
+  const [isAddingCustomTool, setIsAddingCustomTool] = useState(false);
+
+  const normalizedTools = useMemo(
+    () => normalizeStringArray(tools),
+    [tools],
+  );
+
+  const selectedToolSet = useMemo(
+    () => new Set(selected.map((value) => String(value || "").toLowerCase())),
+    [selected],
+  );
+
+  const availableTools = useMemo(
+    () =>
+      normalizedTools.filter(
+        (tool) => !selectedToolSet.has(tool.toLowerCase()),
+      ),
+    [normalizedTools, selectedToolSet],
+  );
 
   const addTool = (tool) => {
-    if (!selected.includes(tool)) {
-      onChange([...selected, tool]);
+    const normalizedTool = String(tool || "").trim();
+    if (!normalizedTool) {
+      return;
     }
-    setQuery("");
-    inputRef.current?.focus();
+
+    if (!selectedToolSet.has(normalizedTool.toLowerCase())) {
+      onChange([...selected, normalizedTool]);
+    }
+    setCustomToolQuery("");
+    setIsAddingCustomTool(false);
   };
 
   const removeTool = (tool) => {
     onChange(selected.filter((t) => t !== tool));
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const trimmed = query.trim();
-      if (!trimmed) return;
-
-      if (suggestions.length > 0) {
-        addTool(suggestions[0]);
-      } else if (!alreadyAdded) {
-        addTool(trimmed);
-      }
+  const handleCustomToolSubmit = () => {
+    const trimmedTool = customToolQuery.trim();
+    if (!trimmedTool) {
+      return;
     }
+
+    addTool(trimmedTool);
   };
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setIsFocused(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const showDropdown =
-    isFocused &&
-    query.trim().length > 0 &&
-    (suggestions.length > 0 || showAddCustom);
-
   return (
-    <div className="space-y-3" ref={containerRef}>
-      {/* Input */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-        <input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setIsFocused(true)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            isLoading ? "Loading tools..." : "Type to search or add tools..."
-          }
-          disabled={isLoading}
-          className="h-12 w-full rounded-xl border border-white/10 bg-card pl-11 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
-        />
+    <div className="space-y-3">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/45">
+            Available Tools
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsAddingCustomTool((current) => !current)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-white/18 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:border-primary/35 hover:text-primary"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add More
+          </button>
+        </div>
+        <div className="rounded-xl border border-white/8 bg-card/60 p-2.5">
+          {normalizedTools.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {normalizedTools.map((tool) => {
+                const isSelected = selectedToolSet.has(tool.toLowerCase());
 
-        {/* Suggestions dropdown */}
-        {showDropdown && (
-          <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40">
-            <div className="max-h-52 overflow-y-auto">
-              {suggestions.map((tool) => (
-                <button
-                  key={tool}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => addTool(tool)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-white/80 transition-colors hover:bg-white/5"
-                >
-                  <Plus className="h-3.5 w-3.5 text-white/40" />
-                  {tool}
-                </button>
-              ))}
-
-              {showAddCustom && (
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => addTool(query.trim())}
-                  className="flex w-full items-center gap-3 border-t border-white/5 px-4 py-3 text-left text-sm text-primary transition-colors hover:bg-primary/5"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add &ldquo;{query.trim()}&rdquo;
-                </button>
-              )}
+                return (
+                  <button
+                    key={tool}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      if (!isSelected) {
+                        addTool(tool);
+                      }
+                    }}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? "border-primary/35 bg-primary/12 text-primary"
+                        : "border-white/12 bg-card text-white/75 hover:border-white/20 hover:bg-white/5"
+                    }`}
+                  >
+                    {tool}
+                  </button>
+                );
+              })}
             </div>
-          </div>
-        )}
+          ) : !isLoading ? (
+            <div className="px-1 py-1 text-sm text-muted-foreground">
+              No tools found for this sub-category yet.
+            </div>
+          ) : (
+            <div className="px-1 py-1 text-sm text-muted-foreground">
+              Loading tools...
+            </div>
+          )}
+
+          {isAddingCustomTool && (
+            <div className="mt-3 flex flex-col gap-2 border-t border-white/8 pt-3 sm:flex-row">
+              <input
+                type="text"
+                value={customToolQuery}
+                onChange={(e) => setCustomToolQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleCustomToolSubmit();
+                  }
+                }}
+                placeholder="Add a custom skill or tool"
+                className="h-11 flex-1 rounded-xl border border-white/10 bg-card px-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              />
+              <div className="flex gap-2 sm:flex-none">
+                <button
+                  type="button"
+                  onClick={handleCustomToolSubmit}
+                  disabled={!customToolQuery.trim()}
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-primary/35 bg-primary/12 px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/18 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-card disabled:text-white/35"
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomToolQuery("");
+                    setIsAddingCustomTool(false);
+                  }}
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-card px-4 text-sm font-medium text-white/70 transition-colors hover:border-white/18 hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Selected tags */}
@@ -177,6 +255,163 @@ const TechnologiesInput = ({ tools = [], selected, onChange, isLoading }) => {
   );
 };
 
+const CategoryMultiSelect = ({
+  options = [],
+  selected = [],
+  onChange,
+  placeholder = "Select sub-categories",
+  isLoading = false,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  const normalizedSelected = Array.isArray(selected)
+    ? selected.map((value) => String(value || "").trim()).filter(Boolean)
+    : String(selected || "").trim()
+      ? [String(selected).trim()]
+      : [];
+
+  const selectedSet = useMemo(
+    () => new Set(normalizedSelected),
+    [normalizedSelected],
+  );
+
+  const selectedOptions = useMemo(
+    () => options.filter((option) => selectedSet.has(String(option.value))),
+    [options, selectedSet],
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const toggleOption = (optionValue) => {
+    const normalizedValue = String(optionValue);
+    if (selectedSet.has(normalizedValue)) {
+      onChange(normalizedSelected.filter((value) => value !== normalizedValue));
+      return;
+    }
+
+    onChange([...normalizedSelected, normalizedValue]);
+  };
+
+  const removeOption = (optionValue) => {
+    const normalizedValue = String(optionValue);
+    onChange(normalizedSelected.filter((value) => value !== normalizedValue));
+  };
+
+  const summaryText = useMemo(() => {
+    if (isLoading) {
+      return "Loading...";
+    }
+
+    if (selectedOptions.length === 0) {
+      return placeholder;
+    }
+
+    if (selectedOptions.length <= 2) {
+      return selectedOptions.map((option) => option.label).join(", ");
+    }
+
+    const visibleLabels = selectedOptions
+      .slice(0, 2)
+      .map((option) => option.label)
+      .join(", ");
+
+    return `${visibleLabels} +${selectedOptions.length - 2} more`;
+  }, [isLoading, placeholder, selectedOptions]);
+
+  return (
+    <div className="space-y-3">
+      <div className="relative" ref={containerRef}>
+        <button
+          type="button"
+          onClick={() => setIsOpen((current) => !current)}
+          className={`flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 text-sm transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20 ${
+            selectedOptions.length > 0
+              ? "border-primary/25 text-white"
+              : "border-white/10 text-white/40"
+          }`}
+        >
+          <span className="truncate text-left">{summaryText}</span>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform duration-200 ${
+              selectedOptions.length > 0 ? "text-primary" : "text-white/40"
+            } ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {isOpen && (
+          <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40">
+            <div className="max-h-56 overflow-y-auto">
+              {options.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-white/40">
+                  No sub-categories available
+                </div>
+              ) : (
+                options.map((option) => {
+                  const isSelected = selectedSet.has(String(option.value));
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => toggleOption(option.value)}
+                      className={`mx-2 my-1 flex w-[calc(100%-1rem)] items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                        isSelected
+                          ? "border-primary/30 bg-primary/12 text-primary"
+                          : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="font-medium">{option.label}</span>
+                      {isSelected ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
+                          <Check className="h-3.5 w-3.5" />
+                          Selected
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {selectedOptions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selectedOptions.map((option) => (
+            <span
+              key={option.value}
+              className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+            >
+              {option.label}
+              <button
+                type="button"
+                onClick={() => removeOption(option.value)}
+                className="rounded-full p-0.5 transition-colors hover:bg-primary/20"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 /* ──────────────────── Main Slide ──────────────────── */
 
 const FreelancerServiceInfoSlide = ({
@@ -187,7 +422,7 @@ const FreelancerServiceInfoSlide = ({
 }) => {
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
-  const [toolOptions, setToolOptions] = useState([]);
+  const [toolOptionsByCategory, setToolOptionsByCategory] = useState({});
   const [isToolsLoading, setIsToolsLoading] = useState(false);
 
   const firstSelectedService =
@@ -212,6 +447,88 @@ const FreelancerServiceInfoSlide = ({
 
   const serviceName = firstService?.name ?? "Service";
 
+  const selectedCategoryIds = useMemo(() => {
+    if (Array.isArray(serviceInfoForm.category)) {
+      return serviceInfoForm.category
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+    }
+
+    const legacyValue = String(serviceInfoForm.category || "").trim();
+    return legacyValue ? [legacyValue] : [];
+  }, [serviceInfoForm.category]);
+
+  const selectedCategoryLabels = useMemo(() => {
+    if (Array.isArray(serviceInfoForm.categoryLabel)) {
+      return serviceInfoForm.categoryLabel
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+    }
+
+    const legacyValue = String(serviceInfoForm.categoryLabel || "").trim();
+    return legacyValue
+      ? legacyValue
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : [];
+  }, [serviceInfoForm.categoryLabel]);
+
+  const normalizedTechnologies = useMemo(
+    () => normalizeStringArray(serviceInfoForm.technologies),
+    [serviceInfoForm.technologies],
+  );
+
+  const normalizedSubcategorySkills = useMemo(
+    () => normalizeSubcategorySkillMap(serviceInfoForm.subcategorySkills),
+    [serviceInfoForm.subcategorySkills],
+  );
+
+  const selectedCategoryOptions = useMemo(
+    () =>
+      categoryOptions.filter((option) =>
+        selectedCategoryIds.includes(String(option.value)),
+      ),
+    [categoryOptions, selectedCategoryIds],
+  );
+
+  const activeSkillCategoryId = useMemo(() => {
+    const preferredCategoryId = String(
+      serviceInfoForm.activeSkillCategory || "",
+    ).trim();
+    if (selectedCategoryIds.includes(preferredCategoryId)) {
+      return preferredCategoryId;
+    }
+
+    return selectedCategoryIds[0] || "";
+  }, [serviceInfoForm.activeSkillCategory, selectedCategoryIds]);
+
+  const activeSkillCategoryOption = useMemo(
+    () =>
+      selectedCategoryOptions.find(
+        (option) => String(option.value) === activeSkillCategoryId,
+      ) || null,
+    [activeSkillCategoryId, selectedCategoryOptions],
+  );
+
+  const activeSkillSelections = useMemo(() => {
+    if (!activeSkillCategoryId) {
+      return [];
+    }
+
+    return normalizeStringArray(normalizedSubcategorySkills[activeSkillCategoryId]);
+  }, [activeSkillCategoryId, normalizedSubcategorySkills]);
+
+  const activeCategoryToolOptions = useMemo(() => {
+    if (!activeSkillCategoryId) {
+      return [];
+    }
+
+    return normalizeStringArray(
+      toolOptionsByCategory[String(activeSkillCategoryId)],
+    ).sort((left, right) => left.localeCompare(right));
+  }, [activeSkillCategoryId, toolOptionsByCategory]);
+
   // Fetch sub-categories from DB when the selected service changes
   useEffect(() => {
     if (!resolvedServiceId) {
@@ -234,21 +551,28 @@ const FreelancerServiceInfoSlide = ({
         }));
         if (!cancelled) {
           setCategoryOptions(data);
-          const matchingStoredLabel = data.find(
-            (opt) =>
-              !serviceInfoForm.category &&
-              serviceInfoForm.categoryLabel &&
-              opt.label === serviceInfoForm.categoryLabel
+
+          const selectedFromStoredLabels =
+            selectedCategoryIds.length === 0 && selectedCategoryLabels.length > 0
+              ? selectedCategoryLabels
+                  .map((label) => data.find((opt) => opt.label === label)?.value)
+                  .filter(Boolean)
+              : selectedCategoryIds;
+
+          const nextSelectedIds = selectedFromStoredLabels.filter((id) =>
+            data.some((opt) => opt.value === id),
           );
-          if (matchingStoredLabel) {
-            onServiceInfoFieldChange("category", matchingStoredLabel.value);
+
+          const nextSelectedLabels = data
+            .filter((opt) => nextSelectedIds.includes(opt.value))
+            .map((opt) => opt.label);
+
+          if (nextSelectedIds.join("|") !== selectedCategoryIds.join("|")) {
+            onServiceInfoFieldChange("category", nextSelectedIds);
           }
-          const currentValid = data.some(
-            (opt) => opt.value === serviceInfoForm.category
-          );
-          if (!currentValid && serviceInfoForm.category) {
-            onServiceInfoFieldChange("category", "");
-            onServiceInfoFieldChange("categoryLabel", "");
+
+          if (nextSelectedLabels.join("|") !== selectedCategoryLabels.join("|")) {
+            onServiceInfoFieldChange("categoryLabel", nextSelectedLabels);
           }
         }
       } catch {
@@ -262,11 +586,10 @@ const FreelancerServiceInfoSlide = ({
     return () => { cancelled = true; };
   }, [resolvedServiceId]);
 
-  // Fetch tools from DB when the selected category (sub-category) changes
+  // Fetch tools from DB when selected sub-categories change
   useEffect(() => {
-    const subCategoryId = serviceInfoForm.category;
-    if (!subCategoryId) {
-      setToolOptions([]);
+    if (!selectedCategoryIds.length) {
+      setToolOptionsByCategory({});
       return;
     }
 
@@ -274,17 +597,26 @@ const FreelancerServiceInfoSlide = ({
     const fetchTools = async () => {
       try {
         setIsToolsLoading(true);
-        const res = await fetch(
-          `${API_BASE_URL}/marketplace/filters/tools?subCategoryId=${subCategoryId}`
+        const toolsByCategory = await Promise.all(
+          selectedCategoryIds.map(async (subCategoryId) => {
+            const res = await fetch(
+              `${API_BASE_URL}/marketplace/filters/tools?subCategoryId=${subCategoryId}`
+            );
+            if (!res.ok) throw new Error("Failed to fetch tools");
+            const json = await res.json();
+            const normalizedTools = normalizeStringArray(
+              (json.data || []).map((tool) => String(tool?.name || "").trim()),
+            ).sort((left, right) => left.localeCompare(right));
+
+            return [String(subCategoryId), normalizedTools];
+          })
         );
-        if (!res.ok) throw new Error("Failed to fetch tools");
-        const json = await res.json();
-        const data = (json.data || []).map((t) => t.name);
+
         if (!cancelled) {
-          setToolOptions(data);
+          setToolOptionsByCategory(Object.fromEntries(toolsByCategory));
         }
       } catch {
-        if (!cancelled) setToolOptions([]);
+        if (!cancelled) setToolOptionsByCategory({});
       } finally {
         if (!cancelled) setIsToolsLoading(false);
       }
@@ -292,7 +624,89 @@ const FreelancerServiceInfoSlide = ({
 
     fetchTools();
     return () => { cancelled = true; };
-  }, [serviceInfoForm.category]);
+  }, [selectedCategoryIds]);
+
+  // Keep per-subcategory skills, flattened technologies, and active skills category in sync.
+  useEffect(() => {
+    const isWaitingForCategoryIdResolution =
+      selectedCategoryIds.length === 0 && selectedCategoryLabels.length > 0;
+
+    if (isWaitingForCategoryIdResolution) {
+      return;
+    }
+
+    const selectedCategoryIdSet = new Set(selectedCategoryIds);
+    const nextSubcategorySkills = Object.entries(normalizedSubcategorySkills).reduce(
+      (accumulator, [subcategoryId, skills]) => {
+        if (selectedCategoryIdSet.has(subcategoryId) && skills.length > 0) {
+          accumulator[subcategoryId] = skills;
+        }
+        return accumulator;
+      },
+      {},
+    );
+
+    if (
+      Object.keys(nextSubcategorySkills).length === 0 &&
+      selectedCategoryIds.length > 0 &&
+      normalizedTechnologies.length > 0
+    ) {
+      nextSubcategorySkills[selectedCategoryIds[0]] = normalizedTechnologies;
+    }
+
+    const nextFlattenedTechnologies = flattenSubcategorySkillMap(nextSubcategorySkills);
+
+    if (
+      buildSubcategorySkillMapSignature(nextSubcategorySkills) !==
+      buildSubcategorySkillMapSignature(normalizedSubcategorySkills)
+    ) {
+      onServiceInfoFieldChange("subcategorySkills", nextSubcategorySkills);
+    }
+
+    if (nextFlattenedTechnologies.join("|") !== normalizedTechnologies.join("|")) {
+      onServiceInfoFieldChange("technologies", nextFlattenedTechnologies);
+    }
+
+    const preferredCategoryId = String(
+      serviceInfoForm.activeSkillCategory || "",
+    ).trim();
+    const nextActiveCategoryId = selectedCategoryIds.includes(preferredCategoryId)
+      ? preferredCategoryId
+      : selectedCategoryIds[0] || "";
+
+    if (nextActiveCategoryId !== preferredCategoryId) {
+      onServiceInfoFieldChange("activeSkillCategory", nextActiveCategoryId);
+    }
+  }, [
+    normalizedSubcategorySkills,
+    normalizedTechnologies,
+    onServiceInfoFieldChange,
+    selectedCategoryIds,
+    selectedCategoryLabels,
+    serviceInfoForm.activeSkillCategory,
+  ]);
+
+  const handleActiveCategorySkillsChange = (nextValues) => {
+    if (!activeSkillCategoryId) {
+      return;
+    }
+
+    const normalizedNextValues = normalizeStringArray(nextValues);
+    const nextSubcategorySkills = {
+      ...normalizedSubcategorySkills,
+    };
+
+    if (normalizedNextValues.length > 0) {
+      nextSubcategorySkills[activeSkillCategoryId] = normalizedNextValues;
+    } else {
+      delete nextSubcategorySkills[activeSkillCategoryId];
+    }
+
+    const nextFlattenedTechnologies = flattenSubcategorySkillMap(nextSubcategorySkills);
+
+    onServiceInfoFieldChange("subcategorySkills", nextSubcategorySkills);
+    onServiceInfoFieldChange("technologies", nextFlattenedTechnologies);
+  };
 
   return (
     <section className="mx-auto flex w-full max-w-4xl flex-col items-center">
@@ -351,24 +765,29 @@ const FreelancerServiceInfoSlide = ({
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
                 Select Category
               </label>
-              <CustomSelect
-                value={serviceInfoForm.category}
-                onChange={(val) => {
-                  const selectedOption = categoryOptions.find(
-                    (option) => option.value === val
-                  );
-                  onServiceInfoFieldChange("category", val);
-                  onServiceInfoFieldChange(
-                    "categoryLabel",
-                    selectedOption?.label || ""
-                  );
+              <CategoryMultiSelect
+                selected={selectedCategoryIds}
+                onChange={(nextValues) => {
+                  const normalizedNextValues = nextValues
+                    .map((value) => String(value || "").trim())
+                    .filter(Boolean);
+
+                  const nextLabels = categoryOptions
+                    .filter((option) =>
+                      normalizedNextValues.includes(String(option.value))
+                    )
+                    .map((option) => option.label);
+
+                  onServiceInfoFieldChange("category", normalizedNextValues);
+                  onServiceInfoFieldChange("categoryLabel", nextLabels);
                 }}
                 options={categoryOptions}
                 placeholder={
                   isCategoriesLoading
                     ? "Loading..."
-                    : "Select a category"
+                    : "Select sub-categories"
                 }
+                isLoading={isCategoriesLoading}
               />
             </div>
 
@@ -377,14 +796,40 @@ const FreelancerServiceInfoSlide = ({
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
                 Skills
               </label>
-              <TechnologiesInput
-                tools={toolOptions}
-                selected={serviceInfoForm.technologies}
-                onChange={(next) =>
-                  onServiceInfoFieldChange("technologies", next)
-                }
-                isLoading={isToolsLoading}
-              />
+              {selectedCategoryOptions.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/12 bg-card px-4 py-3 text-sm text-muted-foreground">
+                  Select at least one sub-category to add skills.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <CustomSelect
+                    value={activeSkillCategoryId}
+                    onChange={(value) =>
+                      onServiceInfoFieldChange("activeSkillCategory", value)
+                    }
+                    options={selectedCategoryOptions}
+                    placeholder="Select a sub-category for skills"
+                  />
+
+                  <div className="rounded-xl border border-white/8 bg-card/60 p-3 sm:p-4">
+                    <p className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-white/55">
+                      Adding Skills To{" "}
+                      <span className="text-primary">
+                        {activeSkillCategoryOption?.label || "Selected sub-category"}
+                      </span>
+                    </p>
+                    <p className="mb-3 text-xs text-white/45">
+                      Choose tools from the selected sub-category or add your own.
+                    </p>
+                    <TechnologiesInput
+                      tools={activeCategoryToolOptions}
+                      selected={activeSkillSelections}
+                      onChange={handleActiveCategorySkillsChange}
+                      isLoading={isToolsLoading}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Experience */}

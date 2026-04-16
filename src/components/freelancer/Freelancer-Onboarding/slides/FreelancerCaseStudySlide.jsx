@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
@@ -9,35 +10,19 @@ import {
 } from "./shared/ServiceInfoComponents";
 
 const ROLE_OPTIONS = [
-  { value: "solo", label: "Solo Developer / Designer" },
-  { value: "lead", label: "Project Lead" },
-  { value: "team_member", label: "Team Member" },
-  { value: "consultant", label: "Consultant" },
-  { value: "freelancer", label: "Freelancer" },
+  { value: "full_execution", label: "Full execution" },
+  { value: "partial_contribution", label: "Partial contribution" },
+  { value: "team_project", label: "Team project" },
 ];
 
 const TIMELINE_OPTIONS = [
   { value: "under_1_week", label: "Under 1 Week" },
   { value: "1_2_weeks", label: "1–2 Weeks" },
   { value: "2_4_weeks", label: "2–4 Weeks" },
-  { value: "1_2_months", label: "1–2 Months" },
-  { value: "2_3_months", label: "2–3 Months" },
-  { value: "3_6_months", label: "3–6 Months" },
-  { value: "6_plus_months", label: "6+ Months" },
-];
-
-const NICHE_OPTIONS = [
-  { value: "ecommerce", label: "E-commerce" },
-  { value: "saas", label: "SaaS" },
-  { value: "healthcare", label: "Healthcare" },
-  { value: "fintech", label: "Fintech" },
-  { value: "education", label: "Education" },
-  { value: "real_estate", label: "Real Estate" },
-  { value: "food_beverage", label: "Food & Beverage" },
-  { value: "travel", label: "Travel & Hospitality" },
-  { value: "media", label: "Media & Entertainment" },
-  { value: "nonprofit", label: "Non-profit" },
-  { value: "other", label: "Other" },
+  { value: "4_6_weeks", label: "4–6 Weeks" },
+  { value: "6_8_weeks", label: "6–8 Weeks" },
+  { value: "8_12_weeks", label: "8–12 Weeks" },
+  { value: "12_plus_weeks", label: "12+ Weeks" },
 ];
 
 /* ──────────────────── File Upload Button ──────────────────── */
@@ -84,6 +69,7 @@ const FreelancerCaseStudySlide = ({
   selectedServices,
   dbServices,
   caseStudyForm,
+  nicheOptions = [],
   onCaseStudyFieldChange,
 }) => {
   const firstServiceId =
@@ -103,7 +89,7 @@ const FreelancerCaseStudySlide = ({
       <div className="w-full space-y-8">
         {/* Heading */}
         <div className="text-center">
-          <h1 className="text-balance text-3xl font-semibold italic tracking-[-0.04em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className="text-balance text-3xl font-semibold tracking-[-0.03em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
             <span>Tell Us About </span>
             <span className="text-primary">Your</span>
             <span> Previous </span>
@@ -131,10 +117,10 @@ const FreelancerCaseStudySlide = ({
           {/* Project Header */}
           <h3 className="text-xl font-semibold text-white sm:text-2xl">
             Project 1{" "}
-            <span className="font-normal text-white/50">({serviceName})</span>
+            <span className="font-normal text-white">({serviceName})</span>
           </h3>
 
-          <div className="space-y-6 rounded-2xl border border-white/8 bg-card/50 p-5 sm:p-7">
+          <div className="space-y-6">
             {/* Case Study Title */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
@@ -172,10 +158,7 @@ const FreelancerCaseStudySlide = ({
               {/* Project Link */}
               <div className="space-y-2.5">
                 <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                  Project Link{" "}
-                  <span className="normal-case font-normal text-white/35">
-                    (Optional)
-                  </span>
+                  Project Link (Optional)
                 </label>
                 <div className="relative">
                   <Link2 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
@@ -194,10 +177,7 @@ const FreelancerCaseStudySlide = ({
               {/* Project File */}
               <div className="space-y-2.5">
                 <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                  Project File{" "}
-                  <span className="normal-case font-normal text-white/35">
-                    (Optional)
-                  </span>
+                  Project File (Optional)
                 </label>
                 <FileUploadButton
                   file={caseStudyForm.projectFile}
@@ -242,9 +222,7 @@ const FreelancerCaseStudySlide = ({
                   Budget
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-white/40">
-                    $
-                  </span>
+                  <IndianRupee className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
                   <input
                     type="text"
                     value={caseStudyForm.budget}
@@ -253,7 +231,7 @@ const FreelancerCaseStudySlide = ({
                       onCaseStudyFieldChange("budget", val);
                     }}
                     placeholder="e.g. 5000"
-                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-8 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
               </div>
@@ -267,8 +245,8 @@ const FreelancerCaseStudySlide = ({
               <CustomSelect
                 value={caseStudyForm.niche}
                 onChange={(val) => onCaseStudyFieldChange("niche", val)}
-                options={NICHE_OPTIONS}
-                placeholder="Select niche"
+                options={nicheOptions}
+                placeholder="select niche"
               />
             </div>
           </div>

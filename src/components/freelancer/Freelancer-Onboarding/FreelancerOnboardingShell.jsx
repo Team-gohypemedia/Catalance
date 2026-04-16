@@ -215,8 +215,52 @@ const STARTING_PRICE_STORAGE_LABELS = {
 
 const findStorageKeyByLabel = (map, label) =>
   Object.entries(map).find(([, value]) => value === String(label || "").trim())?.[0] || "";
+
+const normalizeStringArray = (values) => {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      values
+        .map((value) => String(value || "").trim())
+        .filter(Boolean),
+    ),
+  );
+};
+
+const normalizeSubcategorySkillMap = (value) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce((accumulator, [subcategoryId, skills]) => {
+    const normalizedSubcategoryId = String(subcategoryId || "").trim();
+    if (!normalizedSubcategoryId) {
+      return accumulator;
+    }
+
+    const normalizedSkills = normalizeStringArray(skills);
+    if (normalizedSkills.length > 0) {
+      accumulator[normalizedSubcategoryId] = normalizedSkills;
+    }
+
+    return accumulator;
+  }, {});
+};
+
+const flattenSubcategorySkillMap = (skillMap) =>
+  normalizeStringArray(
+    Object.values(skillMap || {}).flatMap((skills) =>
+      Array.isArray(skills) ? skills : [],
+    ),
+  );
+
 let cachedMarketplaceServices = [];
 let marketplaceServicesRequest = null;
+let cachedMarketplaceNiches = [];
+let marketplaceNichesRequest = null;
 
 const fetchMarketplaceServices = async () => {
   if (cachedMarketplaceServices.length) {
@@ -244,6 +288,39 @@ const fetchMarketplaceServices = async () => {
   }
 
   return marketplaceServicesRequest;
+};
+
+const fetchMarketplaceNiches = async () => {
+  if (cachedMarketplaceNiches.length) {
+    return cachedMarketplaceNiches;
+  }
+
+  if (!marketplaceNichesRequest) {
+    marketplaceNichesRequest = fetch(`${API_BASE_URL}/marketplace/filters/niches`)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch niches");
+        }
+
+        const payload = await response.json();
+        const niches = Array.isArray(payload?.data)
+          ? payload.data
+              .map((entry) => ({
+                value: String(entry?.name || "").trim(),
+                label: String(entry?.label || entry?.name || "").trim(),
+              }))
+              .filter((entry) => entry.value && entry.label)
+          : [];
+
+        cachedMarketplaceNiches = niches;
+        return niches;
+      })
+      .finally(() => {
+        marketplaceNichesRequest = null;
+      });
+  }
+
+  return marketplaceNichesRequest;
 };
 
 const getBasicProfileFieldError = (field, form) => {
@@ -306,11 +383,14 @@ const FreelancerOnboardingShell = () => {
   );
   const [selectedServices, setSelectedServices] = useState([]);
   const [dbServices, setDbServices] = useState(cachedMarketplaceServices);
+  const [dbNiches, setDbNiches] = useState(cachedMarketplaceNiches);
   const [serviceInfoForm, setServiceInfoForm] = useState({
     title: "",
-    category: "",
-    categoryLabel: "",
+    category: [],
+    categoryLabel: [],
     technologies: [],
+    subcategorySkills: {},
+    activeSkillCategory: "",
     experience: "",
     complexity: "",
   });
@@ -334,7 +414,7 @@ const FreelancerOnboardingShell = () => {
     niche: "",
   });
   const [isProfileSaving, setIsProfileSaving] = useState(false);
-  const [profileError, setProfileError] = useState("");
+  const [, setProfileError] = useState("");
   const [basicProfileErrors, setBasicProfileErrors] = useState({});
   const [stateOptions, setStateOptions] = useState([]);
   const [isStateOptionsLoading, setIsStateOptionsLoading] = useState(false);
@@ -416,24 +496,75 @@ const FreelancerOnboardingShell = () => {
       String(profileDetails.role || selectedWorkPreference || "individual").trim(),
     );
     setSelectedServices(nextServices);
-    setServiceInfoForm((currentForm) => ({
-      ...currentForm,
-      title: String(user?.serviceTitle || currentForm.title || "").trim(),
-      categoryLabel: String(
-        user?.serviceCategory || currentForm.categoryLabel || "",
-      ).trim(),
-      technologies: Array.isArray(user?.skills) ? user.skills : currentForm.technologies,
-      experience:
-        findStorageKeyByLabel(
-          SERVICE_EXPERIENCE_STORAGE_LABELS,
-          user?.serviceExperience,
-        ) || currentForm.experience,
-      complexity:
-        findStorageKeyByLabel(
-          PROJECT_COMPLEXITY_STORAGE_LABELS,
-          user?.projectComplexity,
-        ) || currentForm.complexity,
-    }));
+    setServiceInfoForm((currentForm) => {
+      const normalizedCategory = Array.isArray(currentForm.category)
+        ? currentForm.category
+            .map((value) => String(value || "").trim())
+            .filter(Boolean)
+        : String(currentForm.category || "").trim()
+          ? [String(currentForm.category).trim()]
+          : [];
+
+      const normalizedCategoryLabel = String(user?.serviceCategory || "").trim()
+        ? String(user.serviceCategory)
+            .split(",")
+            .map((value) => String(value || "").trim())
+            .filter(Boolean)
+        : Array.isArray(currentForm.categoryLabel)
+          ? currentForm.categoryLabel
+              .map((value) => String(value || "").trim())
+              .filter(Boolean)
+          : String(currentForm.categoryLabel || "").trim()
+            ? [String(currentForm.categoryLabel).trim()]
+            : [];
+
+      const normalizedSubcategorySkills = normalizeSubcategorySkillMap(
+        profileDetails?.serviceSubcategorySkills,
+      );
+      const mappedSkills = flattenSubcategorySkillMap(normalizedSubcategorySkills);
+
+      const normalizedTechnologies = normalizeStringArray(
+        Array.isArray(user?.skills)
+          ? user.skills
+          : mappedSkills.length > 0
+            ? mappedSkills
+            : currentForm.technologies,
+      );
+
+      const nextSubcategorySkills =
+        Object.keys(normalizedSubcategorySkills).length > 0
+          ? normalizedSubcategorySkills
+          : normalizedTechnologies.length > 0 && normalizedCategory.length > 0
+            ? { [normalizedCategory[0]]: normalizedTechnologies }
+            : {};
+
+      const preferredActiveCategory = String(
+        profileDetails?.serviceActiveSkillCategory || currentForm.activeSkillCategory || "",
+      ).trim();
+      const nextActiveCategory = normalizedCategory.includes(preferredActiveCategory)
+        ? preferredActiveCategory
+        : normalizedCategory[0] || "";
+
+      return {
+        ...currentForm,
+        title: String(user?.serviceTitle || currentForm.title || "").trim(),
+        category: normalizedCategory,
+        categoryLabel: normalizedCategoryLabel,
+        technologies: normalizedTechnologies,
+        subcategorySkills: nextSubcategorySkills,
+        activeSkillCategory: nextActiveCategory,
+        experience:
+          findStorageKeyByLabel(
+            SERVICE_EXPERIENCE_STORAGE_LABELS,
+            user?.serviceExperience,
+          ) || currentForm.experience,
+        complexity:
+          findStorageKeyByLabel(
+            PROJECT_COMPLEXITY_STORAGE_LABELS,
+            user?.projectComplexity,
+          ) || currentForm.complexity,
+      };
+    });
     setServicePricingForm((currentForm) => ({
       ...currentForm,
       description: String(
@@ -487,6 +618,30 @@ const FreelancerOnboardingShell = () => {
       isCancelled = true;
     };
   }, [dbServices.length]);
+
+  useEffect(() => {
+    if (dbNiches.length) {
+      return undefined;
+    }
+
+    let isCancelled = false;
+
+    fetchMarketplaceNiches()
+      .then((niches) => {
+        if (!isCancelled) {
+          setDbNiches(niches);
+        }
+      })
+      .catch((error) => {
+        if (!isCancelled) {
+          console.error("Failed to preload marketplace niches:", error);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [dbNiches.length]);
 
   useEffect(() => {
     const currentPhotoUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
@@ -796,8 +951,13 @@ const FreelancerOnboardingShell = () => {
         : Array.isArray(currentProfileDetails.services)
           ? currentProfileDetails.services
           : [];
-
-    return {
+    const subcategorySkills = normalizeSubcategorySkillMap(
+      serviceInfoForm.subcategorySkills,
+    );
+    const activeSkillCategory = String(
+      serviceInfoForm.activeSkillCategory || "",
+    ).trim();
+    const nextProfileDetails = {
       ...currentProfileDetails,
       role: selectedWorkPreference || currentProfileDetails.role || "individual",
       professionalBio: basicProfileForm.professionalBio.trim(),
@@ -817,6 +977,23 @@ const FreelancerOnboardingShell = () => {
           null,
       },
     };
+
+    if (Object.keys(subcategorySkills).length > 0) {
+      nextProfileDetails.serviceSubcategorySkills = subcategorySkills;
+    } else {
+      delete nextProfileDetails.serviceSubcategorySkills;
+    }
+
+    if (
+      activeSkillCategory &&
+      Object.prototype.hasOwnProperty.call(subcategorySkills, activeSkillCategory)
+    ) {
+      nextProfileDetails.serviceActiveSkillCategory = activeSkillCategory;
+    } else {
+      delete nextProfileDetails.serviceActiveSkillCategory;
+    }
+
+    return nextProfileDetails;
   };
 
   const validateBasicProfileBeforeContinue = async () => {
@@ -858,13 +1035,30 @@ const FreelancerOnboardingShell = () => {
     const country = basicProfileForm.country.trim();
     const state = basicProfileForm.state.trim();
     const serviceTitle = String(serviceInfoForm.title || "").trim();
-    const serviceCategory = String(
-      serviceInfoForm.categoryLabel || serviceInfoForm.category || "",
-    ).trim();
+    const serviceCategory = (
+      Array.isArray(serviceInfoForm.categoryLabel)
+        ? serviceInfoForm.categoryLabel
+        : String(serviceInfoForm.categoryLabel || "")
+            .split(",")
+    )
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .join(", ");
     const serviceExperience =
       SERVICE_EXPERIENCE_STORAGE_LABELS[serviceInfoForm.experience] || null;
     const projectComplexity =
       PROJECT_COMPLEXITY_STORAGE_LABELS[serviceInfoForm.complexity] || null;
+    const normalizedSubcategorySkills = normalizeSubcategorySkillMap(
+      serviceInfoForm.subcategorySkills,
+    );
+    const flattenedSubcategorySkills = flattenSubcategorySkillMap(
+      normalizedSubcategorySkills,
+    );
+    const fallbackTechnologies = normalizeStringArray(serviceInfoForm.technologies);
+    const persistedSkills =
+      flattenedSubcategorySkills.length > 0
+        ? flattenedSubcategorySkills
+        : fallbackTechnologies;
     const serviceDescription = String(
       servicePricingForm.description || "",
     ).trim();
@@ -896,9 +1090,7 @@ const FreelancerOnboardingShell = () => {
           : Array.isArray(profileDetails.services)
             ? profileDetails.services
             : [],
-      skills: Array.isArray(serviceInfoForm.technologies)
-        ? serviceInfoForm.technologies.filter(Boolean)
-        : [],
+      skills: persistedSkills,
       serviceTitle: serviceTitle || null,
       serviceCategory: serviceCategory || null,
       serviceExperience,
@@ -1282,11 +1474,6 @@ const FreelancerOnboardingShell = () => {
 
       <section className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto">
         <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-          {profileError && (
-            <div className="mb-4 rounded-xl bg-red-900/60 px-4 py-3 text-sm text-red-200">
-              {profileError}
-            </div>
-          )}
           <AnimatePresence mode="wait">
             <motion.div
               key={currentSlide.id}
@@ -1330,6 +1517,7 @@ const FreelancerOnboardingShell = () => {
                   setServiceVisualsForm((prev) => ({ ...prev, [field]: value }))
                 }
                 caseStudyForm={caseStudyForm}
+                nicheOptions={dbNiches}
                 onCaseStudyFieldChange={(field, value) =>
                   setCaseStudyForm((prev) => ({ ...prev, [field]: value }))
                 }
