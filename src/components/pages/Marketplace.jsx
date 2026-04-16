@@ -640,22 +640,8 @@ const Marketplace = () => {
   const [projectAccessError, setProjectAccessError] = useState("");
   const [openFaqItems, setOpenFaqItems] = useState({});
 
-  const roleTokens = useMemo(() => {
-    const tokens = new Set();
-    const primaryRole = normalizeRoleToken(user?.role);
-    if (primaryRole) tokens.add(primaryRole);
-
-    if (Array.isArray(user?.roles)) {
-      user.roles.forEach((entry) => {
-        const role = normalizeRoleToken(entry);
-        if (role) tokens.add(role);
-      });
-    }
-
-    return Array.from(tokens);
-  }, [user]);
-
-  const canViewProjectsMarketplace = isAuthenticated && roleTokens.includes("FREELANCER");
+  const canViewProjectsMarketplace =
+    isAuthenticated && normalizeRoleToken(user?.role) === "FREELANCER";
 
   const serviceCategories = useMemo(
     () =>
@@ -955,7 +941,7 @@ const Marketplace = () => {
         setProjectData([]);
         setProjectTotal(0);
         setProjectTotalPages(0);
-        setProjectAccessError("Only logged-in freelancers can view live client projects.");
+        setProjectAccessError("");
         setProjectLoading(false);
       }
       return;
@@ -1531,7 +1517,7 @@ const Marketplace = () => {
                     ))}
                   </div>
                 </motion.div>
-              ) : projectAccessError ? (
+              ) : canViewProjectsMarketplace && projectAccessError ? (
                 <motion.div key="projects-access-error" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="rounded-[34px] border border-dashed border-white/10 bg-white/[0.04] px-6 py-16 text-center shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)]">
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.06] text-slate-400"><X className="h-7 w-7" /></div>
                   <h2 className="mt-6 text-2xl font-semibold tracking-tight text-white">Projects marketplace unavailable</h2>
@@ -1701,6 +1687,7 @@ const Marketplace = () => {
           )}
         </section>
 
+        {canViewProjectsMarketplace ? (
         <section id="open-projects" className="space-y-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="space-y-2">
@@ -1766,6 +1753,7 @@ const Marketplace = () => {
             ))}
           </div>
         </section>
+        ) : null}
 
         <section id="browse-categories" className="rounded-[34px] border border-white/10 bg-white/[0.035] p-6 shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl sm:p-8">
           <div className="space-y-2">
