@@ -5,6 +5,8 @@ import {
   buildProjectFreelancerMatchingSeed,
   buildProjectProposalJson,
   extractProjectProposalFields,
+  mergeProposalStructureDefinitions,
+  resolveProjectAgencyProposalFlag,
 } from "../../../../src/shared/lib/project-proposal-fields.js";
 
 test("extractProjectProposalFields maps proposal markdown into structured project columns", () => {
@@ -301,6 +303,69 @@ Budget: INR 400,000
     result.contextSnapshot?.questionnaireAnswersBySlug?.required_integrations,
     ["Razorpay", "Firebase Auth", "HubSpot"],
   );
+});
+
+test("mergeProposalStructureDefinitions combines multi-service admin templates in order", () => {
+  const mergedStructure = mergeProposalStructureDefinitions([
+    JSON.stringify({
+      version: 1,
+      fields: [
+        { label: "Client Name", type: "text" },
+        { label: "Business Name", type: "text" },
+        { label: "Website Type", type: "text" },
+        { label: "CMS Platform", type: "text" },
+      ],
+    }),
+    JSON.stringify({
+      version: 1,
+      fields: [
+        { label: "Client Name", type: "text" },
+        { label: "Business Name", type: "text" },
+        { label: "App Features", type: "list" },
+        { label: "Admin Roles", type: "list" },
+      ],
+    }),
+  ]);
+
+  const parsed = JSON.parse(mergedStructure);
+
+  assert.deepEqual(
+    parsed.fields.map((field) => `${field.label}:${field.type}`),
+    [
+      "Client Name:text",
+      "Business Name:text",
+      "Website Type:text",
+      "CMS Platform:text",
+      "App Features:list",
+      "Admin Roles:list",
+    ],
+  );
+});
+
+test("resolveProjectAgencyProposalFlag returns true for agency flow proposal context", () => {
+  const result = resolveProjectAgencyProposalFlag({
+    payload: {
+      proposalContext: {
+        flowMode: "agency",
+        selectedServiceIds: ["web-development"],
+      },
+    },
+  });
+
+  assert.equal(result, true);
+});
+
+test("resolveProjectAgencyProposalFlag returns false for freelancer flow proposal context", () => {
+  const result = resolveProjectAgencyProposalFlag({
+    payload: {
+      proposalContext: {
+        flowMode: "freelancer",
+        selectedServiceIds: ["seo-optimization"],
+      },
+    },
+  });
+
+  assert.equal(result, false);
 });
 
 test("buildProjectFreelancerMatchingSeed builds hidden freelancer matching data from proposal context", () => {

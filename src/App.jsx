@@ -101,6 +101,9 @@ const FreelancerChat = lazy(
 const FreelancerPayments = lazy(
   () => import("@/components/features/freelancer/FreelancerPayments"),
 );
+const FreelancerOnboardingPage = lazy(
+  () => import("@/pages/freelancer/FreelancerOnboarding.jsx"),
+);
 const FreelancerMultiStepForm = lazy(
   () => import("@/components/features/freelancer/onboarding"),
 );
@@ -587,6 +590,14 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <FreelancerPayments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/freelancer/onboarding/new"
+              element={
+                <ProtectedRoute loginPath="/signup?role=freelancer">
+                  <FreelancerOnboardingPage />
                 </ProtectedRoute>
               }
             />

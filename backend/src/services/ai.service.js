@@ -126,6 +126,7 @@ const loadServiceCatalogFromDb = async () => {
       active: s.active,
       aiPrompt: s.aiPrompt || "",
       proposalStructure: s.proposalStructure || "",
+      agencyProposalStructure: s.agencyProposalStructure || "",
       proposalPrompt: s.proposalPrompt || "",
       min_budget: s.minBudget, // internal logic might use this
       minBudget: s.minBudget,

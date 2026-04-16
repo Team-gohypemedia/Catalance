@@ -1,0 +1,64 @@
+export const FREELANCER_ONBOARDING_SLIDES = [
+  {
+    id: "welcome",
+    progressValue: 4,
+    continueLabel: "Continue",
+  },
+  {
+    id: "workPreference",
+    progressValue: 8,
+    continueLabel: "Continue",
+  },
+  {
+    id: "individualProof",
+    progressValue: 12,
+    continueLabel: "Continue",
+  },
+  {
+    id: "basicProfile",
+    title: "Complete Your Profile",
+    description: "Let's establish your professional presence",
+    progressValue: 16,
+    footerMode: "profileActions",
+    countryOptions: ["India", "United States", "United Kingdom"],
+    stateOptions: ["Maharashtra", "Karnataka", "Delhi NCR"],
+    languageOptions: ["English", "Hindi", "Marathi", "Spanish"],
+  },
+  {
+    id: "services",
+    title: "Which Services Do You Want To Offer?",
+    description: "Select at least 1 service. You can choose as many as you want.",
+    progressValue: 18,
+    continueLabel: "Continue",
+  },
+  {
+    id: "serviceSetup",
+    title: "Let's Start Your Setup",
+    progressValue: 22,
+    continueLabel: "Continue",
+  },
+  {
+    id: "serviceInfo",
+    title: "Fill Your Service Info",
+    progressValue: 30,
+    continueLabel: "Continue",
+  },
+  {
+    id: "servicePricing",
+    title: "Set Your Service Price",
+    progressValue: 38,
+    continueLabel: "Continue",
+  },
+  {
+    id: "serviceVisuals",
+    title: "Add Keywords & Media",
+    progressValue: 46,
+    continueLabel: "Continue",
+  },
+  {
+    id: "caseStudy",
+    title: "Tell Us About Your Previous Work",
+    progressValue: 54,
+    continueLabel: "Continue",
+  },
+];
