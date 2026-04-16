@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import BarChart3 from "lucide-react/dist/esm/icons/bar-chart-3";
 import Bot from "lucide-react/dist/esm/icons/bot";
 import Box from "lucide-react/dist/esm/icons/box";
@@ -20,10 +19,8 @@ import Star from "lucide-react/dist/esm/icons/star";
 import Target from "lucide-react/dist/esm/icons/target";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import Video from "lucide-react/dist/esm/icons/video";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 
 import { cn } from "@/shared/lib/utils";
-import { API_BASE_URL } from "@/shared/lib/api-client";
 
 /* ── Icon lookup by service name ── */
 
@@ -60,45 +57,8 @@ const FreelancerServicesSlide = ({
   selectedServices,
   onToggleService,
   dbServices,
-  onDbServicesLoaded,
 }) => {
-  const [services, setServices] = useState(dbServices || []);
-  const [loading, setLoading] = useState(!dbServices?.length);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (dbServices?.length) {
-      setServices(dbServices);
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    const fetchServices = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`${API_BASE_URL}/marketplace/filters/services`);
-        if (!res.ok) throw new Error("Failed to fetch services");
-        const json = await res.json();
-        const data = (json.data || []).sort((a, b) => a.id - b.id);
-        if (!cancelled) {
-          setServices(data);
-          setLoading(false);
-          onDbServicesLoaded?.(data);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err.message);
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchServices();
-    return () => {
-      cancelled = true;
-    };
-  }, [dbServices, onDbServicesLoaded]);
+  const services = Array.isArray(dbServices) ? dbServices : [];
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
@@ -112,19 +72,7 @@ const FreelancerServicesSlide = ({
           </p>
         </div>
 
-        {loading && (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        )}
-
-        {error && !loading && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-center text-sm text-red-400">
-            {error}
-          </div>
-        )}
-
-        {!loading && !error && (
+        {services.length > 0 ? (
           <div className="grid justify-center gap-3.5 [grid-template-columns:repeat(2,minmax(0,172px))] md:[grid-template-columns:repeat(3,172px)] xl:[grid-template-columns:repeat(5,172px)]">
             {services.map((service) => {
               const Icon = resolveIcon(service.name);
@@ -160,6 +108,10 @@ const FreelancerServicesSlide = ({
                 </button>
               );
             })}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-white/10 bg-card/40 px-5 py-4 text-center text-sm text-white/65">
+            Services are unavailable right now. Please try again.
           </div>
         )}
       </div>
