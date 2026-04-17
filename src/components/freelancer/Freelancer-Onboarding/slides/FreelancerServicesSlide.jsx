@@ -52,6 +52,13 @@ const resolveIcon = (serviceName) => {
   return SERVICE_ICON_MAP[key] || Layers;
 };
 
+const resolveServiceKey = (service) =>
+  String(service?.key || service?.name || service?.label || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
 const FreelancerServicesSlide = ({
   slide,
   selectedServices,
@@ -62,7 +69,7 @@ const FreelancerServicesSlide = ({
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
-      <div className="w-full max-w-5xl space-y-8">
+      <div className="w-full max-w-6xl space-y-8">
         <div className="space-y-3 text-center">
           <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-primary sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
             {slide.title}
@@ -76,13 +83,14 @@ const FreelancerServicesSlide = ({
           <div className="grid justify-center gap-3.5 [grid-template-columns:repeat(2,minmax(0,172px))] md:[grid-template-columns:repeat(3,172px)] xl:[grid-template-columns:repeat(5,172px)]">
             {services.map((service) => {
               const Icon = resolveIcon(service.name);
-              const isSelected = selectedServices.includes(service.id);
+              const serviceKey = resolveServiceKey(service);
+              const isSelected = selectedServices.includes(serviceKey);
 
               return (
                 <button
                   key={service.id}
                   type="button"
-                  onClick={() => onToggleService(service.id)}
+                  onClick={() => onToggleService(serviceKey)}
                   className={cn(
                     "flex aspect-[1.18] w-full flex-col items-center justify-center rounded-[18px] border bg-card px-3 py-2.5 text-center transition-all duration-200",
                     isSelected

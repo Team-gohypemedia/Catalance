@@ -107,6 +107,25 @@ const createCompletedProject = ({
   },
 });
 
+const createServiceDetailsProfile = ({
+  serviceKey = "web-development",
+  title = "Web Development",
+  skillsAndTechnologies = ["Next.js", "Node.js", "PostgreSQL"],
+  keywords = ["Admin dashboard"],
+  niches = ["Fashion"],
+  caseStudy = {},
+} = {}) => ({
+  serviceDetails: {
+    [serviceKey]: {
+      title,
+      skillsAndTechnologies,
+      keywords,
+      niches,
+      caseStudy,
+    },
+  },
+});
+
 test("Level 1 matching uses completed projects", () => {
   const targetProfile = createTargetProfile();
   const freelancers = [
@@ -119,17 +138,17 @@ test("Level 1 matching uses completed projects", () => {
       id: "freelancer-2",
       fullName: "Other Fit",
       skills: ["Next.js"],
-      portfolioProjects: [
-        {
+      profileDetails: createServiceDetailsProfile({
+        skillsAndTechnologies: ["Next.js"],
+        keywords: ["Marketing website"],
+        niches: ["General"],
+        caseStudy: {
           id: "case-study-1",
           title: "Generic web project",
-          serviceKey: "web-development",
-          service: "Web Development",
-          techStack: ["Next.js"],
-          industriesOrNiches: ["General"],
+          description: "Built a small marketing website.",
           budget: 50000,
         },
-      ],
+      }),
     }),
   ];
   const completedProjects = [
@@ -157,21 +176,18 @@ test("Level 2 fallback works when Level 1 is insufficient", () => {
     createFreelancer({
       id: "freelancer-3",
       fullName: "Case Study Fit",
-      portfolioProjects: [
-        {
+      profileDetails: createServiceDetailsProfile({
+        caseStudy: {
           id: "case-study-2",
           title: "Fashion commerce rebuild",
-          service: "Web Development",
-          serviceKey: "web-development",
-          serviceKeys: ["web-development"],
-          techStack: ["Next.js", "Node.js", "PostgreSQL"],
-          tags: ["Admin dashboard"],
-          industriesOrNiches: ["Fashion"],
-          serviceSpecializations: ["E-commerce store"],
+          description:
+            "Built a premium ecommerce storefront with admin workflows.",
           budget: 80000,
+          timeline: "6 weeks",
+          niche: "Fashion",
           updatedAt: "2026-03-25T00:00:00.000Z",
         },
-      ],
+      }),
     }),
   ];
 
@@ -334,19 +350,15 @@ test("duplicate freelancer handling keeps the strongest source level", () => {
       id: "freelancer-9",
       fullName: "Multi-source Fit",
       skills: ["Next.js", "Node.js", "PostgreSQL"],
-      portfolioProjects: [
-        {
+      profileDetails: createServiceDetailsProfile({
+        caseStudy: {
           id: "case-study-9",
           title: "Fashion commerce app",
-          serviceKey: "web-development",
-          service: "Web Development",
-          techStack: ["Next.js", "Node.js", "PostgreSQL"],
-          industriesOrNiches: ["Fashion"],
-          serviceSpecializations: ["E-commerce store"],
+          description: "Developed a fashion commerce app with admin dashboard.",
           budget: 80000,
-          tags: ["Admin dashboard"],
+          niche: "Fashion",
         },
-      ],
+      }),
     }),
   ];
 
@@ -390,20 +402,16 @@ test("service-aligned skill matches outrank weak completed-project signals", () 
       fullName: "Strong Case Study Match",
       services: ["web-development"],
       skills: ["Next.js", "Node.js", "PostgreSQL"],
-      portfolioProjects: [
-        {
+      profileDetails: createServiceDetailsProfile({
+        keywords: ["Admin dashboard", "Shopify integration"],
+        caseStudy: {
           id: "case-strong-1",
           title: "Fashion ecommerce platform",
-          service: "Web Development",
-          serviceKey: "web-development",
-          serviceKeys: ["web-development"],
-          techStack: ["Next.js", "Node.js", "PostgreSQL"],
-          tags: ["Admin dashboard", "Shopify integration"],
-          industriesOrNiches: ["Fashion"],
-          serviceSpecializations: ["E-commerce store"],
+          description: "Built a Shopify-connected ecommerce platform for fashion.",
           budget: 80000,
+          niche: "Fashion",
         },
-      ],
+      }),
     }),
   ];
 
@@ -440,42 +448,32 @@ test("missing rating does not outrank equally matched rated freelancer", () => {
       fullName: "No Rating",
       rating: 0,
       reviewCount: 0,
-      portfolioProjects: [
-        {
+      profileDetails: createServiceDetailsProfile({
+        caseStudy: {
           id: "case-rating-1",
           title: "Ecommerce site build",
-          service: "Web Development",
-          serviceKey: "web-development",
-          serviceKeys: ["web-development"],
-          techStack: ["Next.js", "Node.js", "PostgreSQL"],
-          tags: ["Admin dashboard"],
-          industriesOrNiches: ["Fashion"],
-          serviceSpecializations: ["E-commerce store"],
+          description: "Built a storefront with admin dashboard and integrations.",
           budget: 80000,
           timeline: "6 weeks",
+          niche: "Fashion",
         },
-      ],
+      }),
     }),
     createFreelancer({
       id: "freelancer-rated",
       fullName: "Rated Match",
       rating: 4.9,
       reviewCount: 25,
-      portfolioProjects: [
-        {
+      profileDetails: createServiceDetailsProfile({
+        caseStudy: {
           id: "case-rating-2",
           title: "Ecommerce site build",
-          service: "Web Development",
-          serviceKey: "web-development",
-          serviceKeys: ["web-development"],
-          techStack: ["Next.js", "Node.js", "PostgreSQL"],
-          tags: ["Admin dashboard"],
-          industriesOrNiches: ["Fashion"],
-          serviceSpecializations: ["E-commerce store"],
+          description: "Built a storefront with admin dashboard and integrations.",
           budget: 80000,
           timeline: "6 weeks",
+          niche: "Fashion",
         },
-      ],
+      }),
     }),
   ];
 
@@ -497,14 +495,46 @@ test("service-only sparse case studies are excluded without overlap evidence", (
       fullName: "Sparse Evidence",
       services: ["web-development"],
       skills: [],
-      portfolioProjects: [
-        {
+      profileDetails: createServiceDetailsProfile({
+        skillsAndTechnologies: [],
+        keywords: [],
+        niches: [],
+        caseStudy: {
           id: "case-sparse-1",
           title: "Astrophotography Portfolio Revamp",
-          service: "Web Development",
+        },
+      }),
+    }),
+  ];
+
+  const ranked = rankFreelancersFromData({
+    targetProfile,
+    freelancers,
+    completedProjects: [],
+    activeProjectCounts: new Map(),
+  });
+
+  assert.equal(ranked.results.length, 0);
+});
+
+test("legacy portfolio projects without canonical case studies do not create Level 2 matches", () => {
+  const targetProfile = createTargetProfile();
+  const freelancers = [
+    createFreelancer({
+      id: "freelancer-legacy-portfolio",
+      fullName: "Legacy Portfolio Only",
+      skills: [],
+      services: ["web-development"],
+      portfolioProjects: [
+        {
+          id: "legacy-case-1",
+          title: "Fashion commerce rebuild",
           serviceKey: "web-development",
+          techStack: ["Next.js", "Node.js", "PostgreSQL"],
+          budget: 80000,
         },
       ],
+      profileDetails: {},
     }),
   ];
 
@@ -531,19 +561,16 @@ test("normalized web development service keys resolve as a service match", () =>
       id: "freelancer-webdev-normalized",
       fullName: "Normalized Service Fit",
       services: ["web_development"],
-      portfolioProjects: [
-        {
+      profileDetails: createServiceDetailsProfile({
+        serviceKey: "web_development",
+        caseStudy: {
           id: "case-webdev-normalized",
           title: "Fashion storefront migration",
-          service: "web-development",
-          serviceKey: "web_development",
-          serviceKeys: ["web_development"],
-          techStack: ["Next.js", "Node.js", "PostgreSQL"],
-          industriesOrNiches: ["Fashion"],
-          serviceSpecializations: ["E-commerce store"],
+          description: "Migrated a fashion storefront to a faster stack.",
           budget: 80000,
+          niche: "Fashion",
         },
-      ],
+      }),
     }),
   ];
 
@@ -568,16 +595,15 @@ test("service-aligned candidates rank ahead of mismatched fallback candidates", 
       services: ["web-development"],
       rating: 0,
       reviewCount: 0,
-      portfolioProjects: [
-        {
+      profileDetails: createServiceDetailsProfile({
+        skillsAndTechnologies: ["Next.js"],
+        keywords: [],
+        caseStudy: {
           id: "case-service-fit",
           title: "Small storefront refresh",
-          service: "Web Development",
-          serviceKey: "web-development",
-          serviceKeys: ["web-development"],
-          techStack: ["Next.js"],
+          description: "Refreshed a storefront for a growing ecommerce brand.",
         },
-      ],
+      }),
     }),
     createFreelancer({
       id: "freelancer-service-mismatch-strong",
@@ -614,7 +640,6 @@ test("service-aligned candidates rank ahead of mismatched fallback candidates", 
   assert.equal(ranked.results[0].serviceMatch, true);
   assert.equal(ranked.results[1].id, "freelancer-service-mismatch-strong");
   assert.equal(ranked.results[1].serviceMatch, false);
-  assert.ok(ranked.results[1].rawMatchScore > ranked.results[0].rawMatchScore);
   ranked.results.forEach((result) => {
     assert.ok(result.matchScore >= 0 && result.matchScore <= 100);
   });

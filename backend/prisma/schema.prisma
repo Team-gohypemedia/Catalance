@@ -128,7 +128,7 @@ model FreelancerProfile {
   termsAccepted               Boolean  @default(false)
   deliveryPolicyAccepted      Boolean  @default(false)
   communicationPolicyAccepted Boolean  @default(false)
-  acceptInProgressProjects    String?
+  acceptInProgressProjects    Boolean?
   globalIndustryOther         String?
   city                        String?
   country                     String?
@@ -147,7 +147,7 @@ model FreelancerProfile {
   serviceTitle               String?
   serviceCategory            String?   @map("ServiceCategory")
   serviceExperience          String?
-  projectComplexity          String?   @map("serviceComplexity")
+  serviceComplexity          String?   @map("serviceComplexity")
   serviceDescription         String?   @db.Text
   deliveryTimeline           String?   @map("serviceDeliveryTimeline")
   startingPrice              String?   @map("serviceStartingPrice")

@@ -8,8 +8,8 @@ const FreelancerWorkPreferenceSlide = ({
   onSelectWorkPreference,
 }) => {
   return (
-    <section className="mx-auto flex min-h-[68vh] w-full max-w-5xl flex-col items-center justify-center px-4 text-center sm:min-h-[70vh] sm:px-6">
-      <div className="w-full max-w-4xl space-y-8">
+    <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 text-center sm:min-h-[70vh] sm:px-6">
+      <div className="w-full max-w-6xl space-y-8">
         <h1 className="text-balance text-3xl font-semibold tracking-[-0.03em] text-primary sm:text-4xl">
           How Do You Want To Work On Catalance?
         </h1>

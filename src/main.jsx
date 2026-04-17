@@ -17,7 +17,7 @@ createRoot(document.getElementById("root")).render(
       <AuthProvider>
         <NotificationProvider>
           <App />
-          <Toaster richColors position="bottom-right" />
+          <Toaster richColors position="top-right" />
         </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>

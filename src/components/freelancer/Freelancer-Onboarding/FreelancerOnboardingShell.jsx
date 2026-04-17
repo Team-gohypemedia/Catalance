@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
@@ -27,6 +27,16 @@ import {
   LANGUAGE_OPTIONS,
 } from "@/components/features/freelancer/onboarding/constants";
 import { normalizeUsernameInput } from "@/components/features/freelancer/onboarding/utils";
+import {
+  createEmptyServiceDraft,
+  deriveDraftSkillsAndTechnologies,
+  getServiceCatalogMeta,
+  normalizeServiceDraft,
+  normalizeStringArray as normalizeDraftSkillList,
+  resolveServiceCatalogEntry,
+  resolveServiceKey,
+  serializeServiceDraft,
+} from "./service-details";
 
 import { FREELANCER_ONBOARDING_SLIDES } from "./constants";
 import FreelancerWelcomeSlide from "./slides/FreelancerWelcomeSlide";
@@ -39,6 +49,10 @@ import FreelancerServiceInfoSlide from "./slides/FreelancerServiceInfoSlide";
 import FreelancerServicePricingSlide from "./slides/FreelancerServicePricingSlide";
 import FreelancerServiceVisualsSlide from "./slides/FreelancerServiceVisualsSlide";
 import FreelancerCaseStudySlide from "./slides/FreelancerCaseStudySlide";
+import FreelancerServiceReviewSlide from "./slides/FreelancerServiceReviewSlide";
+import FreelancerAcceptInProgressProjectsSlide from "./slides/FreelancerAcceptInProgressProjectsSlide";
+import FreelancerDeliveryPolicySlide from "./slides/FreelancerDeliveryPolicySlide";
+import FreelancerCommunicationPolicySlide from "./slides/FreelancerCommunicationPolicySlide";
 
 const slideRegistry = {
   welcome: FreelancerWelcomeSlide,
@@ -51,6 +65,10 @@ const slideRegistry = {
   servicePricing: FreelancerServicePricingSlide,
   serviceVisuals: FreelancerServiceVisualsSlide,
   caseStudy: FreelancerCaseStudySlide,
+  serviceReview: FreelancerServiceReviewSlide,
+  acceptInProgressProjects: FreelancerAcceptInProgressProjectsSlide,
+  deliveryPolicy: FreelancerDeliveryPolicySlide,
+  communicationPolicy: FreelancerCommunicationPolicySlide,
 };
 
 const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
@@ -158,6 +176,43 @@ const buildPersistedServiceMedia = (value, index = 0) => {
   };
 };
 
+const extractCaseStudyFileUrl = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "object") {
+    return String(value.uploadedUrl || value.url || "").trim();
+  }
+  return "";
+};
+
+const extractCaseStudyFile = (value) => {
+  if (typeof File === "undefined") return null;
+  if (value instanceof File) return value;
+  return value?.file instanceof File ? value.file : null;
+};
+
+const buildRemoteCaseStudyFile = (value) => {
+  const uploadedUrl = extractCaseStudyFileUrl(value);
+  if (!uploadedUrl) {
+    return null;
+  }
+
+  return {
+    name: String(value?.name || "Project File").trim() || "Project File",
+    url: uploadedUrl,
+    uploadedUrl,
+    key: String(value?.key || "").trim() || null,
+    type: String(value?.type || value?.mimeType || "").trim() || null,
+    size:
+      Number.isFinite(Number(value?.size)) && Number(value.size) > 0
+        ? Number(value.size)
+        : null,
+    file: null,
+  };
+};
+
 const isBlobUrl = (value = "") => String(value || "").startsWith("blob:");
 
 const revokeObjectUrlIfNeeded = (value) => {
@@ -216,6 +271,19 @@ const STARTING_PRICE_STORAGE_LABELS = {
 const findStorageKeyByLabel = (map, label) =>
   Object.entries(map).find(([, value]) => value === String(label || "").trim())?.[0] || "";
 
+const resolveStoredSelectKey = (map, value) => {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) {
+    return "";
+  }
+
+  if (Object.prototype.hasOwnProperty.call(map, normalizedValue)) {
+    return normalizedValue;
+  }
+
+  return findStorageKeyByLabel(map, normalizedValue) || normalizedValue;
+};
+
 const normalizeStringArray = (values) => {
   if (!Array.isArray(values)) {
     return [];
@@ -228,6 +296,28 @@ const normalizeStringArray = (values) => {
         .filter(Boolean),
     ),
   );
+};
+
+const parseBooleanChoice = (value) => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    if (value === 1) return true;
+    if (value === 0) return false;
+    return null;
+  }
+
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  if (["true", "1", "yes", "y"].includes(normalizedValue)) {
+    return true;
+  }
+  if (["false", "0", "no", "n"].includes(normalizedValue)) {
+    return false;
+  }
+
+  return null;
 };
 
 const normalizeSubcategorySkillMap = (value) => {
@@ -249,13 +339,6 @@ const normalizeSubcategorySkillMap = (value) => {
     return accumulator;
   }, {});
 };
-
-const flattenSubcategorySkillMap = (skillMap) =>
-  normalizeStringArray(
-    Object.values(skillMap || {}).flatMap((skills) =>
-      Array.isArray(skills) ? skills : [],
-    ),
-  );
 
 let cachedMarketplaceServices = [];
 let marketplaceServicesRequest = null;
@@ -382,37 +465,15 @@ const FreelancerOnboardingShell = () => {
     createInitialBasicProfileForm(),
   );
   const [selectedServices, setSelectedServices] = useState([]);
+  const [serviceDraftsByKey, setServiceDraftsByKey] = useState({});
+  const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
+  const [acceptInProgressProjectsValue, setAcceptInProgressProjectsValue] =
+    useState(null);
+  const [deliveryPolicyAccepted, setDeliveryPolicyAccepted] = useState(false);
+  const [communicationPolicyAccepted, setCommunicationPolicyAccepted] =
+    useState(false);
   const [dbServices, setDbServices] = useState(cachedMarketplaceServices);
   const [dbNiches, setDbNiches] = useState(cachedMarketplaceNiches);
-  const [serviceInfoForm, setServiceInfoForm] = useState({
-    title: "",
-    category: [],
-    categoryLabel: [],
-    technologies: [],
-    subcategorySkills: {},
-    activeSkillCategory: "",
-    experience: "",
-    complexity: "",
-  });
-  const [servicePricingForm, setServicePricingForm] = useState({
-    description: "",
-    deliveryTimeline: "",
-    priceRange: "",
-  });
-  const [serviceVisualsForm, setServiceVisualsForm] = useState({
-    keywords: [],
-    mediaFiles: [],
-  });
-  const [caseStudyForm, setCaseStudyForm] = useState({
-    title: "",
-    description: "",
-    projectLink: "",
-    projectFile: null,
-    role: "",
-    timeline: "",
-    budget: "",
-    niche: "",
-  });
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [, setProfileError] = useState("");
   const [basicProfileErrors, setBasicProfileErrors] = useState({});
@@ -444,15 +505,52 @@ const FreelancerOnboardingShell = () => {
     currentSlide.progressValue ??
     ((currentSlideIndex + 1) / Math.max(totalSlides, 1)) * 100;
   const isFirstSlide = currentSlideIndex === 0;
-  const isLastSlide = currentSlideIndex >= totalSlides - 1;
   const isWorkPreferenceSlide = currentSlide.id === "workPreference";
   const isServicesSlide = currentSlide.id === "services";
+  const isAcceptInProgressProjectsSlide =
+    currentSlide.id === "acceptInProgressProjects";
+  const isDeliveryPolicySlide = currentSlide.id === "deliveryPolicy";
+  const isCommunicationPolicySlide = currentSlide.id === "communicationPolicy";
   const isProfileActionFooter = currentSlide.footerMode === "profileActions";
+  const isFooterHidden = currentSlide.footerMode === "hidden";
   const isContinueDisabled = isWorkPreferenceSlide
     ? selectedWorkPreference !== "individual"
     : isServicesSlide
       ? selectedServices.length === 0
+      : isAcceptInProgressProjectsSlide
+        ? typeof acceptInProgressProjectsValue !== "boolean"
+      : isDeliveryPolicySlide
+        ? !deliveryPolicyAccepted
+      : isCommunicationPolicySlide
+        ? !communicationPolicyAccepted
       : false;
+  const serviceSetupSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+    (slide) => slide.id === "serviceSetup",
+  );
+  const serviceReviewSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+    (slide) => slide.id === "serviceReview",
+  );
+  const acceptInProgressProjectsSlideIndex =
+    FREELANCER_ONBOARDING_SLIDES.findIndex(
+      (slide) => slide.id === "acceptInProgressProjects",
+    );
+  const deliveryPolicySlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+    (slide) => slide.id === "deliveryPolicy",
+  );
+  const communicationPolicySlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+    (slide) => slide.id === "communicationPolicy",
+  );
+  const currentServiceKey = selectedServices[currentServiceIndex] || "";
+  const currentService = resolveServiceCatalogEntry(dbServices, currentServiceKey);
+  const currentServiceName = String(
+    currentService?.name || currentService?.label || "Service",
+  ).trim() || "Service";
+  const currentServiceDraft = currentServiceKey
+    ? normalizeServiceDraft(serviceDraftsByKey[currentServiceKey], {
+        serviceKey: currentServiceKey,
+        serviceId: currentService?.id,
+      })
+    : createEmptyServiceDraft();
 
   useEffect(() => {
     if (!user || hasHydratedFromUser) {
@@ -472,11 +570,46 @@ const FreelancerOnboardingShell = () => {
       : [];
     const existingPhoto =
       identity.profilePhoto || user.avatar || user.profilePhoto || "";
-    const nextServices = Array.isArray(profileDetails.services)
-      ? profileDetails.services
-      : Array.isArray(user.services)
-        ? user.services
-        : [];
+    const normalizedServiceDetails =
+      profileDetails.serviceDetails && typeof profileDetails.serviceDetails === "object"
+        ? profileDetails.serviceDetails
+        : {};
+    const nextServices = normalizeDraftSkillList(
+      (
+        Array.isArray(profileDetails.services) && profileDetails.services.length > 0
+          ? profileDetails.services
+          : Array.isArray(user.services)
+            ? user.services
+            : Object.keys(normalizedServiceDetails)
+      ).map((serviceKey) => resolveServiceKey(dbServices, serviceKey)),
+    );
+    const hasCanonicalServiceDetails =
+      Number(profileDetails.profileDetailsVersion) >= 2 &&
+      Object.keys(normalizedServiceDetails).length > 0;
+    const legacySubcategorySkills = normalizeSubcategorySkillMap(
+      profileDetails?.serviceSubcategorySkills,
+    );
+    const legacySubcategoryIds = Object.keys(legacySubcategorySkills)
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0);
+    const legacyCategoryLabels = String(user?.serviceCategory || "")
+      .split(",")
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+    const legacySkills = normalizeStringArray(
+      Array.isArray(user?.skills) ? user.skills : [],
+    );
+    const hydratedAcceptInProgressProjects = parseBooleanChoice(
+      profileDetails.acceptInProgressProjects ??
+        user?.acceptInProgressProjects,
+    );
+    const hydratedDeliveryPolicyAccepted = parseBooleanChoice(
+      profileDetails.deliveryPolicyAccepted ?? user?.deliveryPolicyAccepted,
+    );
+    const hydratedCommunicationPolicyAccepted = parseBooleanChoice(
+      profileDetails.communicationPolicyAccepted ??
+        user?.communicationPolicyAccepted,
+    );
 
     setBasicProfileForm((currentForm) => ({
       ...currentForm,
@@ -495,105 +628,118 @@ const FreelancerOnboardingShell = () => {
     setSelectedWorkPreference(
       String(profileDetails.role || selectedWorkPreference || "individual").trim(),
     );
+    setAcceptInProgressProjectsValue(hydratedAcceptInProgressProjects);
+    setDeliveryPolicyAccepted(hydratedDeliveryPolicyAccepted ?? false);
+    setCommunicationPolicyAccepted(hydratedCommunicationPolicyAccepted ?? false);
     setSelectedServices(nextServices);
-    setServiceInfoForm((currentForm) => {
-      const normalizedCategory = Array.isArray(currentForm.category)
-        ? currentForm.category
-            .map((value) => String(value || "").trim())
-            .filter(Boolean)
-        : String(currentForm.category || "").trim()
-          ? [String(currentForm.category).trim()]
-          : [];
+    setServiceDraftsByKey(() => {
+      const nextDraftEntries = nextServices.map((serviceKey, index) => {
+        const serviceMeta = getServiceCatalogMeta(dbServices, serviceKey);
+        const detail = normalizeServiceDraft(normalizedServiceDetails?.[serviceKey], {
+          serviceKey,
+          serviceId: serviceMeta.serviceId,
+        });
 
-      const normalizedCategoryLabel = String(user?.serviceCategory || "").trim()
-        ? String(user.serviceCategory)
-            .split(",")
-            .map((value) => String(value || "").trim())
-            .filter(Boolean)
-        : Array.isArray(currentForm.categoryLabel)
-          ? currentForm.categoryLabel
-              .map((value) => String(value || "").trim())
-              .filter(Boolean)
-          : String(currentForm.categoryLabel || "").trim()
-            ? [String(currentForm.categoryLabel).trim()]
-            : [];
-
-      const normalizedSubcategorySkills = normalizeSubcategorySkillMap(
-        profileDetails?.serviceSubcategorySkills,
-      );
-      const mappedSkills = flattenSubcategorySkillMap(normalizedSubcategorySkills);
-
-      const normalizedTechnologies = normalizeStringArray(
-        Array.isArray(user?.skills)
-          ? user.skills
-          : mappedSkills.length > 0
-            ? mappedSkills
-            : currentForm.technologies,
-      );
-
-      const nextSubcategorySkills =
-        Object.keys(normalizedSubcategorySkills).length > 0
-          ? normalizedSubcategorySkills
-          : normalizedTechnologies.length > 0 && normalizedCategory.length > 0
-            ? { [normalizedCategory[0]]: normalizedTechnologies }
-            : {};
-
-      const preferredActiveCategory = String(
-        profileDetails?.serviceActiveSkillCategory || currentForm.activeSkillCategory || "",
-      ).trim();
-      const nextActiveCategory = normalizedCategory.includes(preferredActiveCategory)
-        ? preferredActiveCategory
-        : normalizedCategory[0] || "";
-
-      return {
-        ...currentForm,
-        title: String(user?.serviceTitle || currentForm.title || "").trim(),
-        category: normalizedCategory,
-        categoryLabel: normalizedCategoryLabel,
-        technologies: normalizedTechnologies,
-        subcategorySkills: nextSubcategorySkills,
-        activeSkillCategory: nextActiveCategory,
-        experience:
-          findStorageKeyByLabel(
-            SERVICE_EXPERIENCE_STORAGE_LABELS,
-            user?.serviceExperience,
-          ) || currentForm.experience,
-        complexity:
-          findStorageKeyByLabel(
-            PROJECT_COMPLEXITY_STORAGE_LABELS,
-            user?.projectComplexity,
-          ) || currentForm.complexity,
-      };
-    });
-    setServicePricingForm((currentForm) => ({
-      ...currentForm,
-      description: String(
-        user?.serviceDescription || currentForm.description || "",
-      ).trim(),
-      deliveryTimeline:
-        findStorageKeyByLabel(
+        detail.experience = resolveStoredSelectKey(
+          SERVICE_EXPERIENCE_STORAGE_LABELS,
+          detail.experience,
+        );
+        detail.complexity = resolveStoredSelectKey(
+          PROJECT_COMPLEXITY_STORAGE_LABELS,
+          detail.complexity,
+        );
+        detail.deliveryTimeline = resolveStoredSelectKey(
           DELIVERY_TIMELINE_STORAGE_LABELS,
-          user?.deliveryTimeline,
-        ) || currentForm.deliveryTimeline,
-      priceRange:
-        findStorageKeyByLabel(
+          detail.deliveryTimeline,
+        );
+        detail.priceRange = resolveStoredSelectKey(
           STARTING_PRICE_STORAGE_LABELS,
-          user?.startingPrice,
-        ) || currentForm.priceRange,
-    }));
-    setServiceVisualsForm((currentForm) => ({
-      ...currentForm,
-      keywords: Array.isArray(user?.serviceKeywords)
-        ? user.serviceKeywords.filter(Boolean)
-        : currentForm.keywords,
-      mediaFiles: Array.isArray(user?.serviceMedia)
-        ? user.serviceMedia
-            .map((entry, index) => buildRemoteServiceMedia(entry, index))
-            .filter(Boolean)
-        : currentForm.mediaFiles,
-    }));
+          detail.priceRange,
+        );
+
+        if (index === 0) {
+          if (!detail.title) {
+            detail.title = String(user?.serviceTitle || "").trim();
+          }
+          if (!detail.experience) {
+            detail.experience = resolveStoredSelectKey(
+              SERVICE_EXPERIENCE_STORAGE_LABELS,
+              user?.serviceExperience,
+            );
+          }
+          if (!detail.complexity) {
+            detail.complexity = resolveStoredSelectKey(
+              PROJECT_COMPLEXITY_STORAGE_LABELS,
+              user?.serviceComplexity || user?.projectComplexity,
+            );
+          }
+          if (!detail.description) {
+            detail.description = String(user?.serviceDescription || "").trim();
+          }
+          if (!detail.deliveryTimeline) {
+            detail.deliveryTimeline = resolveStoredSelectKey(
+              DELIVERY_TIMELINE_STORAGE_LABELS,
+              user?.deliveryTimeline,
+            );
+          }
+          if (!detail.priceRange) {
+            detail.priceRange = resolveStoredSelectKey(
+              STARTING_PRICE_STORAGE_LABELS,
+              user?.startingPrice,
+            );
+          }
+          if (!detail.keywords.length && Array.isArray(user?.serviceKeywords)) {
+            detail.keywords = normalizeStringArray(user.serviceKeywords);
+          }
+          if (!detail.mediaFiles.length && Array.isArray(user?.serviceMedia)) {
+            detail.mediaFiles = user.serviceMedia
+              .map((entry, mediaIndex) => buildRemoteServiceMedia(entry, mediaIndex))
+              .filter(Boolean);
+          }
+        }
+
+        if (!hasCanonicalServiceDetails && index === 0) {
+          if (!detail.skillsAndTechnologies.length && legacySkills.length > 0) {
+            detail.skillsAndTechnologies = legacySkills;
+          }
+
+          if (!detail.subcategories.length && legacySubcategoryIds.length > 0) {
+            detail.subcategories = legacySubcategoryIds.map((subCategoryId) => ({
+              subCategoryId,
+              selectedToolIds: [],
+              customSkillNames: normalizeStringArray(
+                legacySubcategorySkills[String(subCategoryId)],
+              ),
+            }));
+          }
+
+          if (!detail.pendingCategoryLabels.length && legacyCategoryLabels.length > 0) {
+            detail.pendingCategoryLabels = legacyCategoryLabels;
+          }
+
+          const legacyActiveCategory = Number(profileDetails?.serviceActiveSkillCategory);
+          if (
+            Number.isInteger(legacyActiveCategory) &&
+            detail.subcategories.some(
+              (entry) => entry.subCategoryId === legacyActiveCategory,
+            )
+          ) {
+            detail.activeSkillCategory = legacyActiveCategory;
+          }
+        }
+
+        if (!detail.activeSkillCategory && detail.subcategories.length > 0) {
+          detail.activeSkillCategory = detail.subcategories[0].subCategoryId;
+        }
+
+        return [serviceKey, detail];
+      });
+
+      return Object.fromEntries(nextDraftEntries);
+    });
+    setCurrentServiceIndex(0);
     setHasHydratedFromUser(true);
-  }, [hasHydratedFromUser, selectedWorkPreference, user]);
+  }, [dbServices, hasHydratedFromUser, selectedWorkPreference, user]);
 
   useEffect(() => {
     if (dbServices.length) {
@@ -642,6 +788,53 @@ const FreelancerOnboardingShell = () => {
       isCancelled = true;
     };
   }, [dbNiches.length]);
+
+  useEffect(() => {
+    setCurrentServiceIndex((currentIndex) => {
+      if (selectedServices.length === 0) {
+        return 0;
+      }
+
+      return Math.min(currentIndex, selectedServices.length - 1);
+    });
+
+    setServiceDraftsByKey((currentDrafts) => {
+      const nextDrafts = {};
+      let hasChanges = false;
+
+      selectedServices.forEach((serviceKey) => {
+        const serviceMeta = getServiceCatalogMeta(dbServices, serviceKey);
+        const currentDraft = normalizeServiceDraft(currentDrafts[serviceKey], {
+          serviceKey,
+          serviceId: serviceMeta.serviceId,
+        });
+        const nextDraft = {
+          ...currentDraft,
+          serviceId: serviceMeta.serviceId || currentDraft.serviceId,
+        };
+
+        nextDrafts[serviceKey] = nextDraft;
+
+        if (!Object.prototype.hasOwnProperty.call(currentDrafts, serviceKey)) {
+          hasChanges = true;
+          return;
+        }
+
+        if ((currentDraft.serviceId || null) !== (nextDraft.serviceId || null)) {
+          hasChanges = true;
+        }
+      });
+
+      if (
+        !hasChanges &&
+        Object.keys(currentDrafts).length === Object.keys(nextDrafts).length
+      ) {
+        return currentDrafts;
+      }
+
+      return nextDrafts;
+    });
+  }, [dbServices, selectedServices]);
 
   useEffect(() => {
     const currentPhotoUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
@@ -805,6 +998,78 @@ const FreelancerOnboardingShell = () => {
     };
   }, [basicProfileForm.username, currentUsername, checkUsernameAvailability, syncUsernameErrorState]);
 
+  const updateCurrentServiceDraft = useCallback((updater) => {
+    if (!currentServiceKey) {
+      return;
+    }
+
+    setServiceDraftsByKey((currentDrafts) => {
+      const baseDraft = normalizeServiceDraft(currentDrafts[currentServiceKey], {
+        serviceKey: currentServiceKey,
+        serviceId: currentService?.id,
+      });
+      const nextDraftValue =
+        typeof updater === "function" ? updater(baseDraft) : updater;
+      const nextDraft = normalizeServiceDraft(nextDraftValue, {
+        serviceKey: currentServiceKey,
+        serviceId: currentService?.id,
+      });
+
+      return {
+        ...currentDrafts,
+        [currentServiceKey]: nextDraft,
+      };
+    });
+  }, [currentService?.id, currentServiceKey]);
+
+  const currentServiceInfoForm = useMemo(
+    () => ({
+      title: currentServiceDraft.title,
+      experience: currentServiceDraft.experience,
+      complexity: currentServiceDraft.complexity,
+    }),
+    [currentServiceDraft.complexity, currentServiceDraft.experience, currentServiceDraft.title],
+  );
+
+  const currentServicePricingForm = useMemo(
+    () => ({
+      description: currentServiceDraft.description,
+      deliveryTimeline: currentServiceDraft.deliveryTimeline,
+      priceRange: currentServiceDraft.priceRange,
+    }),
+    [
+      currentServiceDraft.deliveryTimeline,
+      currentServiceDraft.description,
+      currentServiceDraft.priceRange,
+    ],
+  );
+
+  const currentServiceVisualsForm = useMemo(
+    () => ({
+      keywords: Array.isArray(currentServiceDraft.keywords)
+        ? currentServiceDraft.keywords
+        : [],
+      mediaFiles: Array.isArray(currentServiceDraft.mediaFiles)
+        ? currentServiceDraft.mediaFiles
+        : [],
+    }),
+    [currentServiceDraft.keywords, currentServiceDraft.mediaFiles],
+  );
+
+  const currentCaseStudyForm = useMemo(
+    () => ({
+      title: String(currentServiceDraft.caseStudy?.title ?? ""),
+      description: String(currentServiceDraft.caseStudy?.description ?? ""),
+      projectLink: String(currentServiceDraft.caseStudy?.projectLink || "").trim(),
+      projectFile: currentServiceDraft.caseStudy?.projectFile || null,
+      role: String(currentServiceDraft.caseStudy?.role || "").trim(),
+      timeline: String(currentServiceDraft.caseStudy?.timeline || "").trim(),
+      budget: String(currentServiceDraft.caseStudy?.budget || "").trim(),
+      niche: String(currentServiceDraft.caseStudy?.niche || "").trim(),
+    }),
+    [currentServiceDraft.caseStudy],
+  );
+
   const syncBasicProfileValidationErrors = (validationErrors) => {
     setBasicProfileErrors((currentErrors) => {
       const nextErrors = { ...currentErrors };
@@ -935,67 +1200,6 @@ const FreelancerOnboardingShell = () => {
     return resolvedEntries.filter(Boolean);
   };
 
-  const buildMergedProfileDetails = (resolvedAvatarUrl = "") => {
-    const currentProfileDetails =
-      user?.profileDetails && typeof user.profileDetails === "object"
-        ? user.profileDetails
-        : {};
-    const currentIdentity =
-      currentProfileDetails.identity &&
-      typeof currentProfileDetails.identity === "object"
-        ? currentProfileDetails.identity
-        : {};
-    const mergedServices =
-      selectedServices.length > 0
-        ? selectedServices
-        : Array.isArray(currentProfileDetails.services)
-          ? currentProfileDetails.services
-          : [];
-    const subcategorySkills = normalizeSubcategorySkillMap(
-      serviceInfoForm.subcategorySkills,
-    );
-    const activeSkillCategory = String(
-      serviceInfoForm.activeSkillCategory || "",
-    ).trim();
-    const nextProfileDetails = {
-      ...currentProfileDetails,
-      role: selectedWorkPreference || currentProfileDetails.role || "individual",
-      professionalBio: basicProfileForm.professionalBio.trim(),
-      services: mergedServices,
-      identity: {
-        ...currentIdentity,
-        username: normalizeUsernameInput(basicProfileForm.username),
-        country: basicProfileForm.country.trim(),
-        city: basicProfileForm.state.trim(),
-        languages: Array.isArray(basicProfileForm.languages)
-          ? basicProfileForm.languages.filter(Boolean)
-          : [],
-        profilePhoto:
-          resolvedAvatarUrl ||
-          extractProfilePhotoUrl(basicProfileForm.profilePhoto) ||
-          currentIdentity.profilePhoto ||
-          null,
-      },
-    };
-
-    if (Object.keys(subcategorySkills).length > 0) {
-      nextProfileDetails.serviceSubcategorySkills = subcategorySkills;
-    } else {
-      delete nextProfileDetails.serviceSubcategorySkills;
-    }
-
-    if (
-      activeSkillCategory &&
-      Object.prototype.hasOwnProperty.call(subcategorySkills, activeSkillCategory)
-    ) {
-      nextProfileDetails.serviceActiveSkillCategory = activeSkillCategory;
-    } else {
-      delete nextProfileDetails.serviceActiveSkillCategory;
-    }
-
-    return nextProfileDetails;
-  };
-
   const validateBasicProfileBeforeContinue = async () => {
     const validationErrors = buildBasicProfileValidationErrors(basicProfileForm);
     const firstValidationError = getFirstBasicProfileError(validationErrors);
@@ -1024,86 +1228,207 @@ const FreelancerOnboardingShell = () => {
     }
   };
 
-  const persistOnboardingProfile = async ({ markComplete = false } = {}) => {
+  const uploadCaseStudyProjectFile = async (file) => {
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+
+    const response = await authFetch("/upload/chat", {
+      method: "POST",
+      body: uploadData,
+    });
+
+    if (!response.ok) {
+      const payload = await response
+        .json()
+        .catch(() => ({ message: "Failed to upload project file." }));
+      throw new Error(
+        payload?.error?.message || payload?.message || "Failed to upload project file.",
+      );
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    const uploadedUrl = String(payload?.data?.url || payload?.url || "").trim();
+
+    if (!uploadedUrl) {
+      throw new Error("Project file upload completed without a usable URL.");
+    }
+
+    return {
+      name: String(payload?.data?.name || file?.name || "Project File").trim(),
+      url: uploadedUrl,
+      key: String(payload?.data?.key || "").trim() || null,
+      type: String(payload?.data?.type || file?.type || "").trim() || null,
+      size:
+        Number.isFinite(Number(payload?.data?.size)) && Number(payload.data.size) > 0
+          ? Number(payload.data.size)
+          : Number.isFinite(Number(file?.size)) && Number(file.size) > 0
+            ? Number(file.size)
+            : null,
+    };
+  };
+
+  const persistCaseStudyProjectFile = async (value) => {
+    const localFile = extractCaseStudyFile(value);
+    if (localFile) {
+      return uploadCaseStudyProjectFile(localFile);
+    }
+
+    return buildRemoteCaseStudyFile(value);
+  };
+
+  const persistServiceDraftUploads = async (serviceKey, draft) => {
+    const serviceMeta = getServiceCatalogMeta(dbServices, serviceKey);
+    const normalizedDraft = normalizeServiceDraft(draft, {
+      serviceKey,
+      serviceId: serviceMeta.serviceId,
+    });
+    const [mediaFiles, projectFile] = await Promise.all([
+      persistServiceMediaEntries(normalizedDraft.mediaFiles),
+      persistCaseStudyProjectFile(normalizedDraft.caseStudy?.projectFile),
+    ]);
+
+    return normalizeServiceDraft(
+      {
+        ...normalizedDraft,
+        mediaFiles,
+        caseStudy: normalizedDraft.caseStudy
+          ? {
+              ...normalizedDraft.caseStudy,
+              projectFile: projectFile || null,
+            }
+          : null,
+      },
+      {
+        serviceKey,
+        serviceId: serviceMeta.serviceId,
+      },
+    );
+  };
+
+  const persistOnboardingProfile = async ({
+    markComplete = false,
+    deliveryPolicyAcceptedOverride,
+    communicationPolicyAcceptedOverride,
+  } = {}) => {
     if (!user?.id) {
       throw new Error("You need to be logged in to save your freelancer profile.");
     }
 
     await validateBasicProfileBeforeContinue();
 
-    const professionalBio = basicProfileForm.professionalBio.trim();
-    const country = basicProfileForm.country.trim();
-    const state = basicProfileForm.state.trim();
-    const serviceTitle = String(serviceInfoForm.title || "").trim();
-    const serviceCategory = (
-      Array.isArray(serviceInfoForm.categoryLabel)
-        ? serviceInfoForm.categoryLabel
-        : String(serviceInfoForm.categoryLabel || "")
-            .split(",")
-    )
-      .map((value) => String(value || "").trim())
-      .filter(Boolean)
-      .join(", ");
-    const serviceExperience =
-      SERVICE_EXPERIENCE_STORAGE_LABELS[serviceInfoForm.experience] || null;
-    const projectComplexity =
-      PROJECT_COMPLEXITY_STORAGE_LABELS[serviceInfoForm.complexity] || null;
-    const normalizedSubcategorySkills = normalizeSubcategorySkillMap(
-      serviceInfoForm.subcategorySkills,
+    const orderedSelectedServices = normalizeDraftSkillList(
+      selectedServices.map((serviceKey) => resolveServiceKey(dbServices, serviceKey)),
     );
-    const flattenedSubcategorySkills = flattenSubcategorySkillMap(
-      normalizedSubcategorySkills,
-    );
-    const fallbackTechnologies = normalizeStringArray(serviceInfoForm.technologies);
-    const persistedSkills =
-      flattenedSubcategorySkills.length > 0
-        ? flattenedSubcategorySkills
-        : fallbackTechnologies;
-    const serviceDescription = String(
-      servicePricingForm.description || "",
-    ).trim();
-    const deliveryTimeline =
-      DELIVERY_TIMELINE_STORAGE_LABELS[servicePricingForm.deliveryTimeline] || null;
-    const startingPrice =
-      STARTING_PRICE_STORAGE_LABELS[servicePricingForm.priceRange] || null;
-    const serviceKeywords = Array.isArray(serviceVisualsForm.keywords)
-      ? serviceVisualsForm.keywords.filter(Boolean).slice(0, 5)
-      : [];
+
+    if (!orderedSelectedServices.length) {
+      throw new Error("Please select at least one service.");
+    }
 
     const localProfilePhotoFile = extractProfilePhotoFile(basicProfileForm.profilePhoto);
     const initialAvatarUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
-    const [resolvedAvatarUrl, serviceMedia] = await Promise.all([
-      localProfilePhotoFile
-        ? uploadProfilePhoto(localProfilePhotoFile)
-        : Promise.resolve(initialAvatarUrl),
-      persistServiceMediaEntries(serviceVisualsForm.mediaFiles),
-    ]);
+    const resolvedAvatarUrl = localProfilePhotoFile
+      ? await uploadProfilePhoto(localProfilePhotoFile)
+      : initialAvatarUrl;
+    const persistedServices = await Promise.all(
+      orderedSelectedServices.map(async (serviceKey) => {
+        const persistedDraft = await persistServiceDraftUploads(
+          serviceKey,
+          serviceDraftsByKey[serviceKey],
+        );
+        const serviceMeta = getServiceCatalogMeta(dbServices, serviceKey);
+        const serializedDetail = serializeServiceDraft({
+          draft: {
+            ...persistedDraft,
+            skillsAndTechnologies: deriveDraftSkillsAndTechnologies(persistedDraft, {}),
+          },
+          serviceId: serviceMeta.serviceId,
+          experienceLabelsByKey: SERVICE_EXPERIENCE_STORAGE_LABELS,
+          complexityLabelsByKey: PROJECT_COMPLEXITY_STORAGE_LABELS,
+          deliveryLabelsByKey: DELIVERY_TIMELINE_STORAGE_LABELS,
+          priceLabelsByKey: STARTING_PRICE_STORAGE_LABELS,
+        });
 
-    const profileDetails = buildMergedProfileDetails(resolvedAvatarUrl);
+        return [serviceKey, { persistedDraft, serializedDetail }];
+      }),
+    );
+
+    const currentProfileDetails =
+      user?.profileDetails && typeof user.profileDetails === "object"
+        ? user.profileDetails
+        : {};
+    const currentIdentity =
+      currentProfileDetails.identity &&
+      typeof currentProfileDetails.identity === "object"
+        ? currentProfileDetails.identity
+        : {};
+    const resolvedAcceptInProgressProjectsValue =
+      parseBooleanChoice(acceptInProgressProjectsValue) ??
+      parseBooleanChoice(currentProfileDetails.acceptInProgressProjects);
+    const resolvedDeliveryPolicyAccepted =
+      parseBooleanChoice(deliveryPolicyAcceptedOverride) ??
+      parseBooleanChoice(deliveryPolicyAccepted) ??
+      parseBooleanChoice(currentProfileDetails.deliveryPolicyAccepted);
+    const resolvedCommunicationPolicyAccepted =
+      parseBooleanChoice(communicationPolicyAcceptedOverride) ??
+      parseBooleanChoice(communicationPolicyAccepted) ??
+      parseBooleanChoice(currentProfileDetails.communicationPolicyAccepted);
+    const nextServiceDetails = Object.fromEntries(
+      persistedServices.map(([serviceKey, value]) => [serviceKey, value.serializedDetail]),
+    );
+    const profileDetails = {
+      ...currentProfileDetails,
+      profileDetailsVersion: 2,
+      role: selectedWorkPreference || currentProfileDetails.role || "individual",
+      professionalBio: basicProfileForm.professionalBio.trim(),
+      services: orderedSelectedServices,
+      serviceDetails: nextServiceDetails,
+      acceptInProgressProjects:
+        typeof resolvedAcceptInProgressProjectsValue === "boolean"
+          ? resolvedAcceptInProgressProjectsValue
+          : null,
+      deliveryPolicyAccepted:
+        typeof resolvedDeliveryPolicyAccepted === "boolean"
+          ? resolvedDeliveryPolicyAccepted
+          : null,
+      communicationPolicyAccepted:
+        typeof resolvedCommunicationPolicyAccepted === "boolean"
+          ? resolvedCommunicationPolicyAccepted
+          : null,
+      identity: {
+        ...currentIdentity,
+        username: normalizeUsernameInput(basicProfileForm.username),
+        country: basicProfileForm.country.trim(),
+        city: basicProfileForm.state.trim(),
+        languages: Array.isArray(basicProfileForm.languages)
+          ? basicProfileForm.languages.filter(Boolean)
+          : [],
+        profilePhoto:
+          resolvedAvatarUrl ||
+          extractProfilePhotoUrl(basicProfileForm.profilePhoto) ||
+          currentIdentity.profilePhoto ||
+          null,
+      },
+    };
+
+    delete profileDetails.serviceSubcategorySkills;
+    delete profileDetails.serviceActiveSkillCategory;
+
     const updatePayload = {
       profileDetails,
-      bio: professionalBio,
-      location: buildLocationLabel({ state, country }),
-      services:
-        selectedServices.length > 0
-          ? selectedServices
-          : Array.isArray(profileDetails.services)
-            ? profileDetails.services
-            : [],
-      skills: persistedSkills,
-      serviceTitle: serviceTitle || null,
-      serviceCategory: serviceCategory || null,
-      serviceExperience,
-      projectComplexity,
-      serviceDescription: serviceDescription || null,
-      deliveryTimeline,
-      startingPrice,
-      serviceKeywords,
-      serviceMedia,
+      bio: basicProfileForm.professionalBio.trim(),
+      location: buildLocationLabel({
+        state: basicProfileForm.state.trim(),
+        country: basicProfileForm.country.trim(),
+      }),
     };
 
     if (resolvedAvatarUrl) {
       updatePayload.avatar = resolvedAvatarUrl;
+    }
+
+    if (typeof resolvedAcceptInProgressProjectsValue === "boolean") {
+      updatePayload.acceptInProgressProjects =
+        resolvedAcceptInProgressProjectsValue;
     }
 
     if (markComplete) {
@@ -1119,14 +1444,22 @@ const FreelancerOnboardingShell = () => {
       }));
     }
 
-    if (serviceMedia.length > 0 || serviceVisualsForm.mediaFiles.length > 0) {
-      setServiceVisualsForm((currentForm) => ({
-        ...currentForm,
-        mediaFiles: serviceMedia
-          .map((entry, index) => buildRemoteServiceMedia(entry, index))
-          .filter(Boolean),
-      }));
-    }
+    setServiceDraftsByKey((currentDrafts) =>
+      persistedServices.reduce((accumulator, [serviceKey, value]) => {
+        accumulator[serviceKey] = normalizeServiceDraft(
+          {
+            ...currentDrafts[serviceKey],
+            ...value.persistedDraft,
+            skillsAndTechnologies: value.serializedDetail.skillsAndTechnologies,
+          },
+          {
+            serviceKey,
+            serviceId: value.serializedDetail.serviceId,
+          },
+        );
+        return accumulator;
+      }, { ...currentDrafts }),
+    );
   };
 
   const ensureMarketplaceServicesLoaded = useCallback(async () => {
@@ -1139,7 +1472,39 @@ const FreelancerOnboardingShell = () => {
     return services;
   }, [dbServices]);
 
+  const submitOnboardingAndNavigate = ({
+    deliveryPolicyAcceptedOverride,
+    communicationPolicyAcceptedOverride,
+  } = {}) => {
+    setIsProfileSaving(true);
+    setProfileError("");
+
+    persistOnboardingProfile({
+      markComplete: true,
+      deliveryPolicyAcceptedOverride,
+      communicationPolicyAcceptedOverride,
+    })
+      .then(async () => {
+        await refreshUser();
+        toast.success("Freelancer onboarding saved.");
+        navigate("/freelancer");
+      })
+      .catch((error) => {
+        setProfileError(error?.message || "Failed to save freelancer onboarding.");
+        toast.error(error?.message || "Failed to save freelancer onboarding.");
+      })
+      .finally(() => {
+        setIsProfileSaving(false);
+      });
+  };
+
   const handleBack = () => {
+    if (currentSlide.id === "serviceSetup" && currentServiceIndex > 0) {
+      setCurrentServiceIndex((currentIndex) => Math.max(currentIndex - 1, 0));
+      setCurrentSlideIndex(serviceReviewSlideIndex);
+      return;
+    }
+
     if (isFirstSlide) {
       return;
     }
@@ -1152,29 +1517,82 @@ const FreelancerOnboardingShell = () => {
       return;
     }
 
-    if (isLastSlide) {
-      setIsProfileSaving(true);
-      setProfileError("");
+    if (currentSlide.id === "serviceReview") {
+      if (currentServiceIndex < selectedServices.length - 1) {
+        setCurrentServiceIndex((currentIndex) =>
+          Math.min(currentIndex + 1, selectedServices.length - 1),
+        );
+        setCurrentSlideIndex(serviceSetupSlideIndex);
+        return;
+      }
 
-      persistOnboardingProfile({ markComplete: true })
-        .then(async () => {
-          await refreshUser();
-          toast.success("Freelancer onboarding saved.");
-          navigate("/freelancer");
-        })
-        .catch((error) => {
-          setProfileError(error?.message || "Failed to save freelancer onboarding.");
-          toast.error(error?.message || "Failed to save freelancer onboarding.");
-        })
-        .finally(() => {
-          setIsProfileSaving(false);
-        });
+      if (acceptInProgressProjectsSlideIndex >= 0) {
+        setCurrentSlideIndex(acceptInProgressProjectsSlideIndex);
+        return;
+      }
+
+      submitOnboardingAndNavigate();
+      return;
+    }
+
+    if (currentSlide.id === "acceptInProgressProjects") {
+      if (deliveryPolicySlideIndex >= 0) {
+        setCurrentSlideIndex(deliveryPolicySlideIndex);
+        return;
+      }
+
+      submitOnboardingAndNavigate();
+      return;
+    }
+
+    if (currentSlide.id === "deliveryPolicy") {
+      if (communicationPolicySlideIndex >= 0) {
+        setCurrentSlideIndex(communicationPolicySlideIndex);
+        return;
+      }
+
+      submitOnboardingAndNavigate();
+      return;
+    }
+
+    if (currentSlide.id === "communicationPolicy") {
+      submitOnboardingAndNavigate({
+        deliveryPolicyAcceptedOverride: true,
+        communicationPolicyAcceptedOverride: true,
+      });
       return;
     }
 
     setCurrentSlideIndex((currentIndex) =>
       Math.min(currentIndex + 1, totalSlides - 1)
     );
+  };
+
+  const handleDeliveryPolicyAgree = () => {
+    if (isProfileSaving) {
+      return;
+    }
+
+    setDeliveryPolicyAccepted(true);
+
+    if (communicationPolicySlideIndex >= 0) {
+      setCurrentSlideIndex(communicationPolicySlideIndex);
+      return;
+    }
+
+    submitOnboardingAndNavigate({ deliveryPolicyAcceptedOverride: true });
+  };
+
+  const handleCommunicationPolicyAgree = () => {
+    if (isProfileSaving) {
+      return;
+    }
+
+    setCommunicationPolicyAccepted(true);
+    submitOnboardingAndNavigate({
+      deliveryPolicyAcceptedOverride: true,
+      communicationPolicyAcceptedOverride: true,
+    });
   };
 
   const handleWorkPreferenceSelect = (nextValue) => {
@@ -1214,11 +1632,16 @@ const FreelancerOnboardingShell = () => {
   };
 
   const handleServiceToggle = (serviceId) => {
+    const normalizedServiceKey = resolveServiceKey(dbServices, serviceId);
+    if (!normalizedServiceKey) {
+      return;
+    }
+
     setProfileError("");
     setSelectedServices((current) =>
-      current.includes(serviceId)
-        ? current.filter((id) => id !== serviceId)
-        : [...current, serviceId]
+      current.includes(normalizedServiceKey)
+        ? current.filter((serviceKey) => serviceKey !== normalizedServiceKey)
+        : [...current, normalizedServiceKey]
     );
   };
 
@@ -1341,6 +1764,11 @@ const FreelancerOnboardingShell = () => {
     setSelectedWorkPreference("");
     setBasicProfileForm(createInitialBasicProfileForm());
     setSelectedServices([]);
+    setServiceDraftsByKey({});
+    setCurrentServiceIndex(0);
+    setAcceptInProgressProjectsValue(null);
+    setDeliveryPolicyAccepted(false);
+    setCommunicationPolicyAccepted(false);
     setProfileError("");
     setBasicProfileErrors({});
     setStateOptions([]);
@@ -1379,7 +1807,10 @@ const FreelancerOnboardingShell = () => {
     : handleContinue;
   const footerPrimaryLabel = isProfileActionFooter
     ? "Continue"
-    : currentSlide.continueLabel || "Continue";
+    : currentSlide.id === "serviceReview" &&
+        currentServiceIndex < selectedServices.length - 1
+      ? "Next Service"
+      : currentSlide.continueLabel || "Continue";
   const footerPrimaryDisabled = isProfileActionFooter
     ? isProfileSaving
     : isContinueDisabled || isProfileSaving;
@@ -1504,57 +1935,89 @@ const FreelancerOnboardingShell = () => {
                 selectedServices={selectedServices}
                 onToggleService={handleServiceToggle}
                 dbServices={dbServices}
-                serviceInfoForm={serviceInfoForm}
+                currentServiceKey={currentServiceKey}
+                currentService={currentService}
+                currentServiceName={currentServiceName}
+                currentServiceIndex={currentServiceIndex}
+                totalSelectedServices={selectedServices.length}
+                serviceDraft={currentServiceDraft}
+                onUpdateServiceDraft={updateCurrentServiceDraft}
+                serviceInfoForm={currentServiceInfoForm}
                 onServiceInfoFieldChange={(field, value) =>
-                  setServiceInfoForm((prev) => ({ ...prev, [field]: value }))
+                  updateCurrentServiceDraft((draft) => ({
+                    ...draft,
+                    [field]: value,
+                  }))
                 }
-                servicePricingForm={servicePricingForm}
+                servicePricingForm={currentServicePricingForm}
                 onServicePricingFieldChange={(field, value) =>
-                  setServicePricingForm((prev) => ({ ...prev, [field]: value }))
+                  updateCurrentServiceDraft((draft) => ({
+                    ...draft,
+                    [field === "description" ? "description" : field]: value,
+                  }))
                 }
-                serviceVisualsForm={serviceVisualsForm}
+                serviceVisualsForm={currentServiceVisualsForm}
                 onServiceVisualsFieldChange={(field, value) =>
-                  setServiceVisualsForm((prev) => ({ ...prev, [field]: value }))
+                  updateCurrentServiceDraft((draft) => ({
+                    ...draft,
+                    [field]: value,
+                  }))
                 }
-                caseStudyForm={caseStudyForm}
+                caseStudyForm={currentCaseStudyForm}
                 nicheOptions={dbNiches}
                 onCaseStudyFieldChange={(field, value) =>
-                  setCaseStudyForm((prev) => ({ ...prev, [field]: value }))
+                  updateCurrentServiceDraft((draft) => ({
+                    ...draft,
+                    caseStudy: {
+                      ...(draft.caseStudy || {}),
+                      [field]: value,
+                    },
+                  }))
                 }
+                acceptInProgressProjectsValue={acceptInProgressProjectsValue}
+                onAcceptInProgressProjectsChange={setAcceptInProgressProjectsValue}
+                onDeliveryPolicyAgreeAndContinue={handleDeliveryPolicyAgree}
+                onCommunicationPolicyAgreeAndContinue={
+                  handleCommunicationPolicyAgree
+                }
+                isProfileSaving={isProfileSaving}
+                user={user}
               />
             </motion.div>
           </AnimatePresence>
         </div>
       </section>
 
-      <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6">
-        <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <div />
+      {isFooterHidden ? null : (
+        <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6">
+          <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
+            <div />
 
-          <Button
-            type="button"
-            size="lg"
-            onClick={footerPrimaryAction}
-            disabled={footerPrimaryDisabled}
-            className="px-10"
-          >
-            {footerPrimaryLabel}
-          </Button>
-
-          {isProfileActionFooter ? (
             <Button
               type="button"
-              variant="outline"
-              onClick={handleBasicProfileSkip}
-              className="justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
+              size="lg"
+              onClick={footerPrimaryAction}
+              disabled={footerPrimaryDisabled}
+              className="px-10"
             >
-              Skip for now
+              {footerPrimaryLabel}
             </Button>
-          ) : (
-            <div />
-          )}
-        </div>
-      </footer>
+
+            {isProfileActionFooter ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleBasicProfileSkip}
+                className="justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
+              >
+                Skip for now
+              </Button>
+            ) : (
+              <div />
+            )}
+          </div>
+        </footer>
+      )}
       <ProfileImageCropDialog
         open={isProfileCropOpen}
         file={pendingProfilePhotoFile}

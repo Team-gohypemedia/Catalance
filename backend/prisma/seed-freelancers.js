@@ -182,7 +182,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I build complete brand systems for founders who need clearer positioning, stronger recall, and launch-ready visual assets.",
     seedBudget: 180000,
     deliveryTime: "4-6 weeks",
-    projectComplexity: "Mid-market brand refresh"
+    serviceComplexity: "Mid-market brand refresh"
   },
   {
     key: "web_development",
@@ -206,7 +206,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I design and ship fast, conversion-focused websites and product surfaces with clean frontend architecture and scalable backend APIs.",
     seedBudget: 240000,
     deliveryTime: "5-7 weeks",
-    projectComplexity: "Custom product build"
+    serviceComplexity: "Custom product build"
   },
   {
     key: "seo",
@@ -236,7 +236,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I improve organic visibility with technical SEO, search intent mapping, and editorial systems that convert traffic into pipeline.",
     seedBudget: 120000,
     deliveryTime: "8 weeks",
-    projectComplexity: "Growth retainers"
+    serviceComplexity: "Growth retainers"
   },
   {
     key: "social_media_marketing",
@@ -266,7 +266,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I create social systems that keep brands consistent, relevant, and measurable across content, community, and reporting.",
     seedBudget: 95000,
     deliveryTime: "Monthly retainer",
-    projectComplexity: "Content and growth operations"
+    serviceComplexity: "Content and growth operations"
   },
   {
     key: "paid_advertising",
@@ -296,7 +296,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I run paid media systems focused on CAC efficiency, stronger funnel conversion, and creative testing discipline.",
     seedBudget: 150000,
     deliveryTime: "4 weeks to launch",
-    projectComplexity: "Multi-channel acquisition"
+    serviceComplexity: "Multi-channel acquisition"
   },
   {
     key: "app_development",
@@ -320,7 +320,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I build polished mobile products for startups that need reliable releases, intuitive UX, and backend-friendly architecture.",
     seedBudget: 280000,
     deliveryTime: "6-8 weeks",
-    projectComplexity: "Cross-platform mobile product"
+    serviceComplexity: "Cross-platform mobile product"
   },
   {
     key: "software_development",
@@ -344,7 +344,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I design custom software systems for operational efficiency, integrations, and long-term maintainability.",
     seedBudget: 420000,
     deliveryTime: "8-10 weeks",
-    projectComplexity: "Enterprise workflow platform"
+    serviceComplexity: "Enterprise workflow platform"
   },
   {
     key: "lead_generation",
@@ -374,7 +374,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I build outbound lead-generation systems that combine sharper targeting, tighter CRM hygiene, and measurable pipeline creation.",
     seedBudget: 110000,
     deliveryTime: "3-4 weeks",
-    projectComplexity: "Outbound pipeline setup"
+    serviceComplexity: "Outbound pipeline setup"
   },
   {
     key: "video_services",
@@ -404,7 +404,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I create video systems for brands that need sharper storytelling, platform-ready edits, and faster post-production loops.",
     seedBudget: 140000,
     deliveryTime: "2-3 weeks",
-    projectComplexity: "Campaign video package"
+    serviceComplexity: "Campaign video package"
   },
   {
     key: "writing_content",
@@ -434,7 +434,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I help teams turn complex offers into clear messaging, scalable content operations, and conversion-friendly copy.",
     seedBudget: 90000,
     deliveryTime: "3 weeks",
-    projectComplexity: "Positioning-led content system"
+    serviceComplexity: "Positioning-led content system"
   },
   {
     key: "customer_support",
@@ -464,7 +464,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I set up customer support operations that reduce response time, improve CSAT, and make quality measurable.",
     seedBudget: 100000,
     deliveryTime: "4 weeks",
-    projectComplexity: "Support process redesign"
+    serviceComplexity: "Support process redesign"
   },
   {
     key: "influencer_marketing",
@@ -494,7 +494,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I run influencer programs that balance creator fit, campaign execution, and measurable performance outcomes.",
     seedBudget: 130000,
     deliveryTime: "3-5 weeks",
-    projectComplexity: "Multi-creator launch campaign"
+    serviceComplexity: "Multi-creator launch campaign"
   },
   {
     key: "ugc_marketing",
@@ -524,7 +524,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I help brands turn creator content into repeatable UGC systems for paid social and ecommerce growth.",
     seedBudget: 85000,
     deliveryTime: "2-4 weeks",
-    projectComplexity: "UGC production system"
+    serviceComplexity: "UGC production system"
   },
   {
     key: "ai_automation",
@@ -554,7 +554,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I automate repetitive business workflows using AI, orchestration tools, and clean operational handoffs.",
     seedBudget: 210000,
     deliveryTime: "4-6 weeks",
-    projectComplexity: "AI operations automation"
+    serviceComplexity: "AI operations automation"
   },
   {
     key: "whatsapp_chatbot",
@@ -584,7 +584,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I build WhatsApp automation flows that qualify leads, reduce manual follow-up, and improve response speed.",
     seedBudget: 125000,
     deliveryTime: "3-4 weeks",
-    projectComplexity: "Conversational automation setup"
+    serviceComplexity: "Conversational automation setup"
   },
   {
     key: "creative_design",
@@ -614,7 +614,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I support growth teams with high-velocity design systems that keep campaigns sharp, consistent, and conversion-aware.",
     seedBudget: 115000,
     deliveryTime: "2-3 weeks",
-    projectComplexity: "Creative system build"
+    serviceComplexity: "Creative system build"
   },
   {
     key: "3d_modeling",
@@ -644,7 +644,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I create production-ready 3D assets for product launches, ecommerce catalogs, and brand visualization pipelines.",
     seedBudget: 175000,
     deliveryTime: "3-5 weeks",
-    projectComplexity: "High-detail product visualization"
+    serviceComplexity: "High-detail product visualization"
   },
   {
     key: "cgi_videos",
@@ -674,7 +674,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I develop CGI-led brand films that elevate product storytelling with premium motion, lighting, and detail.",
     seedBudget: 260000,
     deliveryTime: "4-6 weeks",
-    projectComplexity: "Premium CGI production"
+    serviceComplexity: "Premium CGI production"
   },
   {
     key: "crm_erp",
@@ -704,7 +704,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I implement CRM and ERP systems that improve visibility, data quality, and process accountability across teams.",
     seedBudget: 320000,
     deliveryTime: "6-8 weeks",
-    projectComplexity: "Cross-functional system rollout"
+    serviceComplexity: "Cross-functional system rollout"
   },
   {
     key: "voice_agent",
@@ -734,7 +734,7 @@ const SHOWCASE_FREELANCER_SERVICE_SEEDS = Object.freeze([
       "I deploy AI voice systems that qualify calls, automate routine conversations, and connect customers to the right next step.",
     seedBudget: 225000,
     deliveryTime: "4-5 weeks",
-    projectComplexity: "Voice automation deployment"
+    serviceComplexity: "Voice automation deployment"
   }
 ]);
 
@@ -999,7 +999,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build fast, scalable web experiences for SaaS teams that need polished UX, dependable integrations, and clean implementation.",
       seedBudget: 255000,
       deliveryTime: "4-6 weeks",
-      projectComplexity: "SaaS website plus dashboard"
+      serviceComplexity: "SaaS website plus dashboard"
     },
     {
       fullName: "Kiara Fernandes",
@@ -1021,7 +1021,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I help ecommerce brands move faster with responsive storefronts, reusable sections, and better conversion-ready frontend systems.",
       seedBudget: 185000,
       deliveryTime: "3-5 weeks",
-      projectComplexity: "Custom ecommerce build"
+      serviceComplexity: "Custom ecommerce build"
     },
     {
       fullName: "Dev Patel",
@@ -1043,7 +1043,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build full-stack web apps for teams that need secure workflows, thoughtful frontend architecture, and reliable backend delivery.",
       seedBudget: 275000,
       deliveryTime: "5-7 weeks",
-      projectComplexity: "Internal web platform"
+      serviceComplexity: "Internal web platform"
     },
     {
       fullName: "Meher Oberoi",
@@ -1065,7 +1065,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I turn slow, cluttered websites into fast product marketing surfaces that feel sharper, lighter, and easier to maintain.",
       seedBudget: 210000,
       deliveryTime: "4-5 weeks",
-      projectComplexity: "Performance-focused website rebuild"
+      serviceComplexity: "Performance-focused website rebuild"
     },
     {
       fullName: "Pranav Kulkarni",
@@ -1087,7 +1087,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build editorially flexible marketing websites for teams that need speed, maintainability, and conversion-ready sections.",
       seedBudget: 235000,
       deliveryTime: "4-6 weeks",
-      projectComplexity: "Multi-page content platform"
+      serviceComplexity: "Multi-page content platform"
     },
     {
       fullName: "Sana Sheikh",
@@ -1109,7 +1109,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build web apps for service businesses that need clear booking flows, smooth admin tooling, and stable backend logic.",
       seedBudget: 195000,
       deliveryTime: "4-6 weeks",
-      projectComplexity: "Service booking application"
+      serviceComplexity: "Service booking application"
     },
     {
       fullName: "Arjun Bhatia",
@@ -1131,7 +1131,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build data-rich web dashboards that keep operations teams aligned, reduce manual steps, and stay easy to extend.",
       seedBudget: 265000,
       deliveryTime: "5-7 weeks",
-      projectComplexity: "Operations dashboard"
+      serviceComplexity: "Operations dashboard"
     },
     {
       fullName: "Diya Iyer",
@@ -1153,7 +1153,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build polished web products that balance usability, accessibility, and maintainable frontend systems for growing teams.",
       seedBudget: 285000,
       deliveryTime: "5-6 weeks",
-      projectComplexity: "Client workspace application"
+      serviceComplexity: "Client workspace application"
     },
     {
       fullName: "Lakshya Soni",
@@ -1175,7 +1175,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I help early-stage products launch web marketplaces with practical workflows, clean UI patterns, and scalable foundations.",
       seedBudget: 175000,
       deliveryTime: "4-6 weeks",
-      projectComplexity: "Marketplace MVP"
+      serviceComplexity: "Marketplace MVP"
     },
     {
       fullName: "Neha Krishnan",
@@ -1197,7 +1197,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build maintainable frontend systems that let growth teams ship pages faster without sacrificing quality or consistency.",
       seedBudget: 220000,
       deliveryTime: "4-5 weeks",
-      projectComplexity: "Component-based website migration"
+      serviceComplexity: "Component-based website migration"
     },
     {
       fullName: "Aditya Ghosh",
@@ -1219,7 +1219,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build web platforms for reporting-heavy teams that need crisp interfaces, robust APIs, and dependable release cycles.",
       seedBudget: 290000,
       deliveryTime: "5-7 weeks",
-      projectComplexity: "Analytics dashboard platform"
+      serviceComplexity: "Analytics dashboard platform"
     },
     {
       fullName: "Tanvi Purohit",
@@ -1241,7 +1241,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build visual, conversion-focused frontend experiences for brands that need flexible landing pages and smooth launches.",
       seedBudget: 165000,
       deliveryTime: "3-4 weeks",
-      projectComplexity: "Campaign microsite system"
+      serviceComplexity: "Campaign microsite system"
     },
     {
       fullName: "Rohan Wagle",
@@ -1263,7 +1263,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build practical web applications that connect APIs, simplify workflows, and give teams one clean place to work from.",
       seedBudget: 245000,
       deliveryTime: "5-6 weeks",
-      projectComplexity: "Operations integration portal"
+      serviceComplexity: "Operations integration portal"
     },
     {
       fullName: "Zoya Khan",
@@ -1285,7 +1285,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build fast, high-converting websites that help growth teams improve lead quality without sacrificing clarity or trust.",
       seedBudget: 180000,
       deliveryTime: "3-5 weeks",
-      projectComplexity: "Conversion-focused marketing site"
+      serviceComplexity: "Conversion-focused marketing site"
     },
     {
       fullName: "Harsh Vora",
@@ -1307,7 +1307,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I help commerce brands grow with scalable storefronts, strong merchandising workflows, and reliable backend integrations.",
       seedBudget: 260000,
       deliveryTime: "4-6 weeks",
-      projectComplexity: "Custom storefront and ops tooling"
+      serviceComplexity: "Custom storefront and ops tooling"
     },
     {
       fullName: "Simran Chawla",
@@ -1329,7 +1329,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build product-led web apps that feel polished, move quickly, and stay maintainable as features keep growing.",
       seedBudget: 270000,
       deliveryTime: "5-7 weeks",
-      projectComplexity: "Hiring workflow application"
+      serviceComplexity: "Hiring workflow application"
     },
     {
       fullName: "Kabir Anand",
@@ -1351,7 +1351,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build robust web platforms for software companies that need strong architecture, thoughtful UX, and dependable delivery.",
       seedBudget: 320000,
       deliveryTime: "6-8 weeks",
-      projectComplexity: "Complex product platform"
+      serviceComplexity: "Complex product platform"
     },
     {
       fullName: "Pooja Menon",
@@ -1373,7 +1373,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build inclusive web interfaces that stay fast, clear, and dependable across desktop, tablet, and mobile experiences.",
       seedBudget: 190000,
       deliveryTime: "4-5 weeks",
-      projectComplexity: "Accessible portal build"
+      serviceComplexity: "Accessible portal build"
     },
     {
       fullName: "Nikhil Bendre",
@@ -1395,7 +1395,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build lead-driven web systems that combine clean frontend experiences with useful admin tooling and integrations.",
       seedBudget: 225000,
       deliveryTime: "4-6 weeks",
-      projectComplexity: "Lead generation platform"
+      serviceComplexity: "Lead generation platform"
     },
     {
       fullName: "Aditi Rao",
@@ -1417,7 +1417,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
         "I build reliable web apps for teams that need structured workflows, clear interfaces, and sustainable delivery pace.",
       seedBudget: 170000,
       deliveryTime: "4-5 weeks",
-      projectComplexity: "Partner portal application"
+      serviceComplexity: "Partner portal application"
     }
   ].map((seed) => ({
     key: "web_development",
@@ -1564,7 +1564,7 @@ const resolveWebDevelopmentVariant = (seed = {}) => {
     seed.projectName,
     seed.projectSummary,
     seed.serviceDescription,
-    seed.projectComplexity,
+    seed.serviceComplexity,
     ...(Array.isArray(seed.industries) ? seed.industries : [])
   ]
     .join(" ")
@@ -1752,7 +1752,7 @@ const buildServiceDetailPayload = ({
     coverImage,
     averageProjectPrice: `INR ${seed.seedBudget.toLocaleString("en-IN")}`,
     deliveryTime: seed.deliveryTime,
-    projectComplexity: seed.projectComplexity,
+    serviceComplexity: seed.serviceComplexity,
     skillsAndTechnologies: effectiveSkills,
     projects: portfolioProjects,
     platformLinks: {
@@ -1811,7 +1811,7 @@ const buildServiceDetailPayload = ({
     niches: variant.niches,
     otherNiche: "",
     preferOnlyIndustries: "open",
-    projectComplexity: mapComplexityToValue(seed.projectComplexity)
+    serviceComplexity: mapComplexityToValue(seed.serviceComplexity)
   };
 };
 
@@ -1965,7 +1965,7 @@ const assertCompleteFreelancerPayload = (payload) => {
       hasText(webDetail.workingLevel),
       hasText(webDetail.averageProjectPrice),
       hasText(webDetail.deliveryTime),
-      hasText(webDetail.projectComplexity),
+      hasText(webDetail.serviceComplexity),
       Array.isArray(webDetail.skillsAndTechnologies) &&
         webDetail.skillsAndTechnologies.length >= 7,
       Array.isArray(webDetail.groups?.website_specialization) &&
@@ -2125,3 +2125,4 @@ if (isDirectExecution) {
       await prisma.$disconnect();
     });
 }
+

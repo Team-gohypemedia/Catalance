@@ -66,26 +66,15 @@ const FileUploadButton = ({ file, onChange }) => {
 /* ──────────────────── Main Slide ──────────────────── */
 
 const FreelancerCaseStudySlide = ({
-  selectedServices,
-  dbServices,
+  currentServiceName,
   caseStudyForm,
   nicheOptions = [],
   onCaseStudyFieldChange,
 }) => {
-  const firstServiceId =
-    Array.isArray(selectedServices) && selectedServices.length > 0
-      ? selectedServices[0]
-      : null;
-
-  const firstService =
-    firstServiceId && Array.isArray(dbServices)
-      ? dbServices.find((s) => s.id === firstServiceId)
-      : null;
-
-  const serviceName = firstService?.name ?? "Service";
+  const serviceName = currentServiceName || "Service";
 
   return (
-    <section className="mx-auto flex w-full max-w-4xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
       <div className="w-full space-y-8">
         {/* Heading */}
         <div className="text-center">

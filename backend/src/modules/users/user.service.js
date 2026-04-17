@@ -20,6 +20,12 @@ import {
   mergeFreelancerProfileDetailsWithMarketplace
 } from "./freelancer-profile-details.mapper.js";
 import { FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT } from "./freelancer-profile.select.js";
+import {
+  buildCanonicalProfileDetails,
+  buildFreelancerSkillRows,
+  buildPrimaryServiceSnapshot,
+  deriveTopLevelSkillsFromProfileDetails,
+} from "./freelancer-service-details.js";
 
 const OTP_TTL_MINUTES = 15;
 const OTP_EMAIL_RETRY_ATTEMPTS = 2;
@@ -182,12 +188,13 @@ const FREELANCER_PROFILE_FIELD_KEYS = new Set([
   "serviceTitle",
   "serviceCategory",
   "serviceExperience",
-  "projectComplexity",
+  "serviceComplexity",
   "serviceDescription",
   "deliveryTimeline",
   "startingPrice",
   "serviceKeywords",
-  "serviceMedia"
+  "serviceMedia",
+  "acceptInProgressProjects"
 ]);
 
 const pickFreelancerProfileUpdates = (updates = {}) =>
@@ -241,6 +248,7 @@ const resolveFreelancerProfileRecord = (user = null) => {
       serviceTitle: null,
       serviceCategory: null,
       serviceExperience: null,
+      serviceComplexity: null,
       projectComplexity: null,
       serviceDescription: null,
       deliveryTimeline: null,
@@ -297,7 +305,10 @@ const resolveFreelancerProfileRecord = (user = null) => {
     serviceTitle: read("serviceTitle") ?? null,
     serviceCategory: read("serviceCategory") ?? null,
     serviceExperience: read("serviceExperience") ?? null,
-    projectComplexity: read("projectComplexity") ?? null,
+    serviceComplexity:
+      read("serviceComplexity") ?? read("projectComplexity") ?? null,
+    projectComplexity:
+      read("serviceComplexity") ?? read("projectComplexity") ?? null,
     serviceDescription: read("serviceDescription") ?? null,
     deliveryTimeline: read("deliveryTimeline") ?? null,
     startingPrice: read("startingPrice") ?? null,
@@ -309,14 +320,14 @@ const resolveFreelancerProfileRecord = (user = null) => {
   };
 };
 
-const upsertFreelancerProfile = async ({ userId, updates = {} }) => {
+const upsertFreelancerProfile = async ({ tx = prisma, userId, updates = {} }) => {
   if (!supportsFreelancerProfileModel || !userId) return;
 
   const profileUpdates = pickFreelancerProfileUpdates(updates);
   if (!Object.keys(profileUpdates).length) return;
 
   try {
-    await prisma.freelancerProfile.upsert({
+    await tx.freelancerProfile.upsert({
       where: { userId },
       update: profileUpdates,
       create: { userId, ...profileUpdates }
@@ -331,12 +342,14 @@ const upsertFreelancerProfile = async ({ userId, updates = {} }) => {
 };
 
 const syncFreelancerProfileDetails = async ({
+  tx = prisma,
   userId,
   profileDetails,
   portfolioProjects = [],
   services = []
 }) =>
   syncFreelancerProfileDetailsProjection({
+    tx,
     userId,
     profileDetails,
     portfolioProjects,
@@ -820,6 +833,45 @@ const normalizeOptionalText = (value) => {
   return normalized || null;
 };
 
+const normalizeAcceptInProgressProjectsLabel = (value) => {
+  const parsed = parseBooleanFilter(value);
+  if (parsed === true) return "yes";
+  if (parsed === false) return "no";
+
+  return normalizeOptionalText(value);
+};
+
+const loadMarketplaceHierarchySnapshot = async (tx = prisma) => {
+  const [serviceRows, subCategoryRows, toolRows] = await Promise.all([
+    tx.marketplaceFilterService.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+    }),
+    tx.marketplaceFilterSubCategory.findMany({
+      select: {
+        id: true,
+        serviceId: true,
+        name: true,
+      },
+    }),
+    tx.marketplaceFilterTool.findMany({
+      select: {
+        id: true,
+        subCategoryId: true,
+        name: true,
+      },
+    }),
+  ]);
+
+  return {
+    serviceRows,
+    subCategoryRows,
+    toolRows,
+  };
+};
+
 const parseCommaSeparatedValues = (value = "") =>
   String(value || "")
     .split(/[,\n]/)
@@ -942,8 +994,10 @@ const buildFreelancerProjectOnboardingSnapshot = ({
     deliveryTime: normalizeOptionalText(
       detail?.deliveryTime || detail?.deliveryDays || detail?.caseStudy?.timeline
     ),
-    projectComplexityLevel: normalizeOptionalText(detail?.projectComplexity),
-    acceptInProgressProjects: normalizeOptionalText(
+    projectComplexityLevel: normalizeOptionalText(
+      detail?.serviceComplexity || detail?.projectComplexity
+    ),
+    acceptInProgressProjects: normalizeAcceptInProgressProjectsLabel(
       profileDetails?.acceptInProgressProjects
     )
   };
@@ -1321,7 +1375,9 @@ const deriveMarketplaceServiceDetails = ({
       averageProjectPriceRange: normalizeOptionalText(
         detail?.averageProjectPrice || detail?.averagePrice
       ),
-      projectComplexityLevel: normalizeOptionalText(detail?.projectComplexity)
+      projectComplexityLevel: normalizeOptionalText(
+        detail?.serviceComplexity || detail?.projectComplexity
+      )
     };
   });
 };
@@ -1333,6 +1389,7 @@ const getMarketplaceServiceTitle = (serviceKey = "") => {
 };
 
 const upsertMarketplaceEntry = async ({
+  tx = prisma,
   freelancerId,
   services = [],
   profileDetails = {}
@@ -1363,17 +1420,16 @@ const upsertMarketplaceEntry = async ({
       .filter(([key]) => Boolean(key))
   );
 
-  const runUpsert = async ({ includeServiceDetails, includeServiceKey }) =>
-    prisma.$transaction(async (tx) => {
+  const executeUpsert = async ({ includeServiceDetails, includeServiceKey }, txClient) => {
       if (!marketplaceServices.length) {
-        await tx.marketplace.deleteMany({
+        await txClient.marketplace.deleteMany({
           where: { freelancerId }
         });
         return;
       }
 
       if (includeServiceKey) {
-        await tx.marketplace.deleteMany({
+        await txClient.marketplace.deleteMany({
           where: {
             freelancerId,
             serviceKey: {
@@ -1386,7 +1442,7 @@ const upsertMarketplaceEntry = async ({
           marketplaceServices.map((entry) => entry.serviceTitle),
           { max: 64 }
         );
-        await tx.marketplace.deleteMany({
+        await txClient.marketplace.deleteMany({
           where: {
             freelancerId,
             service: {
@@ -1426,7 +1482,7 @@ const upsertMarketplaceEntry = async ({
         }
 
         if (includeServiceKey) {
-          await tx.marketplace.upsert({
+          await txClient.marketplace.upsert({
             where: {
               freelancerId_serviceKey: {
                 freelancerId,
@@ -1437,7 +1493,7 @@ const upsertMarketplaceEntry = async ({
             update: updateData
           });
         } else {
-          await tx.marketplace.upsert({
+          await txClient.marketplace.upsert({
             where: {
               freelancerId_service: {
                 freelancerId,
@@ -1449,7 +1505,17 @@ const upsertMarketplaceEntry = async ({
           });
         }
       }
-    });
+  };
+
+  const runUpsert = async ({ includeServiceDetails, includeServiceKey }) => {
+    if (tx === prisma) {
+      return prisma.$transaction(async (transactionClient) =>
+        executeUpsert({ includeServiceDetails, includeServiceKey }, transactionClient)
+      );
+    }
+
+    return executeUpsert({ includeServiceDetails, includeServiceKey }, tx);
+  };
 
   if (marketplaceSupportsServiceDetails && marketplaceSupportsServiceKey) {
     try {
@@ -1495,12 +1561,12 @@ const upsertMarketplaceEntry = async ({
   await runUpsert({ includeServiceDetails: false, includeServiceKey: false });
 };
 
-const replaceFreelancerProjects = async (freelancerId, projects = []) => {
+const replaceFreelancerProjects = async (freelancerId, projects = [], tx = prisma) => {
   if (!freelancerId) return;
 
   const rows = Array.isArray(projects) ? projects : [];
-  await prisma.$transaction(async (tx) => {
-    await tx.freelancerProject.deleteMany({
+  const executeReplace = async (txClient) => {
+    await txClient.freelancerProject.deleteMany({
       where: { freelancerId }
     });
 
@@ -1508,14 +1574,23 @@ const replaceFreelancerProjects = async (freelancerId, projects = []) => {
       return;
     }
 
-    await tx.freelancerProject.createMany({
+    await txClient.freelancerProject.createMany({
       data: rows.map(({ deliveryTime, ...project }) => ({
         freelancerId,
         ...project,
         timeline: project.timeline || deliveryTime || null
       }))
     });
-  });
+  };
+
+  if (tx === prisma) {
+    await prisma.$transaction(async (transactionClient) => {
+      await executeReplace(transactionClient);
+    });
+    return;
+  }
+
+  await executeReplace(tx);
 };
 
 const normalizeWorkExperienceEntries = (value) => {
@@ -1827,12 +1902,13 @@ export const updateUserProfile = async (userId, updates) => {
     "serviceTitle",
     "serviceCategory",
     "serviceExperience",
-    "projectComplexity",
+    "serviceComplexity",
     "serviceDescription",
     "deliveryTimeline",
     "startingPrice",
     "serviceKeywords",
-    "serviceMedia"
+    "serviceMedia",
+    "acceptInProgressProjects"
   ];
   const cleanUpdates = {};
 
@@ -1866,6 +1942,11 @@ export const updateUserProfile = async (userId, updates) => {
         });
       } else if (key === "available") {
         cleanUpdates[key] = Boolean(updates[key]);
+      } else if (key === "acceptInProgressProjects") {
+        const parsedBoolean = parseBooleanFilter(updates[key]);
+        if (parsedBoolean !== undefined) {
+          cleanUpdates[key] = parsedBoolean;
+        }
       } else if (key === "experienceYears") {
         const parsedExperienceYears = Number(updates[key]);
         cleanUpdates[key] =
@@ -1884,11 +1965,17 @@ export const updateUserProfile = async (userId, updates) => {
         key === "serviceTitle" ||
         key === "serviceCategory" ||
         key === "serviceExperience" ||
+        key === "serviceComplexity" ||
         key === "projectComplexity" ||
         key === "deliveryTimeline" ||
         key === "startingPrice"
       ) {
-        cleanUpdates[key] = normalizeOptionalText(updates[key]);
+        const normalizedValue = normalizeOptionalText(updates[key]);
+        if (key === "serviceComplexity" || key === "projectComplexity") {
+          cleanUpdates.serviceComplexity = normalizedValue;
+        } else {
+          cleanUpdates[key] = normalizedValue;
+        }
       } else if (key === "serviceDescription") {
         cleanUpdates[key] = normalizeOptionalText(updates[key]);
       } else {
@@ -1986,145 +2073,206 @@ export const updateUserProfile = async (userId, updates) => {
     "profileDetails"
   );
 
-  let user = null;
-  if (Object.keys(userUpdates).length) {
-    user = await prisma.user.update(
-      withFreelancerProfileInclude({
-        where: { id: userId },
-        data: userUpdates
-      })
-    );
-  } else {
-    user = await prisma.user.findUnique(
-      withFreelancerProfileInclude({
-        where: { id: userId }
-      })
-    );
-  }
+  const updatedUser = await prisma.$transaction(async (tx) => {
+    let user = null;
+    if (Object.keys(userUpdates).length) {
+      user = await tx.user.update(
+        withFreelancerProfileInclude({
+          where: { id: userId },
+          data: userUpdates
+        })
+      );
+    } else {
+      user = await tx.user.findUnique(
+        withFreelancerProfileInclude({
+          where: { id: userId }
+        })
+      );
+    }
 
-  if (!user) {
-    throw new AppError("User not found", 404);
-  }
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
 
-  if (Object.keys(freelancerProfileUpdates).length) {
-    await upsertFreelancerProfile({
-      userId: user.id,
-      updates: freelancerProfileUpdates
-    });
+    const existingFreelancerProfile = resolveFreelancerProfileRecord(user);
+    const nextFreelancerProfileUpdates = { ...freelancerProfileUpdates };
+    let resolvedProfileDetails = hasProfileDetailsUpdate
+      ? nextFreelancerProfileUpdates.profileDetails
+      : existingFreelancerProfile.profileDetails;
+    let resolvedServices = Object.prototype.hasOwnProperty.call(
+      nextFreelancerProfileUpdates,
+      "services"
+    )
+      ? nextFreelancerProfileUpdates.services
+      : existingFreelancerProfile.services;
+    let resolvedPortfolioProjects = Object.prototype.hasOwnProperty.call(
+      nextFreelancerProfileUpdates,
+      "portfolioProjects"
+    )
+      ? nextFreelancerProfileUpdates.portfolioProjects
+      : existingFreelancerProfile.portfolioProjects;
+    const shouldSyncFreelancerProfileDetails =
+      hasProfileDetailsUpdate ||
+      Object.prototype.hasOwnProperty.call(nextFreelancerProfileUpdates, "services") ||
+      Object.prototype.hasOwnProperty.call(
+        nextFreelancerProfileUpdates,
+        "portfolioProjects"
+      );
 
-    user = await prisma.user.findUnique(
+    let marketplaceHierarchy = null;
+    if (hasProfileDetailsUpdate) {
+      marketplaceHierarchy = await loadMarketplaceHierarchySnapshot(tx);
+      const canonicalProfileDetails = buildCanonicalProfileDetails({
+        profileDetails: resolvedProfileDetails,
+        serviceRows: marketplaceHierarchy.serviceRows,
+        toolRows: marketplaceHierarchy.toolRows
+      });
+
+      nextFreelancerProfileUpdates.profileDetails = canonicalProfileDetails;
+      resolvedProfileDetails = canonicalProfileDetails;
+      nextFreelancerProfileUpdates.services = Array.isArray(canonicalProfileDetails.services)
+        ? canonicalProfileDetails.services
+        : [];
+      resolvedServices = nextFreelancerProfileUpdates.services;
+      nextFreelancerProfileUpdates.skills =
+        deriveTopLevelSkillsFromProfileDetails(canonicalProfileDetails);
+
+      const primarySnapshot = buildPrimaryServiceSnapshot({
+        profileDetails: canonicalProfileDetails,
+        subCategoryRows: marketplaceHierarchy.subCategoryRows,
+        existingValues: existingFreelancerProfile
+      });
+
+      Object.assign(nextFreelancerProfileUpdates, primarySnapshot);
+    }
+
+    if (Object.keys(nextFreelancerProfileUpdates).length) {
+      await upsertFreelancerProfile({
+        tx,
+        userId: user.id,
+        updates: nextFreelancerProfileUpdates
+      });
+    }
+
+    if (shouldSyncFreelancerProfileDetails) {
+      await syncFreelancerProfileDetails({
+        tx,
+        userId: user.id,
+        profileDetails: resolvedProfileDetails,
+        portfolioProjects: resolvedPortfolioProjects,
+        services: resolvedServices
+      });
+    }
+
+    const profileServiceDetails =
+      resolvedProfileDetails?.serviceDetails &&
+      typeof resolvedProfileDetails.serviceDetails === "object"
+        ? resolvedProfileDetails.serviceDetails
+        : null;
+    const profileServiceCount = profileServiceDetails
+      ? Object.keys(profileServiceDetails).length
+      : 0;
+    const profileRoleSignal = String(resolvedProfileDetails?.role || "")
+      .trim()
+      .toLowerCase();
+    const hasFreelancerIntent =
+      profileServiceCount > 0 ||
+      (Array.isArray(resolvedServices) && resolvedServices.length > 0) ||
+      ["freelancer", "individual", "agency", "part_time", "part-time"].includes(
+        profileRoleSignal
+      );
+
+    if (hasFreelancerIntent && !hasRole(user, "FREELANCER")) {
+      const currentRoles = Array.isArray(user.roles)
+        ? user.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+        : [];
+      const nextRoles = Array.from(new Set([...currentRoles, "FREELANCER"]));
+
+      user = await tx.user.update(
+        withFreelancerProfileInclude({
+          where: { id: user.id },
+          data: {
+            roles: nextRoles,
+            status: "PENDING_APPROVAL"
+          }
+        })
+      );
+    }
+
+    const isFreelancerUser = hasRole(user, "FREELANCER");
+
+    const shouldSyncFreelancerProjects =
+      isFreelancerUser &&
+      (hasProfileDetailsUpdate ||
+        Object.prototype.hasOwnProperty.call(
+          nextFreelancerProfileUpdates,
+          "portfolioProjects"
+        ));
+
+    if (shouldSyncFreelancerProjects) {
+      const normalizedProjects = deriveFreelancerProjects({
+        profileDetails: resolvedProfileDetails,
+        portfolioProjects: resolvedPortfolioProjects
+      });
+
+      await replaceFreelancerProjects(user.id, normalizedProjects, tx);
+    }
+
+    const shouldSyncMarketplace =
+      isFreelancerUser &&
+      (hasProfileDetailsUpdate ||
+        Object.prototype.hasOwnProperty.call(nextFreelancerProfileUpdates, "services") ||
+        Object.prototype.hasOwnProperty.call(userUpdates, "onboardingComplete"));
+
+    if (shouldSyncMarketplace) {
+      const marketplaceServices = deriveMarketplaceServices({
+        profileDetails: resolvedProfileDetails,
+        services: resolvedServices
+      });
+      await upsertMarketplaceEntry({
+        tx,
+        freelancerId: user.id,
+        services: marketplaceServices,
+        profileDetails: resolvedProfileDetails
+      });
+    }
+
+    const shouldSyncFreelancerSkills =
+      hasProfileDetailsUpdate ||
+      Object.prototype.hasOwnProperty.call(nextFreelancerProfileUpdates, "services");
+
+    if (shouldSyncFreelancerSkills) {
+      if (!marketplaceHierarchy) {
+        marketplaceHierarchy = await loadMarketplaceHierarchySnapshot(tx);
+      }
+
+      const freelancerSkillRows = buildFreelancerSkillRows({
+        userId: user.id,
+        profileDetails: resolvedProfileDetails,
+        serviceRows: marketplaceHierarchy.serviceRows,
+        toolRows: marketplaceHierarchy.toolRows
+      });
+
+      await tx.freelancerSkill.deleteMany({
+        where: { userId: user.id }
+      });
+
+      if (freelancerSkillRows.length > 0) {
+        await tx.freelancerSkill.createMany({
+          data: freelancerSkillRows,
+          skipDuplicates: true
+        });
+      }
+    }
+
+    return tx.user.findUnique(
       withFreelancerProfileInclude({
         where: { id: user.id }
       })
     );
-  }
+  });
 
-  const resolvedFreelancerProfile = resolveFreelancerProfileRecord(user);
-  const resolvedProfileDetails = hasProfileDetailsUpdate
-    ? freelancerProfileUpdates.profileDetails
-    : resolvedFreelancerProfile.profileDetails;
-  const resolvedServices = Object.prototype.hasOwnProperty.call(
-    freelancerProfileUpdates,
-    "services"
-  )
-    ? freelancerProfileUpdates.services
-    : resolvedFreelancerProfile.services;
-  const resolvedPortfolioProjects = Object.prototype.hasOwnProperty.call(
-    freelancerProfileUpdates,
-    "portfolioProjects"
-  )
-    ? freelancerProfileUpdates.portfolioProjects
-    : resolvedFreelancerProfile.portfolioProjects;
-  const shouldSyncFreelancerProfileDetails =
-    hasProfileDetailsUpdate ||
-    Object.prototype.hasOwnProperty.call(freelancerProfileUpdates, "services") ||
-    Object.prototype.hasOwnProperty.call(freelancerProfileUpdates, "portfolioProjects");
-
-  if (shouldSyncFreelancerProfileDetails) {
-    await syncFreelancerProfileDetails({
-      userId: user.id,
-      profileDetails: resolvedProfileDetails,
-      portfolioProjects: resolvedPortfolioProjects,
-      services: resolvedServices
-    });
-
-    user = await prisma.user.findUnique(
-      withFreelancerProfileInclude({
-        where: { id: user.id }
-      })
-    );
-  }
-
-  const profileServiceDetails =
-    resolvedProfileDetails?.serviceDetails &&
-    typeof resolvedProfileDetails.serviceDetails === "object"
-      ? resolvedProfileDetails.serviceDetails
-      : null;
-  const profileServiceCount = profileServiceDetails
-    ? Object.keys(profileServiceDetails).length
-    : 0;
-  const profileRoleSignal = String(resolvedProfileDetails?.role || "")
-    .trim()
-    .toLowerCase();
-  const hasFreelancerIntent =
-    profileServiceCount > 0 ||
-    (Array.isArray(resolvedServices) && resolvedServices.length > 0) ||
-    ["freelancer", "individual", "agency", "part_time", "part-time"].includes(
-      profileRoleSignal
-    );
-
-  if (hasFreelancerIntent && !hasRole(user, "FREELANCER")) {
-    const currentRoles = Array.isArray(user.roles)
-      ? user.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
-      : [];
-    const nextRoles = Array.from(new Set([...currentRoles, "FREELANCER"]));
-
-    user = await prisma.user.update(
-      withFreelancerProfileInclude({
-        where: { id: user.id },
-        data: {
-          roles: nextRoles,
-          status: "PENDING_APPROVAL"
-        }
-      })
-    );
-  }
-
-  const isFreelancerUser = hasRole(user, "FREELANCER");
-
-  const shouldSyncFreelancerProjects =
-    isFreelancerUser &&
-    (hasProfileDetailsUpdate ||
-      Object.prototype.hasOwnProperty.call(freelancerProfileUpdates, "portfolioProjects"));
-
-  if (shouldSyncFreelancerProjects) {
-    const normalizedProjects = deriveFreelancerProjects({
-      profileDetails: resolvedProfileDetails,
-      portfolioProjects: resolvedPortfolioProjects
-    });
-
-    await replaceFreelancerProjects(user.id, normalizedProjects);
-  }
-
-  const shouldSyncMarketplace =
-    isFreelancerUser &&
-    (hasProfileDetailsUpdate ||
-      Object.prototype.hasOwnProperty.call(freelancerProfileUpdates, "services") ||
-      Object.prototype.hasOwnProperty.call(userUpdates, "onboardingComplete"));
-
-  if (shouldSyncMarketplace) {
-    const marketplaceServices = deriveMarketplaceServices({
-      profileDetails: resolvedProfileDetails,
-      services: resolvedServices
-    });
-    await upsertMarketplaceEntry({
-      freelancerId: user.id,
-      services: marketplaceServices,
-      profileDetails: resolvedProfileDetails
-    });
-  }
-
-  return sanitizeUser(user);
+  return sanitizeUser(updatedUser);
 };
 
 export const createUser = async (payload) => {
@@ -2789,7 +2937,14 @@ export const sanitizeUser = (user) => {
     serviceTitle: resolvedFreelancerProfile.serviceTitle || null,
     serviceCategory: resolvedFreelancerProfile.serviceCategory || null,
     serviceExperience: resolvedFreelancerProfile.serviceExperience || null,
-    projectComplexity: resolvedFreelancerProfile.projectComplexity || null,
+    serviceComplexity:
+      resolvedFreelancerProfile.serviceComplexity ||
+      resolvedFreelancerProfile.projectComplexity ||
+      null,
+    projectComplexity:
+      resolvedFreelancerProfile.serviceComplexity ||
+      resolvedFreelancerProfile.projectComplexity ||
+      null,
     serviceDescription: resolvedFreelancerProfile.serviceDescription || null,
     deliveryTimeline: resolvedFreelancerProfile.deliveryTimeline || null,
     startingPrice: resolvedFreelancerProfile.startingPrice || null,

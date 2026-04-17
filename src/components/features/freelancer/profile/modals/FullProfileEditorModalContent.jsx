@@ -249,7 +249,6 @@ const FullProfileEditorModalContent = ({
               <option value="">Select option</option>
               <option value="yes">Yes</option>
               <option value="no">No</option>
-              <option value="open">Open to all</option>
             </select>
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/50 px-3 py-2.5">
