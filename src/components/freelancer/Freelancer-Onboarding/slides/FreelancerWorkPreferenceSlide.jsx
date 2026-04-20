@@ -14,12 +14,12 @@ const FreelancerWorkPreferenceSlide = ({
           How Do You Want To Work On Catalance?
         </h1>
 
-        <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
           <button
             type="button"
             onClick={() => onSelectWorkPreference("individual")}
             className={cn(
-              "relative w-full rounded-[22px] border px-5 py-4 text-center transition-all duration-200",
+              "group w-full rounded-[22px] border bg-card p-5 text-left transition-all duration-200",
               "bg-card",
               selectedWorkPreference === "individual"
                 ? "border-primary ring-1 ring-primary/25"
@@ -27,21 +27,40 @@ const FreelancerWorkPreferenceSlide = ({
             )}
             aria-pressed={selectedWorkPreference === "individual"}
           >
-            <div
-              className={cn(
-                "absolute left-5 top-1/2 flex h-14 w-14 -translate-y-1/2 items-center justify-center rounded-[18px] border",
-                selectedWorkPreference === "individual"
-                  ? "border-primary text-primary"
-                  : "border-white/10 text-[#d4d4d4]"
-              )}
-            >
-              <UserRound className="h-6 w-6" />
+            <div className="flex items-start justify-between">
+              <UserRound
+                className={cn(
+                  "h-7 w-7",
+                  selectedWorkPreference === "individual"
+                    ? "text-primary"
+                    : "text-[#d4d4d4]"
+                )}
+              />
+
+              <span
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-full border transition-colors duration-200",
+                  selectedWorkPreference === "individual"
+                    ? "border-primary"
+                    : "border-white/35 group-hover:border-primary"
+                )}
+                aria-hidden="true"
+              >
+                <span
+                  className={cn(
+                    "h-2.5 w-2.5 rounded-full transition-opacity duration-200",
+                    selectedWorkPreference === "individual"
+                      ? "bg-primary opacity-100"
+                      : "bg-primary opacity-0 group-hover:opacity-100"
+                  )}
+                />
+              </span>
             </div>
 
-            <div className="mx-auto flex min-h-14 w-full max-w-[520px] flex-col items-center justify-center px-14 text-center sm:px-16">
+            <div className="mt-6 space-y-1">
               <h2
                 className={cn(
-                  "text-lg font-semibold",
+                  "text-3xl font-semibold leading-tight",
                   selectedWorkPreference === "individual"
                     ? "text-primary"
                     : "text-white"
@@ -49,7 +68,7 @@ const FreelancerWorkPreferenceSlide = ({
               >
                 Individual Freelancer
               </h2>
-              <p className="mt-1 text-base text-muted-foreground">
+              <p className="text-base text-muted-foreground">
                 Working independently on projects
               </p>
             </div>
@@ -59,7 +78,7 @@ const FreelancerWorkPreferenceSlide = ({
             type="button"
             onClick={() => onSelectWorkPreference("agency")}
             className={cn(
-              "relative w-full rounded-[22px] border px-5 py-4 text-center transition-all duration-200",
+              "group w-full rounded-[22px] border bg-card p-5 text-left transition-all duration-200",
               "bg-card",
               selectedWorkPreference === "agency"
                 ? "border-primary ring-1 ring-primary/25"
@@ -67,21 +86,40 @@ const FreelancerWorkPreferenceSlide = ({
             )}
             aria-pressed={selectedWorkPreference === "agency"}
           >
-            <div
-              className={cn(
-                "absolute left-5 top-1/2 flex h-14 w-14 -translate-y-1/2 items-center justify-center rounded-[18px] border",
-                selectedWorkPreference === "agency"
-                  ? "border-primary text-primary"
-                  : "border-white/10 text-[#d4d4d4]"
-              )}
-            >
-              <Building2 className="h-6 w-6" />
+            <div className="flex items-start justify-between">
+              <Building2
+                className={cn(
+                  "h-7 w-7",
+                  selectedWorkPreference === "agency"
+                    ? "text-primary"
+                    : "text-[#d4d4d4]"
+                )}
+              />
+
+              <span
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-full border transition-colors duration-200",
+                  selectedWorkPreference === "agency"
+                    ? "border-primary"
+                    : "border-white/35 group-hover:border-primary"
+                )}
+                aria-hidden="true"
+              >
+                <span
+                  className={cn(
+                    "h-2.5 w-2.5 rounded-full transition-opacity duration-200",
+                    selectedWorkPreference === "agency"
+                      ? "bg-primary opacity-100"
+                      : "bg-primary opacity-0 group-hover:opacity-100"
+                  )}
+                />
+              </span>
             </div>
 
-            <div className="mx-auto flex min-h-14 w-full max-w-[520px] flex-col items-center justify-center px-14 text-center sm:px-16">
+            <div className="mt-6 space-y-1">
               <h2
                 className={cn(
-                  "text-lg font-semibold",
+                  "text-3xl font-semibold leading-tight",
                   selectedWorkPreference === "agency"
                     ? "text-primary"
                     : "text-white"
@@ -89,7 +127,7 @@ const FreelancerWorkPreferenceSlide = ({
               >
                 Agency / Studio
               </h2>
-              <p className="mt-1 text-base text-muted-foreground">
+              <p className="text-base text-muted-foreground">
                 Team of professionals
               </p>
             </div>

@@ -8,6 +8,7 @@ export const FREELANCER_ONBOARDING_SLIDES = [
     id: "workPreference",
     progressValue: 8,
     continueLabel: "Continue",
+    footerMode: "hidden",
   },
   {
     id: "individualProof",

@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, Upload, X } from "lucide-react";
+import { Check, Upload, UserRound, X } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -326,7 +326,7 @@ export const ProfileBasicsStep = ({
                             {photo?.url ? (
                                 <img src={photo.url} alt="Profile preview" className="w-full h-full object-cover" />
                             ) : (
-                                <Upload className="w-4 h-4 text-white/70" />
+                                <UserRound className="w-4 h-4 text-white/70" />
                             )}
                         </div>
                         <div className="flex-1 overflow-hidden">
