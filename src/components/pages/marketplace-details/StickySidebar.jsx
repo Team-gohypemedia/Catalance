@@ -106,6 +106,25 @@ const getDisplayName = (user = {}) =>
 const getClientBusinessName = (user = {}) =>
   user?.companyName || user?.businessName || user?.brandName || "";
 
+const resolveUserId = (user = {}) => {
+  const id = normalizeText(user?.id || user?.userId || user?.sub || user?._id || "");
+  return id || null;
+};
+
+const resolveFreelancerId = (service = {}, freelancer = {}) => {
+  const id = normalizeText(
+    freelancer?.id ||
+      freelancer?.userId ||
+      freelancer?.sub ||
+      freelancer?._id ||
+      service?.freelancerId ||
+      service?.freelancer?.id ||
+      service?.freelancer?.userId ||
+      ""
+  );
+  return id || null;
+};
+
 const LoginPrompt = ({ onLogin, onClose }) => (
   <div className="flex flex-col items-center gap-5 py-4 text-center">
     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
@@ -193,17 +212,25 @@ const StickySidebar = ({
     setSendError(null);
 
     try {
-      if (!isAuthenticated || !currentUser?.id) {
+      const clientId = resolveUserId(currentUser);
+      const freelancerId = resolveFreelancerId(service, freelancer);
+
+      if (!isAuthenticated || !clientId) {
         setShowAuthPrompt(true);
         return;
       }
 
+      if (!freelancerId) {
+        throw new Error("Unable to resolve freelancer id for this service.");
+      }
+
       createMarketplaceChatRequest({
-        clientId: currentUser.id,
+        clientId,
         clientName: getDisplayName(currentUser),
         clientAvatar: currentUser.avatar || currentUser.profilePicture || "",
         clientBusinessName: getClientBusinessName(currentUser),
-        freelancerId: freelancer?.id || service?.freelancerId || null,
+        freelancerId,
+        requestedFreelancerId: freelancerId,
         freelancerName: freelancer?.fullName || freelancer?.name || "Freelancer",
         freelancerAvatar: freelancer?.avatar || "",
         serviceId: service?.id || null,

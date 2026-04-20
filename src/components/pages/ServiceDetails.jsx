@@ -534,7 +534,7 @@ const ServiceDetails = () => {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+        <div className="flex flex-col gap-8 overflow-visible lg:flex-row lg:items-start">
           <div className="min-w-0 flex-1 space-y-6">
             <header className="space-y-3">
               {normalized.categoryLabel ? (
@@ -946,17 +946,19 @@ const ServiceDetails = () => {
           </div>
 
           <aside
-            className="hidden w-[330px] shrink-0 self-start pb-4 lg:sticky lg:top-24 lg:block"
+            className="hidden w-[330px] shrink-0 self-start lg:block"
             role="complementary"
             aria-label="Service pricing and contact"
           >
-            <StickySidebar
-              service={service}
-              isAuthenticated={isAuthenticated}
-              onLoginRequired={handleLoginRequired}
-              modalOpen={chatModalOpen}
-              onModalOpenChange={setChatModalOpen}
-            />
+            <div className="subtle-scrollbar lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1">
+              <StickySidebar
+                service={service}
+                isAuthenticated={isAuthenticated}
+                onLoginRequired={handleLoginRequired}
+                modalOpen={chatModalOpen}
+                onModalOpenChange={setChatModalOpen}
+              />
+            </div>
           </aside>
         </div>
       </div>
