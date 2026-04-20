@@ -1,49 +1,47 @@
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 
-const FreelancerDeliveryPolicySlide = ({
-  isProfileSaving,
-  onDeliveryPolicyAgreeAndContinue,
-}) => (
+const FreelancerDeliveryPolicySlide = () => (
   <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6">
     <div className="w-full max-w-5xl space-y-8">
       <div className="space-y-2 text-center">
         <h1 className="text-balance text-3xl font-semibold tracking-[-0.03em] text-[#facc15] sm:text-4xl lg:text-[3rem] lg:leading-[1.06]">
           Do You Agree To Catalance Delivery &amp; Revision SOP?
         </h1>
-        <p className="text-sm text-[#d1d5db] sm:text-base">
-          Required To Continue
-        </p>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-[#4b4b4e]/95 p-6 sm:p-7">
-        <p className="text-base leading-8 text-[#e5e7eb]">
-          Catalance maintains standardized delivery and revision policies to ensure
-          fairness, transparency, and dispute protection for both clients and
-          freelancers.
-        </p>
+      <div className="rounded-2xl border border-white/10 bg-card p-6 sm:p-7">
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold text-[#facc15]">Delivery &amp; Revision Policy</h2>
+          <p className="text-base leading-8 text-[#e5e7eb]">
+            Catalance follows a structured delivery and revision process to maintain
+            fairness, transparency, and dispute protection for both clients and
+            freelancers.
+          </p>
+        </div>
 
-        <ul className="mt-5 list-disc space-y-2 pl-5 text-base leading-8 text-[#e5e7eb]">
-          <li>Up to 3 revisions included per milestone.</li>
-          <li>Scope changes are handled through milestone modification SOP.</li>
-          <li>
-            Final deliverables are submitted through the Catalance milestone
-            system.
-          </li>
-          <li>Reporting and updates follow the platform workflow.</li>
-        </ul>
+        <div className="mt-5 space-y-2">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-[#facc15]/90">Key SOP Rules</h3>
+          <ul className="space-y-2 text-base leading-8 text-[#e5e7eb]">
+            <li className="flex items-start gap-3">
+              <BadgeCheck className="mt-[0.55rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />
+              <span><span className="font-semibold text-white">Revision Limit:</span> Up to 3 revisions are included per milestone.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <BadgeCheck className="mt-[0.55rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />
+              <span><span className="font-semibold text-white">Scope Changes:</span> Additional scope must follow the milestone modification SOP.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <BadgeCheck className="mt-[0.55rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />
+              <span><span className="font-semibold text-white">Final Submission:</span> All final deliverables must be submitted through the Catalance milestone system.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <BadgeCheck className="mt-[0.55rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />
+              <span><span className="font-semibold text-white">Progress Updates:</span> Reporting and project updates must follow the platform workflow.</span>
+            </li>
+          </ul>
+        </div>
       </div>
 
-      <div className="flex justify-center">
-        <button
-          type="button"
-          onClick={onDeliveryPolicyAgreeAndContinue}
-          disabled={isProfileSaving}
-          className="inline-flex min-w-[230px] items-center justify-center gap-2 rounded-2xl bg-[#facc15] px-10 py-4 text-lg font-semibold text-black transition-colors hover:bg-[#f6c800] disabled:cursor-not-allowed disabled:bg-[#facc15]/70"
-        >
-          {isProfileSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
-          {isProfileSaving ? "Saving..." : "Agree & Continue"}
-        </button>
-      </div>
     </div>
   </section>
 );

@@ -72,7 +72,14 @@ const slideRegistry = {
 };
 
 const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const RESUME_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const MIN_USERNAME_LENGTH = 3;
+const RESUME_UPLOAD_ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+const RESUME_UPLOAD_ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx"];
 const BASIC_PROFILE_FIELD_ORDER = [
   "username",
   "professionalBio",
@@ -88,6 +95,7 @@ const createInitialBasicProfileForm = () => ({
   state: "",
   languages: [],
   profilePhoto: null,
+  resume: null,
 });
 
 const extractProfilePhotoUrl = (value) => {
@@ -105,6 +113,31 @@ const extractProfilePhotoFile = (value) =>
   typeof File !== "undefined" && value?.file instanceof File ? value.file : null;
 
 const buildRemoteProfilePhoto = (url, name = "Profile Photo") => {
+  const normalizedUrl = String(url || "").trim();
+  if (!normalizedUrl) return null;
+  return {
+    name,
+    url: normalizedUrl,
+    uploadedUrl: normalizedUrl,
+    file: null,
+  };
+};
+
+const extractResumeUrl = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "object") {
+    return String(value.uploadedUrl || value.url || "").trim();
+  }
+  return "";
+};
+
+const extractResumeFile = (value) =>
+  typeof File !== "undefined" && value?.file instanceof File ? value.file : null;
+
+const buildRemoteResumeFile = (url, name = "Resume") => {
   const normalizedUrl = String(url || "").trim();
   if (!normalizedUrl) return null;
   return {
@@ -225,6 +258,203 @@ const buildLocationLabel = ({ state, country }) =>
   [String(state || "").trim(), String(country || "").trim()]
     .filter(Boolean)
     .join(", ");
+
+const ONBOARDING_DRAFT_STORAGE_VERSION = 1;
+const ONBOARDING_DRAFT_STORAGE_PREFIX = "catalance.freelancer-onboarding";
+
+const buildOnboardingDraftStorageKey = (userId) => {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${ONBOARDING_DRAFT_STORAGE_PREFIX}.${normalizedUserId}`
+    : "";
+};
+
+const readStoredOnboardingDraft = (storageKey) => {
+  if (!storageKey || typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawDraft = window.localStorage.getItem(storageKey);
+    if (!rawDraft) {
+      return null;
+    }
+
+    const parsedDraft = JSON.parse(rawDraft);
+    return parsedDraft && typeof parsedDraft === "object" ? parsedDraft : null;
+  } catch (error) {
+    console.error("Failed to read onboarding draft:", error);
+    window.localStorage.removeItem(storageKey);
+    return null;
+  }
+};
+
+const writeStoredOnboardingDraft = (storageKey, draft) => {
+  if (!storageKey || typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(draft));
+  } catch (error) {
+    console.error("Failed to write onboarding draft:", error);
+  }
+};
+
+const clearStoredOnboardingDraft = (storageKey) => {
+  if (!storageKey || typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(storageKey);
+};
+
+const clampSlideIndex = (value, totalSlides) => {
+  const parsedValue = Number(value);
+  if (!Number.isInteger(parsedValue)) {
+    return 0;
+  }
+
+  return Math.min(Math.max(parsedValue, 0), Math.max(totalSlides - 1, 0));
+};
+
+const clampServiceIndex = (value, serviceCount) => {
+  const parsedValue = Number(value);
+  if (!Number.isInteger(parsedValue) || serviceCount <= 0) {
+    return 0;
+  }
+
+  return Math.min(Math.max(parsedValue, 0), serviceCount - 1);
+};
+
+const toPersistableProfilePhoto = (value) => {
+  const photoUrl = extractProfilePhotoUrl(value);
+  if (!photoUrl || isBlobUrl(photoUrl)) {
+    return null;
+  }
+
+  return buildRemoteProfilePhoto(photoUrl, value?.name || "Profile Photo");
+};
+
+const toPersistableResumeFile = (value) => {
+  const resumeUrl = extractResumeUrl(value);
+  if (!resumeUrl || isBlobUrl(resumeUrl)) {
+    return null;
+  }
+
+  return buildRemoteResumeFile(resumeUrl, value?.name || "Resume");
+};
+
+const toPersistableServiceMedia = (value, index = 0) => {
+  const mediaUrl = extractServiceMediaUrl(value);
+  if (!mediaUrl || isBlobUrl(mediaUrl)) {
+    return null;
+  }
+
+  return buildRemoteServiceMedia(value, index);
+};
+
+const toPersistableCaseStudyFile = (value) => {
+  const fileUrl = extractCaseStudyFileUrl(value);
+  if (!fileUrl || isBlobUrl(fileUrl)) {
+    return null;
+  }
+
+  return buildRemoteCaseStudyFile(value);
+};
+
+const sanitizeBasicProfileFormForDraft = (form) => {
+  const sourceForm = form && typeof form === "object" ? form : {};
+  const initialForm = createInitialBasicProfileForm();
+
+  return {
+    ...initialForm,
+    username: normalizeUsernameInput(sourceForm.username || ""),
+    professionalBio: String(sourceForm.professionalBio || "").trim(),
+    country: String(sourceForm.country || initialForm.country || "India").trim(),
+    state: String(sourceForm.state || "").trim(),
+    languages: normalizeStringArray(sourceForm.languages),
+    profilePhoto: toPersistableProfilePhoto(sourceForm.profilePhoto),
+    resume: toPersistableResumeFile(sourceForm.resume),
+  };
+};
+
+const sanitizeServiceDraftForStorage = (
+  draft,
+  { serviceKey = "", serviceId = null } = {},
+) => {
+  const normalizedDraft = normalizeServiceDraft(draft, {
+    serviceKey,
+    serviceId,
+  });
+  const normalizedCaseStudy =
+    normalizedDraft.caseStudy && typeof normalizedDraft.caseStudy === "object"
+      ? normalizedDraft.caseStudy
+      : {};
+
+  return {
+    ...normalizedDraft,
+    coverImage: isBlobUrl(normalizedDraft.coverImage)
+      ? ""
+      : normalizedDraft.coverImage,
+    mediaFiles: normalizedDraft.mediaFiles
+      .map((value, index) => toPersistableServiceMedia(value, index))
+      .filter(Boolean),
+    caseStudy: {
+      ...normalizedCaseStudy,
+      projectFile: toPersistableCaseStudyFile(normalizedCaseStudy.projectFile),
+    },
+  };
+};
+
+const buildOnboardingDraftSnapshot = ({
+  currentSlideIndex,
+  totalSlides,
+  selectedWorkPreference,
+  basicProfileForm,
+  selectedServices,
+  serviceDraftsByKey,
+  currentServiceIndex,
+  acceptInProgressProjectsValue,
+  deliveryPolicyAccepted,
+  communicationPolicyAccepted,
+  dbServices,
+}) => {
+  const normalizedSelectedServices = normalizeDraftSkillList(
+    selectedServices.map((serviceKey) => resolveServiceKey(dbServices, serviceKey)),
+  );
+
+  return {
+    version: ONBOARDING_DRAFT_STORAGE_VERSION,
+    savedAt: new Date().toISOString(),
+    currentSlideIndex: clampSlideIndex(currentSlideIndex, totalSlides),
+    selectedWorkPreference:
+      String(selectedWorkPreference || "").trim() || "individual",
+    basicProfileForm: sanitizeBasicProfileFormForDraft(basicProfileForm),
+    selectedServices: normalizedSelectedServices,
+    serviceDraftsByKey: Object.fromEntries(
+      normalizedSelectedServices.map((serviceKey) => {
+        const serviceMeta = getServiceCatalogMeta(dbServices, serviceKey);
+        return [
+          serviceKey,
+          sanitizeServiceDraftForStorage(serviceDraftsByKey?.[serviceKey], {
+            serviceKey,
+            serviceId: serviceMeta.serviceId,
+          }),
+        ];
+      }),
+    ),
+    currentServiceIndex: clampServiceIndex(
+      currentServiceIndex,
+      normalizedSelectedServices.length,
+    ),
+    acceptInProgressProjectsValue:
+      parseBooleanChoice(acceptInProgressProjectsValue),
+    deliveryPolicyAccepted: parseBooleanChoice(deliveryPolicyAccepted) ?? false,
+    communicationPolicyAccepted:
+      parseBooleanChoice(communicationPolicyAccepted) ?? false,
+  };
+};
 
 const USERNAME_AVAILABILITY_ERROR = "That username is already taken.";
 const USERNAME_CHECK_ERROR = "Unable to verify username right now.";
@@ -470,6 +700,7 @@ const FreelancerOnboardingShell = () => {
   const [acceptInProgressProjectsValue, setAcceptInProgressProjectsValue] =
     useState(null);
   const [deliveryPolicyAccepted, setDeliveryPolicyAccepted] = useState(false);
+  const [communicationPolicyReady, setCommunicationPolicyReady] = useState(false);
   const [communicationPolicyAccepted, setCommunicationPolicyAccepted] =
     useState(false);
   const [dbServices, setDbServices] = useState(cachedMarketplaceServices);
@@ -494,6 +725,10 @@ const FreelancerOnboardingShell = () => {
       user?.profileDetails?.username ||
       user?.username ||
       "",
+  );
+  const onboardingDraftStorageKey = useMemo(
+    () => buildOnboardingDraftStorageKey(user?.id),
+    [user?.id],
   );
 
   const totalSlides = FREELANCER_ONBOARDING_SLIDES.length;
@@ -522,7 +757,7 @@ const FreelancerOnboardingShell = () => {
       : isDeliveryPolicySlide
         ? !deliveryPolicyAccepted
       : isCommunicationPolicySlide
-        ? !communicationPolicyAccepted
+        ? !communicationPolicyReady
       : false;
   const serviceSetupSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
     (slide) => slide.id === "serviceSetup",
@@ -557,6 +792,59 @@ const FreelancerOnboardingShell = () => {
       return;
     }
 
+    const storedDraft = readStoredOnboardingDraft(onboardingDraftStorageKey);
+    if (storedDraft) {
+      const nextServices = normalizeDraftSkillList(
+        (Array.isArray(storedDraft.selectedServices)
+          ? storedDraft.selectedServices
+          : []
+        ).map((serviceKey) => resolveServiceKey(dbServices, serviceKey)),
+      );
+
+      setCurrentSlideIndex(
+        clampSlideIndex(storedDraft.currentSlideIndex, totalSlides),
+      );
+      setSelectedWorkPreference(
+        String(storedDraft.selectedWorkPreference || "individual").trim() ||
+          "individual",
+      );
+      setBasicProfileForm(
+        sanitizeBasicProfileFormForDraft(storedDraft.basicProfileForm),
+      );
+      setSelectedServices(nextServices);
+      setServiceDraftsByKey(() =>
+        Object.fromEntries(
+          nextServices.map((serviceKey) => {
+            const serviceMeta = getServiceCatalogMeta(dbServices, serviceKey);
+            return [
+              serviceKey,
+              sanitizeServiceDraftForStorage(
+                storedDraft.serviceDraftsByKey?.[serviceKey],
+                {
+                  serviceKey,
+                  serviceId: serviceMeta.serviceId,
+                },
+              ),
+            ];
+          }),
+        ),
+      );
+      setCurrentServiceIndex(
+        clampServiceIndex(storedDraft.currentServiceIndex, nextServices.length),
+      );
+      setAcceptInProgressProjectsValue(
+        parseBooleanChoice(storedDraft.acceptInProgressProjectsValue),
+      );
+      setDeliveryPolicyAccepted(
+        parseBooleanChoice(storedDraft.deliveryPolicyAccepted) ?? false,
+      );
+      setCommunicationPolicyAccepted(
+        parseBooleanChoice(storedDraft.communicationPolicyAccepted) ?? false,
+      );
+      setHasHydratedFromUser(true);
+      return;
+    }
+
     const profileDetails =
       user.profileDetails && typeof user.profileDetails === "object"
         ? user.profileDetails
@@ -570,6 +858,8 @@ const FreelancerOnboardingShell = () => {
       : [];
     const existingPhoto =
       identity.profilePhoto || user.avatar || user.profilePhoto || "";
+    const existingResume =
+      user?.resume || user?.portfolio?.resume || profileDetails?.resume || "";
     const normalizedServiceDetails =
       profileDetails.serviceDetails && typeof profileDetails.serviceDetails === "object"
         ? profileDetails.serviceDetails
@@ -624,9 +914,10 @@ const FreelancerOnboardingShell = () => {
       languages: currentLanguages.filter(Boolean),
       profilePhoto:
         buildRemoteProfilePhoto(existingPhoto) || currentForm.profilePhoto,
+      resume: buildRemoteResumeFile(existingResume) || currentForm.resume,
     }));
     setSelectedWorkPreference(
-      String(profileDetails.role || selectedWorkPreference || "individual").trim(),
+      String(profileDetails.role || "individual").trim(),
     );
     setAcceptInProgressProjectsValue(hydratedAcceptInProgressProjects);
     setDeliveryPolicyAccepted(hydratedDeliveryPolicyAccepted ?? false);
@@ -739,7 +1030,7 @@ const FreelancerOnboardingShell = () => {
     });
     setCurrentServiceIndex(0);
     setHasHydratedFromUser(true);
-  }, [dbServices, hasHydratedFromUser, selectedWorkPreference, user]);
+  }, [dbServices, hasHydratedFromUser, onboardingDraftStorageKey, totalSlides, user]);
 
   useEffect(() => {
     if (dbServices.length) {
@@ -835,6 +1126,49 @@ const FreelancerOnboardingShell = () => {
       return nextDrafts;
     });
   }, [dbServices, selectedServices]);
+
+  useEffect(() => {
+    if (!hasHydratedFromUser || !onboardingDraftStorageKey) {
+      return undefined;
+    }
+
+    const timeoutId = setTimeout(() => {
+      writeStoredOnboardingDraft(
+        onboardingDraftStorageKey,
+        buildOnboardingDraftSnapshot({
+          currentSlideIndex,
+          totalSlides,
+          selectedWorkPreference,
+          basicProfileForm,
+          selectedServices,
+          serviceDraftsByKey,
+          currentServiceIndex,
+          acceptInProgressProjectsValue,
+          deliveryPolicyAccepted,
+          communicationPolicyAccepted,
+          dbServices,
+        }),
+      );
+    }, 150);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [
+    acceptInProgressProjectsValue,
+    basicProfileForm,
+    communicationPolicyAccepted,
+    currentServiceIndex,
+    currentSlideIndex,
+    dbServices,
+    deliveryPolicyAccepted,
+    hasHydratedFromUser,
+    onboardingDraftStorageKey,
+    selectedServices,
+    selectedWorkPreference,
+    serviceDraftsByKey,
+    totalSlides,
+  ]);
 
   useEffect(() => {
     const currentPhotoUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
@@ -1133,6 +1467,34 @@ const FreelancerOnboardingShell = () => {
     return uploadedUrl;
   };
 
+  const uploadResumeFile = async (file) => {
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+
+    const response = await authFetch("/upload/resume", {
+      method: "POST",
+      body: uploadData,
+    });
+
+    if (!response.ok) {
+      const payload = await response
+        .json()
+        .catch(() => ({ message: "Failed to upload resume." }));
+      throw new Error(
+        payload?.error?.message || payload?.message || "Failed to upload resume.",
+      );
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    const uploadedUrl = String(payload?.data?.url || payload?.url || "").trim();
+
+    if (!uploadedUrl) {
+      throw new Error("Resume upload completed without a usable URL.");
+    }
+
+    return uploadedUrl;
+  };
+
   const uploadServiceMediaFile = async (file) => {
     const uploadData = new FormData();
     uploadData.append("file", file);
@@ -1326,31 +1688,38 @@ const FreelancerOnboardingShell = () => {
 
     const localProfilePhotoFile = extractProfilePhotoFile(basicProfileForm.profilePhoto);
     const initialAvatarUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
-    const resolvedAvatarUrl = localProfilePhotoFile
-      ? await uploadProfilePhoto(localProfilePhotoFile)
-      : initialAvatarUrl;
-    const persistedServices = await Promise.all(
-      orderedSelectedServices.map(async (serviceKey) => {
-        const persistedDraft = await persistServiceDraftUploads(
-          serviceKey,
-          serviceDraftsByKey[serviceKey],
-        );
-        const serviceMeta = getServiceCatalogMeta(dbServices, serviceKey);
-        const serializedDetail = serializeServiceDraft({
-          draft: {
-            ...persistedDraft,
-            skillsAndTechnologies: deriveDraftSkillsAndTechnologies(persistedDraft, {}),
-          },
-          serviceId: serviceMeta.serviceId,
-          experienceLabelsByKey: SERVICE_EXPERIENCE_STORAGE_LABELS,
-          complexityLabelsByKey: PROJECT_COMPLEXITY_STORAGE_LABELS,
-          deliveryLabelsByKey: DELIVERY_TIMELINE_STORAGE_LABELS,
-          priceLabelsByKey: STARTING_PRICE_STORAGE_LABELS,
-        });
+    const localResumeFile = extractResumeFile(basicProfileForm.resume);
+    const initialResumeUrl = extractResumeUrl(basicProfileForm.resume);
+    const [resolvedAvatarUrl, resolvedResumeUrl, persistedServices] = await Promise.all([
+      localProfilePhotoFile
+        ? uploadProfilePhoto(localProfilePhotoFile)
+        : Promise.resolve(initialAvatarUrl),
+      localResumeFile
+        ? uploadResumeFile(localResumeFile)
+        : Promise.resolve(initialResumeUrl),
+      Promise.all(
+        orderedSelectedServices.map(async (serviceKey) => {
+          const persistedDraft = await persistServiceDraftUploads(
+            serviceKey,
+            serviceDraftsByKey[serviceKey],
+          );
+          const serviceMeta = getServiceCatalogMeta(dbServices, serviceKey);
+          const serializedDetail = serializeServiceDraft({
+            draft: {
+              ...persistedDraft,
+              skillsAndTechnologies: deriveDraftSkillsAndTechnologies(persistedDraft, {}),
+            },
+            serviceId: serviceMeta.serviceId,
+            experienceLabelsByKey: SERVICE_EXPERIENCE_STORAGE_LABELS,
+            complexityLabelsByKey: PROJECT_COMPLEXITY_STORAGE_LABELS,
+            deliveryLabelsByKey: DELIVERY_TIMELINE_STORAGE_LABELS,
+            priceLabelsByKey: STARTING_PRICE_STORAGE_LABELS,
+          });
 
-        return [serviceKey, { persistedDraft, serializedDetail }];
-      }),
-    );
+          return [serviceKey, { persistedDraft, serializedDetail }];
+        }),
+      ),
+    ]);
 
     const currentProfileDetails =
       user?.profileDetails && typeof user.profileDetails === "object"
@@ -1420,6 +1789,7 @@ const FreelancerOnboardingShell = () => {
         state: basicProfileForm.state.trim(),
         country: basicProfileForm.country.trim(),
       }),
+      resume: resolvedResumeUrl || null,
     };
 
     if (resolvedAvatarUrl) {
@@ -1441,6 +1811,13 @@ const FreelancerOnboardingShell = () => {
       setBasicProfileForm((currentForm) => ({
         ...currentForm,
         profilePhoto: buildRemoteProfilePhoto(resolvedAvatarUrl, localProfilePhotoFile.name),
+      }));
+    }
+
+    if (localResumeFile) {
+      setBasicProfileForm((currentForm) => ({
+        ...currentForm,
+        resume: buildRemoteResumeFile(resolvedResumeUrl, localResumeFile.name),
       }));
     }
 
@@ -1485,6 +1862,7 @@ const FreelancerOnboardingShell = () => {
       communicationPolicyAcceptedOverride,
     })
       .then(async () => {
+        clearStoredOnboardingDraft(onboardingDraftStorageKey);
         await refreshUser();
         toast.success("Freelancer onboarding saved.");
         navigate("/freelancer");
@@ -1605,6 +1983,26 @@ const FreelancerOnboardingShell = () => {
     }
   };
 
+  const handleAcceptInProgressProjectsSelect = (nextValue) => {
+    if (isProfileSaving) {
+      return;
+    }
+
+    const normalizedValue = parseBooleanChoice(nextValue);
+    if (typeof normalizedValue !== "boolean") {
+      return;
+    }
+
+    setAcceptInProgressProjectsValue(normalizedValue);
+
+    if (deliveryPolicySlideIndex >= 0) {
+      setCurrentSlideIndex(deliveryPolicySlideIndex);
+      return;
+    }
+
+    submitOnboardingAndNavigate();
+  };
+
   const handleBasicProfileFieldChange = (field, value) => {
     const normalizedValue =
       field === "username"
@@ -1721,6 +2119,66 @@ const FreelancerOnboardingShell = () => {
     });
   };
 
+  const handleResumeSelect = (file) => {
+    if (!(typeof File !== "undefined" && file instanceof File)) {
+      return;
+    }
+
+    const normalizedName = String(file.name || "").trim().toLowerCase();
+    const hasAllowedExtension = RESUME_UPLOAD_ALLOWED_EXTENSIONS.some((extension) =>
+      normalizedName.endsWith(extension),
+    );
+
+    if (!RESUME_UPLOAD_ALLOWED_MIME_TYPES.has(file.type) && !hasAllowedExtension) {
+      const message = "Please select a PDF, DOC, or DOCX file.";
+      setProfileError(message);
+      setBasicProfileErrors((currentErrors) => ({
+        ...currentErrors,
+        resume: message,
+      }));
+      toast.error(message);
+      return;
+    }
+
+    if (file.size > RESUME_UPLOAD_MAX_BYTES) {
+      const message = "Resume must be 5MB or smaller.";
+      setProfileError(message);
+      setBasicProfileErrors((currentErrors) => ({
+        ...currentErrors,
+        resume: message,
+      }));
+      toast.error(message);
+      return;
+    }
+
+    setBasicProfileForm((currentForm) => ({
+      ...currentForm,
+      resume: {
+        name: file.name,
+        file,
+      },
+    }));
+    setProfileError("");
+    setBasicProfileErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors };
+      delete nextErrors.resume;
+      return nextErrors;
+    });
+  };
+
+  const handleResumeRemove = () => {
+    setBasicProfileForm((currentForm) => ({
+      ...currentForm,
+      resume: null,
+    }));
+    setProfileError("");
+    setBasicProfileErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors };
+      delete nextErrors.resume;
+      return nextErrors;
+    });
+  };
+
   const closeProfileCropDialog = () => {
     setPendingProfilePhotoFile(null);
     setIsProfileCropOpen(false);
@@ -1768,6 +2226,7 @@ const FreelancerOnboardingShell = () => {
     setCurrentServiceIndex(0);
     setAcceptInProgressProjectsValue(null);
     setDeliveryPolicyAccepted(false);
+    setCommunicationPolicyReady(false);
     setCommunicationPolicyAccepted(false);
     setProfileError("");
     setBasicProfileErrors({});
@@ -1804,7 +2263,11 @@ const FreelancerOnboardingShell = () => {
 
   const footerPrimaryAction = isProfileActionFooter
     ? handleBasicProfileNext
-    : handleContinue;
+    : isDeliveryPolicySlide
+      ? handleDeliveryPolicyAgree
+      : isCommunicationPolicySlide
+        ? handleCommunicationPolicyAgree
+      : handleContinue;
   const footerPrimaryLabel = isProfileActionFooter
     ? "Continue"
     : currentSlide.id === "serviceReview" &&
@@ -1813,7 +2276,9 @@ const FreelancerOnboardingShell = () => {
       : currentSlide.continueLabel || "Continue";
   const footerPrimaryDisabled = isProfileActionFooter
     ? isProfileSaving
-    : isContinueDisabled || isProfileSaving;
+    : isDeliveryPolicySlide
+      ? isProfileSaving
+      : isContinueDisabled || isProfileSaving;
 
   return (
     <main className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-background text-[#f1f5f9] h-[100dvh]">
@@ -1932,6 +2397,9 @@ const FreelancerOnboardingShell = () => {
                 )}
                 onProfilePhotoSelect={handleProfilePhotoSelect}
                 onProfilePhotoRemove={handleProfilePhotoRemove}
+                resumeFile={basicProfileForm.resume}
+                onResumeSelect={handleResumeSelect}
+                onResumeRemove={handleResumeRemove}
                 selectedServices={selectedServices}
                 onToggleService={handleServiceToggle}
                 dbServices={dbServices}
@@ -1975,10 +2443,9 @@ const FreelancerOnboardingShell = () => {
                   }))
                 }
                 acceptInProgressProjectsValue={acceptInProgressProjectsValue}
-                onAcceptInProgressProjectsChange={setAcceptInProgressProjectsValue}
-                onDeliveryPolicyAgreeAndContinue={handleDeliveryPolicyAgree}
-                onCommunicationPolicyAgreeAndContinue={
-                  handleCommunicationPolicyAgree
+                onAcceptInProgressProjectsChange={handleAcceptInProgressProjectsSelect}
+                onCommunicationPolicyReadinessChange={(isReady) =>
+                  setCommunicationPolicyReady(Boolean(isReady))
                 }
                 isProfileSaving={isProfileSaving}
                 user={user}

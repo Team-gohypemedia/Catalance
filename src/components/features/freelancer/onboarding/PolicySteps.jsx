@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { BadgeCheck, Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,19 +40,36 @@ export const DeliveryPolicyStep = ({ formData: _formData, updateFormField }) => 
     <div className="space-y-6">
         <StepHeader
             title="Do You Agree To Catalance Delivery & Revision SOP?"
-            subtitle="Required To Continue"
         />
         <div className="rounded-xl border border-white/10 bg-accent dark:bg-accent p-6 space-y-4">
-            <p className="text-white/70 text-sm">
-                Catalance maintains standardized delivery and revision policies to ensure fairness, transparency, and dispute
-                protection for both clients and freelancers.
-            </p>
-            <ul className="space-y-2 text-sm text-white/70 list-disc pl-5">
-                <li>Up to 3 revisions included per milestone.</li>
-                <li>Scope changes are handled through milestone modification SOP.</li>
-                <li>Final deliverables are submitted through the Catalance milestone system.</li>
-                <li>Reporting and updates follow the platform workflow.</li>
-            </ul>
+            <div className="space-y-2">
+                <h3 className="text-base font-semibold text-primary">Delivery & Revision Policy</h3>
+                <p className="text-white/70 text-sm">
+                    Catalance follows a structured delivery and revision process to maintain fairness, transparency,
+                    and dispute protection for both clients and freelancers.
+                </p>
+            </div>
+            <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-[0.08em] text-primary/90">Key SOP Rules</h4>
+                <ul className="space-y-2 text-sm text-white/70">
+                    <li className="flex items-start gap-2.5">
+                        <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                        <span><span className="font-semibold text-white">Revision Limit:</span> Up to 3 revisions are included per milestone.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                        <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                        <span><span className="font-semibold text-white">Scope Changes:</span> Additional scope must follow the milestone modification SOP.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                        <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                        <span><span className="font-semibold text-white">Final Submission:</span> All final deliverables must be submitted through the Catalance milestone system.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                        <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                        <span><span className="font-semibold text-white">Progress Updates:</span> Reporting and project updates must follow the platform workflow.</span>
+                    </li>
+                </ul>
+            </div>
         </div>
 
         <button

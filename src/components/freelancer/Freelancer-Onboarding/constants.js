@@ -72,19 +72,18 @@ export const FREELANCER_ONBOARDING_SLIDES = [
     title: "Do You Accept Projects That Are Already In Progress Or Partially Completed?",
     progressValue: 96,
     continueLabel: "Continue",
+    footerMode: "hidden",
   },
   {
     id: "deliveryPolicy",
     title: "Do You Agree To Catalance Delivery & Revision SOP?",
     progressValue: 98,
-    continueLabel: "Continue",
-    footerMode: "hidden",
+    continueLabel: "Agree & Continue",
   },
   {
     id: "communicationPolicy",
     title: "Freelancer Agreement & Terms And Conditions",
     progressValue: 100,
-    continueLabel: "Submit",
-    footerMode: "hidden",
+    continueLabel: "Agree & Continue",
   },
 ];

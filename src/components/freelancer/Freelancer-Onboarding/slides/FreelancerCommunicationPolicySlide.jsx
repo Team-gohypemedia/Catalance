@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 
-const FreelancerCommunicationPolicySlide = ({
-  isProfileSaving,
-  onCommunicationPolicyAgreeAndContinue,
-}) => {
+const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChange }) => {
   const agreementRef = useRef(null);
   const [hasReachedEnd, setHasReachedEnd] = useState(false);
+  const [isAgreementChecked, setIsAgreementChecked] = useState(false);
 
   const handleAgreementScroll = () => {
     const agreementNode = agreementRef.current;
@@ -17,10 +15,7 @@ const FreelancerCommunicationPolicySlide = ({
     const reachedEnd =
       agreementNode.scrollTop + agreementNode.clientHeight >=
       agreementNode.scrollHeight - 8;
-
-    if (reachedEnd) {
-      setHasReachedEnd(true);
-    }
+    setHasReachedEnd(reachedEnd);
   };
 
   useEffect(() => {
@@ -34,6 +29,12 @@ const FreelancerCommunicationPolicySlide = ({
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof onCommunicationPolicyReadinessChange === "function") {
+      onCommunicationPolicyReadinessChange(hasReachedEnd && isAgreementChecked);
+    }
+  }, [hasReachedEnd, isAgreementChecked, onCommunicationPolicyReadinessChange]);
+
   return (
     <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6">
       <div className="w-full max-w-5xl space-y-6">
@@ -41,15 +42,12 @@ const FreelancerCommunicationPolicySlide = ({
           <h1 className="text-balance text-3xl font-semibold tracking-[-0.03em] text-[#facc15] sm:text-4xl lg:text-[3rem] lg:leading-[1.06]">
             Freelancer Agreement &amp; Terms And Conditions
           </h1>
-          <p className="text-sm text-[#d1d5db] sm:text-base">
-            Read Completely And Scroll To The End To Continue
-          </p>
         </div>
 
         <div
           ref={agreementRef}
           onScroll={handleAgreementScroll}
-          className="max-h-[430px] space-y-4 overflow-y-auto rounded-2xl border border-white/10 bg-[#4b4b4e]/95 p-6 sm:p-7"
+          className="max-h-[430px] space-y-4 overflow-y-auto rounded-2xl border border-white/10 bg-card p-6 sm:p-7"
         >
           <div className="space-y-2">
             <h3 className="text-3xl font-semibold text-[#facc15]">Freelancer Agreement</h3>
@@ -272,39 +270,52 @@ const FreelancerCommunicationPolicySlide = ({
               By accepting any assignment or continuing work with Catalance, the
               Freelancer confirms that:
             </p>
-            <ul className="list-disc space-y-1 pl-6 text-base leading-8 text-[#e5e7eb]">
-              <li>They have read and understood this Agreement.</li>
-              <li>
-                They agree to comply with all terms and conditions stated herein.
+            <ul className="space-y-2 text-base leading-8 text-[#e5e7eb]">
+              <li className="flex items-start gap-2.5">
+                <BadgeCheck className="mt-[0.6rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />
+                <span>They have read and understood this Agreement.</span>
               </li>
-              <li>This Agreement is binding upon acceptance of work.</li>
+              <li className="flex items-start gap-2.5">
+                <BadgeCheck className="mt-[0.6rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />
+                <span>They agree to comply with all terms and conditions stated herein.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <BadgeCheck className="mt-[0.6rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />
+                <span>This Agreement is binding upon acceptance of work.</span>
+              </li>
             </ul>
           </section>
 
-          <p className="rounded-xl border border-white/10 bg-[#5c5c5f] px-4 py-3 text-base leading-8 text-[#e5e7eb]">
+          <p className="rounded-xl border border-[#facc15]/35 bg-card px-4 py-3 text-base leading-8 text-[#e5e7eb]">
             I have read, understood, and agree to the Freelancer Agreement and
             Terms &amp; Conditions of Catalance. I acknowledge that this
             agreement is legally binding upon accepting any project assignment.
           </p>
         </div>
 
+        <label
+          className={[
+            "flex items-center gap-3 rounded-xl border px-4 py-3 text-sm transition-colors",
+            hasReachedEnd
+              ? "border-[#facc15]/35 bg-card text-[#e5e7eb]"
+              : "border-white/10 bg-card/70 text-white/50",
+          ].join(" ")}
+        >
+          <input
+            type="checkbox"
+            checked={isAgreementChecked}
+            onChange={(event) => setIsAgreementChecked(event.target.checked)}
+            disabled={!hasReachedEnd}
+            className="h-4 w-4 rounded border-white/30 bg-transparent text-primary focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+          />
+          <span>I have read and accept the Freelancer Agreement and Terms.</span>
+        </label>
+
         <p className="text-center text-sm text-[#d1d5db]">
           {hasReachedEnd
-            ? "You can now agree and continue."
-            : "Scroll to the end of the agreement to enable the button."}
+            ? "Check the box to enable Agree & Continue."
+            : "Scroll to the end to enable the confirmation checkbox."}
         </p>
-
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={onCommunicationPolicyAgreeAndContinue}
-            disabled={!hasReachedEnd || isProfileSaving}
-            className="inline-flex min-w-[230px] items-center justify-center gap-2 rounded-2xl bg-[#facc15] px-10 py-4 text-lg font-semibold text-black transition-colors hover:bg-[#f6c800] disabled:cursor-not-allowed disabled:bg-[#facc15]/70"
-          >
-            {isProfileSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
-            {isProfileSaving ? "Saving..." : "Agree & Continue"}
-          </button>
-        </div>
       </div>
     </section>
   );

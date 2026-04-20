@@ -1,6 +1,3 @@
-import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
-import XCircle from "lucide-react/dist/esm/icons/x-circle";
-
 import { cn } from "@/shared/lib/utils";
 
 const IN_PROGRESS_PROJECT_OPTIONS = [
@@ -9,14 +6,12 @@ const IN_PROGRESS_PROJECT_OPTIONS = [
     label: "Yes, I Accept In-Progress Projects",
     description:
       "I can take over partially completed projects and continue from the current stage.",
-    Icon: CheckCircle2,
   },
   {
     value: false,
     label: "No, I Prefer New Projects",
     description:
       "I prefer projects that start from scratch so I can manage the full process.",
-    Icon: XCircle,
   },
 ];
 
@@ -35,7 +30,6 @@ const FreelancerAcceptInProgressProjectsSlide = ({
       <div className="space-y-4">
         {IN_PROGRESS_PROJECT_OPTIONS.map((option) => {
           const isSelected = acceptInProgressProjectsValue === option.value;
-          const Icon = option.Icon;
 
           return (
             <button
@@ -50,27 +44,14 @@ const FreelancerAcceptInProgressProjectsSlide = ({
               )}
               aria-pressed={isSelected}
             >
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className={cn(
-                    "rounded-full border p-1.5",
-                    isSelected
-                      ? "border-primary text-primary"
-                      : "border-white/10 text-white/60",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                </div>
-
-                <p
-                  className={cn(
-                    "text-base font-semibold sm:text-lg",
-                    isSelected ? "text-primary" : "text-white",
-                  )}
-                >
-                  {option.label}
-                </p>
-              </div>
+              <p
+                className={cn(
+                  "text-base font-semibold sm:text-lg",
+                  isSelected ? "text-primary" : "text-white",
+                )}
+              >
+                {option.label}
+              </p>
             </button>
           );
         })}
