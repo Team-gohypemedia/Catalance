@@ -946,11 +946,11 @@ const ServiceDetails = () => {
           </div>
 
           <aside
-            className="hidden w-[330px] shrink-0 self-start lg:block"
+            className="hidden w-[330px] shrink-0 self-start lg:sticky lg:top-24 lg:block"
             role="complementary"
             aria-label="Service pricing and contact"
           >
-            <div className="subtle-scrollbar lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1">
+            <div className="lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
               <StickySidebar
                 service={service}
                 isAuthenticated={isAuthenticated}

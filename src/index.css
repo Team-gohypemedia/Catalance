@@ -247,4 +247,5 @@ body[data-scroll-locked] {
   .subtle-scrollbar:hover::-webkit-scrollbar-thumb {
     background: color-mix(in srgb, var(--foreground) 28%, transparent);
   }
+
 }
