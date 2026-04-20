@@ -824,7 +824,7 @@ const buildFreelancerProfileCompletion = (payload = {}) => {
       weight: 8,
     },
     {
-      label: "Professional bio",
+      label: "Professional Bio",
       score: hasProfessionalBio ? 1 : 0,
       weight: 10,
     },

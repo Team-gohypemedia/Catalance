@@ -1799,6 +1799,7 @@ const FreelancerOnboardingShell = () => {
     const updatePayload = {
       profileDetails,
       bio: basicProfileForm.professionalBio.trim(),
+      professionalBio: basicProfileForm.professionalBio.trim(),
       location: buildLocationLabel({
         state: basicProfileForm.state.trim(),
         country: basicProfileForm.country.trim(),
@@ -2273,10 +2274,6 @@ const FreelancerOnboardingShell = () => {
     setIsProfileCropOpen(false);
   };
 
-  const handleBasicProfileSkip = () => {
-    navigate("/freelancer");
-  };
-
   const handleBasicProfileNext = async () => {
     setProfileError("");
     if (currentSlide.id !== "basicProfile") {
@@ -2560,15 +2557,7 @@ const FreelancerOnboardingShell = () => {
             </Button>
 
             {isProfileActionFooter ? (
-              <Button
-                type="button"
-                size="lg"
-                variant="outline"
-                onClick={handleBasicProfileSkip}
-                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
-              >
-                Skip for now
-              </Button>
+              <div />
             ) : isServiceInfoSlide ? (
               <Button
                 type="button"

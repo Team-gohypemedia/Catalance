@@ -169,6 +169,7 @@ const withFreelancerProfileInclude = (query = {}) => {
 
 const FREELANCER_PROFILE_FIELD_KEYS = new Set([
   "bio",
+  "professionalBio",
   "skills",
   "jobTitle",
   "companyName",
@@ -1883,6 +1884,7 @@ export const updateUserProfile = async (userId, updates) => {
     "phone",
     "phoneNumber",
     "bio",
+    "professionalBio",
     "portfolio",
     "linkedin",
     "github",
@@ -1915,7 +1917,7 @@ export const updateUserProfile = async (userId, updates) => {
   Object.keys(updates).forEach(key => {
     if (allowedUpdates.includes(key)) {
       // Sanitize bio to plain text even if JSON/object slips in.
-      if (key === "bio") {
+      if (key === "bio" || key === "professionalBio") {
         cleanUpdates[key] = extractBioText(updates[key]);
       } else if (key === "phone" || key === "phoneNumber") {
         cleanUpdates.phoneNumber = normalizeOptionalText(updates[key]);
@@ -1985,6 +1987,18 @@ export const updateUserProfile = async (userId, updates) => {
   });
 
   if (cleanUpdates.profileDetails) {
+    if (
+      !Object.prototype.hasOwnProperty.call(cleanUpdates, "professionalBio") &&
+      Object.prototype.hasOwnProperty.call(
+        cleanUpdates.profileDetails,
+        "professionalBio"
+      )
+    ) {
+      cleanUpdates.professionalBio = extractBioText(
+        cleanUpdates.profileDetails.professionalBio
+      );
+    }
+
     const hasExplicitSkillsUpdate = Object.prototype.hasOwnProperty.call(
       cleanUpdates,
       "skills"

@@ -3070,7 +3070,7 @@ const FreelancerProfile = () => {
       weight: 8,
     },
     {
-      label: "Professional bio",
+      label: "Professional Bio",
       score: hasProfessionalBio ? 1 : 0,
       weight: 10,
     },
@@ -3153,7 +3153,7 @@ const FreelancerProfile = () => {
 
   if (!hasProfessionalBio) {
     profileCompletionMissingDetails.push({
-      label: "Professional bio",
+      label: "Professional Bio",
       detail: "Write a short bio that highlights your expertise.",
     });
   }

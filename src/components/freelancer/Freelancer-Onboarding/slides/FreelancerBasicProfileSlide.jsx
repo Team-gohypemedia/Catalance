@@ -272,7 +272,7 @@ const FreelancerBasicProfileSlide = ({
 
           <div className="space-y-3">
             <Label className={getFieldLabelClasses(Boolean(professionalBioError))}>
-              Profile Details
+              Professional Bio
             </Label>
             <Textarea
               value={basicProfileForm.professionalBio}
