@@ -290,6 +290,18 @@ export const extractSkillsFromProfileDetails = (
   Object.values(serviceDetails).forEach((detail) => {
     if (!detail || typeof detail !== "object") return;
 
+    if (Array.isArray(detail.skillsAndTechnologies)) {
+      collected.push(...detail.skillsAndTechnologies);
+    }
+
+    if (Array.isArray(detail.subcategories)) {
+      detail.subcategories.forEach((subcategory) => {
+        if (Array.isArray(subcategory?.customSkillNames)) {
+          collected.push(...subcategory.customSkillNames);
+        }
+      });
+    }
+
     collected.push(...collectTechGroupValues(detail.groups));
     collected.push(...collectTechGroupValues(detail.groupOther));
 

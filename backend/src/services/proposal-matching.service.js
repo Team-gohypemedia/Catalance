@@ -214,6 +214,13 @@ const normalizeServiceSignal = (value = "") => {
   return SERVICE_ALIAS_MAP[normalized] || normalized;
 };
 
+const humanizeServiceLabel = (value = "") =>
+  normalizeServiceSignal(value)
+    .split("_")
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+
 const collectServiceSignals = (...values) =>
   uniqueItems(values.flatMap((value) => normalizeList(value)))
     .map((value) => normalizeServiceSignal(value))
@@ -566,43 +573,77 @@ const normalizeSearchableValues = (values = []) =>
     .map((value) => normalizeToken(value))
     .filter(Boolean);
 
-const buildCaseStudyProfile = (portfolioProject = {}, index = 0) => {
-  const caseStudy = isPlainObject(portfolioProject)
-    ? portfolioProject
-    : { title: cleanText(portfolioProject) || `Case study ${index + 1}` };
+const hasMeaningfulCaseStudyContent = (caseStudy = {}) =>
+  collectTextValues(caseStudy).some((entry) => String(entry || "").trim().length > 0);
 
-  const title = cleanText(
-    caseStudy?.title || caseStudy?.projectTitle || caseStudy?.name || "",
+const buildCaseStudyProfile = (source = {}, index = 0) => {
+  const resolvedSource = isPlainObject(source) ? source : {};
+  const detail = isPlainObject(resolvedSource?.detail) ? resolvedSource.detail : {};
+  const caseStudy = isPlainObject(resolvedSource?.caseStudy)
+    ? resolvedSource.caseStudy
+    : resolvedSource;
+
+  if (!hasMeaningfulCaseStudyContent(caseStudy)) {
+    return null;
+  }
+
+  const detailTitle = cleanText(detail?.title || detail?.serviceTitle || "");
+  const primaryServiceKey = normalizeServiceSignal(
+    resolvedSource?.serviceKey ||
+      detail?.serviceKey ||
+      caseStudy?.serviceKey ||
+      caseStudy?.service ||
+      caseStudy?.serviceName ||
+      caseStudy?.serviceType,
   );
-  const service = cleanText(
+  const serviceLabel = cleanText(
     caseStudy?.service ||
       caseStudy?.serviceName ||
       caseStudy?.category ||
       caseStudy?.serviceType ||
+      humanizeServiceLabel(primaryServiceKey),
+  );
+  const title = cleanText(
+    caseStudy?.title || caseStudy?.projectTitle || caseStudy?.name || detailTitle,
+  );
+  const description = cleanText(
+    caseStudy?.description ||
+      caseStudy?.summary ||
+      caseStudy?.overview ||
+      caseStudy?.content ||
       "",
   );
-  const primaryServiceKey = normalizeServiceSignal(caseStudy?.serviceKey || service);
   const serviceKeys = collectServiceSignals(
+    primaryServiceKey,
     caseStudy?.serviceKeys,
     caseStudy?.services,
     caseStudy?.serviceTags,
     caseStudy?.serviceKey,
     caseStudy?.serviceName,
     caseStudy?.serviceType,
-    service,
-    primaryServiceKey,
+    serviceLabel,
   );
   const tags = uniqueItems([
+    ...normalizeList(detail?.keywords),
     ...normalizeList(caseStudy?.tags),
     ...normalizeList(caseStudy?.deliverables),
     ...normalizeList(caseStudy?.serviceSpecializations),
+    cleanText(caseStudy?.role),
+  ]);
+  const parentServiceSkills = uniqueItems([
+    ...normalizeList(detail?.skillsAndTechnologies),
+    ...normalizeList(detail?.activeTechnologies),
+    ...normalizeList(detail?.techStack),
   ]);
   const techStack = uniqueItems([
+    ...parentServiceSkills,
     ...normalizeList(caseStudy?.techStack),
     ...normalizeList(caseStudy?.technologies),
     ...normalizeList(caseStudy?.activeTechnologies),
     ...normalizeList(caseStudy?.stack),
+    ...normalizeList(caseStudy?.skills),
     ...inferTechnologySkills(
+      detailTitle,
       caseStudy?.title,
       caseStudy?.description,
       caseStudy?.summary,
@@ -610,30 +651,37 @@ const buildCaseStudyProfile = (portfolioProject = {}, index = 0) => {
       caseStudy?.content,
     ),
   ]);
-  const skills = uniqueItems([...tags, ...techStack]);
-  const budget = parseBudgetPoint(
-    caseStudy?.budget ?? caseStudy?.projectBudget ?? caseStudy?.amount ?? null,
-  );
-  const timeline = cleanText(
-    caseStudy?.timeline || caseStudy?.duration || caseStudy?.projectTimeline || "",
-  );
-  const description = cleanText(
-    caseStudy?.description || caseStudy?.summary || caseStudy?.overview || caseStudy?.content || "",
-  );
-  const niches = uniqueItems(normalizeList(caseStudy?.industriesOrNiches));
+  const niches = uniqueItems([
+    cleanText(caseStudy?.niche),
+    ...normalizeList(caseStudy?.industriesOrNiches),
+    ...normalizeList(detail?.niches),
+  ]);
   const projectTypes = uniqueItems([
     ...normalizeList(caseStudy?.serviceSpecializations),
     ...normalizeList(caseStudy?.projectTypes),
+    ...normalizeList(detail?.keywords),
     ...niches,
   ]);
+  const skills = uniqueItems([...tags, ...techStack]);
+  const timeline = cleanText(
+    caseStudy?.timeline || caseStudy?.duration || caseStudy?.projectTimeline || "",
+  );
+  const budget = parseBudgetPoint(
+    caseStudy?.budget ?? caseStudy?.projectBudget ?? caseStudy?.amount ?? null,
+  );
   const searchableText = normalizeSearchableValues([
     title,
-    service,
+    detailTitle,
+    serviceLabel,
     timeline,
     description,
+    cleanText(caseStudy?.role),
+    cleanText(caseStudy?.niche),
+    cleanText(caseStudy?.projectLink || caseStudy?.link || caseStudy?.url),
     ...serviceKeys,
     ...skills,
     ...projectTypes,
+    ...niches,
   ]);
 
   if (!title && searchableText.length === 0) {
@@ -641,12 +689,15 @@ const buildCaseStudyProfile = (portfolioProject = {}, index = 0) => {
   }
 
   return {
-    recordId: cleanText(caseStudy?.id || caseStudy?.projectId || "") || null,
-    recordTitle: title || "Case study",
+    recordId:
+      cleanText(caseStudy?.id || caseStudy?.projectId || "") ||
+      `${primaryServiceKey || "service"}:${index}`,
+    recordTitle: title || detailTitle || `Case study ${index + 1}`,
     summary: description,
     description,
-    service,
-    serviceType: service || "",
+    service: serviceLabel,
+    serviceTitle: detailTitle || null,
+    serviceType: serviceLabel || "",
     serviceKey: serviceKeys[0] || primaryServiceKey || "",
     serviceKeys,
     tags,
@@ -660,21 +711,31 @@ const buildCaseStudyProfile = (portfolioProject = {}, index = 0) => {
     budget,
     budgetRange: parseBudgetRange({ budget }),
     timeline,
+    role: cleanText(caseStudy?.role) || null,
+    projectLink:
+      cleanText(caseStudy?.projectLink || caseStudy?.link || caseStudy?.url) || null,
+    projectFile: isPlainObject(caseStudy?.projectFile) ? caseStudy.projectFile : null,
     recordDate: caseStudy?.updatedAt || caseStudy?.createdAt || null,
   };
 };
 
-const extractPortfolioCaseStudies = (freelancer = {}) => {
-  const rawPortfolioProjects = Array.isArray(freelancer?.portfolioProjects)
-    ? freelancer.portfolioProjects
-    : Array.isArray(freelancer?.freelancerProfile?.portfolioProjects)
-      ? freelancer.freelancerProfile.portfolioProjects
-      : Array.isArray(freelancer?.profileDetails?.portfolioProjects)
-        ? freelancer.profileDetails.portfolioProjects
-        : [];
+const extractCanonicalServiceCaseStudies = (freelancer = {}) => {
+  const serviceDetails =
+    freelancer?.profileDetails && isPlainObject(freelancer.profileDetails.serviceDetails)
+      ? freelancer.profileDetails.serviceDetails
+      : {};
 
-  return rawPortfolioProjects
-    .map((entry, index) => buildCaseStudyProfile(entry, index))
+  return Object.entries(serviceDetails)
+    .map(([serviceKey, detail], index) =>
+      buildCaseStudyProfile(
+        {
+          serviceKey,
+          detail,
+          caseStudy: detail?.caseStudy,
+        },
+        index,
+      ),
+    )
     .filter(Boolean);
 };
 
@@ -1581,7 +1642,7 @@ const buildLevel2Candidates = ({
 
   freelancers.forEach((freelancer) => {
     const activeProjectCount = activeProjectCounts.get(freelancer.id) || 0;
-    const caseStudies = extractPortfolioCaseStudies(freelancer);
+    const caseStudies = extractCanonicalServiceCaseStudies(freelancer);
 
     caseStudies.forEach((caseStudy) => {
       const candidate = evaluateCandidateMatch({

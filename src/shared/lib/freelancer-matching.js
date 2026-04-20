@@ -1186,6 +1186,23 @@ function collectTechSignalsFromValues(values = []) {
   return signals;
 }
 
+function collectTechSignalsFromText(values = []) {
+  const signals = new Set();
+  const searchableText = normalizeText(flattenValues(values).join(" "));
+
+  if (!searchableText) {
+    return signals;
+  }
+
+  TECH_ALIAS_TEXT_LOOKUP.forEach((item) => {
+    if (searchableText.includes(item.alias)) {
+      signals.add(item.canonical);
+    }
+  });
+
+  return signals;
+}
+
 function collectFreelancerProfileSkillSignals(freelancer = {}) {
   const profileDetails = getFreelancerProfileDetails(freelancer);
   const serviceDetails =
@@ -1264,12 +1281,16 @@ function collectFreelancerCaseStudySkillSignals(freelancer = {}, serviceKey = ""
 
   candidateDetails.forEach((detail) => {
     if (!detail || typeof detail !== "object") return;
+    if (!hasMeaningfulCaseStudy(detail)) return;
 
     const caseStudy = detail?.caseStudy && typeof detail.caseStudy === "object"
       ? detail.caseStudy
       : {};
 
     [
+      detail?.skillsAndTechnologies,
+      detail?.activeTechnologies,
+      detail?.techStack,
       caseStudy?.techStack,
       caseStudy?.techStackOther,
       caseStudy?.skills,
@@ -1277,6 +1298,18 @@ function collectFreelancerCaseStudySkillSignals(freelancer = {}, serviceKey = ""
     ].forEach((value) => {
       collectTechSignalsFromValues(value).forEach((signal) => signals.add(signal));
     });
+
+    collectTechSignalsFromText([
+      detail?.title,
+      detail?.keywords,
+      detail?.niches,
+      caseStudy?.title,
+      caseStudy?.description,
+      caseStudy?.summary,
+      caseStudy?.overview,
+      caseStudy?.content,
+      caseStudy?.niche,
+    ]).forEach((signal) => signals.add(signal));
   });
 
   return signals;
@@ -1423,21 +1456,33 @@ function extractCaseStudyMatch(detail = {}, requirements = {}, matchedTechnologi
     return null;
   }
 
-  const caseStudy = detail?.caseStudy && typeof detail.caseStudy === "object" ? detail.caseStudy : {};
-  const rawTechStack = uniqueList([
-    ...flattenValues(caseStudy?.techStack),
-    ...splitMultiValue(caseStudy?.techStackOther),
-  ]);
-
-  if (!rawTechStack.length) {
+  if (!hasMeaningfulCaseStudy(detail)) {
     return null;
   }
 
+  const caseStudy = detail?.caseStudy && typeof detail.caseStudy === "object" ? detail.caseStudy : {};
+  const structuredSignals = collectTechSignalsFromValues([
+    detail?.skillsAndTechnologies,
+    detail?.activeTechnologies,
+    detail?.techStack,
+    caseStudy?.techStack,
+    caseStudy?.techStackOther,
+    caseStudy?.skills,
+    caseStudy?.technologies,
+  ]);
+  const inferredSignals = collectTechSignalsFromText([
+    detail?.title,
+    detail?.keywords,
+    detail?.niches,
+    caseStudy?.title,
+    caseStudy?.description,
+    caseStudy?.summary,
+    caseStudy?.overview,
+    caseStudy?.content,
+    caseStudy?.niche,
+  ]);
   const canonicalTechStack = uniqueList(
-    rawTechStack
-      .map((entry) => normalizeTech(entry))
-      .filter(Boolean)
-      .map((entry) => getTechLabel(entry)),
+    [...structuredSignals, ...inferredSignals].map((entry) => getTechLabel(entry)),
   );
 
   const requirementCanonicals = Array.isArray(requirements?.technologyCanonicals)
@@ -1670,9 +1715,6 @@ function extractFreelancerKeywordTokens(freelancer = {}, serviceProject = {}, re
   const projectEntries = Array.isArray(freelancer?.freelancerProjects)
     ? freelancer.freelancerProjects
     : [];
-  const portfolioEntries = Array.isArray(freelancer?.portfolioProjects)
-    ? freelancer.portfolioProjects
-    : [];
 
   const serviceDetails =
     freelancer?.profileDetails?.serviceDetails &&
@@ -1712,12 +1754,6 @@ function extractFreelancerKeywordTokens(freelancer = {}, serviceProject = {}, re
         ? project.serviceSpecializations
         : []),
       ...(Array.isArray(project?.industriesOrNiches) ? project.industriesOrNiches : []),
-    ]),
-    ...portfolioEntries.flatMap((project) => [
-      project?.title,
-      project?.description,
-      ...(Array.isArray(project?.tags) ? project.tags : []),
-      ...(Array.isArray(project?.techStack) ? project.techStack : []),
     ]),
   ];
 

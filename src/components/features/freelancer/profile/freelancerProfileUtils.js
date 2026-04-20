@@ -322,6 +322,10 @@ export const HOURS_PER_WEEK_LABELS = {
 };
 
 export const normalizeValueLabel = (value) => {
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
   const raw = String(value ?? "").trim();
   if (!raw) return "";
 
@@ -334,6 +338,8 @@ export const normalizeValueLabel = (value) => {
   }
   if (normalized === "yes") return "Yes";
   if (normalized === "no") return "No";
+  if (normalized === "true") return "Yes";
+  if (normalized === "false") return "No";
   if (normalized === "open") return "Open to all";
 
   return formatSkillLabel(raw);
@@ -393,7 +399,13 @@ export const normalizeProjectLinkValue = (value = "") => {
   }
 };
 
-export const hasTextValue = (value) => String(value || "").trim().length > 0;
+export const hasTextValue = (value) => {
+  if (typeof value === "boolean") {
+    return true;
+  }
+
+  return String(value || "").trim().length > 0;
+};
 
 export const collectOnboardingPlatformLinks = (serviceDetailMap = {}) =>
   Object.values(serviceDetailMap)

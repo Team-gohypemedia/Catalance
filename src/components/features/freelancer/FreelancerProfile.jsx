@@ -2373,9 +2373,12 @@ const FreelancerProfile = () => {
       communicationPolicyAccepted: Boolean(
         currentDetails.communicationPolicyAccepted
       ),
-      acceptInProgressProjects: String(
-        currentDetails.acceptInProgressProjects || ""
-      ).trim(),
+      acceptInProgressProjects:
+        typeof currentDetails.acceptInProgressProjects === "boolean"
+          ? currentDetails.acceptInProgressProjects
+            ? "yes"
+            : "no"
+          : String(currentDetails.acceptInProgressProjects || "").trim(),
       termsAccepted: Boolean(currentDetails.termsAccepted),
       professionalBio: String(
         currentDetails.professionalBio || personal.bio || ""
@@ -2494,9 +2497,22 @@ const FreelancerProfile = () => {
       communicationPolicyAccepted: Boolean(
         fullProfileForm.communicationPolicyAccepted
       ),
-      acceptInProgressProjects: String(
-        fullProfileForm.acceptInProgressProjects || ""
-      ).trim(),
+      acceptInProgressProjects: (() => {
+        const normalizedValue = String(
+          fullProfileForm.acceptInProgressProjects || "",
+        )
+          .trim()
+          .toLowerCase();
+
+        if (["yes", "true", "1"].includes(normalizedValue)) {
+          return true;
+        }
+        if (["no", "false", "0"].includes(normalizedValue)) {
+          return false;
+        }
+
+        return null;
+      })(),
       termsAccepted: Boolean(fullProfileForm.termsAccepted),
       professionalBio: String(fullProfileForm.professionalBio || "").trim(),
       education: normalizedEducation,

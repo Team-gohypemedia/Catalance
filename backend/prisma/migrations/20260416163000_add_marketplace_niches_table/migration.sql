@@ -1,0 +1,63 @@
+CREATE TABLE IF NOT EXISTS niches (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS niches_name_key
+  ON niches (name);
+
+INSERT INTO niches (name)
+VALUES
+  ('Organic Farming'),
+  ('Dairy Farming'),
+  ('Poultry Farming'),
+  ('Hydroponics'),
+  ('Smartphone Accessories'),
+  ('Phone Repair Services'),
+  ('Computer Hardware'),
+  ('Wearable Tech'),
+  ('Fast Food Chains'),
+  ('Cloud Kitchens'),
+  ('Vegan Food'),
+  ('Packaged Snacks'),
+  ('Clothing (Men''s/Women''s/Kids)'),
+  ('Streetwear'),
+  ('Sustainable Fashion'),
+  ('Footwear'),
+  ('Fitness Training'),
+  ('Yoga Studios'),
+  ('Supplements & Nutrition'),
+  ('Mental Wellness'),
+  ('Online Coaching'),
+  ('Test Preparation'),
+  ('Skill-Based Courses'),
+  ('Language Learning'),
+  ('Mobile Apps'),
+  ('SaaS (Software as a Service)'),
+  ('Cybersecurity'),
+  ('AI Tools'),
+  ('Digital Marketing'),
+  ('Social Media Management'),
+  ('Influencer Marketing'),
+  ('SEO Services'),
+  ('Stock Trading'),
+  ('Cryptocurrency'),
+  ('Personal Finance Consulting'),
+  ('Insurance Advisory'),
+  ('Residential Real Estate'),
+  ('Commercial Real Estate'),
+  ('Property Management'),
+  ('Short-Term Rentals (Airbnb)'),
+  ('Travel Blogging'),
+  ('Budget Travel'),
+  ('Luxury Travel'),
+  ('Adventure Tourism'),
+  ('Gaming Content'),
+  ('Esports Teams'),
+  ('Streaming (YouTube/Twitch)'),
+  ('Mobile Gaming'),
+  ('Solar Panels'),
+  ('EV Charging Stations'),
+  ('Recycling'),
+  ('Sustainable Products')
+ON CONFLICT (name) DO NOTHING;

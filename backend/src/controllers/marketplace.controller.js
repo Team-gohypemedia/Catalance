@@ -2362,6 +2362,22 @@ export const getMarketplaceFilterServices = asyncHandler(async (_req, res) => {
   });
 });
 
+export const getMarketplaceFilterNiches = asyncHandler(async (_req, res) => {
+  const niches = await prisma.$queryRaw`
+    SELECT id, name
+    FROM "Niches"
+    ORDER BY name ASC
+  `;
+
+  res.json({
+    data: niches.map((niche) => ({
+      id: Number(niche.id),
+      name: niche.name,
+      label: niche.name,
+    })),
+  });
+});
+
 export const getMarketplaceFilterSubCategories = asyncHandler(async (req, res) => {
   const serviceId = parseOptionalInteger(req.query?.serviceId);
 

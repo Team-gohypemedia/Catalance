@@ -128,7 +128,7 @@ model FreelancerProfile {
   termsAccepted               Boolean  @default(false)
   deliveryPolicyAccepted      Boolean  @default(false)
   communicationPolicyAccepted Boolean  @default(false)
-  acceptInProgressProjects    String?
+  acceptInProgressProjects    Boolean?
   globalIndustryOther         String?
   city                        String?
   country                     String?
@@ -147,12 +147,20 @@ model FreelancerProfile {
   serviceTitle               String?
   serviceCategory            String?   @map("ServiceCategory")
   serviceExperience          String?
-  projectComplexity          String?
+  serviceComplexity          String?   @map("serviceComplexity")
   serviceDescription         String?   @db.Text
-  deliveryTimeline           String?
-  startingPrice              String?
-  serviceKeywords            String[]  @default([])
+  deliveryTimeline           String?   @map("serviceDeliveryTimeline")
+  startingPrice              String?   @map("serviceStartingPrice")
+  serviceKeywords            String[]  @default([]) @map("servicePositiveKeyword")
   serviceMedia               Json?     @default("[]")
+  caseStudyTitle             String?
+  caseStudyDescription       String?   @db.Text
+  caseStudyProjectLink       String?
+  caseStudyProjectFile       String?
+  caseStudyYourRole          String?
+  caseStudyTimeline          String?
+  caseStudyBudget            Int?
+  caseStudyNiche             String?
   globalIndustryFocus         String[] @default([])
   availabilityHoursPerWeek    String?
   availabilityStartTimeline   String?
@@ -627,6 +635,13 @@ model MarketplaceFilterTool {
   @@unique([subCategoryId, name])
   @@index([subCategoryId])
   @@map("tools")
+}
+
+model MarketplaceFilterNiche {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  @@map("Niches")
 }
 
 model FreelancerSkill {

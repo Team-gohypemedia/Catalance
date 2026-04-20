@@ -61,4 +61,30 @@ export const FREELANCER_ONBOARDING_SLIDES = [
     progressValue: 54,
     continueLabel: "Continue",
   },
+  {
+    id: "serviceReview",
+    title: "Final Review Before Submission",
+    progressValue: 92,
+    continueLabel: "Continue",
+  },
+  {
+    id: "acceptInProgressProjects",
+    title: "Do You Accept Projects That Are Already In Progress Or Partially Completed?",
+    progressValue: 96,
+    continueLabel: "Continue",
+  },
+  {
+    id: "deliveryPolicy",
+    title: "Do You Agree To Catalance Delivery & Revision SOP?",
+    progressValue: 98,
+    continueLabel: "Continue",
+    footerMode: "hidden",
+  },
+  {
+    id: "communicationPolicy",
+    title: "Freelancer Agreement & Terms And Conditions",
+    progressValue: 100,
+    continueLabel: "Submit",
+    footerMode: "hidden",
+  },
 ];

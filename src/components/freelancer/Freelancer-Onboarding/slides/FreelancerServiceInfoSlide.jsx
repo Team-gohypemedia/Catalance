@@ -1,9 +1,16 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import Search from "lucide-react/dist/esm/icons/search";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Check from "lucide-react/dist/esm/icons/check";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import X from "lucide-react/dist/esm/icons/x";
 
 import { API_BASE_URL } from "@/shared/lib/api-client";
+import {
+  deriveDraftSkillsAndTechnologies,
+  normalizeCustomSkillNames,
+  normalizeStringArray,
+  syncDraftSubcategories,
+} from "../service-details";
 import {
   ServiceInfoStepper,
   CustomSelect,
@@ -25,146 +32,224 @@ const COMPLEXITY_OPTIONS = [
 
 const SERVICE_TITLE_MAX = 80;
 
-const normalizeServiceLookupKey = (value = "") =>
-  String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+const toPositiveInteger = (value) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
 
-/* ──────────────────── Autocomplete Tag Input ──────────────────── */
+const buildNumberSignature = (values = []) =>
+  values
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0)
+    .join("|");
 
-const TechnologiesInput = ({ tools = [], selected, onChange, isLoading }) => {
-  const [query, setQuery] = useState("");
-  const [isFocused, setIsFocused] = useState(false);
-  const inputRef = useRef(null);
-  const containerRef = useRef(null);
+const buildStringSignature = (values = []) => normalizeStringArray(values).join("|");
 
-  const suggestions = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    return tools
-      .filter(
-        (t) => t.toLowerCase().includes(q) && !selected.includes(t)
-      )
-      .slice(0, 8);
-  }, [query, tools, selected]);
+const TechnologiesInput = ({
+  toolOptions = [],
+  selectedToolIds = [],
+  unresolvedToolIds = [],
+  customSkillNames = [],
+  onSelectedToolIdsChange,
+  onCustomSkillNamesChange,
+  isLoading,
+}) => {
+  const [customToolQuery, setCustomToolQuery] = useState("");
+  const [isAddingCustomTool, setIsAddingCustomTool] = useState(false);
 
-  const queryExactMatch = tools.some(
-    (t) => t.toLowerCase() === query.trim().toLowerCase()
+  const normalizedToolOptions = useMemo(
+    () =>
+      (Array.isArray(toolOptions) ? toolOptions : [])
+        .filter((option) => Number.isInteger(Number(option?.id)))
+        .map((option) => ({
+          id: Number(option.id),
+          label: String(option.label || option.name || "").trim(),
+        }))
+        .filter((option) => option.label)
+        .sort((left, right) => left.label.localeCompare(right.label)),
+    [toolOptions],
   );
-  const alreadyAdded = selected.some(
-    (t) => t.toLowerCase() === query.trim().toLowerCase()
+
+  const selectedToolIdSet = useMemo(
+    () => new Set(selectedToolIds.map((value) => Number(value))),
+    [selectedToolIds],
   );
-  const showAddCustom =
-    query.trim().length > 0 && !queryExactMatch && !alreadyAdded;
 
-  const addTool = (tool) => {
-    if (!selected.includes(tool)) {
-      onChange([...selected, tool]);
+  const addCustomSkill = () => {
+    const nextSkill = String(customToolQuery || "").trim();
+    if (!nextSkill) {
+      return;
     }
-    setQuery("");
-    inputRef.current?.focus();
+
+    onCustomSkillNamesChange(
+      normalizeCustomSkillNames([...customSkillNames, nextSkill]),
+    );
+    setCustomToolQuery("");
+    setIsAddingCustomTool(false);
   };
 
-  const removeTool = (tool) => {
-    onChange(selected.filter((t) => t !== tool));
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const trimmed = query.trim();
-      if (!trimmed) return;
-
-      if (suggestions.length > 0) {
-        addTool(suggestions[0]);
-      } else if (!alreadyAdded) {
-        addTool(trimmed);
-      }
+  const toggleTool = (toolId) => {
+    const normalizedToolId = Number(toolId);
+    if (!Number.isInteger(normalizedToolId) || normalizedToolId <= 0) {
+      return;
     }
+
+    if (selectedToolIdSet.has(normalizedToolId)) {
+      onSelectedToolIdsChange(
+        selectedToolIds.filter((value) => Number(value) !== normalizedToolId),
+      );
+      return;
+    }
+
+    onSelectedToolIdsChange([...selectedToolIds, normalizedToolId]);
   };
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setIsFocused(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const showDropdown =
-    isFocused &&
-    query.trim().length > 0 &&
-    (suggestions.length > 0 || showAddCustom);
+  const removeCustomSkill = (skillName) => {
+    onCustomSkillNamesChange(
+      customSkillNames.filter(
+        (entry) => String(entry || "").toLowerCase() !== String(skillName || "").toLowerCase(),
+      ),
+    );
+  };
 
   return (
-    <div className="space-y-3" ref={containerRef}>
-      {/* Input */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-        <input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setIsFocused(true)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            isLoading ? "Loading tools..." : "Type to search or add tools..."
-          }
-          disabled={isLoading}
-          className="h-12 w-full rounded-xl border border-white/10 bg-card pl-11 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
-        />
+    <div className="space-y-3">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/45">
+            Available Tools
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsAddingCustomTool((current) => !current)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-white/18 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:border-primary/35 hover:text-primary"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add More
+          </button>
+        </div>
+        <div className="rounded-xl border border-white/8 bg-card/60 p-2.5">
+          {normalizedToolOptions.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {normalizedToolOptions.map((tool) => {
+                const isSelected = selectedToolIdSet.has(tool.id);
 
-        {/* Suggestions dropdown */}
-        {showDropdown && (
-          <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40">
-            <div className="max-h-52 overflow-y-auto">
-              {suggestions.map((tool) => (
-                <button
-                  key={tool}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => addTool(tool)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-white/80 transition-colors hover:bg-white/5"
-                >
-                  <Plus className="h-3.5 w-3.5 text-white/40" />
-                  {tool}
-                </button>
-              ))}
-
-              {showAddCustom && (
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => addTool(query.trim())}
-                  className="flex w-full items-center gap-3 border-t border-white/5 px-4 py-3 text-left text-sm text-primary transition-colors hover:bg-primary/5"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add &ldquo;{query.trim()}&rdquo;
-                </button>
-              )}
+                return (
+                  <button
+                    key={tool.id}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => toggleTool(tool.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? "border-primary/35 bg-primary/12 text-primary"
+                        : "border-white/12 bg-card text-white/75 hover:border-white/20 hover:bg-white/5"
+                    }`}
+                  >
+                    {tool.label}
+                  </button>
+                );
+              })}
             </div>
-          </div>
-        )}
+          ) : !isLoading ? (
+            <div className="px-1 py-1 text-sm text-muted-foreground">
+              No tools found for this sub-category yet.
+            </div>
+          ) : (
+            <div className="px-1 py-1 text-sm text-muted-foreground">
+              Loading tools...
+            </div>
+          )}
+
+          {isAddingCustomTool && (
+            <div className="mt-3 flex flex-col gap-2 border-t border-white/8 pt-3 sm:flex-row">
+              <input
+                type="text"
+                value={customToolQuery}
+                onChange={(event) => setCustomToolQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addCustomSkill();
+                  }
+                }}
+                placeholder="Add a custom skill or tool"
+                className="h-11 flex-1 rounded-xl border border-white/10 bg-card px-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              />
+              <div className="flex gap-2 sm:flex-none">
+                <button
+                  type="button"
+                  onClick={addCustomSkill}
+                  disabled={!customToolQuery.trim()}
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-primary/35 bg-primary/12 px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/18 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-card disabled:text-white/35"
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomToolQuery("");
+                    setIsAddingCustomTool(false);
+                  }}
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-card px-4 text-sm font-medium text-white/70 transition-colors hover:border-white/18 hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Selected tags */}
-      {selected.length > 0 && (
+      {(selectedToolIds.length > 0 || unresolvedToolIds.length > 0 || customSkillNames.length > 0) && (
         <div className="flex flex-wrap gap-2">
-          {selected.map((tool) => (
+          {normalizedToolOptions
+            .filter((tool) => selectedToolIdSet.has(tool.id))
+            .map((tool) => (
+              <span
+                key={`tool-${tool.id}`}
+                className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+              >
+                {tool.label}
+                <button
+                  type="button"
+                  onClick={() => toggleTool(tool.id)}
+                  className="rounded-full p-0.5 transition-colors hover:bg-primary/20"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+
+          {unresolvedToolIds.map((toolId) => (
             <span
-              key={tool}
-              className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+              key={`legacy-${toolId}`}
+              className="flex items-center gap-1.5 rounded-lg border border-white/12 bg-white/5 px-3 py-1.5 text-sm font-medium text-white/75"
             >
-              {tool}
+              {`Legacy tool #${toolId}`}
               <button
                 type="button"
-                onClick={() => removeTool(tool)}
+                onClick={() =>
+                  onSelectedToolIdsChange(
+                    selectedToolIds.filter((value) => Number(value) !== Number(toolId)),
+                  )
+                }
+                className="rounded-full p-0.5 transition-colors hover:bg-white/10"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+
+          {customSkillNames.map((skillName) => (
+            <span
+              key={`custom-${skillName}`}
+              className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+            >
+              {skillName}
+              <button
+                type="button"
+                onClick={() => removeCustomSkill(skillName)}
                 className="rounded-full p-0.5 transition-colors hover:bg-primary/20"
               >
                 <X className="h-3 w-3" />
@@ -177,42 +262,247 @@ const TechnologiesInput = ({ tools = [], selected, onChange, isLoading }) => {
   );
 };
 
-/* ──────────────────── Main Slide ──────────────────── */
+const CategoryMultiSelect = ({
+  options = [],
+  selected = [],
+  onChange,
+  placeholder = "Select sub-categories",
+  isLoading = false,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  const normalizedSelected = useMemo(
+    () =>
+      Array.isArray(selected)
+        ? selected.map((value) => String(value || "").trim()).filter(Boolean)
+        : [],
+    [selected],
+  );
+
+  const selectedSet = useMemo(
+    () => new Set(normalizedSelected),
+    [normalizedSelected],
+  );
+
+  const selectedOptions = useMemo(
+    () => options.filter((option) => selectedSet.has(String(option.value))),
+    [options, selectedSet],
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const toggleOption = (optionValue) => {
+    const normalizedValue = String(optionValue);
+    if (selectedSet.has(normalizedValue)) {
+      onChange(normalizedSelected.filter((value) => value !== normalizedValue));
+      return;
+    }
+
+    onChange([...normalizedSelected, normalizedValue]);
+  };
+
+  const removeOption = (optionValue) => {
+    const normalizedValue = String(optionValue);
+    onChange(normalizedSelected.filter((value) => value !== normalizedValue));
+  };
+
+  const summaryText = useMemo(() => {
+    if (isLoading) {
+      return "Loading...";
+    }
+
+    if (selectedOptions.length === 0) {
+      return placeholder;
+    }
+
+    if (selectedOptions.length <= 2) {
+      return selectedOptions.map((option) => option.label).join(", ");
+    }
+
+    const visibleLabels = selectedOptions
+      .slice(0, 2)
+      .map((option) => option.label)
+      .join(", ");
+
+    return `${visibleLabels} +${selectedOptions.length - 2} more`;
+  }, [isLoading, placeholder, selectedOptions]);
+
+  return (
+    <div className="space-y-3">
+      <div className="relative" ref={containerRef}>
+        <button
+          type="button"
+          onClick={() => setIsOpen((current) => !current)}
+          className={`flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 text-sm transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20 ${
+            selectedOptions.length > 0
+              ? "border-primary/25 text-white"
+              : "border-white/10 text-white/40"
+          }`}
+        >
+          <span className="truncate text-left">{summaryText}</span>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform duration-200 ${
+              selectedOptions.length > 0 ? "text-primary" : "text-white/40"
+            } ${isOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {isOpen && (
+          <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40">
+            <div className="max-h-56 overflow-y-auto">
+              {options.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-white/40">
+                  No sub-categories available
+                </div>
+              ) : (
+                options.map((option) => {
+                  const isSelected = selectedSet.has(String(option.value));
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => toggleOption(option.value)}
+                      className={`mx-2 my-1 flex w-[calc(100%-1rem)] items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                        isSelected
+                          ? "border-primary/30 bg-primary/12 text-primary"
+                          : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="font-medium">{option.label}</span>
+                      {isSelected ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
+                          <Check className="h-3.5 w-3.5" />
+                          Selected
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {selectedOptions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selectedOptions.map((option) => (
+            <span
+              key={option.value}
+              className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+            >
+              {option.label}
+              <button
+                type="button"
+                onClick={() => removeOption(option.value)}
+                className="rounded-full p-0.5 transition-colors hover:bg-primary/20"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const FreelancerServiceInfoSlide = ({
-  selectedServices,
-  dbServices,
+  currentService,
+  currentServiceName,
+  serviceDraft,
   serviceInfoForm,
   onServiceInfoFieldChange,
+  onUpdateServiceDraft,
 }) => {
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
-  const [toolOptions, setToolOptions] = useState([]);
+  const [toolOptionsByCategory, setToolOptionsByCategory] = useState({});
   const [isToolsLoading, setIsToolsLoading] = useState(false);
 
-  const firstSelectedService =
-    Array.isArray(selectedServices) && selectedServices.length > 0
-      ? selectedServices[0]
-      : null;
+  const resolvedServiceId = toPositiveInteger(currentService?.id);
+  const serviceName = currentServiceName || "Service";
+  const normalizedSubcategories = useMemo(
+    () =>
+      Array.isArray(serviceDraft?.subcategories)
+        ? serviceDraft.subcategories
+        : [],
+    [serviceDraft?.subcategories],
+  );
+  const selectedCategoryIds = useMemo(
+    () => normalizedSubcategories.map((entry) => entry.subCategoryId).filter(Boolean),
+    [normalizedSubcategories],
+  );
+  const selectedCategoryIdsSignature = buildNumberSignature(selectedCategoryIds);
+  const pendingCategoryLabels = useMemo(
+    () =>
+      Array.isArray(serviceDraft?.pendingCategoryLabels)
+        ? normalizeStringArray(serviceDraft.pendingCategoryLabels)
+        : [],
+    [serviceDraft?.pendingCategoryLabels],
+  );
+  const categoryOptionsByValue = useMemo(
+    () =>
+      new Map(
+        categoryOptions.map((option) => [String(option.value), option]),
+      ),
+    [categoryOptions],
+  );
+  const selectedCategoryOptions = useMemo(
+    () =>
+      selectedCategoryIds
+        .map((subCategoryId) => categoryOptionsByValue.get(String(subCategoryId)))
+        .filter(Boolean),
+    [categoryOptionsByValue, selectedCategoryIds],
+  );
+  const activeSkillCategoryId =
+    toPositiveInteger(serviceDraft?.activeSkillCategory) ||
+    selectedCategoryIds[0] ||
+    null;
+  const activeSubcategory =
+    normalizedSubcategories.find(
+      (entry) => entry.subCategoryId === activeSkillCategoryId,
+    ) || null;
+  const activeCategoryToolOptions = useMemo(
+    () => toolOptionsByCategory[String(activeSkillCategoryId || "")] || [],
+    [activeSkillCategoryId, toolOptionsByCategory],
+  );
+  const activeSelectedToolIds = useMemo(
+    () =>
+      Array.isArray(activeSubcategory?.selectedToolIds)
+        ? activeSubcategory.selectedToolIds
+        : [],
+    [activeSubcategory?.selectedToolIds],
+  );
+  const activeCustomSkillNames = Array.isArray(activeSubcategory?.customSkillNames)
+    ? activeSubcategory.customSkillNames
+    : [];
+  const activeToolIdsSet = useMemo(
+    () => new Set(activeCategoryToolOptions.map((option) => Number(option.id))),
+    [activeCategoryToolOptions],
+  );
+  const unresolvedActiveToolIds = useMemo(
+    () =>
+      activeSelectedToolIds.filter((toolId) => !activeToolIdsSet.has(Number(toolId))),
+    [activeSelectedToolIds, activeToolIdsSet],
+  );
+  const derivedSkillsAndTechnologies = useMemo(
+    () => deriveDraftSkillsAndTechnologies(serviceDraft, toolOptionsByCategory),
+    [serviceDraft, toolOptionsByCategory],
+  );
 
-  const firstService =
-    firstSelectedService && Array.isArray(dbServices)
-      ? dbServices.find((service) => {
-          if (service.id === firstSelectedService) {
-            return true;
-          }
-
-          return (
-            normalizeServiceLookupKey(service.name) ===
-            normalizeServiceLookupKey(firstSelectedService)
-          );
-        })
-      : null;
-  const resolvedServiceId = firstService?.id ?? null;
-
-  const serviceName = firstService?.name ?? "Service";
-
-  // Fetch sub-categories from DB when the selected service changes
   useEffect(() => {
     if (!resolvedServiceId) {
       setCategoryOptions([]);
@@ -220,84 +510,201 @@ const FreelancerServiceInfoSlide = ({
     }
 
     let cancelled = false;
+
     const fetchSubCategories = async () => {
       try {
         setIsCategoriesLoading(true);
-        const res = await fetch(
-          `${API_BASE_URL}/marketplace/filters/sub-categories?serviceId=${resolvedServiceId}`
+        const response = await fetch(
+          `${API_BASE_URL}/marketplace/filters/sub-categories?serviceId=${resolvedServiceId}`,
         );
-        if (!res.ok) throw new Error("Failed to fetch sub-categories");
-        const json = await res.json();
-        const data = (json.data || []).map((sc) => ({
-          value: String(sc.id),
-          label: sc.name,
-        }));
+        if (!response.ok) {
+          throw new Error("Failed to fetch sub-categories");
+        }
+
+        const payload = await response.json();
+        const nextCategoryOptions = (Array.isArray(payload?.data) ? payload.data : [])
+          .map((entry) => ({
+            value: String(entry?.id || "").trim(),
+            label: String(entry?.name || "").trim(),
+          }))
+          .filter((entry) => entry.value && entry.label);
+
         if (!cancelled) {
-          setCategoryOptions(data);
-          const matchingStoredLabel = data.find(
-            (opt) =>
-              !serviceInfoForm.category &&
-              serviceInfoForm.categoryLabel &&
-              opt.label === serviceInfoForm.categoryLabel
-          );
-          if (matchingStoredLabel) {
-            onServiceInfoFieldChange("category", matchingStoredLabel.value);
-          }
-          const currentValid = data.some(
-            (opt) => opt.value === serviceInfoForm.category
-          );
-          if (!currentValid && serviceInfoForm.category) {
-            onServiceInfoFieldChange("category", "");
-            onServiceInfoFieldChange("categoryLabel", "");
-          }
+          setCategoryOptions(nextCategoryOptions);
         }
       } catch {
-        if (!cancelled) setCategoryOptions([]);
+        if (!cancelled) {
+          setCategoryOptions([]);
+        }
       } finally {
-        if (!cancelled) setIsCategoriesLoading(false);
+        if (!cancelled) {
+          setIsCategoriesLoading(false);
+        }
       }
     };
 
-    fetchSubCategories();
-    return () => { cancelled = true; };
+    void fetchSubCategories();
+    return () => {
+      cancelled = true;
+    };
   }, [resolvedServiceId]);
 
-  // Fetch tools from DB when the selected category (sub-category) changes
   useEffect(() => {
-    const subCategoryId = serviceInfoForm.category;
-    if (!subCategoryId) {
-      setToolOptions([]);
+    if (!categoryOptions.length || selectedCategoryIds.length > 0 || !pendingCategoryLabels.length) {
+      return;
+    }
+
+    const resolvedCategoryIds = pendingCategoryLabels
+      .map((label) =>
+        categoryOptions.find(
+          (option) => option.label.toLowerCase() === label.toLowerCase(),
+        )?.value,
+      )
+      .map((value) => toPositiveInteger(value))
+      .filter(Boolean);
+
+    if (!resolvedCategoryIds.length) {
+      return;
+    }
+
+    onUpdateServiceDraft((draft) => {
+      const nextDraft = syncDraftSubcategories(draft, resolvedCategoryIds);
+      const hasStructuredSkills = nextDraft.subcategories.some(
+        (entry) =>
+          entry.selectedToolIds.length > 0 || entry.customSkillNames.length > 0,
+      );
+
+      if (!hasStructuredSkills && Array.isArray(draft?.skillsAndTechnologies) && draft.skillsAndTechnologies.length > 0) {
+        nextDraft.subcategories = nextDraft.subcategories.map((entry, index) =>
+          index === 0
+            ? {
+                ...entry,
+                customSkillNames: normalizeCustomSkillNames(
+                  draft.skillsAndTechnologies,
+                ),
+              }
+            : entry,
+        );
+      }
+
+      return {
+        ...nextDraft,
+        pendingCategoryLabels: [],
+      };
+    });
+  }, [
+    categoryOptions,
+    onUpdateServiceDraft,
+    pendingCategoryLabels,
+    selectedCategoryIds.length,
+    selectedCategoryIdsSignature,
+    serviceDraft?.skillsAndTechnologies,
+  ]);
+
+  useEffect(() => {
+    if (!selectedCategoryIds.length) {
+      setToolOptionsByCategory({});
       return;
     }
 
     let cancelled = false;
+
     const fetchTools = async () => {
       try {
         setIsToolsLoading(true);
-        const res = await fetch(
-          `${API_BASE_URL}/marketplace/filters/tools?subCategoryId=${subCategoryId}`
+        const toolEntries = await Promise.all(
+          selectedCategoryIds.map(async (subCategoryId) => {
+            const response = await fetch(
+              `${API_BASE_URL}/marketplace/filters/tools?subCategoryId=${subCategoryId}`,
+            );
+            if (!response.ok) {
+              throw new Error("Failed to fetch tools");
+            }
+
+            const payload = await response.json();
+            const options = (Array.isArray(payload?.data) ? payload.data : [])
+              .map((entry) => ({
+                id: toPositiveInteger(entry?.id),
+                subCategoryId,
+                name: String(entry?.name || "").trim(),
+                label: String(entry?.name || "").trim(),
+              }))
+              .filter((entry) => entry.id && entry.label);
+
+            return [String(subCategoryId), options];
+          }),
         );
-        if (!res.ok) throw new Error("Failed to fetch tools");
-        const json = await res.json();
-        const data = (json.data || []).map((t) => t.name);
+
         if (!cancelled) {
-          setToolOptions(data);
+          setToolOptionsByCategory(Object.fromEntries(toolEntries));
         }
       } catch {
-        if (!cancelled) setToolOptions([]);
+        if (!cancelled) {
+          setToolOptionsByCategory({});
+        }
       } finally {
-        if (!cancelled) setIsToolsLoading(false);
+        if (!cancelled) {
+          setIsToolsLoading(false);
+        }
       }
     };
 
-    fetchTools();
-    return () => { cancelled = true; };
-  }, [serviceInfoForm.category]);
+    void fetchTools();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCategoryIds, selectedCategoryIdsSignature]);
+
+  useEffect(() => {
+    const currentSkillsSignature = buildStringSignature(
+      serviceDraft?.skillsAndTechnologies,
+    );
+    const nextSkillsSignature = buildStringSignature(derivedSkillsAndTechnologies);
+
+    if (currentSkillsSignature === nextSkillsSignature) {
+      return;
+    }
+
+    onUpdateServiceDraft((draft) => ({
+      ...draft,
+      skillsAndTechnologies: derivedSkillsAndTechnologies,
+    }));
+  }, [
+    derivedSkillsAndTechnologies,
+    onUpdateServiceDraft,
+    serviceDraft?.skillsAndTechnologies,
+  ]);
+
+  const handleSelectedCategoriesChange = (nextValues) => {
+    const nextSelectedIds = nextValues
+      .map((value) => toPositiveInteger(value))
+      .filter(Boolean);
+
+    onUpdateServiceDraft((draft) => syncDraftSubcategories(draft, nextSelectedIds));
+  };
+
+  const handleActiveSubcategoryChange = (field, value) => {
+    if (!activeSkillCategoryId) {
+      return;
+    }
+
+    onUpdateServiceDraft((draft) => ({
+      ...draft,
+      subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
+        (entry) =>
+          entry.subCategoryId === activeSkillCategoryId
+            ? {
+                ...entry,
+                [field]: value,
+              }
+            : entry,
+      ),
+    }));
+  };
 
   return (
-    <section className="mx-auto flex w-full max-w-4xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
       <div className="w-full space-y-8">
-        {/* Heading */}
         <div className="text-center">
           <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
             <span>Fill Your </span>
@@ -306,12 +713,10 @@ const FreelancerServiceInfoSlide = ({
           </h1>
         </div>
 
-        {/* Stepper */}
         <div className="w-full">
           <ServiceInfoStepper activeStepId="overview" />
         </div>
 
-        {/* Step Content */}
         <div className="w-full space-y-7">
           <div className="space-y-2">
             <h2 className="text-2xl font-semibold text-white sm:text-3xl">
@@ -323,7 +728,6 @@ const FreelancerServiceInfoSlide = ({
           </div>
 
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card/50 p-5 sm:p-7">
-            {/* Service Title */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
                 Service Title
@@ -332,9 +736,9 @@ const FreelancerServiceInfoSlide = ({
                 <input
                   type="text"
                   value={serviceInfoForm.title}
-                  onChange={(e) => {
-                    if (e.target.value.length <= SERVICE_TITLE_MAX) {
-                      onServiceInfoFieldChange("title", e.target.value);
+                  onChange={(event) => {
+                    if (event.target.value.length <= SERVICE_TITLE_MAX) {
+                      onServiceInfoFieldChange("title", event.target.value);
                     }
                   }}
                   placeholder="I will do something I'm really good at"
@@ -346,70 +750,102 @@ const FreelancerServiceInfoSlide = ({
               </div>
             </div>
 
-            {/* Select Category */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
                 Select Category
               </label>
-              <CustomSelect
-                value={serviceInfoForm.category}
-                onChange={(val) => {
-                  const selectedOption = categoryOptions.find(
-                    (option) => option.value === val
-                  );
-                  onServiceInfoFieldChange("category", val);
-                  onServiceInfoFieldChange(
-                    "categoryLabel",
-                    selectedOption?.label || ""
-                  );
-                }}
+              <CategoryMultiSelect
+                selected={selectedCategoryIds.map(String)}
+                onChange={handleSelectedCategoriesChange}
                 options={categoryOptions}
                 placeholder={
-                  isCategoriesLoading
-                    ? "Loading..."
-                    : "Select a category"
+                  isCategoriesLoading ? "Loading..." : "Select sub-categories"
                 }
+                isLoading={isCategoriesLoading}
               />
             </div>
 
-            {/* Technologies */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
                 Skills
               </label>
-              <TechnologiesInput
-                tools={toolOptions}
-                selected={serviceInfoForm.technologies}
-                onChange={(next) =>
-                  onServiceInfoFieldChange("technologies", next)
-                }
-                isLoading={isToolsLoading}
-              />
+              {selectedCategoryOptions.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/12 bg-card px-4 py-3 text-sm text-muted-foreground">
+                  Select at least one sub-category to add skills.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <CustomSelect
+                    value={activeSkillCategoryId ? String(activeSkillCategoryId) : ""}
+                    onChange={(value) =>
+                      onUpdateServiceDraft((draft) => ({
+                        ...draft,
+                        activeSkillCategory: toPositiveInteger(value),
+                      }))
+                    }
+                    options={selectedCategoryOptions}
+                    placeholder="Select a sub-category for skills"
+                  />
+
+                  <div className="rounded-xl border border-white/8 bg-card/60 p-3 sm:p-4">
+                    <p className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-white/55">
+                      Adding Skills To{" "}
+                      <span className="text-primary">
+                        {selectedCategoryOptions.find(
+                          (option) => String(option.value) === String(activeSkillCategoryId),
+                        )?.label || "Selected sub-category"}
+                      </span>
+                    </p>
+                    <p className="mb-3 text-xs text-white/45">
+                      Choose tools from the selected sub-category or add your own.
+                    </p>
+                    <TechnologiesInput
+                      toolOptions={activeCategoryToolOptions}
+                      selectedToolIds={activeSelectedToolIds}
+                      unresolvedToolIds={unresolvedActiveToolIds}
+                      customSkillNames={activeCustomSkillNames}
+                      onSelectedToolIdsChange={(nextValues) =>
+                        handleActiveSubcategoryChange(
+                          "selectedToolIds",
+                          nextValues
+                            .map((value) => toPositiveInteger(value))
+                            .filter(Boolean),
+                        )
+                      }
+                      onCustomSkillNamesChange={(nextValues) =>
+                        handleActiveSubcategoryChange(
+                          "customSkillNames",
+                          normalizeCustomSkillNames(nextValues),
+                        )
+                      }
+                      isLoading={isToolsLoading}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Experience */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
                 Experience
               </label>
               <CustomSelect
                 value={serviceInfoForm.experience}
-                onChange={(val) => onServiceInfoFieldChange("experience", val)}
+                onChange={(value) => onServiceInfoFieldChange("experience", value)}
                 options={EXPERIENCE_OPTIONS}
                 placeholder="Select experience level"
               />
             </div>
 
-            {/* Project Complexity */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                Project Complexity
+                Service Complexity
               </label>
               <CustomSelect
                 value={serviceInfoForm.complexity}
-                onChange={(val) => onServiceInfoFieldChange("complexity", val)}
+                onChange={(value) => onServiceInfoFieldChange("complexity", value)}
                 options={COMPLEXITY_OPTIONS}
-                placeholder="Select complexity"
+                placeholder="Select service complexity"
               />
             </div>
           </div>

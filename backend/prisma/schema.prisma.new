@@ -116,12 +116,20 @@ model FreelancerProfile {
   serviceTitle   String?
   serviceCategory String? @map("ServiceCategory")
   serviceExperience String?
-  projectComplexity String?
+  serviceComplexity String? @map("serviceComplexity")
   serviceDescription String? @db.Text
-  deliveryTimeline String?
-  startingPrice String?
-  serviceKeywords String[] @default([])
+  deliveryTimeline String? @map("serviceDeliveryTimeline")
+  startingPrice String? @map("serviceStartingPrice")
+  serviceKeywords String[] @default([]) @map("servicePositiveKeyword")
   serviceMedia Json? @default("[]")
+  caseStudyTitle String?
+  caseStudyDescription String? @db.Text
+  caseStudyProjectLink String?
+  caseStudyProjectFile String?
+  caseStudyYourRole String?
+  caseStudyTimeline String?
+  caseStudyBudget Int?
+  caseStudyNiche String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

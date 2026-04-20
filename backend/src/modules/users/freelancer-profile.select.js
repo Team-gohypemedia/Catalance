@@ -18,6 +18,15 @@ export const FREELANCER_PROFILE_SAFE_SELECT = Object.freeze({
   github: true,
   portfolioProjects: true,
   resume: true,
+  serviceTitle: true,
+  serviceCategory: true,
+  serviceExperience: true,
+  serviceComplexity: true,
+  serviceDescription: true,
+  deliveryTimeline: true,
+  startingPrice: true,
+  serviceKeywords: true,
+  serviceMedia: true,
   createdAt: true,
   updatedAt: true
 });

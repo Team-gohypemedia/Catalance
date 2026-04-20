@@ -6,6 +6,7 @@ const MODELED_PROFILE_DETAILS_KEYS = new Set([
   "deliveryPolicyAccepted",
   "communicationPolicyAccepted",
   "acceptInProgressProjects",
+  "acceptInProgressProjectsBoolean",
   "globalIndustryOther",
   "skills",
   "skillLevels",
@@ -54,6 +55,22 @@ const toOptionalString = (value) => {
   if (value === undefined || value === null) return null;
   const normalized = String(value).trim();
   return normalized ? normalized : null;
+};
+
+const toOptionalBoolean = (value) => {
+  if (typeof value === "boolean") return value;
+
+  if (typeof value === "number") {
+    if (value === 1) return true;
+    if (value === 0) return false;
+    return null;
+  }
+
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return null;
+  if (["true", "1", "yes", "y"].includes(normalized)) return true;
+  if (["false", "0", "no", "n"].includes(normalized)) return false;
+  return null;
 };
 
 const toStringArray = (value) =>
@@ -240,6 +257,9 @@ export const buildFreelancerProfileDetailsRecord = ({
   const identity = asObject(normalizedProfileDetails.identity);
   const availability = asObject(normalizedProfileDetails.availability);
   const reliability = asObject(normalizedProfileDetails.reliability);
+  const acceptInProgressProjects =
+    toOptionalBoolean(normalizedProfileDetails.acceptInProgressProjects) ??
+    toOptionalBoolean(normalizedProfileDetails.acceptInProgressProjectsBoolean);
 
   return {
     profileDetails: buildFreelancerProfileDetailsResidual(normalizedProfileDetails),
@@ -254,9 +274,7 @@ export const buildFreelancerProfileDetailsRecord = ({
     communicationPolicyAccepted: Boolean(
       normalizedProfileDetails.communicationPolicyAccepted
     ),
-    acceptInProgressProjects: toOptionalString(
-      normalizedProfileDetails.acceptInProgressProjects
-    ),
+    acceptInProgressProjects,
     globalIndustryOther: toOptionalString(
       normalizedProfileDetails.globalIndustryOther
     ),
@@ -327,10 +345,17 @@ export const buildFreelancerProfileDetailsObject = (record = null) => {
   ) {
     nextProfileDetails.communicationPolicyAccepted = true;
   }
-  nextProfileDetails.acceptInProgressProjects = mergeWithFallback(
-    toOptionalString(normalizedRecord.acceptInProgressProjects),
-    legacyProfileDetails.acceptInProgressProjects
+  const mergedAcceptInProgressProjects = mergeWithFallback(
+    toOptionalBoolean(normalizedRecord.acceptInProgressProjects),
+    toOptionalBoolean(
+      legacyProfileDetails.acceptInProgressProjects ??
+        legacyProfileDetails.acceptInProgressProjectsBoolean
+    )
   );
+  if (typeof mergedAcceptInProgressProjects === "boolean") {
+    nextProfileDetails.acceptInProgressProjects = mergedAcceptInProgressProjects;
+  }
+  delete nextProfileDetails.acceptInProgressProjectsBoolean;
   nextProfileDetails.globalIndustryOther = mergeWithFallback(
     toOptionalString(normalizedRecord.globalIndustryOther),
     legacyProfileDetails.globalIndustryOther
