@@ -12,6 +12,12 @@ import {
   sortConversations,
 } from "../utils";
 
+const normalizeComparableText = (value = "") =>
+  String(value || "").trim().toLowerCase();
+
+const normalizeIdentifier = (value = "") =>
+  String(value || "").trim().toLowerCase();
+
 const useClientMessagesBootstrap = ({
   authFetch,
   token,
@@ -30,19 +36,34 @@ const useClientMessagesBootstrap = ({
   const [hasLockedAcceptedProjects, setHasLockedAcceptedProjects] = useState(false);
 
   const syncMarketplaceRequests = useCallback(() => {
+    const currentClientId = normalizeIdentifier(currentUserId);
+    const currentClientLabel = normalizeComparableText(currentClientName);
     const allRequests = readMarketplaceChatRequests();
+    const matchesClient = (request) => {
+      const requestClientId = normalizeIdentifier(request?.clientId || request?.requestedById);
+      if (requestClientId && currentClientId) {
+        return requestClientId === currentClientId;
+      }
+
+      if (!requestClientId && currentClientLabel) {
+        return normalizeComparableText(request?.clientName || request?.requestedByName || "") === currentClientLabel;
+      }
+
+      return false;
+    };
+
     const nextPendingRequests = allRequests
       .filter(
         (request) =>
           request.status === "pending" &&
-          String(request.clientId || "") === String(currentUserId || ""),
+          matchesClient(request),
       )
       .map((request) => enrichRequestRecord(request));
     const acceptedRequestConversations = allRequests
       .filter(
         (request) =>
           request.status === "accepted" &&
-          String(request.clientId || "") === String(currentUserId || ""),
+          matchesClient(request),
       )
       .map((request) =>
         enrichConversationRecord(

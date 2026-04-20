@@ -40,6 +40,11 @@ const getFirstNonEmptyText = (...values) => {
   return "";
 };
 
+const normalizeIdentifier = (...values) => {
+  const rawValue = getFirstNonEmptyText(values);
+  return rawValue ? String(rawValue).trim() : null;
+};
+
 const buildId = (prefix = "marketplace") =>
   `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
@@ -84,6 +89,19 @@ const normalizeRequestRecord = (request = {}) => {
     request.previewText,
     "New marketplace request",
   );
+  const clientId = normalizeIdentifier(
+    request.clientId,
+    request.requestedById,
+    request.ownerId,
+    request.userId,
+    request.client?.id,
+  );
+  const freelancerId = normalizeIdentifier(
+    request.freelancerId,
+    request.requestedFreelancerId,
+    request.freelancerUserId,
+    request.freelancer?.id,
+  );
 
   return {
     id: requestId,
@@ -103,14 +121,18 @@ const normalizeRequestRecord = (request = {}) => {
     serviceType,
     title: serviceTitle,
     label: getFirstNonEmptyText(request.label, "Marketplace Request"),
-    clientId: request.clientId ?? null,
+    clientId,
     clientName,
     clientAvatar: getFirstNonEmptyText(request.clientAvatar),
     clientBusinessName: getFirstNonEmptyText(
       request.clientBusinessName,
       request.clientCompanyName,
     ),
-    freelancerId: request.freelancerId ?? null,
+    freelancerId,
+    requestedFreelancerId: normalizeIdentifier(
+      request.requestedFreelancerId,
+      request.freelancerId,
+    ),
     freelancerName,
     freelancerAvatar: getFirstNonEmptyText(request.freelancerAvatar),
     memberNames,
@@ -206,11 +228,17 @@ const upsertMarketplaceRequest = (request = {}) => {
 const createMarketplaceChatRequest = (request = {}) => {
   const requests = readMarketplaceChatRequests();
   const serviceSignature = getComparableText(request.serviceId || request.serviceTitle);
+  const normalizedClientId = normalizeIdentifier(request.clientId, request.requestedById);
+  const normalizedFreelancerId = normalizeIdentifier(
+    request.freelancerId,
+    request.requestedFreelancerId,
+    request.freelancerUserId,
+  );
   const existingRequest = requests.find(
     (item) =>
       item.status === "pending" &&
-      String(item.clientId || "") === String(request.clientId || "") &&
-      String(item.freelancerId || "") === String(request.freelancerId || "") &&
+      normalizeIdentifier(item.clientId, item.requestedById) === normalizedClientId &&
+      normalizeIdentifier(item.freelancerId, item.requestedFreelancerId) === normalizedFreelancerId &&
       getComparableText(item.serviceId || item.serviceTitle) === serviceSignature,
   );
 

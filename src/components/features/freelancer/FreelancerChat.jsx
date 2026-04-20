@@ -123,6 +123,9 @@ const extractLabeledValue = (value = "", labels = []) =>
 const normalizeComparableText = (value = "") =>
   String(value || "").trim().toLowerCase();
 
+const normalizeIdentifier = (value = "") =>
+  String(value || "").trim().toLowerCase();
+
 const toDisplayTitleCase = (value = "") =>
   String(value || "")
     .trim()
@@ -1207,18 +1210,40 @@ const FreelancerChatContent = () => {
   );
 
   const syncMarketplaceRequests = useCallback(() => {
-    const currentUserId = user?.id;
+    const currentUserId = normalizeIdentifier(user?.id || user?.sub || user?.userId);
+    const currentFreelancerLabel = normalizeComparableText(
+      user?.fullName || user?.name || user?.email || "",
+    );
     const allRequests = readMarketplaceChatRequests();
+    const matchesFreelancer = (request) => {
+      const requestFreelancerId = normalizeIdentifier(
+        request?.freelancerId || request?.requestedFreelancerId,
+      );
+      if (requestFreelancerId && currentUserId) {
+        return requestFreelancerId === currentUserId;
+      }
+
+      if (!requestFreelancerId && currentFreelancerLabel) {
+        return (
+          normalizeComparableText(
+            request?.freelancerName || request?.requestedFreelancerName || "",
+          ) === currentFreelancerLabel
+        );
+      }
+
+      return false;
+    };
+
     const nextPendingRequests = allRequests.filter(
       (request) =>
         request.status === "pending" &&
-        String(request.freelancerId || "") === String(currentUserId || ""),
+        matchesFreelancer(request),
     );
     const acceptedRequestConversations = allRequests
       .filter(
         (request) =>
           request.status === "accepted" &&
-          String(request.freelancerId || "") === String(currentUserId || ""),
+          matchesFreelancer(request),
       )
       .map((request) => buildMarketplaceConversationFromRequest(request, "freelancer"));
 
@@ -1233,7 +1258,7 @@ const FreelancerChatContent = () => {
         ...acceptedRequestConversations,
       ]);
     });
-  }, [user?.id]);
+  }, [user?.email, user?.fullName, user?.id, user?.name, user?.sub, user?.userId]);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
