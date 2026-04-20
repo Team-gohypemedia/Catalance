@@ -742,6 +742,11 @@ const FreelancerOnboardingShell = () => {
   const isFirstSlide = currentSlideIndex === 0;
   const isWorkPreferenceSlide = currentSlide.id === "workPreference";
   const isServicesSlide = currentSlide.id === "services";
+  const isServiceInfoSlide = currentSlide.id === "serviceInfo";
+  const isServicePricingSlide = currentSlide.id === "servicePricing";
+  const isServiceVisualsSlide = currentSlide.id === "serviceVisuals";
+  const isCaseStudySlide = currentSlide.id === "caseStudy";
+  const isServiceReviewSlide = currentSlide.id === "serviceReview";
   const isAcceptInProgressProjectsSlide =
     currentSlide.id === "acceptInProgressProjects";
   const isDeliveryPolicySlide = currentSlide.id === "deliveryPolicy";
@@ -764,6 +769,15 @@ const FreelancerOnboardingShell = () => {
   );
   const serviceReviewSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
     (slide) => slide.id === "serviceReview",
+  );
+  const servicePricingSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+    (slide) => slide.id === "servicePricing",
+  );
+  const serviceVisualsSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+    (slide) => slide.id === "serviceVisuals",
+  );
+  const caseStudySlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+    (slide) => slide.id === "caseStudy",
   );
   const acceptInProgressProjectsSlideIndex =
     FREELANCER_ONBOARDING_SLIDES.findIndex(
@@ -2003,6 +2017,81 @@ const FreelancerOnboardingShell = () => {
     submitOnboardingAndNavigate();
   };
 
+  const handleServiceInfoSkip = () => {
+    if (isProfileSaving) {
+      return;
+    }
+
+    if (servicePricingSlideIndex >= 0) {
+      setCurrentSlideIndex(servicePricingSlideIndex);
+      return;
+    }
+
+    setCurrentSlideIndex((currentIndex) =>
+      Math.min(currentIndex + 1, totalSlides - 1),
+    );
+  };
+
+  const handleServicePricingSkip = () => {
+    if (isProfileSaving) {
+      return;
+    }
+
+    if (serviceVisualsSlideIndex >= 0) {
+      setCurrentSlideIndex(serviceVisualsSlideIndex);
+      return;
+    }
+
+    setCurrentSlideIndex((currentIndex) =>
+      Math.min(currentIndex + 1, totalSlides - 1),
+    );
+  };
+
+  const handleServiceVisualsSkip = () => {
+    if (isProfileSaving) {
+      return;
+    }
+
+    if (caseStudySlideIndex >= 0) {
+      setCurrentSlideIndex(caseStudySlideIndex);
+      return;
+    }
+
+    setCurrentSlideIndex((currentIndex) =>
+      Math.min(currentIndex + 1, totalSlides - 1),
+    );
+  };
+
+  const handleCaseStudySkip = () => {
+    if (isProfileSaving) {
+      return;
+    }
+
+    if (serviceReviewSlideIndex >= 0) {
+      setCurrentSlideIndex(serviceReviewSlideIndex);
+      return;
+    }
+
+    setCurrentSlideIndex((currentIndex) =>
+      Math.min(currentIndex + 1, totalSlides - 1),
+    );
+  };
+
+  const handleServiceReviewSkip = () => {
+    if (isProfileSaving) {
+      return;
+    }
+
+    if (acceptInProgressProjectsSlideIndex >= 0) {
+      setCurrentSlideIndex(acceptInProgressProjectsSlideIndex);
+      return;
+    }
+
+    setCurrentSlideIndex((currentIndex) =>
+      Math.min(currentIndex + 1, totalSlides - 1),
+    );
+  };
+
   const handleBasicProfileFieldChange = (field, value) => {
     const normalizedValue =
       field === "username"
@@ -2465,7 +2554,7 @@ const FreelancerOnboardingShell = () => {
               size="lg"
               onClick={footerPrimaryAction}
               disabled={footerPrimaryDisabled}
-              className="px-10"
+              className="h-11 px-10"
             >
               {footerPrimaryLabel}
             </Button>
@@ -2473,11 +2562,67 @@ const FreelancerOnboardingShell = () => {
             {isProfileActionFooter ? (
               <Button
                 type="button"
+                size="lg"
                 variant="outline"
                 onClick={handleBasicProfileSkip}
-                className="justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
+                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
               >
                 Skip for now
+              </Button>
+            ) : isServiceInfoSlide ? (
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                onClick={handleServiceInfoSkip}
+                disabled={isProfileSaving}
+                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
+              >
+                Skip
+              </Button>
+            ) : isServicePricingSlide ? (
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                onClick={handleServicePricingSkip}
+                disabled={isProfileSaving}
+                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
+              >
+                Skip
+              </Button>
+            ) : isServiceVisualsSlide ? (
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                onClick={handleServiceVisualsSkip}
+                disabled={isProfileSaving}
+                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
+              >
+                Skip
+              </Button>
+            ) : isCaseStudySlide ? (
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                onClick={handleCaseStudySkip}
+                disabled={isProfileSaving}
+                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
+              >
+                Skip
+              </Button>
+            ) : isServiceReviewSlide ? (
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                onClick={handleServiceReviewSkip}
+                disabled={isProfileSaving}
+                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
+              >
+                Skip
               </Button>
             ) : (
               <div />

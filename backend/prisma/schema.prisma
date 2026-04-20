@@ -125,24 +125,14 @@ model FreelancerProfile {
   profileDetails              Json     @default("{}")
   profileRole                 String?
   professionalBio             String?  @db.Text
-  termsAccepted               Boolean  @default(false)
   deliveryPolicyAccepted      Boolean  @default(false)
   communicationPolicyAccepted Boolean  @default(false)
   acceptInProgressProjects    Boolean?
-  globalIndustryOther         String?
   city                        String?
   country                     String?
   username                    String?
-  githubUrl                   String?
   languages                   String[] @default([])
-  coverImage                  String?
-  linkedinUrl                 String?
-  portfolioUrl                String?
   profilePhoto                String?
-  otherLanguage               String?
-  professionalTitle           String?
-  skillLevels                 Json     @default("{}")
-  education                   Json     @default("[]")
   serviceDetails              Json     @default("{}")
   serviceTitle               String?
   serviceCategory            String?   @map("ServiceCategory")
@@ -153,20 +143,6 @@ model FreelancerProfile {
   startingPrice              String?   @map("serviceStartingPrice")
   serviceKeywords            String[]  @default([]) @map("servicePositiveKeyword")
   serviceMedia               Json?     @default("[]")
-  caseStudyTitle             String?
-  caseStudyDescription       String?   @db.Text
-  caseStudyProjectLink       String?
-  caseStudyProjectFile       String?
-  caseStudyYourRole          String?
-  caseStudyTimeline          String?
-  caseStudyBudget            Int?
-  caseStudyNiche             String?
-  globalIndustryFocus         String[] @default([])
-  availabilityHoursPerWeek    String?
-  availabilityStartTimeline   String?
-  availabilityWorkingSchedule String?
-  reliabilityDelayHandling    String?
-  reliabilityMissedDeadlines  String?
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
 }

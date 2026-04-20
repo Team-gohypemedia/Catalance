@@ -2,47 +2,27 @@ const MODELED_PROFILE_DETAILS_KEYS = new Set([
   "profileRole",
   "role",
   "professionalBio",
-  "termsAccepted",
   "deliveryPolicyAccepted",
   "communicationPolicyAccepted",
   "acceptInProgressProjects",
   "acceptInProgressProjectsBoolean",
-  "globalIndustryOther",
   "skills",
-  "skillLevels",
-  "education",
   "services",
   "serviceDetails",
   "portfolioProjects",
-  "globalIndustryFocus",
-  "availability",
-  "reliability",
 ]);
 
 const MODELED_IDENTITY_KEYS = new Set([
   "city",
   "country",
   "username",
-  "githubUrl",
   "languages",
-  "coverImage",
-  "linkedinUrl",
-  "portfolioUrl",
   "profilePhoto",
-  "otherLanguage",
-  "professionalTitle",
 ]);
 
-const MODELED_AVAILABILITY_KEYS = new Set([
-  "hoursPerWeek",
-  "startTimeline",
-  "workingSchedule",
-]);
+const MODELED_AVAILABILITY_KEYS = new Set([]);
 
-const MODELED_RELIABILITY_KEYS = new Set([
-  "delayHandling",
-  "missedDeadlines",
-]);
+const MODELED_RELIABILITY_KEYS = new Set([]);
 
 const isPlainObject = (value) =>
   value && typeof value === "object" && !Array.isArray(value);
@@ -255,8 +235,6 @@ export const buildFreelancerProfileDetailsRecord = ({
 }) => {
   const normalizedProfileDetails = asObject(profileDetails);
   const identity = asObject(normalizedProfileDetails.identity);
-  const availability = asObject(normalizedProfileDetails.availability);
-  const reliability = asObject(normalizedProfileDetails.reliability);
   const acceptInProgressProjects =
     toOptionalBoolean(normalizedProfileDetails.acceptInProgressProjects) ??
     toOptionalBoolean(normalizedProfileDetails.acceptInProgressProjectsBoolean);
@@ -267,7 +245,6 @@ export const buildFreelancerProfileDetailsRecord = ({
       normalizedProfileDetails.profileRole ?? normalizedProfileDetails.role
     ),
     professionalBio: toOptionalString(normalizedProfileDetails.professionalBio),
-    termsAccepted: Boolean(normalizedProfileDetails.termsAccepted),
     deliveryPolicyAccepted: Boolean(
       normalizedProfileDetails.deliveryPolicyAccepted
     ),
@@ -275,23 +252,12 @@ export const buildFreelancerProfileDetailsRecord = ({
       normalizedProfileDetails.communicationPolicyAccepted
     ),
     acceptInProgressProjects,
-    globalIndustryOther: toOptionalString(
-      normalizedProfileDetails.globalIndustryOther
-    ),
     city: toOptionalString(identity.city),
     country: toOptionalString(identity.country),
     username: toOptionalString(identity.username),
-    githubUrl: toOptionalString(identity.githubUrl),
     languages: toStringArray(identity.languages),
-    coverImage: toOptionalString(identity.coverImage),
-    linkedinUrl: toOptionalString(identity.linkedinUrl),
-    portfolioUrl: toOptionalString(identity.portfolioUrl),
     profilePhoto: toOptionalString(identity.profilePhoto),
-    otherLanguage: toOptionalString(identity.otherLanguage),
-    professionalTitle: toOptionalString(identity.professionalTitle),
     skills: toStringArray(normalizedProfileDetails.skills),
-    skillLevels: asObject(normalizedProfileDetails.skillLevels),
-    education: asArray(normalizedProfileDetails.education),
     services: toStringArray(normalizedProfileDetails.services).length
       ? toStringArray(normalizedProfileDetails.services)
       : toStringArray(fallbackServices),
@@ -300,16 +266,6 @@ export const buildFreelancerProfileDetailsRecord = ({
       profileDetails: normalizedProfileDetails,
       fallbackPortfolioProjects,
     }),
-    globalIndustryFocus: toStringArray(
-      normalizedProfileDetails.globalIndustryFocus
-    ),
-    availabilityHoursPerWeek: toOptionalString(availability.hoursPerWeek),
-    availabilityStartTimeline: toOptionalString(availability.startTimeline),
-    availabilityWorkingSchedule: toOptionalString(availability.workingSchedule),
-    reliabilityDelayHandling: toOptionalString(reliability.delayHandling),
-    reliabilityMissedDeadlines: toOptionalString(
-      reliability.missedDeadlines
-    ),
   };
 };
 

@@ -11,7 +11,6 @@ import {
   ImageIcon,
   Layers,
   MapPin,
-  Quote,
   Star,
 } from "lucide-react";
 
@@ -461,6 +460,9 @@ const ServiceDetails = () => {
       techStack: uniqueText(flattenTextValues(caseStudy.techStack)).slice(0, 5),
     };
 
+    const freelancerProfileDetails = asObject(freelancerProfile.profileDetails);
+    const freelancerIdentity = asObject(freelancerProfileDetails.identity);
+
     return {
       serviceName,
       categoryLabel,
@@ -484,9 +486,15 @@ const ServiceDetails = () => {
         avatar: firstTextValue(freelancer.avatar),
         isVerified: Boolean(freelancer.isVerified),
         bio: firstTextValue(freelancerProfile.bio, freelancerProfile.professionalBio),
-        title: firstTextValue(freelancerProfile.jobTitle, freelancerProfile.professionalTitle),
+        title: firstTextValue(
+          freelancerProfile.jobTitle,
+          freelancerIdentity.professionalTitle,
+          freelancerProfile.professionalTitle
+        ),
         location: firstTextValue(
           freelancerProfile.location,
+          freelancerIdentity.city,
+          freelancerIdentity.country,
           freelancerProfile.city,
           freelancerProfile.country
         ),

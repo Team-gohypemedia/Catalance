@@ -161,13 +161,13 @@ const FreelancerBasicProfileSlide = ({
                     alt="Freelancer profile"
                     className="object-cover"
                   />
-                  <AvatarFallback className="bg-card text-white/15">
-                    <UserRound className="size-14 stroke-[1.75]" />
+                  <AvatarFallback className="bg-card text-white/25">
+                    <UserRound className="size-14" />
                   </AvatarFallback>
                 </>
               ) : (
-                <div className="flex size-full items-center justify-center rounded-full bg-card text-white/15">
-                  <UserRound className="size-14 stroke-[1.75]" />
+                <div className="flex size-full items-center justify-center rounded-full bg-card text-white/25">
+                  <UserRound className="size-14" />
                 </div>
               )}
             </Avatar>
