@@ -5,6 +5,9 @@ import {
 } from "./shared.jsx";
 import { cn } from "@/shared/lib/utils";
 
+const metricsGridClassName =
+  "mt-6 sm:mt-5 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4";
+
 const freelancerMetricSkeletonItems = [
   { id: "active-projects", hasControl: false },
   { id: "completed-projects", hasControl: false },
@@ -57,7 +60,7 @@ const FreelancerMetricCardSkeleton = ({ item }) => {
 };
 
 export const FreelancerMetricCardsSkeleton = () => (
-  <section className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+  <section className={metricsGridClassName}>
     {freelancerMetricSkeletonItems.map((item) => (
       <FreelancerMetricCardSkeleton
         key={`freelancer-metric-skeleton-${item.id}`}
@@ -153,7 +156,7 @@ const OverviewMetricsGrid = ({ metrics, isLoading }) => {
   }
 
   return (
-    <section className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+    <section className={metricsGridClassName}>
       {metrics.map((metric) => (
         <FreelancerMetricCard key={metric.id} {...metric} />
       ))}

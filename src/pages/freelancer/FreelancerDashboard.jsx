@@ -34,7 +34,11 @@ import {
 const FreelancerDashboard = () => {
   return (
     <FreelancerDashboardContent>
-      {(model) => (
+      {(model) => {
+        const hasRunningProjects =
+          !model.metricsLoading && model.runningProjectCards.length > 0;
+
+        return (
         <div className="min-h-screen bg-background text-[#f1f5f9]">
           <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
             <SuspensionAlert
@@ -93,7 +97,7 @@ const FreelancerDashboard = () => {
               onNotificationClick={model.handleNotificationClick}
             />
 
-            <main className="relative z-10 flex-1 pb-12 pt-4 sm:pb-14 sm:pt-5">
+            <main className="relative z-10 flex-1 pb-12 sm:pb-14">
               <div className="flex w-full flex-col gap-6 sm:gap-7">
                 {model.showOnboardingAlert ? (
                   <div className="relative overflow-hidden rounded-[24px] border border-[#facc15]/30 bg-[#252116] px-4 py-4 sm:px-5">
@@ -143,7 +147,7 @@ const FreelancerDashboard = () => {
 
                 {model.metricsLoading ? (
                   <FreelancerActiveProjectsSkeleton />
-                ) : (
+                ) : hasRunningProjects ? (
                   <ActiveProjects
                     runningProjectCards={model.runningProjectCards}
                     redirectCards={model.freelancerProjectRedirectCards}
@@ -162,16 +166,40 @@ const FreelancerDashboard = () => {
                       model.activeProjectRedirectCardClassName
                     }
                   />
+                ) : (
+                  <PendingProposals
+                    pendingProposalRows={model.pendingProposalRows}
+                    onOpenAll={model.onOpenProposals}
+                  />
                 )}
 
-                <section className="grid items-start grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-                  <div className="space-y-5">
+                <section className="grid items-stretch grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+                  <div className="flex h-full min-w-0 flex-col gap-5">
                     {model.metricsLoading ? (
                       <FreelancerPendingProposalsSkeleton />
-                    ) : (
+                    ) : hasRunningProjects ? (
                       <PendingProposals
                         pendingProposalRows={model.pendingProposalRows}
                         onOpenAll={model.onOpenProposals}
+                      />
+                    ) : (
+                      <ActiveProjects
+                        runningProjectCards={model.runningProjectCards}
+                        redirectCards={model.freelancerProjectRedirectCards}
+                        shouldUseProjectCarousel={model.shouldUseProjectCarousel}
+                        setProjectCarouselApi={model.setProjectCarouselApi}
+                        projectCarouselApi={model.projectCarouselApi}
+                        canGoPrevious={model.canGoToPreviousProjects}
+                        canGoNext={model.canGoToNextProjects}
+                        projectCarouselSnapCount={model.projectCarouselSnapCount}
+                        activeProjectSnap={model.activeProjectSnap}
+                        projectCardRefs={model.projectCardRefs}
+                        isMobile={model.isMobile}
+                        mobileProjectCardHeight={model.mobileProjectCardHeight}
+                        activeProjectCardClassName={model.activeProjectCardClassName}
+                        activeProjectRedirectCardClassName={
+                          model.activeProjectRedirectCardClassName
+                        }
                       />
                     )}
 
@@ -181,11 +209,12 @@ const FreelancerDashboard = () => {
                       <RecentActivity
                         recentActivities={model.activityItems}
                         onOpenViewAll={model.onOpenNotificationSheet}
+                        className="flex-1"
                       />
                     )}
                   </div>
 
-                  <div className="grid content-start items-start gap-5 self-start">
+                  <div className="flex h-full flex-col gap-5 self-stretch">
                     {model.metricsLoading ? (
                       <>
                         <FreelancerChatsSkeleton />
@@ -255,7 +284,8 @@ const FreelancerDashboard = () => {
             </main>
           </div>
         </div>
-      )}
+        );
+      }}
     </FreelancerDashboardContent>
   );
 };

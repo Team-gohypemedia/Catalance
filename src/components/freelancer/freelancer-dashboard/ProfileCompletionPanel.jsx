@@ -50,7 +50,7 @@ const ProfileCompletionPanel = ({
 
         <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.08]">
           <div
-            className="h-full rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.96),rgba(255,255,255,0.72))] transition-all duration-700"
+            className="h-full rounded-full bg-primary transition-all duration-700"
             style={{ width: `${completionPercent}%` }}
           />
         </div>

@@ -249,7 +249,7 @@ const ProjectProgressChartCard = ({
     }
 
     return (
-      <DashboardPanel className="min-h-[320px] p-6 sm:p-8">
+      <DashboardPanel className="min-h-[320px] bg-card p-6 sm:p-8">
         <div className="flex min-h-[240px] items-center justify-center text-center">
           <div className="max-w-md">
             <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
@@ -669,16 +669,16 @@ export const ProjectProgressSection = ({
           onViewProject={onViewProject}
         />
       ) : (
-        <DashboardPanel className="min-h-[220px] p-5 sm:p-8">
+        <DashboardPanel className="min-h-[220px] bg-card p-5 sm:p-8">
           <div className="flex min-h-[140px] items-center justify-center text-center sm:min-h-[170px]">
             <div className="max-w-md">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-[#cbd5e1]">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-muted-foreground">
                 <FolderKanban className="size-6" />
               </div>
               <p className="mt-5 text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
                 No ongoing projects yet
               </p>
-              <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
                 Only ongoing projects appear here after a freelancer is assigned and the
                 initial payment is completed.
               </p>

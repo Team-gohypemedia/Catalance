@@ -115,7 +115,14 @@ const ActiveChats = memo(function ActiveChats({
         </div>
       </div>
 
-      <DashboardPanel className="w-full overflow-hidden bg-card px-5 pb-5 pt-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:pb-6 sm:pt-6">
+      <DashboardPanel
+        className={cn(
+          "w-full overflow-hidden bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+          items.length === 0
+            ? "p-0"
+            : "px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6",
+        )}
+      >
         {resolvedIsLoading ? (
           <>
             <DashboardSkeletonBlock className="h-7 w-44 rounded-full" />
@@ -144,8 +151,8 @@ const ActiveChats = memo(function ActiveChats({
             <DashboardSkeletonBlock className="mt-9 h-4 w-40 rounded-full" />
           </>
         ) : items.length === 0 ? (
-          <div className="flex min-h-55 flex-col items-center justify-center px-4 py-8 text-center sm:min-h-65 sm:py-10">
-            <div className="flex size-12 items-center justify-center rounded-full bg-white/6 text-[#94a3b8] sm:size-14">
+          <div className="flex min-h-[240px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[320px] sm:px-6 sm:py-12">
+            <div className="flex size-12 items-center justify-center rounded-full bg-white/6 text-muted-foreground sm:size-14">
               <MessageSquareText className="size-6" />
             </div>
             <p className="mt-5 text-sm text-white">No active project chats yet</p>

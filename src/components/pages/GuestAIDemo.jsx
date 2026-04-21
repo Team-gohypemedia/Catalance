@@ -2664,18 +2664,16 @@ const GuestAIDemo = () => {
     const mouseY = useMotionValue(0);
     const [randomString] = useState(() => generateRandomString(20000));
     const [isServicesBadgeNearGlow, setIsServicesBadgeNearGlow] = useState(false);
+    const [isSubtitleNearGlow, setIsSubtitleNearGlow] = useState(false);
+    const [isModeTabsNearGlow, setIsModeTabsNearGlow] = useState(false);
     const servicesBadgeRef = useRef(null);
+    const subtitleContainerRef = useRef(null);
+    const modeTabsContainerRef = useRef(null);
 
     useEffect(() => {
-        const updateServicesBadgeProximity = (clientX, clientY) => {
-            const badgeElement = servicesBadgeRef.current;
-
-            if (!badgeElement) {
-                setIsServicesBadgeNearGlow(false);
-                return;
-            }
-
-            const bounds = badgeElement.getBoundingClientRect();
+        const checkElementProximity = (element, clientX, clientY) => {
+            if (!element) return false;
+            const bounds = element.getBoundingClientRect();
             const deltaX = clientX < bounds.left
                 ? bounds.left - clientX
                 : clientX > bounds.right
@@ -2686,22 +2684,29 @@ const GuestAIDemo = () => {
                 : clientY > bounds.bottom
                     ? clientY - bounds.bottom
                     : 0;
-            const isNear =
-                Math.hypot(deltaX, deltaY) <= SERVICES_BADGE_FROST_TRIGGER_DISTANCE;
+            return Math.hypot(deltaX, deltaY) <= SERVICES_BADGE_FROST_TRIGGER_DISTANCE;
+        };
 
-            setIsServicesBadgeNearGlow((currentValue) =>
-                currentValue === isNear ? currentValue : isNear
-            );
+        const updateAllProximities = (clientX, clientY) => {
+            const badgeNear = checkElementProximity(servicesBadgeRef.current, clientX, clientY);
+            const subtitleNear = checkElementProximity(subtitleContainerRef.current, clientX, clientY);
+            const modeTabsNear = checkElementProximity(modeTabsContainerRef.current, clientX, clientY);
+
+            setIsServicesBadgeNearGlow((v) => v === badgeNear ? v : badgeNear);
+            setIsSubtitleNearGlow((v) => v === subtitleNear ? v : subtitleNear);
+            setIsModeTabsNearGlow((v) => v === modeTabsNear ? v : modeTabsNear);
         };
 
         const handleMouseMove = (event) => {
             mouseX.set(event.clientX);
             mouseY.set(event.clientY);
-            updateServicesBadgeProximity(event.clientX, event.clientY);
+            updateAllProximities(event.clientX, event.clientY);
         };
 
         const handleMouseLeave = () => {
             setIsServicesBadgeNearGlow(false);
+            setIsSubtitleNearGlow(false);
+            setIsModeTabsNearGlow(false);
         };
 
         window.addEventListener("mousemove", handleMouseMove);
@@ -4175,7 +4180,7 @@ const GuestAIDemo = () => {
             }
         }
 
-        
+
         try {
             const requestStartedAt = getNowTimestamp();
             setIsTyping(true);
@@ -4566,15 +4571,20 @@ const GuestAIDemo = () => {
                         <div className="text-center space-y-4 relative z-10 mb-10">
                             <span
                                 ref={servicesBadgeRef}
-                                className={`inline-block rounded-full px-6 py-2 text-3xl font-semibold uppercase tracking-[0.4em] text-primary shadow-md transition-all duration-300 ${
-                                    isServicesBadgeNearGlow
+                                className={`inline-block rounded-full px-6 py-2 text-3xl font-semibold uppercase tracking-[0.4em] text-primary shadow-md transition-all duration-300 ${isServicesBadgeNearGlow
                                         ? 'border border-white/8 bg-white/[0.025] shadow-[0_14px_36px_-24px_rgba(0,0,0,0.85)] backdrop-blur-md'
                                         : 'border border-transparent bg-background'
-                                }`}
+                                    }`}
                             >
                                 Services
                             </span>
-                            <div className="mx-auto flex max-w-4xl flex-col items-center gap-3 rounded-2xl bg-background px-5 py-4">
+                            <div
+                                ref={subtitleContainerRef}
+                                className={`mx-auto flex max-w-4xl flex-col items-center gap-3 rounded-2xl px-5 py-4 transition-all duration-300 ${isSubtitleNearGlow
+                                        ? 'border border-white/8 bg-white/[0.025] shadow-[0_14px_36px_-24px_rgba(0,0,0,0.85)] backdrop-blur-md'
+                                        : 'border border-transparent bg-background'
+                                    }`}
+                            >
                                 <h2 className="text-3xl font-semibold text-white">
                                     Clarity across every step of the freelance lifecycle.
                                 </h2>
@@ -4587,7 +4597,13 @@ const GuestAIDemo = () => {
                             <div className="mx-auto grid w-full max-w-[90rem] grid-cols-[1fr_auto_1fr] items-center gap-3 py-1">
                                 <div aria-hidden="true" />
                                 <div className="flex justify-center">
-                                    <div className="inline-flex shrink-0 rounded-full bg-background p-1">
+                                    <div
+                                        ref={modeTabsContainerRef}
+                                        className={`inline-flex shrink-0 rounded-full p-1 transition-all duration-300 ${isModeTabsNearGlow
+                                                ? 'border border-white/8 bg-white/[0.025] shadow-[0_14px_36px_-24px_rgba(0,0,0,0.85)] backdrop-blur-md'
+                                                : 'border border-transparent bg-background'
+                                            }`}
+                                    >
                                         {[
                                             { key: SERVICE_SELECTION_MODES.FREELANCER, label: 'Freelancer' },
                                             { key: SERVICE_SELECTION_MODES.AGENCY, label: 'Agency' },
@@ -4596,11 +4612,10 @@ const GuestAIDemo = () => {
                                                 key={modeOption.key}
                                                 type="button"
                                                 onClick={() => setServiceSelectionMode(modeOption.key)}
-                                                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors sm:px-5 ${
-                                                    serviceSelectionMode === modeOption.key
+                                                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors sm:px-5 ${serviceSelectionMode === modeOption.key
                                                         ? 'bg-[#ffc800] text-black'
                                                         : 'text-zinc-300 hover:text-white'
-                                                }`}
+                                                    }`}
                                             >
                                                 {modeOption.label}
                                             </button>
@@ -4610,11 +4625,10 @@ const GuestAIDemo = () => {
                                 <div className="flex justify-end">
                                     <div
                                         aria-hidden={!isAgencySelectionMode}
-                                        className={`flex shrink-0 items-center transition-opacity duration-200 ${
-                                            isAgencySelectionMode
+                                        className={`flex shrink-0 items-center transition-opacity duration-200 ${isAgencySelectionMode
                                                 ? 'pointer-events-auto opacity-100'
                                                 : 'pointer-events-none opacity-0'
-                                        }`}
+                                            }`}
                                     >
                                         <button
                                             type="button"
@@ -4626,19 +4640,17 @@ const GuestAIDemo = () => {
                                                     ? `Continue with ${agencySelectedServices.length} selected service${agencySelectedServices.length === 1 ? '' : 's'}`
                                                     : 'Select services to continue'
                                             }
-                                            className={`inline-flex h-9 items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold whitespace-nowrap transition-all ${
-                                                agencySelectedServices.length > 0
+                                            className={`inline-flex h-9 items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold whitespace-nowrap transition-all ${agencySelectedServices.length > 0
                                                     ? 'border-[#ffc800]/40 bg-[#ffc800] text-black hover:-translate-y-0.5 hover:bg-[#ffd740]'
                                                     : 'cursor-not-allowed border-white/10 bg-background text-zinc-500'
-                                            }`}
+                                                }`}
                                         >
                                             <span>Continue</span>
                                             <span
-                                                className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                                                    agencySelectedServices.length > 0
+                                                className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0
                                                         ? 'bg-black/10 text-black'
                                                         : 'bg-background text-zinc-500'
-                                                }`}
+                                                    }`}
                                             >
                                                 {agencySelectedServices.length}
                                             </span>
@@ -4661,80 +4673,75 @@ const GuestAIDemo = () => {
 
                                     return (
                                         <div
-                                        key={feature.id || index}
-                                        onClick={() => (
-                                            isAgencySelectionMode
-                                                ? toggleAgencyServiceSelection(feature)
-                                                : handleServiceSelect(feature)
-                                        )}
-                                        onMouseMove={handleCardGlowMouseMove}
-                                        style={{ '--card-glow-x': '50%', '--card-glow-y': '50%' }}
-                                        className={`group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full bg-card hover:-translate-y-2 ${
-                                            isAgencyCardSelected
-                                            ? 'border-[#ffc800]'
-                                                : 'border-white/20 hover:border-[#ffc800]/50'
-                                        }`}
-                                    >
-                                        <div className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-                                        <div
-                                            className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                                            style={{
-                                                background:
-                                                    'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(255, 200, 0, 0.18) 0%, rgba(255, 200, 0, 0.08) 30%, transparent 65%)',
-                                            }}
-                                        />
-                                        {isAgencySelectionMode ? (
-                                            <div className="absolute right-4 top-4 z-20">
-                                                <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
-                                                    isAgencyCardSelected
-                                                        ? 'bg-[#ffc800] text-black'
-                                                        : 'border border-white/10 bg-black/40 text-zinc-400'
-                                                }`}>
-                                                    {isAgencyCardSelected ? 'Selected' : 'Select'}
-                                                </span>
-                                            </div>
-                                        ) : null}
-                                        <div className="flex flex-col h-full p-5 relative z-10">
-                                            <div className="h-32 w-full flex items-center justify-center mb-3 relative">
-                                                <img
-                                                    src={resolveServiceLogoSrc(feature)}
-                                                    alt={feature.title || feature.name}
-                                                    className="w-24 h-24 object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
-                                                />
-                                            </div>
-
-                                            <div className="flex flex-col grow items-center text-center">
-                                                <h3 className={`text-lg font-bold mb-2 leading-tight transition-colors duration-300 ${
-                                                    isAgencyCardSelected ? 'text-[#ffc800]' : 'text-white group-hover:text-[#ffc800]'
-                                                }`}>
-                                                    {feature.title || feature.name}
-                                                </h3>
-
-                                                <p className="text-sm text-muted-foreground font-medium leading-relaxed mb-4 line-clamp-3 transition-colors">
-                                                    {feature.description}
-                                                </p>
-
-                                                <div className="mt-auto flex items-end justify-between border-t border-white/5 pt-4 w-full text-left">
-                                                    <div>
-                                                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">
-                                                            Starting at
-                                                        </p>
-                                                        <p className={`text-lg font-bold transition-colors duration-300 ${
-                                                            isAgencyCardSelected ? 'text-[#ffc800]' : 'text-white group-hover:text-[#ffc800]'
+                                            key={feature.id || index}
+                                            onClick={() => (
+                                                isAgencySelectionMode
+                                                    ? toggleAgencyServiceSelection(feature)
+                                                    : handleServiceSelect(feature)
+                                            )}
+                                            onMouseMove={handleCardGlowMouseMove}
+                                            style={{ '--card-glow-x': '50%', '--card-glow-y': '50%' }}
+                                            className={`group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full bg-card hover:-translate-y-2 ${isAgencyCardSelected
+                                                    ? 'border-[#ffc800]'
+                                                    : 'border-white/20 hover:border-[#ffc800]/50'
+                                                }`}
+                                        >
+                                            <div className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                                            <div
+                                                className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                                                style={{
+                                                    background:
+                                                        'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(255, 200, 0, 0.18) 0%, rgba(255, 200, 0, 0.08) 30%, transparent 65%)',
+                                                }}
+                                            />
+                                            {isAgencySelectionMode ? (
+                                                <div className="absolute right-4 top-4 z-20">
+                                                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isAgencyCardSelected
+                                                            ? 'bg-[#ffc800] text-black'
+                                                            : 'border border-white/10 bg-black/40 text-zinc-400'
                                                         }`}>
-                                                            {feature.price || (feature.min_budget ? `₹${feature.min_budget.toLocaleString('en-IN')}/-` : '₹10,000/-')}
-                                                        </p>
-                                                    </div>
-                                                    <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors duration-300 ${
-                                                        isAgencyCardSelected
-                                                            ? 'border-[#ffc800] text-[#ffc800] bg-[#ffc800]/10'
-                                                            : 'border-white/10 text-white group-hover:border-[#ffc800] group-hover:text-[#ffc800] group-hover:bg-[#ffc800]/10'
-                                                    }`}>
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                                        {isAgencyCardSelected ? 'Selected' : 'Select'}
+                                                    </span>
+                                                </div>
+                                            ) : null}
+                                            <div className="flex flex-col h-full p-5 relative z-10">
+                                                <div className="h-32 w-full flex items-center justify-center mb-3 relative">
+                                                    <img
+                                                        src={resolveServiceLogoSrc(feature)}
+                                                        alt={feature.title || feature.name}
+                                                        className="w-24 h-24 object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
+                                                    />
+                                                </div>
+
+                                                <div className="flex flex-col grow items-center text-center">
+                                                    <h3 className={`text-lg font-bold mb-2 leading-tight transition-colors duration-300 ${isAgencyCardSelected ? 'text-[#ffc800]' : 'text-white group-hover:text-[#ffc800]'
+                                                        }`}>
+                                                        {feature.title || feature.name}
+                                                    </h3>
+
+                                                    <p className="text-sm text-muted-foreground font-medium leading-relaxed mb-4 line-clamp-3 transition-colors">
+                                                        {feature.description}
+                                                    </p>
+
+                                                    <div className="mt-auto flex items-end justify-between border-t border-white/5 pt-4 w-full text-left">
+                                                        <div>
+                                                            <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">
+                                                                Starting at
+                                                            </p>
+                                                            <p className={`text-lg font-bold transition-colors duration-300 ${isAgencyCardSelected ? 'text-[#ffc800]' : 'text-white group-hover:text-[#ffc800]'
+                                                                }`}>
+                                                                {feature.price || (feature.min_budget ? `₹${feature.min_budget.toLocaleString('en-IN')}/-` : '₹10,000/-')}
+                                                            </p>
+                                                        </div>
+                                                        <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors duration-300 ${isAgencyCardSelected
+                                                                ? 'border-[#ffc800] text-[#ffc800] bg-[#ffc800]/10'
+                                                                : 'border-white/10 text-white group-hover:border-[#ffc800] group-hover:text-[#ffc800] group-hover:bg-[#ffc800]/10'
+                                                            }`}>
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
                                         </div>
                                     );
                                 })
@@ -4988,7 +4995,7 @@ const GuestAIDemo = () => {
                             />
                         </div>
                     </div>
-                    
+
                     <div className="flex shrink-0 items-center gap-1.5 px-2 pb-1.5">
                         <input
                             ref={attachmentInputRef}
@@ -5024,11 +5031,10 @@ const GuestAIDemo = () => {
                             size="icon"
                             type="submit"
                             disabled={((!input.trim() && pendingAttachments.length === 0) || (isPendingOptionFollowup && !input.trim())) || isTyping || isUploadingAttachment}
-                            className={`h-9 w-9 rounded-full transition-colors ${
-                                input.trim() || pendingAttachments.length > 0
+                            className={`h-9 w-9 rounded-full transition-colors ${input.trim() || pendingAttachments.length > 0
                                     ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
                                     : isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-400'
-                            }`}
+                                }`}
                         >
                             <Send className="h-4 w-4 shrink-0" />
                         </Button>
@@ -5297,7 +5303,7 @@ const GuestAIDemo = () => {
                                                 className={`group relative flex items-center gap-1.5 rounded-md px-2 py-2 transition-colors ${isCurrent
                                                     ? isDark ? 'bg-white/10' : 'bg-slate-100'
                                                     : isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'
-                                                }`}
+                                                    }`}
                                             >
                                                 <button
                                                     type="button"
@@ -5308,7 +5314,7 @@ const GuestAIDemo = () => {
                                                     <p className={`truncate text-sm font-medium transition-colors ${isCurrent
                                                         ? isDark ? 'text-amber-300' : 'text-amber-600'
                                                         : isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-600 group-hover:text-slate-900'
-                                                    }`}>
+                                                        }`}>
                                                         {isLoadingHistory ? 'Loading...' : preview}
                                                     </p>
                                                     <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -5457,11 +5463,10 @@ const GuestAIDemo = () => {
                                         )}
                                         {/* text bubble */}
                                         {messageContent && (
-                                            <div className={`rounded-3xl px-5 py-3 text-[15px] leading-relaxed break-words ${
-                                                isDark
+                                            <div className={`rounded-3xl px-5 py-3 text-[15px] leading-relaxed break-words ${isDark
                                                     ? 'bg-[#2F2F2F] text-white'
                                                     : 'bg-[#F0F0F0] text-slate-900'
-                                            }`}>
+                                                }`}>
                                                 <div className={`prose prose-sm max-w-none prose-p:my-0 prose-strong:font-semibold ${isDark ? 'prose-invert' : ''}`}>
                                                     <ReactMarkdown>{messageContent}</ReactMarkdown>
                                                 </div>
@@ -5649,7 +5654,7 @@ const GuestAIDemo = () => {
                         className={`max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl flex flex-col ${isDark
                             ? 'border-white/15 bg-[#0d0d0f]'
                             : 'border-slate-300/80 bg-white'
-                        }`}
+                            }`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className={`flex items-center justify-between border-b px-5 py-4 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
@@ -5717,7 +5722,7 @@ const GuestAIDemo = () => {
                                                 viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                                             >
-                                                <path d="m9 18 6-6-6-6"/>
+                                                <path d="m9 18 6-6-6-6" />
                                             </svg>
                                         </button>
                                     ))}
@@ -5737,7 +5742,7 @@ const GuestAIDemo = () => {
                         className={`max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl flex flex-col ${isDark
                             ? 'border-white/15 bg-[#0d0d0f]'
                             : 'border-slate-300/80 bg-white'
-                        }`}
+                            }`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className={`flex items-center justify-between border-b px-5 py-4 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
@@ -5794,7 +5799,7 @@ const GuestAIDemo = () => {
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                                                 >
-                                                    <path d="m9 18 6-6-6-6"/>
+                                                    <path d="m9 18 6-6-6-6" />
                                                 </svg>
                                             </a>
                                         ))
@@ -5825,7 +5830,7 @@ const GuestAIDemo = () => {
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                                                 >
-                                                    <path d="m9 18 6-6-6-6"/>
+                                                    <path d="m9 18 6-6-6-6" />
                                                 </svg>
                                             </a>
                                         ))}
@@ -5836,7 +5841,7 @@ const GuestAIDemo = () => {
                 </div>
             )}
 
-                        {selectedProposalPreview && (
+            {selectedProposalPreview && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6">
                     <div className={`max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-2xl border shadow-2xl ${isDark
                         ? 'border-white/15 bg-[#0d0d0f]'

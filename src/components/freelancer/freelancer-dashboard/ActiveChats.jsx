@@ -8,7 +8,7 @@ import {
 
 export const FreelancerChatsSkeleton = () => (
   <section className="w-full min-w-0">
-    <div className="mb-4 sm:mb-5">
+    <div className="mb-6">
       <FreelancerDashboardSkeletonBlock className="h-8 w-40 rounded-full" />
     </div>
     <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
@@ -38,16 +38,22 @@ export const FreelancerChatsSkeleton = () => (
 );
 
 const ActiveChats = ({ previewMessages, onOpenMessages }) => (
-  <section className="w-full min-w-0">
-    <div className="mb-4 sm:mb-5">
-      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+  <section className="flex h-full w-full min-w-0 flex-col">
+    <div className="mb-6">
+      <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
         Active Chats
       </h2>
     </div>
-    <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
+    <FreelancerDashboardPanel
+      className={
+        previewMessages.length === 0
+          ? "flex h-[220px] flex-col p-4 sm:h-[260px] sm:p-5"
+          : "flex h-fit flex-col p-4 sm:p-5"
+      }
+    >
       {previewMessages.length === 0 ? (
-        <div className="flex min-h-[220px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[260px] sm:py-10">
-          <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-14">
+        <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center sm:py-10">
+          <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground sm:size-14">
             <MessageSquare className="size-6" />
           </div>
           <p className="mt-5 text-sm text-white">No active project chats yet</p>

@@ -106,12 +106,12 @@ const ActiveProjects = ({
     </div>
 
     {runningProjectCards.length === 0 ? (
-      <FreelancerDashboardPanel className="flex min-h-[220px] items-center justify-center rounded-[28px] border border-white/[0.06] bg-card p-8 text-center">
+      <FreelancerDashboardPanel className="flex h-[220px] items-center justify-center rounded-[28px] border border-white/[0.06] bg-card p-8 text-center sm:h-[260px]">
         <div className="max-w-md">
           <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
             No active projects yet
           </p>
-          <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Projects will appear here once a client approves your proposal and work has
             started.
           </p>

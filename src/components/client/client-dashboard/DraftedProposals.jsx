@@ -903,7 +903,7 @@ const DraftedProposals = memo(function DraftedProposals({
         {items.length === 0 ? (
           <DashboardPanel className="overflow-hidden bg-card">
             <div className="flex min-h-[240px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[320px] sm:px-6 sm:py-12">
-              <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-16">
+              <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground sm:size-16">
                 <ClipboardList className="size-6 sm:size-7" />
               </div>
               <p className="mt-6 text-base font-medium text-white">

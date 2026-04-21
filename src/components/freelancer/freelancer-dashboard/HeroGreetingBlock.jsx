@@ -3,7 +3,7 @@ import React from "react";
 const HeroGreetingBlock = ({ greeting, firstName, dateLabel, className = "" }) => {
   return (
     <section
-      className={`mt-1 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between ${className}`.trim()}
+      className={`mt-14 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between ${className}`.trim()}
     >
       <p className="order-1 text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:order-2">
         {dateLabel}

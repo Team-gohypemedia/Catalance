@@ -1530,7 +1530,7 @@ const FreelancerCompactEarningsSummary = ({
 
       <div className="space-y-3.5 sm:space-y-4">
         <div className={freelancerCompactEarningsSurfaceClassName}>
-          <p className="text-[0.72rem] uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="text-[0.72rem] uppercase tracking-[0.18em] text-white">
             Received
           </p>
           <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] text-white sm:text-[1.8rem]">
@@ -1539,14 +1539,14 @@ const FreelancerCompactEarningsSummary = ({
           <p className="mt-2.5 text-sm text-muted-foreground">
             Cleared freelancer earnings
           </p>
-          <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+          <div className="mt-2.5 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
             <TrendingUp className="size-3.5" />
             <span>{momentumLabel}</span>
           </div>
         </div>
 
         <div className={freelancerCompactEarningsSurfaceClassName}>
-          <p className="text-[0.72rem] uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="text-[0.72rem] uppercase tracking-[0.18em] text-white">
             Pending
           </p>
           <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] text-white sm:text-[1.8rem]">
@@ -1555,7 +1555,7 @@ const FreelancerCompactEarningsSummary = ({
           <p className="mt-2.5 text-sm text-muted-foreground">
             Expected from active projects
           </p>
-          <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+          <div className="mt-2.5 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
             <Clock className="size-3.5" />
             <span>{nextPayoutLabel}</span>
           </div>
@@ -1727,7 +1727,7 @@ const FreelancerProjectCarouselControls = ({
       onClick={onPrevious}
       disabled={!canGoPrevious}
       aria-label={previousLabel}
-      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-white/35"
+      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-muted-foreground disabled:opacity-70"
     >
       <ChevronLeft className="size-4" />
     </button>
@@ -1737,7 +1737,7 @@ const FreelancerProjectCarouselControls = ({
       onClick={onNext}
       disabled={!canGoNext}
       aria-label={nextLabel}
-      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-white/35"
+      className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-card text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card disabled:text-muted-foreground disabled:opacity-70"
     >
       <ChevronRight className="size-4" />
     </button>
@@ -4067,7 +4067,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
 
                   <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.08]">
                     <div
-                      className="h-full rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.96),rgba(255,255,255,0.72))] transition-all duration-700"
+                      className="h-full rounded-full bg-primary transition-all duration-700"
                       style={{ width: `${profileCompletionPercent}%` }}
                     />
                   </div>
@@ -4110,7 +4110,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                   <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
                     No active projects yet
                   </p>
-                  <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
                     Projects will appear here once a client approves your proposal and work has started.
                   </p>
                 </div>
@@ -4239,7 +4239,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                     <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
                       {previewMessages.length === 0 ? (
                         <div className="flex min-h-[220px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[260px] sm:py-10">
-                          <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8] sm:size-14">
+                          <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground sm:size-14">
                             <MessageSquare className="size-6" />
                           </div>
                           <p className="mt-5 text-sm text-white">No active project chats yet</p>

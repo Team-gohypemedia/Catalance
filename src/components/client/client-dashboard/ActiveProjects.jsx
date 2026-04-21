@@ -337,7 +337,7 @@ const ActiveProjects = memo(function ActiveProjects({
             <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
               No active projects yet
             </p>
-            <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Projects will appear here once a freelancer is assigned and work
               has started.
             </p>
