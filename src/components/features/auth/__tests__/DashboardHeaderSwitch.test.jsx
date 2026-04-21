@@ -25,6 +25,14 @@ const dualRoleUser = {
   email: "zamasu@example.com",
 };
 
+const freelancerOnlyUser = {
+  id: "user-45",
+  role: "FREELANCER",
+  roles: ["FREELANCER"],
+  fullName: "MOHD KAIF",
+  email: "mohd@example.com",
+};
+
 const profile = {
   name: "ZAMASU GAMING",
   email: "zamasu@example.com",
@@ -136,6 +144,26 @@ describe("workspace header dashboard switching", () => {
     renderHeader(<FreelancerWorkspaceHeader profile={profile} />, "/freelancer");
 
     fireEvent.click(screen.getAllByRole("button", { name: /zamasu gaming/i })[0]);
+
+    expect(await screen.findByText("Switch to Client")).toBeTruthy();
+    expect(screen.getByText("Currently in Freelancer mode")).toBeTruthy();
+  });
+
+  it("shows 'Switch to Client' for freelancer-only accounts", async () => {
+    mockUseAuth.mockReturnValue({
+      user: freelancerOnlyUser,
+      logout: vi.fn(),
+      isAuthenticated: true,
+    });
+
+    renderHeader(
+      <FreelancerWorkspaceHeader
+        profile={{ name: freelancerOnlyUser.fullName, email: freelancerOnlyUser.email }}
+      />,
+      "/freelancer"
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: /mohd kaif/i })[0]);
 
     expect(await screen.findByText("Switch to Client")).toBeTruthy();
     expect(screen.getByText("Currently in Freelancer mode")).toBeTruthy();

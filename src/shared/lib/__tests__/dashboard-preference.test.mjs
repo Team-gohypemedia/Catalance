@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import { clearSession, persistSession } from "../auth-storage.js";
 import {
+  canAccessDashboard,
+  getAccessibleDashboards,
   getDashboardPreferenceStorageKey,
   getStoredDashboardPreference,
   resolveWorkspaceHomePath,
@@ -105,4 +107,16 @@ test("remembered dashboard survives logout and is reused after the next login", 
     assert.equal(localStorage.getItem(preferenceKey), "freelancer");
     assert.equal(resolveWorkspaceHomePath(user), "/freelancer");
   });
+});
+
+test("freelancer accounts can access the client workspace switcher", () => {
+  const user = {
+    id: "user-13",
+    role: "FREELANCER",
+    roles: ["FREELANCER"],
+  };
+
+  assert.deepEqual(getAccessibleDashboards(user), ["client", "freelancer"]);
+  assert.equal(canAccessDashboard(user, "client"), true);
+  assert.equal(canAccessDashboard(user, "freelancer"), true);
 });

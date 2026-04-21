@@ -12,6 +12,9 @@ const DASHBOARD_PROFILE_PATHS = Object.freeze({
   [CLIENT_DASHBOARD]: "/client/profile",
   [FREELANCER_DASHBOARD]: "/freelancer/profile",
 });
+const ROLE_IMPLIED_TOKENS = Object.freeze({
+  FREELANCER: ["CLIENT"],
+});
 
 const isBrowser = () => typeof window !== "undefined";
 
@@ -91,17 +94,24 @@ export const resolveDashboardValue = (value = "") => {
 
 export const getUserRoleTokens = (user = null) => {
   const roleTokens = new Set();
+  const addRoleToken = (value = "") => {
+    const normalizedRole = normalizeRoleToken(value);
 
-  const primaryRole = normalizeRoleToken(user?.role);
-  if (primaryRole) {
-    roleTokens.add(primaryRole);
-  }
+    if (!normalizedRole) {
+      return;
+    }
+
+    roleTokens.add(normalizedRole);
+    (ROLE_IMPLIED_TOKENS[normalizedRole] || []).forEach((entry) => {
+      roleTokens.add(entry);
+    });
+  };
+
+  addRoleToken(user?.role);
 
   if (Array.isArray(user?.roles)) {
     user.roles
-      .map((entry) => normalizeRoleToken(entry))
-      .filter(Boolean)
-      .forEach((entry) => roleTokens.add(entry));
+      .forEach((entry) => addRoleToken(entry));
   }
 
   return roleTokens;
