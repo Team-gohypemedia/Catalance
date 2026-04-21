@@ -13,22 +13,42 @@ import {
 import React, { useState } from "react";
 import logo from "@/assets/logos/logo.svg";
 
+const DESKTOP_NAV_SCROLL_RANGE = 180;
+const DESKTOP_NAV_EXPANDED_MAX_WIDTH = "80rem";
+const DESKTOP_NAV_COLLAPSED_MAX_WIDTH = "56rem";
+
 export const Navbar = ({ children, className, isHome, isDark }) => {
   const { scrollY } = useScroll();
 
   // Add spring physics to the scroll value for smoothness
   const smoothScrollY = useSpring(scrollY, {
-    stiffness: 100,
-    damping: 20,
-    mass: 0.5,
+    stiffness: 88,
+    damping: 24,
+    mass: 0.72,
   });
 
   // Map smoothed scroll to values
-  const width = useTransform(smoothScrollY, [0, 100], ["100%", "40%"]);
-  const mobileWidth = useTransform(smoothScrollY, [0, 100], ["100%", "90%"]);
-  const y = useTransform(smoothScrollY, [0, 100], [0, 20]);
-  const padding = useTransform(smoothScrollY, [0, 100], ["0px", "12px"]);
-  const borderRadius = useTransform(smoothScrollY, [0, 100], ["0rem", "2rem"]);
+  const desktopMaxWidth = useTransform(
+    smoothScrollY,
+    [0, DESKTOP_NAV_SCROLL_RANGE],
+    [DESKTOP_NAV_EXPANDED_MAX_WIDTH, DESKTOP_NAV_COLLAPSED_MAX_WIDTH]
+  );
+  const mobileWidth = useTransform(
+    smoothScrollY,
+    [0, DESKTOP_NAV_SCROLL_RANGE],
+    ["100%", "90%"]
+  );
+  const y = useTransform(smoothScrollY, [0, DESKTOP_NAV_SCROLL_RANGE], [0, 18]);
+  const padding = useTransform(
+    smoothScrollY,
+    [0, DESKTOP_NAV_SCROLL_RANGE],
+    ["0px", "12px"]
+  );
+  const borderRadius = useTransform(
+    smoothScrollY,
+    [0, DESKTOP_NAV_SCROLL_RANGE],
+    ["999px", "2rem"]
+  );
 
   // Colors based on theme
   const startTextColor = isHome
@@ -41,34 +61,43 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
   const endTextColor = isDark ? "#d4d4d4" : "#525252";
   const textColor = useTransform(
     smoothScrollY,
-    [0, 100],
+    [0, DESKTOP_NAV_SCROLL_RANGE],
     [startTextColor, endTextColor]
   );
 
-  const startBgColor = "rgba(0, 0, 0, 0)";
+  const startBgColor = isDark
+    ? "rgba(10, 10, 10, 0.76)"
+    : "rgba(255, 255, 255, 0.86)";
   const endBgColor = isDark
-    ? "rgba(10, 10, 10, 0.8)"
-    : "rgba(255, 255, 255, 0.8)";
+    ? "rgba(10, 10, 10, 0.84)"
+    : "rgba(255, 255, 255, 0.88)";
   const backgroundColor = useTransform(
     smoothScrollY,
-    [0, 100],
+    [0, DESKTOP_NAV_SCROLL_RANGE],
     [startBgColor, endBgColor]
   );
 
-  // Shadow without the orange line
+  const borderColor = useTransform(
+    smoothScrollY,
+    [0, DESKTOP_NAV_SCROLL_RANGE],
+    isDark
+      ? ["rgba(255, 255, 255, 0)", "rgba(255, 255, 255, 0.1)"]
+      : ["rgba(15, 23, 42, 0)", "rgba(15, 23, 42, 0.12)"]
+  );
+
   const shadow = useTransform(
     smoothScrollY,
-    [0, 100],
+    [0, DESKTOP_NAV_SCROLL_RANGE],
     [
-      "none",
-      "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05)",
+      "0 16px 40px -40px rgba(0, 0, 0, 0.6)",
+      "0 24px 72px -44px rgba(0, 0, 0, 0.9)",
     ]
   );
 
   const backdropFilter = useTransform(
     smoothScrollY,
-    [0, 100],
-    ["none", "blur(10px)"]
+    [0, DESKTOP_NAV_SCROLL_RANGE],
+    ["blur(8px)", "blur(14px)"]
   );
 
   return (
@@ -78,12 +107,13 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
           ? typeof child.type === "string"
             ? child
             : React.cloneElement(child, {
-                width,
+                desktopMaxWidth,
                 mobileWidth,
                 y,
                 padding,
                 borderRadius,
                 backgroundColor,
+                borderColor,
                 shadow,
                 backdropFilter,
                 textColor,
@@ -99,9 +129,10 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
 export const NavBody = ({
   children,
   className,
-  width,
+  desktopMaxWidth,
   y,
   backgroundColor,
+  borderColor,
   shadow,
   backdropFilter,
   textColor,
@@ -110,16 +141,17 @@ export const NavBody = ({
   return (
     <motion.div
       style={{
-        width: width,
+        width: "calc(100% - 2rem)",
+        maxWidth: desktopMaxWidth,
         y: y,
-        minWidth: "900px",
         backgroundColor: backgroundColor,
+        borderColor: borderColor,
         boxShadow: shadow,
         backdropFilter: backdropFilter,
         borderRadius: borderRadius,
       }}
       className={cn(
-        "relative z-60 mx-auto hidden w-full max-w-7xl flex-row items-center justify-between self-start bg-transparent px-3 py-2 lg:flex dark:bg-transparent",
+        "relative z-60 mx-auto hidden w-full flex-row items-center justify-between self-start overflow-hidden border px-3 py-2 lg:flex",
         className
       )}
     >
@@ -176,6 +208,7 @@ export const MobileNav = ({
   padding,
   borderRadius,
   backgroundColor,
+  borderColor,
   shadow,
   backdropFilter,
 }) => {
@@ -187,12 +220,13 @@ export const MobileNav = ({
         paddingLeft: padding,
         paddingRight: padding,
         borderRadius: borderRadius,
+        borderColor: borderColor,
         boxShadow: shadow,
         backdropFilter: backdropFilter,
         backgroundColor: backgroundColor,
       }}
       className={cn(
-        "relative z-50 mx-auto flex w-full max-w-[calc(100vw-2rem)] flex-col items-center justify-between bg-transparent px-0 py-2 lg:hidden",
+        "relative z-50 mx-auto flex w-full max-w-[calc(100vw-2rem)] flex-col items-center justify-between overflow-hidden border px-0 py-2 lg:hidden",
         className
       )}
     >

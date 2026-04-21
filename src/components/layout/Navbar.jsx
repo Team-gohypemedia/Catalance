@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -14,6 +14,7 @@ import {
   NavbarLogo,
   NavbarButton,
 } from "@/components/ui/resizable-navbar-fixed";
+import WorkspaceProfileDropdown from "@/components/layout/WorkspaceProfileDropdown";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
 
@@ -41,218 +42,31 @@ const getInitials = (value) => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
-/* ─── Dropdown Popup ─────────────────────────────────────────────────────── */
-const UserDropdown = ({
-  user,
-  dashboardPath,
-  profilePath,
-  canSwitchDashboard,
-  currentDashboardLabel,
-  switchLabel,
-  onSwitchDashboard,
-}) => {
-  const { logout } = useAuth();
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const displayName = getDisplayName(user);
-  const initials = getInitials(displayName);
-  const isFreelancer = currentDashboardLabel === "Freelancer";
-
-  // Close when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  return (
-    <div className="relative" ref={ref} style={{ zIndex: 9999 }}>
-      {/* Trigger — plain button, NOT NavbarButton, to avoid cloneElement interference */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-bold text-white backdrop-blur-md transition duration-200 hover:bg-white/10 hover:shadow-lg"
-      >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-black">
-          {user?.avatar ? (
-            <img
-              src={user.avatar}
-              alt={displayName}
-              className="h-full w-full rounded-full object-cover"
-            />
-          ) : (
-            initials
-          )}
-        </span>
-        <span className="max-w-[8rem] truncate">{displayName}</span>
-        {/* Chevron */}
-        <svg
-          className={cn(
-            "h-3.5 w-3.5 text-white/40 transition-transform duration-200",
-            open ? "rotate-180" : ""
-          )}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {/* Dropdown panel */}
-      {open && (
-        <div
-          className="absolute right-0 top-full mt-2 w-58 origin-top-right rounded-2xl border border-white/10 bg-[#171717] p-1.5 shadow-2xl backdrop-blur-xl"
-          style={{ zIndex: 99999 }}
-        >
-          {/* User info header */}
-          <div className="flex items-center gap-3 border-b border-white/5 px-3 py-2.5 mb-0.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-black">
-              {user?.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={displayName}
-                  className="h-full w-full rounded-full object-cover"
-                />
-              ) : (
-                initials
-              )}
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-              <p className="truncate text-[10px] text-white/40 leading-none">{user?.email}</p>
-            </div>
-          </div>
-
-          {/* Menu items */}
-          <div className="space-y-0.5">
-            {/* Dashboard */}
-            <Link
-              to={dashboardPath}
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/70 transition-all hover:bg-white/5 hover:text-white"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/5 text-white/40 group-hover:text-white/80">
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-              </span>
-              Dashboard
-            </Link>
-
-            {canSwitchDashboard ? (
-              <>
-                <div className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-white/5 group transition-all">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/5 text-white/40 group-hover:text-white/80">
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                      </svg>
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium text-white/70 group-hover:text-white/90">
-                        {switchLabel}
-                      </p>
-                      <p className="text-[10px] text-white/30 leading-none">
-                        Current: {currentDashboardLabel} dashboard
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSwitchDashboard?.();
-                      setOpen(false);
-                    }}
-                    className={cn(
-                      "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent",
-                      "transition-colors duration-200 ease-in-out focus:outline-none",
-                      isFreelancer ? "bg-yellow-400" : "bg-white/10"
-                    )}
-                    aria-label={`${switchLabel} dashboard`}
-                  >
-                    <span
-                      className={cn(
-                        "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg",
-                        "transform transition-transform duration-200 ease-in-out",
-                        isFreelancer ? "translate-x-4" : "translate-x-0"
-                      )}
-                    />
-                  </button>
-                </div>
-
-                <div className="my-1 border-t border-white/5" />
-              </>
-            ) : null}
-
-            {/* Profile */}
-            <Link
-              to={profilePath}
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/70 transition-all hover:bg-white/5 hover:text-white"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/5 text-white/40 group-hover:text-white/80">
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </span>
-              Profile
-            </Link>
-
-            {/* Log Out */}
-            <button
-              onClick={() => {
-                setOpen(false);
-                logout();
-              }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-red-400/80 transition-all hover:bg-red-500/10 hover:text-red-400"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-500/10 text-red-500/60">
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </span>
-              Log Out
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 /* ─── AuthButtons ────────────────────────────────────────────────────────── */
 const AuthButtons = ({
   isHome,
   isDark,
-  isAuthenticated,
-  dashboardPath,
-  profilePath,
-  canSwitchDashboard,
-  currentDashboardLabel,
-  switchLabel,
-  onSwitchDashboard,
+  showAuthenticatedNav,
+  currentDashboard,
   user,
 }) => {
   const forceWhite = isHome && isDark; // `visible` prop is no longer used here
 
-  if (isAuthenticated) {
+  if (showAuthenticatedNav) {
+    const displayName = getDisplayName(user);
+
     return (
       <div className="flex items-center gap-2">
-        <UserDropdown
-          user={user}
-          dashboardPath={dashboardPath}
-          profilePath={profilePath}
-          canSwitchDashboard={canSwitchDashboard}
-          currentDashboardLabel={currentDashboardLabel}
-          switchLabel={switchLabel}
-          onSwitchDashboard={onSwitchDashboard}
+        <WorkspaceProfileDropdown
+          currentDashboard={currentDashboard === "freelancer" ? "freelancer" : "client"}
+          displayName={displayName}
+          profile={{
+            avatar: user?.avatar || "",
+            email: user?.email || "",
+            isVerified: Boolean(user?.isVerified || user?.freelancerProfile?.isVerified),
+          }}
+          profileInitial={getInitials(displayName)}
+          showVerifiedBadge={currentDashboard === "freelancer"}
         />
       </div>
     );
@@ -282,19 +96,17 @@ const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const isHome = location.pathname === "/";
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, token, isAuthenticated, authLoading, logout } = useAuth();
   const {
-    canSwitchDashboard,
     currentDashboard,
-    currentDashboardLabel,
     dashboardPath,
     profilePath,
-    switchDashboard,
-    switchLabel,
   } = useDashboardSwitcher();
+  const shouldShowAuthenticatedNav =
+    isAuthenticated || (authLoading && Boolean(user && token));
   const isFreelancerUser = useMemo(
-    () => isAuthenticated && currentDashboard === "freelancer",
-    [currentDashboard, isAuthenticated],
+    () => shouldShowAuthenticatedNav && currentDashboard === "freelancer",
+    [currentDashboard, shouldShowAuthenticatedNav],
   );
   const navItems = useMemo(
     () => buildNavItems({ isFreelancer: isFreelancerUser }),
@@ -319,13 +131,8 @@ const Navbar = () => {
           <AuthButtons
             isHome={isHome}
             isDark={isDark}
-            isAuthenticated={isAuthenticated}
-            dashboardPath={dashboardPath}
-            profilePath={profilePath}
-            canSwitchDashboard={canSwitchDashboard}
-            currentDashboardLabel={currentDashboardLabel}
-            switchLabel={switchLabel}
-            onSwitchDashboard={switchDashboard}
+            showAuthenticatedNav={shouldShowAuthenticatedNav}
+            currentDashboard={currentDashboard}
             user={user}
           />
         </div>
@@ -349,7 +156,7 @@ const Navbar = () => {
               {item.name}
             </Link>
           ))}
-          {isAuthenticated ? (
+          {shouldShowAuthenticatedNav ? (
             <>
               <NavbarButton
                 as={Link}

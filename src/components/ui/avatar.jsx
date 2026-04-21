@@ -5,6 +5,15 @@ import { Avatar as AvatarPrimitive } from "radix-ui"
 
 import { cn } from "@/shared/lib/utils"
 
+const normalizeAvatarSrc = (src) => {
+  if (typeof src !== "string") {
+    return src || undefined;
+  }
+
+  const trimmedSrc = src.trim();
+  return trimmedSrc || undefined;
+};
+
 function Avatar({
   className,
   size = "default",
@@ -24,12 +33,27 @@ function Avatar({
 
 function AvatarImage({
   className,
+  src,
   ...props
 }) {
+  const normalizedSrc = React.useMemo(() => normalizeAvatarSrc(src), [src]);
+  const lastStableSrcRef = React.useRef(normalizedSrc);
+
+  if (normalizedSrc) {
+    lastStableSrcRef.current = normalizedSrc;
+  }
+
+  const resolvedSrc = normalizedSrc || lastStableSrcRef.current;
+
+  if (!resolvedSrc) {
+    return null;
+  }
+
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
-      className={cn("aspect-square size-full", className)}
+      className={cn("aspect-square size-full object-cover", className)}
+      src={resolvedSrc}
       {...props} />
   );
 }
