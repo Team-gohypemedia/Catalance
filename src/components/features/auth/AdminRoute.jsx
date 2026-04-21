@@ -2,13 +2,14 @@ import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/shared/context/AuthContext";
 import { getSession } from "@/shared/lib/auth-storage";
+import { resolveWorkspaceHomePath } from "@/shared/lib/dashboard-preference";
 
 const AdminRoute = ({ children }) => {
-  const { user, token, isAuthenticated, isLoading } = useAuth();
+  const { user, token, isAuthenticated, isCheckingAuth } = useAuth();
   const location = useLocation();
 
   // Show loading spinner while auth state is being determined
-  if (isLoading) {
+  if (isCheckingAuth) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <span className="loading loading-spinner text-primary" />
@@ -27,7 +28,7 @@ const AdminRoute = ({ children }) => {
 
   // Only admins can access admin routes
   if (user?.role !== "ADMIN") {
-    return <Navigate to={user?.role === "CLIENT" ? "/client" : "/freelancer"} replace />;
+    return <Navigate to={resolveWorkspaceHomePath(user)} replace />;
   }
 
   return children;

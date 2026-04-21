@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/shared/lib/utils";
 import {
   Navbar as ResizableNavbar,
@@ -15,6 +15,7 @@ import {
   NavbarButton,
 } from "@/components/ui/resizable-navbar-fixed";
 import { useAuth } from "@/shared/context/AuthContext";
+import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
 
 const buildNavItems = ({ isFreelancer = false } = {}) => [
   { name: "Home", link: "/" },
@@ -25,14 +26,6 @@ const buildNavItems = ({ isFreelancer = false } = {}) => [
   { name: "Service", link: "/service" },
   { name: "Contact", link: "/contact" },
 ];
-
-const getDashboardPath = (role) => {
-  const normalizedRole = String(role || "").toUpperCase();
-  if (normalizedRole === "ADMIN") return "/admin";
-  if (normalizedRole === "PROJECT_MANAGER") return "/project-manager";
-  if (normalizedRole === "FREELANCER") return "/freelancer";
-  return "/client";
-};
 
 const getDisplayName = (user) =>
   user?.fullName || user?.name || user?.email?.split("@")[0] || "Profile";
@@ -49,21 +42,21 @@ const getInitials = (value) => {
 };
 
 /* ─── Dropdown Popup ─────────────────────────────────────────────────────── */
-const UserDropdown = ({ user, dashboardPath }) => {
+const UserDropdown = ({
+  user,
+  dashboardPath,
+  profilePath,
+  canSwitchDashboard,
+  currentDashboardLabel,
+  switchLabel,
+  onSwitchDashboard,
+}) => {
   const { logout } = useAuth();
   const [open, setOpen] = useState(false);
-  const [isFreelancer, setIsFreelancer] = useState(
-    dashboardPath === "/freelancer"
-  );
   const ref = useRef(null);
-  const navigate = useNavigate();
   const displayName = getDisplayName(user);
   const initials = getInitials(displayName);
-
-  // Sync toggle with actual role whenever dashboardPath changes
-  useEffect(() => {
-    setIsFreelancer(dashboardPath === "/freelancer");
-  }, [dashboardPath]);
+  const isFreelancer = currentDashboardLabel === "Freelancer";
 
   // Close when clicking outside
   useEffect(() => {
@@ -75,13 +68,6 @@ const UserDropdown = ({ user, dashboardPath }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const handleToggle = () => {
-    const next = !isFreelancer;
-    setIsFreelancer(next);
-    navigate(next ? "/freelancer" : "/client");
-    setOpen(false);
-  };
 
   return (
     <div className="relative" ref={ref} style={{ zIndex: 9999 }}>
@@ -159,49 +145,55 @@ const UserDropdown = ({ user, dashboardPath }) => {
               Dashboard
             </Link>
 
-            {/* Client ↔ Freelancer Toggle */}
-            <div className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-white/5 group transition-all">
-              <div className="flex items-center gap-3">
-                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/5 text-white/40 group-hover:text-white/80">
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-white/70 group-hover:text-white/90">
-                    {isFreelancer ? "Freelancer" : "Client"}
-                  </p>
-                  <p className="text-[10px] text-white/30 leading-none">Switch view</p>
+            {canSwitchDashboard ? (
+              <>
+                <div className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-white/5 group transition-all">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/5 text-white/40 group-hover:text-white/80">
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-white/70 group-hover:text-white/90">
+                        {switchLabel}
+                      </p>
+                      <p className="text-[10px] text-white/30 leading-none">
+                        Current: {currentDashboardLabel} dashboard
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSwitchDashboard?.();
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent",
+                      "transition-colors duration-200 ease-in-out focus:outline-none",
+                      isFreelancer ? "bg-yellow-400" : "bg-white/10"
+                    )}
+                    aria-label={`${switchLabel} dashboard`}
+                  >
+                    <span
+                      className={cn(
+                        "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg",
+                        "transform transition-transform duration-200 ease-in-out",
+                        isFreelancer ? "translate-x-4" : "translate-x-0"
+                      )}
+                    />
+                  </button>
                 </div>
-              </div>
 
-              {/* Toggle switch */}
-              <button
-                type="button"
-                onClick={handleToggle}
-                className={cn(
-                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent",
-                  "transition-colors duration-200 ease-in-out focus:outline-none",
-                  isFreelancer ? "bg-yellow-400" : "bg-white/10"
-                )}
-                aria-label="Switch between Client and Freelancer"
-              >
-                <span
-                  className={cn(
-                    "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg",
-                    "transform transition-transform duration-200 ease-in-out",
-                    isFreelancer ? "translate-x-4" : "translate-x-0"
-                  )}
-                />
-              </button>
-            </div>
-
-            {/* Divider */}
-            <div className="my-1 border-t border-white/5" />
+                <div className="my-1 border-t border-white/5" />
+              </>
+            ) : null}
 
             {/* Profile */}
             <Link
-              to={isFreelancer ? "/freelancer/profile" : "/client/profile"}
+              to={profilePath}
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/70 transition-all hover:bg-white/5 hover:text-white"
             >
@@ -241,6 +233,11 @@ const AuthButtons = ({
   isDark,
   isAuthenticated,
   dashboardPath,
+  profilePath,
+  canSwitchDashboard,
+  currentDashboardLabel,
+  switchLabel,
+  onSwitchDashboard,
   user,
 }) => {
   const forceWhite = isHome && isDark; // `visible` prop is no longer used here
@@ -248,7 +245,15 @@ const AuthButtons = ({
   if (isAuthenticated) {
     return (
       <div className="flex items-center gap-2">
-        <UserDropdown user={user} dashboardPath={dashboardPath} />
+        <UserDropdown
+          user={user}
+          dashboardPath={dashboardPath}
+          profilePath={profilePath}
+          canSwitchDashboard={canSwitchDashboard}
+          currentDashboardLabel={currentDashboardLabel}
+          switchLabel={switchLabel}
+          onSwitchDashboard={onSwitchDashboard}
+        />
       </div>
     );
   }
@@ -277,11 +282,19 @@ const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const isHome = location.pathname === "/";
-  const { user, isAuthenticated } = useAuth();
-  const dashboardPath = useMemo(() => getDashboardPath(user?.role), [user?.role]);
+  const { user, isAuthenticated, logout } = useAuth();
+  const {
+    canSwitchDashboard,
+    currentDashboard,
+    currentDashboardLabel,
+    dashboardPath,
+    profilePath,
+    switchDashboard,
+    switchLabel,
+  } = useDashboardSwitcher();
   const isFreelancerUser = useMemo(
-    () => isAuthenticated && String(user?.role || "").toUpperCase() === "FREELANCER",
-    [isAuthenticated, user?.role],
+    () => isAuthenticated && currentDashboard === "freelancer",
+    [currentDashboard, isAuthenticated],
   );
   const navItems = useMemo(
     () => buildNavItems({ isFreelancer: isFreelancerUser }),
@@ -308,6 +321,11 @@ const Navbar = () => {
             isDark={isDark}
             isAuthenticated={isAuthenticated}
             dashboardPath={dashboardPath}
+            profilePath={profilePath}
+            canSwitchDashboard={canSwitchDashboard}
+            currentDashboardLabel={currentDashboardLabel}
+            switchLabel={switchLabel}
+            onSwitchDashboard={switchDashboard}
             user={user}
           />
         </div>
@@ -335,7 +353,7 @@ const Navbar = () => {
             <>
               <NavbarButton
                 as={Link}
-                to={dashboardPath === "/freelancer" ? "/freelancer/profile" : "/client/profile"}
+                to={profilePath}
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 !text-black"
                 onClick={closeMobileMenu}
               >

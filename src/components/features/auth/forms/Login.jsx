@@ -21,6 +21,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { login, loginWithGoogle } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
+import {
+  canAccessDashboard,
+  getDashboardPath,
+  resolveDashboardValue,
+  resolveWorkspaceHomePath,
+  setStoredDashboardPreference,
+} from "@/shared/lib/dashboard-preference";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -75,6 +82,28 @@ const mergeAuthUserWithAvatar = (apiUser, fallbackAvatar) => {
       },
     },
   };
+};
+
+const navigateAfterLogin = ({
+  navigate,
+  redirectTo,
+  requestedRole,
+  user,
+}) => {
+  if (redirectTo) {
+    navigate(redirectTo, { replace: true });
+    return;
+  }
+
+  const requestedDashboard = resolveDashboardValue(requestedRole);
+
+  if (requestedDashboard && canAccessDashboard(user, requestedDashboard)) {
+    setStoredDashboardPreference(user, requestedDashboard);
+    navigate(getDashboardPath(requestedDashboard), { replace: true });
+    return;
+  }
+
+  navigate(resolveWorkspaceHomePath(user), { replace: true });
 };
 
 function Login({ className, ...props }) {
@@ -144,28 +173,14 @@ function Login({ className, ...props }) {
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success("Logged in successfully.");
       setFormData(initialFormState);
-      const nextRole = authPayload?.user?.role?.toUpperCase();
       const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
-      const normalizedRequestedRole =
-        requestedRole === "CLIENT" || requestedRole === "FREELANCER"
-          ? requestedRole
-          : null;
 
-      if (redirectTo) {
-        navigate(redirectTo, { replace: true });
-      } else if (normalizedRequestedRole === "CLIENT") {
-        navigate("/client", { replace: true });
-      } else if (normalizedRequestedRole === "FREELANCER") {
-        navigate("/freelancer", { replace: true });
-      } else if (nextRole === "CLIENT") {
-        navigate("/client", { replace: true });
-      } else if (nextRole === "PROJECT_MANAGER") {
-        navigate("/project-manager", { replace: true });
-      } else if (nextRole === "ADMIN") {
-        navigate("/admin", { replace: true });
-      } else {
-        navigate("/freelancer", { replace: true });
-      }
+      navigateAfterLogin({
+        navigate,
+        redirectTo,
+        requestedRole,
+        user: authPayload?.user,
+      });
     } catch (error) {
       const message = error?.message || "Unable to log in with those details.";
       setFormError(message);
@@ -194,7 +209,6 @@ function Login({ className, ...props }) {
       setAuthSession(sessionUser, authPayload?.accessToken);
       toast.success(`Welcome, ${authPayload?.user?.fullName || "User"}!`);
 
-      const nextRole = authPayload?.user?.role?.toUpperCase();
       const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
       const requestedRole =
         typeof selectedRole === "string"
@@ -202,26 +216,13 @@ function Login({ className, ...props }) {
           : typeof location.state?.role === "string"
             ? location.state.role.toUpperCase()
             : null;
-      const normalizedRequestedRole =
-        requestedRole === "CLIENT" || requestedRole === "FREELANCER"
-          ? requestedRole
-          : null;
 
-      if (redirectTo) {
-        navigate(redirectTo, { replace: true });
-      } else if (normalizedRequestedRole === "CLIENT") {
-        navigate("/client", { replace: true });
-      } else if (normalizedRequestedRole === "FREELANCER") {
-        navigate("/freelancer", { replace: true });
-      } else if (nextRole === "CLIENT") {
-        navigate("/client", { replace: true });
-      } else if (nextRole === "PROJECT_MANAGER") {
-        navigate("/project-manager", { replace: true });
-      } else if (nextRole === "ADMIN") {
-        navigate("/admin", { replace: true });
-      } else {
-        navigate("/freelancer", { replace: true });
-      }
+      navigateAfterLogin({
+        navigate,
+        redirectTo,
+        requestedRole,
+        user: sessionUser,
+      });
     } catch (error) {
       console.error("Google sign-in error:", error);
       const message = error?.message || "Unable to sign in with Google.";

@@ -5,14 +5,21 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 
-import { clearSession, getSession, persistSession } from "@/shared/lib/auth-storage";
+import {
+  clearSession,
+  getSession,
+  isSessionTokenExpired,
+  persistSession,
+} from "@/shared/lib/auth-storage";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { migrateSavedProposalsToUser } from "@/shared/lib/client-proposal-storage";
+import { rememberDashboardFromPath } from "@/shared/lib/dashboard-preference";
 
 const AuthContext = createContext(null);
 AuthContext.displayName = "AuthContext";
@@ -58,6 +65,7 @@ const sessionFromStorage = () => {
   return {
     user: session?.user ?? null,
     token: session?.accessToken ?? null,
+    hasStoredSession: Boolean(session?.user && session?.accessToken),
   };
 };
 
@@ -65,23 +73,49 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const initialSession = useMemo(sessionFromStorage, []);
+  const hasBootstrappedRef = useRef(false);
 
   const [user, setUser] = useState(initialSession.user);
   const [token, setToken] = useState(initialSession.token);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(
+    initialSession.hasStoredSession
+  );
 
   const syncSession = useCallback((nextSession) => {
     if (nextSession?.accessToken && nextSession?.user) {
       persistSession(nextSession);
       setToken(nextSession.accessToken);
       setUser(nextSession.user);
+      setIsCheckingAuth(false);
       return;
     }
 
     clearSession();
     setToken(null);
     setUser(null);
+    setIsCheckingAuth(false);
   }, []);
+
+  const expireSession = useCallback(
+    (options = {}) => {
+      const {
+        redirect = true,
+        redirectTo = "/login",
+        showToast = true,
+      } = options || {};
+
+      syncSession(null);
+
+      if (showToast) {
+        toast.error("Session expired. Please log in again.");
+      }
+
+      if (redirect) {
+        navigate(redirectTo, { replace: true });
+      }
+    },
+    [navigate, syncSession]
+  );
 
   const logout = useCallback(
     (options = {}) => {
@@ -107,7 +141,7 @@ export const AuthProvider = ({ children }) => {
   const authFetch = useCallback(
     async (target, options = {}) => {
       if (!token) {
-        logout();
+        expireSession({ showToast: false });
         throw new Error("No token found. Please log in again.");
       }
 
@@ -136,8 +170,7 @@ export const AuthProvider = ({ children }) => {
 
         if (response.status === 401) {
           if (!skipLogoutOn401) {
-            toast.error("Session expired. Please log in again.");
-            logout();
+            expireSession({ showToast: !suppressToast });
           }
           const unauthorizedError = new Error("Unauthorized");
           unauthorizedError.code = 401;
@@ -158,6 +191,9 @@ export const AuthProvider = ({ children }) => {
           // Suppress toast/logout for caller-handled unauthorized cases.
           throw error;
         }
+        if (error.code === 401) {
+          throw error;
+        }
         console.error("Auth fetch failed:", error);
         if (!suppressToast) {
           toast.error("Network error. Please try again.");
@@ -165,18 +201,31 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
     },
-    [token, logout]
+    [expireSession, token]
   );
 
-  const verifyUser = useCallback(async () => {
+  const verifyUser = useCallback(async ({ useLoader = false } = {}) => {
     if (!token) {
-      setIsLoading(false);
-      return;
+      if (useLoader) {
+        setIsCheckingAuth(false);
+      }
+      return null;
+    }
+
+    if (isSessionTokenExpired(token)) {
+      syncSession(null);
+      return null;
+    }
+
+    if (useLoader) {
+      setIsCheckingAuth(true);
     }
 
     if (!PROFILE_ENDPOINT) {
-      setIsLoading(false);
-      return;
+      if (useLoader) {
+        setIsCheckingAuth(false);
+      }
+      return user;
     }
 
     const controller = new AbortController();
@@ -194,14 +243,14 @@ export const AuthProvider = ({ children }) => {
         console.warn(
           "Profile endpoint returned 404. Skip verification until backend exposes /auth/profile."
         );
-        return;
+        return user;
       }
 
       if (response.status >= 500) {
         console.warn(
           "Profile endpoint returned a server error; skipping verification."
         );
-        return;
+        return user;
       }
 
       // If we got a 401 via skipLogoutOn401, response.status will be 401 (if authFetch returns response on error? No, authFetch throws)
@@ -212,7 +261,7 @@ export const AuthProvider = ({ children }) => {
         console.warn(
           `Profile verification failed with status ${response.status}.`
         );
-        return;
+        return user;
       }
 
       const payload = await response.json().catch(() => null);
@@ -222,23 +271,49 @@ export const AuthProvider = ({ children }) => {
         persistSession({ accessToken: token, user: nextUser });
         setUser(nextUser);
       }
+      return nextUser ?? user;
     } catch (error) {
       if (error.name === "AbortError") {
         // Timeout is non-fatal; just skip refresh.
-      } else if (error.code === 401) {
-        console.warn("User verification 401: validation failed, but suppressing auto-logout.");
-      } else if (error.message !== "Unauthorized") {
-        console.error("User verification failed:", error);
+        return user;
       }
+
+      if (error.code === 401 || error.message === "Unauthorized") {
+        syncSession(null);
+        return null;
+      }
+
+      if (error.message !== "Unauthorized") {
+        console.error("User verification failed:", error);
+      } else {
+        syncSession(null);
+        return null;
+      }
+      return user;
     } finally {
       clearTimeout(timeoutId);
-      setIsLoading(false);
+      if (useLoader) {
+        setIsCheckingAuth(false);
+      }
     }
-  }, [token, authFetch]);
+  }, [authFetch, syncSession, token, user]);
 
   useEffect(() => {
-    verifyUser();
+    if (hasBootstrappedRef.current) {
+      return;
+    }
+
+    hasBootstrappedRef.current = true;
+    void verifyUser({ useLoader: true });
   }, [verifyUser]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    rememberDashboardFromPath(user, location.pathname);
+  }, [location.pathname, user]);
 
   // NOTE: Automatic proposal sync has been DISABLED.
   // Proposals are now stored locally in drafts and only sent when user
@@ -260,7 +335,6 @@ export const AuthProvider = ({ children }) => {
         accessToken: authToken,
       });
       migrateSavedProposalsToUser(userData.id);
-      setIsLoading(false);
     },
     [syncSession]
   );
@@ -273,14 +347,24 @@ export const AuthProvider = ({ children }) => {
       logout,
       authFetch,
       refreshUser: verifyUser,
-      isAuthenticated: Boolean(user && token),
-      isLoading,
+      isAuthenticated: Boolean(user && token) && !isCheckingAuth,
+      isLoading: isCheckingAuth,
+      authLoading: isCheckingAuth,
+      isCheckingAuth,
     }),
-    [user, token, login, logout, authFetch, verifyUser, isLoading]
+    [
+      authFetch,
+      isCheckingAuth,
+      login,
+      logout,
+      token,
+      user,
+      verifyUser,
+    ]
   );
 
   const shouldShowGlobalLoader =
-    isLoading &&
+    isCheckingAuth &&
     PROTECTED_PATH_PREFIXES.some((path) => location.pathname?.startsWith(path));
 
   return (

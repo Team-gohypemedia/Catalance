@@ -6,7 +6,12 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/shared/context/AuthContext";
 import AdminRoute from "@/components/features/auth/AdminRoute";
+import ProtectedRoute from "@/components/features/auth/ProtectedRoute";
 import CataButton from "@/components/common/CataButton";
+import {
+  FREELANCER_DASHBOARD,
+  canAccessDashboard,
+} from "@/shared/lib/dashboard-preference";
 
 const Home = lazy(() => import("@/pages/Home.jsx"));
 const Marketplace = lazy(() => import("@/components/pages/Marketplace"));
@@ -724,11 +729,15 @@ const App = () => {
 };
 
 const OpportunityRoute = () => {
-  const { isAuthenticated, user } = useAuth();
-  const isFreelancer =
-    isAuthenticated && String(user?.role || "").toUpperCase() === "FREELANCER";
+  const { isAuthenticated, isCheckingAuth, user } = useAuth();
+  const canAccessFreelancerDashboard =
+    isAuthenticated && canAccessDashboard(user, FREELANCER_DASHBOARD);
 
-  if (!isFreelancer) {
+  if (isCheckingAuth) {
+    return <RouteFallback />;
+  }
+
+  if (!canAccessFreelancerDashboard) {
     return <Navigate to="/marketplace" replace />;
   }
 
@@ -760,37 +769,6 @@ const LayoutNavbarOnly = ({ children }) => (
 
 LayoutNavbarOnly.propTypes = {
   children: PropTypes.node.isRequired,
-};
-
-const ProtectedRoute = ({ children, loginPath = "/login", allowedRoles = null }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <span className="loading loading-spinner text-primary" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to={loginPath} replace />;
-  }
-
-  if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
-    const currentRole = String(user?.role || "").toUpperCase();
-    if (!allowedRoles.includes(currentRole)) {
-      return <Navigate to="/" replace />;
-    }
-  }
-
-  return children;
-};
-
-ProtectedRoute.propTypes = {
-  children: PropTypes.node.isRequired,
-  loginPath: PropTypes.string,
-  allowedRoles: PropTypes.arrayOf(PropTypes.string),
 };
 
 const NotFound = () => (

@@ -16,6 +16,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { signup, loginWithGoogle, verifyOtp, resendOtp } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
+import {
+  canAccessDashboard,
+  getDashboardPath,
+  resolveDashboardValue,
+  resolveWorkspaceHomePath,
+  setStoredDashboardPreference,
+} from "@/shared/lib/dashboard-preference";
 import { markFreelancerWelcomePending } from "@/shared/lib/freelancer-onboarding-flags";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
@@ -83,6 +90,41 @@ const mergeAuthUserWithAvatar = (apiUser, fallbackAvatar) => {
   };
 };
 
+const resolveRequestedDashboard = (user, requestedRole) => {
+  const requestedDashboard = resolveDashboardValue(requestedRole);
+
+  if (!requestedDashboard || !canAccessDashboard(user, requestedDashboard)) {
+    return null;
+  }
+
+  return requestedDashboard;
+};
+
+const navigateAfterSignup = ({
+  navigate,
+  redirectTo,
+  requestedRole,
+  user,
+}) => {
+  if (redirectTo) {
+    navigate(redirectTo, { replace: true });
+    return redirectTo;
+  }
+
+  const requestedDashboard = resolveRequestedDashboard(user, requestedRole);
+
+  if (requestedDashboard) {
+    setStoredDashboardPreference(user, requestedDashboard);
+    const requestedPath = getDashboardPath(requestedDashboard);
+    navigate(requestedPath, { replace: true });
+    return requestedPath;
+  }
+
+  const fallbackPath = resolveWorkspaceHomePath(user);
+  navigate(fallbackPath, { replace: true });
+  return fallbackPath;
+};
+
 function Signup({ className, ...props }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -128,44 +170,12 @@ function Signup({ className, ...props }) {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
-    if (requestedRedirectTo) {
-      navigate(requestedRedirectTo, { replace: true });
-      return;
-    }
-
-    if (requestedRole === CLIENT_ROLE) {
-      navigate("/client", { replace: true });
-      return;
-    }
-
-    if (requestedRole === FREELANCER_ROLE) {
-      navigate("/freelancer", { replace: true });
-      return;
-    }
-
-    const role = user.role?.toUpperCase();
-
-    if (role === CLIENT_ROLE) {
-      navigate("/client", { replace: true });
-      return;
-    }
-
-    if (role === FREELANCER_ROLE) {
-      navigate("/freelancer", { replace: true });
-      return;
-    }
-
-    if (role === "PROJECT_MANAGER") {
-      navigate("/project-manager", { replace: true });
-      return;
-    }
-
-    if (role === "ADMIN") {
-      navigate("/admin", { replace: true });
-      return;
-    }
-
-    navigate("/client", { replace: true });
+    navigateAfterSignup({
+      navigate,
+      redirectTo: requestedRedirectTo,
+      requestedRole,
+      user,
+    });
   }, [isAuthenticated, navigate, requestedRedirectTo, requestedRole, user]);
 
   // Redirect clients to service selection if not coming from proposal
@@ -295,25 +305,24 @@ function Signup({ className, ...props }) {
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success("Email verified! Welcome to Catalance.");
       setFormData(initialFormState);
-
-      const nextRole = authPayload?.user?.role?.toUpperCase() || CLIENT_ROLE;
       const requestedRole = searchParams.get("role")?.toUpperCase();
-      const shouldOpenFreelancerDashboard =
-        requestedRole === FREELANCER_ROLE || nextRole === FREELANCER_ROLE;
+      const destinationPath =
+        requestedRedirectTo ||
+        (resolveRequestedDashboard(authPayload?.user, requestedRole) === "freelancer"
+          ? "/freelancer"
+          : resolveWorkspaceHomePath(authPayload?.user));
+      const shouldOpenFreelancerDashboard = String(destinationPath).startsWith("/freelancer");
 
       if (shouldOpenFreelancerDashboard) {
         markFreelancerWelcomePending();
       }
 
-      if (requestedRole === CLIENT_ROLE) {
-        navigate("/client", { replace: true });
-      } else if (shouldOpenFreelancerDashboard) {
-        navigate("/freelancer", { replace: true });
-      } else {
-        navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", {
-          replace: true,
-        });
-      }
+      navigateAfterSignup({
+        navigate,
+        redirectTo: requestedRedirectTo,
+        requestedRole,
+        user: authPayload?.user,
+      });
     } catch (error) {
       const message = error?.message || "Invalid verification code. Please try again.";
       setFormError(message);
@@ -370,24 +379,24 @@ function Signup({ className, ...props }) {
 
       setAuthSession(sessionUser, authPayload?.accessToken);
       toast.success(`Welcome, ${firebaseUser.displayName || 'User'}!`);
-      const nextRole = authPayload?.user?.role?.toUpperCase() || selectedRole;
       const requestedRole = selectedRole?.toUpperCase();
-      const shouldOpenFreelancerDashboard =
-        requestedRole === FREELANCER_ROLE || nextRole === FREELANCER_ROLE;
+      const destinationPath =
+        requestedRedirectTo ||
+        (resolveRequestedDashboard(sessionUser, requestedRole) === "freelancer"
+          ? "/freelancer"
+          : resolveWorkspaceHomePath(sessionUser));
+      const shouldOpenFreelancerDashboard = String(destinationPath).startsWith("/freelancer");
 
       if (shouldOpenFreelancerDashboard) {
         markFreelancerWelcomePending();
       }
 
-      if (requestedRole === CLIENT_ROLE) {
-        navigate("/client", { replace: true });
-      } else if (shouldOpenFreelancerDashboard) {
-        navigate("/freelancer", { replace: true });
-      } else {
-        navigate(nextRole === CLIENT_ROLE ? "/client" : "/freelancer", {
-          replace: true,
-        });
-      }
+      navigateAfterSignup({
+        navigate,
+        redirectTo: requestedRedirectTo,
+        requestedRole,
+        user: sessionUser,
+      });
     } catch (error) {
       console.error("Google sign-up error:", error);
       const message = error?.message || "Unable to sign up with Google.";

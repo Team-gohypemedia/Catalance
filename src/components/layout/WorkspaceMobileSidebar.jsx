@@ -30,6 +30,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
 import { cn } from "@/shared/lib/utils";
 
 const iconMap = {
@@ -167,10 +168,12 @@ const MobileProfileSwitchCard = ({
   profileTo,
 }) => {
   const navigate = useNavigate();
-  const switchTargetLabel =
-    currentDashboard === "freelancer" ? "Client" : "Freelancer";
-  const switchTargetPath =
-    currentDashboard === "freelancer" ? "/client" : "/freelancer";
+  const {
+    canSwitchDashboard,
+    currentDashboardLabel,
+    switchDashboard,
+    switchLabel,
+  } = useDashboardSwitcher({ currentDashboard });
 
   return (
     <div className="rounded-[20px] border border-white/[0.05] bg-white/[0.03] px-3 py-2.5 shadow-[0_24px_60px_-44px_rgba(0,0,0,0.95)]">
@@ -215,26 +218,33 @@ const MobileProfileSwitchCard = ({
                   {profile.openToWork ? "Open to Work" : "At Capacity"}
                 </Badge>
               ) : null}
-              <p className="mt-0.5 text-[10px] text-[#6f7688]">View profile</p>
+              <p className="mt-0.5 text-[10px] text-[#6f7688]">
+                {canSwitchDashboard
+                  ? `Current: ${currentDashboardLabel} dashboard`
+                  : "View profile"}
+              </p>
             </div>
           </button>
         </SheetClose>
 
-        <SheetClose asChild>
-          <button
-            type="button"
-            onClick={() => navigate(switchTargetPath)}
-            className="flex shrink-0 flex-col items-end gap-0 rounded-[14px] px-1.5 py-1 text-right transition hover:bg-white/[0.04] hover:text-white"
-          >
-            <Repeat2 className="size-3.5 text-[#d7dbe6]" />
-            <span className="text-[10px] font-medium text-[#7f8797]">
-              switch to
-            </span>
-            <span className="text-[11px] font-semibold text-[#cfd5df]">
-              {switchTargetLabel}
-            </span>
-          </button>
-        </SheetClose>
+        {canSwitchDashboard ? (
+          <SheetClose asChild>
+            <button
+              type="button"
+              onClick={switchDashboard}
+              className="flex shrink-0 flex-col items-end gap-0 rounded-[14px] px-1.5 py-1 text-right transition hover:bg-white/[0.04] hover:text-white"
+              aria-label={`${switchLabel} dashboard`}
+            >
+              <Repeat2 className="size-3.5 text-[#d7dbe6]" />
+              <span className="text-[10px] font-medium text-[#7f8797]">
+                {switchLabel}
+              </span>
+              <span className="text-[11px] font-semibold text-[#cfd5df]">
+                {currentDashboardLabel} active
+              </span>
+            </button>
+          </SheetClose>
+        ) : null}
       </div>
     </div>
   );
