@@ -80,7 +80,7 @@ const WorkspaceProfileDropdown = ({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1.5 text-[0.83rem] font-semibold text-white transition-colors hover:border-border hover:bg-background"
+          className="flex items-center gap-1.5 rounded-full border border-border bg-transparent px-2.5 py-1.5 text-[0.83rem] font-semibold text-white shadow-none transition-colors hover:border-border hover:bg-transparent"
         >
           <Avatar className="size-6.5 border border-border">
             <AvatarImage src={profile?.avatar} alt={displayName} />

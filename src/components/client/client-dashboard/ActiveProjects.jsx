@@ -332,7 +332,7 @@ const ActiveProjects = memo(function ActiveProjects({
           )}
         </>
       ) : (
-        <DashboardPanel className="flex min-h-[220px] items-center justify-center p-8 text-center">
+        <DashboardPanel className="flex min-h-[220px] items-center justify-center bg-card p-8 text-center">
           <div className="max-w-md">
             <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
               No active projects yet
