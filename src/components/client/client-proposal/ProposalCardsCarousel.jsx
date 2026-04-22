@@ -7,6 +7,7 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
 import ProposalRowCard from "./ProposalRowCard.jsx";
 
@@ -56,6 +57,7 @@ const ProposalCardsCarousel = ({
   processingPaymentProposalId,
   sendingProposalId,
 }) => {
+  const isMobile = useIsMobile();
   const [proposalCarouselApi, setProposalCarouselApi] = useState(null);
   const [canGoToPreviousProposal, setCanGoToPreviousProposal] = useState(false);
   const [canGoToNextProposal, setCanGoToNextProposal] = useState(false);
@@ -90,7 +92,7 @@ const ProposalCardsCarousel = ({
 
   if (!proposals.length) return null;
 
-  const shouldUseProposalCarousel = proposals.length > 4;
+  const shouldUseProposalCarousel = isMobile || proposals.length > 4;
 
   if (!shouldUseProposalCarousel) {
     return (
@@ -113,7 +115,9 @@ const ProposalCardsCarousel = ({
     );
   }
 
-  const shouldShowProposalCarouselControls = proposals.length > 4;
+  const shouldShowProposalCarouselControls = isMobile
+    ? proposals.length > 1
+    : proposals.length > 4;
   const proposalCarouselDesktopControlClassName =
     "size-11 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
   const proposalCarouselMobileControlClassName =
