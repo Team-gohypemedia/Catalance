@@ -10,6 +10,7 @@ import {
   OverviewMetricsGrid,
   ProjectProgress,
   RecentActivity,
+  WishlistedFreelancers,
 } from "@/components/client/client-dashboard";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 
@@ -31,6 +32,7 @@ const ClientDashboard = () => (
             </div>
 
             <div className="grid gap-5 sm:gap-6 xl:gap-7">
+              <WishlistedFreelancers />
               <ActiveChats />
             </div>
           </section>

@@ -12,5 +12,6 @@ export { default as ActiveProjects } from "./ActiveProjects.jsx";
 export { default as DraftedProposals } from "./DraftedProposals.jsx";
 export { default as RecentActivity } from "./RecentActivity.jsx";
 export { default as ActiveChats } from "./ActiveChats.jsx";
+export { default as WishlistedFreelancers } from "./WishlistedFreelancers.jsx";
 export { default as ProjectProgress } from "./ProjectProgress.jsx";
 export { default as ClientDashboardDialogs } from "./ClientDashboardDialogs.jsx";
