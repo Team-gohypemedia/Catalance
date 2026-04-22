@@ -34,7 +34,6 @@ import {
     YES_NO_OPTIONS,
     UPCOMING_NICHE_OPTIONS,
     INDUSTRY_NICHE_OPTIONS,
-    PROJECT_COMPLEXITY_OPTIONS,
     PRICE_RANGE_MIN,
     PRICE_RANGE_MAX,
     PRICE_RANGE_STEP,
@@ -1195,28 +1194,6 @@ export const ServiceIndustryOnlyStep = ({ formData, updateServiceField, renderSe
     </div>
 );
 
-// ============================================================================
-// SERVICE COMPLEXITY STEP
-// ============================================================================
-
-export const ServiceComplexityStep = ({ formData, updateServiceField, renderServiceMeta, serviceKey }) => (
-    <div className="space-y-4">
-        <StepHeader
-            title="What Level Of Project Complexity Are You Comfortable Handling?"
-            subtitle={renderServiceMeta(serviceKey)}
-        />
-        <div className="space-y-3">
-            {PROJECT_COMPLEXITY_OPTIONS.map((option) => (
-                <OptionCard
-                    key={option.value}
-                    selected={formData.serviceDetails?.[serviceKey]?.projectComplexity === option.value}
-                    onClick={() => updateServiceField(serviceKey, "projectComplexity", option.value, 0)}
-                    label={option.label}
-                />
-            ))}
-        </div>
-    </div>
-);
 
 // ============================================================================
 // SERVICE PROJECT DETAILS STEP

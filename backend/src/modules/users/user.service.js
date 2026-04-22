@@ -189,7 +189,6 @@ const FREELANCER_PROFILE_FIELD_KEYS = new Set([
   "serviceTitle",
   "serviceCategory",
   "serviceExperience",
-  "serviceComplexity",
   "serviceDescription",
   "deliveryTimeline",
   "startingPrice",
@@ -249,8 +248,6 @@ const resolveFreelancerProfileRecord = (user = null) => {
       serviceTitle: null,
       serviceCategory: null,
       serviceExperience: null,
-      serviceComplexity: null,
-      projectComplexity: null,
       serviceDescription: null,
       deliveryTimeline: null,
       startingPrice: null,
@@ -306,10 +303,6 @@ const resolveFreelancerProfileRecord = (user = null) => {
     serviceTitle: read("serviceTitle") ?? null,
     serviceCategory: read("serviceCategory") ?? null,
     serviceExperience: read("serviceExperience") ?? null,
-    serviceComplexity:
-      read("serviceComplexity") ?? read("projectComplexity") ?? null,
-    projectComplexity:
-      read("serviceComplexity") ?? read("projectComplexity") ?? null,
     serviceDescription: read("serviceDescription") ?? null,
     deliveryTimeline: read("deliveryTimeline") ?? null,
     startingPrice: read("startingPrice") ?? null,
@@ -995,9 +988,6 @@ const buildFreelancerProjectOnboardingSnapshot = ({
     deliveryTime: normalizeOptionalText(
       detail?.deliveryTime || detail?.deliveryDays || detail?.caseStudy?.timeline
     ),
-    projectComplexityLevel: normalizeOptionalText(
-      detail?.serviceComplexity || detail?.projectComplexity
-    ),
     acceptInProgressProjects: normalizeAcceptInProgressProjectsLabel(
       profileDetails?.acceptInProgressProjects
     )
@@ -1375,9 +1365,6 @@ const deriveMarketplaceServiceDetails = ({
       ),
       averageProjectPriceRange: normalizeOptionalText(
         detail?.averageProjectPrice || detail?.averagePrice
-      ),
-      projectComplexityLevel: normalizeOptionalText(
-        detail?.serviceComplexity || detail?.projectComplexity
       )
     };
   });
@@ -1904,7 +1891,6 @@ export const updateUserProfile = async (userId, updates) => {
     "serviceTitle",
     "serviceCategory",
     "serviceExperience",
-    "serviceComplexity",
     "serviceDescription",
     "deliveryTimeline",
     "startingPrice",
@@ -1967,17 +1953,11 @@ export const updateUserProfile = async (userId, updates) => {
         key === "serviceTitle" ||
         key === "serviceCategory" ||
         key === "serviceExperience" ||
-        key === "serviceComplexity" ||
-        key === "projectComplexity" ||
         key === "deliveryTimeline" ||
         key === "startingPrice"
       ) {
         const normalizedValue = normalizeOptionalText(updates[key]);
-        if (key === "serviceComplexity" || key === "projectComplexity") {
-          cleanUpdates.serviceComplexity = normalizedValue;
-        } else {
-          cleanUpdates[key] = normalizedValue;
-        }
+        cleanUpdates[key] = normalizedValue;
       } else if (key === "serviceDescription") {
         cleanUpdates[key] = normalizeOptionalText(updates[key]);
       } else {
@@ -2951,14 +2931,7 @@ export const sanitizeUser = (user) => {
     serviceTitle: resolvedFreelancerProfile.serviceTitle || null,
     serviceCategory: resolvedFreelancerProfile.serviceCategory || null,
     serviceExperience: resolvedFreelancerProfile.serviceExperience || null,
-    serviceComplexity:
-      resolvedFreelancerProfile.serviceComplexity ||
-      resolvedFreelancerProfile.projectComplexity ||
-      null,
-    projectComplexity:
-      resolvedFreelancerProfile.serviceComplexity ||
-      resolvedFreelancerProfile.projectComplexity ||
-      null,
+
     serviceDescription: resolvedFreelancerProfile.serviceDescription || null,
     deliveryTimeline: resolvedFreelancerProfile.deliveryTimeline || null,
     startingPrice: resolvedFreelancerProfile.startingPrice || null,

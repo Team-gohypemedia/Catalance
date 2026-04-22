@@ -13,6 +13,32 @@ const toPositiveInteger = (value) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+const createDraftId = (prefix = "draft") =>
+  `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+const buildCatalogSubcategoryKey = (value) => {
+  const subCategoryId = toPositiveInteger(value);
+  return subCategoryId ? `catalog:${subCategoryId}` : "";
+};
+
+const parseCatalogSubcategoryId = (value = "") => {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) {
+    return null;
+  }
+
+  const directId = toPositiveInteger(rawValue);
+  if (directId) {
+    return directId;
+  }
+
+  const matchedCatalogId = rawValue.match(/^catalog:(\d+)$/i)?.[1];
+  return toPositiveInteger(matchedCatalogId);
+};
+
+const normalizeActiveSkillCategoryValue = (value = "") =>
+  buildCatalogSubcategoryKey(value) || String(value || "").trim();
+
 export const normalizeStringArray = (values) => {
   if (!Array.isArray(values)) {
     return [];
@@ -38,6 +64,26 @@ export const normalizeStringArray = (values) => {
 
 export const normalizeCustomSkillNames = (values) =>
   normalizeStringArray(values);
+
+export const getSubcategorySelectionKey = (value = {}) => {
+  const source = isPlainObject(value) ? value : {};
+  return (
+    buildCatalogSubcategoryKey(source.subCategoryId) ||
+    String(source.subCategoryKey || source.key || "").trim()
+  );
+};
+
+export const createCustomServiceSubcategory = ({
+  label = "",
+  subCategoryKey = createDraftId("subcategory"),
+} = {}) => ({
+  subCategoryId: null,
+  subCategoryKey: String(subCategoryKey || createDraftId("subcategory")).trim(),
+  label: toOptionalString(label),
+  isCustom: true,
+  selectedToolIds: [],
+  customSkillNames: [],
+});
 
 export const normalizeServiceKey = (value = "") =>
   String(value || "")
@@ -74,15 +120,34 @@ const normalizeSubcategories = (value) => {
 
   const seen = new Set();
   return value.reduce((accumulator, entry) => {
-    const subCategoryId = toPositiveInteger(entry?.subCategoryId);
-    if (!subCategoryId || seen.has(subCategoryId)) {
+    const subCategoryId =
+      toPositiveInteger(entry?.subCategoryId) ||
+      parseCatalogSubcategoryId(entry?.subCategoryKey);
+    const label = toOptionalString(
+      entry?.label || entry?.subCategoryLabel || entry?.name,
+    );
+    const subCategoryKey =
+      buildCatalogSubcategoryKey(subCategoryId) ||
+      String(entry?.subCategoryKey || entry?.key || "").trim() ||
+      createDraftId("subcategory");
+    const isCustom = !subCategoryId || Boolean(entry?.isCustom);
+    const dedupKey = subCategoryId
+      ? subCategoryKey
+      : `custom:${label.toLowerCase() || subCategoryKey.toLowerCase()}`;
+
+    if ((!subCategoryId && !label) || seen.has(dedupKey)) {
       return accumulator;
     }
 
-    seen.add(subCategoryId);
+    seen.add(dedupKey);
     accumulator.push({
       subCategoryId,
-      selectedToolIds: normalizeIntegerArray(entry?.selectedToolIds),
+      subCategoryKey,
+      label,
+      isCustom,
+      selectedToolIds: subCategoryId
+        ? normalizeIntegerArray(entry?.selectedToolIds)
+        : [],
       customSkillNames: normalizeCustomSkillNames(entry?.customSkillNames),
     });
     return accumulator;
@@ -105,7 +170,25 @@ const hasMeaningfulValue = (value) => {
   return value !== null && value !== undefined;
 };
 
-export const createEmptyServiceCaseStudy = () => ({
+const hasMeaningfulCaseStudyContent = (caseStudy = {}) => {
+  const source = isPlainObject(caseStudy) ? caseStudy : {};
+
+  return [
+    source.title,
+    source.description,
+    source.projectLink,
+    source.projectFile,
+    source.role,
+    source.timeline,
+    source.budget,
+    source.niche,
+  ].some((entry) => hasMeaningfulValue(entry));
+};
+
+export const createEmptyServiceCaseStudy = ({
+  id = createDraftId("case-study"),
+} = {}) => ({
+  id: String(id || createDraftId("case-study")).trim(),
   title: "",
   description: "",
   projectLink: "",
@@ -116,29 +199,94 @@ export const createEmptyServiceCaseStudy = () => ({
   niche: "",
 });
 
+const normalizeServiceCaseStudy = (value = {}, { fallbackId } = {}) => {
+  const source = isPlainObject(value) ? value : {};
+  const resolvedId =
+    String(source.id || source.caseStudyId || fallbackId || "").trim() ||
+    createDraftId("case-study");
+
+  return {
+    ...createEmptyServiceCaseStudy({ id: resolvedId }),
+    ...source,
+    id: resolvedId,
+    title: toDraftText(source.title),
+    description: toDraftText(source.description),
+    projectLink: toOptionalString(source.projectLink),
+    projectFile: source.projectFile ?? null,
+    role: toOptionalString(source.role),
+    timeline: toOptionalString(source.timeline),
+    budget: toOptionalString(source.budget),
+    niche: toOptionalString(source.niche),
+  };
+};
+
+const normalizeServiceCaseStudies = (values, fallbackCaseStudy) => {
+  const rawEntries = Array.isArray(values)
+    ? values.filter((entry) => isPlainObject(entry))
+    : [];
+  const normalizedEntries = [];
+  const seenIds = new Set();
+
+  const pushEntry = (entry, index) => {
+    const normalizedEntry = normalizeServiceCaseStudy(entry, {
+      fallbackId: `case-study-${index + 1}`,
+    });
+    let resolvedId = normalizedEntry.id;
+
+    while (seenIds.has(resolvedId)) {
+      resolvedId = createDraftId("case-study");
+    }
+
+    seenIds.add(resolvedId);
+    normalizedEntries.push({
+      ...normalizedEntry,
+      id: resolvedId,
+    });
+  };
+
+  if (rawEntries.length > 0) {
+    rawEntries.forEach((entry, index) => pushEntry(entry, index));
+  } else if (isPlainObject(fallbackCaseStudy)) {
+    pushEntry(fallbackCaseStudy, 0);
+  }
+
+  if (!normalizedEntries.length) {
+    normalizedEntries.push(createEmptyServiceCaseStudy());
+  }
+
+  return normalizedEntries;
+};
+
 export const createEmptyServiceDraft = ({
   serviceKey = "",
   serviceId = null,
-} = {}) => ({
-  serviceKey: normalizeServiceKey(serviceKey),
-  serviceId: toPositiveInteger(serviceId),
-  title: "",
-  subcategories: [],
-  skillsAndTechnologies: [],
-  experience: "",
-  complexity: "",
-  description: "",
-  deliveryTimeline: "",
-  priceRange: "",
-  coverImage: "",
-  keywords: [],
-  mediaFiles: [],
-  caseStudy: createEmptyServiceCaseStudy(),
-  niches: [],
-  platformLinks: {},
-  activeSkillCategory: null,
-  pendingCategoryLabels: [],
-});
+} = {}) => {
+  const initialCaseStudy = createEmptyServiceCaseStudy();
+
+  return {
+    serviceKey: normalizeServiceKey(serviceKey),
+    serviceId: toPositiveInteger(serviceId),
+    title: "",
+    subcategories: [],
+    skillsAndTechnologies: [],
+    experience: "",
+    complexity: "",
+
+    description: "",
+    deliveryTimeline: "",
+    priceRange: "",
+    coverImage: "",
+    keywords: [],
+    mediaFiles: [],
+    caseStudy: initialCaseStudy,
+    caseStudies: [initialCaseStudy],
+    activeCaseStudyId: initialCaseStudy.id,
+    niches: [],
+    platformLinks: {},
+    activeSkillCategory: null,
+    pendingCategoryLabels: [],
+  };
+};
 
 export const normalizeServiceDraft = (
   detail = {},
@@ -147,13 +295,28 @@ export const normalizeServiceDraft = (
   const source = isPlainObject(detail) ? detail : {};
   const fallback = createEmptyServiceDraft({ serviceKey, serviceId });
   const normalizedKey = normalizeServiceKey(source.serviceKey || fallback.serviceKey);
+  const normalizedCaseStudies = normalizeServiceCaseStudies(
+    source.caseStudies,
+    source.caseStudy,
+  );
+  const normalizedSubcategories = normalizeSubcategories(source.subcategories);
+  const requestedActiveCaseStudyId = String(source.activeCaseStudyId || "").trim();
+  const requestedActiveSkillCategory = normalizeActiveSkillCategoryValue(
+    source.activeSkillCategory,
+  );
+  const activeCaseStudy =
+    normalizedCaseStudies.find((entry) => entry.id === requestedActiveCaseStudyId) ||
+    normalizedCaseStudies[0] ||
+    createEmptyServiceCaseStudy();
+  const primaryCaseStudy =
+    normalizedCaseStudies[0] || activeCaseStudy || createEmptyServiceCaseStudy();
 
   return {
     ...source,
     serviceKey: normalizedKey,
     serviceId: toPositiveInteger(source.serviceId ?? fallback.serviceId),
     title: toDraftText(source.title),
-    subcategories: normalizeSubcategories(source.subcategories),
+    subcategories: normalizedSubcategories,
     skillsAndTechnologies: normalizeStringArray(source.skillsAndTechnologies),
     experience: toOptionalString(source.experience || source.experienceYears),
     complexity: toOptionalString(
@@ -161,6 +324,7 @@ export const normalizeServiceDraft = (
         source.serviceComplexity ||
         source.projectComplexity,
     ),
+
     description: toDraftText(
       source.description || source.serviceDescription,
     ),
@@ -179,17 +343,18 @@ export const normalizeServiceDraft = (
         : Array.isArray(source.serviceMedia)
           ? [...source.serviceMedia]
         : [],
-    caseStudy: isPlainObject(source.caseStudy)
-      ? {
-          ...createEmptyServiceCaseStudy(),
-          ...source.caseStudy,
-        }
-      : createEmptyServiceCaseStudy(),
+    caseStudy: primaryCaseStudy,
+    caseStudies: normalizedCaseStudies,
+    activeCaseStudyId: activeCaseStudy.id,
     niches: normalizeStringArray(source.niches),
     platformLinks: isPlainObject(source.platformLinks)
       ? { ...source.platformLinks }
       : {},
-    activeSkillCategory: toPositiveInteger(source.activeSkillCategory),
+    activeSkillCategory: normalizedSubcategories.some(
+      (entry) => entry.subCategoryKey === requestedActiveSkillCategory,
+    )
+      ? requestedActiveSkillCategory
+      : normalizedSubcategories[0]?.subCategoryKey || null,
     pendingCategoryLabels: normalizePendingCategoryLabels(
       source.pendingCategoryLabels || source.legacyCategoryLabels,
     ),
@@ -235,35 +400,90 @@ export const getServiceCatalogMeta = (services = [], value = "") => {
   };
 };
 
-export const syncDraftSubcategories = (draft = {}, selectedSubCategoryIds = []) => {
+export const appendCustomSubcategorySelection = (draft = {}, label = "") => {
+  const normalizedLabel = toOptionalString(label);
   const normalizedDraft = normalizeServiceDraft(draft, {
     serviceKey: draft?.serviceKey,
     serviceId: draft?.serviceId,
   });
-  const nextSelectedIds = normalizeIntegerArray(selectedSubCategoryIds);
-  const existingById = new Map(
-    normalizedDraft.subcategories.map((entry) => [entry.subCategoryId, entry]),
+
+  if (!normalizedLabel) {
+    return normalizedDraft;
+  }
+
+  const existingEntry = normalizedDraft.subcategories.find(
+    (entry) => String(entry?.label || "").toLowerCase() === normalizedLabel.toLowerCase(),
   );
-  const nextSubcategories = nextSelectedIds.map((subCategoryId) => {
-    const existingEntry = existingById.get(subCategoryId);
-    return existingEntry
-      ? {
-          subCategoryId,
+  if (existingEntry) {
+    return {
+      ...normalizedDraft,
+      activeSkillCategory: existingEntry.subCategoryKey,
+      pendingCategoryLabels: [],
+    };
+  }
+
+  const customSubcategory = createCustomServiceSubcategory({ label: normalizedLabel });
+
+  return {
+    ...normalizedDraft,
+    subcategories: [...normalizedDraft.subcategories, customSubcategory],
+    activeSkillCategory: customSubcategory.subCategoryKey,
+    pendingCategoryLabels: [],
+  };
+};
+
+export const syncDraftSubcategories = (draft = {}, selectedSubCategoryValues = []) => {
+  const normalizedDraft = normalizeServiceDraft(draft, {
+    serviceKey: draft?.serviceKey,
+    serviceId: draft?.serviceId,
+  });
+  const nextSelectedKeys = normalizeStringArray(
+    (Array.isArray(selectedSubCategoryValues) ? selectedSubCategoryValues : []).map(
+      (value) =>
+        buildCatalogSubcategoryKey(value) || String(value || "").trim(),
+    ),
+  );
+  const existingById = new Map(
+    normalizedDraft.subcategories.map((entry) => [
+      getSubcategorySelectionKey(entry),
+      entry,
+    ]),
+  );
+  const nextSubcategories = nextSelectedKeys
+    .map((selectionKey) => {
+      const existingEntry = existingById.get(selectionKey);
+      if (existingEntry) {
+        return {
+          subCategoryId: toPositiveInteger(existingEntry.subCategoryId),
+          subCategoryKey: getSubcategorySelectionKey(existingEntry),
+          label: toOptionalString(existingEntry.label),
+          isCustom: Boolean(existingEntry.isCustom) || !existingEntry.subCategoryId,
           selectedToolIds: normalizeIntegerArray(existingEntry.selectedToolIds),
           customSkillNames: normalizeCustomSkillNames(existingEntry.customSkillNames),
-        }
-      : {
-          subCategoryId,
-          selectedToolIds: [],
-          customSkillNames: [],
         };
-  });
+      }
+
+      const subCategoryId = parseCatalogSubcategoryId(selectionKey);
+      if (!subCategoryId) {
+        return null;
+      }
+
+      return {
+        subCategoryId,
+        subCategoryKey: buildCatalogSubcategoryKey(subCategoryId),
+        label: "",
+        isCustom: false,
+        selectedToolIds: [],
+        customSkillNames: [],
+      };
+    })
+    .filter(Boolean);
 
   const activeSkillCategory = nextSubcategories.some(
-    (entry) => entry.subCategoryId === normalizedDraft.activeSkillCategory,
+    (entry) => entry.subCategoryKey === normalizedDraft.activeSkillCategory,
   )
     ? normalizedDraft.activeSkillCategory
-    : nextSubcategories[0]?.subCategoryId || null;
+    : nextSubcategories[0]?.subCategoryKey || null;
 
   return {
     ...normalizedDraft,
@@ -279,15 +499,15 @@ export const getActiveSubcategoryEntry = (draft = {}) => {
     serviceId: draft?.serviceId,
   });
   const activeCategoryId =
-    toPositiveInteger(normalizedDraft.activeSkillCategory) ||
-    normalizedDraft.subcategories[0]?.subCategoryId ||
+    normalizeActiveSkillCategoryValue(normalizedDraft.activeSkillCategory) ||
+    normalizedDraft.subcategories[0]?.subCategoryKey ||
     null;
 
   return {
     activeCategoryId,
     activeSubcategory:
       normalizedDraft.subcategories.find(
-        (entry) => entry.subCategoryId === activeCategoryId,
+        (entry) => entry.subCategoryKey === activeCategoryId,
       ) || null,
   };
 };
@@ -351,9 +571,7 @@ export const serializeServiceDraft = ({
   draft = {},
   serviceId = null,
   experienceLabelsByKey = {},
-  complexityLabelsByKey = {},
   deliveryLabelsByKey = {},
-  priceLabelsByKey = {},
 } = {}) => {
   const normalizedDraft = normalizeServiceDraft(draft, {
     serviceKey: draft?.serviceKey,
@@ -363,11 +581,17 @@ export const serializeServiceDraft = ({
   const primaryImageUrl = toOptionalString(
     primaryImage?.uploadedUrl || primaryImage?.url,
   );
-  const nextCaseStudy =
-    isPlainObject(normalizedDraft.caseStudy) &&
-    hasMeaningfulValue(normalizedDraft.caseStudy)
-      ? { ...normalizedDraft.caseStudy }
-      : null;
+  const nextCaseStudies = Array.isArray(normalizedDraft.caseStudies)
+    ? normalizedDraft.caseStudies
+        .filter((caseStudy) => hasMeaningfulCaseStudyContent(caseStudy))
+        .map((caseStudy) => ({ ...caseStudy }))
+    : [];
+  const nextCaseStudy = nextCaseStudies[0] || null;
+  const activeCaseStudyId = nextCaseStudies.some(
+    (caseStudy) => caseStudy.id === normalizedDraft.activeCaseStudyId,
+  )
+    ? normalizedDraft.activeCaseStudyId
+    : nextCaseStudies[0]?.id || null;
 
   return {
     serviceKey: normalizedDraft.serviceKey,
@@ -382,11 +606,8 @@ export const serializeServiceDraft = ({
         experienceLabelsByKey[normalizedDraft.experience] ||
           normalizedDraft.experience,
       ) || null,
-    serviceComplexity:
-      toOptionalString(
-        complexityLabelsByKey[normalizedDraft.complexity] ||
-          normalizedDraft.complexity,
-      ) || null,
+    serviceComplexity: toOptionalString(normalizedDraft.complexity) || null,
+
     serviceDescription: toOptionalString(normalizedDraft.description) || null,
     deliveryTime:
       toOptionalString(
@@ -394,18 +615,20 @@ export const serializeServiceDraft = ({
           normalizedDraft.deliveryTimeline,
       ) || null,
     averageProjectPrice:
-      toOptionalString(
-        priceLabelsByKey[normalizedDraft.priceRange] || normalizedDraft.priceRange,
-      ) || null,
+      toOptionalString(normalizedDraft.priceRange) || null,
     coverImage: toOptionalString(normalizedDraft.coverImage || primaryImageUrl) || null,
     keywords: normalizeStringArray(normalizedDraft.keywords).slice(0, 5),
     media: Array.isArray(normalizedDraft.mediaFiles)
       ? normalizedDraft.mediaFiles.slice(0, 3)
       : [],
     caseStudy: nextCaseStudy,
+    caseStudies: nextCaseStudies,
+    activeCaseStudyId,
     niches: normalizeStringArray(normalizedDraft.niches),
     platformLinks: isPlainObject(normalizedDraft.platformLinks)
       ? { ...normalizedDraft.platformLinks }
       : {},
+    activeSkillCategory:
+      toOptionalString(normalizedDraft.activeSkillCategory) || null,
   };
 };

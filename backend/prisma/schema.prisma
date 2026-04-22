@@ -137,7 +137,6 @@ model FreelancerProfile {
   serviceTitle               String?
   serviceCategory            String?   @map("ServiceCategory")
   serviceExperience          String?
-  serviceComplexity          String?   @map("serviceComplexity")
   serviceDescription         String?   @db.Text
   deliveryTimeline           String?   @map("serviceDeliveryTimeline")
   startingPrice              String?   @map("serviceStartingPrice")
@@ -584,6 +583,7 @@ model MarketplaceFilterService {
   name            String                        @unique
   subCategories   MarketplaceFilterSubCategory[]
   freelancerSkills FreelancerSkill[]
+  positiveKeywords ServicePositiveKeyword[]
 
   @@map("services")
 }
@@ -618,6 +618,17 @@ model MarketplaceFilterNiche {
   name String @unique
 
   @@map("Niches")
+}
+
+model ServicePositiveKeyword {
+  id        Int                      @id @default(autoincrement())
+  serviceId Int                      @map("service_id")
+  name      String
+  service   MarketplaceFilterService @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([serviceId, name])
+  @@index([serviceId])
+  @@map("service_positive_keywords")
 }
 
 model FreelancerSkill {

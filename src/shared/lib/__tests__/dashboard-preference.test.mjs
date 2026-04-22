@@ -120,3 +120,15 @@ test("freelancer accounts can access the client workspace switcher", () => {
   assert.equal(canAccessDashboard(user, "client"), true);
   assert.equal(canAccessDashboard(user, "freelancer"), true);
 });
+
+test("client accounts can access the freelancer workspace switcher", () => {
+  const user = {
+    id: "user-14",
+    role: "CLIENT",
+    roles: ["CLIENT"],
+  };
+
+  assert.deepEqual(getAccessibleDashboards(user), ["client", "freelancer"]);
+  assert.equal(canAccessDashboard(user, "client"), true);
+  assert.equal(canAccessDashboard(user, "freelancer"), true);
+});

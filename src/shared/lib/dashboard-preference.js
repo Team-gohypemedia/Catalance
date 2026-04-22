@@ -13,6 +13,7 @@ const DASHBOARD_PROFILE_PATHS = Object.freeze({
   [FREELANCER_DASHBOARD]: "/freelancer/profile",
 });
 const ROLE_IMPLIED_TOKENS = Object.freeze({
+  CLIENT: ["FREELANCER"],
   FREELANCER: ["CLIENT"],
 });
 

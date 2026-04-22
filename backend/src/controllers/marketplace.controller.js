@@ -3,6 +3,7 @@ import { AppError } from "../utils/app-error.js";
 import { prisma } from "../lib/prisma.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { FREELANCER_PROFILE_SAFE_SELECT } from "../modules/users/freelancer-profile.select.js";
+import { getServicePositiveKeywordsByName } from "../data/service-positive-keywords.js";
 
 const DEFAULT_PAGE_LIMIT = 20;
 const DEFAULT_MAX_CANDIDATES = 80;
@@ -2431,6 +2432,53 @@ export const getMarketplaceFilterNiches = asyncHandler(async (_req, res) => {
       id: Number(niche.id),
       name: niche.name,
       label: niche.name,
+    })),
+  });
+});
+
+export const getServicePositiveKeywords = asyncHandler(async (req, res) => {
+  const serviceId = parseOptionalInteger(req.query?.serviceId);
+
+  if (serviceId === null) {
+    return res.json({ data: [] });
+  }
+
+  let keywords = await prisma.servicePositiveKeyword.findMany({
+    where: { serviceId },
+    select: {
+      id: true,
+      serviceId: true,
+      name: true,
+    },
+    orderBy: { name: "asc" },
+  });
+
+  if (!keywords.length) {
+    const service = await prisma.marketplaceFilterService.findUnique({
+      where: { id: serviceId },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const fallbackKeywords = getServicePositiveKeywordsByName(service?.name).map(
+      (name, index) => ({
+        id: `fallback-${serviceId}-${index + 1}`,
+        serviceId,
+        name,
+      }),
+    );
+
+    keywords = fallbackKeywords;
+  }
+
+  res.json({
+    data: keywords.map((keyword) => ({
+      id: keyword.id,
+      serviceId: keyword.serviceId,
+      name: keyword.name,
+      label: keyword.name,
     })),
   });
 });

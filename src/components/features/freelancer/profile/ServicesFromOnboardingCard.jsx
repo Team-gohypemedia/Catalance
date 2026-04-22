@@ -4,7 +4,6 @@ import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import { Card } from "@/components/ui/card";
 import {
-  PROJECT_COMPLEXITY_OPTIONS,
   PROJECT_TIMELINE_OPTIONS,
 } from "@/components/features/freelancer/onboarding/constants";
 import {
@@ -24,13 +23,6 @@ const chunkServices = (entries = [], chunkSize = 2) => {
   return pages;
 };
 
-const PROJECT_COMPLEXITY_LABELS = PROJECT_COMPLEXITY_OPTIONS.reduce(
-  (acc, option) => ({
-    ...acc,
-    [option.value]: option.label,
-  }),
-  {}
-);
 
 const PROJECT_TIMELINE_LABELS = PROJECT_TIMELINE_OPTIONS.reduce(
   (acc, option) => ({
@@ -257,13 +249,6 @@ const ServicesFromOnboardingCard = ({
                     );
 
                     const metadataItems = [
-                      {
-                        label: "Complexity",
-                        value:
-                          PROJECT_COMPLEXITY_LABELS[
-                            String(detail?.projectComplexity || "").trim().toLowerCase()
-                          ] || "Not set",
-                      },
                       {
                         label: "Delivery",
                         value:

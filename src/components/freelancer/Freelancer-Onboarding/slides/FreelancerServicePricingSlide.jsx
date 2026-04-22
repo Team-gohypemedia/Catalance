@@ -14,20 +14,7 @@ const DELIVERY_TIMELINE_OPTIONS = [
   { value: "ongoing", label: "Ongoing / Retainer" },
 ];
 
-const PRICE_RANGE_OPTIONS = [
-  { value: "under_5k", label: "Under ₹5,000" },
-  { value: "5k_10k", label: "₹5,000 – ₹10,000" },
-  { value: "5k_15k", label: "₹5,000 – ₹15,000" },
-  { value: "15k_20k", label: "₹15,000 – ₹20,000" },
-  { value: "15k_30k", label: "₹15,000 – ₹30,000" },
-  { value: "30k_40k", label: "₹30,000 – ₹40,000" },
-  { value: "30k_50k", label: "₹30,000 – ₹50,000" },
-  { value: "50k_75k", label: "₹50,000 – ₹75,000" },
-  { value: "50k_1l", label: "₹50,000 – ₹1,00,000" },
-  { value: "1l_2l", label: "₹1,00,000 – ₹2,00,000" },
-  { value: "1l_3l", label: "₹1,00,000 – ₹3,00,000" },
-  { value: "3l_plus", label: "₹3,00,000+" },
-];
+
 
 /* ──────────────────── Main Slide ──────────────────── */
 
@@ -107,14 +94,20 @@ const FreelancerServicePricingSlide = ({
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
                 Starting Price
               </label>
-              <CustomSelect
-                value={servicePricingForm.priceRange}
-                onChange={(val) =>
-                  onServicePricingFieldChange("priceRange", val)
-                }
-                options={PRICE_RANGE_OPTIONS}
-                placeholder="Select starting price"
-              />
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-white/40">₹</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={servicePricingForm.priceRange || ""}
+                  onChange={(e) => {
+                    const digitsOnly = e.target.value.replace(/\D/g, "");
+                    onServicePricingFieldChange("priceRange", digitsOnly);
+                  }}
+                  placeholder="Enter starting price"
+                  className="w-full rounded-xl border border-white/10 bg-card pl-8 pr-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                />
+              </div>
             </div>
           </div>
         </div>

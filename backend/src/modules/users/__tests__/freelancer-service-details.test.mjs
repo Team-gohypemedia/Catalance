@@ -38,12 +38,34 @@ test("buildCanonicalProfileDetails normalizes services, prunes stray detail keys
               selectedToolIds: [101, 101, 999],
               customSkillNames: ["Astro", "astro", " "],
             },
+            {
+              subCategoryKey: "custom-headless-builds",
+              label: "Headless Builds",
+              customSkillNames: ["Sanity", "sanity", " "],
+            },
           ],
           skillsAndTechnologies: ["Legacy React"],
+          activeSkillCategory: "custom-headless-builds",
+          caseStudies: [
+            {
+              id: "web-case-study-1",
+              title: "Storefront Refresh",
+              niche: "E-commerce",
+            },
+            {
+              title: "Checkout Rebuild",
+              niche: "Retail",
+            },
+          ],
+          activeCaseStudyId: "missing-case-study",
         },
         seo: {
           title: "Grow rankings",
           subcategories: [],
+          caseStudy: {
+            title: "SEO Recovery Sprint",
+            niche: "SaaS",
+          },
         },
         orphan_service: {
           title: "Should be removed",
@@ -68,14 +90,50 @@ test("buildCanonicalProfileDetails normalizes services, prunes stray detail keys
     [
       {
         subCategoryId: 11,
+        subCategoryKey: "catalog:11",
+        label: "",
+        isCustom: false,
         selectedToolIds: [101, 999],
         customSkillNames: ["Astro"],
+      },
+      {
+        subCategoryId: null,
+        subCategoryKey: "custom-headless-builds",
+        label: "Headless Builds",
+        isCustom: true,
+        selectedToolIds: [],
+        customSkillNames: ["Sanity"],
       },
     ],
   );
   assert.deepEqual(
     canonical.serviceDetails.web_development.skillsAndTechnologies,
-    ["React", "Astro", "Legacy React"],
+    ["React", "Astro", "Sanity", "Legacy React"],
+  );
+  assert.equal(
+    canonical.serviceDetails.web_development.activeSkillCategory,
+    "custom-headless-builds",
+  );
+  assert.equal(
+    canonical.serviceDetails.web_development.caseStudy.title,
+    "Storefront Refresh",
+  );
+  assert.equal(
+    canonical.serviceDetails.web_development.activeCaseStudyId,
+    "web-case-study-1",
+  );
+  assert.equal(
+    canonical.serviceDetails.web_development.caseStudies[1].title,
+    "Checkout Rebuild",
+  );
+  assert.ok(canonical.serviceDetails.web_development.caseStudies[1].id);
+  assert.equal(
+    canonical.serviceDetails.seo.caseStudy.title,
+    "SEO Recovery Sprint",
+  );
+  assert.equal(
+    canonical.serviceDetails.seo.caseStudies[0].title,
+    "SEO Recovery Sprint",
   );
 });
 
@@ -86,8 +144,30 @@ test("buildPrimaryServiceSnapshot derives primary service fields from the first 
       web_development: {
         title: "Modern marketing websites",
         subcategories: [
-          { subCategoryId: 11, selectedToolIds: [101], customSkillNames: [] },
-          { subCategoryId: 12, selectedToolIds: [], customSkillNames: [] },
+          {
+            subCategoryId: 11,
+            subCategoryKey: "catalog:11",
+            label: "",
+            isCustom: false,
+            selectedToolIds: [101],
+            customSkillNames: [],
+          },
+          {
+            subCategoryId: 12,
+            subCategoryKey: "catalog:12",
+            label: "",
+            isCustom: false,
+            selectedToolIds: [],
+            customSkillNames: [],
+          },
+          {
+            subCategoryId: null,
+            subCategoryKey: "custom-headless-builds",
+            label: "Headless Builds",
+            isCustom: true,
+            selectedToolIds: [],
+            customSkillNames: ["Sanity"],
+          },
         ],
         experienceYears: "Expert 5–10 years",
         serviceComplexity: "Expert",
@@ -109,7 +189,7 @@ test("buildPrimaryServiceSnapshot derives primary service fields from the first 
   });
 
   assert.equal(snapshot.serviceTitle, "Modern marketing websites");
-  assert.equal(snapshot.serviceCategory, "Frontend, Landing Pages");
+  assert.equal(snapshot.serviceCategory, "Frontend, Landing Pages, Headless Builds");
   assert.equal(snapshot.serviceExperience, "Expert 5–10 years");
   assert.equal(snapshot.serviceComplexity, "Expert");
   assert.equal(snapshot.serviceDescription, "End-to-end website delivery.");
@@ -146,6 +226,11 @@ test("buildFreelancerSkillRows emits only valid catalog-backed tool rows", () =>
               subCategoryId: 11,
               selectedToolIds: [101, 999, 101],
               customSkillNames: ["Astro"],
+            },
+            {
+              subCategoryKey: "custom-headless-builds",
+              label: "Headless Builds",
+              customSkillNames: ["Sanity"],
             },
           ],
         },

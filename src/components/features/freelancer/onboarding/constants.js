@@ -1,4 +1,4 @@
-﻿import {
+import {
     User,
     Building2,
     Clock,
@@ -477,12 +477,7 @@ export const PROJECT_TIMELINE_OPTIONS = [
     { value: "3_plus_months", label: "3+ months" },
 ];
 
-export const PROJECT_COMPLEXITY_OPTIONS = [
-    { value: "small", label: "Beginner" },
-    { value: "medium", label: "Intermediate" },
-    { value: "large", label: "Expert" },
 
-];
 
 export const IN_PROGRESS_PROJECT_OPTIONS = [
     { value: "yes", label: "Yes" },

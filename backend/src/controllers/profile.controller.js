@@ -724,11 +724,7 @@ const buildSaveProfileUpdates = (payload = {}) => {
     updates.serviceExperience = payload.serviceExperience;
   }
 
-  if (hasOwn(payload, "serviceComplexity")) {
-    updates.serviceComplexity = payload.serviceComplexity;
-  } else if (hasOwn(payload, "projectComplexity")) {
-    updates.serviceComplexity = payload.projectComplexity;
-  }
+
 
   if (hasOwn(payload, "serviceDescription")) {
     updates.serviceDescription = payload.serviceDescription;

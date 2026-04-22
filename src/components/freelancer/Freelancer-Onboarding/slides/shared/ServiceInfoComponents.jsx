@@ -92,7 +92,11 @@ export const CustomSelect = ({
   const [attachedPopupStyle, setAttachedPopupStyle] = useState({});
   const [attachedPopupMaxHeight, setAttachedPopupMaxHeight] = useState(208);
   const triggerRef = useRef(null);
-  const normalizedOptions = Array.isArray(options) ? options : [];
+  const searchInputRef = useRef(null);
+  const normalizedOptions = useMemo(
+    () => (Array.isArray(options) ? options : []),
+    [options],
+  );
   const selectedOption = normalizedOptions.find((option) => option.value === value);
   const isCenteredPopup = popupMode === "centered";
   const filteredOptions = useMemo(() => {
@@ -117,6 +121,18 @@ export const CustomSelect = ({
       setSearchQuery("");
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !isSearchable) {
+      return undefined;
+    }
+
+    const frameId = requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [isOpen, isSearchable]);
 
   useEffect(() => {
     if (!isOpen || isCenteredPopup) {
@@ -229,6 +245,7 @@ export const CustomSelect = ({
             {isSearchable ? (
               <div className="border-b border-white/8 p-2.5">
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}

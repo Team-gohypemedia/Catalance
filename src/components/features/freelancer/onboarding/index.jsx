@@ -1737,8 +1737,7 @@ const FreelancerMultiStepForm = () => {
                 return "";
             case "serviceIndustryOnly":
                 return detail?.preferOnlyIndustries ? "" : "Please select an option.";
-            case "serviceComplexity":
-                return detail?.projectComplexity ? "" : "Please select a complexity level.";
+
             case "deliveryPolicy":
                 return data.deliveryPolicyAccepted ? "" : "Please accept the delivery and revision policy.";
             case "hours":

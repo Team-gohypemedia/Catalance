@@ -47,7 +47,6 @@ import {
 import {
   AVERAGE_PROJECT_PRICE_OPTIONS,
   EXPERIENCE_YEARS_OPTIONS,
-  PROJECT_COMPLEXITY_OPTIONS,
   PROJECT_TIMELINE_OPTIONS,
   SERVICE_OPTIONS,
 } from "@/components/features/freelancer/onboarding/constants";
@@ -294,7 +293,6 @@ const FreelancerProfile = () => {
     coverImage: "",
     averageProjectPrice: "",
     deliveryTime: "",
-    projectComplexity: "",
     skillsAndTechnologies: [],
   });
   const [serviceSkillInput, setServiceSkillInput] = useState("");
@@ -1654,7 +1652,7 @@ const FreelancerProfile = () => {
       deliveryTime: String(
         detail?.deliveryTime || detail?.deliveryDays || detail?.caseStudy?.timeline || ""
       ).trim(),
-      projectComplexity: String(detail?.projectComplexity || "").trim(),
+
       skillsAndTechnologies: existingSkillsAndTechnologies,
     });
     setServiceSkillInput("");
@@ -1796,9 +1794,7 @@ const FreelancerProfile = () => {
         ).trim(),
         averagePrice: String(serviceProfileForm.averageProjectPrice || "").trim(),
         deliveryTime: String(serviceProfileForm.deliveryTime || "").trim(),
-        projectComplexity: String(
-          serviceProfileForm.projectComplexity || ""
-        ).trim(),
+
         skillsAndTechnologies: nextServiceSkillTags,
       },
     };
@@ -3023,9 +3019,7 @@ const FreelancerProfile = () => {
       serviceForm.selectedServiceKey !== CUSTOM_SERVICE_OPTION_VALUE) ||
       String(serviceForm.customServiceName || "").trim()
   );
-  const hasServiceComplexity = Boolean(
-    String(serviceProfileForm.projectComplexity || "").trim()
-  );
+
   const hasServiceAveragePrice = Boolean(
     String(serviceProfileForm.averageProjectPrice || "").trim()
   );
@@ -3051,13 +3045,9 @@ const FreelancerProfile = () => {
       ? "Add a cover image"
       : !hasServiceAveragePrice
         ? "Set average price"
-        : !hasServiceDeliveryTime
-          ? "Set delivery timeline"
-          : !hasServiceComplexity
-            ? "Set complexity"
-            : !hasServiceSkills
-              ? "Add skills & technologies"
-              : "Ready to publish";
+          : !hasServiceSkills
+            ? "Add skills & technologies"
+            : "Ready to publish";
   const hasFeaturedProject = portfolioProjects.length > 0;
   const hasIndustryFocus = onboardingGlobalIndustry.length > 0;
 
@@ -3935,7 +3925,7 @@ const FreelancerProfile = () => {
                 </div>
 
                 <div className="subtle-scrollbar mt-4 flex-1 space-y-4 overflow-y-auto pr-2">
-                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_220px]">
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
                     <label className="block space-y-1.5">
                       <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
                         Experience
@@ -3967,28 +3957,6 @@ const FreelancerProfile = () => {
                       </select>
                     </label>
 
-                    <label className="block space-y-1.5">
-                      <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                        Complexity
-                      </span>
-                      <select
-                        value={serviceProfileForm.projectComplexity || ""}
-                        onChange={(event) =>
-                          setServiceProfileForm((prev) => ({
-                            ...prev,
-                            projectComplexity: event.target.value,
-                          }))
-                        }
-                        className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                      >
-                        <option value="">Select complexity level</option>
-                        {PROJECT_COMPLEXITY_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
 
                     <label className="block space-y-1.5">
                       <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
@@ -4063,7 +4031,7 @@ const FreelancerProfile = () => {
                         {serviceProfileStatusLabel}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        Description, cover, price, delivery timeline, complexity,
+                        Description, cover, price, delivery timeline,
                         and skills complete the card.
                       </p>
                     </div>

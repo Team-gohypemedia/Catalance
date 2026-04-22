@@ -6,6 +6,7 @@ import {
   getMarketplaceFilterServices,
   getMarketplaceFilterSubCategories,
   getMarketplaceFilterTools,
+  getServicePositiveKeywords,
   getMarketplaceLiveProjects,
   getServiceById,
   getServiceReviews,
@@ -21,6 +22,7 @@ marketplaceRouter.get("/filters/services", getMarketplaceFilterServices);
 marketplaceRouter.get("/filters/niches", getMarketplaceFilterNiches);
 marketplaceRouter.get("/filters/sub-categories", getMarketplaceFilterSubCategories);
 marketplaceRouter.get("/filters/tools", getMarketplaceFilterTools);
+marketplaceRouter.get("/filters/keywords", getServicePositiveKeywords);
 marketplaceRouter.get("/browse", getMarketplaceBrowse);
 marketplaceRouter.get("/projects/live", requireAuth, getMarketplaceLiveProjects);
 marketplaceRouter.get("/reviews/received", requireAuth, getFreelancerReceivedReviews);

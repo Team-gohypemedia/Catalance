@@ -1,4 +1,5 @@
 import { env } from "../src/config/env.js";
+import { seedServicePositiveKeywords } from "../src/data/service-positive-keywords.js";
 import { prisma } from "../src/lib/prisma.js";
 import { hashPassword } from "../src/modules/users/password.utils.js";
 import { seedFreelancerShowcaseAccounts } from "./seed-freelancers.js";
@@ -99,6 +100,16 @@ const main = async () => {
   console.log(
     `Freelancer showcase accounts ready: ${seededFreelancers.total} total (${seededFreelancers.createdCount} created, ${seededFreelancers.updatedCount} updated).`
   );
+
+  const positiveKeywordSeedResult = await seedServicePositiveKeywords(prisma);
+  console.log(
+    `Service positive keywords ready: ${positiveKeywordSeedResult.seededCount} total entries across ${positiveKeywordSeedResult.matchedServiceCount} services.`,
+  );
+  if (positiveKeywordSeedResult.missingServiceNames.length > 0) {
+    console.warn(
+      `Services without a matching catalog row during seed: ${positiveKeywordSeedResult.missingServiceNames.join(", ")}`,
+    );
+  }
 
   console.log("Seed complete.");
 };

@@ -21,7 +21,6 @@ export const FREELANCER_PROFILE_SAFE_SELECT = Object.freeze({
   serviceTitle: true,
   serviceCategory: true,
   serviceExperience: true,
-  serviceComplexity: true,
   serviceDescription: true,
   deliveryTimeline: true,
   startingPrice: true,
