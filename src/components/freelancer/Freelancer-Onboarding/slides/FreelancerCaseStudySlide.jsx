@@ -70,6 +70,7 @@ const FreelancerCaseStudySlide = ({
   caseStudyForm,
   nicheOptions = [],
   onCaseStudyFieldChange,
+  onServiceStepChange,
 }) => {
   const serviceName = currentServiceName || "Service";
 
@@ -88,7 +89,10 @@ const FreelancerCaseStudySlide = ({
 
         {/* Stepper */}
         <div className="w-full">
-          <ServiceInfoStepper activeStepId="caseStudy" />
+          <ServiceInfoStepper
+            activeStepId="caseStudy"
+            onStepChange={onServiceStepChange}
+          />
         </div>
 
         {/* Step Content */}

@@ -267,6 +267,7 @@ const UploadArea = ({ files, onChange }) => {
 const FreelancerServiceVisualsSlide = ({
   serviceVisualsForm,
   onServiceVisualsFieldChange,
+  onServiceStepChange,
 }) => {
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
@@ -281,7 +282,10 @@ const FreelancerServiceVisualsSlide = ({
 
         {/* Stepper */}
         <div className="w-full">
-          <ServiceInfoStepper activeStepId="visuals" />
+          <ServiceInfoStepper
+            activeStepId="visuals"
+            onStepChange={onServiceStepChange}
+          />
         </div>
 
         {/* Step Content */}

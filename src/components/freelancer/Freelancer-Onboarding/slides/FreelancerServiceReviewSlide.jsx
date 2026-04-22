@@ -284,6 +284,7 @@ const FreelancerServiceReviewSlide = ({
   servicePricingForm,
   serviceVisualsForm,
   user,
+  onServiceStepChange,
 }) => {
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [toolOptionsByCategory, setToolOptionsByCategory] = useState({});
@@ -597,7 +598,10 @@ const FreelancerServiceReviewSlide = ({
         </div>
 
         <div className="w-full">
-          <ServiceInfoStepper activeStepId="preview" />
+          <ServiceInfoStepper
+            activeStepId="preview"
+            onStepChange={onServiceStepChange}
+          />
         </div>
 
         <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.58fr)_300px] xl:grid-cols-[minmax(0,1.62fr)_332px]">

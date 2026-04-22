@@ -767,6 +767,9 @@ const FreelancerOnboardingShell = () => {
   const serviceSetupSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
     (slide) => slide.id === "serviceSetup",
   );
+  const serviceInfoSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+    (slide) => slide.id === "serviceInfo",
+  );
   const serviceReviewSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
     (slide) => slide.id === "serviceReview",
   );
@@ -2018,6 +2021,47 @@ const FreelancerOnboardingShell = () => {
     submitOnboardingAndNavigate();
   };
 
+  const handleServiceStepChange = useCallback(
+    (nextStepId) => {
+      if (isProfileSaving || !currentServiceKey) {
+        return;
+      }
+
+      const nextSlideIndex =
+        nextStepId === "overview"
+          ? serviceInfoSlideIndex
+          : nextStepId === "pricing"
+            ? servicePricingSlideIndex
+            : nextStepId === "visuals"
+              ? serviceVisualsSlideIndex
+              : nextStepId === "caseStudy"
+                ? caseStudySlideIndex
+                : nextStepId === "preview"
+                  ? serviceReviewSlideIndex
+                  : -1;
+
+      if (
+        !Number.isInteger(nextSlideIndex) ||
+        nextSlideIndex < 0 ||
+        nextSlideIndex === currentSlideIndex
+      ) {
+        return;
+      }
+
+      setCurrentSlideIndex(nextSlideIndex);
+    },
+    [
+      caseStudySlideIndex,
+      currentServiceKey,
+      currentSlideIndex,
+      isProfileSaving,
+      serviceInfoSlideIndex,
+      servicePricingSlideIndex,
+      serviceReviewSlideIndex,
+      serviceVisualsSlideIndex,
+    ],
+  );
+
   const handleServiceInfoSkip = () => {
     if (isProfileSaving) {
       return;
@@ -2495,6 +2539,7 @@ const FreelancerOnboardingShell = () => {
                 currentServiceIndex={currentServiceIndex}
                 totalSelectedServices={selectedServices.length}
                 serviceDraft={currentServiceDraft}
+                onServiceStepChange={handleServiceStepChange}
                 onUpdateServiceDraft={updateCurrentServiceDraft}
                 serviceInfoForm={currentServiceInfoForm}
                 onServiceInfoFieldChange={(field, value) =>

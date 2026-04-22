@@ -35,6 +35,7 @@ const FreelancerServicePricingSlide = ({
   currentServiceName,
   servicePricingForm,
   onServicePricingFieldChange,
+  onServiceStepChange,
 }) => {
   const serviceName = currentServiceName || "Service";
 
@@ -52,7 +53,10 @@ const FreelancerServicePricingSlide = ({
 
         {/* Stepper */}
         <div className="w-full">
-          <ServiceInfoStepper activeStepId="pricing" />
+          <ServiceInfoStepper
+            activeStepId="pricing"
+            onStepChange={onServiceStepChange}
+          />
         </div>
 
         {/* Step Content */}
