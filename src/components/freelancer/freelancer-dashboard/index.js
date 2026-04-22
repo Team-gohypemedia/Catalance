@@ -10,6 +10,8 @@ export { default as RecentActivity } from "./RecentActivity.jsx";
 export { FreelancerRecentActivitySkeleton } from "./RecentActivity.jsx";
 export { default as ActiveChats } from "./ActiveChats.jsx";
 export { FreelancerChatsSkeleton } from "./ActiveChats.jsx";
+export { default as ClientReviewsPanel } from "./ClientReviewsPanel.jsx";
+export { FreelancerClientReviewsSkeleton } from "./ClientReviewsPanel.jsx";
 export { default as CompactEarningsSummary } from "./CompactEarningsSummary.jsx";
 export { FreelancerCompactEarningsSummarySkeleton } from "./CompactEarningsSummary.jsx";
 export { default as DeliveryPipeline } from "./DeliveryPipeline.jsx";

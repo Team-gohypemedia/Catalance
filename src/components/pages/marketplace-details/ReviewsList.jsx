@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Star, MessageCircle, Loader2, Send, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,7 +65,7 @@ const ReviewCard = ({ review }) => {
 };
 
 const ReviewsList = ({ serviceId, initialStats }) => {
-    const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated, user, authFetch } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -76,8 +76,18 @@ const ReviewsList = ({ serviceId, initialStats }) => {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [submitted, setSubmitted] = useState(false);
+    const [eligibilityLoading, setEligibilityLoading] = useState(false);
+    const [reviewEligibility, setReviewEligibility] = useState({
+        canReview: false,
+        hasExistingReview: false,
+        reason: null,
+    });
 
-    const fetchReviews = async () => {
+    const isClientUser =
+        String(user?.role || "").toUpperCase() === "CLIENT" ||
+        (Array.isArray(user?.roles) && user.roles.some((role) => String(role || "").toUpperCase() === "CLIENT"));
+
+    const fetchReviews = useCallback(async () => {
         setLoading(true);
         try {
             const { API_BASE_URL } = await import("@/shared/lib/api-client");
@@ -91,41 +101,111 @@ const ReviewsList = ({ serviceId, initialStats }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [serviceId]);
+
+    const fetchReviewEligibility = useCallback(async () => {
+        if (!isAuthenticated || !isClientUser || !authFetch || !serviceId) {
+            setReviewEligibility({
+                canReview: false,
+                hasExistingReview: false,
+                reason: !isAuthenticated
+                    ? "Please log in as a client to post a review."
+                    : !isClientUser
+                        ? "Only clients can post reviews."
+                        : "Authentication required",
+            });
+            return;
+        }
+
+        setEligibilityLoading(true);
+        try {
+            const response = await authFetch(`/marketplace/${serviceId}/reviews/eligibility`, {
+                suppressToast: true,
+            });
+            const payload = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(payload?.message || "Failed to verify review eligibility.");
+            }
+
+            const data = payload?.data || {};
+            setReviewEligibility({
+                canReview: Boolean(data.canReview),
+                hasExistingReview: Boolean(data.hasExistingReview),
+                reason: data.reason || null,
+            });
+        } catch (err) {
+            console.error("Failed to fetch review eligibility:", err);
+            setReviewEligibility({
+                canReview: false,
+                hasExistingReview: false,
+                reason: err?.message || "Unable to verify eligibility right now.",
+            });
+        } finally {
+            setEligibilityLoading(false);
+        }
+    }, [authFetch, isAuthenticated, isClientUser, serviceId]);
 
     useEffect(() => {
         if (serviceId) fetchReviews();
-    }, [serviceId]);
+    }, [fetchReviews, serviceId]);
+
+    useEffect(() => {
+        if (!serviceId) return;
+        fetchReviewEligibility();
+    }, [fetchReviewEligibility, serviceId]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
         setSubmitting(true);
         try {
-            const { API_BASE_URL } = await import("@/shared/lib/api-client");
-            const token = localStorage.getItem("freelancer-auth-token") || localStorage.getItem("auth-token");
-            const res = await fetch(`${API_BASE_URL}/marketplace/${serviceId}/reviews`, {
+            if (!authFetch) {
+                throw new Error("Authentication required");
+            }
+
+            if (!reviewEligibility.canReview) {
+                throw new Error(reviewEligibility.reason || "You are not eligible to post this review.");
+            }
+
+            const res = await authFetch(`/marketplace/${serviceId}/reviews`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    ...(token ? { Authorization: `Bearer ${token}` } : {})
                 },
                 body: JSON.stringify(form),
+                suppressToast: true,
             });
 
+            const json = await res.json().catch(() => ({}));
             if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.message || "Failed to post review");
+                throw new Error(json.message || "Failed to post review");
             }
 
-            const json = await res.json();
-            setReviews((prev) => [json.data, ...prev]);
-            const newCount = stats.reviewCount + 1;
-            const newAvg = ((stats.averageRating * stats.reviewCount) + json.data.rating) / newCount;
-            setStats({ averageRating: Number(newAvg.toFixed(1)), reviewCount: newCount });
+            setReviews((prev) => {
+                const incomingReview = json?.data;
+                if (!incomingReview?.id) return prev;
+
+                const existingIndex = prev.findIndex((review) => review.id === incomingReview.id);
+                if (existingIndex >= 0) {
+                    const next = [...prev];
+                    next[existingIndex] = incomingReview;
+                    return next;
+                }
+                return [incomingReview, ...prev];
+            });
+
+            if (json?.meta) {
+                setStats({
+                    averageRating: Number(json.meta.averageRating) || 0,
+                    reviewCount: Number(json.meta.reviewCount) || 0,
+                });
+            }
+
             setForm({ rating: 5, comment: "" });
             setSubmitted(true);
             setTimeout(() => setSubmitted(false), 3000);
+            fetchReviewEligibility();
         } catch (err) {
             setError(err.message);
         } finally {
@@ -219,6 +299,35 @@ const ReviewsList = ({ serviceId, initialStats }) => {
                         >
                             Log in to review
                         </Button>
+                    </div>
+                ) : eligibilityLoading ? (
+                    <div className="py-8 text-center flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Checking review eligibility...
+                    </div>
+                ) : !isClientUser ? (
+                    <div className="py-8 text-center flex flex-col items-center justify-center gap-3 bg-background/30 rounded-2xl border border-dashed border-border/50">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Lock className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="font-semibold text-sm">Client access required</p>
+                            <p className="text-xs text-muted-foreground mt-1 px-4 text-balance">
+                                Only logged-in clients can post freelancer reviews.
+                            </p>
+                        </div>
+                    </div>
+                ) : !reviewEligibility.canReview ? (
+                    <div className="py-8 text-center flex flex-col items-center justify-center gap-3 bg-background/30 rounded-2xl border border-dashed border-border/50">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Lock className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="font-semibold text-sm">Review unavailable</p>
+                            <p className="text-xs text-muted-foreground mt-1 px-4 text-balance">
+                                {reviewEligibility.reason || "You can review this freelancer only after working with them."}
+                            </p>
+                        </div>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-4">

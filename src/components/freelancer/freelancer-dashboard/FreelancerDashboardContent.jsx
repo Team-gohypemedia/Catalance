@@ -10,6 +10,7 @@ import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
+import Star from "lucide-react/dist/esm/icons/star";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
@@ -2112,6 +2113,12 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     missingDetails: [],
     isLoading: true,
   });
+  const [clientReviewsLoading, setClientReviewsLoading] = useState(true);
+  const [clientReviews, setClientReviews] = useState([]);
+  const [clientReviewsMeta, setClientReviewsMeta] = useState({
+    reviewCount: 0,
+    averageRating: 0,
+  });
   const navigate = useNavigate();
   const location = useLocation();
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
@@ -2326,9 +2333,49 @@ export const DashboardContent = ({ _roleOverride, children }) => {
       }
     };
 
+    const loadReceivedClientReviews = async () => {
+      if (!authFetch || !isFreelancerUser) {
+        setClientReviews([]);
+        setClientReviewsMeta({
+          reviewCount: 0,
+          averageRating: 0,
+        });
+        setClientReviewsLoading(false);
+        return;
+      }
+
+      setClientReviewsLoading(true);
+      try {
+        const response = await authFetch("/marketplace/reviews/received?limit=6", {
+          suppressToast: true,
+        });
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to load client reviews.");
+        }
+
+        setClientReviews(Array.isArray(payload?.data) ? payload.data : []);
+        setClientReviewsMeta({
+          reviewCount: Number(payload?.meta?.reviewCount) || 0,
+          averageRating: Number(payload?.meta?.averageRating) || 0,
+        });
+      } catch (error) {
+        console.error("Failed to load received client reviews", error);
+        setClientReviews([]);
+        setClientReviewsMeta({
+          reviewCount: 0,
+          averageRating: 0,
+        });
+      } finally {
+        setClientReviewsLoading(false);
+      }
+    };
+
     loadMetrics();
     loadAppointments();
     loadProfileCompletion();
+    loadReceivedClientReviews();
   }, [authFetch, isFreelancerUser]);
 
   const activityItems = useMemo(() => {
@@ -3847,6 +3894,9 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     pendingProposalRows,
     activityItems,
     previewMessages,
+    clientReviewsLoading,
+    clientReviews,
+    clientReviewsMeta,
     earningsMomentumSummary,
     nextPayoutSummaryLabel,
     receivedEarningsLabel: formatFreelancerDashboardCurrency(metrics.receivedEarnings),
@@ -4294,6 +4344,78 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                             <ChevronRight className="size-[15px] stroke-[1.75]" />
                           </button>
                         </>
+                      )}
+                    </FreelancerDashboardPanel>
+                  </section>
+
+                  <section className="w-full min-w-0">
+                    <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
+                      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+                        Client Reviews
+                      </h2>
+                      {clientReviewsMeta.reviewCount > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-[#facc15]">
+                          <Star className="size-3.5 fill-[#facc15] text-[#facc15]" />
+                          {clientReviewsMeta.averageRating.toFixed(1)}
+                          <span className="text-zinc-400">({clientReviewsMeta.reviewCount})</span>
+                        </span>
+                      ) : null}
+                    </div>
+                    <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
+                      {clientReviewsLoading ? (
+                        <div className="flex min-h-[140px] items-center justify-center gap-2 text-sm text-zinc-400">
+                          <Clock className="size-4 animate-pulse" />
+                          Loading client reviews...
+                        </div>
+                      ) : clientReviews.length === 0 ? (
+                        <div className="flex min-h-[140px] flex-col items-center justify-center text-center">
+                          <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground">
+                            <Star className="size-6" />
+                          </div>
+                          <p className="mt-4 text-sm text-white">No client reviews yet</p>
+                          <p className="mt-2 max-w-[240px] text-xs text-[#8f8f8f]">
+                            Reviews from clients who worked with you will appear here.
+                          </p>
+                        </div>
+                      ) : (
+                        <ul className="space-y-3.5">
+                          {clientReviews.map((review) => (
+                            <li
+                              key={review.id}
+                              className="rounded-[16px] border border-white/[0.08] bg-white/[0.03] p-3.5"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-zinc-100">
+                                    {review.clientName || "Client"}
+                                  </p>
+                                  <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-zinc-400">
+                                    {review.serviceLabel || "Freelancer Service"}
+                                  </p>
+                                </div>
+                                <span className="shrink-0 text-[11px] text-zinc-400">
+                                  {formatDashboardActivityTime(review.createdAt)}
+                                </span>
+                              </div>
+                              <div className="mt-2 flex items-center gap-0.5">
+                                {[1, 2, 3, 4, 5].map((ratingIndex) => (
+                                  <Star
+                                    key={`${review.id}-${ratingIndex}`}
+                                    className={cn(
+                                      "size-3.5",
+                                      Number(review.rating) >= ratingIndex
+                                        ? "fill-[#facc15] text-[#facc15]"
+                                        : "text-white/20",
+                                    )}
+                                  />
+                                ))}
+                              </div>
+                              <p className="mt-2.5 text-sm leading-5 text-zinc-200">
+                                {review.comment}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
                       )}
                     </FreelancerDashboardPanel>
                   </section>

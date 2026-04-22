@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
 import { prisma } from "../lib/prisma.js";
+import { sendNotificationToUser } from "../lib/notification-util.js";
 import { FREELANCER_PROFILE_SAFE_SELECT } from "../modules/users/freelancer-profile.select.js";
 
 const DEFAULT_PAGE_LIMIT = 20;
@@ -210,6 +211,29 @@ const parseOptionalInteger = (value) => {
 };
 
 const clampInteger = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const MARKETPLACE_REVIEW_ELIGIBLE_PROJECT_STATUSES = [
+  "IN_PROGRESS",
+  "AWAITING_PAYMENT",
+  "COMPLETED",
+  "PAUSED",
+];
+
+const userHasClientRole = (user = {}) => {
+  const primaryRole = String(user?.role || "").trim().toUpperCase();
+  if (primaryRole === "CLIENT") return true;
+
+  if (!Array.isArray(user?.roles)) return false;
+  return user.roles.some((role) => String(role || "").trim().toUpperCase() === "CLIENT");
+};
+
+const userHasFreelancerRole = (user = {}) => {
+  const primaryRole = String(user?.role || "").trim().toUpperCase();
+  if (primaryRole === "FREELANCER") return true;
+
+  if (!Array.isArray(user?.roles)) return false;
+  return user.roles.some((role) => String(role || "").trim().toUpperCase() === "FREELANCER");
+};
 
 const normalizeBuildModes = (value) =>
   uniqueValues(
@@ -1203,19 +1227,41 @@ const extractStructuredServiceDetail = (freelancer = {}, serviceKey = "") => {
 
 const extractStructuredTools = (detail = {}) =>
   uniqueValues([
-    ...asArray(detail.skillsAndTechnologies),
+    ...flattenShallowStructuredValues(detail.skillsAndTechnologies),
     ...Object.entries(asObject(detail.groups)).flatMap(([groupKey, values]) =>
-      /tech|tool|stack|platform/i.test(groupKey) ? asArray(values) : []
+      /tech|tool|stack|platform/i.test(groupKey)
+        ? flattenShallowStructuredValues(values)
+        : []
     ),
-    ...asArray(asObject(detail.caseStudy).techStack),
+    ...Object.entries(asObject(detail.groupOther)).flatMap(([groupKey, values]) =>
+      /tech|tool|stack|platform/i.test(groupKey)
+        ? flattenShallowStructuredValues(values)
+        : []
+    ),
+    ...flattenShallowStructuredValues(asObject(detail.caseStudy).techStack),
   ]);
 
 const extractStructuredDeliverables = (detail = {}) =>
   uniqueValues([
     ...Object.entries(asObject(detail.groups)).flatMap(([groupKey, values]) =>
-      /tech|tool|stack|platform/i.test(groupKey) ? [] : asArray(values)
+      /tech|tool|stack|platform/i.test(groupKey)
+        ? []
+        : flattenShallowStructuredValues(values)
     ),
-    ...asArray(detail.niches),
+    ...Object.entries(asObject(detail.groupOther)).flatMap(([groupKey, values]) =>
+      /tech|tool|stack|platform/i.test(groupKey)
+        ? []
+        : flattenShallowStructuredValues(values)
+    ),
+    ...flattenShallowStructuredValues(detail.niches),
+    ...flattenShallowStructuredValues(detail.otherNiche),
+    ...flattenShallowStructuredValues(detail.deliverables),
+    ...flattenShallowStructuredValues(detail.whatsIncluded),
+    ...flattenShallowStructuredValues(detail.includes),
+    ...flattenShallowStructuredValues(detail.features),
+    ...flattenShallowStructuredValues(detail.scopeOfWork),
+    ...flattenShallowStructuredValues(detail.scope),
+    ...flattenShallowStructuredValues(detail.keywords),
   ]);
 
 const buildMergedServiceDetails = ({
@@ -1226,18 +1272,24 @@ const buildMergedServiceDetails = ({
   const profileSd = asObject(structuredDetails);
 
   const tools = uniqueValues([
-    ...(Array.isArray(mktSd.tools) ? mktSd.tools : []),
-    ...(Array.isArray(mktSd.techStack) ? mktSd.techStack : []),
-    ...(Array.isArray(mktSd.technologies) ? mktSd.technologies : []),
-    ...(Array.isArray(mktSd.stack) ? mktSd.stack : []),
+    ...flattenShallowStructuredValues(mktSd.tools),
+    ...flattenShallowStructuredValues(mktSd.techStack),
+    ...flattenShallowStructuredValues(mktSd.technologies),
+    ...flattenShallowStructuredValues(mktSd.stack),
+    ...flattenShallowStructuredValues(mktSd.skillsAndTechnologies),
     ...extractStructuredTools(profileSd),
   ]);
 
   const deliverables = uniqueValues([
-    ...(Array.isArray(mktSd.deliverables) ? mktSd.deliverables : []),
-    ...(Array.isArray(mktSd.whatsIncluded) ? mktSd.whatsIncluded : []),
-    ...(Array.isArray(mktSd.includes) ? mktSd.includes : []),
-    ...(Array.isArray(mktSd.features) ? mktSd.features : []),
+    ...flattenShallowStructuredValues(mktSd.deliverables),
+    ...flattenShallowStructuredValues(mktSd.whatsIncluded),
+    ...flattenShallowStructuredValues(mktSd.includes),
+    ...flattenShallowStructuredValues(mktSd.features),
+    ...flattenShallowStructuredValues(mktSd.scopeOfWork),
+    ...flattenShallowStructuredValues(mktSd.scope),
+    ...flattenShallowStructuredValues(mktSd.serviceSpecializations),
+    ...flattenShallowStructuredValues(mktSd.niches),
+    ...flattenShallowStructuredValues(mktSd.keywords),
     ...extractStructuredDeliverables(profileSd),
   ]);
 
@@ -1321,7 +1373,7 @@ const buildMergedServiceDetails = ({
     groupOther: asObject(profileSd.groupOther),
     niches: asArray(profileSd.niches),
     skillsAndTechnologies: uniqueValues([
-      ...asArray(profileSd.skillsAndTechnologies),
+      ...flattenShallowStructuredValues(profileSd.skillsAndTechnologies),
       ...tools,
     ]),
     industriesOrNiches: uniqueValues([
@@ -1333,10 +1385,15 @@ const buildMergedServiceDetails = ({
         .filter(Boolean),
     ]),
     serviceSpecializations: uniqueValues([
-      ...(Array.isArray(mktSd.serviceSpecializations) ? mktSd.serviceSpecializations : []),
+      ...flattenShallowStructuredValues(mktSd.serviceSpecializations),
       ...Object.entries(asObject(profileSd.groups)).flatMap(([groupKey, values]) =>
         /specialization|capability|type|scope|approach/i.test(groupKey)
-          ? asArray(values)
+          ? flattenShallowStructuredValues(values)
+          : []
+      ),
+      ...Object.entries(asObject(profileSd.groupOther)).flatMap(([groupKey, values]) =>
+        /specialization|capability|type|scope|approach/i.test(groupKey)
+          ? flattenShallowStructuredValues(values)
           : []
       ),
     ]),
@@ -2604,60 +2661,399 @@ export const getServiceById = asyncHandler(async (req, res) => {
 
 export const getServiceReviews = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const limitNumber = parseInt(req.query.limit, 10) || 10;
-  const pageNumber = parseInt(req.query.page, 10) || 1;
+  const limitNumber = clampInteger(parseInt(req.query.limit, 10) || 10, 1, 50);
+  const pageNumber = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const skip = (pageNumber - 1) * limitNumber;
 
-  const reviews = await prisma.review.findMany({
-    where: { serviceId: id },
-    orderBy: { createdAt: "desc" },
-    take: limitNumber,
-    skip
-  });
+  const serviceReviewContext = await resolveServiceReviewContext(id);
+  if (!serviceReviewContext) {
+    throw new AppError("Service not found", 404);
+  }
 
-  const total = await prisma.review.count({ where: { serviceId: id } });
+  const where = { serviceId: { in: serviceReviewContext.lookupServiceIds } };
+  const [reviews, total] = await Promise.all([
+    prisma.review.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limitNumber,
+      skip,
+    }),
+    prisma.review.count({ where }),
+  ]);
 
   res.json({
     data: reviews,
     total,
     page: pageNumber,
     limit: limitNumber,
-    totalPages: Math.ceil(total / limitNumber)
+    totalPages: Math.ceil(total / limitNumber),
+  });
+});
+
+const resolveServiceReviewContext = async (serviceId) => {
+  const normalizedServiceId = String(serviceId || "").trim();
+  if (!normalizedServiceId) return null;
+
+  const marketplaceService = await prisma.marketplace.findUnique({
+    where: { id: normalizedServiceId },
+    select: {
+      id: true,
+      freelancerId: true,
+      service: true,
+      serviceKey: true,
+    },
+  });
+
+  if (marketplaceService) {
+    const linkedProjects = marketplaceService.serviceKey
+      ? await prisma.freelancerProject.findMany({
+          where: {
+            freelancerId: marketplaceService.freelancerId,
+            serviceKey: marketplaceService.serviceKey,
+          },
+          select: { id: true },
+          take: 100,
+        })
+      : [];
+
+    return {
+      canonicalServiceId: marketplaceService.id,
+      lookupServiceIds: uniqueValues([
+        marketplaceService.id,
+        ...linkedProjects.map((project) => project.id),
+      ]),
+      freelancerId: marketplaceService.freelancerId,
+      serviceLabel: marketplaceService.service || "Freelancer Service",
+    };
+  }
+
+  const freelancerProject = await prisma.freelancerProject.findUnique({
+    where: { id: normalizedServiceId },
+    select: {
+      id: true,
+      freelancerId: true,
+      serviceKey: true,
+      serviceName: true,
+      title: true,
+    },
+  });
+
+  if (!freelancerProject) return null;
+
+  let canonicalServiceId = freelancerProject.id;
+  const lookupServiceIds = [freelancerProject.id];
+
+  if (freelancerProject.serviceKey) {
+    const linkedMarketplaceService = await prisma.marketplace.findFirst({
+      where: {
+        freelancerId: freelancerProject.freelancerId,
+        serviceKey: freelancerProject.serviceKey,
+      },
+      select: { id: true },
+    });
+
+    if (linkedMarketplaceService?.id) {
+      canonicalServiceId = linkedMarketplaceService.id;
+      lookupServiceIds.push(linkedMarketplaceService.id);
+    }
+  }
+
+  return {
+    canonicalServiceId,
+    lookupServiceIds: uniqueValues(lookupServiceIds),
+    freelancerId: freelancerProject.freelancerId,
+    serviceLabel: freelancerProject.serviceName || freelancerProject.title || "Freelancer Service",
+  };
+};
+
+const canClientReviewFreelancer = async ({ clientId, freelancerId }) => {
+  if (!clientId || !freelancerId) return false;
+
+  const eligibleAssignment = await prisma.proposal.findFirst({
+    where: {
+      freelancerId,
+      status: "ACCEPTED",
+      project: {
+        ownerId: clientId,
+        status: { in: MARKETPLACE_REVIEW_ELIGIBLE_PROJECT_STATUSES },
+      },
+    },
+    select: { id: true },
+  });
+
+  return Boolean(eligibleAssignment?.id);
+};
+
+const resolveReviewEligibility = async ({ user, serviceReviewContext }) => {
+  const clientId = user?.id || user?.sub || null;
+  const existingReview = clientId
+    ? await prisma.review.findFirst({
+        where: {
+          clientId,
+          serviceId: { in: serviceReviewContext.lookupServiceIds },
+        },
+        orderBy: { createdAt: "desc" },
+      })
+    : null;
+
+  if (!clientId) {
+    return {
+      canReview: false,
+      reason: "Authentication required",
+      hasExistingReview: false,
+      existingReview,
+    };
+  }
+
+  if (!userHasClientRole(user)) {
+    return {
+      canReview: false,
+      reason: "Only clients can post reviews.",
+      hasExistingReview: Boolean(existingReview),
+      existingReview,
+    };
+  }
+
+  if (clientId === serviceReviewContext.freelancerId) {
+    return {
+      canReview: false,
+      reason: "You cannot review your own service.",
+      hasExistingReview: Boolean(existingReview),
+      existingReview,
+    };
+  }
+
+  if (existingReview) {
+    return {
+      canReview: true,
+      reason: null,
+      hasExistingReview: true,
+      existingReview,
+    };
+  }
+
+  const hasWorkedWithFreelancer = await canClientReviewFreelancer({
+    clientId,
+    freelancerId: serviceReviewContext.freelancerId,
+  });
+
+  return {
+    canReview: hasWorkedWithFreelancer,
+    reason: hasWorkedWithFreelancer
+      ? null
+      : "You can review this freelancer only after working with them on a project.",
+    hasExistingReview: false,
+    existingReview: null,
+  };
+};
+
+export const getServiceReviewEligibility = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const serviceReviewContext = await resolveServiceReviewContext(id);
+  if (!serviceReviewContext) {
+    throw new AppError("Service not found", 404);
+  }
+
+  const eligibility = await resolveReviewEligibility({
+    user: req.user || {},
+    serviceReviewContext,
+  });
+
+  res.json({
+    data: {
+      canReview: Boolean(eligibility.canReview),
+      hasExistingReview: Boolean(eligibility.hasExistingReview),
+      reason: eligibility.reason || null,
+    },
   });
 });
 
 export const createServiceReview = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  let { rating, comment } = req.body;
+  const ratingValue = Number(req.body?.rating);
+  const comment = String(req.body?.comment || "").trim();
+  const clientId = req.user?.id || req.user?.sub || null;
+  const clientName = String(req.user?.fullName || "Member").trim() || "Member";
 
-  comment = comment?.trim();
+  if (!clientId) {
+    throw new AppError("Authentication required", 401);
+  }
 
-  // Extract from protected req.user
-  const clientName = req.user.fullName || "Member";
-  const clientId = req.user.id;
-
-  if (!rating || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+  if (!Number.isInteger(ratingValue) || ratingValue < 1 || ratingValue > 5) {
     throw new AppError("Rating must be an integer between 1 and 5", 400);
   }
-  if (!comment || comment.length < 5) {
+  if (comment.length < 5) {
     throw new AppError("Comment must be at least 5 characters long", 400);
   }
 
-  let service = await prisma.marketplace.findUnique({ where: { id } });
-  if (!service) {
-    service = await prisma.freelancerProject.findUnique({ where: { id } });
+  const serviceReviewContext = await resolveServiceReviewContext(id);
+  if (!serviceReviewContext) {
+    throw new AppError("Service not found", 404);
   }
-  if (!service) throw new AppError("Service not found", 404);
 
-  const newReview = await prisma.review.create({
-    data: {
-      serviceId: id,
-      clientName,
-      clientId,
-      rating,
-      comment
-    }
+  const eligibility = await resolveReviewEligibility({
+    user: req.user || {},
+    serviceReviewContext,
   });
 
-  res.status(201).json({ data: newReview });
+  if (!eligibility.canReview) {
+    throw new AppError(
+      eligibility.reason || "You are not eligible to review this freelancer yet.",
+      403,
+    );
+  }
+
+  const existingReview = eligibility.existingReview
+    ? eligibility.existingReview
+    : await prisma.review.findFirst({
+        where: {
+          clientId,
+          serviceId: { in: serviceReviewContext.lookupServiceIds },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+  let savedReview;
+  if (existingReview?.id) {
+    savedReview = await prisma.review.update({
+      where: { id: existingReview.id },
+      data: {
+        serviceId: serviceReviewContext.canonicalServiceId,
+        rating: ratingValue,
+        comment,
+      },
+    });
+  } else {
+    savedReview = await prisma.review.create({
+      data: {
+        serviceId: serviceReviewContext.canonicalServiceId,
+        clientName,
+        clientId,
+        rating: ratingValue,
+        comment,
+      },
+    });
+  }
+
+  if (serviceReviewContext.freelancerId) {
+    try {
+      await sendNotificationToUser(serviceReviewContext.freelancerId, {
+        audience: "freelancer",
+        type: "freelancer_review",
+        title: "New Client Review",
+        message: `${clientName} left a review on your ${serviceReviewContext.serviceLabel}.`,
+        data: {
+          serviceId: serviceReviewContext.canonicalServiceId,
+          rating: savedReview.rating,
+        },
+      });
+    } catch (notificationError) {
+      console.error("Failed to notify freelancer about marketplace review:", notificationError);
+    }
+  }
+
+  const updatedStats = await prisma.review.aggregate({
+    where: {
+      serviceId: { in: serviceReviewContext.lookupServiceIds },
+    },
+    _avg: { rating: true },
+    _count: { id: true },
+  });
+
+  res.status(existingReview ? 200 : 201).json({
+    data: savedReview,
+    meta: {
+      reviewCount: updatedStats._count.id || 0,
+      averageRating: updatedStats._avg.rating
+        ? Number(updatedStats._avg.rating.toFixed(1))
+        : 0,
+    },
+    message: existingReview ? "Review updated successfully." : "Review posted successfully.",
+  });
+});
+
+export const getFreelancerReceivedReviews = asyncHandler(async (req, res) => {
+  const freelancerId = req.user?.id || req.user?.sub || null;
+  if (!freelancerId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  if (!userHasFreelancerRole(req.user || {})) {
+    throw new AppError("Only freelancers can access received reviews.", 403);
+  }
+
+  const limitNumber = clampInteger(parseInt(req.query.limit, 10) || 8, 1, 30);
+
+  const [marketplaceServices, freelancerProjects] = await Promise.all([
+    prisma.marketplace.findMany({
+      where: { freelancerId },
+      select: {
+        id: true,
+        service: true,
+      },
+    }),
+    prisma.freelancerProject.findMany({
+      where: { freelancerId },
+      select: {
+        id: true,
+        serviceName: true,
+        title: true,
+      },
+      take: 120,
+    }),
+  ]);
+
+  const serviceLabelById = new Map();
+  for (const marketplaceService of marketplaceServices) {
+    serviceLabelById.set(
+      marketplaceService.id,
+      marketplaceService.service || "Freelancer Service",
+    );
+  }
+  for (const freelancerProject of freelancerProjects) {
+    if (!serviceLabelById.has(freelancerProject.id)) {
+      serviceLabelById.set(
+        freelancerProject.id,
+        freelancerProject.serviceName || freelancerProject.title || "Freelancer Service",
+      );
+    }
+  }
+
+  const reviewServiceIds = Array.from(serviceLabelById.keys());
+  if (!reviewServiceIds.length) {
+    return res.json({
+      data: [],
+      meta: {
+        reviewCount: 0,
+        averageRating: 0,
+      },
+    });
+  }
+
+  const where = { serviceId: { in: reviewServiceIds } };
+  const [reviews, stats] = await Promise.all([
+    prisma.review.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limitNumber,
+    }),
+    prisma.review.aggregate({
+      where,
+      _avg: { rating: true },
+      _count: { id: true },
+    }),
+  ]);
+
+  const enrichedReviews = reviews.map((review) => ({
+    ...review,
+    serviceLabel: serviceLabelById.get(review.serviceId) || "Freelancer Service",
+  }));
+
+  res.json({
+    data: enrichedReviews,
+    meta: {
+      reviewCount: stats._count.id || 0,
+      averageRating: stats._avg.rating ? Number(stats._avg.rating.toFixed(1)) : 0,
+    },
+  });
 });

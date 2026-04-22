@@ -13,6 +13,11 @@ import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { getSession } from "@/shared/lib/auth-storage";
 import { fetchChatConversations } from "@/shared/lib/api-client";
+import {
+  createMarketplaceFavoriteSnapshot,
+  loadMarketplaceFavorites,
+  saveMarketplaceFavorites,
+} from "@/shared/lib/marketplace-favorites";
 import { hasUnlockedProjectChat } from "@/shared/lib/project-chat-access";
 import {
   buildProposalBudgetDetailsPath,
@@ -38,6 +43,7 @@ const CLIENT_DASHBOARD_ACTIVE_PROGRESS_STATUSES = new Set([
 ]);
 const CLIENT_DASHBOARD_RECENT_ACTIVITY_LIMIT = 4;
 const CLIENT_DASHBOARD_ACTIVE_CHAT_LIMIT = 3;
+const MARKETPLACE_WISHLIST_FETCH_LIMIT = 100;
 
 const getFirstNonEmptyText = (...values) => {
   for (const value of values.flat(Infinity)) {
@@ -573,6 +579,25 @@ const fetchClientDashboardData = async (authFetch) => {
   };
 };
 
+const toWishlistedFreelancerRows = (favoriteIds = [], snapshots = {}) =>
+  Array.from(new Set(favoriteIds))
+    .map((favoriteId) => {
+      const snapshot = snapshots[favoriteId];
+      if (snapshot) return snapshot;
+      return {
+        id: favoriteId,
+        freelancerName: "Saved freelancer",
+        serviceTitle: "Wishlisted service",
+        updatedAt: null,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftTime = new Date(left?.updatedAt || 0).getTime() || 0;
+      const rightTime = new Date(right?.updatedAt || 0).getTime() || 0;
+      return rightTime - leftTime;
+    });
+
 export const ClientDashboardDataProvider = ({ children }) => {
   const { authFetch, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
@@ -580,9 +605,67 @@ export const ClientDashboardDataProvider = ({ children }) => {
   const [projects, setProjects] = useState([]);
   const [proposals, setProposals] = useState([]);
   const [chatConversations, setChatConversations] = useState([]);
+  const [wishlistedFreelancers, setWishlistedFreelancers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const sessionUser = useMemo(() => user ?? getSession()?.user ?? null, [user]);
+
+  const refreshWishlistedFreelancers = useCallback(async () => {
+    if (!isAuthenticated) {
+      setWishlistedFreelancers([]);
+      return [];
+    }
+
+    const userId = sessionUser?.id || user?.id;
+    const { favoriteMap, itemSnapshots } = loadMarketplaceFavorites(userId);
+    const favoriteIds = Object.entries(favoriteMap)
+      .filter(([, isSelected]) => Boolean(isSelected))
+      .map(([favoriteId]) => String(favoriteId || "").trim())
+      .filter(Boolean);
+
+    if (!favoriteIds.length) {
+      setWishlistedFreelancers([]);
+      return [];
+    }
+
+    const nextSnapshots = { ...itemSnapshots };
+    const missingFavoriteIds = favoriteIds.filter((favoriteId) => !nextSnapshots[favoriteId]);
+
+    if (missingFavoriteIds.length > 0) {
+      try {
+        const response = await authFetch(
+          `/marketplace?page=1&limit=${MARKETPLACE_WISHLIST_FETCH_LIMIT}`,
+          {
+            method: "GET",
+            suppressToast: true,
+            skipLogoutOn401: true,
+          },
+        );
+        const payload = await response.json().catch(() => null);
+
+        if (response.ok && Array.isArray(payload?.data)) {
+          const missingIdSet = new Set(missingFavoriteIds);
+
+          payload.data.forEach((entry) => {
+            const snapshot = createMarketplaceFavoriteSnapshot(entry);
+            if (!snapshot || !missingIdSet.has(snapshot.id)) return;
+            nextSnapshots[snapshot.id] = snapshot;
+          });
+
+          saveMarketplaceFavorites(userId, {
+            favoriteMap,
+            itemSnapshots: nextSnapshots,
+          });
+        }
+      } catch {
+        // Keep rendering available local snapshots even if hydration fails.
+      }
+    }
+
+    const nextRows = toWishlistedFreelancerRows(favoriteIds, nextSnapshots);
+    setWishlistedFreelancers(nextRows);
+    return nextRows;
+  }, [authFetch, isAuthenticated, sessionUser?.id, user?.id]);
 
   const refreshDashboardData = useCallback(
     async ({ silent = false } = {}) => {
@@ -590,6 +673,7 @@ export const ClientDashboardDataProvider = ({ children }) => {
         setProjects([]);
         setProposals([]);
         setChatConversations([]);
+        setWishlistedFreelancers([]);
         setIsLoading(false);
         return { projects: [], proposals: [], chatConversations: [] };
       }
@@ -609,6 +693,7 @@ export const ClientDashboardDataProvider = ({ children }) => {
         setProjects([]);
         setProposals([]);
         setChatConversations([]);
+        setWishlistedFreelancers([]);
         return { projects: [], proposals: [], chatConversations: [] };
       } finally {
         if (!silent) {
@@ -622,6 +707,10 @@ export const ClientDashboardDataProvider = ({ children }) => {
   useEffect(() => {
     void refreshDashboardData();
   }, [refreshDashboardData]);
+
+  useEffect(() => {
+    void refreshWishlistedFreelancers();
+  }, [refreshWishlistedFreelancers]);
 
   const handleDashboardBudgetUpdated = useCallback(async () => {
     await refreshDashboardData({ silent: true });
@@ -739,7 +828,10 @@ export const ClientDashboardDataProvider = ({ children }) => {
       projects,
       projectsWithProposals: mergedProjects,
       proposals,
+      wishlistedFreelancers,
+      wishlistedFreelancersCount: wishlistedFreelancers.length,
       refreshDashboardData,
+      refreshWishlistedFreelancers,
       sessionUser,
       user,
       normalizedProjects,
@@ -770,7 +862,9 @@ export const ClientDashboardDataProvider = ({ children }) => {
       projects,
       mergedProjects,
       proposals,
+      wishlistedFreelancers,
       refreshDashboardData,
+      refreshWishlistedFreelancers,
       sessionUser,
       user,
     ],

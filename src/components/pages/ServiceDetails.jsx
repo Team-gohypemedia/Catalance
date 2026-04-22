@@ -28,6 +28,18 @@ const asArray = (value) => (Array.isArray(value) ? value : []);
 
 const normalizeText = (value = "") => String(value || "").replace(/\s+/g, " ").trim();
 
+const parseBooleanFlag = (value) => {
+  if (value === true) return true;
+  if (value === false || value === null || value === undefined) return false;
+  if (typeof value === "number") return value === 1;
+
+  const normalized = normalizeText(String(value)).toLowerCase();
+  if (!normalized) return false;
+  if (["true", "1", "yes", "y"].includes(normalized)) return true;
+  if (["false", "0", "no", "n"].includes(normalized)) return false;
+  return false;
+};
+
 const toTitleCase = (value = "") =>
   normalizeText(value)
     .replace(/[_-]+/g, " ")
@@ -195,13 +207,27 @@ const normalizeImages = (serviceDetails = {}, portfolioItems = []) => {
   return uniqueText(imageCandidates.filter((entry) => /^https?:\/\//i.test(String(entry || ""))));
 };
 
-const normalizeDeliverables = (serviceDetails = {}) =>
-  uniqueText([
+const normalizeDeliverables = (serviceDetails = {}) => {
+  const groups = asObject(serviceDetails.groups);
+  const groupOther = asObject(serviceDetails.groupOther);
+
+  return uniqueText([
     ...flattenTextValues(serviceDetails.deliverables),
     ...flattenTextValues(serviceDetails.whatsIncluded),
     ...flattenTextValues(serviceDetails.includes),
     ...flattenTextValues(serviceDetails.features),
+    ...flattenTextValues(serviceDetails.scopeOfWork),
+    ...flattenTextValues(serviceDetails.scope),
+    ...flattenTextValues(serviceDetails.serviceSpecializations),
+    ...flattenTextValues(serviceDetails.niches),
+    ...Object.entries(groups).flatMap(([groupKey, values]) =>
+      /tech|tool|stack|platform/i.test(groupKey) ? [] : flattenTextValues(values)
+    ),
+    ...Object.entries(groupOther).flatMap(([groupKey, values]) =>
+      /tech|tool|stack|platform/i.test(groupKey) ? [] : flattenTextValues(values)
+    ),
   ]);
+};
 
 const normalizeSkillCategories = (service = {}, serviceDetails = {}) => {
   const groups = asObject(serviceDetails.groups);
@@ -299,6 +325,16 @@ const ServiceDetails = () => {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [shareToast, setShareToast] = useState(false);
+
+  const marketplaceReturnTo = useMemo(() => {
+    const routeState =
+      location.state && typeof location.state === "object" ? location.state : {};
+    const candidate = String(routeState.marketplaceReturnTo || "").trim();
+    if (candidate.startsWith("/marketplace")) {
+      return candidate;
+    }
+    return "/marketplace";
+  }, [location.state]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -484,7 +520,7 @@ const ServiceDetails = () => {
         id: firstTextValue(freelancer.id),
         name: firstTextValue(freelancer.fullName, "Anonymous Freelancer"),
         avatar: firstTextValue(freelancer.avatar),
-        isVerified: Boolean(freelancer.isVerified),
+        isVerified: parseBooleanFlag(freelancer.isVerified),
         bio: firstTextValue(freelancerProfile.bio, freelancerProfile.professionalBio),
         title: firstTextValue(
           freelancerProfile.jobTitle,
@@ -526,7 +562,7 @@ const ServiceDetails = () => {
             This service may have been removed or no longer exists.
           </p>
           <Button asChild variant="outline" className="rounded-full">
-            <Link to="/marketplace">Back to Marketplace</Link>
+            <Link to={marketplaceReturnTo}>Back to Marketplace</Link>
           </Button>
         </div>
       </div>

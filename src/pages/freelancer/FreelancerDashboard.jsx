@@ -15,10 +15,12 @@ import { DashboardContent as FreelancerDashboardContent } from "@/components/fre
 import {
   ActiveChats,
   ActiveProjects,
+  ClientReviewsPanel,
   CompactEarningsSummary,
   DeliveryPipeline,
   FreelancerActiveProjectsSkeleton,
   FreelancerChatsSkeleton,
+  FreelancerClientReviewsSkeleton,
   FreelancerCompactEarningsSummarySkeleton,
   FreelancerDeliveryPipelineSkeleton,
   FreelancerPendingProposalsSkeleton,
@@ -218,6 +220,7 @@ const FreelancerDashboard = () => {
                     {model.metricsLoading ? (
                       <>
                         <FreelancerChatsSkeleton />
+                        <FreelancerClientReviewsSkeleton />
                         <FreelancerCompactEarningsSummarySkeleton />
                       </>
                     ) : (
@@ -225,6 +228,11 @@ const FreelancerDashboard = () => {
                         <ActiveChats
                           previewMessages={model.previewMessages}
                           onOpenMessages={model.onOpenMessages}
+                        />
+                        <ClientReviewsPanel
+                          reviews={model.clientReviews}
+                          meta={model.clientReviewsMeta}
+                          isLoading={model.clientReviewsLoading}
                         />
                         <CompactEarningsSummary
                           receivedAmount={model.receivedEarningsLabel}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   ArrowRight, BadgeCheck, Bot, BriefcaseBusiness, Banknote, Tag, Check,
   ChevronLeft, ChevronRight, Clock, Cloud, Code2,
@@ -23,6 +23,11 @@ import SubcategorySection from "@/components/pages/marketplace-browse/Subcategor
 import { getSession } from "@/shared/lib/auth-storage";
 import { useAuth } from "@/shared/context/AuthContext";
 import { API_BASE_URL } from "@/shared/lib/api-client";
+import {
+  createMarketplaceFavoriteSnapshot,
+  loadMarketplaceFavorites,
+  saveMarketplaceFavorites,
+} from "@/shared/lib/marketplace-favorites";
 import { cn } from "@/shared/lib/utils";
 
 const FALLBACK_CATEGORIES = [
@@ -291,6 +296,16 @@ const normalizeRoleToken = (value = "") =>
     .replace(/[^A-Z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 
+const parseBooleanFlag = (value) => {
+  if (value === true) return true;
+  if (value === false || value === null || value === undefined) return false;
+  if (typeof value === "number") return value === 1;
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["true", "1", "yes", "y"].includes(normalized)) return true;
+  if (["false", "0", "no", "n", ""].includes(normalized)) return false;
+  return false;
+};
+
 const getRelativePostedLabel = (value) => {
   if (!value) return "Recently posted";
 
@@ -556,11 +571,60 @@ const toggleSelection = (values = [], nextValue = "") =>
     ? values.filter((value) => value !== nextValue)
     : [...values, nextValue];
 
+const parsePositiveInteger = (value) => {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const readMarketplaceSearchState = () => {
+  if (typeof window === "undefined") {
+    return {
+      q: "",
+      category: "all",
+      selectedSubCategoryId: null,
+      selectedToolId: null,
+      selectedBuildModes: [],
+      minBudget: "",
+      maxBudget: "",
+      sort: "newest",
+      duration: "",
+      rating: "",
+      page: 1,
+      view: "",
+    };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const getValue = (key) => String(params.get(key) || "").trim();
+  const allowedBuildModes = new Set(WEB_MODE_OPTIONS.map((option) => option.value));
+
+  return {
+    q: getValue("q"),
+    category: normalizeKey(getValue("category")) || "all",
+    selectedSubCategoryId: parsePositiveInteger(params.get("subCategoryId")),
+    selectedToolId: parsePositiveInteger(params.get("toolId")),
+    selectedBuildModes: getValue("buildMode")
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => allowedBuildModes.has(entry)),
+    minBudget: getValue("minBudget"),
+    maxBudget: getValue("maxBudget"),
+    sort: getValue("sort") || "newest",
+    duration: getValue("duration"),
+    rating: getValue("rating"),
+    page: parsePositiveInteger(params.get("page")) || 1,
+    view: getValue("view"),
+  };
+};
+
 const Marketplace = () => {
   const { isAuthenticated, user, authFetch } = useAuth();
+  const location = useLocation();
   const shouldReduceMotion = useReducedMotion();
   const resultsRequestIdRef = useRef(0);
   const projectRequestIdRef = useRef(0);
+  const initialSearchStateRef = useRef(readMarketplaceSearchState());
+  const initialSearchState = initialSearchStateRef.current;
   const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   const [favorites, setFavorites] = useState({});
@@ -571,10 +635,13 @@ const Marketplace = () => {
       normalizeRoleToken(sessionUser?.role),
       ...roles.map((entry) => normalizeRoleToken(entry)),
     ].filter(Boolean);
+    if (initialSearchState.view === "projects" && roleTokens.includes("FREELANCER")) {
+      return "projects";
+    }
     return roleTokens.includes("FREELANCER") ? "projects" : "freelancers";
   });
-  const [q, setQ] = useState("");
-  const [category, setCategory] = useState("all");
+  const [q, setQ] = useState(initialSearchState.q);
+  const [category, setCategory] = useState(initialSearchState.category);
   const [filterServices, setFilterServices] = useState([]);
   const [filterServicesLoading, setFilterServicesLoading] = useState(true);
   const [subCategoryOptions, setSubCategoryOptions] = useState([]);
@@ -582,14 +649,18 @@ const Marketplace = () => {
   const [toolOptions, setToolOptions] = useState([]);
   const [toolsLoading, setToolsLoading] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState(null);
-  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState(null);
-  const [selectedToolId, setSelectedToolId] = useState(null);
-  const [selectedBuildModes, setSelectedBuildModes] = useState([]);
-  const [minBudget, setMinBudget] = useState("");
-  const [maxBudget, setMaxBudget] = useState("");
-  const [sort, setSort] = useState("newest");
-  const [duration, setDuration] = useState("");
-  const [rating, setRating] = useState("");
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState(
+    initialSearchState.selectedSubCategoryId
+  );
+  const [selectedToolId, setSelectedToolId] = useState(initialSearchState.selectedToolId);
+  const [selectedBuildModes, setSelectedBuildModes] = useState(
+    initialSearchState.selectedBuildModes
+  );
+  const [minBudget, setMinBudget] = useState(initialSearchState.minBudget);
+  const [maxBudget, setMaxBudget] = useState(initialSearchState.maxBudget);
+  const [sort, setSort] = useState(initialSearchState.sort);
+  const [duration, setDuration] = useState(initialSearchState.duration);
+  const [rating, setRating] = useState(initialSearchState.rating);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [draftCategory, setDraftCategory] = useState("all");
@@ -627,7 +698,7 @@ const Marketplace = () => {
     setDraftBuildModes([]);
   };
 
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialSearchState.page);
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -639,6 +710,21 @@ const Marketplace = () => {
   const [projectLoading, setProjectLoading] = useState(false);
   const [projectAccessError, setProjectAccessError] = useState("");
   const [openFaqItems, setOpenFaqItems] = useState({});
+  const previousCategoryRef = useRef(category);
+  const didInitializeBuildModesRef = useRef(false);
+  const didInitializePageResetRef = useRef(false);
+
+  const sessionUser = useMemo(() => user ?? getSession()?.user ?? null, [user]);
+  const viewerRoleTokens = useMemo(() => {
+    const roles = Array.isArray(sessionUser?.roles) ? sessionUser.roles : [];
+    return [
+      normalizeRoleToken(sessionUser?.role),
+      ...roles.map((entry) => normalizeRoleToken(entry)),
+    ].filter(Boolean);
+  }, [sessionUser]);
+  const canUseClientWishlist =
+    isAuthenticated && viewerRoleTokens.includes("CLIENT");
+  const wishlistOwnerId = canUseClientWishlist ? sessionUser?.id : null;
 
   const canViewProjectsMarketplace =
     isAuthenticated && normalizeRoleToken(user?.role) === "FREELANCER";
@@ -688,15 +774,14 @@ const Marketplace = () => {
   const sparklesSpeed = isMobileViewport ? 0.35 : 0.55;
 
   useEffect(() => {
-    try {
-      const session = getSession();
-      const key = session?.user?.id ? `marketplace_favorites:${session.user.id}` : "marketplace_favorites:guest";
-      const saved = localStorage.getItem(key);
-      if (saved) setFavorites(JSON.parse(saved));
-    } catch {
-      // Ignore storage access failures in private browsing or restricted contexts.
+    if (!canUseClientWishlist || !wishlistOwnerId) {
+      setFavorites({});
+      return;
     }
-  }, []);
+
+    const storedFavorites = loadMarketplaceFavorites(wishlistOwnerId);
+    setFavorites(storedFavorites.favoriteMap);
+  }, [canUseClientWishlist, wishlistOwnerId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -742,6 +827,10 @@ const Marketplace = () => {
   }, []);
 
   useEffect(() => {
+    if (!didInitializeBuildModesRef.current) {
+      didInitializeBuildModesRef.current = true;
+      return;
+    }
     setSelectedBuildModes([]);
   }, [category]);
 
@@ -757,6 +846,8 @@ const Marketplace = () => {
 
   useEffect(() => {
     let cancelled = false;
+    const hasCategoryChanged = previousCategoryRef.current !== category;
+    previousCategoryRef.current = category;
 
     if (category === "all") {
       setSelectedServiceId(null);
@@ -783,9 +874,11 @@ const Marketplace = () => {
     const nextServiceId = Number.isInteger(selectedService?.id) ? selectedService.id : null;
 
     setSelectedServiceId(nextServiceId);
-    setSelectedSubCategoryId(null);
-    setSelectedToolId(null);
-    setToolOptions([]);
+    if (hasCategoryChanged) {
+      setSelectedSubCategoryId(null);
+      setSelectedToolId(null);
+      setToolOptions([]);
+    }
 
     if (!nextServiceId) {
       setSubCategoryOptions([]);
@@ -855,19 +948,41 @@ const Marketplace = () => {
     };
   }, [selectedSubCategoryId]);
 
-  const toggleFavorite = (event, id) => {
+  const toggleFavorite = (event, item) => {
     event.preventDefault();
     event.stopPropagation();
+    if (!canUseClientWishlist || !wishlistOwnerId) return;
+
+    const favoriteId = String(item?.id || "").trim();
+    if (!favoriteId) return;
+
     setFavorites((current) => {
-      const next = { ...current, [id]: !current[id] };
-      try {
-        const session = getSession();
-        const key = session?.user?.id ? `marketplace_favorites:${session.user.id}` : "marketplace_favorites:guest";
-        localStorage.setItem(key, JSON.stringify(next));
-      } catch {
-        // Ignore storage access failures in private browsing or restricted contexts.
+      const isSelected = Boolean(current[favoriteId]);
+      const nextFavoriteMap = { ...current };
+      if (isSelected) {
+        delete nextFavoriteMap[favoriteId];
+      } else {
+        nextFavoriteMap[favoriteId] = true;
       }
-      return next;
+
+      const { itemSnapshots } = loadMarketplaceFavorites(wishlistOwnerId);
+      const nextSnapshots = { ...itemSnapshots };
+
+      if (isSelected) {
+        delete nextSnapshots[favoriteId];
+      } else {
+        const snapshot = createMarketplaceFavoriteSnapshot(item);
+        if (snapshot) {
+          nextSnapshots[favoriteId] = snapshot;
+        }
+      }
+
+      saveMarketplaceFavorites(wishlistOwnerId, {
+        favoriteMap: nextFavoriteMap,
+        itemSnapshots: nextSnapshots,
+      });
+
+      return nextFavoriteMap;
     });
   };
 
@@ -1006,9 +1121,71 @@ const Marketplace = () => {
     }
   }, [activeMarketplaceView, authFetch, canViewProjectsMarketplace, category, debouncedMax, debouncedMin, debouncedQ, page, selectedServiceId, selectedSubCategoryId, selectedToolId]);
 
-  useEffect(() => setPage(1), [activeMarketplaceView, debouncedQ, category, debouncedMin, debouncedMax, duration, rating, selectedBuildModes, selectedServiceId, selectedSubCategoryId, selectedToolId, sort]);
+  useEffect(() => {
+    if (!didInitializePageResetRef.current) {
+      didInitializePageResetRef.current = true;
+      return;
+    }
+    setPage(1);
+  }, [
+    activeMarketplaceView,
+    debouncedQ,
+    category,
+    debouncedMin,
+    debouncedMax,
+    duration,
+    rating,
+    selectedBuildModes,
+    selectedServiceId,
+    selectedSubCategoryId,
+    selectedToolId,
+    sort,
+  ]);
   useEffect(() => void fetchResults(), [fetchResults]);
   useEffect(() => void fetchProjectResults(), [fetchProjectResults]);
+
+  const marketplaceSearchParams = useMemo(() => {
+    const params = new URLSearchParams();
+    const normalizedQuery = String(q || "").trim();
+    if (normalizedQuery) params.set("q", normalizedQuery);
+    if (category !== "all") params.set("category", category);
+    if (selectedSubCategoryId) params.set("subCategoryId", String(selectedSubCategoryId));
+    if (selectedToolId) params.set("toolId", String(selectedToolId));
+    if (selectedBuildModes.length > 0) params.set("buildMode", selectedBuildModes.join(","));
+    if (minBudget) params.set("minBudget", String(minBudget).trim());
+    if (maxBudget) params.set("maxBudget", String(maxBudget).trim());
+    if (sort && sort !== "newest") params.set("sort", sort);
+    if (duration) params.set("duration", duration);
+    if (rating) params.set("rating", rating);
+    if (page > 1) params.set("page", String(page));
+    if (activeMarketplaceView === "projects") params.set("view", "projects");
+    return params.toString();
+  }, [
+    activeMarketplaceView,
+    category,
+    duration,
+    maxBudget,
+    minBudget,
+    page,
+    q,
+    rating,
+    selectedBuildModes,
+    selectedSubCategoryId,
+    selectedToolId,
+    sort,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const nextUrl = [
+      window.location.pathname,
+      marketplaceSearchParams ? `?${marketplaceSearchParams}` : "",
+    ].join("");
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState(window.history.state || {}, "", nextUrl);
+    }
+  }, [marketplaceSearchParams]);
 
   const resetFilters = () => {
     setQ("");
@@ -1434,16 +1611,22 @@ const Marketplace = () => {
                   const price = formatPrice(item.serviceDetails?.startingPrice || item.serviceDetails?.minBudget || item.serviceDetails?.price, item.serviceDetails?.averageProjectPriceRange || item.serviceDetails?.priceRange);
                   return (
                     <motion.article key={item.id} className="h-full">
-                      <Link to={`/marketplace/service/${item.id}`} className="block h-full">
+                      <Link
+                        to={`/marketplace/service/${item.id}`}
+                        state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
+                        className="block h-full"
+                      >
                         <Card className="group h-full overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_28px_90px_-40px_color-mix(in_srgb,var(--primary)_22%,transparent)]">
                           <div className="relative h-44 overflow-hidden border-b border-white/10 bg-slate-950">
                             {image ? <img src={image} alt={item.service || "Marketplace service"} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" /> : <div className={cn("absolute inset-0 bg-gradient-to-br", getGradient(item.serviceKey || item.id))} />}
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
-                            <div className="absolute inset-x-0 top-0 flex items-start justify-end p-4">
-                              <button type="button" onClick={(event) => toggleFavorite(event, item.id)} aria-label={favorites[item.id] ? "Remove from favorites" : "Add to favorites"} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-slate-950/72 text-white shadow-sm backdrop-blur-md transition hover:bg-slate-900/90">
-                                <Heart className={cn("h-4 w-4", favorites[item.id] ? "fill-rose-500 text-rose-500" : "text-slate-200")} />
-                              </button>
-                            </div>
+                            {canUseClientWishlist ? (
+                              <div className="absolute inset-x-0 top-0 flex items-start justify-end p-4">
+                                <button type="button" onClick={(event) => toggleFavorite(event, item)} aria-label={favorites[item.id] ? "Remove from favorites" : "Add to favorites"} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-slate-950/72 text-white shadow-sm backdrop-blur-md transition hover:bg-slate-900/90">
+                                  <Heart className={cn("h-4 w-4", favorites[item.id] ? "fill-rose-500 text-rose-500" : "text-slate-200")} />
+                                </button>
+                              </div>
+                            ) : null}
                             {item.isFeatured && <div className="absolute left-4 top-14"><Badge className="rounded-full border-none bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-white shadow-sm"><Sparkles className="h-3 w-3" />Featured</Badge></div>}
                           </div>
                           <CardContent className="flex min-h-[252px] flex-col p-5">
@@ -1453,7 +1636,9 @@ const Marketplace = () => {
                                 <div className="flex min-h-12 items-center justify-between gap-3">
                                   <div className="flex min-w-0 items-center gap-1.5">
                                     <p className="truncate text-sm font-semibold text-white">{item.freelancer?.fullName || "Anonymous"}</p>
-                                    {item.freelancer?.isVerified && <BadgeCheck className="h-4 w-4 shrink-0 fill-primary text-black" />}
+                                    {parseBooleanFlag(item.freelancer?.isVerified) && (
+                                      <BadgeCheck className="h-4 w-4 shrink-0 fill-primary text-black" />
+                                    )}
                                   </div>
                                   {hasRating ? (
                                     <div className="inline-flex shrink-0 items-center gap-1.5 text-xs text-slate-400">

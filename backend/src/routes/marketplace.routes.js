@@ -9,7 +9,9 @@ import {
   getMarketplaceLiveProjects,
   getServiceById,
   getServiceReviews,
-  createServiceReview
+  getServiceReviewEligibility,
+  createServiceReview,
+  getFreelancerReceivedReviews,
 } from "../controllers/marketplace.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
 
@@ -21,7 +23,9 @@ marketplaceRouter.get("/filters/sub-categories", getMarketplaceFilterSubCategori
 marketplaceRouter.get("/filters/tools", getMarketplaceFilterTools);
 marketplaceRouter.get("/browse", getMarketplaceBrowse);
 marketplaceRouter.get("/projects/live", requireAuth, getMarketplaceLiveProjects);
+marketplaceRouter.get("/reviews/received", requireAuth, getFreelancerReceivedReviews);
 marketplaceRouter.get("/", getMarketplace);
 marketplaceRouter.get("/:id", getServiceById);
 marketplaceRouter.get("/:id/reviews", getServiceReviews);
+marketplaceRouter.get("/:id/reviews/eligibility", requireAuth, getServiceReviewEligibility);
 marketplaceRouter.post("/:id/reviews", requireAuth, createServiceReview);
