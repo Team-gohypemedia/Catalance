@@ -2483,6 +2483,39 @@ export const getServicePositiveKeywords = asyncHandler(async (req, res) => {
   });
 });
 
+export const getOgMeta = asyncHandler(async (req, res) => {
+  const targetUrl = req.query?.url;
+  if (!targetUrl) {
+    return res.status(400).json({ error: "URL is required" });
+  }
+
+  try {
+    const fetchRes = await fetch(targetUrl);
+    if (!fetchRes.ok) {
+      return res.status(fetchRes.status).json({ error: "Failed to fetch URL" });
+    }
+    const html = await fetchRes.text();
+    const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || 
+                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+                         
+    let ogImage = null;
+    if (ogImageMatch && ogImageMatch[1]) {
+      ogImage = ogImageMatch[1];
+    } else {
+      const fallbackMatch = html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i) ||
+                            html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
+      if (fallbackMatch && fallbackMatch[1]) {
+        ogImage = fallbackMatch[1];
+      }
+    }
+    
+    // Resolve relative URLs if needed, but simple URLs are usually absolute
+    res.json({ data: { ogImage } });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to parse OG meta" });
+  }
+});
+
 export const getMarketplaceFilterSubCategories = asyncHandler(async (req, res) => {
   const serviceId = parseOptionalInteger(req.query?.serviceId);
 

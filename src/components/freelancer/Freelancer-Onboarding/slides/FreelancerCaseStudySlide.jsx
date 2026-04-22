@@ -10,6 +10,7 @@ import {
   ServiceInfoStepper,
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
+import { CaseStudyPreviewCard } from "./shared/CaseStudyPreviewCard";
 
 const ROLE_OPTIONS = [
   { value: "full_execution", label: "Full execution" },
@@ -143,50 +144,19 @@ const FreelancerCaseStudySlide = ({
               </button>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 mt-4">
               {resolvedCaseStudies.map((caseStudy, index) => {
                 const isActive = caseStudy?.id === activeCaseStudyId;
-                const label = getCaseStudyLabel(caseStudy, index);
 
                 return (
-                  <div
+                  <CaseStudyPreviewCard
                     key={caseStudy?.id || `case-study-${index + 1}`}
-                    className={cn(
-                      "flex items-stretch overflow-hidden rounded-2xl border transition-colors",
-                      isActive
-                        ? "border-primary/40 bg-primary/10"
-                        : "border-white/10 bg-card/60",
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => onActiveCaseStudyChange(caseStudy?.id)}
-                      className="flex-1 px-4 py-3 text-left"
-                    >
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
-                        Project {index + 1}
-                      </p>
-                      <p
-                        className={cn(
-                          "mt-1 truncate text-sm font-medium",
-                          isActive ? "text-white" : "text-white/75",
-                        )}
-                      >
-                        {label}
-                      </p>
-                    </button>
-
-                    {resolvedCaseStudies.length > 1 ? (
-                      <button
-                        type="button"
-                        onClick={() => onRemoveCaseStudy(caseStudy?.id)}
-                        className="flex w-12 items-center justify-center border-l border-white/8 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
-                        aria-label={`Remove ${label}`}
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    ) : null}
-                  </div>
+                    caseStudy={caseStudy}
+                    index={index}
+                    isActive={isActive}
+                    onSelect={() => onActiveCaseStudyChange(caseStudy?.id)}
+                    onRemove={resolvedCaseStudies.length > 1 ? () => onRemoveCaseStudy(caseStudy?.id) : undefined}
+                  />
                 );
               })}
             </div>

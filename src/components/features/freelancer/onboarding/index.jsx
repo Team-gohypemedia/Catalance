@@ -95,7 +95,6 @@ import {
     ServiceIndustryFocusStep,
     ServiceNichesStep,
     ServiceIndustryOnlyStep,
-    ServiceComplexityStep,
     ServiceProjectDetailsStep,
     GlobalNicheStep,
 } from "./ServiceSteps";
@@ -2216,8 +2215,8 @@ const FreelancerMultiStepForm = () => {
                 return <ServiceNichesStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
             case "serviceIndustryOnly":
                 return <ServiceIndustryOnlyStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
-            case "serviceComplexity":
-                return <ServiceComplexityStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
+            case "service_complexity":
+                return null;
             case "portfolioImportance":
                 return <PortfolioImportanceStep {...sharedProps} />;
             case "serviceTransition":
