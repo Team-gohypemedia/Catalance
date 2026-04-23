@@ -23,7 +23,6 @@ import { cn } from "@/shared/lib/utils";
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
   { label: "Opportunity", key: "marketplace", to: "/marketplace" },
-  { label: "Service", mobileLabel: "Services", key: "service", to: "/service" },
   { label: "Contact", key: "contact", to: "/contact" },
 ];
 

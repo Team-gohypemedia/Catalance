@@ -18,12 +18,13 @@ import { signup, loginWithGoogle, verifyOtp, resendOtp } from "@/shared/lib/api-
 import { useAuth } from "@/shared/context/AuthContext";
 import {
   canAccessDashboard,
-  getDashboardPath,
+  FREELANCER_DASHBOARD,
+  getDashboardEntryPath,
   resolveDashboardValue,
+  resolveFreelancerPath,
   resolveWorkspaceHomePath,
   setStoredDashboardPreference,
 } from "@/shared/lib/dashboard-preference";
-import { markFreelancerWelcomePending } from "@/shared/lib/freelancer-onboarding-flags";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -106,16 +107,24 @@ const navigateAfterSignup = ({
   requestedRole,
   user,
 }) => {
-  if (redirectTo) {
-    navigate(redirectTo, { replace: true });
-    return redirectTo;
+  const requestedDashboard = resolveRequestedDashboard(user, requestedRole);
+
+  if (requestedDashboard === FREELANCER_DASHBOARD) {
+    setStoredDashboardPreference(user, requestedDashboard);
+    const requestedPath = getDashboardEntryPath(user, requestedDashboard);
+    navigate(requestedPath, { replace: true });
+    return requestedPath;
   }
 
-  const requestedDashboard = resolveRequestedDashboard(user, requestedRole);
+  if (redirectTo) {
+    const resolvedRedirectPath = resolveFreelancerPath(user, redirectTo);
+    navigate(resolvedRedirectPath, { replace: true });
+    return resolvedRedirectPath;
+  }
 
   if (requestedDashboard) {
     setStoredDashboardPreference(user, requestedDashboard);
-    const requestedPath = getDashboardPath(requestedDashboard);
+    const requestedPath = getDashboardEntryPath(user, requestedDashboard);
     navigate(requestedPath, { replace: true });
     return requestedPath;
   }
@@ -306,16 +315,6 @@ function Signup({ className, ...props }) {
       toast.success("Email verified! Welcome to Catalance.");
       setFormData(initialFormState);
       const requestedRole = searchParams.get("role")?.toUpperCase();
-      const destinationPath =
-        requestedRedirectTo ||
-        (resolveRequestedDashboard(authPayload?.user, requestedRole) === "freelancer"
-          ? "/freelancer"
-          : resolveWorkspaceHomePath(authPayload?.user));
-      const shouldOpenFreelancerDashboard = String(destinationPath).startsWith("/freelancer");
-
-      if (shouldOpenFreelancerDashboard) {
-        markFreelancerWelcomePending();
-      }
 
       navigateAfterSignup({
         navigate,
@@ -380,16 +379,6 @@ function Signup({ className, ...props }) {
       setAuthSession(sessionUser, authPayload?.accessToken);
       toast.success(`Welcome, ${firebaseUser.displayName || 'User'}!`);
       const requestedRole = selectedRole?.toUpperCase();
-      const destinationPath =
-        requestedRedirectTo ||
-        (resolveRequestedDashboard(sessionUser, requestedRole) === "freelancer"
-          ? "/freelancer"
-          : resolveWorkspaceHomePath(sessionUser));
-      const shouldOpenFreelancerDashboard = String(destinationPath).startsWith("/freelancer");
-
-      if (shouldOpenFreelancerDashboard) {
-        markFreelancerWelcomePending();
-      }
 
       navigateAfterSignup({
         navigate,

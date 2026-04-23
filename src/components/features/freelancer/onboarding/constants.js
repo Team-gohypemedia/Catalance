@@ -464,6 +464,167 @@ export const COUNTRY_OPTIONS = Array.from(
 
 export const STATE_OPTIONS_CACHE = new Map();
 
+const normalizeLocationLookupKey = (value = "") =>
+    String(value || "").trim().toLowerCase();
+
+const toUniqueOptionList = (options = []) => {
+    const seen = new Set();
+    const nextOptions = [];
+
+    options.forEach((option) => {
+        const normalizedOption = String(option || "").trim();
+        if (!normalizedOption) return;
+
+        const normalizedKey = normalizedOption.toLowerCase();
+        if (seen.has(normalizedKey)) return;
+
+        seen.add(normalizedKey);
+        nextOptions.push(normalizedOption);
+    });
+
+    return nextOptions;
+};
+
+const INDIA_STATE_OPTIONS = toUniqueOptionList([
+    "Andhra Pradesh",
+    "Arunachal Pradesh",
+    "Assam",
+    "Bihar",
+    "Chandigarh",
+    "Chhattisgarh",
+    "Dadra and Nagar Haveli and Daman and Diu",
+    "Delhi",
+    "Goa",
+    "Gujarat",
+    "Haryana",
+    "Himachal Pradesh",
+    "Jammu and Kashmir",
+    "Jharkhand",
+    "Karnataka",
+    "Kerala",
+    "Ladakh",
+    "Lakshadweep",
+    "Madhya Pradesh",
+    "Maharashtra",
+    "Manipur",
+    "Meghalaya",
+    "Mizoram",
+    "Nagaland",
+    "Odisha",
+    "Puducherry",
+    "Punjab",
+    "Rajasthan",
+    "Sikkim",
+    "Tamil Nadu",
+    "Telangana",
+    "Tripura",
+    "Uttar Pradesh",
+    "Uttarakhand",
+    "West Bengal",
+]);
+
+const UNITED_STATES_STATE_OPTIONS = toUniqueOptionList([
+    "Alabama",
+    "Alaska",
+    "Arizona",
+    "Arkansas",
+    "California",
+    "Colorado",
+    "Connecticut",
+    "Delaware",
+    "District of Columbia",
+    "Florida",
+    "Georgia",
+    "Hawaii",
+    "Idaho",
+    "Illinois",
+    "Indiana",
+    "Iowa",
+    "Kansas",
+    "Kentucky",
+    "Louisiana",
+    "Maine",
+    "Maryland",
+    "Massachusetts",
+    "Michigan",
+    "Minnesota",
+    "Mississippi",
+    "Missouri",
+    "Montana",
+    "Nebraska",
+    "Nevada",
+    "New Hampshire",
+    "New Jersey",
+    "New Mexico",
+    "New York",
+    "North Carolina",
+    "North Dakota",
+    "Ohio",
+    "Oklahoma",
+    "Oregon",
+    "Pennsylvania",
+    "Rhode Island",
+    "South Carolina",
+    "South Dakota",
+    "Tennessee",
+    "Texas",
+    "Utah",
+    "Vermont",
+    "Virginia",
+    "Washington",
+    "West Virginia",
+    "Wisconsin",
+    "Wyoming",
+]);
+
+const UNITED_KINGDOM_STATE_OPTIONS = toUniqueOptionList([
+    "England",
+    "Northern Ireland",
+    "Scotland",
+    "Wales",
+]);
+
+const FALLBACK_STATE_OPTIONS_LOOKUP = new Map([
+    ["india", INDIA_STATE_OPTIONS],
+    ["united states", UNITED_STATES_STATE_OPTIONS],
+    ["united states of america", UNITED_STATES_STATE_OPTIONS],
+    ["usa", UNITED_STATES_STATE_OPTIONS],
+    ["united kingdom", UNITED_KINGDOM_STATE_OPTIONS],
+    ["uk", UNITED_KINGDOM_STATE_OPTIONS],
+    ["great britain", UNITED_KINGDOM_STATE_OPTIONS],
+]);
+
+export const getFallbackStateOptions = (country = "") => {
+    const fallbackOptions = FALLBACK_STATE_OPTIONS_LOOKUP.get(
+        normalizeLocationLookupKey(country),
+    );
+
+    return Array.isArray(fallbackOptions) ? [...fallbackOptions] : [];
+};
+
+export const resolveStateOptionsForCountry = (country = "", stateOptions = []) => {
+    const normalizedCountry = normalizeLocationLookupKey(country);
+    if (!normalizedCountry) return [];
+
+    const normalizedStateOptions = toUniqueOptionList(stateOptions);
+    if (normalizedStateOptions.length) {
+        STATE_OPTIONS_CACHE.set(normalizedCountry, normalizedStateOptions);
+        return normalizedStateOptions;
+    }
+
+    const cachedStateOptions = STATE_OPTIONS_CACHE.get(normalizedCountry);
+    if (Array.isArray(cachedStateOptions) && cachedStateOptions.length) {
+        return [...cachedStateOptions];
+    }
+
+    const fallbackStateOptions = getFallbackStateOptions(country);
+    if (fallbackStateOptions.length) {
+        STATE_OPTIONS_CACHE.set(normalizedCountry, fallbackStateOptions);
+    }
+
+    return fallbackStateOptions;
+};
+
 export const ROLE_IN_PROJECT_OPTIONS = [
     { value: "full_execution", label: "Full execution" },
     { value: "partial_contribution", label: "Partial contribution" },

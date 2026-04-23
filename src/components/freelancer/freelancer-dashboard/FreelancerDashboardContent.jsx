@@ -27,21 +27,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { consumeFreelancerWelcomePending } from "@/shared/lib/freelancer-onboarding-flags";
 import {
   ProjectProposalCard,
   buildProjectCardModel,
@@ -2087,7 +2078,6 @@ export const DashboardContent = ({ _roleOverride, children }) => {
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [upcomingMeeting, setUpcomingMeeting] = useState(null);
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
-  const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [showPendingPaymentsStat, setShowPendingPaymentsStat] = useState(false);
   const [pendingProposalActionId, setPendingProposalActionId] = useState(null);
   const [projectCarouselApi, setProjectCarouselApi] = useState(null);
@@ -2134,26 +2124,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
   const additionalRoles = Array.isArray(effectiveUser?.roles)
     ? effectiveUser.roles.map((role) => String(role).toUpperCase())
     : [];
-  const normalizeBoolean = (value) => {
-    if (typeof value === "boolean") return value;
-    if (typeof value === "number") return value === 1;
-    if (typeof value === "string") {
-      const normalized = value.trim().toLowerCase();
-      return normalized === "true" || normalized === "1";
-    }
-    return false;
-  };
   const isFreelancerUser =
     primaryRole === "FREELANCER" || additionalRoles.includes("FREELANCER");
-  const isOnboardingComplete = normalizeBoolean(
-    effectiveUser?.onboardingComplete
-  );
-  const forcedRole = String(_roleOverride || "").toUpperCase();
-  const isFreelancerRoute = location.pathname.startsWith("/freelancer");
-  const showOnboardingAlert =
-    forcedRole !== "CLIENT" &&
-    isFreelancerRoute &&
-    !isOnboardingComplete;
   const profileCompletionPercent = Math.max(
     0,
     Math.min(100, Number(profileCompletion.percent) || 0)
@@ -2242,14 +2214,6 @@ export const DashboardContent = ({ _roleOverride, children }) => {
       setShowSuspensionAlert(true);
     }
   }, []);
-
-  useEffect(() => {
-    if (!isFreelancerUser) return;
-
-    if (consumeFreelancerWelcomePending()) {
-      setShowWelcomeDialog(true);
-    }
-  }, [isFreelancerUser]);
 
   useEffect(() => {
     const loadMetrics = async () => {
@@ -3860,8 +3824,6 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     sessionUser,
     showSuspensionAlert,
     setShowSuspensionAlert,
-    showWelcomeDialog,
-    setShowWelcomeDialog,
     headerProfile,
     activeWorkspaceKey,
     handleWorkspaceNav,
@@ -3869,7 +3831,6 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     unreadCount,
     markAllAsRead,
     handleNotificationClick,
-    showOnboardingAlert,
     hero,
     metricsLoading,
     dashboardMetricCards,
@@ -3929,7 +3890,6 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     onOpenProfile: () => navigate("/freelancer/profile"),
     onOpenProposals: () => navigate("/freelancer/proposals"),
     onOpenMessages: () => navigate("/freelancer/messages"),
-    onOpenOnboarding: () => navigate("/freelancer/onboarding"),
     onOpenNotificationSheet: () => {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("freelancer-notifications:open"));
@@ -3950,36 +3910,6 @@ export const DashboardContent = ({ _roleOverride, children }) => {
         onOpenChange={setShowSuspensionAlert}
         suspendedAt={sessionUser?.suspendedAt}
       />
-      <Dialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Welcome to Catalance
-            </DialogTitle>
-            <DialogDescription>
-              Your freelancer account is ready. You can explore the dashboard now
-              and start onboarding whenever you want.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowWelcomeDialog(false)}
-            >
-              Continue to Dashboard
-            </Button>
-            <Button
-              onClick={() => {
-                setShowWelcomeDialog(false);
-                navigate("/freelancer/onboarding");
-              }}
-            >
-              Start Onboarding
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <FreelancerWorkspaceHeader
         profile={headerProfile}
@@ -3999,28 +3929,6 @@ export const DashboardContent = ({ _roleOverride, children }) => {
 
       <main className="relative z-10 flex-1 pb-12 pt-4 sm:pb-14 sm:pt-5">
         <div className="flex w-full flex-col gap-6 sm:gap-7">
-          {showOnboardingAlert ? (
-            <div className="relative overflow-hidden rounded-[24px] border border-[#facc15]/30 bg-[#252116] px-4 py-4 sm:px-5">
-              <div className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-[#facc15]/15 blur-3xl" />
-              <div className="relative z-10 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#facc15]">
-                    Onboarding Required
-                  </p>
-                  <h3 className="mt-1 text-base font-semibold text-zinc-100">
-                    Complete your profile to start getting matched with higher-value projects.
-                  </h3>
-                </div>
-                <Button
-                  className="h-9 rounded-full bg-[#facc15] px-5 text-xs font-bold text-black hover:bg-[#eab308]"
-                  onClick={() => navigate("/freelancer/onboarding")}
-                >
-                  Start Onboarding
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
           <section className="mt-1 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <p className="order-1 text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:order-2">
               {dashboardDateLabel}

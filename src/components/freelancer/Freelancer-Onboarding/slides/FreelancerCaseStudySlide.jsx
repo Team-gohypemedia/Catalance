@@ -10,7 +10,6 @@ import {
   ServiceInfoStepper,
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
-import { CaseStudyPreviewCard } from "./shared/CaseStudyPreviewCard";
 
 const ROLE_OPTIONS = [
   { value: "full_execution", label: "Full execution" },
@@ -74,18 +73,13 @@ const FileUploadButton = ({ file, onChange }) => {
 const FreelancerCaseStudySlide = ({
   currentServiceName,
   caseStudyForm,
-  caseStudies = [],
-  activeCaseStudyId = "",
   activeCaseStudyIndex = 0,
   nicheOptions = [],
   onCaseStudyFieldChange,
   onAddCaseStudy,
-  onRemoveCaseStudy,
-  onActiveCaseStudyChange,
   onServiceStepChange,
 }) => {
   const serviceName = currentServiceName || "Service";
-  const resolvedCaseStudies = Array.isArray(caseStudies) ? caseStudies : [];
   const activeCaseStudyLabel =
     String(caseStudyForm?.title || "").trim() ||
     `Project ${Number.isInteger(activeCaseStudyIndex) ? activeCaseStudyIndex + 1 : 1}`;
@@ -143,29 +137,11 @@ const FreelancerCaseStudySlide = ({
                 Add Case Study
               </button>
             </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 mt-4">
-              {resolvedCaseStudies.map((caseStudy, index) => {
-                const isActive = caseStudy?.id === activeCaseStudyId;
-
-                return (
-                  <CaseStudyPreviewCard
-                    key={caseStudy?.id || `case-study-${index + 1}`}
-                    caseStudy={caseStudy}
-                    index={index}
-                    isActive={isActive}
-                    onSelect={() => onActiveCaseStudyChange(caseStudy?.id)}
-                    onRemove={resolvedCaseStudies.length > 1 ? () => onRemoveCaseStudy(caseStudy?.id) : undefined}
-                  />
-                );
-              })}
-            </div>
           </div>
 
           {/* Project Header */}
           <h3 className="text-xl font-semibold text-white sm:text-2xl">
-            {activeCaseStudyLabel}{" "}
-            <span className="font-normal text-white">({serviceName})</span>
+            {activeCaseStudyLabel}
           </h3>
 
           <div className="space-y-6">

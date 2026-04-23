@@ -57,7 +57,7 @@ const FreelancerServicePricingSlide = ({
             </p>
           </div>
 
-          <div className="space-y-6 rounded-2xl border border-white/8 bg-card/50 p-5 sm:p-7">
+          <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
             {/* Service Description */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">

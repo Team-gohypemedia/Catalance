@@ -26,8 +26,10 @@ import { useAuth } from "@/shared/context/AuthContext";
 import {
   COUNTRY_OPTIONS,
   LANGUAGE_OPTIONS,
+  resolveStateOptionsForCountry,
 } from "@/components/features/freelancer/onboarding/constants";
 import { normalizeUsernameInput } from "@/components/features/freelancer/onboarding/utils";
+import { FREELANCER_DASHBOARD_PATH } from "@/shared/lib/dashboard-preference";
 import {
   createEmptyServiceCaseStudy,
   createEmptyServiceDraft,
@@ -1253,15 +1255,18 @@ const FreelancerOnboardingShell = () => {
     }
 
     let isCancelled = false;
-    setIsStateOptionsLoading(true);
+    const fallbackStates = resolveStateOptionsForCountry(selectedCountry);
+    setStateOptions(fallbackStates);
+    setIsStateOptionsLoading(fallbackStates.length === 0);
 
     fetchStatesByCountry(selectedCountry)
       .then((response) => {
         if (isCancelled) return;
 
-        const nextStates = Array.isArray(response?.states)
-          ? response.states.filter(Boolean)
-          : [];
+        const nextStates = resolveStateOptionsForCountry(
+          selectedCountry,
+          response?.states,
+        );
         setStateOptions(nextStates);
 
         setBasicProfileForm((currentForm) => {
@@ -1277,7 +1282,7 @@ const FreelancerOnboardingShell = () => {
       .catch((error) => {
         if (isCancelled) return;
         console.error("Failed to fetch states for country:", error);
-        setStateOptions([]);
+        setStateOptions(resolveStateOptionsForCountry(selectedCountry));
       })
       .finally(() => {
         if (!isCancelled) {
@@ -2054,7 +2059,7 @@ const FreelancerOnboardingShell = () => {
         clearStoredOnboardingDraft(onboardingDraftStorageKey);
         await refreshUser();
         toast.success("Freelancer onboarding saved.");
-        navigate("/freelancer");
+        navigate(FREELANCER_DASHBOARD_PATH);
       })
       .catch((error) => {
         setProfileError(error?.message || "Failed to save freelancer onboarding.");
@@ -2596,7 +2601,7 @@ const FreelancerOnboardingShell = () => {
               variant="secondary"
               className="h-10 rounded-full border border-white/10 bg-card px-4 text-sm font-semibold text-foreground shadow-none hover:bg-accent/10"
             >
-              <Link to="/freelancer">
+              <Link to={FREELANCER_DASHBOARD_PATH}>
                 <ChevronLeft className="h-4 w-4" />
                 Back to dashboard
               </Link>

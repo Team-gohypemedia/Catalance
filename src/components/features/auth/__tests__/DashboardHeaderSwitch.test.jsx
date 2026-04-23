@@ -23,6 +23,7 @@ const dualRoleUser = {
   roles: ["CLIENT", "FREELANCER"],
   fullName: "ZAMASU GAMING",
   email: "zamasu@example.com",
+  onboardingComplete: true,
 };
 
 const freelancerOnlyUser = {
@@ -31,6 +32,7 @@ const freelancerOnlyUser = {
   roles: ["FREELANCER"],
   fullName: "MOHD KAIF",
   email: "mohd@example.com",
+  onboardingComplete: true,
 };
 
 const clientOnlyUser = {
@@ -39,6 +41,7 @@ const clientOnlyUser = {
   roles: ["CLIENT"],
   fullName: "CLIENT ONLY",
   email: "client-only@example.com",
+  onboardingComplete: true,
 };
 
 const profile = {

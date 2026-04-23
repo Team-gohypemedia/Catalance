@@ -109,9 +109,6 @@ const FreelancerPayments = lazy(
 const FreelancerOnboardingPage = lazy(
   () => import("@/pages/freelancer/FreelancerOnboarding.jsx"),
 );
-const FreelancerMultiStepForm = lazy(
-  () => import("@/components/features/freelancer/onboarding"),
-);
 const NotepadPage = lazy(() => import("@/components/pages/notepad-page"));
 const AdminDashboard = lazy(
   () => import("@/components/features/admin/AdminDashboard"),
@@ -545,7 +542,7 @@ const App = () => {
             <Route
               path="/freelancer/proposals"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProposal />
                 </ProtectedRoute>
               }
@@ -553,7 +550,7 @@ const App = () => {
             <Route
               path="/freelancer/proposals/received"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProposal filter="received" />
                 </ProtectedRoute>
               }
@@ -561,7 +558,7 @@ const App = () => {
             <Route
               path="/freelancer/proposals/accepted"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProposal filter="accepted" />
                 </ProtectedRoute>
               }
@@ -569,7 +566,7 @@ const App = () => {
             <Route
               path="/freelancer/project"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProjects />
                 </ProtectedRoute>
               }
@@ -577,7 +574,7 @@ const App = () => {
             <Route
               path="/freelancer/project/:projectId"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProjectDetail />
                 </ProtectedRoute>
               }
@@ -585,7 +582,7 @@ const App = () => {
             <Route
               path="/freelancer/messages"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerChat />
                 </ProtectedRoute>
               }
@@ -593,39 +590,26 @@ const App = () => {
             <Route
               path="/freelancer/payments"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerPayments />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/freelancer/onboarding/new"
-              element={
-                <ProtectedRoute loginPath="/signup?role=freelancer">
-                  <FreelancerOnboardingPage />
                 </ProtectedRoute>
               }
             />
             <Route
               path="/freelancer/onboarding"
               element={
-                <ProtectedRoute loginPath="/signup?role=freelancer">
-                  <FreelancerMultiStepForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/freelancer/verification-pending"
-              element={
-                <ProtectedRoute>
-                  <Navigate to="/freelancer" replace />
+                <ProtectedRoute
+                  allowFreelancerOnboardingOnly
+                  loginPath="/signup?role=freelancer"
+                >
+                  <FreelancerOnboardingPage />
                 </ProtectedRoute>
               }
             />
             <Route
               path="/freelancer/profile"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProfile />
                 </ProtectedRoute>
               }

@@ -4,9 +4,12 @@ import assert from "node:assert/strict";
 import { clearSession, persistSession } from "../auth-storage.js";
 import {
   canAccessDashboard,
+  FREELANCER_ONBOARDING_PATH,
   getAccessibleDashboards,
+  getDashboardEntryPath,
   getDashboardPreferenceStorageKey,
   getStoredDashboardPreference,
+  resolveFreelancerPath,
   resolveWorkspaceHomePath,
   setStoredDashboardPreference,
 } from "../dashboard-preference.js";
@@ -60,6 +63,7 @@ test("resolveWorkspaceHomePath restores the stored dashboard after refresh", () 
       id: "user-10",
       role: "CLIENT",
       roles: ["CLIENT", "FREELANCER"],
+      onboardingComplete: true,
     };
 
     setStoredDashboardPreference(user, "freelancer");
@@ -67,6 +71,42 @@ test("resolveWorkspaceHomePath restores the stored dashboard after refresh", () 
     assert.equal(getStoredDashboardPreference(user), "freelancer");
     assert.equal(resolveWorkspaceHomePath(user), "/freelancer");
   });
+});
+
+test("resolveWorkspaceHomePath sends incomplete freelancer entries to the dashboard gate", () => {
+  withMockWindow(() => {
+    const user = {
+      id: "user-10b",
+      role: "CLIENT",
+      roles: ["CLIENT", "FREELANCER"],
+      onboardingComplete: false,
+    };
+
+    setStoredDashboardPreference(user, "freelancer");
+
+    assert.equal(getStoredDashboardPreference(user), "freelancer");
+    assert.equal(resolveWorkspaceHomePath(user), "/freelancer");
+    assert.equal(getDashboardEntryPath(user, "freelancer"), "/freelancer");
+  });
+});
+
+test("resolveFreelancerPath only allows dashboard and onboarding before onboarding is complete", () => {
+  const user = {
+    id: "user-10c",
+    role: "FREELANCER",
+    roles: ["FREELANCER"],
+    onboardingComplete: false,
+  };
+
+  assert.equal(resolveFreelancerPath(user, "/freelancer"), "/freelancer");
+  assert.equal(
+    resolveFreelancerPath(user, "/freelancer/proposals"),
+    "/freelancer"
+  );
+  assert.equal(
+    resolveFreelancerPath(user, FREELANCER_ONBOARDING_PATH),
+    FREELANCER_ONBOARDING_PATH
+  );
 });
 
 test("invalid stored dashboard values are ignored and cleared", () => {
@@ -93,6 +133,7 @@ test("remembered dashboard survives logout and is reused after the next login", 
       id: "user-12",
       role: "CLIENT",
       roles: ["CLIENT", "FREELANCER"],
+      onboardingComplete: true,
     };
     const token = createJwt({
       sub: user.id,

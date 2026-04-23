@@ -18,15 +18,23 @@ import WorkspaceProfileDropdown from "@/components/layout/WorkspaceProfileDropdo
 import { useAuth } from "@/shared/context/AuthContext";
 import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
 
-const buildNavItems = ({ isFreelancer = false } = {}) => [
+const buildNavItems = ({
+  isFreelancer = false,
+  hideServiceTab = false,
+} = {}) => [
   { name: "Home", link: "/" },
   {
     name: isFreelancer ? "Opportunity" : "Marketplace",
     link: isFreelancer ? "/opportunity" : "/marketplace",
   },
-  { name: "Service", link: "/service" },
+  ...(!hideServiceTab ? [{ name: "Service", link: "/service" }] : []),
   { name: "Contact", link: "/contact" },
 ];
+
+const isFreelancerSidePath = (pathname = "") => {
+  const normalizedPath = String(pathname || "").trim().toLowerCase();
+  return normalizedPath.startsWith("/freelancer") || normalizedPath === "/opportunity";
+};
 
 const getDisplayName = (user) =>
   user?.fullName || user?.name || user?.email?.split("@")[0] || "Profile";
@@ -108,9 +116,13 @@ const Navbar = () => {
     () => shouldShowAuthenticatedNav && currentDashboard === "freelancer",
     [currentDashboard, shouldShowAuthenticatedNav],
   );
+  const hideServiceTab = useMemo(
+    () => isFreelancerSidePath(location.pathname),
+    [location.pathname],
+  );
   const navItems = useMemo(
-    () => buildNavItems({ isFreelancer: isFreelancerUser }),
-    [isFreelancerUser],
+    () => buildNavItems({ isFreelancer: isFreelancerUser, hideServiceTab }),
+    [hideServiceTab, isFreelancerUser],
   );
 
   const toggleMobileMenu = () => setMobileOpen((prev) => !prev);
