@@ -27,12 +27,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ProjectProposalCard,
   buildProjectCardModel,
@@ -52,7 +49,7 @@ import {
   toUniqueLabels,
   normalizeWorkExperienceEntries,
   collectEducationEntriesFromProfileDetails,
-} from "@/components/features/freelancer/profile/freelancerProfileUtils";
+} from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
 import { cn } from "@/shared/lib/utils";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { toast } from "sonner";
@@ -2033,8 +2030,6 @@ const FreelancerPendingProposalsSection = ({
 };
 
 const FreelancerProjectRedirectCard = ({ item, className }) => {
-  const isProposalPipelineCard = item.id === "proposal-pipeline";
-
   return (
     <div
       className={cn(
@@ -2726,7 +2721,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     [notifications]
   );
 
-  const resolveProjectProgress = useCallback((proposal, index = 0) => {
+  const resolveProjectProgress = useCallback((proposal) => {
     const project = proposal?.project || {};
     if (isProjectAwaitingKickoff(project)) {
       return 0;
@@ -2756,7 +2751,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
         .map((proposal, index) => {
         const project = proposal?.project || {};
         const projectId = project?.id;
-        const progress = resolveProjectProgress(proposal, index);
+        const progress = resolveProjectProgress(proposal);
         const businessName = resolveFreelancerProjectBusinessName(project, proposal);
         const serviceType = resolveFreelancerProjectServiceType(project, proposal);
         const ownerName =
@@ -3023,68 +3018,6 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     [recentChatUpdates]
   );
 
-  const earningsProjectScopeId = useMemo(() => {
-    const params = new URLSearchParams(location.search);
-    const raw = params.get("projectId");
-    const normalized = raw ? String(raw).trim() : "";
-    return normalized ? normalized : null;
-  }, [location.search]);
-
-  const acceptedProposalsForEarningsScope = useMemo(() => {
-    if (!earningsProjectScopeId) return metrics.acceptedProposals;
-    return metrics.acceptedProposals.filter(
-      (proposal) => String(proposal?.project?.id || "") === earningsProjectScopeId,
-    );
-  }, [earningsProjectScopeId, metrics.acceptedProposals]);
-
-  const pendingProposalsForEarningsScope = useMemo(() => {
-    if (!earningsProjectScopeId) return metrics.pendingProposals;
-    return metrics.pendingProposals.filter(
-      (proposal) => String(proposal?.project?.id || "") === earningsProjectScopeId,
-    );
-  }, [earningsProjectScopeId, metrics.pendingProposals]);
-
-  const earningsScopeMetrics = useMemo(
-    () =>
-      summarizeFreelancerDashboardMetrics([
-        ...acceptedProposalsForEarningsScope,
-        ...pendingProposalsForEarningsScope,
-      ]),
-    [acceptedProposalsForEarningsScope, pendingProposalsForEarningsScope],
-  );
-
-  const paymentCollectionPercentScoped = useMemo(() => {
-    const totalTracked =
-      earningsScopeMetrics.receivedEarnings + earningsScopeMetrics.pendingEarnings;
-    if (!totalTracked) return 0;
-    return Math.round(
-      (earningsScopeMetrics.receivedEarnings / totalTracked) * 100,
-    );
-  }, [earningsScopeMetrics.pendingEarnings, earningsScopeMetrics.receivedEarnings]);
-
-  const paymentHealthLabelScoped = useMemo(() => {
-    if (paymentCollectionPercentScoped >= 80) return "Strong payout momentum";
-    if (paymentCollectionPercentScoped >= 50) return "Healthy payment mix";
-    if (earningsScopeMetrics.pendingEarnings > 0)
-      return "Pending earnings can still convert";
-    return "Start one more project to grow earnings";
-  }, [earningsScopeMetrics.pendingEarnings, paymentCollectionPercentScoped]);
-
-  const paymentCollectionPercent = useMemo(() => {
-    const totalTracked = metrics.receivedEarnings + metrics.pendingEarnings;
-    if (!totalTracked) return 0;
-    return Math.round((metrics.receivedEarnings / totalTracked) * 100);
-  }, [metrics.pendingEarnings, metrics.receivedEarnings]);
-
-  const averageProjectShare = useMemo(() => {
-    if (!metrics.acceptedProposals.length) return 0;
-    return Math.round((metrics.receivedEarnings + metrics.pendingEarnings) / metrics.acceptedProposals.length);
-  }, [
-    metrics.acceptedProposals.length,
-    metrics.pendingEarnings,
-    metrics.receivedEarnings,
-  ]);
-
   const earningsTrendData = useMemo(() => {
     const monthFormatter = new Intl.DateTimeFormat("en-US", { month: "short" });
     const labels = Array.from({ length: 6 }, (_, index) => {
@@ -3178,7 +3111,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                 day: "numeric",
               }).format(new Date(project.deadline))}`
             : `Updated ${formatDashboardActivityTime(proposal?.updatedAt || proposal?.createdAt)}`,
-          progress: resolveProjectProgress(proposal, index),
+          progress: resolveProjectProgress(proposal),
           projectId,
           proposalId: proposal?.id ? String(proposal.id) : "",
         };
@@ -3228,50 +3161,6 @@ export const DashboardContent = ({ _roleOverride, children }) => {
 
     return "No pending payouts right now";
   }, [metrics.acceptedProposals, metrics.pendingEarnings]);
-
-  const receivedPayoutRows = useMemo(() => {
-    return metrics.acceptedProposals
-      .filter((proposal) => isProposalCompletedForDashboard(proposal))
-      .slice(0, 4)
-      .map((proposal, index) => {
-        const project = proposal?.project || {};
-        const businessName = resolveFreelancerProjectBusinessName(project, proposal);
-        const rawAmount = Number(proposal?.amount) || 0;
-
-        return {
-          id: proposal?.id || project?.id || `received-payout-${index}`,
-          title:
-            (businessName ? toDisplayTitleCase(businessName) : "") ||
-            project?.title ||
-            "Completed project",
-          clientLabel:
-            project?.owner?.fullName ||
-            project?.owner?.name ||
-            project?.owner?.companyName ||
-            "Client",
-          amount: formatFreelancerDashboardCurrency(Math.round(rawAmount * 0.7)),
-          statusLabel: "Received",
-          timeLabel: proposal?.updatedAt || proposal?.createdAt
-            ? `Cleared ${formatDashboardActivityTime(proposal?.updatedAt || proposal?.createdAt)}`
-            : "Payout completed",
-        };
-      });
-  }, [metrics.acceptedProposals]);
-
-  const paymentHealthLabel = useMemo(() => {
-    if (paymentCollectionPercent >= 80) return "Strong payout momentum";
-    if (paymentCollectionPercent >= 50) return "Healthy payment mix";
-    if (metrics.pendingEarnings > 0) return "Pending earnings can still convert";
-    return "Start one more project to grow earnings";
-  }, [metrics.pendingEarnings, paymentCollectionPercent]);
-
-  const paymentActionItems = useMemo(() => {
-    return [
-      `${pendingPayoutRows.length} active payout ${pendingPayoutRows.length === 1 ? "source" : "sources"}`,
-      `${receivedPayoutRows.length} cleared payment ${receivedPayoutRows.length === 1 ? "entry" : "entries"}`,
-      `${paymentCollectionPercent}% of tracked earnings already received`,
-    ];
-  }, [paymentCollectionPercent, pendingPayoutRows.length, receivedPayoutRows.length]);
 
   const runningProjectsRows = useMemo(() => pendingPayoutRows, [pendingPayoutRows]);
 
@@ -3386,31 +3275,6 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     return normalized;
   }, [activeProposalForSchedule]);
 
-  const completedSchedulePhaseCount = useMemo(
-    () => schedulePhases.filter((phase) => phase.isComplete).length,
-    [schedulePhases],
-  );
-
-  const currentSchedulePhase = useMemo(
-    () => schedulePhases.find((phase) => !phase.isComplete) || schedulePhases[schedulePhases.length - 1] || null,
-    [schedulePhases],
-  );
-
-  const pendingSchedulePhase = useMemo(
-    () =>
-      schedulePhases.find(
-        (phase) =>
-          !phase.isComplete &&
-          String(phase?.label || "") !== String(currentSchedulePhase?.label || ""),
-      ) || null,
-    [currentSchedulePhase, schedulePhases],
-  );
-
-  const scheduledSchedulePhase = useMemo(
-    () => schedulePhases[schedulePhases.length - 1] || null,
-    [schedulePhases],
-  );
-
   const scheduleTimelineShares = useMemo(() => phaseTimelineShares.slice(0, 4), []);
 
   const scheduleTimelineStarts = useMemo(() => {
@@ -3425,7 +3289,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
   const activeScheduleProgressPct = useMemo(() => {
     if (!activeProposalForSchedule) return 0;
 
-    const payoutHeuristic = clampProgress(resolveProjectProgress(activeProposalForSchedule, 0));
+    const payoutHeuristic = clampProgress(resolveProjectProgress(activeProposalForSchedule));
 
     const phaseWeightedProgress = schedulePhases.reduce(
       (acc, phase, index) => {
@@ -4435,7 +4299,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                           className="w-full"
                         >
                           <CarouselContent className="ml-0 items-start gap-4 [backface-visibility:hidden] [will-change:transform]">
-                            {visibleRunningProjects.map((item, index) => (
+                            {visibleRunningProjects.map((item) => (
                               <CarouselItem
                                 key={item.id}
                                 className={cn(
@@ -4473,7 +4337,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                       visibleRunningProjects.length > 1 && "md:grid-cols-2 xl:grid-cols-3",
                     )}
                   >
-                    {visibleRunningProjects.map((item, index) => (
+                    {visibleRunningProjects.map((item) => (
                       <FreelancerRunningProjectCard
                         key={item.id}
                         item={item}
@@ -4792,7 +4656,6 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                 <div className="mt-3 flex items-center gap-1">
                                   {Array.from({ length: dotCount }).map((_, i) => (
                                     <span
-                                      // eslint-disable-next-line react/no-array-index-key
                                       key={i}
                                       className={cn(
                                         "h-1.5 w-1.5 rounded-full",

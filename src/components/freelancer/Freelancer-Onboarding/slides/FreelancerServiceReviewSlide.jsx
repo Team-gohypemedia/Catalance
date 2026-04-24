@@ -16,7 +16,7 @@ import Wrench from "lucide-react/dist/esm/icons/wrench";
 import {
   normalizeProjectLinkValue,
   resolveAvatarUrl,
-} from "@/components/features/freelancer/profile/freelancerProfileUtils";
+} from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
 import { useAuth } from "@/shared/context/AuthContext";
 import { getSubcategorySelectionKey } from "../service-details";
 import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";

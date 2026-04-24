@@ -20,7 +20,7 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from "@/components/ui/carousel";
-import ProjectCoverMedia from "@/components/features/freelancer/profile/ProjectCoverMedia";
+import ProjectCoverMedia from "@/components/freelancer/Freelancer-Profile/ProjectCoverMedia";
 import { getServiceLabel } from "@/components/features/freelancer/onboarding/utils";
 
 const normalizeProjectLink = (link = "") => {

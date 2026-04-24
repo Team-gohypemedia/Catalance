@@ -12,7 +12,7 @@ import {
   SKILL_LEVEL_OPTIONS,
   formatSkillLevelLabel,
   normalizeSkillLevel,
-} from "@/components/features/freelancer/profile/freelancerProfileUtils";
+} from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
 
 const normalizeSkill = (entry, index) => {
   if (typeof entry === "string") {

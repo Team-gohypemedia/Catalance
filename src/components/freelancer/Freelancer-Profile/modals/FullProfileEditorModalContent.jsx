@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { FULL_PROFILE_EDITOR_SECTIONS } from "@/components/features/freelancer/profile/freelancerProfileUtils";
+import { FULL_PROFILE_EDITOR_SECTIONS } from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
 
 const FullProfileEditorModalContent = ({
   fullProfileForm,

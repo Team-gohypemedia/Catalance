@@ -92,7 +92,7 @@ const FreelancerProposal = lazy(
   () => import("@/components/features/freelancer/FreelancerProposal"),
 );
 const FreelancerProfile = lazy(
-  () => import("@/components/features/freelancer/FreelancerProfile"),
+  () => import("@/pages/freelancer/FreelancerProfile.jsx"),
 );
 const FreelancerProjects = lazy(
   () => import("@/components/features/freelancer/FreelancerProjects"),

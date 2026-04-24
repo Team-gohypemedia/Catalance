@@ -20,7 +20,7 @@ const getGradientIndexFromSeed = (seed = "") => {
   return Math.abs(hash) % PROJECT_COVER_GRADIENTS.length;
 };
 
-export const getProjectDisplayTitle = (project = {}) => {
+const getProjectDisplayTitle = (project = {}) => {
   const explicitTitle = String(project?.title || "").trim();
   if (explicitTitle) return explicitTitle;
 

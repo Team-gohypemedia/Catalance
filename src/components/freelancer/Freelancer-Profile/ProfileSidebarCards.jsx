@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FULL_PROFILE_EDITOR_SECTIONS } from "@/components/features/freelancer/profile/freelancerProfileUtils";
+import { FULL_PROFILE_EDITOR_SECTIONS } from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
 
 const normalizeEducationEntries = (profileDetails = {}) => {
   const extractYearToken = (value = "") => {
