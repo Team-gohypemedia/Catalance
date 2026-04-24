@@ -248,7 +248,6 @@ export const normalizeCanonicalServiceDetail = ({
   );
 
   return {
-    ...source,
     serviceKey: normalizedServiceKey,
     serviceId:
       toPositiveInteger(source.serviceId) ||
@@ -261,9 +260,6 @@ export const normalizeCanonicalServiceDetail = ({
       existingSkillsAndTechnologies: source.skillsAndTechnologies,
     }),
     experienceYears: toOptionalString(source.experienceYears),
-    serviceComplexity: toOptionalString(
-      source.serviceComplexity || source.projectComplexity,
-    ),
     serviceDescription: toOptionalString(source.serviceDescription),
     deliveryTime: toOptionalString(source.deliveryTime),
     averageProjectPrice: toOptionalString(
@@ -403,7 +399,6 @@ export const buildPrimaryServiceSnapshot = ({
       serviceTitle: null,
       serviceCategory: existingValues.serviceCategory || null,
       serviceExperience: null,
-      serviceComplexity: null,
       serviceDescription: null,
       deliveryTimeline: null,
       startingPrice: null,
@@ -428,10 +423,6 @@ export const buildPrimaryServiceSnapshot = ({
     serviceTitle: toOptionalString(primaryDetail.title) || null,
     serviceCategory,
     serviceExperience: toOptionalString(primaryDetail.experienceYears) || null,
-    serviceComplexity:
-      toOptionalString(
-        primaryDetail.serviceComplexity || primaryDetail.projectComplexity,
-      ) || null,
     serviceDescription: toOptionalString(primaryDetail.serviceDescription) || null,
     deliveryTimeline: toOptionalString(primaryDetail.deliveryTime) || null,
     startingPrice: toOptionalString(primaryDetail.averageProjectPrice) || null,

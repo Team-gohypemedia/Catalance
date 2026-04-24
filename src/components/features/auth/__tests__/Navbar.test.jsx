@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -80,10 +80,11 @@ describe("Navbar service tab visibility", () => {
     expect(screen.getByText("Opportunity")).toBeTruthy();
   });
 
-  it("shows the Service tab on public routes even for freelancer users", () => {
+  it("keeps the desktop Service tab on public routes but hides Services in the freelancer mobile sidebar", () => {
     renderNavbar("/marketplace");
 
     expect(screen.getByText("Service")).toBeTruthy();
+    expect(screen.queryByText("Services")).toBeNull();
     expect(screen.getByText("Opportunity")).toBeTruthy();
   });
 
@@ -98,5 +99,22 @@ describe("Navbar service tab visibility", () => {
 
     expect(screen.getByText("Service")).toBeTruthy();
     expect(screen.getByText("Marketplace")).toBeTruthy();
+  });
+
+  it("opens the public mobile sheet menu for logged-out users", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      authLoading: false,
+      logout: vi.fn(),
+    });
+
+    renderNavbar("/");
+
+    fireEvent.click(screen.getByRole("button", { name: /open navigation menu/i }));
+
+    expect(await screen.findByRole("link", { name: "Log In" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Sign Up" })).toBeTruthy();
   });
 });

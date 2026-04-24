@@ -137,10 +137,7 @@ const ProfileHeroCard = ({
             onError={() => setHasCoverImageError(true)}
           />
         ) : (
-          <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,rgba(120,119,198,0.12),transparent_32%),linear-gradient(135deg,rgba(9,9,11,0.98),rgba(24,24,27,0.96))] px-6 py-8 text-center">
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:34px_34px] opacity-40" />
-            <div className="pointer-events-none absolute left-[8%] top-[18%] h-28 w-28 rounded-full bg-primary/20 blur-3xl" />
-            <div className="pointer-events-none absolute bottom-[12%] right-[10%] h-32 w-32 rounded-full bg-sky-400/10 blur-3xl" />
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[linear-gradient(135deg,rgba(9,9,11,0.98),rgba(24,24,27,0.96))] px-6 py-8 text-center">
 
             <div
               role="button"

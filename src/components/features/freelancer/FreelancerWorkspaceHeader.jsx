@@ -155,7 +155,7 @@ const NotificationPopoverButton = ({
         <SheetTrigger asChild>
           <button
             type="button"
-            className="relative flex size-9 items-center justify-center text-[#94a3b8] transition-colors hover:text-white"
+            className="relative flex size-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
             aria-label="Open notifications"
           >
             <Bell className="size-4.5" />
@@ -315,6 +315,7 @@ const FreelancerWorkspaceHeader = ({
         onLogout={() => {
           logout();
         }}
+        flushContainerPadding
         renderNotificationButton={() => (
           <NotificationPopoverButton
             notifications={notifications}

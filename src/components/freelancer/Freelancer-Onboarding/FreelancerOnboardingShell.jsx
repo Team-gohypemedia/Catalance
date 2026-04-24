@@ -969,7 +969,6 @@ const FreelancerOnboardingShell = () => {
           SERVICE_EXPERIENCE_STORAGE_LABELS,
           detail.experience,
         );
-        detail.complexity = String(detail.complexity || "").trim();
 
         detail.deliveryTimeline = resolveStoredSelectKey(
           DELIVERY_TIMELINE_STORAGE_LABELS,
@@ -986,11 +985,6 @@ const FreelancerOnboardingShell = () => {
               SERVICE_EXPERIENCE_STORAGE_LABELS,
               user?.serviceExperience,
             );
-          }
-          if (!detail.complexity) {
-            detail.complexity = String(
-              user?.serviceComplexity || user?.projectComplexity || "",
-            ).trim();
           }
 
           if (!detail.description) {

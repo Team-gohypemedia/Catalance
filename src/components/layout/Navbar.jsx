@@ -2,19 +2,27 @@
 
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import Menu from "lucide-react/dist/esm/icons/menu";
+import X from "lucide-react/dist/esm/icons/x";
 import { cn } from "@/shared/lib/utils";
 import {
   Navbar as ResizableNavbar,
   NavBody,
   NavItems,
-  MobileNav,
-  MobileNavHeader,
-  MobileNavMenu,
-  MobileNavToggle,
   NavbarLogo,
   NavbarButton,
 } from "@/components/ui/resizable-navbar-fixed";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import WorkspaceProfileDropdown from "@/components/layout/WorkspaceProfileDropdown";
+import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
 
@@ -29,6 +37,40 @@ const buildNavItems = ({
   },
   ...(!hideServiceTab ? [{ name: "Service", link: "/service" }] : []),
   { name: "Contact", link: "/contact" },
+];
+
+const buildMobileMarketingNavItems = ({
+  isFreelancer = false,
+  hideServiceTab = false,
+} = {}) => [
+  { label: "Home", key: "home", to: "/" },
+  {
+    label: isFreelancer ? "Opportunity" : "Marketplace",
+    key: "marketplace",
+    to: isFreelancer ? "/opportunity" : "/marketplace",
+  },
+  ...(!isFreelancer && !hideServiceTab
+    ? [{ label: "Services", key: "service", to: "/service" }]
+    : []),
+  { label: "Contact", key: "contact", to: "/contact" },
+];
+
+const clientWorkspaceNavItems = [
+  { label: "Dashboard", key: "dashboard", to: "/client" },
+  { label: "Proposals", key: "proposals", to: "/client/proposal" },
+  { label: "Projects", key: "projects", to: "/client/project" },
+  { label: "Messages", key: "messages", to: "/client/messages" },
+  { label: "Payments", key: "payments", to: "/client/payments" },
+  { label: "Profile", key: "profile", to: "/client/profile" },
+];
+
+const freelancerWorkspaceNavItems = [
+  { label: "Dashboard", key: "dashboard", to: "/freelancer" },
+  { label: "Proposals", key: "proposals", to: "/freelancer/proposals" },
+  { label: "Projects", key: "projects", to: "/freelancer/project" },
+  { label: "Messages", key: "messages", to: "/freelancer/messages" },
+  { label: "Payments", key: "payments", to: "/freelancer/payments" },
+  { label: "Profile", key: "profile", to: "/freelancer/profile" },
 ];
 
 const isFreelancerSidePath = (pathname = "") => {
@@ -101,13 +143,11 @@ const AuthButtons = ({
 
 /* ─── Navbar ─────────────────────────────────────────────────────────────── */
 const Navbar = () => {
-  const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const isHome = location.pathname === "/";
   const { user, token, isAuthenticated, authLoading, logout } = useAuth();
   const {
     currentDashboard,
-    dashboardPath,
     profilePath,
   } = useDashboardSwitcher();
   const shouldShowAuthenticatedNav =
@@ -124,9 +164,23 @@ const Navbar = () => {
     () => buildNavItems({ isFreelancer: isFreelancerUser, hideServiceTab }),
     [hideServiceTab, isFreelancerUser],
   );
+  const mobileMarketingNavItems = useMemo(
+    () =>
+      buildMobileMarketingNavItems({
+        isFreelancer: isFreelancerUser,
+        hideServiceTab,
+      }),
+    [hideServiceTab, isFreelancerUser],
+  );
+  const activeDashboard =
+    currentDashboard === "freelancer" ? "freelancer" : "client";
+  const displayName = getDisplayName(user);
+  const workspaceNavItems =
+    activeDashboard === "freelancer"
+      ? freelancerWorkspaceNavItems
+      : clientWorkspaceNavItems;
 
-  const toggleMobileMenu = () => setMobileOpen((prev) => !prev);
-  const closeMobileMenu = () => setMobileOpen(false);
+  const closeMobileMenu = () => {};
   const isDark = true;
 
   return (
@@ -150,82 +204,122 @@ const Navbar = () => {
         </div>
       </NavBody>
 
-      {/* Mobile Navbar */}
-      <MobileNav>
-        <MobileNavHeader>
-          <NavbarLogo />
-          <MobileNavToggle isOpen={mobileOpen} onClick={toggleMobileMenu} />
-        </MobileNavHeader>
-
-        <MobileNavMenu isOpen={mobileOpen}>
-          {navItems.map((item, idx) => (
-            <Link
-              key={`mobile-link-${idx}`}
-              to={item.link}
-              onClick={closeMobileMenu}
-              className="w-full px-4 py-2 text-center text-lg text-white hover:bg-neutral-800 rounded"
-            >
-              {item.name}
-            </Link>
-          ))}
-          {shouldShowAuthenticatedNav ? (
-            <>
-              <NavbarButton
-                as={Link}
-                to={profilePath}
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 !text-black"
-                onClick={closeMobileMenu}
-              >
-                Profile
-              </NavbarButton>
-              <NavbarButton
-                as={Link}
-                to={dashboardPath}
-                className="inline-flex w-full items-center justify-center gap-2 !text-black"
-                onClick={closeMobileMenu}
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black text-xs font-bold text-yellow-400">
-                  {user?.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={getDisplayName(user)}
-                      className="h-full w-full rounded-full object-cover"
-                    />
-                  ) : (
-                    getInitials(getDisplayName(user))
-                  )}
-                </span>
-                <span className="truncate text-black">{getDisplayName(user)}</span>
-              </NavbarButton>
-              <NavbarButton
-                as="button"
-                onClick={() => {
-                  closeMobileMenu();
-                  logout();
-                }}
-                className="inline-flex w-full items-center justify-center gap-2 !text-red-600 !bg-red-50 hover:!bg-red-100 mt-2"
-              >
-                Log Out
-              </NavbarButton>
-            </>
-          ) : (
-            <>
-              <NavbarButton
-                as={Link}
-                to="/login"
-                variant="outline"
-                className="w-full mt-4"
-              >
-                Log In
-              </NavbarButton>
-              <NavbarButton as={Link} to="/get-started" className="w-full">
-                Sign Up
-              </NavbarButton>
-            </>
-          )}
-        </MobileNavMenu>
-      </MobileNav>
+      {shouldShowAuthenticatedNav ? (
+        <WorkspaceMobileSidebar
+          currentDashboard={activeDashboard}
+          displayName={displayName}
+          profile={{
+            avatar: user?.avatar || "",
+            email: user?.email || "",
+            isVerified: Boolean(user?.isVerified || user?.freelancerProfile?.isVerified),
+            openToWork:
+              typeof user?.freelancerProfile?.openToWork === "boolean"
+                ? user.freelancerProfile.openToWork
+                : typeof user?.openToWork === "boolean"
+                  ? user.openToWork
+                  : undefined,
+          }}
+          profileInitial={getInitials(displayName)}
+          profileTo={profilePath}
+          activeMarketingKey={null}
+          activeWorkspaceKey="dashboard"
+          marketingNavItems={mobileMarketingNavItems}
+          workspaceNavItems={workspaceNavItems}
+          onLogout={logout}
+        />
+      ) : (
+        <PublicMobileSidebar navItems={navItems} />
+      )}
     </ResizableNavbar>
+  );
+};
+
+const PublicMobileSidebar = ({ navItems }) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="w-full px-4 py-2 lg:hidden">
+      <div className="flex w-full items-center justify-between gap-3">
+        <Link to="/" onClick={() => setOpen(false)}>
+          <NavbarLogo />
+        </Link>
+
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              aria-label="Open navigation menu"
+              className="inline-flex size-10 items-center justify-center rounded-full text-white transition-colors hover:text-muted-foreground"
+            >
+              <Menu className="size-5" />
+            </button>
+          </SheetTrigger>
+
+          <SheetContent
+            side="right"
+            showCloseButton={false}
+            className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-white shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Navigation menu</SheetTitle>
+              <SheetDescription>Open site navigation links.</SheetDescription>
+            </SheetHeader>
+
+            <div className="flex items-center justify-between px-4.5 py-2.5">
+              <SheetClose asChild>
+                <Link to="/">
+                  <NavbarLogo />
+                </Link>
+              </SheetClose>
+
+              <SheetClose asChild>
+                <button
+                  type="button"
+                  aria-label="Close navigation menu"
+                  className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
+                >
+                  <X className="size-4.5" />
+                </button>
+              </SheetClose>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col px-4.5 pb-4 pt-3">
+              <nav className="space-y-1.5">
+                {navItems.map((item) => (
+                  <SheetClose asChild key={item.link}>
+                    <Link
+                      to={item.link}
+                      className="flex min-h-10 w-full items-center justify-center rounded-[15px] border border-white/[0.05] bg-white/[0.03] px-3 py-1.5 text-[0.9rem] font-medium text-muted-foreground transition-colors hover:border-white/[0.08] hover:bg-white/[0.05] hover:text-foreground"
+                    >
+                      {item.name}
+                    </Link>
+                  </SheetClose>
+                ))}
+              </nav>
+
+              <div className="mt-auto space-y-2 pt-6">
+                <SheetClose asChild>
+                  <Link
+                    to="/login"
+                    className="flex min-h-10 w-full items-center justify-center rounded-[15px] border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[0.9rem] font-semibold text-foreground transition-colors hover:bg-white/[0.06]"
+                  >
+                    Log In
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link
+                    to="/get-started"
+                    className="flex min-h-10 w-full items-center justify-center rounded-[15px] bg-primary px-3 py-1.5 text-[0.9rem] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    Sign Up
+                  </Link>
+                </SheetClose>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+    </div>
   );
 };
 

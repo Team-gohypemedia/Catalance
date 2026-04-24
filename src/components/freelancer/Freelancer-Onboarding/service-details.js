@@ -270,7 +270,6 @@ export const createEmptyServiceDraft = ({
     subcategories: [],
     skillsAndTechnologies: [],
     experience: "",
-    complexity: "",
 
     description: "",
     deliveryTimeline: "",
@@ -312,18 +311,12 @@ export const normalizeServiceDraft = (
     normalizedCaseStudies[0] || activeCaseStudy || createEmptyServiceCaseStudy();
 
   return {
-    ...source,
     serviceKey: normalizedKey,
     serviceId: toPositiveInteger(source.serviceId ?? fallback.serviceId),
     title: toDraftText(source.title),
     subcategories: normalizedSubcategories,
     skillsAndTechnologies: normalizeStringArray(source.skillsAndTechnologies),
     experience: toOptionalString(source.experience || source.experienceYears),
-    complexity: toOptionalString(
-      source.complexity ||
-        source.serviceComplexity ||
-        source.projectComplexity,
-    ),
 
     description: toDraftText(
       source.description || source.serviceDescription,
@@ -606,7 +599,6 @@ export const serializeServiceDraft = ({
         experienceLabelsByKey[normalizedDraft.experience] ||
           normalizedDraft.experience,
       ) || null,
-    serviceComplexity: toOptionalString(normalizedDraft.complexity) || null,
 
     serviceDescription: toOptionalString(normalizedDraft.description) || null,
     deliveryTime:

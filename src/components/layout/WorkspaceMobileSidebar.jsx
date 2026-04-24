@@ -3,7 +3,6 @@
 import PropTypes from "prop-types";
 import React from "react";
 import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
-import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import HandPlatter from "lucide-react/dist/esm/icons/hand-platter";
 import House from "lucide-react/dist/esm/icons/house";
@@ -19,7 +18,6 @@ import WalletCards from "lucide-react/dist/esm/icons/wallet-cards";
 import X from "lucide-react/dist/esm/icons/x";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logos/logo.svg";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -30,6 +28,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
 import { cn } from "@/shared/lib/utils";
 
@@ -76,49 +75,55 @@ const renderNotificationSlot = (renderNotificationButton, key) => {
     : notificationButton;
 };
 
-const MobileMenuLink = ({ active, item, onSelect, priority = "primary" }) => {
+const MobileMenuLink = ({
+  active,
+  className,
+  item,
+  onSelect,
+  priority = "primary",
+}) => {
   const Icon = iconMap[item.key];
   const label = item.mobileLabel || item.label;
   const content =
     priority === "primary" ? (
       <div
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-[16px] px-3 py-2 text-left transition-colors duration-200",
+          "flex w-full items-center gap-2.5 rounded-[15px] px-3 py-1 text-left transition-colors duration-200",
           active
             ? "bg-[#302915] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-            : "text-[#8f96a3] hover:bg-white/[0.03] hover:text-white",
+            : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground",
         )}
       >
         <span
           className={cn(
-            "flex size-7 shrink-0 items-center justify-center rounded-[11px] transition-colors duration-200",
+            "flex size-6 shrink-0 items-center justify-center rounded-[10px] transition-colors duration-200",
             active
               ? "bg-[#241f11] text-[#ffc107] shadow-[inset_0_0_0_1px_rgba(255,193,7,0.12)]"
-              : "text-[#8790a4]",
+              : "text-muted-foreground",
           )}
         >
           {Icon ? <Icon className="size-3.5" /> : null}
         </span>
-        <span className="truncate text-[0.88rem] font-medium">{label}</span>
+        <span className="truncate text-[0.86rem] font-medium">{label}</span>
       </div>
     ) : (
       <div
         className={cn(
-          "flex min-h-[42px] items-center gap-2 rounded-[16px] border px-3 py-2 text-left transition-colors duration-200",
+          "flex min-h-9 items-center gap-2 rounded-[15px] border px-3 py-1 text-left transition-colors duration-200",
           active
-            ? "border-[#5d4d18] bg-[#302915] text-white"
-            : "border-white/[0.05] bg-white/[0.03] text-[#d4d8e3] hover:border-white/[0.08] hover:bg-white/[0.05]",
+            ? "border-[#5d4d18] bg-[#302915] text-foreground"
+            : "border-white/[0.05] bg-white/[0.03] text-muted-foreground hover:border-white/[0.08] hover:bg-white/[0.05] hover:text-foreground",
         )}
       >
         <span
           className={cn(
-            "flex size-6.5 shrink-0 items-center justify-center rounded-[10px]",
-            active ? "text-[#ffc107]" : "text-[#a8afc1]",
+            "flex size-5.5 shrink-0 items-center justify-center rounded-[10px]",
+            active ? "text-[#ffc107]" : "text-muted-foreground",
           )}
         >
           {Icon ? <Icon className="size-3.5" /> : null}
         </span>
-        <span className="truncate text-[0.83rem] font-medium">{label}</span>
+        <span className="truncate text-[0.82rem] font-medium">{label}</span>
       </div>
     );
 
@@ -128,7 +133,7 @@ const MobileMenuLink = ({ active, item, onSelect, priority = "primary" }) => {
         <button
           type="button"
           onClick={() => onSelect(item.key)}
-          className={cn("block", priority === "primary" && "w-full")}
+          className={cn("block", priority === "primary" && "w-full", className)}
         >
           {content}
         </button>
@@ -140,7 +145,7 @@ const MobileMenuLink = ({ active, item, onSelect, priority = "primary" }) => {
     <SheetClose asChild>
       <Link
         to={item.to}
-        className={cn("block", priority === "primary" && "w-full")}
+        className={cn("block", priority === "primary" && "w-full", className)}
       >
         {content}
       </Link>
@@ -150,6 +155,7 @@ const MobileMenuLink = ({ active, item, onSelect, priority = "primary" }) => {
 
 MobileMenuLink.propTypes = {
   active: PropTypes.bool,
+  className: PropTypes.string,
   item: PropTypes.shape({
     key: PropTypes.string.isRequired,
     label: PropTypes.string.isRequired,
@@ -174,78 +180,78 @@ const MobileProfileSwitchCard = ({
     switchDashboard,
     switchLabel,
   } = useDashboardSwitcher({ currentDashboard });
+  const isFreelancer = currentDashboard === "freelancer";
+  const handleSwitchDashboard = () => {
+    switchDashboard();
+  };
 
   return (
-    <div className="rounded-[20px] border border-white/[0.05] bg-white/[0.03] px-3 py-2.5 shadow-[0_24px_60px_-44px_rgba(0,0,0,0.95)]">
-      <div className="flex items-center justify-between gap-2.5">
+    <div className="rounded-[18px] border border-white/[0.06] bg-white/[0.035] p-2 shadow-[0_24px_60px_-44px_rgba(0,0,0,0.95)]">
+      <div className="flex items-start justify-between gap-2.5">
         <SheetClose asChild>
           <button
             type="button"
             onClick={() => navigate(profileTo)}
-            className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+            className="flex min-w-0 flex-1 items-center gap-2 text-left"
           >
             <div className="relative shrink-0">
-              <Avatar className="size-9 border border-white/[0.08]">
+              <Avatar className="size-9.5 border-2 border-white/80 bg-white shadow-[0_14px_30px_-22px_rgba(255,255,255,0.8)]">
                 <AvatarImage src={profile?.avatar} alt={displayName} />
-                <AvatarFallback className="bg-[#272c3d] text-sm font-bold text-white">
+                <AvatarFallback className="bg-[#272c3d] text-base font-bold text-white">
                   {profileInitial}
                 </AvatarFallback>
               </Avatar>
-              <span className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-[#111522] bg-[#22c55e]" />
+              <span className="absolute bottom-0.5 right-0 size-2.5 rounded-full border-2 border-[#101010] bg-[#22c55e]" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-[0.88rem] font-semibold text-white">
+              <p className="truncate text-[0.9rem] font-semibold leading-tight tracking-[-0.03em] text-white">
                 {displayName}
               </p>
-              {profile?.isVerified ? (
-                <Badge
-                  title="This freelancer has successfully completed at least one project on our platform."
-                  className="mt-1 h-5 border-emerald-500/20 bg-emerald-500/10 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-300"
-                >
-                  <BadgeCheck className="h-3 w-3" aria-hidden="true" />
-                  Verified Freelancer
-                </Badge>
-              ) : null}
-              {typeof profile?.openToWork === "boolean" ? (
-                <Badge
-                  title="Auto-managed from your active project count."
-                  className={`mt-1 h-5 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] ${
-                    profile.openToWork
-                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-                      : "border-amber-500/20 bg-amber-500/10 text-amber-300"
-                  }`}
-                >
-                  {profile.openToWork ? "Open to Work" : "At Capacity"}
-                </Badge>
-              ) : null}
-              <p className="mt-0.5 text-[10px] text-[#6f7688]">
-                {canSwitchDashboard
-                  ? `Current: ${currentDashboardLabel} dashboard`
-                  : "View profile"}
+              <p className="mt-0 text-[0.7rem] font-medium leading-tight text-muted-foreground">
+                Current: {currentDashboardLabel} dashboard
               </p>
             </div>
           </button>
         </SheetClose>
 
-        {canSwitchDashboard ? (
-          <SheetClose asChild>
-            <button
-              type="button"
-              onClick={switchDashboard}
-              className="flex shrink-0 flex-col items-end gap-0 rounded-[14px] px-1.5 py-1 text-right transition hover:bg-white/[0.04] hover:text-white"
-              aria-label={`${switchLabel} dashboard`}
-            >
-              <Repeat2 className="size-3.5 text-[#d7dbe6]" />
-              <span className="text-[10px] font-medium text-[#7f8797]">
-                {switchLabel}
-              </span>
-              <span className="text-[11px] font-semibold text-[#cfd5df]">
-                {currentDashboardLabel} active
-              </span>
-            </button>
-          </SheetClose>
-        ) : null}
       </div>
+
+      {canSwitchDashboard ? (
+        <>
+          <div className="my-1.5 h-px bg-white/[0.07]" />
+
+          <div className="flex items-center justify-between gap-2.5">
+            <SheetClose asChild>
+              <button
+                type="button"
+                onClick={handleSwitchDashboard}
+                className="flex min-w-0 flex-1 items-center gap-2 text-left transition-opacity hover:opacity-95"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.05] text-muted-foreground">
+                  <Repeat2 className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[0.82rem] font-semibold tracking-[-0.03em] text-white">
+                    {switchLabel}
+                  </span>
+                  <span className="mt-0 block truncate text-[0.7rem] font-medium text-muted-foreground">
+                    Currently in {currentDashboardLabel} mode
+                  </span>
+                </span>
+              </button>
+            </SheetClose>
+
+            <SheetClose asChild>
+              <Switch
+                checked={isFreelancer}
+                onCheckedChange={handleSwitchDashboard}
+                aria-label={`${switchLabel} dashboard`}
+                className="h-5.5 w-[3.05rem] shrink-0 border-0 px-0.5 shadow-none data-[state=checked]:justify-end data-[state=checked]:bg-[#ffc107] data-[state=unchecked]:justify-start data-[state=unchecked]:bg-white/[0.15] [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:!translate-x-0 [&_[data-slot=switch-thumb]]:shadow-none [&_[data-slot=switch-thumb]]:data-[state=checked]:bg-[#111111] [&_[data-slot=switch-thumb]]:data-[state=unchecked]:bg-white"
+              />
+            </SheetClose>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 };
@@ -283,6 +289,7 @@ const WorkspaceMobileSidebar = ({
   onWorkspaceNav,
   onLogout,
   renderNotificationButton,
+  flushContainerPadding = false,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const topNotificationButton = renderNotificationSlot(
@@ -295,15 +302,20 @@ const WorkspaceMobileSidebar = ({
   );
 
   return (
-    <div className="border-b border-border px-4 py-3 lg:hidden">
-      <div className="flex items-center justify-between gap-2.5">
+    <div
+      className={cn(
+        "px-4 py-2 lg:hidden",
+        flushContainerPadding ? "-mx-4 w-[calc(100%+2rem)]" : "w-full",
+      )}
+    >
+      <div className="flex w-full items-center justify-between gap-3">
         <Link to="/">
           <WorkspaceBrandMark />
         </Link>
 
-        <div className="flex items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {topNotificationButton ? (
-            <div className="rounded-full bg-white/[0.03] text-[#ffc107]">
+            <div className="rounded-full bg-white/[0.03] text-muted-foreground">
               {topNotificationButton}
             </div>
           ) : null}
@@ -313,7 +325,7 @@ const WorkspaceMobileSidebar = ({
               <button
                 type="button"
                 aria-label="Open navigation menu"
-                className="inline-flex size-10 items-center justify-center rounded-full bg-white/[0.02] text-white transition-colors hover:bg-white/[0.06]"
+                className="inline-flex size-10 items-center justify-center rounded-full text-white transition-colors hover:text-muted-foreground"
               >
                 <Menu className="size-5" />
               </button>
@@ -331,7 +343,7 @@ const WorkspaceMobileSidebar = ({
                 </SheetDescription>
               </SheetHeader>
 
-              <div className="flex items-center justify-between border-b border-border/70 px-4.5 py-3.5">
+              <div className="flex items-center justify-between px-4.5 py-2.5">
                 <SheetClose asChild>
                   <Link to="/">
                     <WorkspaceBrandMark />
@@ -340,7 +352,7 @@ const WorkspaceMobileSidebar = ({
 
                 <div className="flex items-center gap-2">
                   {drawerNotificationButton ? (
-                    <div className="rounded-full bg-white/[0.04] text-[#ffc107]">
+                    <div className="rounded-full bg-white/[0.04] text-muted-foreground">
                       {drawerNotificationButton}
                     </div>
                   ) : null}
@@ -349,7 +361,7 @@ const WorkspaceMobileSidebar = ({
                     <button
                       type="button"
                       aria-label="Close navigation menu"
-                      className="inline-flex size-9 items-center justify-center rounded-full text-[#c6cad5] transition-colors hover:bg-white/[0.05] hover:text-white"
+                      className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
                     >
                       <X className="size-4.5" />
                     </button>
@@ -357,24 +369,22 @@ const WorkspaceMobileSidebar = ({
                 </div>
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col px-4.5 pb-3.5">
-                <div className="flex flex-1 flex-col gap-4 py-3.5">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4.5 pb-4 overscroll-contain">
+                <div className="flex min-h-full flex-col gap-2.5 py-2">
                   <section>
                     <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
                       Main
                     </p>
-                    <div className="mt-1.5 space-y-0">
-                      {workspaceNavItems
-                        .filter((item) => item.key !== "profile")
-                        .map((item) => (
-                          <MobileMenuLink
-                            key={item.key}
-                            item={item}
-                            active={item.key === activeWorkspaceKey}
-                            onSelect={onWorkspaceNav}
-                            priority="primary"
-                          />
-                        ))}
+                    <div className="mt-1 space-y-0">
+                      {workspaceNavItems.map((item) => (
+                        <MobileMenuLink
+                          key={item.key}
+                          item={item}
+                          active={item.key === activeWorkspaceKey}
+                          onSelect={onWorkspaceNav}
+                          priority="primary"
+                        />
+                      ))}
                     </div>
                   </section>
 
@@ -382,25 +392,35 @@ const WorkspaceMobileSidebar = ({
                     <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
                       Home
                     </p>
-                    <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                      {marketingNavItems.map((item) => (
-                        <MobileMenuLink
-                          key={item.key}
-                          item={item}
-                          active={item.key === activeMarketingKey}
-                          onSelect={onSiteNav}
-                          priority="secondary"
-                        />
-                      ))}
+                    <div className="mt-1 grid grid-cols-2 gap-1.5">
+                      {marketingNavItems.map((item) => {
+                        const shouldSpanFullWidth =
+                          currentDashboard === "freelancer" && item.key === "contact";
+
+                        return (
+                          <MobileMenuLink
+                            key={item.key}
+                            item={item}
+                            active={item.key === activeMarketingKey}
+                            className={
+                              shouldSpanFullWidth
+                                ? "col-span-2 [&>div]:justify-center"
+                                : undefined
+                            }
+                            onSelect={onSiteNav}
+                            priority="secondary"
+                          />
+                        );
+                      })}
                     </div>
                   </section>
 
-                  <div className="mt-auto space-y-2.5 pb-0.5">
+                  <div className="mt-auto space-y-1.5 pb-0">
                     <SheetClose asChild>
                       <button
                         type="button"
                         onClick={onLogout}
-                        className="flex items-center gap-2.5 px-1 text-[0.88rem] font-medium text-[#b0b7c7] transition hover:text-white"
+                        className="flex items-center gap-2.5 px-1 text-[0.84rem] font-medium text-muted-foreground transition hover:text-foreground"
                       >
                         <LogOut className="size-4" />
                         <span>Sign Out</span>
@@ -440,6 +460,7 @@ WorkspaceMobileSidebar.propTypes = {
   onSiteNav: PropTypes.func,
   onWorkspaceNav: PropTypes.func,
   onLogout: PropTypes.func.isRequired,
+  flushContainerPadding: PropTypes.bool,
   renderNotificationButton: PropTypes.oneOfType([
     PropTypes.func,
     PropTypes.node,

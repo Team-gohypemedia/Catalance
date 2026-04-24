@@ -116,7 +116,6 @@ model FreelancerProfile {
   serviceTitle   String?
   serviceCategory String? @map("ServiceCategory")
   serviceExperience String?
-  serviceComplexity String? @map("serviceComplexity")
   serviceDescription String? @db.Text
   deliveryTimeline String? @map("serviceDeliveryTimeline")
   startingPrice String? @map("serviceStartingPrice")

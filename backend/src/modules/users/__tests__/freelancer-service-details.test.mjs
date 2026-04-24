@@ -24,6 +24,7 @@ const toolRows = [
   { id: 102, subCategoryId: 11, name: "Next.js" },
   { id: 201, subCategoryId: 21, name: "Site Audit" },
 ];
+const legacyServiceComplexityKey = ["service", "Complexity"].join("");
 
 test("buildCanonicalProfileDetails normalizes services, prunes stray detail keys, and removes legacy fields", () => {
   const canonical = buildCanonicalProfileDetails({
@@ -32,6 +33,7 @@ test("buildCanonicalProfileDetails normalizes services, prunes stray detail keys
       serviceDetails: {
         web_development: {
           title: "Build conversion-focused websites",
+          [legacyServiceComplexityKey]: "Legacy",
           subcategories: [
             {
               subCategoryId: 11,
@@ -111,6 +113,10 @@ test("buildCanonicalProfileDetails normalizes services, prunes stray detail keys
     ["React", "Astro", "Sanity", "Legacy React"],
   );
   assert.equal(
+    legacyServiceComplexityKey in canonical.serviceDetails.web_development,
+    false,
+  );
+  assert.equal(
     canonical.serviceDetails.web_development.activeSkillCategory,
     "custom-headless-builds",
   );
@@ -170,7 +176,6 @@ test("buildPrimaryServiceSnapshot derives primary service fields from the first 
           },
         ],
         experienceYears: "Expert 5–10 years",
-        serviceComplexity: "Expert",
         serviceDescription: "End-to-end website delivery.",
         deliveryTime: "2 Weeks",
         averageProjectPrice: "₹50,000 – ₹1,00,000",
@@ -191,7 +196,7 @@ test("buildPrimaryServiceSnapshot derives primary service fields from the first 
   assert.equal(snapshot.serviceTitle, "Modern marketing websites");
   assert.equal(snapshot.serviceCategory, "Frontend, Landing Pages, Headless Builds");
   assert.equal(snapshot.serviceExperience, "Expert 5–10 years");
-  assert.equal(snapshot.serviceComplexity, "Expert");
+  assert.equal(legacyServiceComplexityKey in snapshot, false);
   assert.equal(snapshot.serviceDescription, "End-to-end website delivery.");
   assert.equal(snapshot.deliveryTimeline, "2 Weeks");
   assert.equal(snapshot.startingPrice, "₹50,000 – ₹1,00,000");
