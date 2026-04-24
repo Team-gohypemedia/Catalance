@@ -813,7 +813,6 @@ export const getPmDashboardSummary = asyncHandler(async (req, res) => {
                 select: {
                   rating: true,
                   reviewCount: true,
-                  skills: true,
                   openToWork: true,
                 },
               },
@@ -981,11 +980,10 @@ export const getPmProjectDetails = asyncHandler(async (req, res) => {
                 select: {
                   rating: true,
                   reviewCount: true,
-                  skills: true,
                   experienceYears: true,
-                  portfolio: true,
-                  profileDetails: true,
                   openToWork: true,
+                  serviceDetails: true,
+                  profilePhoto: true,
                 },
               },
             },
@@ -1128,10 +1126,10 @@ export const getPmProjectDetails = asyncHandler(async (req, res) => {
             id: freelancer.id,
             freelancerName: freelancer.fullName,
             avatar: freelancer.avatar,
-            skills: Array.isArray(freelancer.freelancerProfile?.skills) ? freelancer.freelancerProfile.skills : [],
+            skills: Array.isArray(details?.skills) ? details.skills : [],
             rating: Number(freelancer.freelancerProfile?.rating || 0),
             reviewsCount: Number(freelancer.freelancerProfile?.reviewCount || 0),
-            portfolio: freelancer.freelancerProfile?.portfolio || portfolioProjects[0]?.link || null,
+            portfolio: details?.identity?.portfolioUrl || portfolioProjects[0]?.link || null,
             portfolioProjects,
             pastProjectsSummary: "History available in freelancer profile.",
             platformActivity: freelancer.status || "ACTIVE",
@@ -1794,7 +1792,6 @@ export const getPmFreelancerDetails = asyncHandler(async (req, res) => {
       id: freelancer.id,
       name: freelancer.fullName,
       title:
-        freelancer.freelancerProfile?.jobTitle ||
         normalizeText(details?.identity?.professionalTitle || "") ||
         "Freelancer",
       location: location || null,
@@ -1802,10 +1799,9 @@ export const getPmFreelancerDetails = asyncHandler(async (req, res) => {
       rating: Number(freelancer.freelancerProfile?.rating || 0),
       reviewCount: Number(freelancer.freelancerProfile?.reviewCount || 0),
       bio:
-        freelancer.freelancerProfile?.bio ||
         normalizeText(details?.professionalBio || "") ||
         "",
-      skills: Array.isArray(freelancer.freelancerProfile?.skills) ? freelancer.freelancerProfile.skills : [],
+      skills: Array.isArray(details?.skills) ? details.skills : [],
       services: serviceRows,
       experienceYears: Number(freelancer.freelancerProfile?.experienceYears || 0),
       experience: extractWorkExperienceFromProfileDetails(details),

@@ -147,12 +147,7 @@ export const signup = ({
   password,
   role = "FREELANCER",
   freelancerProfile = null,
-  portfolioProjects = [],
-  location,
   avatar,
-  portfolio,
-  linkedin,
-  github,
   bio = "",
   onboardingComplete = false
 }) => {
@@ -161,36 +156,12 @@ export const signup = ({
     email,
     password,
     role,
-    skills: [],
     bio
   };
 
-  if (portfolio) {
-    payload.portfolio = portfolio;
-  }
-
-  if (linkedin) {
-    payload.linkedin = linkedin;
-  }
-
-  if (github) {
-    payload.github = github;
-  }
-
   if (role === "FREELANCER") {
     const normalizedProfile = freelancerProfile ?? {};
-    const skills = Array.isArray(normalizedProfile?.skills)
-      ? normalizedProfile.skills
-      : [];
-
-    payload.skills = skills;
     payload.freelancerProfile = normalizedProfile;
-    payload.portfolioProjects = Array.isArray(portfolioProjects)
-      ? portfolioProjects
-      : [];
-    if (location) {
-      payload.location = location;
-    }
     if (avatar) {
       payload.avatar = avatar;
     }

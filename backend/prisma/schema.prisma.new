@@ -60,16 +60,16 @@ model User {
   role         UserRole   @default(FREELANCER)
   roles        String[]   @default([])
   status       UserStatus @default(ACTIVE)
-  resetPasswordToken   String?   @unique
+  resetPasswordToken String? @unique
   resetPasswordExpires DateTime?
   fcmToken     String?    // Firebase Cloud Messaging token for push notifications
   otpCode      String?
   otpExpires   DateTime?
   onboardingComplete Boolean @default(false)
   isVerified   Boolean    @default(false)
-  suspendedAt  DateTime?  // Track when user was suspended for 90-day deletion countdown
-  phone        String?    // Contact number
-  avatar       String?    // Profile image URL
+  suspendedAt  DateTime?
+  phone        String?
+  avatar       String?
   clientProfile ClientProfile?
   freelancerProfile FreelancerProfile?
   freelancerProjects FreelancerProject[]
@@ -96,23 +96,14 @@ model User {
 model FreelancerProfile {
   userId         String   @id
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio            String?  @db.Text
-  skills         String[] @default([])
-  jobTitle       String?
   companyName    String?
-  location       String?
-  available      Boolean  @default(true)
+  openToWork     Boolean  @default(true)
   rating         Decimal? @db.Decimal(3, 1) @default(0)
   reviewCount    Int      @default(0)
   experienceYears Int?    @default(0)
   workExperience Json?    @default("[]")
   services       String[] @default([])
-  portfolio      String?
-  linkedin       String?
-  github         String?
-  portfolioProjects Json? @default("[]")
   resume         String?
-  profileDetails Json     @default("{}")
   serviceTitle   String?
   serviceCategory String? @map("ServiceCategory")
   serviceExperience String?

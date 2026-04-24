@@ -52,8 +52,8 @@ const main = async () => {
       role: "FREELANCER",
       freelancerProfile: {
         create: {
-          bio: "Product designer & front-end developer.",
-          skills: ["React", "TypeScript", "UI/UX"],
+          professionalBio: "Product designer & front-end developer.",
+          services: ["web_development"],
         }
       }
     }

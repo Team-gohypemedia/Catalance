@@ -1,11 +1,6 @@
 export const FREELANCER_PROFILE_SAFE_SELECT = Object.freeze({
   userId: true,
-  bio: true,
-  skills: true,
-  jobTitle: true,
   companyName: true,
-  location: true,
-  available: true,
   openToWork: true,
   isVerified: true,
   rating: true,
@@ -13,10 +8,6 @@ export const FREELANCER_PROFILE_SAFE_SELECT = Object.freeze({
   experienceYears: true,
   workExperience: true,
   services: true,
-  portfolio: true,
-  linkedin: true,
-  github: true,
-  portfolioProjects: true,
   resume: true,
   serviceTitle: true,
   serviceCategory: true,
@@ -31,7 +22,6 @@ export const FREELANCER_PROFILE_SAFE_SELECT = Object.freeze({
 });
 
 export const FREELANCER_PROFILE_DETAILS_SAFE_SELECT = Object.freeze({
-  profileDetails: true,
   profileRole: true,
   professionalBio: true,
   deliveryPolicyAccepted: true,
@@ -42,10 +32,9 @@ export const FREELANCER_PROFILE_DETAILS_SAFE_SELECT = Object.freeze({
   username: true,
   languages: true,
   profilePhoto: true,
-  skills: true,
   services: true,
   serviceDetails: true,
-  portfolioProjects: true
+  socialMediaLinks: true,
 });
 
 export const FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT = Object.freeze({

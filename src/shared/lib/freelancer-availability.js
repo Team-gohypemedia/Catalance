@@ -27,16 +27,6 @@ const resolveFreelancerAvailabilityState = (freelancer = {}) => {
     return { openToWork: availability.isOpenToWork, hasOpenToWorkSignal };
   }
 
-  if (typeof freelancer?.available === "boolean") {
-    return { openToWork: freelancer.available, hasOpenToWorkSignal };
-  }
-  if (typeof profile?.available === "boolean") {
-    return { openToWork: profile.available, hasOpenToWorkSignal };
-  }
-  if (typeof personal?.available === "boolean") {
-    return { openToWork: personal.available, hasOpenToWorkSignal };
-  }
-
   if (typeof freelancer?.status === "string") {
     return {
       openToWork: freelancer.status.toUpperCase() === "ACTIVE",

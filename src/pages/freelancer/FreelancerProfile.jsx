@@ -268,7 +268,6 @@ const FreelancerProfile = () => {
     experienceYears: "",
     avatar: "",
     coverImage: "",
-    available: true,
     openToWork: true,
   });
   const [portfolio, setPortfolio] = useState({
@@ -277,6 +276,7 @@ const FreelancerProfile = () => {
     githubUrl: "",
     resume: "",
   });
+  const [socialMediaLinks, setSocialMediaLinks] = useState([]);
   const [portfolioProjects, setPortfolioProjects] = useState([]); // [{ link, image, title }]
   const [profileDetails, setProfileDetails] = useState({});
   const [newProjectUrl, setNewProjectUrl] = useState("");
@@ -417,9 +417,7 @@ const FreelancerProfile = () => {
             openToWork:
               payload.personal?.openToWork !== undefined
                 ? Boolean(payload.personal.openToWork)
-                : payload.personal?.available !== undefined
-                  ? Boolean(payload.personal.available)
-                  : true,
+                : true,
           },
           portfolio: {
             portfolioUrl: existingPortfolio.portfolioUrl || "",
@@ -457,17 +455,9 @@ const FreelancerProfile = () => {
           coverImage:
             resolveAvatarUrl(payload.coverImage, { allowBlob: true }) ||
             identityCoverImage,
-          available:
-            payload.available !== undefined
-              ? Boolean(payload.available)
-              : payload.status !== undefined
-                ? payload.status === "ACTIVE"
-                : true,
           openToWork:
             payload.openToWork !== undefined
               ? Boolean(payload.openToWork)
-              : payload.available !== undefined
-                ? Boolean(payload.available)
               : true,
           isVerified: Boolean(
             payload.personal?.isVerified ??
@@ -507,7 +497,6 @@ const FreelancerProfile = () => {
           experienceYears: "",
           avatar: "",
           coverImage: "",
-          available: false,
           openToWork: false,
           isVerified: false,
         });
@@ -608,9 +597,7 @@ const FreelancerProfile = () => {
             }) ||
             identityFallbackCoverImage ||
             "",
-          available: normalized.personal?.available ?? true,
-          openToWork:
-            normalized.personal?.openToWork ?? normalized.personal?.available ?? true,
+          openToWork: normalized.personal?.openToWork ?? true,
           isVerified:
             normalized.personal?.isVerified ??
             Boolean(user?.isVerified || user?.freelancerProfile?.isVerified),
@@ -693,6 +680,11 @@ const FreelancerProfile = () => {
         setPersonal(loadedPersonal);
         setPortfolio(loadedPortfolio);
         setPortfolioProjects(normalized.portfolioProjects || []);
+        setSocialMediaLinks(
+          Array.isArray(normalized.socialMediaLinks)
+            ? normalized.socialMediaLinks
+            : Object.entries(normalized.socialMediaLinks || {}).map(([platform, url]) => ({ platform, url }))
+        );
         setProfileDetails(loadedProfileDetails);
         setSkills(loadedSkills);
         setWorkExperience(normalizeWorkExperienceEntries(normalized.workExperience));
@@ -725,7 +717,6 @@ const FreelancerProfile = () => {
             experienceYears: "",
             avatar: resolveAvatarUrl(user?.avatar, { allowBlob: true }) || "",
             coverImage: "",
-            available: true,
             openToWork: true,
             isVerified: Boolean(user?.isVerified || user?.freelancerProfile?.isVerified),
           };
@@ -1156,7 +1147,6 @@ const FreelancerProfile = () => {
         headline: currentPersonal.headline,
         bio: bioText,
         experienceYears: currentPersonal.experienceYears,
-        available: currentPersonal.available,
         ...(currentPersonal.openToWork !== undefined
           ? { openToWork: currentPersonal.openToWork }
           : {}),
@@ -1170,6 +1160,7 @@ const FreelancerProfile = () => {
       portfolio: currentPortfolio,
       resume: currentPortfolio.resume,
       portfolioProjects: currentPortfolioProjects,
+      socialMediaLinks,
       profileDetails: profileDetailsForSave,
     };
 
@@ -1272,21 +1263,18 @@ const FreelancerProfile = () => {
   const handleAvailabilityToggle = async () => {
     if (isAvailabilitySaving || isSaving || profileLoading) return;
 
-    const previousAvailable = Boolean(personal.available);
     const previousOpenToWork =
       typeof personal.openToWork === "boolean"
         ? personal.openToWork
-        : previousAvailable;
+        : true;
     const nextOpenToWork = !previousOpenToWork;
     const nextPersonal = {
       ...personal,
-      available: nextOpenToWork,
       openToWork: nextOpenToWork,
     };
 
     setPersonal((prev) => ({
       ...prev,
-      available: nextOpenToWork,
       openToWork: nextOpenToWork,
     }));
     setIsAvailabilitySaving(true);
@@ -1298,7 +1286,6 @@ const FreelancerProfile = () => {
     if (!saved) {
       setPersonal((prev) => ({
         ...prev,
-        available: previousAvailable,
         openToWork: previousOpenToWork,
       }));
       setIsAvailabilitySaving(false);
@@ -2978,18 +2965,20 @@ const FreelancerProfile = () => {
       name: user?.fullName || user?.name || personal.name || "Freelancer",
       email: user?.email || personal.email || "",
       initial: initials,
-      available: personal.available,
+      available:
+        typeof personal.openToWork === "boolean"
+          ? personal.openToWork
+          : true,
       openToWork:
         typeof personal.openToWork === "boolean"
           ? personal.openToWork
-          : Boolean(personal.available),
+          : true,
       isVerified: Boolean(
         personal.isVerified ?? user?.isVerified ?? user?.freelancerProfile?.isVerified
       ),
     }),
     [
       initials,
-      personal.available,
       personal.email,
       personal.name,
       personal.isVerified,
@@ -3361,6 +3350,7 @@ const FreelancerProfile = () => {
             displayLocation={displayLocation}
             isVerified={Boolean(personal.isVerified)}
             onboardingIdentity={onboardingIdentity}
+            freelancerUsername={user?.freelancerProfile?.username || ""}
             onboardingLanguages={onboardingLanguages}
             openEditPersonalModal={openEditPersonalModal}
             openPortfolioModal={openPortfolioModal}
@@ -4568,6 +4558,8 @@ const FreelancerProfile = () => {
                 handlePersonalLanguagesChange={handlePersonalLanguagesChange}
                 handlePersonalOtherLanguageChange={handlePersonalOtherLanguageChange}
                 setPortfolio={setPortfolio}
+                socialMediaLinks={socialMediaLinks}
+                setSocialMediaLinks={setSocialMediaLinks}
                 savePersonalSection={savePersonalSection}
                 isSaving={isSaving}
                 setModalType={setModalType}

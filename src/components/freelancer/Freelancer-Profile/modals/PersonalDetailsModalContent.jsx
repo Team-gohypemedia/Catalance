@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 
 const PersonalDetailsModalContent = ({
   personal,
@@ -13,10 +16,29 @@ const PersonalDetailsModalContent = ({
   handlePersonalLanguagesChange,
   handlePersonalOtherLanguageChange,
   setPortfolio,
+  socialMediaLinks = [],
+  setSocialMediaLinks,
   savePersonalSection,
   isSaving,
   setModalType,
 }) => {
+  const [newPlatform, setNewPlatform] = useState("");
+  const [newUrl, setNewUrl] = useState("");
+
+  const addSocialMediaLink = () => {
+    const platform = newPlatform.trim();
+    const url = newUrl.trim();
+    if (!platform || !url) return;
+
+    setSocialMediaLinks((prev) => [...prev, { platform, url }]);
+    setNewPlatform("");
+    setNewUrl("");
+  };
+
+  const removeSocialMediaLink = (index) => {
+    setSocialMediaLinks((prev) => prev.filter((_, i) => i !== index));
+  };
+
   return (
     <div className="space-y-5">
       <div>
@@ -234,6 +256,86 @@ const PersonalDetailsModalContent = ({
               className="h-10 bg-background/70"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Social Media Links */}
+      <div className="space-y-4 rounded-xl border border-border/70 bg-muted/20 p-4">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Social Media Links</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Add your social media profiles one by one.
+          </p>
+        </div>
+
+        {/* Existing links */}
+        {socialMediaLinks.length > 0 && (
+          <div className="space-y-2">
+            {socialMediaLinks.map((link, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/70 px-3 py-2"
+              >
+                <span className="min-w-0 shrink-0 text-sm font-medium text-foreground">
+                  {link.platform}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+                  {link.url}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeSocialMediaLink(index)}
+                  className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  title="Remove link"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add new link */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1 space-y-1">
+            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Platform Name
+            </Label>
+            <Input
+              value={newPlatform}
+              onChange={(e) => setNewPlatform(e.target.value)}
+              placeholder="e.g. Twitter, Dribbble, Behance"
+              className="h-10 bg-background/70"
+            />
+          </div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              URL
+            </Label>
+            <Input
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              placeholder="https://..."
+              className="h-10 bg-background/70"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addSocialMediaLink();
+                }
+              }}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addSocialMediaLink}
+            disabled={!newPlatform.trim() || !newUrl.trim()}
+            className="h-10 shrink-0"
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Add
+          </Button>
         </div>
       </div>
 

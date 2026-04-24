@@ -104,12 +104,7 @@ model User {
 model FreelancerProfile {
   userId                      String   @id
   user                        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio                         String?  @db.Text
-  skills                      String[] @default([])
-  jobTitle                    String?
   companyName                 String?
-  location                    String?
-  available                   Boolean  @default(true)
   openToWork                  Boolean  @default(true)
   isVerified                  Boolean  @default(false)
   rating                      Decimal? @default(0) @db.Decimal(3, 1)
@@ -117,12 +112,7 @@ model FreelancerProfile {
   experienceYears             Int?     @default(0)
   workExperience              Json?    @default("[]")
   services                    String[] @default([])
-  portfolio                   String?
-  linkedin                    String?
-  github                      String?
-  portfolioProjects           Json?    @default("[]")
   resume                      String?
-  profileDetails              Json     @default("{}")
   profileRole                 String?
   professionalBio             String?  @db.Text
   deliveryPolicyAccepted      Boolean  @default(false)
@@ -134,6 +124,7 @@ model FreelancerProfile {
   languages                   String[] @default([])
   profilePhoto                String?
   serviceDetails              Json     @default("{}")
+  socialMediaLinks            Json?    @default("{}")
   serviceTitle               String?
   serviceCategory            String?   @map("ServiceCategory")
   serviceExperience          String?

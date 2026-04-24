@@ -439,7 +439,7 @@ const buildOnboardingDraftSnapshot = ({
     savedAt: new Date().toISOString(),
     currentSlideIndex: clampSlideIndex(currentSlideIndex, totalSlides),
     selectedWorkPreference:
-      String(selectedWorkPreference || "").trim() || "individual",
+      String(selectedWorkPreference || "").trim(),
     basicProfileForm: sanitizeBasicProfileFormForDraft(basicProfileForm),
     selectedServices: normalizedSelectedServices,
     serviceDraftsByKey: Object.fromEntries(
@@ -839,8 +839,7 @@ const FreelancerOnboardingShell = () => {
         clampSlideIndex(storedDraft.currentSlideIndex, totalSlides),
       );
       setSelectedWorkPreference(
-        String(storedDraft.selectedWorkPreference || "individual").trim() ||
-          "individual",
+        String(storedDraft.selectedWorkPreference || "").trim(),
       );
       setBasicProfileForm(
         sanitizeBasicProfileFormForDraft(storedDraft.basicProfileForm),
@@ -951,7 +950,7 @@ const FreelancerOnboardingShell = () => {
       resume: buildRemoteResumeFile(existingResume) || currentForm.resume,
     }));
     setSelectedWorkPreference(
-      String(profileDetails.role || "individual").trim(),
+      String(profileDetails.role || "").trim(),
     );
     setAcceptInProgressProjectsValue(hydratedAcceptInProgressProjects);
     setDeliveryPolicyAccepted(hydratedDeliveryPolicyAccepted ?? false);

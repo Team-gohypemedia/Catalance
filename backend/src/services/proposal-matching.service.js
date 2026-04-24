@@ -1426,7 +1426,6 @@ const mapFreelancerToMatchResult = (freelancer = {}, candidate = {}) => ({
   name: freelancer?.fullName || freelancer?.name || null,
   title:
     freelancer?.jobTitle ||
-    freelancer?.freelancerProfile?.jobTitle ||
     freelancer?.professionalTitle ||
     null,
   bio:

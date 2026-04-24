@@ -8,8 +8,7 @@ import Link2 from "lucide-react/dist/esm/icons/link-2";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Linkedin from "lucide-react/dist/esm/icons/linkedin";
 import MapPin from "lucide-react/dist/esm/icons/map-pin";
-import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
-import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
+import Languages from "lucide-react/dist/esm/icons/languages";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Upload from "lucide-react/dist/esm/icons/upload";
@@ -54,6 +53,7 @@ const ProfileHeroCard = ({
   isVerified = false,
   onboardingIdentity,
   onboardingLanguages,
+  freelancerUsername,
   openEditPersonalModal,
   openPortfolioModal,
   profileLinks,
@@ -63,7 +63,7 @@ const ProfileHeroCard = ({
   const identityTitle = String(
     displayHeadline || onboardingIdentity?.professionalTitle || ""
   ).trim();
-  const username = String(onboardingIdentity?.username || "").trim();
+  const username = String(onboardingIdentity?.username || freelancerUsername || "").trim();
   const spokenLanguages = Array.isArray(onboardingLanguages)
     ? onboardingLanguages.slice(0, 3)
     : [];
@@ -137,7 +137,7 @@ const ProfileHeroCard = ({
             onError={() => setHasCoverImageError(true)}
           />
         ) : (
-          <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[linear-gradient(135deg,rgba(9,9,11,0.98),rgba(24,24,27,0.96))] px-6 py-8 text-center">
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-background px-6 py-8 text-center">
 
             <div
               role="button"
@@ -162,9 +162,8 @@ const ProfileHeroCard = ({
                 }
               }}
               onDrop={handleCoverDrop}
-              className={`relative flex w-full items-center justify-center px-4 py-8 outline-none transition sm:px-6 sm:py-10 ${
-                isCoverDragActive ? "text-primary" : "text-white"
-              } ${uploadingCoverImage ? "pointer-events-none opacity-70" : "cursor-pointer hover:text-white/88"}`}
+              className={`relative flex w-full items-center justify-center px-4 py-8 outline-none transition sm:px-6 sm:py-10 ${isCoverDragActive ? "text-primary" : "text-white"
+                } ${uploadingCoverImage ? "pointer-events-none opacity-70" : "cursor-pointer hover:text-white/88"}`}
               aria-label="Add cover image"
             >
               <span className="text-[22px] font-semibold tracking-[-0.05em] sm:text-[28px] md:text-[32px]">
@@ -179,19 +178,23 @@ const ProfileHeroCard = ({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-accent text-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-70 sm:h-9 sm:w-9"
-                title="Cover image options"
-                aria-label="Cover image options"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background text-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-70 sm:h-9 sm:w-9"
+                title="Profile options"
+                aria-label="Profile options"
                 disabled={uploadingCoverImage}
               >
                 {uploadingCoverImage ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <MoreHorizontal className="h-4 w-4" />
+                  <Pencil className="h-3.5 w-3.5" />
                 )}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onSelect={() => openEditPersonalModal()}>
+                <Pencil className="h-4 w-4" />
+                Edit profile
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => coverInputRef.current?.click()}>
                 <Camera className="h-4 w-4" />
                 {resolvedCoverImage ? "Change cover" : "Add cover"}
@@ -218,24 +221,23 @@ const ProfileHeroCard = ({
       </div>
 
       <div className="relative border-t border-border/60 bg-card px-4 pb-5 pt-14 sm:px-5 sm:pb-5 sm:pt-16 md:px-6 md:pt-20">
+
         <div className="absolute -top-16 left-4 sm:-top-20 sm:left-5 md:-top-24 md:left-6">
           <div
             className="group/avatar relative shrink-0 cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
             <div
-              className={`rounded-full transition-all duration-200 ${
-                isOpenToWorkActive
-                  ? "bg-background p-1"
-                  : "border-2 border-background bg-background p-0.5 shadow-md"
-              }`}
+              className={`rounded-full transition-all duration-200 ${isOpenToWorkActive
+                ? "bg-background p-1"
+                : "border-2 border-background bg-background p-0.5 shadow-md"
+                }`}
             >
               <div
-                className={`relative h-24 w-24 overflow-hidden rounded-full bg-muted sm:h-32 sm:w-32 md:h-36 md:w-36 ${
-                  isOpenToWorkActive
-                    ? "border border-background bg-background"
-                    : "border-2 border-border/70"
-                }`}
+                className={`relative h-24 w-24 overflow-hidden rounded-full bg-muted sm:h-32 sm:w-32 md:h-36 md:w-36 ${isOpenToWorkActive
+                  ? "border border-background bg-background"
+                  : "border-2 border-border/70"
+                  }`}
               >
                 {personal.avatar ? (
                   <img
@@ -256,11 +258,10 @@ const ProfileHeroCard = ({
               </div>
             </div>
             <div
-              className={`absolute bottom-1 right-1 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-background shadow-sm transition-all duration-200 sm:h-9 sm:w-9 ${
-                uploadingImage
-                  ? "opacity-100 scale-100"
-                  : "opacity-0 scale-95 group-hover/avatar:opacity-100 group-hover/avatar:scale-100"
-              }`}
+              className={`absolute bottom-1 right-1 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-background shadow-sm transition-all duration-200 sm:h-9 sm:w-9 ${uploadingImage
+                ? "opacity-100 scale-100"
+                : "opacity-0 scale-95 group-hover/avatar:opacity-100 group-hover/avatar:scale-100"
+                }`}
             >
               {uploadingImage ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-foreground" />
@@ -279,8 +280,8 @@ const ProfileHeroCard = ({
           </div>
         </div>
 
-        <div className="mt-5 min-w-0 space-y-1 sm:mt-0">
-          <div className="flex flex-col gap-2">
+        <div className="mt-2 min-w-0 space-y-3 sm:mt-0">
+          <div className="flex flex-col gap-0.5">
             <div className="flex flex-wrap items-center gap-2">
               <h1
                 title={profileName}
@@ -301,18 +302,17 @@ const ProfileHeroCard = ({
               {typeof personal.openToWork === "boolean" ? (
                 <Badge
                   title="Auto-managed from your active project count."
-                  className={`h-6 px-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-                    isOpenToWorkActive
-                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                      : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                  }`}
+                  className={`h-6 px-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${isOpenToWorkActive
+                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    }`}
                 >
                   {openToWorkLabel}
                 </Badge>
               ) : null}
             </div>
 
-          <p className="text-sm text-muted-foreground sm:text-base">{profileHandle}</p>
+            <p className="text-sm text-muted-foreground sm:text-base">{profileHandle}</p>
           </div>
           <p className="max-w-5xl text-[15px] leading-7 text-foreground sm:text-base sm:leading-relaxed">
             {resolvedBio || "Add a short professional bio to showcase your expertise."}
@@ -320,11 +320,7 @@ const ProfileHeroCard = ({
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1 text-xs text-muted-foreground sm:gap-x-4 sm:text-sm">
             <span className="inline-flex items-center gap-1.5">
-              <Briefcase className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              {heroTitle}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
               {displayLocation || "Location not set"}
             </span>
             <span className="inline-flex items-center gap-2">
@@ -355,9 +351,9 @@ const ProfileHeroCard = ({
               )}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <MessageCircle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <Languages className="h-4 w-4 text-primary" aria-hidden="true" />
               {spokenLanguages.length > 0 ? (
-                `Speaks ${spokenLanguages.join(", ")}`
+                <><span className="text-foreground">Speaks,</span> {spokenLanguages.join(", ")}</>
               ) : (
                 <>
                   <span>Languages not set</span>
@@ -375,7 +371,7 @@ const ProfileHeroCard = ({
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:absolute sm:right-5 sm:top-4 sm:mt-0 sm:flex sm:flex-wrap sm:items-center sm:justify-end md:right-6">
-          <div className="flex h-12 w-full items-center justify-between gap-4 rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-200 sm:w-auto sm:min-w-[16rem]">
+          <div className="flex h-10 w-full items-center justify-between gap-4 rounded-md border bg-card px-3 text-sm text-foreground transition-all duration-200 hover:bg-accent/90 sm:w-auto sm:min-w-[16rem]">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold tracking-[-0.02em] text-foreground">
                 {openToWorkLabel}
@@ -387,19 +383,17 @@ const ProfileHeroCard = ({
               onCheckedChange={onToggleAvailability}
               disabled={availabilitySaving}
               aria-label="Toggle open to work status"
-              title={`Set profile status to ${
-                isOpenToWorkActive ? "Offline" : "Open to Work"
-              }`}
+              title={`Set profile status to ${isOpenToWorkActive ? "Offline" : "Open to Work"
+                }`}
               className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-white/15"
             />
           </div>
           <Button
             type="button"
-            variant="outline"
             size="sm"
             onClick={() => resumeInputRef.current?.click()}
             disabled={uploadingResume}
-            className="h-10 w-full justify-center rounded-md border-border/70 bg-background px-3 text-sm text-foreground hover:bg-muted sm:w-auto"
+            className="h-10 w-full justify-center rounded-md border bg-card px-3 text-sm text-foreground hover:bg-accent/90 sm:w-auto"
             title={
               resolvedLinks.resume
                 ? "Resume uploaded. Click to replace."
@@ -422,16 +416,6 @@ const ProfileHeroCard = ({
                 Upload resume
               </>
             )}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            className="h-10 w-full justify-center rounded-md border border-border/70 bg-accent px-4 text-sm font-semibold text-foreground hover:bg-secondary min-[420px]:col-span-2 sm:w-auto sm:justify-center sm:col-auto"
-            title="Edit profile"
-            onClick={() => openEditPersonalModal()}
-          >
-            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-            Edit profile
           </Button>
         </div>
 

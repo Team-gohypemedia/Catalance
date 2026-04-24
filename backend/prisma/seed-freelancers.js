@@ -1964,19 +1964,10 @@ const upsertFreelancerShowcaseAccount = async (payload, passwordHash) => {
 
   await updateUserProfile(userId, {
     avatar: payload.avatar,
-    bio: payload.bio,
-    available: true,
     experienceYears: payload.experienceYears,
-    jobTitle: payload.profileDetails?.identity?.professionalTitle || "",
-    location: `${payload.profileDetails.identity.city}, ${payload.profileDetails.identity.country}`,
     companyName: payload.companyName,
-    skills: payload.skills,
     services: payload.services,
-    portfolio: payload.portfolio,
-    linkedin: payload.linkedin,
-    github: payload.github,
     resume: payload.resume,
-    portfolioProjects: payload.portfolioProjects,
     workExperience: payload.workExperience,
     profileDetails: payload.profileDetails,
     onboardingComplete: true
@@ -1986,8 +1977,6 @@ const upsertFreelancerShowcaseAccount = async (payload, passwordHash) => {
     where: { userId },
     update: {
       companyName: payload.companyName,
-      location: `${payload.profileDetails.identity.city}, ${payload.profileDetails.identity.country}`,
-      available: true,
       rating: payload.rating,
       reviewCount: payload.reviewCount,
       experienceYears: payload.experienceYears
@@ -1995,8 +1984,6 @@ const upsertFreelancerShowcaseAccount = async (payload, passwordHash) => {
     create: {
       userId,
       companyName: payload.companyName,
-      location: `${payload.profileDetails.identity.city}, ${payload.profileDetails.identity.country}`,
-      available: true,
       rating: payload.rating,
       reviewCount: payload.reviewCount,
       experienceYears: payload.experienceYears

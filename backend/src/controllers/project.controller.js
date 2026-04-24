@@ -534,12 +534,6 @@ const flattenFreelancerProfile = (freelancer = null) => {
   return {
     ...freelancer,
     avatar: resolvedAvatar,
-    jobTitle: profile.jobTitle || null,
-    skills: Array.isArray(profile.skills) ? profile.skills : [],
-    bio: profile.bio || null,
-    portfolio: profile.portfolio || null,
-    linkedin: profile.linkedin || null,
-    github: profile.github || null,
     profileDetails: hasProfileDetails ? profileDetails : undefined,
   };
 };
@@ -601,13 +595,8 @@ const PROJECT_RESPONSE_INCLUDE = {
           avatar: true,
           freelancerProfile: {
             select: {
-              jobTitle: true,
-              skills: true,
-              bio: true,
-              portfolio: true,
-              linkedin: true,
-              github: true,
               profilePhoto: true,
+                  serviceDetails: true,
             },
           },
         },
@@ -1004,12 +993,8 @@ export const listProjects = asyncHandler(async (req, res) => {
                 avatar: true,
                 freelancerProfile: {
                   select: {
-                    jobTitle: true,
-                    skills: true,
-                    bio: true,
-                    portfolio: true,
-                    linkedin: true,
-                    github: true,
+                    serviceDetails: true,
+                    profilePhoto: true,
                   },
                 },
               },

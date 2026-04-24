@@ -230,7 +230,6 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
       title:
         freelancer?.title ||
         freelancer?.jobTitle ||
-        freelancer?.freelancerProfile?.jobTitle ||
         freelancer?.professionalTitle ||
         null,
       bio:

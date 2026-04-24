@@ -50,7 +50,7 @@ const FreelancerProjectDetailHeader = ({
                 asChild
               >
                 <a
-                  href="https://wa.me/919999999999"
+                  href="https://wa.me/918882855425"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -72,7 +72,7 @@ const FreelancerProjectDetailHeader = ({
                 className="h-auto w-full justify-start gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-muted/80"
                 asChild
               >
-                <a href="tel:+919999999999">
+                <a href="tel:+918882855425">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
                     <Phone className="h-5 w-5" />
                   </div>

@@ -94,15 +94,6 @@ marketplace_json_tokens AS (
   CROSS JOIN LATERAL jsonb_path_query(ms.service_details, '$.**') AS node
   WHERE jsonb_typeof(node) = 'string'
 ),
-profile_skill_tokens AS (
-  SELECT
-    ms.user_id,
-    ms.service_key,
-    trim(skill) AS token
-  FROM marketplace_service_rows ms
-  JOIN "FreelancerProfile" fp ON fp."userId" = ms.user_id
-  CROSS JOIN LATERAL unnest(coalesce(fp.skills, ARRAY[]::text[])) AS skill
-),
 profile_service_detail_tokens AS (
   SELECT
     ms.user_id,
@@ -112,14 +103,6 @@ profile_service_detail_tokens AS (
   JOIN "FreelancerProfile" fp ON fp."userId" = ms.user_id
   CROSS JOIN LATERAL (
     SELECT jsonb_path_query(coalesce(fp."serviceDetails", '{}'::jsonb), '$.**') AS node
-    UNION ALL
-    SELECT jsonb_path_query(
-      coalesce(
-        jsonb_extract_path(coalesce(fp."profileDetails", '{}'::jsonb), 'serviceDetails', ms.service_key),
-        '{}'::jsonb
-      ),
-      '$.**'
-    ) AS node
   ) tokens
   WHERE jsonb_typeof(node) = 'string'
 ),
@@ -146,8 +129,6 @@ raw_tokens AS (
   SELECT user_id, service_key, token FROM marketplace_array_tokens
   UNION ALL
   SELECT user_id, service_key, token FROM marketplace_json_tokens
-  UNION ALL
-  SELECT user_id, service_key, token FROM profile_skill_tokens
   UNION ALL
   SELECT user_id, service_key, token FROM profile_service_detail_tokens
   UNION ALL

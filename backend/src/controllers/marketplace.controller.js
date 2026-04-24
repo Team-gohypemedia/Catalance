@@ -641,12 +641,6 @@ const buildFreelancerSkillProfile = ({ skillRows = [], profile = {} } = {}) => {
     }
   });
 
-  const profileSkills = Array.isArray(profile?.skills) ? profile.skills : [];
-  profileSkills.forEach((skill) => {
-    const token = normalizeFacetToken(skill);
-    if (token) keywordTokens.add(token);
-  });
-
   const profileServices = Array.isArray(profile?.services) ? profile.services : [];
   profileServices.forEach((service) => {
     const serviceKey =
@@ -889,7 +883,7 @@ const buildTier1Where = (
   query,
   profileAvailabilityConditions = [
     { freelancerProfile: { is: null } },
-    { freelancerProfile: { is: { available: true } } },
+    { freelancerProfile: { is: { openToWork: true } } },
   ],
   hierarchyFreelancerIds = null
 ) => {
@@ -936,13 +930,13 @@ const buildTier1Where = (
 const buildTier1DiscoveryWhere = (query, hierarchyFreelancerIds = null) =>
   buildTier1Where(query, [
     { freelancerProfile: { is: null } },
-    { freelancerProfile: { is: { available: true } } },
+    { freelancerProfile: { is: { openToWork: true } } },
   ], hierarchyFreelancerIds);
 
 const buildTier1BrowseWhere = (query, hierarchyFreelancerIds = null) =>
   buildTier1Where(query, [
     { freelancerProfile: { is: null } },
-    { freelancerProfile: { is: { available: true } } },
+    { freelancerProfile: { is: { openToWork: true } } },
   ], hierarchyFreelancerIds);
 
 const getScoreWeights = (query) => {
@@ -1041,9 +1035,6 @@ const calcTechnologyScore = (candidate, query) => {
     uniqueValues([
       ...(candidate.techStack || []).map(normalizeTechToken),
       ...(candidate.activeTechnologies || []).map(normalizeTechToken),
-      ...((candidate.freelancer?.freelancerProfile?.skills || []).map(
-        normalizeTechToken
-      )),
     ])
   );
 
@@ -1137,9 +1128,6 @@ const matchesCandidateQuery = (candidate, query) => {
       uniqueValues([
         ...(candidate.techStack || []).map(normalizeTechToken),
         ...(candidate.activeTechnologies || []).map(normalizeTechToken),
-        ...((candidate.freelancer?.freelancerProfile?.skills || []).map(
-          normalizeTechToken
-        )),
       ])
     );
 
@@ -1981,12 +1969,9 @@ export const getMarketplace = asyncHandler(async (req, res) => {
           status: true,
           freelancerProfile: {
             select: {
-              available: true,
               openToWork: true,
               rating: true,
               reviewCount: true,
-              skills: true,
-              bio: true,
               experienceYears: true,
               serviceDetails: true,
             },
@@ -2080,7 +2065,6 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
       status: true,
       freelancerProfile: {
         select: {
-          skills: true,
           services: true,
           serviceDetails: true,
         },
@@ -2368,9 +2352,7 @@ export const getMarketplaceBrowse = asyncHandler(async (req, res) => {
             status: true,
             freelancerProfile: {
               select: {
-                available: true,
                 openToWork: true,
-                skills: true,
                 serviceDetails: true,
               },
             },
@@ -2627,8 +2609,6 @@ export const getServiceById = asyncHandler(async (req, res) => {
             isVerified: true,
             freelancerProfile: {
               select: {
-                bio: true,
-                skills: true,
                 rating: true,
                 reviewCount: true,
                 serviceDetails: true,
