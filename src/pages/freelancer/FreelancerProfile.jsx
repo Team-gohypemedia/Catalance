@@ -23,6 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import ProfileImageCropDialog from "@/components/features/freelancer/onboarding/ProfileImageCropDialog";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
@@ -55,6 +57,7 @@ import {
   ProjectCoverMedia,
   ServicesFromOnboardingCard,
   WorkExperienceModalContent,
+  AddEditServiceWizard,
   normalizeBioValue,
   formatSkillLabel,
   isNoisySkillTag,
@@ -296,6 +299,21 @@ const FreelancerProfile = () => {
     averageProjectPrice: "",
     deliveryTime: "",
     skillsAndTechnologies: [],
+    keywords: [],
+    mediaFiles: [],
+    caseStudy: {
+      id: "case-study-1",
+      title: "",
+      description: "",
+      projectLink: "",
+      projectFile: null,
+      role: "",
+      timeline: "",
+      budget: "",
+      niche: "",
+    },
+    caseStudies: [],
+    activeCaseStudyId: "case-study-1",
   });
   const [serviceSkillInput, setServiceSkillInput] = useState("");
   const [savingServiceProfile, setSavingServiceProfile] = useState(false);
@@ -1699,10 +1717,44 @@ const FreelancerProfile = () => {
         ? detail.caseStudy.techStack
         : []),
     ]);
+    const existingCaseStudies =
+      Array.isArray(detail?.caseStudies) && detail.caseStudies.length > 0
+        ? detail.caseStudies
+        : detail?.caseStudy && typeof detail.caseStudy === "object"
+          ? [detail.caseStudy]
+          : [];
+    const normalizedCaseStudies =
+      existingCaseStudies.length > 0
+        ? existingCaseStudies.map((caseStudy, index) => ({
+            id: String(caseStudy?.id || "").trim() || `case-study-${index + 1}`,
+            title: String(caseStudy?.title || "").trim(),
+            description: String(caseStudy?.description || "").trim(),
+            projectLink: String(caseStudy?.projectLink || "").trim(),
+            projectFile: caseStudy?.projectFile || null,
+            role: String(caseStudy?.role || "").trim(),
+            timeline: String(caseStudy?.timeline || "").trim(),
+            budget: String(caseStudy?.budget || "").trim(),
+            niche: String(caseStudy?.niche || "").trim(),
+          }))
+        : [
+            {
+              id: "case-study-1",
+              title: "",
+              description: "",
+              projectLink: "",
+              projectFile: null,
+              role: "",
+              timeline: "",
+              budget: "",
+              niche: "",
+            },
+          ];
 
     setServiceProfileForm({
       serviceKey,
-      serviceLabel: getServiceLabel(serviceKey),
+      serviceLabel: String(
+        detail?.title || detail?.serviceTitle || getServiceLabel(serviceKey)
+      ).trim(),
       experienceYears: String(detail?.experienceYears || "").trim(),
       serviceDescription: String(
         detail?.serviceDescription || detail?.description || ""
@@ -1716,6 +1768,17 @@ const FreelancerProfile = () => {
       ).trim(),
 
       skillsAndTechnologies: existingSkillsAndTechnologies,
+      keywords: normalizeServiceSkillTags(detail?.keywords || []),
+      mediaFiles: Array.isArray(detail?.mediaFiles)
+        ? detail.mediaFiles
+        : Array.isArray(detail?.media)
+          ? detail.media
+          : [],
+      subcategories: detail?.subcategories || [],
+      caseStudy: normalizedCaseStudies[0],
+      caseStudies: normalizedCaseStudies,
+      activeCaseStudyId: normalizedCaseStudies[0]?.id || "case-study-1",
+      niches: detail?.niches || [],
     });
     setServiceSkillInput("");
     setModalType("onboardingService");
@@ -1840,12 +1903,77 @@ const FreelancerProfile = () => {
         : []),
       ...parseDelimitedValues(serviceSkillInput),
     ]);
+    const nextServiceKeywords = normalizeServiceSkillTags(
+      Array.isArray(serviceProfileForm.keywords) ? serviceProfileForm.keywords : []
+    ).slice(0, 5);
+    const nextServiceMediaFiles = (
+      Array.isArray(serviceProfileForm.mediaFiles)
+        ? serviceProfileForm.mediaFiles
+        : []
+    )
+      .map((entry) => {
+        const file =
+          typeof File !== "undefined" && entry instanceof File
+            ? entry
+            : typeof File !== "undefined" && entry?.file instanceof File
+              ? entry.file
+              : null;
+
+        if (file) {
+          return {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            kind: file.type?.startsWith("video/") ? "video" : "image",
+          };
+        }
+
+        return entry && typeof entry === "object" ? entry : null;
+      })
+      .filter(Boolean);
+    const rawCaseStudies =
+      Array.isArray(serviceProfileForm.caseStudies) &&
+      serviceProfileForm.caseStudies.length > 0
+        ? serviceProfileForm.caseStudies
+        : serviceProfileForm.caseStudy &&
+            typeof serviceProfileForm.caseStudy === "object"
+          ? [serviceProfileForm.caseStudy]
+          : [];
+    const nextCaseStudies = rawCaseStudies.map((caseStudy, index) => {
+      const projectFile =
+        typeof File !== "undefined" && caseStudy?.projectFile instanceof File
+          ? {
+              name: caseStudy.projectFile.name,
+              type: caseStudy.projectFile.type,
+              size: caseStudy.projectFile.size,
+            }
+          : caseStudy?.projectFile || null;
+
+      return {
+        id: String(caseStudy?.id || "").trim() || `case-study-${index + 1}`,
+        title: String(caseStudy?.title || "").trim(),
+        description: String(caseStudy?.description || "").trim(),
+        projectLink: String(caseStudy?.projectLink || "").trim(),
+        projectFile,
+        role: String(caseStudy?.role || "").trim(),
+        timeline: String(caseStudy?.timeline || "").trim(),
+        budget: String(caseStudy?.budget || "").trim(),
+        niche: String(caseStudy?.niche || "").trim(),
+      };
+    });
+    const primaryCaseStudy =
+      nextCaseStudies.find(
+        (caseStudy) => caseStudy.id === serviceProfileForm.activeCaseStudyId
+      ) ||
+      nextCaseStudies[0] ||
+      null;
 
     const nextServiceDetails = {
       ...existingServiceDetails,
       [serviceKey]: {
         ...createServiceDetail(),
         ...currentServiceDetail,
+        title: String(serviceProfileForm.serviceLabel || "").trim(),
         experienceYears: String(serviceProfileForm.experienceYears || "").trim(),
         serviceDescription: String(
           serviceProfileForm.serviceDescription || ""
@@ -1858,6 +1986,14 @@ const FreelancerProfile = () => {
         deliveryTime: String(serviceProfileForm.deliveryTime || "").trim(),
 
         skillsAndTechnologies: nextServiceSkillTags,
+        keywords: nextServiceKeywords,
+        mediaFiles: nextServiceMediaFiles,
+        media: nextServiceMediaFiles,
+        subcategories: serviceProfileForm.subcategories || [],
+        caseStudy: primaryCaseStudy,
+        caseStudies: nextCaseStudies,
+        activeCaseStudyId: primaryCaseStudy?.id || "",
+        niches: serviceProfileForm.niches || [],
       },
     };
 
@@ -3402,7 +3538,6 @@ const FreelancerProfile = () => {
       >
           <div className="w-full py-6 md:py-8">
 
-          {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Full-width hero ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
           <ProfileHeroCard
             fileInputRef={fileInputRef}
             coverInputRef={coverInputRef}
@@ -3437,11 +3572,9 @@ const FreelancerProfile = () => {
             }}
             socialMediaLinks={socialMediaLinks}
           />
-
-          {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Two-column grid ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
           <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
 
-            {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Left: Main content ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
+            
             <div className="min-w-0 space-y-5">
               <ProfileSkillsCard
                 skills={skills}
@@ -3453,6 +3586,8 @@ const FreelancerProfile = () => {
                 collectServiceSpecializations={collectServiceSpecializations}
                 toUniqueLabels={toUniqueLabels}
                 normalizeValueLabel={normalizeValueLabel}
+                openEditServiceProfileModal={openEditServiceProfileModal}
+                openAddServiceModal={openAddServiceModal}
               />
 
               <ServicesFromOnboardingCard
@@ -3479,7 +3614,6 @@ const FreelancerProfile = () => {
               />
             </div>
 
-            {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Right: Sidebar ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
             <div className="space-y-5 lg:sticky lg:top-40 lg:self-start">
               <ProfileOnboardingSnapshotCard
                 workModelLabel={onboardingRoleLabel}
@@ -3929,341 +4063,27 @@ const FreelancerProfile = () => {
                   </Button>
                 </div>
               </>
-            ) : modalType === "onboardingService" ? (
-              <div className="flex min-h-0 flex-1 flex-col">
-                <div className="space-y-1">
-                  <div>
-                    <h1 className="text-xl font-semibold text-foreground">
-                      {isDraftingNewService
-                        ? "Add Service Profile"
-                        : "Edit Service Profile"}
-                    </h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Make this service stand out on your profile for{" "}
-                      <span className="font-medium text-foreground">
-                        {serviceProfileForm.serviceLabel || "this service"}
-                      </span>
-                      .
-                    </p>
-                  </div>
-                </div>
-
-                <div className="subtle-scrollbar mt-4 flex-1 space-y-4 overflow-y-auto pr-2">
-                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
-                    <label className="block space-y-1.5">
-                      <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                        Experience
-                      </span>
-                      <select
-                        value={serviceProfileForm.experienceYears || ""}
-                        onChange={(event) =>
-                          setServiceProfileForm((prev) => ({
-                            ...prev,
-                            experienceYears: event.target.value,
-                          }))
-                        }
-                        className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                      >
-                        <option value="">Select experience range</option>
-                        {serviceProfileForm.experienceYears &&
-                        !EXPERIENCE_YEARS_OPTIONS.some(
-                          (option) => option.value === serviceProfileForm.experienceYears
-                        ) ? (
-                          <option value={serviceProfileForm.experienceYears}>
-                            {normalizeValueLabel(serviceProfileForm.experienceYears)}
-                          </option>
-                        ) : null}
-                        {EXPERIENCE_YEARS_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-
-                    <label className="block space-y-1.5">
-                      <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                        Delivery Timeline
-                      </span>
-                      <select
-                        value={serviceProfileForm.deliveryTime || ""}
-                        onChange={(event) =>
-                          setServiceProfileForm((prev) => ({
-                            ...prev,
-                            deliveryTime: event.target.value,
-                          }))
-                        }
-                        className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                      >
-                        <option value="">Select delivery timeline</option>
-                        {serviceProfileForm.deliveryTime &&
-                        !PROJECT_TIMELINE_OPTIONS.some(
-                          (option) => option.value === serviceProfileForm.deliveryTime
-                        ) ? (
-                          <option value={serviceProfileForm.deliveryTime}>
-                            {normalizeValueLabel(serviceProfileForm.deliveryTime)}
-                          </option>
-                        ) : null}
-                        {PROJECT_TIMELINE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="block space-y-1.5">
-                      <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                        Avg Price
-                      </span>
-                      <select
-                        value={serviceProfileForm.averageProjectPrice || ""}
-                        onChange={(event) =>
-                          setServiceProfileForm((prev) => ({
-                            ...prev,
-                            averageProjectPrice: event.target.value,
-                          }))
-                        }
-                        className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                      >
-                        <option value="">Select average project price</option>
-                        {serviceProfileForm.averageProjectPrice &&
-                        !AVERAGE_PROJECT_PRICE_OPTIONS.some(
-                          (option) =>
-                            option.value === serviceProfileForm.averageProjectPrice
-                        ) ? (
-                          <option value={serviceProfileForm.averageProjectPrice}>
-                            {normalizeValueLabel(
-                              serviceProfileForm.averageProjectPrice
-                            )}
-                          </option>
-                        ) : null}
-                        {AVERAGE_PROJECT_PRICE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <div className="rounded-md border border-border/70 bg-background/50 px-3 py-2.5 lg:row-span-2">
-                      <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                        Profile Status
-                      </p>
-                      <p className="mt-1 text-sm font-medium text-foreground">
-                        {serviceProfileStatusLabel}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Description, cover, price, delivery timeline,
-                        and skills complete the card.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                      Service Description
-                    </span>
-                    <textarea
-                      value={serviceProfileForm.serviceDescription}
-                      onChange={(event) =>
-                        setServiceProfileForm((prev) => ({
-                          ...prev,
-                          serviceDescription: event.target.value,
-                        }))
-                      }
-                      rows={4}
-                      maxLength={500}
-                      placeholder="Describe the outcomes, process, and what clients can expect."
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    />
-                    <p className="text-right text-[11px] text-muted-foreground">
-                      {String(serviceProfileForm.serviceDescription || "").length}/500
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="block text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                        Skills &amp; Technologies
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        These appear on the service card.
-                      </span>
-                    </div>
-
-                    <div className="rounded-md border border-border/70 bg-background/50 p-3">
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <input
-                          value={serviceSkillInput}
-                          onChange={(event) => setServiceSkillInput(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === ",") {
-                              event.preventDefault();
-                              addServiceSkillTag(serviceSkillInput);
-                            }
-                          }}
-                          placeholder="Add a skill, tool, or platform"
-                          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-10 shrink-0"
-                          onClick={() => addServiceSkillTag(serviceSkillInput)}
-                          disabled={!String(serviceSkillInput || "").trim()}
-                        >
-                          Add tag
-                        </Button>
-                      </div>
-
-                      {serviceTechSuggestionOptions.length > 0 ? (
-                        <div className="mt-3">
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                            Suggested
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {serviceTechSuggestionOptions.map((tag) => (
-                              <button
-                                key={`service-tag-suggestion-${tag}`}
-                                type="button"
-                                onClick={() => addServiceSkillTag(tag)}
-                                className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
-                              >
-                                {tag}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      <div className="mt-3 min-h-[2.5rem] rounded-md border border-dashed border-border/70 bg-background/35 p-3">
-                        {(Array.isArray(serviceProfileForm.skillsAndTechnologies)
-                          ? serviceProfileForm.skillsAndTechnologies
-                          : []
-                        ).length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {serviceProfileForm.skillsAndTechnologies.map((tag) => (
-                              <span
-                                key={`service-tag-selected-${tag}`}
-                                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium text-foreground"
-                              >
-                                {tag}
-                                <button
-                                  type="button"
-                                  onClick={() => removeServiceSkillTag(tag)}
-                                  className="text-muted-foreground transition-colors hover:text-foreground"
-                                  aria-label={`Remove ${tag}`}
-                                >
-                                  x
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            No skills or technologies added yet.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="block text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                      Service Cover Image
-                    </span>
-                    <div className="rounded-md border border-border/70 bg-background/50 p-3">
-                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs text-muted-foreground">
-                          Recommended: 16:9 image, under 8MB.
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={uploadingServiceCover}
-                          onClick={() =>
-                            document
-                              .getElementById("onboarding-service-cover-input")
-                              ?.click()
-                          }
-                        >
-                          {uploadingServiceCover ? (
-                            <>
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            "Upload image"
-                          )}
-                        </Button>
-                        <input
-                          id="onboarding-service-cover-input"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleServiceCoverImageChange}
-                        />
-                      </div>
-
-                      {serviceProfileForm.coverImage ? (
-                        <div className="group relative overflow-hidden rounded-md border border-border/70">
-                          <img
-                            src={serviceProfileForm.coverImage}
-                            alt={`${serviceProfileForm.serviceLabel || "Service"} cover`}
-                            className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] sm:h-36"
-                          />
-                          <div className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/45 to-transparent p-2">
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              onClick={() =>
-                                setServiceProfileForm((prev) => ({
-                                  ...prev,
-                                  coverImage: "",
-                                }))
-                              }
-                            >
-                              Remove cover
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-border/70 bg-background/35 text-xs text-muted-foreground sm:h-36">
-                          No cover selected yet
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-5 flex items-center justify-end gap-2.5 border-t border-border/70 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setServiceSkillInput("");
-                      setModalType(null);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={saveOnboardingServiceProfile}
-                    disabled={savingServiceProfile || uploadingServiceCover}
-                  >
-                    {(savingServiceProfile || uploadingServiceCover) && (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    )}
-                    {isDraftingNewService ? "Add service" : "Save changes"}
-                  </Button>
-                </div>
-              </div>
-            ) : modalType === "addProject" ? (
+) : modalType === "onboardingService" ? (
+  <AddEditServiceWizard
+    serviceProfileForm={serviceProfileForm}
+    setServiceProfileForm={setServiceProfileForm}
+    onSave={saveOnboardingServiceProfile}
+    onCancel={() => {
+      setServiceSkillInput("");
+      setModalType(null);
+    }}
+    isDraftingNewService={isDraftingNewService}
+    uploadingServiceCover={uploadingServiceCover}
+    savingServiceProfile={savingServiceProfile}
+    serviceTechSuggestionOptions={serviceTechSuggestionOptions}
+    serviceSkillInput={serviceSkillInput}
+    setServiceSkillInput={setServiceSkillInput}
+    addServiceSkillTag={addServiceSkillTag}
+    removeServiceSkillTag={removeServiceSkillTag}
+    servicesCatalog={SERVICE_OPTIONS}
+    onCoverChange={handleServiceCoverImageChange}
+  />
+) : modalType === "addProject" ? (
               <>
                 <div className="border-b border-border/70 pb-2.5">
                   <span className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">

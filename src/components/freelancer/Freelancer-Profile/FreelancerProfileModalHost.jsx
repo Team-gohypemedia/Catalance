@@ -2,7 +2,7 @@ import { FULL_PROFILE_EDITOR_SECTIONS } from "./freelancerProfileUtils";
 
 const getModalPanelClassName = (modalType, fullProfileEditorSection) =>
   `w-full border border-border/70 bg-card/95 backdrop-blur shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${
-    modalType === "addProject" ? "rounded-md p-4 sm:p-5" : "rounded-2xl p-6"
+    ["addProject", "onboardingService"].includes(modalType) ? "rounded-md p-0" : "rounded-2xl p-6"
   } ${
     modalType === "viewAllProjects"
       ? "max-w-6xl h-[90vh] overflow-hidden flex flex-col"
@@ -18,7 +18,7 @@ const getModalPanelClassName = (modalType, fullProfileEditorSection) =>
           : modalType === "personal"
             ? "max-w-2xl"
             : modalType === "onboardingService"
-              ? "max-w-2xl max-h-[82vh] overflow-hidden flex flex-col"
+              ? "max-w-6xl h-[92vh] max-h-[960px] overflow-hidden flex flex-col"
               : modalType === "work"
                 ? "max-w-2xl max-h-[90vh] overflow-y-auto"
                 : modalType === "portfolio"

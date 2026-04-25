@@ -12,6 +12,7 @@ import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import Video from "lucide-react/dist/esm/icons/video";
 import X from "lucide-react/dist/esm/icons/x";
+import Plus from "lucide-react/dist/esm/icons/plus";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
@@ -218,6 +219,8 @@ const ProfileSkillsCard = ({
   getServiceLabel,
   collectServiceSpecializations,
   toUniqueLabels,
+  openEditServiceProfileModal,
+  openAddServiceModal,
 }) => {
   const skillCards = (Array.isArray(skills) ? skills : []).map(normalizeSkill);
   const [openMenu, setOpenMenu] = useState(null);
@@ -666,6 +669,22 @@ const ProfileSkillsCard = ({
                 Services & Skills
               </p>
               <div className="flex items-center gap-3">
+              {typeof openEditServiceProfileModal === "function" ? (
+                <button
+                  type="button"
+                  disabled={!activeService?.serviceKey}
+                  onClick={() => {
+                    if (activeService?.serviceKey) {
+                      openEditServiceProfileModal(activeService.serviceKey);
+                    }
+                  }}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-primary/35 bg-primary/10 text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Edit service details"
+                  title="Edit service details"
+                >
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={!canScrollPrevService}
@@ -729,6 +748,23 @@ const ProfileSkillsCard = ({
                     </CarouselItem>
                   );
                 })}
+                {typeof openAddServiceModal === "function" ? (
+                  <CarouselItem className="basis-[170px] pl-3 sm:basis-[180px] sm:pl-4">
+                    <button
+                      type="button"
+                      onClick={() => openAddServiceModal()}
+                      className="group flex h-[96px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 bg-transparent px-3 text-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5"
+                    >
+                      <Plus
+                        className="h-7 w-7 text-muted-foreground group-hover:text-primary"
+                        aria-hidden="true"
+                      />
+                      <span className="text-base font-bold leading-tight text-muted-foreground group-hover:text-primary">
+                        Add service
+                      </span>
+                    </button>
+                  </CarouselItem>
+                ) : null}
               </CarouselContent>
             </Carousel>
           </section>

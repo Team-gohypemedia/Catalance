@@ -15,5 +15,6 @@ export { default as EducationModalContent } from "./modals/EducationModalContent
 export { default as FullProfileEditorModalContent } from "./modals/FullProfileEditorModalContent";
 export { default as PersonalDetailsModalContent } from "./modals/PersonalDetailsModalContent";
 export { default as WorkExperienceModalContent } from "./modals/WorkExperienceModalContent";
+export { default as AddEditServiceWizard } from "./modals/AddEditServiceWizard";
 
 export * from "./freelancerProfileUtils";

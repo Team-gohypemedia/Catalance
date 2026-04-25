@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 
 import { cn } from "@/shared/lib/utils";
@@ -57,12 +58,16 @@ const StepperItem = ({
   </div>
 );
 
-export const ServiceInfoStepper = ({ activeStepId, onStepChange }) => {
-  const activeIdx = SERVICE_INFO_STEPS.findIndex((step) => step.id === activeStepId);
+export const ServiceInfoStepper = ({
+  activeStepId,
+  onStepChange,
+  steps = SERVICE_INFO_STEPS,
+}) => {
+  const activeIdx = steps.findIndex((step) => step.id === activeStepId);
 
   return (
     <div className="flex w-full items-center gap-1 overflow-hidden rounded-full border border-white/10 bg-card p-1">
-      {SERVICE_INFO_STEPS.map((step, idx) => (
+      {steps.map((step, idx) => (
         <StepperItem
           key={step.id}
           step={step}
@@ -86,6 +91,7 @@ export const CustomSelect = ({
   popupClassName = "",
   isSearchable = false,
   searchPlaceholder = "Search...",
+  viewportBottomOffset = 0,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -134,7 +140,7 @@ export const CustomSelect = ({
     return () => cancelAnimationFrame(frameId);
   }, [isOpen, isSearchable]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen || isCenteredPopup) {
       return undefined;
     }
@@ -151,9 +157,14 @@ export const CustomSelect = ({
       const viewportWidth = window.innerWidth;
       const margin = 12;
       const gap = 6;
+      const safeViewportBottom =
+        viewportHeight - Math.max(0, Number(viewportBottomOffset) || 0);
       const minVisibleHeight = 140;
       const preferredMaxHeight = 320;
-      const spaceBelow = Math.max(0, viewportHeight - rect.bottom - margin - gap);
+      const spaceBelow = Math.max(
+        0,
+        safeViewportBottom - rect.bottom - margin - gap,
+      );
       const spaceAbove = Math.max(0, rect.top - margin - gap);
       const shouldOpenAbove =
         spaceBelow < minVisibleHeight && spaceAbove > spaceBelow;
@@ -181,7 +192,7 @@ export const CustomSelect = ({
           : {
               position: "fixed",
               left: `${nextLeft}px`,
-              top: `${Math.min(rect.bottom + gap, viewportHeight - margin)}px`,
+              top: `${Math.min(rect.bottom + gap, safeViewportBottom - margin)}px`,
               width: `${nextWidth}px`,
             },
       );
@@ -202,7 +213,72 @@ export const CustomSelect = ({
       window.removeEventListener("resize", requestPositionUpdate);
       window.removeEventListener("scroll", requestPositionUpdate, true);
     };
-  }, [isCenteredPopup, isOpen]);
+  }, [isCenteredPopup, isOpen, viewportBottomOffset]);
+
+  const popupContent = isOpen ? (
+    <>
+      <div
+        className="fixed inset-0 z-[60]"
+        onClick={() => setIsOpen(false)}
+      />
+      <div
+        className={cn(
+          "z-[70] overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40",
+          isCenteredPopup
+            ? "fixed left-1/2 top-1/2 w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2"
+            : "",
+          popupClassName
+        )}
+        style={isCenteredPopup ? undefined : attachedPopupStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {isSearchable ? (
+          <div className="border-b border-white/8 p-2.5">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={searchPlaceholder}
+              className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+            />
+          </div>
+        ) : null}
+        <div
+          className={cn(
+            "overflow-y-auto",
+            isCenteredPopup ? "max-h-[min(60vh,320px)]" : "",
+          )}
+          style={isCenteredPopup ? undefined : { maxHeight: `${attachedPopupMaxHeight}px` }}
+        >
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center px-4 py-3 text-left text-sm transition-colors hover:bg-white/5",
+                  value === option.value
+                    ? "bg-primary/10 text-primary"
+                    : "text-white/80"
+                )}
+              >
+                {option.label}
+              </button>
+            ))
+          ) : (
+            <div className="px-4 py-3 text-sm text-white/45">
+              {normalizedOptions.length > 0 ? "No results found" : "No options available"}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  ) : null;
 
   return (
     <div className="relative">
@@ -225,70 +301,9 @@ export const CustomSelect = ({
         />
       </button>
 
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          <div
-            className={cn(
-              "z-50 overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40",
-              isCenteredPopup
-                ? "fixed left-1/2 top-1/2 w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2"
-                : "",
-              popupClassName
-            )}
-            style={isCenteredPopup ? undefined : attachedPopupStyle}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {isSearchable ? (
-              <div className="border-b border-white/8 p-2.5">
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder={searchPlaceholder}
-                  className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                />
-              </div>
-            ) : null}
-            <div
-              className={cn(
-                "overflow-y-auto",
-                isCenteredPopup ? "max-h-[min(60vh,320px)]" : "",
-              )}
-              style={isCenteredPopup ? undefined : { maxHeight: `${attachedPopupMaxHeight}px` }}
-            >
-              {filteredOptions.length > 0 ? (
-                filteredOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => {
-                      onChange(option.value);
-                      setIsOpen(false);
-                    }}
-                    className={cn(
-                      "flex w-full items-center px-4 py-3 text-left text-sm transition-colors hover:bg-white/5",
-                      value === option.value
-                        ? "bg-primary/10 text-primary"
-                        : "text-white/80"
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))
-              ) : (
-                <div className="px-4 py-3 text-sm text-white/45">
-                  {normalizedOptions.length > 0 ? "No results found" : "No options available"}
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+      {popupContent && typeof document !== "undefined"
+        ? createPortal(popupContent, document.body)
+        : popupContent}
     </div>
   );
 };
