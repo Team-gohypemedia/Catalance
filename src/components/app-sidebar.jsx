@@ -12,6 +12,7 @@ import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import User from "lucide-react/dist/esm/icons/user";
 import Users from "lucide-react/dist/esm/icons/users";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
+import Newspaper from "lucide-react/dist/esm/icons/newspaper";
 
 import { NavMain } from "@/components/layout/nav-main";
 import { NavUser } from "@/components/layout/nav-user";
@@ -182,6 +183,12 @@ const navConfigs = {
       title: "Service Questions",
       url: "/admin/service-questions",
       icon: MessageSquare,
+      isActive: true,
+    },
+    {
+      title: "Blogs",
+      url: "/admin/blogs",
+      icon: Newspaper,
       isActive: true,
     },
     {

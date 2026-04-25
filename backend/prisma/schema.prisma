@@ -50,6 +50,12 @@ enum ProjectTaskStatus {
   DONE
 }
 
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model User {
   id                   String              @id @default(cuid())
   email                String              @unique
@@ -324,6 +330,33 @@ model CompletedProject {
   @@index([budgetMax])
   @@index([completedAt])
   @@map("CompletedProjects")
+}
+
+model BlogPost {
+  id             String         @id @default(cuid())
+  slug           String         @unique
+  title          String
+  excerpt        String         @db.Text
+  content        String         @db.Text
+  category       String?
+  authorName     String         @default("Catalance Editorial Team")
+  coverImageUrl  String?
+  coverImageAlt  String?
+  status         BlogPostStatus @default(DRAFT)
+  featured       Boolean        @default(false)
+  seoTitle       String?
+  seoDescription String?        @db.Text
+  seoKeywords    String[]       @default([])
+  canonicalUrl   String?
+  ogTitle        String?
+  ogDescription  String?        @db.Text
+  ogImageUrl     String?
+  publishedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([featured, status, publishedAt])
 }
 
 model Proposal {

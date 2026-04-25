@@ -136,6 +136,9 @@ const AdminServices = lazy(
 const AdminServiceQuestions = lazy(
   () => import("@/components/features/admin/AdminServiceQuestions"),
 );
+const AdminBlogs = lazy(
+  () => import("@/components/features/admin/AdminBlogs"),
+);
 const GetStarted = lazy(() => import("@/components/features/auth/GetStarted"));
 const BrowseTalent = lazy(() => import("@/components/pages/BrowseTalent"));
 const EnterpriseSolutions = lazy(
@@ -661,6 +664,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminServiceQuestions />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/blogs"
+              element={
+                <AdminRoute>
+                  <AdminBlogs />
                 </AdminRoute>
               }
             />

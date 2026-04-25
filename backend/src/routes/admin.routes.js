@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getDashboardStats, getUsers, updateUserRole, updateUserStatus, updateUserVerification, getUserDetails, getProjects, getProjectDetails, getServices, upsertService, getServiceQuestions, upsertQuestion, reorderQuestions, deleteQuestion } from "../controllers/admin.controller.js";
+import { deleteAdminBlog, getAdminBlogById, getAdminBlogs, upsertAdminBlog } from "../controllers/blog.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
 import { requireAdmin } from "../middleware/admin.middleware.js";
 
@@ -23,6 +24,11 @@ router.get("/services/:serviceId/questions", getServiceQuestions);
 router.post("/services/:serviceId/questions", upsertQuestion);
 router.post("/services/:serviceId/questions/reorder", reorderQuestions);
 router.delete("/services/:serviceId/questions/:id", deleteQuestion);
+
+router.get("/blogs", getAdminBlogs);
+router.get("/blogs/:blogId", getAdminBlogById);
+router.post("/blogs", upsertAdminBlog);
+router.delete("/blogs/:blogId", deleteAdminBlog);
 
 export default router;
 
