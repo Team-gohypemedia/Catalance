@@ -16,7 +16,7 @@ const getModalPanelClassName = (modalType, fullProfileEditorSection) =>
         : modalType === "education"
           ? "max-w-4xl max-h-[90vh] overflow-y-auto"
           : modalType === "personal"
-            ? "max-w-2xl max-h-[90vh] overflow-y-auto"
+            ? "max-w-2xl"
             : modalType === "onboardingService"
               ? "max-w-2xl max-h-[82vh] overflow-hidden flex flex-col"
               : modalType === "work"
@@ -36,7 +36,7 @@ const FreelancerProfileModalHost = ({
   if (!modalType) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm transition-all">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 transition-all">
       <div className={getModalPanelClassName(modalType, fullProfileEditorSection)}>
         {children}
       </div>

@@ -572,6 +572,7 @@ export const getProfile = asyncHandler(async (req, res) => {
       },
       portfolioProjects: mergedPortfolioProjects,
       socialMediaLinks: freelancerProfile.socialMediaLinks || {},
+      coverImage: freelancerProfile.coverImage || "",
       profileDetails
     }
   });
@@ -588,10 +589,9 @@ const buildSaveProfileUpdates = (payload = {}) => {
   const normalizedProfileDetails = hasOwn(payload, "profileDetails")
     ? toProfileDetailsObject(payload.profileDetails)
     : undefined;
-  const identity =
-    normalizedProfileDetails?.identity && typeof normalizedProfileDetails.identity === "object"
-      ? normalizedProfileDetails.identity
-      : {};
+  const normalizedProfileDetailsPatch = hasOwn(payload, "profileDetailsPatch")
+    ? toProfileDetailsObject(payload.profileDetailsPatch)
+    : undefined;
   const updates = {};
 
   if (hasOwn(personal, "name")) {
@@ -608,6 +608,10 @@ const buildSaveProfileUpdates = (payload = {}) => {
 
   if (hasOwn(personal, "experienceYears")) {
     updates.experienceYears = personal.experienceYears;
+  }
+
+  if (hasOwn(personal, "openToWork")) {
+    updates.openToWork = personal.openToWork;
   }
 
   if (hasOwn(payload, "companyName")) {
@@ -657,6 +661,10 @@ const buildSaveProfileUpdates = (payload = {}) => {
     updates.serviceMedia = payload.serviceMedia;
   }
 
+  if (hasOwn(payload, "portfolioProjects")) {
+    updates.portfolioProjects = payload.portfolioProjects;
+  }
+
   const resolvedResume = hasOwn(payload, "resume")
     ? payload.resume
     : hasOwn(portfolio, "resume")
@@ -670,12 +678,31 @@ const buildSaveProfileUpdates = (payload = {}) => {
     updates.profileDetails = normalizedProfileDetails;
   }
 
+  if (normalizedProfileDetailsPatch !== undefined) {
+    updates.profileDetailsPatch = normalizedProfileDetailsPatch;
+  }
+
+  if (hasOwn(payload, "professionalBio")) {
+    updates.professionalBio = payload.professionalBio;
+  } else if (hasOwn(payload, "bio")) {
+    updates.professionalBio = payload.bio;
+  }
+
   if (hasOwn(payload, "onboardingComplete")) {
     updates.onboardingComplete = Boolean(payload.onboardingComplete);
   }
 
   if (hasOwn(payload, "socialMediaLinks")) {
     updates.socialMediaLinks = payload.socialMediaLinks;
+  }
+
+  const resolvedCoverImage = hasOwn(payload, "coverImage")
+    ? payload.coverImage
+    : hasOwn(personal, "coverImage")
+      ? personal.coverImage
+      : undefined;
+  if (resolvedCoverImage !== undefined) {
+    updates.coverImage = resolvedCoverImage;
   }
 
   return updates;

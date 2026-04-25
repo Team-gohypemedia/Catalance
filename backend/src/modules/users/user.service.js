@@ -186,7 +186,8 @@ const FREELANCER_PROFILE_FIELD_KEYS = new Set([
   "serviceKeywords",
   "serviceMedia",
   "acceptInProgressProjects",
-  "socialMediaLinks"
+  "socialMediaLinks",
+  "coverImage"
 ]);
 
 const pickFreelancerProfileUpdates = (updates = {}) =>
@@ -488,6 +489,46 @@ const normalizePortfolioProjects = (projects) => {
   return Array.from(projectMap.values()).slice(0, 24);
 };
 
+const normalizeSocialMediaLinks = (links) => {
+  const entries = Array.isArray(links)
+    ? links
+    : links && typeof links === "object"
+      ? Object.entries(links).map(([platform, url]) => ({ platform, url }))
+      : [];
+  const linkMap = new Map();
+
+  entries.forEach((entry, index) => {
+    const normalizedEntry =
+      entry && typeof entry === "object"
+        ? entry
+        : { platform: "", url: String(entry || "") };
+    const platform = String(
+      normalizedEntry.platform ||
+        normalizedEntry.name ||
+        normalizedEntry.type ||
+        ""
+    ).trim();
+    const url = String(
+      normalizedEntry.url ||
+        normalizedEntry.link ||
+        normalizedEntry.href ||
+        ""
+    ).trim();
+
+    if (!platform && !url) return;
+
+    const dedupKey = `${platform.toLowerCase()}:${url.toLowerCase() || index}`;
+    if (linkMap.has(dedupKey)) return;
+
+    linkMap.set(dedupKey, {
+      platform,
+      url
+    });
+  });
+
+  return Array.from(linkMap.values()).slice(0, 24);
+};
+
 const normalizeServiceMedia = (media, { max = 3 } = {}) => {
   if (!Array.isArray(media)) return [];
 
@@ -630,6 +671,43 @@ const normalizeUsername = (value = "") =>
   String(value || "")
     .trim()
     .toLowerCase();
+
+const isPlainObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value);
+
+const cloneJsonValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => cloneJsonValue(entry));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, cloneJsonValue(entry)])
+    );
+  }
+
+  return value;
+};
+
+const mergeProfileDetailsPatch = (baseValue = {}, patchValue = {}) => {
+  const base = isPlainObject(baseValue) ? cloneJsonValue(baseValue) : {};
+  if (!isPlainObject(patchValue)) return base;
+
+  Object.entries(patchValue).forEach(([key, value]) => {
+    if (isPlainObject(value) && isPlainObject(base[key])) {
+      base[key] = mergeProfileDetailsPatch(base[key], value);
+      return;
+    }
+
+    base[key] = cloneJsonValue(value);
+  });
+
+  return base;
+};
+
+const profileDetailsPatchHasAny = (patch = {}, keys = []) =>
+  isPlainObject(patch) &&
+  keys.some((key) => Object.prototype.hasOwnProperty.call(patch, key));
 
 const normalizeFreelancerProfileDetails = (profileDetails) => {
   if (!profileDetails || typeof profileDetails !== "object") return {};
@@ -1847,9 +1925,11 @@ export const updateUserProfile = async (userId, updates) => {
     "professionalBio",
     "avatar",
     "profileDetails",
+    "profileDetailsPatch",
     "onboardingComplete",
     "services",
     "companyName",
+    "openToWork",
     "experienceYears",
     "workExperience",
     "resume",
@@ -1861,7 +1941,10 @@ export const updateUserProfile = async (userId, updates) => {
     "startingPrice",
     "serviceKeywords",
     "serviceMedia",
-    "acceptInProgressProjects"
+    "acceptInProgressProjects",
+    "socialMediaLinks",
+    "coverImage",
+    "portfolioProjects"
   ];
   const cleanUpdates = {};
 
@@ -1878,13 +1961,21 @@ export const updateUserProfile = async (userId, updates) => {
         cleanUpdates[key] = normalizeServiceMedia(updates[key], { max: 3 });
       } else if (key === "avatar") {
         cleanUpdates[key] = extractAvatarUrl(updates[key]);
+      } else if (key === "coverImage") {
+        cleanUpdates[key] = extractAvatarUrl(updates[key]);
       } else if (key === "profileDetails") {
+        cleanUpdates[key] = normalizeFreelancerProfileDetails(updates[key]);
+      } else if (key === "profileDetailsPatch") {
         cleanUpdates[key] = normalizeFreelancerProfileDetails(updates[key]);
       } else if (key === "services") {
         cleanUpdates[key] = normalizeMarketplaceServiceKeys(updates[key], {
           max: 64
         });
-      } else if (key === "acceptInProgressProjects") {
+      } else if (key === "portfolioProjects") {
+        cleanUpdates[key] = normalizePortfolioProjects(updates[key]);
+      } else if (key === "socialMediaLinks") {
+        cleanUpdates[key] = normalizeSocialMediaLinks(updates[key]);
+      } else if (key === "openToWork" || key === "acceptInProgressProjects") {
         const parsedBoolean = parseBooleanFilter(updates[key]);
         if (parsedBoolean !== undefined) {
           cleanUpdates[key] = parsedBoolean;
@@ -1934,6 +2025,37 @@ export const updateUserProfile = async (userId, updates) => {
         profileDetails: cleanUpdates.profileDetails
       });
     }
+  }
+
+  const hasProfileDetailsPatch = Object.prototype.hasOwnProperty.call(
+    cleanUpdates,
+    "profileDetailsPatch"
+  );
+  const profileDetailsPatch = hasProfileDetailsPatch
+    ? cleanUpdates.profileDetailsPatch
+    : undefined;
+  if (hasProfileDetailsPatch) {
+    delete cleanUpdates.profileDetailsPatch;
+
+    if (
+      !Object.prototype.hasOwnProperty.call(cleanUpdates, "professionalBio") &&
+      Object.prototype.hasOwnProperty.call(profileDetailsPatch, "professionalBio")
+    ) {
+      cleanUpdates.professionalBio = extractBioText(
+        profileDetailsPatch.professionalBio
+      );
+    }
+  }
+
+  const hasPortfolioProjectsUpdate = Object.prototype.hasOwnProperty.call(
+    cleanUpdates,
+    "portfolioProjects"
+  );
+  const resolvedPortfolioProjectsUpdate = hasPortfolioProjectsUpdate
+    ? cleanUpdates.portfolioProjects
+    : undefined;
+  if (hasPortfolioProjectsUpdate) {
+    delete cleanUpdates.portfolioProjects;
   }
 
   if (
@@ -2001,18 +2123,44 @@ export const updateUserProfile = async (userId, updates) => {
     let resolvedProfileDetails = hasProfileDetailsUpdate
       ? nextFreelancerProfileUpdates.profileDetails
       : existingFreelancerProfile.profileDetails;
+    const shouldApplyProfileDetailsPatch =
+      hasProfileDetailsPatch && isPlainObject(profileDetailsPatch);
+    if (shouldApplyProfileDetailsPatch) {
+      resolvedProfileDetails = mergeProfileDetailsPatch(
+        resolvedProfileDetails,
+        profileDetailsPatch
+      );
+      nextFreelancerProfileUpdates.profileDetails = resolvedProfileDetails;
+    }
+
     let resolvedServices = Object.prototype.hasOwnProperty.call(
       nextFreelancerProfileUpdates,
       "services"
     )
       ? nextFreelancerProfileUpdates.services
       : existingFreelancerProfile.services;
+    const hasServicesUpdate = Object.prototype.hasOwnProperty.call(
+      nextFreelancerProfileUpdates,
+      "services"
+    );
+    const hasAnyProfileDetailsUpdate =
+      hasProfileDetailsUpdate || shouldApplyProfileDetailsPatch;
+    const profileDetailsPatchTouchesMarketplace =
+      shouldApplyProfileDetailsPatch &&
+      profileDetailsPatchHasAny(profileDetailsPatch, ["services", "serviceDetails"]);
+    const profileDetailsPatchTouchesProjects =
+      profileDetailsPatchTouchesMarketplace ||
+      (shouldApplyProfileDetailsPatch &&
+        profileDetailsPatchHasAny(profileDetailsPatch, ["portfolioProjects"]));
+    const profileDetailsPatchTouchesSkills =
+      profileDetailsPatchTouchesMarketplace ||
+      (shouldApplyProfileDetailsPatch &&
+        profileDetailsPatchHasAny(profileDetailsPatch, ["skills", "skillLevels"]));
     const shouldSyncFreelancerProfileDetails =
-      hasProfileDetailsUpdate ||
-      Object.prototype.hasOwnProperty.call(nextFreelancerProfileUpdates, "services");
+      hasAnyProfileDetailsUpdate || hasServicesUpdate;
 
     let marketplaceHierarchy = null;
-    if (hasProfileDetailsUpdate) {
+    if (hasProfileDetailsUpdate || profileDetailsPatchTouchesMarketplace) {
       marketplaceHierarchy = await loadMarketplaceHierarchySnapshot(tx);
       const canonicalProfileDetails = buildCanonicalProfileDetails({
         profileDetails: resolvedProfileDetails,
@@ -2036,6 +2184,10 @@ export const updateUserProfile = async (userId, updates) => {
       Object.assign(nextFreelancerProfileUpdates, primarySnapshot);
     }
 
+    const resolvedPortfolioProjects = hasPortfolioProjectsUpdate
+      ? resolvedPortfolioProjectsUpdate
+      : normalizePortfolioProjects(resolvedProfileDetails?.portfolioProjects);
+
     if (Object.keys(nextFreelancerProfileUpdates).length) {
       await upsertFreelancerProfile({
         tx,
@@ -2049,7 +2201,7 @@ export const updateUserProfile = async (userId, updates) => {
         tx,
         userId: user.id,
         profileDetails: resolvedProfileDetails,
-        portfolioProjects: [],
+        portfolioProjects: resolvedPortfolioProjects,
         services: resolvedServices
       });
     }
@@ -2094,10 +2246,8 @@ export const updateUserProfile = async (userId, updates) => {
     const shouldSyncFreelancerProjects =
       isFreelancerUser &&
       (hasProfileDetailsUpdate ||
-        Object.prototype.hasOwnProperty.call(
-          nextFreelancerProfileUpdates,
-          "portfolioProjects"
-        ));
+        profileDetailsPatchTouchesProjects ||
+        hasPortfolioProjectsUpdate);
 
     if (shouldSyncFreelancerProjects) {
       const normalizedProjects = deriveFreelancerProjects({
@@ -2111,7 +2261,8 @@ export const updateUserProfile = async (userId, updates) => {
     const shouldSyncMarketplace =
       isFreelancerUser &&
       (hasProfileDetailsUpdate ||
-        Object.prototype.hasOwnProperty.call(nextFreelancerProfileUpdates, "services") ||
+        profileDetailsPatchTouchesMarketplace ||
+        hasServicesUpdate ||
         Object.prototype.hasOwnProperty.call(userUpdates, "onboardingComplete"));
 
     if (shouldSyncMarketplace) {
@@ -2129,7 +2280,8 @@ export const updateUserProfile = async (userId, updates) => {
 
     const shouldSyncFreelancerSkills =
       hasProfileDetailsUpdate ||
-      Object.prototype.hasOwnProperty.call(nextFreelancerProfileUpdates, "services");
+      profileDetailsPatchTouchesSkills ||
+      hasServicesUpdate;
 
     if (shouldSyncFreelancerSkills) {
       if (!marketplaceHierarchy) {

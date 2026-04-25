@@ -123,6 +123,7 @@ model FreelancerProfile {
   username                    String?
   languages                   String[] @default([])
   profilePhoto                String?
+  coverImage                  String?
   serviceDetails              Json     @default("{}")
   socialMediaLinks            Json?    @default("{}")
   serviceTitle               String?

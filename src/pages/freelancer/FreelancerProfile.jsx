@@ -680,11 +680,13 @@ const FreelancerProfile = () => {
         setPersonal(loadedPersonal);
         setPortfolio(loadedPortfolio);
         setPortfolioProjects(normalized.portfolioProjects || []);
-        setSocialMediaLinks(
+        const loadedSocialMediaLinks =
           Array.isArray(normalized.socialMediaLinks)
             ? normalized.socialMediaLinks
-            : Object.entries(normalized.socialMediaLinks || {}).map(([platform, url]) => ({ platform, url }))
-        );
+            : Object.entries(normalized.socialMediaLinks || {}).map(
+                ([platform, url]) => ({ platform, url })
+              );
+        setSocialMediaLinks(loadedSocialMediaLinks);
         setProfileDetails(loadedProfileDetails);
         setSkills(loadedSkills);
         setWorkExperience(normalizeWorkExperienceEntries(normalized.workExperience));
@@ -702,6 +704,7 @@ const FreelancerProfile = () => {
           services: loadedServices,
           portfolioProjects: normalized.portfolioProjects || [],
           profileDetails: loadedProfileDetails,
+          socialMediaLinks: loadedSocialMediaLinks,
         });
       } catch (error) {
         console.error("Unable to load profile", error);
@@ -742,6 +745,7 @@ const FreelancerProfile = () => {
             services: [],
             portfolioProjects: [],
             profileDetails: {},
+            socialMediaLinks: [],
           });
   
         }
@@ -1013,6 +1017,7 @@ const FreelancerProfile = () => {
     services: overrides.services ?? services,
     portfolioProjects: overrides.portfolioProjects ?? portfolioProjects,
     profileDetails: overrides.profileDetails ?? profileDetails,
+    socialMediaLinks: overrides.socialMediaLinks ?? socialMediaLinks,
   });
 
   // ----- Save to backend -----
@@ -1020,6 +1025,7 @@ const FreelancerProfile = () => {
     const {
       avatarFileOverride = null,
       coverFileOverride = null,
+      payloadScope = "full",
       suppressSuccessToast = false,
     } = options || {};
     const currentPersonal = snapshot?.personal ?? personal;
@@ -1030,6 +1036,8 @@ const FreelancerProfile = () => {
     const currentPortfolioProjects =
       snapshot?.portfolioProjects ?? portfolioProjects;
     const currentProfileDetails = snapshot?.profileDetails ?? profileDetails;
+    const currentSocialMediaLinks =
+      snapshot?.socialMediaLinks ?? socialMediaLinks;
 
     if (!currentPersonal.email) {
       toast.error("Cannot save profile", {
@@ -1119,26 +1127,39 @@ const FreelancerProfile = () => {
         : {};
     const nextIdentityLocation = parseLocationInput(currentPersonal.location);
 
-    const profileDetailsForSave = {
+    const personalProfileDetailsForSave = {
       ...existingProfileDetails,
       professionalBio: bioText,
-      skills: skillsForApi,
-      skillLevels: skillLevelsForApi,
       identity: {
         ...existingIdentity,
         city: nextIdentityLocation.city,
         country: nextIdentityLocation.country,
-        professionalTitle: String(currentPersonal.headline || "").trim(),
         username: String(existingIdentity.username || "").trim(),
-        portfolioUrl: String(currentPortfolio.portfolioUrl || "").trim(),
-        linkedinUrl: String(currentPortfolio.linkedinUrl || "").trim(),
-        githubUrl: String(currentPortfolio.githubUrl || "").trim(),
+        languages: Array.isArray(existingIdentity.languages)
+          ? existingIdentity.languages
+          : [],
         profilePhoto: currentAvatarUrl || "",
         coverImage: currentCoverUrl || "",
       },
     };
+    const fullProfileDetailsForSave = {
+      ...personalProfileDetailsForSave,
+      skills: skillsForApi,
+      skillLevels: skillLevelsForApi,
+      identity: {
+        ...personalProfileDetailsForSave.identity,
+        professionalTitle: String(currentPersonal.headline || "").trim(),
+        portfolioUrl: String(currentPortfolio.portfolioUrl || "").trim(),
+        linkedinUrl: String(currentPortfolio.linkedinUrl || "").trim(),
+        githubUrl: String(currentPortfolio.githubUrl || "").trim(),
+      },
+    };
+    const profileDetailsForSave =
+      payloadScope === "personal"
+        ? personalProfileDetailsForSave
+        : fullProfileDetailsForSave;
 
-    const payload = {
+    const fullPayload = {
       personal: {
         name: currentPersonal.name,
         email: currentPersonal.email,
@@ -1160,9 +1181,38 @@ const FreelancerProfile = () => {
       portfolio: currentPortfolio,
       resume: currentPortfolio.resume,
       portfolioProjects: currentPortfolioProjects,
-      socialMediaLinks,
+      socialMediaLinks: currentSocialMediaLinks,
       profileDetails: profileDetailsForSave,
     };
+    const personalPayload = {
+      profileSection: "personal",
+      personal: {
+        name: currentPersonal.name,
+        email: currentPersonal.email,
+        location: currentPersonal.location,
+        bio: bioText,
+        avatar: currentAvatarUrl,
+        coverImage: currentCoverUrl,
+      },
+      bio: bioText,
+      professionalBio: bioText,
+      coverImage: currentCoverUrl,
+      socialMediaLinks: currentSocialMediaLinks,
+      profileDetailsPatch: {
+        professionalBio: bioText,
+        identity: {
+          city: nextIdentityLocation.city,
+          country: nextIdentityLocation.country,
+          username: String(existingIdentity.username || "").trim(),
+          languages: Array.isArray(existingIdentity.languages)
+            ? existingIdentity.languages
+            : [],
+          profilePhoto: currentAvatarUrl || "",
+          coverImage: currentCoverUrl || "",
+        },
+      },
+    };
+    const payload = payloadScope === "personal" ? personalPayload : fullPayload;
 
     try {
       const response = await authFetch("/profile", {
@@ -1194,6 +1244,21 @@ const FreelancerProfile = () => {
         avatar: currentAvatarUrl,
         coverImage: currentCoverUrl,
       };
+      if (payloadScope === "personal") {
+        setPersonal(newPersonal);
+        setProfileDetails(profileDetailsForSave);
+        setSocialMediaLinks(currentSocialMediaLinks);
+        setInitialData((prev) => ({
+          ...(prev || {}),
+          personal: newPersonal,
+          profileDetails: profileDetailsForSave,
+          socialMediaLinks: currentSocialMediaLinks,
+        }));
+        setSelectedFile(null);
+        setSelectedCoverFile(null);
+        return true;
+      }
+
       setPersonal(newPersonal);
       setPortfolio(currentPortfolio);
       setSkills(currentSkills);
@@ -1201,6 +1266,7 @@ const FreelancerProfile = () => {
       setServices(currentServices);
       setPortfolioProjects(currentPortfolioProjects);
       setProfileDetails(profileDetailsForSave);
+      setSocialMediaLinks(currentSocialMediaLinks);
 
       setInitialData({
         personal: newPersonal,
@@ -1210,6 +1276,7 @@ const FreelancerProfile = () => {
         services: currentServices,
         portfolioProjects: currentPortfolioProjects,
         profileDetails: profileDetailsForSave,
+        socialMediaLinks: currentSocialMediaLinks,
       });
 
       setSelectedFile(null);
@@ -1237,6 +1304,7 @@ const FreelancerProfile = () => {
         services,
         portfolioProjects,
         profileDetails,
+        socialMediaLinks,
         ...overrides,
       },
       options
@@ -1246,8 +1314,11 @@ const FreelancerProfile = () => {
     await saveSectionChanges();
   };
 
-  const savePersonalSection = async () => {
-    const saved = await saveSectionChanges();
+  const savePersonalSection = async (nextSocialMediaLinks = socialMediaLinks) => {
+    const saved = await saveSectionChanges(
+      { socialMediaLinks: nextSocialMediaLinks },
+      { payloadScope: "personal" }
+    );
     if (saved) {
       setModalType(null);
     }
@@ -1339,7 +1410,7 @@ const FreelancerProfile = () => {
       .replace(/^@+/, "")
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "")
-      .slice(0, 30);
+      .slice(0, 20);
 
     updateProfileIdentityFields({ username: normalizedUsername });
   }, [updateProfileIdentityFields]);
@@ -1417,6 +1488,7 @@ const FreelancerProfile = () => {
 
     const saved = await handleSave(buildProfileSnapshot({ personal: nextPersonal }), {
       avatarFileOverride: croppedFile,
+      payloadScope: "personal",
       suppressSuccessToast: true,
     });
 
@@ -1472,6 +1544,7 @@ const FreelancerProfile = () => {
     // Persist cover immediately so refresh keeps the latest image.
     void handleSave(buildProfileSnapshot({ personal: nextPersonal }), {
       coverFileOverride: file,
+      payloadScope: "personal",
       suppressSuccessToast: true,
     }).then((saved) => {
       if (saved) {
@@ -1592,7 +1665,7 @@ const FreelancerProfile = () => {
         personal: nextPersonal,
         profileDetails: nextProfileDetails,
       }),
-      { suppressSuccessToast: true }
+      { payloadScope: "personal", suppressSuccessToast: true }
     );
 
     if (saved) {
@@ -3362,6 +3435,7 @@ const FreelancerProfile = () => {
               github: resolvedGithubLink,
               resume: resolvedResumeLink,
             }}
+            socialMediaLinks={socialMediaLinks}
           />
 
           {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Two-column grid ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
@@ -3369,23 +3443,16 @@ const FreelancerProfile = () => {
 
             {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Left: Main content ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
             <div className="min-w-0 space-y-5">
-              <ProfileOnboardingSnapshotCard
-                workModelLabel={onboardingRoleLabel}
-                availabilityLabel={onboardingHoursLabel}
-                scheduleLabel={onboardingScheduleLabel}
-                startTimelineLabel={onboardingStartTimelineLabel}
-                deliveryPolicyLabel={deliveryPolicyLabel}
-                communicationPolicyLabel={communicationPolicyLabel}
-                acceptInProgressProjectsLabel={acceptInProgressProjectsLabel}
-                openFullProfileEditor={openFullProfileEditor}
-              />
-
               <ProfileSkillsCard
                 skills={skills}
                 deleteSkill={deleteSkill}
                 setSkillLevel={setSkillLevel}
                 savingChanges={isSaving}
-                openSkillModal={() => { setSkillForm(createInitialSkillForm()); setModalType("skill"); }}
+                onboardingServiceEntries={onboardingServiceEntries}
+                getServiceLabel={getServiceLabel}
+                collectServiceSpecializations={collectServiceSpecializations}
+                toUniqueLabels={toUniqueLabels}
+                normalizeValueLabel={normalizeValueLabel}
               />
 
               <ServicesFromOnboardingCard
@@ -3414,6 +3481,18 @@ const FreelancerProfile = () => {
 
             {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Right: Sidebar ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
             <div className="space-y-5 lg:sticky lg:top-40 lg:self-start">
+              <ProfileOnboardingSnapshotCard
+                workModelLabel={onboardingRoleLabel}
+                availabilityLabel={onboardingHoursLabel}
+                scheduleLabel={onboardingScheduleLabel}
+                startTimelineLabel={onboardingStartTimelineLabel}
+                deliveryPolicyLabel={deliveryPolicyLabel}
+                communicationPolicyLabel={communicationPolicyLabel}
+                acceptInProgressProjectsLabel={acceptInProgressProjectsLabel}
+                openFullProfileEditor={openFullProfileEditor}
+                variant="sidebar"
+              />
+
               <ProfileSummaryCards
                 profileCompletionPercent={profileCompletionPercent}
                 completedCompletionSections={completedCompletionSections}
@@ -4563,6 +4642,10 @@ const FreelancerProfile = () => {
                 savePersonalSection={savePersonalSection}
                 isSaving={isSaving}
                 setModalType={setModalType}
+                coverInputRef={coverInputRef}
+                coverImageUrl={profileCoverUrl}
+                uploadingCoverImage={uploadingCoverImage}
+                removeCoverImage={removeCoverImage}
               />
             ) : (
               <WorkExperienceModalContent

@@ -1,27 +1,16 @@
 import { useEffect, useState } from "react";
 import Camera from "lucide-react/dist/esm/icons/camera";
-import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import FileText from "lucide-react/dist/esm/icons/file-text";
-import Github from "lucide-react/dist/esm/icons/github";
-import Globe from "lucide-react/dist/esm/icons/globe";
-import Link2 from "lucide-react/dist/esm/icons/link-2";
+import Link from "lucide-react/dist/esm/icons/link";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import Linkedin from "lucide-react/dist/esm/icons/linkedin";
 import MapPin from "lucide-react/dist/esm/icons/map-pin";
 import Languages from "lucide-react/dist/esm/icons/languages";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
-import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const normalizeProfileLink = (value = "") => {
   const raw = String(value || "").trim();
@@ -32,6 +21,44 @@ const normalizeProfileLink = (value = "") => {
   return `https://${raw}`;
 };
 
+const normalizeSocialMediaLinkItems = (socialMediaLinks = []) => {
+  const entries = Array.isArray(socialMediaLinks)
+    ? socialMediaLinks
+    : Object.entries(socialMediaLinks || {}).map(([platform, url]) => ({
+        platform,
+        url,
+      }));
+
+  return entries
+    .map((entry, index) => {
+      const href = normalizeProfileLink(
+        entry?.url || entry?.href || entry?.link || entry?.value
+      );
+      if (!href) return null;
+
+      const label =
+        String(entry?.platform || entry?.name || entry?.type || "").trim() ||
+        `Link ${index + 1}`;
+
+      return {
+        key: `social-${label.toLowerCase()}-${href.toLowerCase()}`,
+        href,
+        label,
+      };
+    })
+    .filter(Boolean);
+};
+
+const dedupeProfileLinkItems = (items = []) => {
+  const seen = new Set();
+  return items.filter((item) => {
+    const hrefKey = item.href.toLowerCase();
+    if (seen.has(hrefKey)) return false;
+    seen.add(hrefKey);
+    return true;
+  });
+};
+
 const ProfileHeroCard = ({
   fileInputRef,
   coverInputRef,
@@ -40,14 +67,11 @@ const ProfileHeroCard = ({
   setPersonal,
   initials,
   uploadingImage,
-  uploadingCoverImage,
   uploadingResume,
   handleImageUpload,
   handleCoverImageUpload,
   handleResumeUpload,
-  removeCoverImage,
   coverImageUrl,
-  displayHeadline,
   displayBio,
   displayLocation,
   isVerified = false,
@@ -55,14 +79,11 @@ const ProfileHeroCard = ({
   onboardingLanguages,
   freelancerUsername,
   openEditPersonalModal,
-  openPortfolioModal,
   profileLinks,
+  socialMediaLinks,
   onToggleAvailability,
   availabilitySaving,
 }) => {
-  const identityTitle = String(
-    displayHeadline || onboardingIdentity?.professionalTitle || ""
-  ).trim();
   const username = String(onboardingIdentity?.username || freelancerUsername || "").trim();
   const spokenLanguages = Array.isArray(onboardingLanguages)
     ? onboardingLanguages.slice(0, 3)
@@ -75,7 +96,6 @@ const ProfileHeroCard = ({
     resume: normalizeProfileLink(profileLinks?.resume),
   };
 
-  const heroTitle = identityTitle || "Freelancer";
   const resolvedBio = String(displayBio || personal.bio || "").trim();
   const profileName = String(personal.name || "").trim() || "Your Name";
   const profileHandle = username ? `@${username}` : "@add-username";
@@ -85,46 +105,29 @@ const ProfileHeroCard = ({
       : Boolean(personal.available);
   const openToWorkLabel = isOpenToWorkActive ? "Open to Work" : "Offline";
   const [hasCoverImageError, setHasCoverImageError] = useState(false);
-  const [isCoverDragActive, setIsCoverDragActive] = useState(false);
-
   useEffect(() => {
     setHasCoverImageError(false);
   }, [coverImageUrl]);
 
-  const triggerCoverUpload = () => {
-    if (uploadingCoverImage) return;
-    coverInputRef.current?.click();
-  };
-
-  const handleCoverDrop = (event) => {
-    event.preventDefault();
-    setIsCoverDragActive(false);
-    const file = event.dataTransfer?.files?.[0];
-    if (!file) return;
-    handleCoverImageUpload({ target: { files: [file], value: "" } });
-  };
-
   const resolvedCoverImage = !hasCoverImageError ? String(coverImageUrl || "").trim() : "";
-  const profileLinkItems = [
+  const profileLinkItems = dedupeProfileLinkItems([
+    ...normalizeSocialMediaLinkItems(socialMediaLinks),
     {
       key: "portfolio",
       href: resolvedLinks.portfolio,
       label: "Portfolio",
-      Icon: Globe,
     },
     {
       key: "github",
       href: resolvedLinks.github,
       label: "GitHub",
-      Icon: Github,
     },
     {
       key: "linkedin",
       href: resolvedLinks.linkedin,
       label: "LinkedIn",
-      Icon: Linkedin,
     },
-  ].filter((item) => Boolean(item.href));
+  ].filter((item) => Boolean(item.href)));
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card text-foreground shadow-sm">
@@ -137,78 +140,23 @@ const ProfileHeroCard = ({
             onError={() => setHasCoverImageError(true)}
           />
         ) : (
-          <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-background px-6 py-8 text-center">
-
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={triggerCoverUpload}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  triggerCoverUpload();
-                }
-              }}
-              onDragOver={(event) => {
-                event.preventDefault();
-                if (event.dataTransfer) {
-                  event.dataTransfer.dropEffect = "copy";
-                }
-                setIsCoverDragActive(true);
-              }}
-              onDragLeave={(event) => {
-                if (event.currentTarget === event.target) {
-                  setIsCoverDragActive(false);
-                }
-              }}
-              onDrop={handleCoverDrop}
-              className={`relative flex w-full items-center justify-center px-4 py-8 outline-none transition sm:px-6 sm:py-10 ${isCoverDragActive ? "text-primary" : "text-white"
-                } ${uploadingCoverImage ? "pointer-events-none opacity-70" : "cursor-pointer hover:text-white/88"}`}
-              aria-label="Add cover image"
-            >
-              <span className="text-[22px] font-semibold tracking-[-0.05em] sm:text-[28px] md:text-[32px]">
-                Add Cover Image
-              </span>
-            </div>
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-background px-6 py-8 text-center bg-muted/20">
+            <span className="text-[22px] font-semibold tracking-[-0.05em] text-muted-foreground/30 sm:text-[28px] md:text-[32px]">
+              Cover Image
+            </span>
           </div>
         )}
 
-        <div className="absolute right-4 top-4 z-10">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background text-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-70 sm:h-9 sm:w-9"
-                title="Profile options"
-                aria-label="Profile options"
-                disabled={uploadingCoverImage}
-              >
-                {uploadingCoverImage ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Pencil className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onSelect={() => openEditPersonalModal()}>
-                <Pencil className="h-4 w-4" />
-                Edit profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => coverInputRef.current?.click()}>
-                <Camera className="h-4 w-4" />
-                {resolvedCoverImage ? "Change cover" : "Add cover"}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!resolvedCoverImage}
-                onSelect={removeCoverImage}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-                Remove cover
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => openEditPersonalModal()}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background text-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-muted sm:h-9 sm:w-9"
+            title="Edit profile"
+            aria-label="Edit profile"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
         </div>
 
         <input
@@ -323,37 +271,10 @@ const ProfileHeroCard = ({
               <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
               {displayLocation || "Location not set"}
             </span>
-            <span className="inline-flex items-center gap-2">
-              {profileLinkItems.length > 0 ? (
-                profileLinkItems.map(({ key, href, label, Icon }) => (
-                  <a
-                    key={key}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={label}
-                    aria-label={label}
-                    className="inline-flex items-center justify-center text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                  </a>
-                ))
-              ) : (
-                <button
-                  type="button"
-                  onClick={openPortfolioModal}
-                  className="inline-flex items-center justify-center text-muted-foreground transition-colors hover:text-primary"
-                  title="Add profile links"
-                  aria-label="Add profile links"
-                >
-                  <Link2 className="h-4 w-4" aria-hidden="true" />
-                </button>
-              )}
-            </span>
             <span className="inline-flex items-center gap-1.5">
               <Languages className="h-4 w-4 text-primary" aria-hidden="true" />
               {spokenLanguages.length > 0 ? (
-                <><span className="text-foreground">Speaks,</span> {spokenLanguages.join(", ")}</>
+                spokenLanguages.join(", ")
               ) : (
                 <>
                   <span>Languages not set</span>
@@ -365,6 +286,27 @@ const ProfileHeroCard = ({
                     Add
                   </button>
                 </>
+              )}
+            </span>
+            <span className="inline-flex min-w-0 items-center">
+              <Link className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              {profileLinkItems.length > 0 ? (
+                <span className="ml-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  {profileLinkItems.map(({ key, href, label }) => (
+                    <a
+                      key={key}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="max-w-[8rem] truncate font-medium text-muted-foreground underline-offset-4 hover:underline sm:max-w-[10rem]"
+                      title={href}
+                    >
+                      {label}
+                    </a>
+                  ))}
+                </span>
+              ) : (
+                <span className="ml-1.5 text-muted-foreground">Links not set</span>
               )}
             </span>
           </div>

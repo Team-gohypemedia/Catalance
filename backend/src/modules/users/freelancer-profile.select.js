@@ -17,6 +17,8 @@ export const FREELANCER_PROFILE_SAFE_SELECT = Object.freeze({
   startingPrice: true,
   serviceKeywords: true,
   serviceMedia: true,
+  coverImage: true,
+  socialMediaLinks: true,
   createdAt: true,
   updatedAt: true
 });
@@ -34,7 +36,6 @@ export const FREELANCER_PROFILE_DETAILS_SAFE_SELECT = Object.freeze({
   profilePhoto: true,
   services: true,
   serviceDetails: true,
-  socialMediaLinks: true,
 });
 
 export const FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT = Object.freeze({
