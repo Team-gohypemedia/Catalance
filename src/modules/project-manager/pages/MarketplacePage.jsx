@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Search from "lucide-react/dist/esm/icons/search";
@@ -21,12 +21,35 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 
+const CATEGORY_KEYWORDS = {
+  Developers: ["developer", "development", "frontend", "backend", "full stack", "react", "node", "web"],
+  Designers: ["designer", "design", "ui", "ux", "figma", "branding"],
+  "Content Writers": ["content", "writer", "copywriter", "blog", "seo content"],
+  Marketing: ["marketing", "growth", "ads", "performance", "social", "campaign"],
+  "Video Editors": ["video", "editor", "editing", "motion", "after effects", "premiere"],
+};
+
+const matchesCategory = (freelancer, category) => {
+  const keywords = CATEGORY_KEYWORDS[category] || [];
+  if (keywords.length === 0) return true;
+
+  const skills = Array.isArray(freelancer?.skills) ? freelancer.skills.join(" ") : "";
+  const haystack = `${freelancer?.title || ""} ${freelancer?.bio || ""} ${skills}`.toLowerCase();
+  return keywords.some((keyword) => haystack.includes(keyword));
+};
+
 const MarketplacePage = () => {
   const { authFetch } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("Developers");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [availabilityFilter, setAvailabilityFilter] = useState("ALL");
+  const [ratingFilter, setRatingFilter] = useState("0");
+  const [experienceFilter, setExperienceFilter] = useState("0");
+  const [sortFilter, setSortFilter] = useState("rating");
+  const [visibleCount, setVisibleCount] = useState(6);
   const [assigningId, setAssigningId] = useState(null);
   const [loadingProfileId, setLoadingProfileId] = useState(null);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
@@ -38,23 +61,44 @@ const MarketplacePage = () => {
   const tabs = ["Developers", "Designers", "Content Writers", "Marketing", "Video Editors"];
 
   const { data, loading } = useAsyncResource(
-    () => pmApi.searchFreelancers(authFetch, { search, category: activeTab }),
-    [authFetch, search, activeTab]
+    () =>
+      pmApi.searchFreelancers(authFetch, {
+        search,
+        availability: availabilityFilter === "ALL" ? undefined : availabilityFilter.toLowerCase(),
+        rating: Number(ratingFilter || 0) > 0 ? Number(ratingFilter || 0) : undefined,
+        projectExperience:
+          Number(experienceFilter || 0) > 0 ? Number(experienceFilter || 0) : undefined,
+        sort: sortFilter,
+      }),
+    [authFetch, availabilityFilter, experienceFilter, ratingFilter, search, sortFilter]
   );
 
   const freelancerList = useMemo(() => data?.freelancers || [], [data?.freelancers]);
+  const filteredFreelancerList = useMemo(
+    () => freelancerList.filter((item) => matchesCategory(item, activeTab)),
+    [activeTab, freelancerList]
+  );
+  const visibleFreelancers = useMemo(
+    () => filteredFreelancerList.slice(0, visibleCount),
+    [filteredFreelancerList, visibleCount]
+  );
   const pipeline = data?.pipeline || { activeInvites: 0, unreadChats: 0, activeInterviews: 0 };
+
+  useEffect(() => {
+    setVisibleCount(6);
+  }, [activeTab, availabilityFilter, experienceFilter, ratingFilter, search, sortFilter]);
+
   const availableCount = useMemo(
     () =>
-      freelancerList.filter((item) =>
+      filteredFreelancerList.filter((item) =>
         String(item?.availability || "").toLowerCase().startsWith("available")
       ).length,
-    [freelancerList]
+    [filteredFreelancerList]
   );
   const topSkills = useMemo(() => {
     const counts = new Map();
 
-    freelancerList.forEach((item) => {
+    filteredFreelancerList.forEach((item) => {
       const skills = Array.isArray(item?.skills) ? item.skills : [];
       skills.forEach((skill) => {
         const key = String(skill || "").trim();
@@ -66,7 +110,7 @@ const MarketplacePage = () => {
     return Array.from(counts.entries())
       .sort((left, right) => right[1] - left[1])
       .slice(0, 5);
-  }, [freelancerList]);
+  }, [filteredFreelancerList]);
 
   const handleViewFreelancerProfile = useCallback(async (freelancerCard) => {
     if (!freelancerCard?.id) return;
@@ -109,9 +153,14 @@ const MarketplacePage = () => {
                 className="h-16 rounded-[24px] border-slate-100 bg-white pl-14 text-base font-medium shadow-xl shadow-slate-200/20 focus-visible:ring-4 focus-visible:ring-blue-100 transition-all"
               />
            </div>
-           <Button variant="outline" className="h-16 rounded-[24px] border-slate-100 bg-white px-8 font-black text-[10px] uppercase tracking-widest text-slate-600 shadow-sm hover:bg-slate-50 transition-all active:scale-95">
+           <Button
+             type="button"
+             variant="outline"
+             onClick={() => setShowAdvancedFilters((current) => !current)}
+             className="h-16 rounded-[24px] border-slate-100 bg-white px-8 font-black text-[10px] uppercase tracking-widest text-slate-600 shadow-sm hover:bg-slate-50 transition-all active:scale-95"
+           >
               <Filter className="mr-3 h-4 w-4" />
-              Advanced Filters
+              {showAdvancedFilters ? "Hide Filters" : "Advanced Filters"}
            </Button>
         </div>
 
@@ -119,6 +168,7 @@ const MarketplacePage = () => {
            {tabs.map(tab => (
              <Button 
                key={tab} 
+               type="button"
                onClick={() => setActiveTab(tab)}
                className={`h-11 rounded-2xl px-6 text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === tab ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/20 scale-105' : 'border-slate-100 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-600'}`}
              >
@@ -126,6 +176,85 @@ const MarketplacePage = () => {
              </Button>
            ))}
         </div>
+
+        {showAdvancedFilters ? (
+          <Card className="rounded-[28px] border-slate-100 bg-white p-5 shadow-sm">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Availability
+                </p>
+                <select
+                  value={availabilityFilter}
+                  onChange={(event) => setAvailabilityFilter(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"
+                >
+                  <option value="ALL">All</option>
+                  <option value="AVAILABLE">Available</option>
+                  <option value="UNAVAILABLE">Unavailable</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Min Rating
+                </p>
+                <select
+                  value={ratingFilter}
+                  onChange={(event) => setRatingFilter(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"
+                >
+                  <option value="0">Any</option>
+                  <option value="3">3.0+</option>
+                  <option value="4">4.0+</option>
+                  <option value="4.5">4.5+</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Min Experience
+                </p>
+                <select
+                  value={experienceFilter}
+                  onChange={(event) => setExperienceFilter(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"
+                >
+                  <option value="0">Any</option>
+                  <option value="1">1+ years</option>
+                  <option value="3">3+ years</option>
+                  <option value="5">5+ years</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Sort By
+                </p>
+                <select
+                  value={sortFilter}
+                  onChange={(event) => setSortFilter(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"
+                >
+                  <option value="rating">Top Rated</option>
+                  <option value="best_match">Best Match</option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setAvailabilityFilter("ALL");
+                  setRatingFilter("0");
+                  setExperienceFilter("0");
+                  setSortFilter("rating");
+                }}
+                className="h-10 rounded-xl border-slate-200 px-4 text-xs font-black uppercase tracking-wider text-slate-600"
+              >
+                Reset Filters
+              </Button>
+            </div>
+          </Card>
+        ) : null}
       </div>
 
       <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
@@ -134,7 +263,7 @@ const MarketplacePage = () => {
               <div className="flex items-center gap-3">
                  <div className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                    {loading ? "SEARCHING GLOBAL TALENT..." : `${freelancerList.length} VERIFIED EXPERTS DISCOVERED`}
+                    {loading ? "SEARCHING GLOBAL TALENT..." : `${filteredFreelancerList.length} VERIFIED EXPERTS DISCOVERED`}
                  </p>
               </div>
               <span className="text-[10px] font-bold text-slate-400">
@@ -146,8 +275,8 @@ const MarketplacePage = () => {
                 Array.from({length: 3}).map((_, i) => (
                     <Card key={i} className="h-80 rounded-[48px] bg-slate-50 animate-pulse border-none" />
                 ))
-           ) : freelancerList.length > 0 ? (
-                freelancerList.map((f) => (
+           ) : filteredFreelancerList.length > 0 ? (
+                visibleFreelancers.map((f) => (
                    <Card key={f.id} className="group relative overflow-hidden rounded-[48px] border-slate-100 p-1 bg-white shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
                       <div className="p-8">
                         <div className="flex flex-col md:flex-row gap-8">
@@ -155,7 +284,7 @@ const MarketplacePage = () => {
                               <div className="absolute -inset-2 rounded-[40px] bg-gradient-to-br from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity" />
                               <Avatar className="h-32 w-32 rounded-[38px] shadow-2xl border-4 border-white bg-slate-50 relative z-10 transition-transform duration-500 group-hover:scale-105">
                                  <AvatarImage src={f.avatar} />
-                                 <AvatarFallback className="text-2xl font-black bg-slate-100 text-slate-300">{f.name[0]}</AvatarFallback>
+                                 <AvatarFallback className="text-2xl font-black bg-slate-100 text-slate-300">{String(f?.name || "F")[0]}</AvatarFallback>
                               </Avatar>
                               <div className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 border-4 border-white text-white shadow-lg relative z-20">
                                  <CheckCircle2 className="h-5 w-5" />
@@ -245,7 +374,7 @@ const MarketplacePage = () => {
                                        setAssigningId(null);
                                    }
                                } else {
-                                   toast.success("Talent successfully shortlisted for project.");
+                                   navigate(`/project-manager/create-project?freelancerId=${encodeURIComponent(f.id)}`);
                                }
                              }}
                            >
@@ -283,7 +412,15 @@ const MarketplacePage = () => {
                 </div>
            )}
 
-           <Button variant="ghost" className="w-full h-16 rounded-[30px] text-slate-400 font-black text-[11px] tracking-[0.3em] uppercase hover:text-blue-600 hover:bg-white hover:shadow-sm transition-all">LOAD NEXT WAVE</Button>
+           <Button
+             type="button"
+             variant="ghost"
+             disabled={visibleFreelancers.length >= filteredFreelancerList.length}
+             onClick={() => setVisibleCount((current) => current + 6)}
+             className="w-full h-16 rounded-[30px] text-slate-400 font-black text-[11px] tracking-[0.3em] uppercase hover:text-blue-600 hover:bg-white hover:shadow-sm transition-all disabled:opacity-40"
+           >
+             {visibleFreelancers.length >= filteredFreelancerList.length ? "END OF RESULTS" : "LOAD NEXT WAVE"}
+           </Button>
         </div>
 
         <div className="space-y-6">
@@ -329,7 +466,7 @@ const MarketplacePage = () => {
                  </p>
                </div>
                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                 <p className="text-lg font-black text-slate-800">{Math.max(freelancerList.length - availableCount, 0)}</p>
+                 <p className="text-lg font-black text-slate-800">{Math.max(filteredFreelancerList.length - availableCount, 0)}</p>
                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
                    Busy
                  </p>
