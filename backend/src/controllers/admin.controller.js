@@ -378,12 +378,11 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         updatedAt: true,
         freelancerProfile: {
           select: {
-            bio: true,
-            skills: true,
-            portfolioProjects: true,
-            portfolio: true,
-            linkedin: true,
-            github: true
+            profileRole: true,
+            professionalBio: true,
+            services: true,
+            serviceDetails: true,
+            profilePhoto: true
           }
         },
         // For clients: get their owned projects
@@ -503,17 +502,13 @@ export const getUserDetails = asyncHandler(async (req, res) => {
           fullName: user.fullName,
           email: user.email,
           role: user.role,
-          bio: freelancerProfile.bio ?? null,
-          skills: Array.isArray(freelancerProfile.skills) ? freelancerProfile.skills : [],
+          bio: freelancerProfile.professionalBio ?? null,
+          services: Array.isArray(freelancerProfile.services) ? freelancerProfile.services : [],
           status: user.status || 'ACTIVE',
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
-          portfolioProjects: Array.isArray(freelancerProfile.portfolioProjects)
-            ? freelancerProfile.portfolioProjects
-            : [],
-          portfolio: freelancerProfile.portfolio ?? null,
-          linkedin: freelancerProfile.linkedin ?? null,
-          github: freelancerProfile.github ?? null
+          serviceDetails: freelancerProfile.serviceDetails ?? {},
+          profilePhoto: freelancerProfile.profilePhoto ?? null
         },
         stats,
         projects: user.role === "CLIENT" ? user.ownedProjects : [],

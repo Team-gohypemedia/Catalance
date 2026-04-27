@@ -6,12 +6,14 @@ import {
   getMarketplaceFilterServices,
   getMarketplaceFilterSubCategories,
   getMarketplaceFilterTools,
+  getServicePositiveKeywords,
   getMarketplaceLiveProjects,
   getServiceById,
   getServiceReviews,
   getServiceReviewEligibility,
   createServiceReview,
   getFreelancerReceivedReviews,
+  getOgMeta,
 } from "../controllers/marketplace.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
 
@@ -21,6 +23,8 @@ marketplaceRouter.get("/filters/services", getMarketplaceFilterServices);
 marketplaceRouter.get("/filters/niches", getMarketplaceFilterNiches);
 marketplaceRouter.get("/filters/sub-categories", getMarketplaceFilterSubCategories);
 marketplaceRouter.get("/filters/tools", getMarketplaceFilterTools);
+marketplaceRouter.get("/filters/keywords", getServicePositiveKeywords);
+marketplaceRouter.get("/og-meta", getOgMeta);
 marketplaceRouter.get("/browse", getMarketplaceBrowse);
 marketplaceRouter.get("/projects/live", requireAuth, getMarketplaceLiveProjects);
 marketplaceRouter.get("/reviews/received", requireAuth, getFreelancerReceivedReviews);

@@ -9,6 +9,7 @@ import { ProposalFreelancerAvatars } from "./ProposalShared.jsx";
 import {
   GENERIC_PROPOSAL_CATEGORIES,
   clientProposalMetricBlockClassName,
+  extractAgencyProposalServiceEntries,
   extractProposalDetails,
   getFirstNonEmptyText,
   getProposalFreelancerRecipients,
@@ -34,6 +35,10 @@ const ProposalRowCard = ({
   isSending,
 }) => {
   const details = extractProposalDetails(proposal);
+  const agencyServiceEntries = proposal?.isAgency
+    ? extractAgencyProposalServiceEntries(proposal)
+    : [];
+  const showAgencyServiceBreakdown = agencyServiceEntries.length > 0;
   const isDraft = proposal.status === "draft";
   const canIncreaseBudget =
     Boolean(onIncreaseBudget) && Boolean(proposal?.canIncreaseBudget);
@@ -52,6 +57,7 @@ const ProposalRowCard = ({
     !GENERIC_PROPOSAL_CATEGORIES.has(normalizedServiceType.toLowerCase())
       ? toDisplayTitleCase(normalizedServiceType)
       : "";
+  const showServiceTypeInHeader = Boolean(proposalServiceType) && !showAgencyServiceBreakdown;
   const cardTitle = displayBusinessName || projectName || serviceLabel || "Proposal";
   const freelancerRecipients = getProposalFreelancerRecipients(proposal);
   const canViewFreelancerDetails =
@@ -113,8 +119,8 @@ const ProposalRowCard = ({
               <h3 className="max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
                 {cardTitle}
               </h3>
-              {proposalServiceType ? (
-                <p className="mt-1 text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {showServiceTypeInHeader ? (
+                <p className="mt-1 break-words whitespace-pre-line text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {proposalServiceType}
                 </p>
               ) : null}
@@ -133,25 +139,54 @@ const ProposalRowCard = ({
               ) : null}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className={clientProposalMetricBlockClassName}>
-                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Budget
-                </p>
-                <div className="mt-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
-                  {details.budget}
+            {showAgencyServiceBreakdown ? (
+              <div className="overflow-hidden rounded-[18px] border border-border/70 bg-background/35">
+                <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.9fr)] gap-3 px-4 py-3 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:px-5">
+                  <p className="min-w-0">Service</p>
+                  <p className="min-w-0">Budget</p>
+                  <p className="min-w-0">Timeline</p>
                 </div>
-              </div>
 
-              <div className={clientProposalMetricBlockClassName}>
-                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Timeline
-                </p>
-                <div className="mt-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
-                  {details.delivery}
+                <div className="divide-y divide-border/70">
+                  {agencyServiceEntries.map((entry, index) => (
+                    <div
+                      key={`${entry.name}-${index}`}
+                      className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.9fr)] gap-3 px-4 py-3 sm:px-5"
+                    >
+                      <p className="min-w-0 break-words text-[0.72rem] font-medium leading-5 text-white sm:text-[0.78rem]">
+                        {entry.name}
+                      </p>
+                      <p className="min-w-0 break-words text-[0.72rem] font-semibold leading-5 text-white sm:text-[0.78rem]">
+                        {entry.budget}
+                      </p>
+                      <p className="min-w-0 break-words text-[0.72rem] font-semibold leading-5 text-white sm:text-[0.78rem]">
+                        {entry.timeline}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className={clientProposalMetricBlockClassName}>
+                  <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Budget
+                  </p>
+                  <div className="mt-2 break-words text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
+                    {details.budget}
+                  </div>
+                </div>
+
+                <div className={clientProposalMetricBlockClassName}>
+                  <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Timeline
+                  </p>
+                  <div className="mt-2 break-words text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
+                    {details.delivery}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {showRecipientSection ? (
               <div className="rounded-[18px] border border-border/70 bg-background/35 p-4">

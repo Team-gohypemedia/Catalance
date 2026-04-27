@@ -1,17 +1,14 @@
 import React from "react";
-import Sparkles from "lucide-react/dist/esm/icons/sparkles";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
+import FreelancerOnboardingWelcomeModal from "@/components/features/freelancer/FreelancerOnboardingWelcomeModal.jsx";
 import { DashboardContent as FreelancerDashboardContent } from "@/components/freelancer/freelancer-dashboard/FreelancerDashboardContent.jsx";
+import { useAuth } from "@/shared/context/AuthContext";
+import {
+  FREELANCER_ONBOARDING_PATH,
+  requiresFreelancerOnboarding,
+} from "@/shared/lib/dashboard-preference";
 import {
   ActiveChats,
   ActiveProjects,
@@ -34,11 +31,18 @@ import {
 } from "@/components/freelancer/freelancer-dashboard";
 
 const FreelancerDashboard = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const shouldShowOnboardingWelcome = requiresFreelancerOnboarding(user);
+
   return (
     <FreelancerDashboardContent>
       {(model) => {
         const hasRunningProjects =
           !model.metricsLoading && model.runningProjectCards.length > 0;
+        const shouldShowProfileProgressPanel =
+          !shouldShowOnboardingWelcome &&
+          model.shouldShowProfileCompletionPanel;
 
         return (
         <div className="min-h-screen bg-background text-[#f1f5f9]">
@@ -48,40 +52,6 @@ const FreelancerDashboard = () => {
               onOpenChange={model.setShowSuspensionAlert}
               suspendedAt={model.sessionUser?.suspendedAt}
             />
-
-            <Dialog
-              open={model.showWelcomeDialog}
-              onOpenChange={model.setShowWelcomeDialog}
-            >
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    Welcome to Catalance
-                  </DialogTitle>
-                  <DialogDescription>
-                    Your freelancer account is ready. You can explore the dashboard now
-                    and start onboarding whenever you want.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => model.setShowWelcomeDialog(false)}
-                  >
-                    Continue to Dashboard
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      model.setShowWelcomeDialog(false);
-                      model.onOpenOnboarding();
-                    }}
-                  >
-                    Start Onboarding
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
 
             <FreelancerWorkspaceHeader
               profile={model.headerProfile}
@@ -101,29 +71,6 @@ const FreelancerDashboard = () => {
 
             <main className="relative z-10 flex-1 pb-12 sm:pb-14">
               <div className="flex w-full flex-col gap-6 sm:gap-7">
-                {model.showOnboardingAlert ? (
-                  <div className="relative overflow-hidden rounded-[24px] border border-[#facc15]/30 bg-[#252116] px-4 py-4 sm:px-5">
-                    <div className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-[#facc15]/15 blur-3xl" />
-                    <div className="relative z-10 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#facc15]">
-                          Onboarding Required
-                        </p>
-                        <h3 className="mt-1 text-base font-semibold text-zinc-100">
-                          Complete your profile to start getting matched with
-                          higher-value projects.
-                        </h3>
-                      </div>
-                      <Button
-                        className="h-9 rounded-full bg-[#facc15] px-5 text-xs font-bold text-black hover:bg-[#eab308]"
-                        onClick={model.onOpenOnboarding}
-                      >
-                        Start Onboarding
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
-
                 <HeroGreetingBlock
                   greeting={model.hero.greeting}
                   firstName={model.hero.firstName}
@@ -135,7 +82,7 @@ const FreelancerDashboard = () => {
                   isLoading={model.metricsLoading}
                 />
 
-                {model.shouldShowProfileCompletionPanel ? (
+                {shouldShowProfileProgressPanel ? (
                   model.showProfileCompletionSkeleton ? (
                     <FreelancerProfileCompletionSkeleton />
                   ) : (
@@ -290,6 +237,13 @@ const FreelancerDashboard = () => {
                 )}
               </div>
             </main>
+
+            <FreelancerOnboardingWelcomeModal
+              open={shouldShowOnboardingWelcome}
+              onStartOnboarding={() =>
+                navigate(FREELANCER_ONBOARDING_PATH, { replace: true })
+              }
+            />
           </div>
         </div>
         );

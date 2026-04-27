@@ -9,10 +9,12 @@ const FreelancerWorkPreferenceSlide = ({
 }) => {
   return (
     <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 text-center sm:min-h-[70vh] sm:px-6">
-      <div className="w-full max-w-6xl space-y-8">
-        <h1 className="text-balance text-3xl font-semibold tracking-[-0.03em] text-primary sm:text-4xl">
-          How Do You Want To Work On Catalance?
-        </h1>
+      <div className="w-full max-w-4xl space-y-12">
+        <div className="text-center">
+          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-primary sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+            How Do You Want To Work On Catalance?
+          </h1>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <button
@@ -57,10 +59,10 @@ const FreelancerWorkPreferenceSlide = ({
               </span>
             </div>
 
-            <div className="mt-6 space-y-1">
+            <div className="mt-5 space-y-1">
               <h2
                 className={cn(
-                  "text-3xl font-semibold leading-tight",
+                  "text-xl sm:text-2xl font-semibold leading-tight",
                   selectedWorkPreference === "individual"
                     ? "text-primary"
                     : "text-white"
@@ -116,10 +118,10 @@ const FreelancerWorkPreferenceSlide = ({
               </span>
             </div>
 
-            <div className="mt-6 space-y-1">
+            <div className="mt-5 space-y-1">
               <h2
                 className={cn(
-                  "text-3xl font-semibold leading-tight",
+                  "text-xl sm:text-2xl font-semibold leading-tight",
                   selectedWorkPreference === "agency"
                     ? "text-primary"
                     : "text-white"

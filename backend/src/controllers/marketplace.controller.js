@@ -3,6 +3,7 @@ import { AppError } from "../utils/app-error.js";
 import { prisma } from "../lib/prisma.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { FREELANCER_PROFILE_SAFE_SELECT } from "../modules/users/freelancer-profile.select.js";
+import { getServicePositiveKeywordsByName } from "../data/service-positive-keywords.js";
 
 const DEFAULT_PAGE_LIMIT = 20;
 const DEFAULT_MAX_CANDIDATES = 80;
@@ -640,12 +641,6 @@ const buildFreelancerSkillProfile = ({ skillRows = [], profile = {} } = {}) => {
     }
   });
 
-  const profileSkills = Array.isArray(profile?.skills) ? profile.skills : [];
-  profileSkills.forEach((skill) => {
-    const token = normalizeFacetToken(skill);
-    if (token) keywordTokens.add(token);
-  });
-
   const profileServices = Array.isArray(profile?.services) ? profile.services : [];
   profileServices.forEach((service) => {
     const serviceKey =
@@ -888,7 +883,7 @@ const buildTier1Where = (
   query,
   profileAvailabilityConditions = [
     { freelancerProfile: { is: null } },
-    { freelancerProfile: { is: { available: true } } },
+    { freelancerProfile: { is: { openToWork: true } } },
   ],
   hierarchyFreelancerIds = null
 ) => {
@@ -935,13 +930,13 @@ const buildTier1Where = (
 const buildTier1DiscoveryWhere = (query, hierarchyFreelancerIds = null) =>
   buildTier1Where(query, [
     { freelancerProfile: { is: null } },
-    { freelancerProfile: { is: { available: true } } },
+    { freelancerProfile: { is: { openToWork: true } } },
   ], hierarchyFreelancerIds);
 
 const buildTier1BrowseWhere = (query, hierarchyFreelancerIds = null) =>
   buildTier1Where(query, [
     { freelancerProfile: { is: null } },
-    { freelancerProfile: { is: { available: true } } },
+    { freelancerProfile: { is: { openToWork: true } } },
   ], hierarchyFreelancerIds);
 
 const getScoreWeights = (query) => {
@@ -1040,9 +1035,6 @@ const calcTechnologyScore = (candidate, query) => {
     uniqueValues([
       ...(candidate.techStack || []).map(normalizeTechToken),
       ...(candidate.activeTechnologies || []).map(normalizeTechToken),
-      ...((candidate.freelancer?.freelancerProfile?.skills || []).map(
-        normalizeTechToken
-      )),
     ])
   );
 
@@ -1136,9 +1128,6 @@ const matchesCandidateQuery = (candidate, query) => {
       uniqueValues([
         ...(candidate.techStack || []).map(normalizeTechToken),
         ...(candidate.activeTechnologies || []).map(normalizeTechToken),
-        ...((candidate.freelancer?.freelancerProfile?.skills || []).map(
-          normalizeTechToken
-        )),
       ])
     );
 
@@ -1980,12 +1969,9 @@ export const getMarketplace = asyncHandler(async (req, res) => {
           status: true,
           freelancerProfile: {
             select: {
-              available: true,
               openToWork: true,
               rating: true,
               reviewCount: true,
-              skills: true,
-              bio: true,
               experienceYears: true,
               serviceDetails: true,
             },
@@ -2079,7 +2065,6 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
       status: true,
       freelancerProfile: {
         select: {
-          skills: true,
           services: true,
           serviceDetails: true,
         },
@@ -2367,9 +2352,7 @@ export const getMarketplaceBrowse = asyncHandler(async (req, res) => {
             status: true,
             freelancerProfile: {
               select: {
-                available: true,
                 openToWork: true,
-                skills: true,
                 serviceDetails: true,
               },
             },
@@ -2433,6 +2416,86 @@ export const getMarketplaceFilterNiches = asyncHandler(async (_req, res) => {
       label: niche.name,
     })),
   });
+});
+
+export const getServicePositiveKeywords = asyncHandler(async (req, res) => {
+  const serviceId = parseOptionalInteger(req.query?.serviceId);
+
+  if (serviceId === null) {
+    return res.json({ data: [] });
+  }
+
+  let keywords = await prisma.servicePositiveKeyword.findMany({
+    where: { serviceId },
+    select: {
+      id: true,
+      serviceId: true,
+      name: true,
+    },
+    orderBy: { name: "asc" },
+  });
+
+  if (!keywords.length) {
+    const service = await prisma.marketplaceFilterService.findUnique({
+      where: { id: serviceId },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const fallbackKeywords = getServicePositiveKeywordsByName(service?.name).map(
+      (name, index) => ({
+        id: `fallback-${serviceId}-${index + 1}`,
+        serviceId,
+        name,
+      }),
+    );
+
+    keywords = fallbackKeywords;
+  }
+
+  res.json({
+    data: keywords.map((keyword) => ({
+      id: keyword.id,
+      serviceId: keyword.serviceId,
+      name: keyword.name,
+      label: keyword.name,
+    })),
+  });
+});
+
+export const getOgMeta = asyncHandler(async (req, res) => {
+  const targetUrl = req.query?.url;
+  if (!targetUrl) {
+    return res.status(400).json({ error: "URL is required" });
+  }
+
+  try {
+    const fetchRes = await fetch(targetUrl);
+    if (!fetchRes.ok) {
+      return res.status(fetchRes.status).json({ error: "Failed to fetch URL" });
+    }
+    const html = await fetchRes.text();
+    const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || 
+                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+                         
+    let ogImage = null;
+    if (ogImageMatch && ogImageMatch[1]) {
+      ogImage = ogImageMatch[1];
+    } else {
+      const fallbackMatch = html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i) ||
+                            html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
+      if (fallbackMatch && fallbackMatch[1]) {
+        ogImage = fallbackMatch[1];
+      }
+    }
+    
+    // Resolve relative URLs if needed, but simple URLs are usually absolute
+    res.json({ data: { ogImage } });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to parse OG meta" });
+  }
 });
 
 export const getMarketplaceFilterSubCategories = asyncHandler(async (req, res) => {
@@ -2546,8 +2609,6 @@ export const getServiceById = asyncHandler(async (req, res) => {
             isVerified: true,
             freelancerProfile: {
               select: {
-                bio: true,
-                skills: true,
                 rating: true,
                 reviewCount: true,
                 serviceDetails: true,

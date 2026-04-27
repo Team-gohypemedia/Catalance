@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 
 import { cn } from "@/shared/lib/utils";
@@ -15,42 +16,69 @@ export const SERVICE_INFO_STEPS = [
 
 /* ──────────────────── Stepper ──────────────────── */
 
-const StepperItem = ({ step, isActive, isCompleted }) => (
-  <div className="flex flex-1 items-center">
+const StepperItem = ({
+  step,
+  isActive,
+  isCompleted,
+  onStepChange,
+}) => (
+  <div
+    className={cn(
+      "flex min-w-0 items-center transition-[flex] duration-300 ease-out",
+      isActive ? "flex-[2.3]" : "flex-[0.9]",
+      "sm:flex-1",
+    )}
+  >
     <button
       type="button"
+      onClick={() => onStepChange?.(step.id)}
       className={cn(
-        "relative flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200",
+        "relative flex h-9 w-full min-w-0 items-center rounded-full border text-sm font-medium transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10",
         isActive
-          ? "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(250,204,21,0.25)]"
+          ? "justify-center gap-0 border-primary bg-primary px-3 text-primary-foreground shadow-[0_0_16px_rgba(250,204,21,0.22)] sm:gap-2 sm:px-4"
           : isCompleted
-            ? "bg-white/10 text-white"
-            : "bg-transparent text-white/40"
+            ? "justify-center gap-0 border-white/10 bg-white/10 px-2 text-white hover:border-white/20 hover:bg-white/15 sm:gap-2 sm:px-4"
+            : "justify-center gap-0 border-white/8 bg-white/[0.03] px-2 text-white/55 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/75 sm:gap-2 sm:px-4",
       )}
+      aria-current={isActive ? "step" : undefined}
+      aria-label={`${step.step}. ${step.label}`}
     >
-      <span className="text-xs font-bold">{step.step}</span>
-      <span className="hidden sm:inline">{step.label}</span>
+      <span className="hidden shrink-0 text-xs font-bold sm:inline">{step.step}</span>
+      <span
+        className={cn(
+          "min-w-0 text-center opacity-100 transition-[opacity,color] duration-300 ease-out",
+          isActive
+            ? "max-w-none whitespace-nowrap text-primary-foreground"
+            : "max-w-full truncate text-inherit",
+        )}
+      >
+        {step.label}
+      </span>
     </button>
   </div>
 );
 
-export const ServiceInfoStepper = ({ activeStepId }) => (
-  <div className="flex w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-card p-1">
-    {SERVICE_INFO_STEPS.map((step, idx) => {
-      const activeIdx = SERVICE_INFO_STEPS.findIndex(
-        (s) => s.id === activeStepId
-      );
-      return (
+export const ServiceInfoStepper = ({
+  activeStepId,
+  onStepChange,
+  steps = SERVICE_INFO_STEPS,
+}) => {
+  const activeIdx = steps.findIndex((step) => step.id === activeStepId);
+
+  return (
+    <div className="flex w-full items-center gap-1 overflow-hidden rounded-full border border-white/10 bg-card p-1">
+      {steps.map((step, idx) => (
         <StepperItem
           key={step.id}
           step={step}
           isActive={step.id === activeStepId}
-          isCompleted={idx < activeIdx}
+          isCompleted={activeIdx >= 0 && idx < activeIdx}
+          onStepChange={onStepChange}
         />
-      );
-    })}
-  </div>
-);
+      ))}
+    </div>
+  );
+};
 
 /* ──────────────────── Custom Select ──────────────────── */
 
@@ -61,15 +89,58 @@ export const CustomSelect = ({
   placeholder,
   popupMode = "attached",
   popupClassName = "",
+  isSearchable = false,
+  searchPlaceholder = "Search...",
+  viewportBottomOffset = 0,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [attachedPopupStyle, setAttachedPopupStyle] = useState({});
   const [attachedPopupMaxHeight, setAttachedPopupMaxHeight] = useState(208);
   const triggerRef = useRef(null);
-  const selectedOption = options.find((option) => option.value === value);
+  const searchInputRef = useRef(null);
+  const normalizedOptions = useMemo(
+    () => (Array.isArray(options) ? options : []),
+    [options],
+  );
+  const selectedOption = normalizedOptions.find((option) => option.value === value);
   const isCenteredPopup = popupMode === "centered";
+  const filteredOptions = useMemo(() => {
+    if (!isSearchable) {
+      return normalizedOptions;
+    }
+
+    const normalizedQuery = String(searchQuery || "").trim().toLowerCase();
+    if (!normalizedQuery) {
+      return normalizedOptions;
+    }
+
+    return normalizedOptions.filter((option) =>
+      String(option?.label || "")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [isSearchable, normalizedOptions, searchQuery]);
 
   useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery("");
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !isSearchable) {
+      return undefined;
+    }
+
+    const frameId = requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [isOpen, isSearchable]);
+
+  useLayoutEffect(() => {
     if (!isOpen || isCenteredPopup) {
       return undefined;
     }
@@ -86,9 +157,14 @@ export const CustomSelect = ({
       const viewportWidth = window.innerWidth;
       const margin = 12;
       const gap = 6;
+      const safeViewportBottom =
+        viewportHeight - Math.max(0, Number(viewportBottomOffset) || 0);
       const minVisibleHeight = 140;
       const preferredMaxHeight = 320;
-      const spaceBelow = Math.max(0, viewportHeight - rect.bottom - margin - gap);
+      const spaceBelow = Math.max(
+        0,
+        safeViewportBottom - rect.bottom - margin - gap,
+      );
       const spaceAbove = Math.max(0, rect.top - margin - gap);
       const shouldOpenAbove =
         spaceBelow < minVisibleHeight && spaceAbove > spaceBelow;
@@ -116,7 +192,7 @@ export const CustomSelect = ({
           : {
               position: "fixed",
               left: `${nextLeft}px`,
-              top: `${Math.min(rect.bottom + gap, viewportHeight - margin)}px`,
+              top: `${Math.min(rect.bottom + gap, safeViewportBottom - margin)}px`,
               width: `${nextWidth}px`,
             },
       );
@@ -137,7 +213,72 @@ export const CustomSelect = ({
       window.removeEventListener("resize", requestPositionUpdate);
       window.removeEventListener("scroll", requestPositionUpdate, true);
     };
-  }, [isCenteredPopup, isOpen]);
+  }, [isCenteredPopup, isOpen, viewportBottomOffset]);
+
+  const popupContent = isOpen ? (
+    <>
+      <div
+        className="fixed inset-0 z-[60]"
+        onClick={() => setIsOpen(false)}
+      />
+      <div
+        className={cn(
+          "z-[70] overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40",
+          isCenteredPopup
+            ? "fixed left-1/2 top-1/2 w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2"
+            : "",
+          popupClassName
+        )}
+        style={isCenteredPopup ? undefined : attachedPopupStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {isSearchable ? (
+          <div className="border-b border-white/8 p-2.5">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={searchPlaceholder}
+              className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+            />
+          </div>
+        ) : null}
+        <div
+          className={cn(
+            "overflow-y-auto",
+            isCenteredPopup ? "max-h-[min(60vh,320px)]" : "",
+          )}
+          style={isCenteredPopup ? undefined : { maxHeight: `${attachedPopupMaxHeight}px` }}
+        >
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center px-4 py-3 text-left text-sm transition-colors hover:bg-white/5",
+                  value === option.value
+                    ? "bg-primary/10 text-primary"
+                    : "text-white/80"
+                )}
+              >
+                {option.label}
+              </button>
+            ))
+          ) : (
+            <div className="px-4 py-3 text-sm text-white/45">
+              {normalizedOptions.length > 0 ? "No results found" : "No options available"}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  ) : null;
 
   return (
     <div className="relative">
@@ -160,52 +301,9 @@ export const CustomSelect = ({
         />
       </button>
 
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          <div
-            className={cn(
-              "z-50 overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40",
-              isCenteredPopup
-                ? "fixed left-1/2 top-1/2 w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2"
-                : "",
-              popupClassName
-            )}
-            style={isCenteredPopup ? undefined : attachedPopupStyle}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              className={cn(
-                "overflow-y-auto",
-                isCenteredPopup ? "max-h-[min(60vh,320px)]" : "",
-              )}
-              style={isCenteredPopup ? undefined : { maxHeight: `${attachedPopupMaxHeight}px` }}
-            >
-              {options.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    onChange(option.value);
-                    setIsOpen(false);
-                  }}
-                  className={cn(
-                    "flex w-full items-center px-4 py-3 text-left text-sm transition-colors hover:bg-white/5",
-                    value === option.value
-                      ? "bg-primary/10 text-primary"
-                      : "text-white/80"
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      {popupContent && typeof document !== "undefined"
+        ? createPortal(popupContent, document.body)
+        : popupContent}
     </div>
   );
 };

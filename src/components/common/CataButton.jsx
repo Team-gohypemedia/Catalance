@@ -13,6 +13,10 @@ const MIN_BOTTOM = 20;
 
 export const CataButton = () => {
   const location = useLocation();
+  const normalizedPathname =
+    location.pathname !== "/" && location.pathname.endsWith("/")
+      ? location.pathname.slice(0, -1)
+      : location.pathname;
 
   // Vertical position state (distance from bottom in pixels)
   const [bottomPosition, setBottomPosition] = useState(() => {
@@ -103,18 +107,10 @@ export const CataButton = () => {
     };
   }, [isDragging, handleDragMove, handleDragEnd]);
 
-  // Only show on dashboard routes
-  const dashboardPrefixes = [
-    "/client",
-    "/freelancer",
-    "/admin",
-  ];
-  const isOnDashboard = dashboardPrefixes.some((prefix) =>
-    location.pathname.startsWith(prefix),
-  );
-  const isProjectManagerRoute = location.pathname.startsWith("/project-manager");
+  const isSupportedDashboard =
+    normalizedPathname === "/client" || normalizedPathname === "/freelancer";
 
-  if (!isOnDashboard || isProjectManagerRoute) {
+  if (!isSupportedDashboard) {
     return null;
   }
 
@@ -135,7 +131,7 @@ export const CataButton = () => {
           </h4>
 
           <a
-            href="https://wa.me/918383053342"
+            href="https://wa.me/918882855425"
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
@@ -161,7 +157,7 @@ export const CataButton = () => {
           </a>
 
           <a
-            href="tel:+918383053342"
+            href="tel:+918882855425"
             className={cn(
               "flex items-center gap-3 p-3 rounded-xl w-full",
               "bg-white/60 dark:bg-neutral-800/50",

@@ -23,6 +23,7 @@ const dualRoleUser = {
   roles: ["CLIENT", "FREELANCER"],
   fullName: "ZAMASU GAMING",
   email: "zamasu@example.com",
+  onboardingComplete: true,
 };
 
 const freelancerOnlyUser = {
@@ -31,6 +32,16 @@ const freelancerOnlyUser = {
   roles: ["FREELANCER"],
   fullName: "MOHD KAIF",
   email: "mohd@example.com",
+  onboardingComplete: true,
+};
+
+const clientOnlyUser = {
+  id: "user-46",
+  role: "CLIENT",
+  roles: ["CLIENT"],
+  fullName: "CLIENT ONLY",
+  email: "client-only@example.com",
+  onboardingComplete: true,
 };
 
 const profile = {
@@ -167,6 +178,26 @@ describe("workspace header dashboard switching", () => {
 
     expect(await screen.findByText("Switch to Client")).toBeTruthy();
     expect(screen.getByText("Currently in Freelancer mode")).toBeTruthy();
+  });
+
+  it("shows 'Switch to Freelancer' for client-only accounts", async () => {
+    mockUseAuth.mockReturnValue({
+      user: clientOnlyUser,
+      logout: vi.fn(),
+      isAuthenticated: true,
+    });
+
+    renderHeader(
+      <ClientWorkspaceHeader
+        profile={{ name: clientOnlyUser.fullName, email: clientOnlyUser.email }}
+      />,
+      "/client"
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: /client only/i })[0]);
+
+    expect(await screen.findByText("Switch to Freelancer")).toBeTruthy();
+    expect(screen.getByText("Currently in Client mode")).toBeTruthy();
   });
 
   it("saves the last active dashboard immediately when switching", async () => {

@@ -402,45 +402,13 @@ export const extractWorkExperienceFromProfileDetails = (profileDetails = {}) => 
 
 // Migration: FORCE WIPE corrupted bio data
 export const migrateBioData = asyncHandler(async (req, res) => {
-  console.log("[migrateBioData] Starting FORCE WIPE migration...");
-
-  const profiles = await prisma.freelancerProfile.findMany({
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true
-        }
-      }
-    }
-  });
-  let wipedCount = 0;
-
-  for (const profile of profiles) {
-    const userEmail = String(profile?.user?.email || "").toLowerCase();
-    const bioValue = String(profile?.bio || "");
-    // specific check for the user reporting issues, or any user with JSON-like bio
-    if ((bioValue && bioValue.trim().startsWith('{')) || userEmail.includes('wetivi')) {
-      console.log(`[migrateBioData] Wiping bio for user: ${profile?.user?.email || profile.userId}`);
-
-      await prisma.freelancerProfile.update({
-        where: { userId: profile.userId },
-        data: {
-          bio: "" // WIPE IT CLEAN
-        }
-      });
-
-      wipedCount++;
-    }
-  }
-
-  console.log(`[migrateBioData] Migration complete. Wiped bio for ${wipedCount} users.`);
+  console.log("[migrateBioData] Skipped: bio column has been removed from FreelancerProfile.");
 
   res.json({
     data: {
       success: true,
-      wipedCount,
-      message: `Complete. Wiped bio for ${wipedCount} users.`
+      wipedCount: 0,
+      message: "Skipped. FreelancerProfile.bio no longer exists."
     }
   });
 });
@@ -502,15 +470,15 @@ export const getProfile = asyncHandler(async (req, res) => {
       ? user.freelancerProfile
       : {};
 
-  console.log("[getProfile] Raw freelancerProfile.bio from DB:", freelancerProfile.bio);
-
-  // Initialize with native column values
-  // We strictly treat bio as a string now. No more JSON parsing support.
-  let bioText = String(freelancerProfile.bio || "");
+  // Initialize profile values from normalized profile details and remaining columns.
+  let bioText = "";
   let expYears = Number(freelancerProfile.experienceYears) || 0;
   const profileDetails = await resolveUserProfileDetails(user);
   const identityJobTitle = buildJobTitleFromIdentity(profileDetails?.identity);
-  let jobTitle = identityJobTitle || freelancerProfile.jobTitle || user.headline || "";
+  let jobTitle = identityJobTitle || user.headline || "";
+  if (!bioText) {
+    bioText = String(profileDetails?.professionalBio || "");
+  }
   const identityAvatar = extractAvatarUrl(profileDetails?.identity?.profilePhoto);
   const identityLocation = buildLocationFromIdentity(profileDetails?.identity);
   const isFreelancerProfile =
@@ -524,7 +492,7 @@ export const getProfile = asyncHandler(async (req, res) => {
       : profileAvatar;
 
   // Fix Location " 0" issue and fallback
-  let userLocation = identityLocation || freelancerProfile.location || "";
+  let userLocation = identityLocation || "";
   if (userLocation && userLocation.endsWith(" 0")) {
     userLocation = userLocation.slice(0, -2);
   }
@@ -554,35 +522,19 @@ export const getProfile = asyncHandler(async (req, res) => {
   if (!userWorkExperience.length && profileWorkExperience.length) {
     userWorkExperience = profileWorkExperience;
   }
-  const profileProjects = extractPortfolioProjectsFromProfileDetails(profileDetails);
-  const nativePortfolioProjects = Array.isArray(freelancerProfile.portfolioProjects)
-    ? freelancerProfile.portfolioProjects
-    : [];
-  const mergedPortfolioProjects = nativePortfolioProjects.length
-    ? nativePortfolioProjects
-    : profileProjects;
+  const mergedPortfolioProjects = extractPortfolioProjectsFromProfileDetails(profileDetails);
   const profileSkills = Array.isArray(profileDetails?.skills)
     ? profileDetails.skills
-    : [];
-  const nativeSkills = Array.isArray(freelancerProfile.skills)
-    ? freelancerProfile.skills
     : [];
   const strictProfileSkills = extractSkillsFromProfileDetails(profileDetails, {
     strictTech: true,
     max: 120
   });
-  const strictNativeSkills = normalizeSkills(nativeSkills, {
+  const mergedSkills = normalizeSkills(strictProfileSkills, {
     strictTech: true,
     max: 120
   });
-  const mergedSkills = normalizeSkills(
-    [...strictNativeSkills, ...strictProfileSkills],
-    {
-      strictTech: true,
-      max: 120
-    }
-  );
-  const fallbackSkills = normalizeSkills([...nativeSkills, ...profileSkills], {
+  const fallbackSkills = normalizeSkills(profileSkills, {
     strictTech: false,
     max: 120
   });
@@ -603,10 +555,6 @@ export const getProfile = asyncHandler(async (req, res) => {
         bio: bioText,
         experienceYears: expYears,
         avatar: resolvedAvatar,
-        available:
-          typeof freelancerProfile?.available === "boolean"
-            ? freelancerProfile.available
-            : user.status === "ACTIVE",
           openToWork:
             typeof freelancerProfile?.openToWork === "boolean"
               ? freelancerProfile.openToWork
@@ -617,12 +565,14 @@ export const getProfile = asyncHandler(async (req, res) => {
       workExperience: userWorkExperience,
       services: userServices,
       portfolio: {
-        portfolioUrl: freelancerProfile.portfolio ?? "",
-        linkedinUrl: freelancerProfile.linkedin ?? "",
-        githubUrl: freelancerProfile.github ?? "",
+        portfolioUrl: profileDetails?.identity?.portfolioUrl ?? "",
+        linkedinUrl: profileDetails?.identity?.linkedinUrl ?? "",
+        githubUrl: profileDetails?.identity?.githubUrl ?? "",
         resume: freelancerProfile.resume ?? "",
       },
       portfolioProjects: mergedPortfolioProjects,
+      socialMediaLinks: freelancerProfile.socialMediaLinks || {},
+      coverImage: freelancerProfile.coverImage || "",
       profileDetails
     }
   });
@@ -639,10 +589,9 @@ const buildSaveProfileUpdates = (payload = {}) => {
   const normalizedProfileDetails = hasOwn(payload, "profileDetails")
     ? toProfileDetailsObject(payload.profileDetails)
     : undefined;
-  const identity =
-    normalizedProfileDetails?.identity && typeof normalizedProfileDetails.identity === "object"
-      ? normalizedProfileDetails.identity
-      : {};
+  const normalizedProfileDetailsPatch = hasOwn(payload, "profileDetailsPatch")
+    ? toProfileDetailsObject(payload.profileDetailsPatch)
+    : undefined;
   const updates = {};
 
   if (hasOwn(personal, "name")) {
@@ -657,56 +606,22 @@ const buildSaveProfileUpdates = (payload = {}) => {
     updates.avatar = personal.avatar;
   }
 
-  const resolvedLocation = hasOwn(personal, "location")
-    ? personal.location
-    : hasOwn(payload, "location")
-      ? payload.location
-      : buildLocationFromIdentity(identity);
-  if (resolvedLocation !== undefined) {
-    updates.location = resolvedLocation;
-  }
-
-  const resolvedJobTitle = hasOwn(personal, "headline")
-    ? personal.headline
-    : hasOwn(payload, "jobTitle")
-      ? payload.jobTitle
-      : buildJobTitleFromIdentity(identity);
-  if (resolvedJobTitle !== undefined) {
-    updates.jobTitle = resolvedJobTitle;
-  }
-
-  if (hasOwn(personal, "available")) {
-    updates.available = personal.available;
-  }
-
   if (hasOwn(personal, "experienceYears")) {
     updates.experienceYears = personal.experienceYears;
   }
 
-  const resolvedBio = hasOwn(personal, "bio")
-    ? personal.bio
-    : hasOwn(payload, "bio")
-      ? payload.bio
-      : undefined;
-  if (resolvedBio !== undefined) {
-    updates.bio = resolvedBio;
+  if (hasOwn(personal, "openToWork")) {
+    updates.openToWork = personal.openToWork;
   }
 
   if (hasOwn(payload, "companyName")) {
     updates.companyName = payload.companyName;
   }
 
-  if (hasOwn(payload, "skills")) {
-    updates.skills = payload.skills;
-  }
-
   if (hasOwn(payload, "services")) {
     updates.services = payload.services;
   }
 
-  if (hasOwn(payload, "portfolioProjects")) {
-    updates.portfolioProjects = payload.portfolioProjects;
-  }
 
   if (hasOwn(payload, "workExperience")) {
     updates.workExperience = payload.workExperience;
@@ -724,11 +639,7 @@ const buildSaveProfileUpdates = (payload = {}) => {
     updates.serviceExperience = payload.serviceExperience;
   }
 
-  if (hasOwn(payload, "serviceComplexity")) {
-    updates.serviceComplexity = payload.serviceComplexity;
-  } else if (hasOwn(payload, "projectComplexity")) {
-    updates.serviceComplexity = payload.projectComplexity;
-  }
+
 
   if (hasOwn(payload, "serviceDescription")) {
     updates.serviceDescription = payload.serviceDescription;
@@ -750,33 +661,8 @@ const buildSaveProfileUpdates = (payload = {}) => {
     updates.serviceMedia = payload.serviceMedia;
   }
 
-  const resolvedPortfolio = hasOwn(portfolio, "portfolioUrl")
-    ? portfolio.portfolioUrl
-    : hasOwn(payload, "website")
-      ? payload.website
-      : typeof payload?.portfolio === "string"
-        ? payload.portfolio
-        : undefined;
-  if (resolvedPortfolio !== undefined) {
-    updates.portfolio = resolvedPortfolio;
-  }
-
-  const resolvedLinkedin = hasOwn(portfolio, "linkedinUrl")
-    ? portfolio.linkedinUrl
-    : hasOwn(payload, "linkedin")
-      ? payload.linkedin
-      : undefined;
-  if (resolvedLinkedin !== undefined) {
-    updates.linkedin = resolvedLinkedin;
-  }
-
-  const resolvedGithub = hasOwn(portfolio, "githubUrl")
-    ? portfolio.githubUrl
-    : hasOwn(payload, "github")
-      ? payload.github
-      : undefined;
-  if (resolvedGithub !== undefined) {
-    updates.github = resolvedGithub;
+  if (hasOwn(payload, "portfolioProjects")) {
+    updates.portfolioProjects = payload.portfolioProjects;
   }
 
   const resolvedResume = hasOwn(payload, "resume")
@@ -792,8 +678,31 @@ const buildSaveProfileUpdates = (payload = {}) => {
     updates.profileDetails = normalizedProfileDetails;
   }
 
+  if (normalizedProfileDetailsPatch !== undefined) {
+    updates.profileDetailsPatch = normalizedProfileDetailsPatch;
+  }
+
+  if (hasOwn(payload, "professionalBio")) {
+    updates.professionalBio = payload.professionalBio;
+  } else if (hasOwn(payload, "bio")) {
+    updates.professionalBio = payload.bio;
+  }
+
   if (hasOwn(payload, "onboardingComplete")) {
     updates.onboardingComplete = Boolean(payload.onboardingComplete);
+  }
+
+  if (hasOwn(payload, "socialMediaLinks")) {
+    updates.socialMediaLinks = payload.socialMediaLinks;
+  }
+
+  const resolvedCoverImage = hasOwn(payload, "coverImage")
+    ? payload.coverImage
+    : hasOwn(personal, "coverImage")
+      ? personal.coverImage
+      : undefined;
+  if (resolvedCoverImage !== undefined) {
+    updates.coverImage = resolvedCoverImage;
   }
 
   return updates;

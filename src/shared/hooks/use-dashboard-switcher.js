@@ -6,8 +6,8 @@ import {
   canAccessDashboard,
   getAccessibleDashboards,
   getDashboardFromPathname,
+  getDashboardEntryPath,
   getDashboardLabel,
-  getDashboardPath,
   getDashboardProfilePath,
   resolvePreferredDashboard,
   resolveSwitchTargetDashboard,
@@ -57,7 +57,7 @@ export const useDashboardSwitcher = ({
   );
 
   const dashboardPath = useMemo(() => {
-    const activeDashboardPath = getDashboardPath(activeDashboard);
+    const activeDashboardPath = getDashboardEntryPath(user, activeDashboard);
 
     if (activeDashboardPath) {
       return activeDashboardPath;

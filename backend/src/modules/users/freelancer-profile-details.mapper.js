@@ -240,7 +240,6 @@ export const buildFreelancerProfileDetailsRecord = ({
     toOptionalBoolean(normalizedProfileDetails.acceptInProgressProjectsBoolean);
 
   return {
-    profileDetails: buildFreelancerProfileDetailsResidual(normalizedProfileDetails),
     profileRole: toOptionalString(
       normalizedProfileDetails.profileRole ?? normalizedProfileDetails.role
     ),
@@ -257,15 +256,10 @@ export const buildFreelancerProfileDetailsRecord = ({
     username: toOptionalString(identity.username),
     languages: toStringArray(identity.languages),
     profilePhoto: toOptionalString(identity.profilePhoto),
-    skills: toStringArray(normalizedProfileDetails.skills),
     services: toStringArray(normalizedProfileDetails.services).length
       ? toStringArray(normalizedProfileDetails.services)
       : toStringArray(fallbackServices),
     serviceDetails: asObject(normalizedProfileDetails.serviceDetails),
-    portfolioProjects: buildPortfolioProjectsPayload({
-      profileDetails: normalizedProfileDetails,
-      fallbackPortfolioProjects,
-    }),
   };
 };
 

@@ -1,0 +1,11 @@
+ALTER TABLE "FreelancerProfile"
+DROP COLUMN IF EXISTS "bio",
+DROP COLUMN IF EXISTS "skills",
+DROP COLUMN IF EXISTS "jobTitle",
+DROP COLUMN IF EXISTS "portfolio",
+DROP COLUMN IF EXISTS "linkedin",
+DROP COLUMN IF EXISTS "github",
+DROP COLUMN IF EXISTS "portfolioProjects",
+DROP COLUMN IF EXISTS "available",
+DROP COLUMN IF EXISTS "profileDetails",
+DROP COLUMN IF EXISTS "location";

@@ -6,7 +6,9 @@ import X from "lucide-react/dist/esm/icons/x";
 
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import {
+  appendCustomSubcategorySelection,
   deriveDraftSkillsAndTechnologies,
+  getSubcategorySelectionKey,
   normalizeCustomSkillNames,
   normalizeStringArray,
   syncDraftSubcategories,
@@ -22,12 +24,6 @@ const EXPERIENCE_OPTIONS = [
   { value: "experienced", label: "Experienced (3–5 years)" },
   { value: "expert", label: "Expert (5–10 years)" },
   { value: "veteran", label: "Veteran (10+ years)" },
-];
-
-const COMPLEXITY_OPTIONS = [
-  { value: "beginner", label: "Beginner" },
-  { value: "intermediate", label: "Intermediate" },
-  { value: "expert", label: "Expert" },
 ];
 
 const SERVICE_TITLE_MAX = 80;
@@ -55,6 +51,7 @@ const TechnologiesInput = ({
   isLoading,
 }) => {
   const [customToolQuery, setCustomToolQuery] = useState("");
+  const [toolSearchQuery, setToolSearchQuery] = useState("");
   const [isAddingCustomTool, setIsAddingCustomTool] = useState(false);
 
   const normalizedToolOptions = useMemo(
@@ -74,6 +71,18 @@ const TechnologiesInput = ({
     () => new Set(selectedToolIds.map((value) => Number(value))),
     [selectedToolIds],
   );
+  const filteredToolOptions = useMemo(() => {
+    const normalizedQuery = String(toolSearchQuery || "").trim().toLowerCase();
+    if (!normalizedQuery) {
+      return normalizedToolOptions;
+    }
+
+    return normalizedToolOptions.filter((tool) =>
+      String(tool?.label || "")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [normalizedToolOptions, toolSearchQuery]);
 
   const addCustomSkill = () => {
     const nextSkill = String(customToolQuery || "").trim();
@@ -131,7 +140,16 @@ const TechnologiesInput = ({
         <div className="rounded-xl border border-white/8 bg-card/60 p-2.5">
           {normalizedToolOptions.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {normalizedToolOptions.map((tool) => {
+              <div className="w-full">
+                <input
+                  type="text"
+                  value={toolSearchQuery}
+                  onChange={(event) => setToolSearchQuery(event.target.value)}
+                  placeholder="Search skills or tools"
+                  className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                />
+              </div>
+              {filteredToolOptions.map((tool) => {
                 const isSelected = selectedToolIdSet.has(tool.id);
 
                 return (
@@ -150,6 +168,11 @@ const TechnologiesInput = ({
                   </button>
                 );
               })}
+              {filteredToolOptions.length === 0 ? (
+                <div className="w-full px-1 py-1 text-sm text-muted-foreground">
+                  No matching tools found.
+                </div>
+              ) : null}
             </div>
           ) : !isLoading ? (
             <div className="px-1 py-1 text-sm text-muted-foreground">
@@ -266,11 +289,15 @@ const CategoryMultiSelect = ({
   options = [],
   selected = [],
   onChange,
+  onCreateOption,
   placeholder = "Select sub-categories",
   isLoading = false,
+  allowCustom = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const normalizedSelected = useMemo(
     () =>
@@ -289,6 +316,31 @@ const CategoryMultiSelect = ({
     () => options.filter((option) => selectedSet.has(String(option.value))),
     [options, selectedSet],
   );
+  const filteredOptions = useMemo(() => {
+    const normalizedQuery = String(searchQuery || "").trim().toLowerCase();
+    if (!normalizedQuery) {
+      return options;
+    }
+
+    return options.filter((option) =>
+      String(option?.label || "")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [options, searchQuery]);
+  const trimmedSearchQuery = String(searchQuery || "").trim();
+  const canCreateCustomOption = useMemo(() => {
+    if (!allowCustom || !trimmedSearchQuery) {
+      return false;
+    }
+
+    const normalizedQuery = trimmedSearchQuery.toLowerCase();
+    return !options.some(
+      (option) => String(option?.label || "").trim().toLowerCase() === normalizedQuery,
+    );
+  }, [allowCustom, options, trimmedSearchQuery]);
+  const isCreateActionEnabled =
+    canCreateCustomOption && typeof onCreateOption === "function";
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -302,6 +354,23 @@ const CategoryMultiSelect = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery("");
+    }
+  }, [isOpen]);
+
+  const handleCreateOption = () => {
+    if (canCreateCustomOption && typeof onCreateOption === "function") {
+      onCreateOption(trimmedSearchQuery);
+      setSearchQuery("");
+      setIsOpen(false);
+      return;
+    }
+
+    searchInputRef.current?.focus();
+  };
 
   const toggleOption = (optionValue) => {
     const normalizedValue = String(optionValue);
@@ -361,13 +430,66 @@ const CategoryMultiSelect = ({
 
         {isOpen && (
           <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40">
+            <div className="border-b border-white/8 p-2.5">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && canCreateCustomOption) {
+                    event.preventDefault();
+                    handleCreateOption();
+                  }
+                }}
+                placeholder="Search sub-categories"
+                className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              />
+            </div>
+            {allowCustom ? (
+              <div className="border-b border-white/8 px-2.5 py-2">
+                <button
+                  type="button"
+                  onClick={handleCreateOption}
+                  className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                    isCreateActionEnabled
+                      ? "border-primary/20 bg-primary/8 hover:border-primary/35 hover:bg-primary/12"
+                      : "border-white/8 bg-white/[0.02] hover:border-white/14 hover:bg-white/[0.04]"
+                  }`}
+                >
+                  <span
+                    className={`font-medium ${
+                      isCreateActionEnabled ? "text-white" : "text-white/58"
+                    }`}
+                  >
+                    {!trimmedSearchQuery
+                      ? "Type above to add a custom sub-category"
+                      : canCreateCustomOption
+                        ? "Add custom sub-category"
+                        : "Matching sub-category already exists"}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 ${
+                      isCreateActionEnabled ? "text-primary" : "text-white/48"
+                    }`}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    {trimmedSearchQuery || "Custom"}
+                  </span>
+                </button>
+              </div>
+            ) : null}
             <div className="max-h-56 overflow-y-auto">
               {options.length === 0 ? (
                 <div className="px-4 py-3 text-sm text-white/40">
                   No sub-categories available
                 </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-white/40">
+                  No matching sub-categories
+                </div>
               ) : (
-                options.map((option) => {
+                filteredOptions.map((option) => {
                   const isSelected = selectedSet.has(String(option.value));
                   return (
                     <button
@@ -426,6 +548,7 @@ const FreelancerServiceInfoSlide = ({
   serviceInfoForm,
   onServiceInfoFieldChange,
   onUpdateServiceDraft,
+  onServiceStepChange,
 }) => {
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
@@ -441,11 +564,23 @@ const FreelancerServiceInfoSlide = ({
         : [],
     [serviceDraft?.subcategories],
   );
-  const selectedCategoryIds = useMemo(
-    () => normalizedSubcategories.map((entry) => entry.subCategoryId).filter(Boolean),
+  const selectedCategoryKeys = useMemo(
+    () =>
+      normalizedSubcategories
+        .map((entry) => getSubcategorySelectionKey(entry))
+        .filter(Boolean),
     [normalizedSubcategories],
   );
-  const selectedCategoryIdsSignature = buildNumberSignature(selectedCategoryIds);
+  const selectedCatalogCategoryIds = useMemo(
+    () =>
+      normalizedSubcategories
+        .map((entry) => toPositiveInteger(entry?.subCategoryId))
+        .filter(Boolean),
+    [normalizedSubcategories],
+  );
+  const selectedCatalogCategoryIdsSignature = buildNumberSignature(
+    selectedCatalogCategoryIds,
+  );
   const pendingCategoryLabels = useMemo(
     () =>
       Array.isArray(serviceDraft?.pendingCategoryLabels)
@@ -453,31 +588,59 @@ const FreelancerServiceInfoSlide = ({
         : [],
     [serviceDraft?.pendingCategoryLabels],
   );
+  const customCategoryOptions = useMemo(
+    () =>
+      normalizedSubcategories
+        .filter((entry) => Boolean(entry?.isCustom) || !toPositiveInteger(entry?.subCategoryId))
+        .map((entry) => ({
+          value: getSubcategorySelectionKey(entry),
+          label: String(entry?.label || "").trim() || "Custom sub-category",
+          isCustom: true,
+        }))
+        .filter((entry) => entry.value && entry.label),
+    [normalizedSubcategories],
+  );
+  const allCategoryOptions = useMemo(() => {
+    const seen = new Set();
+
+    return [...categoryOptions, ...customCategoryOptions].filter((option) => {
+      const optionValue = String(option?.value || "").trim();
+      if (!optionValue || seen.has(optionValue)) {
+        return false;
+      }
+
+      seen.add(optionValue);
+      return true;
+    });
+  }, [categoryOptions, customCategoryOptions]);
   const categoryOptionsByValue = useMemo(
     () =>
       new Map(
-        categoryOptions.map((option) => [String(option.value), option]),
+        allCategoryOptions.map((option) => [String(option.value), option]),
       ),
-    [categoryOptions],
+    [allCategoryOptions],
   );
   const selectedCategoryOptions = useMemo(
     () =>
-      selectedCategoryIds
-        .map((subCategoryId) => categoryOptionsByValue.get(String(subCategoryId)))
+      selectedCategoryKeys
+        .map((selectionKey) => categoryOptionsByValue.get(String(selectionKey)))
         .filter(Boolean),
-    [categoryOptionsByValue, selectedCategoryIds],
+    [categoryOptionsByValue, selectedCategoryKeys],
   );
   const activeSkillCategoryId =
-    toPositiveInteger(serviceDraft?.activeSkillCategory) ||
-    selectedCategoryIds[0] ||
+    String(serviceDraft?.activeSkillCategory || "").trim() ||
+    selectedCategoryKeys[0] ||
     null;
   const activeSubcategory =
     normalizedSubcategories.find(
-      (entry) => entry.subCategoryId === activeSkillCategoryId,
+      (entry) => getSubcategorySelectionKey(entry) === activeSkillCategoryId,
     ) || null;
   const activeCategoryToolOptions = useMemo(
-    () => toolOptionsByCategory[String(activeSkillCategoryId || "")] || [],
-    [activeSkillCategoryId, toolOptionsByCategory],
+    () =>
+      toolOptionsByCategory[
+        String(toPositiveInteger(activeSubcategory?.subCategoryId) || "")
+      ] || [],
+    [activeSubcategory?.subCategoryId, toolOptionsByCategory],
   );
   const activeSelectedToolIds = useMemo(
     () =>
@@ -524,8 +687,9 @@ const FreelancerServiceInfoSlide = ({
         const payload = await response.json();
         const nextCategoryOptions = (Array.isArray(payload?.data) ? payload.data : [])
           .map((entry) => ({
-            value: String(entry?.id || "").trim(),
+            value: getSubcategorySelectionKey({ subCategoryId: entry?.id }),
             label: String(entry?.name || "").trim(),
+            isCustom: false,
           }))
           .filter((entry) => entry.value && entry.label);
 
@@ -550,25 +714,31 @@ const FreelancerServiceInfoSlide = ({
   }, [resolvedServiceId]);
 
   useEffect(() => {
-    if (!categoryOptions.length || selectedCategoryIds.length > 0 || !pendingCategoryLabels.length) {
+    if (!categoryOptions.length || selectedCategoryKeys.length > 0 || !pendingCategoryLabels.length) {
       return;
     }
 
-    const resolvedCategoryIds = pendingCategoryLabels
+    const resolvedCategoryValues = pendingCategoryLabels
       .map((label) =>
         categoryOptions.find(
           (option) => option.label.toLowerCase() === label.toLowerCase(),
         )?.value,
       )
-      .map((value) => toPositiveInteger(value))
       .filter(Boolean);
-
-    if (!resolvedCategoryIds.length) {
-      return;
-    }
+    const unmatchedCategoryLabels = pendingCategoryLabels.filter(
+      (label) =>
+        !categoryOptions.some(
+          (option) => option.label.toLowerCase() === label.toLowerCase(),
+        ),
+    );
 
     onUpdateServiceDraft((draft) => {
-      const nextDraft = syncDraftSubcategories(draft, resolvedCategoryIds);
+      let nextDraft = syncDraftSubcategories(draft, resolvedCategoryValues);
+
+      unmatchedCategoryLabels.forEach((label) => {
+        nextDraft = appendCustomSubcategorySelection(nextDraft, label);
+      });
+
       const hasStructuredSkills = nextDraft.subcategories.some(
         (entry) =>
           entry.selectedToolIds.length > 0 || entry.customSkillNames.length > 0,
@@ -596,13 +766,13 @@ const FreelancerServiceInfoSlide = ({
     categoryOptions,
     onUpdateServiceDraft,
     pendingCategoryLabels,
-    selectedCategoryIds.length,
-    selectedCategoryIdsSignature,
+    selectedCategoryKeys.length,
+    selectedCatalogCategoryIdsSignature,
     serviceDraft?.skillsAndTechnologies,
   ]);
 
   useEffect(() => {
-    if (!selectedCategoryIds.length) {
+    if (!selectedCatalogCategoryIds.length) {
       setToolOptionsByCategory({});
       return;
     }
@@ -613,7 +783,7 @@ const FreelancerServiceInfoSlide = ({
       try {
         setIsToolsLoading(true);
         const toolEntries = await Promise.all(
-          selectedCategoryIds.map(async (subCategoryId) => {
+          selectedCatalogCategoryIds.map(async (subCategoryId) => {
             const response = await fetch(
               `${API_BASE_URL}/marketplace/filters/tools?subCategoryId=${subCategoryId}`,
             );
@@ -653,7 +823,7 @@ const FreelancerServiceInfoSlide = ({
     return () => {
       cancelled = true;
     };
-  }, [selectedCategoryIds, selectedCategoryIdsSignature]);
+  }, [selectedCatalogCategoryIds, selectedCatalogCategoryIdsSignature]);
 
   useEffect(() => {
     const currentSkillsSignature = buildStringSignature(
@@ -676,11 +846,11 @@ const FreelancerServiceInfoSlide = ({
   ]);
 
   const handleSelectedCategoriesChange = (nextValues) => {
-    const nextSelectedIds = nextValues
-      .map((value) => toPositiveInteger(value))
-      .filter(Boolean);
+    onUpdateServiceDraft((draft) => syncDraftSubcategories(draft, nextValues));
+  };
 
-    onUpdateServiceDraft((draft) => syncDraftSubcategories(draft, nextSelectedIds));
+  const handleAddCustomCategory = (label) => {
+    onUpdateServiceDraft((draft) => appendCustomSubcategorySelection(draft, label));
   };
 
   const handleActiveSubcategoryChange = (field, value) => {
@@ -692,7 +862,7 @@ const FreelancerServiceInfoSlide = ({
       ...draft,
       subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
         (entry) =>
-          entry.subCategoryId === activeSkillCategoryId
+          getSubcategorySelectionKey(entry) === activeSkillCategoryId
             ? {
                 ...entry,
                 [field]: value,
@@ -714,7 +884,10 @@ const FreelancerServiceInfoSlide = ({
         </div>
 
         <div className="w-full">
-          <ServiceInfoStepper activeStepId="overview" />
+          <ServiceInfoStepper
+            activeStepId="overview"
+            onStepChange={onServiceStepChange}
+          />
         </div>
 
         <div className="w-full space-y-7">
@@ -727,7 +900,7 @@ const FreelancerServiceInfoSlide = ({
             </p>
           </div>
 
-          <div className="space-y-6 rounded-2xl border border-white/8 bg-card/50 p-5 sm:p-7">
+          <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
                 Service Title
@@ -755,13 +928,15 @@ const FreelancerServiceInfoSlide = ({
                 Select Category
               </label>
               <CategoryMultiSelect
-                selected={selectedCategoryIds.map(String)}
+                selected={selectedCategoryKeys}
                 onChange={handleSelectedCategoriesChange}
-                options={categoryOptions}
+                onCreateOption={handleAddCustomCategory}
+                options={allCategoryOptions}
                 placeholder={
                   isCategoriesLoading ? "Loading..." : "Select sub-categories"
                 }
                 isLoading={isCategoriesLoading}
+                allowCustom
               />
             </div>
 
@@ -780,11 +955,13 @@ const FreelancerServiceInfoSlide = ({
                     onChange={(value) =>
                       onUpdateServiceDraft((draft) => ({
                         ...draft,
-                        activeSkillCategory: toPositiveInteger(value),
+                        activeSkillCategory: String(value || "").trim(),
                       }))
                     }
                     options={selectedCategoryOptions}
                     placeholder="Select a sub-category for skills"
+                    isSearchable
+                    searchPlaceholder="Search sub-categories"
                   />
 
                   <div className="rounded-xl border border-white/8 bg-card/60 p-3 sm:p-4">
@@ -837,17 +1014,7 @@ const FreelancerServiceInfoSlide = ({
               />
             </div>
 
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                Service Complexity
-              </label>
-              <CustomSelect
-                value={serviceInfoForm.complexity}
-                onChange={(value) => onServiceInfoFieldChange("complexity", value)}
-                options={COMPLEXITY_OPTIONS}
-                placeholder="Select service complexity"
-              />
-            </div>
+
           </div>
         </div>
       </div>

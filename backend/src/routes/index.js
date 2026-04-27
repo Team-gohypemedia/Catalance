@@ -20,6 +20,7 @@ import { contactRouter } from "./contact.routes.js";
 import { marketplaceRouter } from "./marketplace.routes.js";
 import { matchingRouter } from "./matching.routes.js";
 import pmRouter from "./pm.routes.js";
+import blogRouter from "./blog.routes.js";
 
 export const apiRouter = Router();
 
@@ -44,3 +45,4 @@ apiRouter.use("/contact", contactRouter);
 apiRouter.use("/marketplace", marketplaceRouter);
 apiRouter.use("/matching", matchingRouter);
 apiRouter.use("/pm", pmRouter);
+apiRouter.use("/blogs", blogRouter);

@@ -42,7 +42,6 @@ export const createServiceDetail = () => ({
     niches: [],
     otherNiche: "",
     preferOnlyIndustries: "",
-    projectComplexity: "",
 });
 
 // ============================================================================

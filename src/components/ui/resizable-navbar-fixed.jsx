@@ -101,7 +101,7 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
   );
 
   return (
-    <motion.div className={cn("fixed inset-x-0 top-5 z-40 w-full", className)}>
+    <motion.div className={cn("fixed inset-x-0 top-2 z-40 w-full lg:top-5", className)}>
       {React.Children.map(children, (child) =>
         React.isValidElement(child)
           ? typeof child.type === "string"
@@ -226,7 +226,7 @@ export const MobileNav = ({
         backgroundColor: backgroundColor,
       }}
       className={cn(
-        "relative z-50 mx-auto flex w-full max-w-[calc(100vw-2rem)] flex-col items-center justify-between overflow-hidden border px-0 py-2 lg:hidden",
+        "relative z-50 mx-auto flex w-full max-w-[calc(100vw-2rem)] flex-col items-center justify-between overflow-visible border px-0 py-2 lg:hidden",
         className
       )}
     >
@@ -270,9 +270,25 @@ export const MobileNavMenu = ({ children, className, isOpen }) => {
 
 export const MobileNavToggle = ({ isOpen, onClick }) => {
   return isOpen ? (
-    <X className="text-black dark:text-white" onClick={onClick} />
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex size-10 items-center justify-center text-black transition-colors hover:text-neutral-700 dark:text-white dark:hover:text-neutral-200"
+      aria-label="Close navigation menu"
+      aria-expanded="true"
+    >
+      <X className="size-6" />
+    </button>
   ) : (
-    <Menu className="text-black dark:text-white" onClick={onClick} />
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex size-10 items-center justify-center text-black transition-colors hover:text-neutral-700 dark:text-white dark:hover:text-neutral-200"
+      aria-label="Open navigation menu"
+      aria-expanded="false"
+    >
+      <Menu className="size-6" />
+    </button>
   );
 };
 

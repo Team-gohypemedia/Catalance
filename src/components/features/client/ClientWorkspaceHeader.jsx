@@ -306,7 +306,7 @@ const NotificationTriggerButton = ({ unreadCount = 0 }) => {
       variant="ghost"
       size="icon"
       onClick={handleOpenNotifications}
-      className="relative size-9 rounded-full text-[#94a3b8] transition-colors hover:bg-white/5 hover:text-white"
+      className="relative size-9 rounded-full text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
       aria-label="Open notifications"
     >
       <Bell className="size-4.5" />
@@ -430,6 +430,7 @@ const ClientWorkspaceHeader = ({
         onLogout={() => {
           logout();
         }}
+        flushContainerPadding
         renderNotificationButton={() => notificationNode || <NotificationTriggerButton unreadCount={unreadCount} />}
       />
 

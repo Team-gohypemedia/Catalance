@@ -30,19 +30,23 @@ import { formatINR } from "@/shared/lib/currency";
 import { fetchMatchedFreelancersForProposal } from "@/shared/lib/api-client";
 import { isFreelancerOpenToWork } from "@/shared/lib/freelancer-availability";
 import {
+  extractAgencyProposalServiceEntries,
+  resolveBestMatchFreelancerIds,
+  resolveProposalAgencyFlag,
+} from "@/components/client/client-proposal/proposal-utils.js";
+import { resolveFreelancerMatchPercent } from "@/shared/lib/proposal-match";
+import { toast } from "sonner";
+import {
   CLIENT_DASHBOARD_PROPOSAL_ACTION_PARAM,
   CLIENT_DASHBOARD_PROPOSAL_ACTION_SEND,
 } from "@/shared/lib/proposal-dashboard-intent";
 import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
-import { resolveBestMatchFreelancerIds } from "@/components/client/client-proposal/proposal-utils.js";
-import { resolveFreelancerMatchPercent } from "@/shared/lib/proposal-match";
-import { toast } from "sonner";
 
 const draftProposalSurfaceToneClassName =
   "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 
 const draftProposalDetailBlockClassName =
-  `flex min-w-0 flex-col justify-between rounded-[14px] ${draftProposalSurfaceToneClassName} px-4 pt-4 pb-5 min-h-[90px]`;
+  `flex h-[98px] min-w-0 flex-col justify-between overflow-hidden rounded-[14px] ${draftProposalSurfaceToneClassName} px-4 pt-4 pb-5`;
 
 const draftProposalActionButtonClassName =
   "inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-[10px] px-4 text-sm font-semibold transition-colors";
@@ -87,6 +91,26 @@ const formatDraftBudget = (value) => {
 const formatDraftTimeline = (value) => {
   const rawValue = String(value || "").trim();
   return rawValue || "Not set";
+};
+
+const buildDraftServiceEntries = (proposal = {}) => {
+  return extractAgencyProposalServiceEntries(proposal).map((entry) => ({
+    name: entry.name,
+    budget: formatDraftBudget(entry.budget),
+    timeline: formatDraftTimeline(entry.timeline),
+  }));
+};
+
+const resolveDraftRowServiceEntries = (item = {}) => {
+  if (Array.isArray(item.serviceEntries) && item.serviceEntries.length > 0) {
+    return item.serviceEntries.map((entry) => ({
+      name: String(entry?.name || ""),
+      budget: formatDraftBudget(entry?.budget),
+      timeline: formatDraftTimeline(entry?.timeline),
+    }));
+  }
+
+  return [];
 };
 
 const buildDraftProposalPath = (draftId, action = "view") => {
@@ -286,79 +310,114 @@ const buildProjectUpsertPayload = (proposal, normalizedBudget) => {
 };
 
 const DraftProposalRow = memo(function DraftProposalRow({ item }) {
-  return (
-    <div className="grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end">
-      <div className="min-w-0 w-full">
-        <p className="min-w-0 truncate text-[1.4rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.55rem]">
-          {item.title}
-        </p>
+  const serviceEntries = resolveDraftRowServiceEntries(item);
+  const shouldShowAgencyServiceCards =
+    (Boolean(item.isAgencyProposal) || serviceEntries.length > 1)
+    && serviceEntries.length > 0;
 
-        <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
-          <div className={draftProposalDetailBlockClassName}>
-            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
-              Service
-            </p>
-            <p className="break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
-              {item.tag}
-            </p>
-          </div>
+  const actionButtons = (
+    <div className="flex w-full flex-col gap-2.5 lg:h-full lg:items-stretch lg:gap-2">
+      <button
+        type="button"
+        onClick={item.onSend}
+        className={cn(
+          draftProposalActionButtonClassName,
+          "bg-[#ffc107] text-black hover:bg-[#ffd54f] lg:h-auto lg:flex-1",
+        )}
+      >
+        Send Proposal
+      </button>
 
-          <div className={draftProposalDetailBlockClassName}>
-            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
-              Budget
-            </p>
-            <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
-              {item.budget}
-            </p>
-          </div>
-
-          <div className={draftProposalDetailBlockClassName}>
-            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
-              Timeline
-            </p>
-            <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
-              {item.timeline || "Not set"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex w-full flex-col gap-2.5 lg:h-[76px] lg:items-stretch lg:gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_44px] gap-2.5 lg:h-auto lg:flex-1 lg:gap-2">
         <button
           type="button"
-          onClick={item.onSend}
+          onClick={item.onView}
           className={cn(
             draftProposalActionButtonClassName,
-            "bg-[#ffc107] text-black hover:bg-[#ffd54f] lg:h-auto lg:flex-1",
+            `${draftProposalSurfaceToneClassName} text-white hover:bg-white/[0.05] lg:h-full`,
           )}
         >
-          Send Proposal
+          View Details
         </button>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_44px] gap-2.5 lg:h-auto lg:flex-1 lg:gap-2">
-          <button
-            type="button"
-            onClick={item.onView}
-            className={cn(
-              draftProposalActionButtonClassName,
-              `${draftProposalSurfaceToneClassName} text-white hover:bg-white/[0.05] lg:h-full`,
-            )}
-          >
-            View Details
-          </button>
+        <button
+          type="button"
+          onClick={item.onDelete}
+          className={cn(
+            draftProposalActionButtonClassName,
+            `${draftProposalSurfaceToneClassName} px-0 text-muted-foreground hover:bg-white/[0.05] hover:text-white lg:h-full`,
+          )}
+          aria-label={`Delete ${item.title}`}
+        >
+          <Trash2 className="size-4 text-current" />
+        </button>
+      </div>
+    </div>
+  );
 
-          <button
-            type="button"
-            onClick={item.onDelete}
-            className={cn(
-              draftProposalActionButtonClassName,
-              `${draftProposalSurfaceToneClassName} px-0 text-muted-foreground hover:bg-white/[0.05] hover:text-white lg:h-full`,
-            )}
-            aria-label={`Delete ${item.title}`}
-          >
-            <Trash2 className="size-4 text-current" />
-          </button>
+  const contentPanels = shouldShowAgencyServiceCards ? (
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3 xl:auto-rows-fr">
+      {serviceEntries.map((entry, index) => (
+        <div
+          key={`${entry.name}-${index}`}
+          className={cn(draftProposalDetailBlockClassName, "h-full")}
+        >
+          <p className="min-h-[2.5rem] break-words text-[0.82rem] font-medium leading-5 text-white/80">
+            {entry.name}
+          </p>
+
+          <div className="mt-2.5 flex items-center gap-3 text-[0.9rem] leading-none">
+            <p className="truncate font-semibold tracking-[-0.02em] text-white">
+              {entry.budget}
+            </p>
+            <span className="h-4 w-px shrink-0 bg-white/[0.12]" aria-hidden="true" />
+            <p className="truncate font-medium text-white/70">
+              {entry.timeline}
+            </p>
+          </div>
         </div>
+      ))}
+    </div>
+  ) : (
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
+      <div className={draftProposalDetailBlockClassName}>
+        <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
+          Service
+        </p>
+        <p className="break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+          {item.tag}
+        </p>
+      </div>
+
+      <div className={draftProposalDetailBlockClassName}>
+        <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
+          Budget
+        </p>
+        <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+          {item.budget}
+        </p>
+      </div>
+
+      <div className={draftProposalDetailBlockClassName}>
+        <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
+          Timeline
+        </p>
+        <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+          {item.timeline || "Not set"}
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full min-w-0">
+      <p className="min-w-0 truncate text-[1.4rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.55rem]">
+        {item.title}
+      </p>
+
+      <div className="mt-4 grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-stretch">
+        {contentPanels}
+        {actionButtons}
       </div>
     </div>
   );
@@ -646,6 +705,8 @@ const DraftedProposals = memo(function DraftedProposals({
         timeline: formatDraftTimeline(
           proposal.timeline || proposal.launchTimeline || proposal.duration,
         ),
+        isAgencyProposal: resolveProposalAgencyFlag(proposal),
+        serviceEntries: buildDraftServiceEntries(proposal),
         onSend: () => {
           setActiveDraftId(proposal.id);
           setSelectedDraftForSend(proposal);

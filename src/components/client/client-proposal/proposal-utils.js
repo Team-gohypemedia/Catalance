@@ -584,6 +584,84 @@ export const normalizeProposalStatus = (status = "") => {
   }
 };
 
+const normalizeAgencyFlag = (value) => {
+  if (typeof value === "boolean") return value;
+  if (value === null || value === undefined) return null;
+
+  const normalizedValue = String(value).trim().toLowerCase();
+  if (!normalizedValue) return null;
+  if (["true", "1", "yes"].includes(normalizedValue)) return true;
+  if (["false", "0", "no"].includes(normalizedValue)) return false;
+
+  return null;
+};
+
+const countSelectedAgencyServices = (proposalContext = {}) =>
+  [
+    proposalContext?.selectedServiceIds,
+    proposalContext?.selectedServiceNames,
+    proposalContext?.serviceIds,
+    proposalContext?.serviceNames,
+    proposalContext?.selectedServices,
+  ].reduce((maxCount, value) => {
+    if (!Array.isArray(value)) return maxCount;
+
+    const nextCount = value.filter((entry) => {
+      if (entry && typeof entry === "object") {
+        return Boolean(entry.id || entry.slug || entry.name);
+      }
+
+      return Boolean(String(entry || "").trim());
+    }).length;
+
+    return Math.max(maxCount, nextCount);
+  }, 0);
+
+export const resolveProposalAgencyFlag = (proposal = {}) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+  const proposalContext =
+    normalizedProposal.proposalContext &&
+    typeof normalizedProposal.proposalContext === "object"
+      ? normalizedProposal.proposalContext
+      : {};
+
+  const explicitFlagCandidates = [
+    normalizedProposal.isAgency,
+    normalizedProposal.isAgencyProposal,
+    normalizedProposal.project?.isAgency,
+    normalizedProposal.project?.isAgencyProposal,
+    proposalContext.isAgency,
+    proposalContext.isAgencyProposal,
+  ];
+
+  for (const candidate of explicitFlagCandidates) {
+    const normalizedFlag = normalizeAgencyFlag(candidate);
+    if (normalizedFlag !== null) {
+      return normalizedFlag;
+    }
+  }
+
+  const flowMode = String(proposalContext.flowMode || "").trim().toLowerCase();
+  if (flowMode === "agency") return true;
+  if (flowMode === "freelancer" || flowMode === "individual") return false;
+
+  if (countSelectedAgencyServices(proposalContext) > 1) {
+    return true;
+  }
+
+  const serviceKeyParts = String(
+    normalizedProposal.serviceKey ||
+      normalizedProposal.project?.serviceKey ||
+      normalizedProposal.service ||
+      "",
+  )
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return serviceKeyParts.length > 1;
+};
+
 export const getProposalInvitee = (proposal = {}) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
   const name =
@@ -830,6 +908,162 @@ const dedupeProposalTextItems = (values = []) => {
   });
 
   return items;
+};
+
+const normalizeAgencyServiceLookupKey = (value = "") =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[_/\\|]+/g, " ")
+    .replace(/[()]/g, " ")
+    .replace(/[^a-z0-9\s+-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const splitAgencySummaryEntries = (value = "") =>
+  String(value || "")
+    .split(/\s*\|\s*|\r?\n+/)
+    .map((entry) => normalizeProposalListItem(entry))
+    .filter(Boolean);
+
+const collectAgencyProposalServiceNames = (proposal = {}) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+  const proposalContext =
+    normalizedProposal.proposalContext &&
+    typeof normalizedProposal.proposalContext === "object"
+      ? normalizedProposal.proposalContext
+      : {};
+
+  const selectedServiceNames = Array.isArray(proposalContext.selectedServices)
+    ? proposalContext.selectedServices.map(
+        (service) => service?.name || service?.label || service?.id || service?.slug || "",
+      )
+    : [];
+
+  const fallbackLabelEntries = String(
+    normalizedProposal.service ||
+      normalizedProposal.serviceType ||
+      normalizedProposal.category ||
+      "",
+  )
+    .split(/\s*\|\s*|,(?=\s*[A-Za-z0-9])/)
+    .map((entry) => normalizeProposalListItem(entry))
+    .filter(Boolean);
+
+  return dedupeProposalTextItems([
+    ...selectedServiceNames,
+    ...(Array.isArray(proposalContext.selectedServiceNames)
+      ? proposalContext.selectedServiceNames
+      : []),
+    ...(Array.isArray(proposalContext.serviceNames) ? proposalContext.serviceNames : []),
+    ...fallbackLabelEntries,
+  ]);
+};
+
+const parseAgencyServiceValueMap = (value = "", fallbackServiceNames = []) => {
+  const map = new Map();
+  const normalizedFallbackServices = dedupeProposalTextItems(fallbackServiceNames);
+  const summaryEntries = splitAgencySummaryEntries(value);
+
+  summaryEntries.forEach((entry) => {
+    const pairMatch = entry.match(/^(.+?)\s(?:-|–|—|:)\s+(.+)$/);
+    const serviceName = pairMatch?.[1]?.trim();
+    const resolvedValue = pairMatch?.[2]?.trim();
+
+    if (serviceName && resolvedValue) {
+      map.set(normalizeAgencyServiceLookupKey(serviceName), {
+        serviceName,
+        value: resolvedValue,
+      });
+      return;
+    }
+
+    if (normalizedFallbackServices.length === 1 && entry) {
+      const [onlyServiceName] = normalizedFallbackServices;
+      map.set(normalizeAgencyServiceLookupKey(onlyServiceName), {
+        serviceName: onlyServiceName,
+        value: entry,
+      });
+    }
+  });
+
+  return map;
+};
+
+const resolveAgencyServiceMapValue = (valueMap = new Map(), serviceName = "") => {
+  const lookupKey = normalizeAgencyServiceLookupKey(serviceName);
+  if (!lookupKey) return "";
+
+  if (valueMap.has(lookupKey)) {
+    return valueMap.get(lookupKey)?.value || "";
+  }
+
+  for (const [mapKey, entry] of valueMap.entries()) {
+    if (mapKey.includes(lookupKey) || lookupKey.includes(mapKey)) {
+      return entry?.value || "";
+    }
+  }
+
+  return "";
+};
+
+const formatAgencyServiceBudget = (value = "") => {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return "Not set";
+
+  if (/[A-Za-z]/.test(rawValue.replace(/\b(?:inr|rs)\b/gi, "")) && !/[₹$€£]/.test(rawValue)) {
+    return rawValue;
+  }
+
+  return formatBudget(rawValue);
+};
+
+export const extractAgencyProposalServiceEntries = (proposal = {}) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+  if (!resolveProposalAgencyFlag(normalizedProposal)) {
+    return [];
+  }
+
+  const proposalContext =
+    normalizedProposal.proposalContext &&
+    typeof normalizedProposal.proposalContext === "object"
+      ? normalizedProposal.proposalContext
+      : {};
+  const content = normalizedProposal.content || normalizedProposal.summary || "";
+  const serviceNames = collectAgencyProposalServiceNames(normalizedProposal);
+  const budgetSummary = getFirstNonEmptyText(
+    extractProposalLabeledValue(content, ["Budget", "Pricing", "Investment"]),
+    proposalContext.budgetSummary,
+    proposalContext.budget,
+    normalizedProposal.budget,
+  );
+  const timelineSummary = getFirstNonEmptyText(
+    extractProposalLabeledValue(content, ["Launch Timeline", "Timeline", "Delivery"]),
+    proposalContext.launchTimeline,
+    proposalContext.timeline,
+    normalizedProposal.timeline,
+  );
+
+  const budgetMap = parseAgencyServiceValueMap(budgetSummary, serviceNames);
+  const timelineMap = parseAgencyServiceValueMap(timelineSummary, serviceNames);
+  const orderedServiceNames = dedupeProposalTextItems([
+    ...serviceNames,
+    ...Array.from(budgetMap.values()).map((entry) => entry?.serviceName || ""),
+    ...Array.from(timelineMap.values()).map((entry) => entry?.serviceName || ""),
+  ]);
+
+  return orderedServiceNames
+    .map((serviceName) => {
+      const budgetValue = resolveAgencyServiceMapValue(budgetMap, serviceName);
+      const timelineValue = resolveAgencyServiceMapValue(timelineMap, serviceName);
+
+      return {
+        name: serviceName,
+        budget: formatAgencyServiceBudget(budgetValue),
+        timeline: timelineValue || "Not set",
+      };
+    })
+    .filter((entry) => entry.name);
 };
 
 export const parseProposalEditableList = (value = "", options = {}) => {
@@ -1179,6 +1413,7 @@ export const mapApiProposal = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
   const projectTitle = resolveProposalProjectName(normalizedProposal);
   const serviceLabel = resolveProposalServiceLabel(normalizedProposal);
+  const isAgency = resolveProposalAgencyFlag(normalizedProposal);
   const freelancerName =
     normalizedProposal.freelancer?.fullName ||
     normalizedProposal.freelancer?.name ||
@@ -1260,6 +1495,8 @@ export const mapApiProposal = (proposal) => {
       normalizedProposal.proposalContext ||
       normalizedProposal.project?.proposalJson?.contextSnapshot ||
       null,
+    isAgency,
+    isAgencyProposal: isAgency,
     rejectionReason: normalizedProposal.rejectionReason || null,
     rejectionReasonKey: normalizedProposal.rejectionReasonKey || null,
   };
@@ -1269,6 +1506,7 @@ export const mapLocalDraftProposal = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
   const projectTitle = resolveProposalProjectName(normalizedProposal);
   const serviceLabel = resolveProposalServiceLabel(normalizedProposal);
+  const isAgency = resolveProposalAgencyFlag(normalizedProposal);
 
   return {
     id: normalizedProposal.id,
@@ -1285,11 +1523,15 @@ export const mapLocalDraftProposal = (proposal) => {
     serviceKey: normalizedProposal.serviceKey || normalizedProposal.service || "",
     projectStack:
       normalizedProposal.projectStack ||
+      normalizedProposal.project_stack ||
+      normalizedProposal.requiredTechStack ||
+      normalizedProposal.required_tech_stack ||
       normalizedProposal.project?.projectStack ||
       normalizedProposal.project?.proposalJson?.projectStack ||
       null,
     techStack:
       normalizedProposal.techStack ||
+      normalizedProposal.tech_stack ||
       normalizedProposal.project?.techStack ||
       normalizedProposal.project?.proposalJson?.techStack ||
       null,
@@ -1321,14 +1563,8 @@ export const mapLocalDraftProposal = (proposal) => {
     createdAt: normalizedProposal.createdAt || null,
     updatedAt: normalizedProposal.updatedAt || normalizedProposal.createdAt || null,
     proposalContext: normalizedProposal.proposalContext || null,
-    projectStack:
-      normalizedProposal.projectStack ||
-      normalizedProposal.project_stack ||
-      normalizedProposal.requiredTechStack ||
-      normalizedProposal.required_tech_stack ||
-      null,
-    techStack:
-      normalizedProposal.techStack || normalizedProposal.tech_stack || null,
+    isAgency,
+    isAgencyProposal: isAgency,
     requirements: normalizedProposal.requirements || null,
   };
 };

@@ -64,8 +64,8 @@ const ContactUs = () => {
             </p>
             <p>
               Phone support is available at{" "}
-              <a className="text-primary hover:underline" href="tel:+9111XXXXXXX">
-                +91-11-XXXX-XXXX
+              <a className="text-primary hover:underline" href="tel:+918882855425">
+                +91 8882855425
               </a>
               .
             </p>

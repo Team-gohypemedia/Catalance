@@ -23,8 +23,10 @@ import { login, loginWithGoogle } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
   canAccessDashboard,
-  getDashboardPath,
+  FREELANCER_DASHBOARD,
+  getDashboardEntryPath,
   resolveDashboardValue,
+  resolveFreelancerPath,
   resolveWorkspaceHomePath,
   setStoredDashboardPreference,
 } from "@/shared/lib/dashboard-preference";
@@ -90,16 +92,22 @@ const navigateAfterLogin = ({
   requestedRole,
   user,
 }) => {
-  if (redirectTo) {
-    navigate(redirectTo, { replace: true });
+  const requestedDashboard = resolveDashboardValue(requestedRole);
+
+  if (requestedDashboard === FREELANCER_DASHBOARD) {
+    setStoredDashboardPreference(user, requestedDashboard);
+    navigate(getDashboardEntryPath(user, requestedDashboard), { replace: true });
     return;
   }
 
-  const requestedDashboard = resolveDashboardValue(requestedRole);
+  if (redirectTo) {
+    navigate(resolveFreelancerPath(user, redirectTo), { replace: true });
+    return;
+  }
 
   if (requestedDashboard && canAccessDashboard(user, requestedDashboard)) {
     setStoredDashboardPreference(user, requestedDashboard);
-    navigate(getDashboardPath(requestedDashboard), { replace: true });
+    navigate(getDashboardEntryPath(user, requestedDashboard), { replace: true });
     return;
   }
 

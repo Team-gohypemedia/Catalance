@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
@@ -15,6 +15,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
+import { DarkGradientBg } from "@/components/elegant-dark-pattern";
 import {
   API_BASE_URL,
   fetchStatesByCountry,
@@ -25,9 +26,12 @@ import { useAuth } from "@/shared/context/AuthContext";
 import {
   COUNTRY_OPTIONS,
   LANGUAGE_OPTIONS,
+  resolveStateOptionsForCountry,
 } from "@/components/features/freelancer/onboarding/constants";
 import { normalizeUsernameInput } from "@/components/features/freelancer/onboarding/utils";
+import { FREELANCER_DASHBOARD_PATH } from "@/shared/lib/dashboard-preference";
 import {
+  createEmptyServiceCaseStudy,
   createEmptyServiceDraft,
   deriveDraftSkillsAndTechnologies,
   getServiceCatalogMeta,
@@ -387,10 +391,17 @@ const sanitizeServiceDraftForStorage = (
     serviceKey,
     serviceId,
   });
-  const normalizedCaseStudy =
-    normalizedDraft.caseStudy && typeof normalizedDraft.caseStudy === "object"
-      ? normalizedDraft.caseStudy
-      : {};
+  const normalizedCaseStudies = Array.isArray(normalizedDraft.caseStudies)
+    ? normalizedDraft.caseStudies.map((caseStudy) => ({
+        ...caseStudy,
+        projectFile: toPersistableCaseStudyFile(caseStudy?.projectFile),
+      }))
+    : [];
+  const activeCaseStudyId = normalizedCaseStudies.some(
+    (caseStudy) => caseStudy.id === normalizedDraft.activeCaseStudyId,
+  )
+    ? normalizedDraft.activeCaseStudyId
+    : normalizedCaseStudies[0]?.id || null;
 
   return {
     ...normalizedDraft,
@@ -400,10 +411,9 @@ const sanitizeServiceDraftForStorage = (
     mediaFiles: normalizedDraft.mediaFiles
       .map((value, index) => toPersistableServiceMedia(value, index))
       .filter(Boolean),
-    caseStudy: {
-      ...normalizedCaseStudy,
-      projectFile: toPersistableCaseStudyFile(normalizedCaseStudy.projectFile),
-    },
+    caseStudies: normalizedCaseStudies,
+    activeCaseStudyId,
+    caseStudy: normalizedCaseStudies[0] || null,
   };
 };
 
@@ -429,7 +439,7 @@ const buildOnboardingDraftSnapshot = ({
     savedAt: new Date().toISOString(),
     currentSlideIndex: clampSlideIndex(currentSlideIndex, totalSlides),
     selectedWorkPreference:
-      String(selectedWorkPreference || "").trim() || "individual",
+      String(selectedWorkPreference || "").trim(),
     basicProfileForm: sanitizeBasicProfileFormForDraft(basicProfileForm),
     selectedServices: normalizedSelectedServices,
     serviceDraftsByKey: Object.fromEntries(
@@ -466,11 +476,6 @@ const SERVICE_EXPERIENCE_STORAGE_LABELS = {
   veteran: "Veteran 10+ years",
 };
 
-const PROJECT_COMPLEXITY_STORAGE_LABELS = {
-  beginner: "Beginner",
-  intermediate: "Intermediate",
-  expert: "Expert",
-};
 
 const DELIVERY_TIMELINE_STORAGE_LABELS = {
   "1_week": "1 Week",
@@ -483,20 +488,7 @@ const DELIVERY_TIMELINE_STORAGE_LABELS = {
   ongoing: "Ongoing / Retainer",
 };
 
-const STARTING_PRICE_STORAGE_LABELS = {
-  under_5k: "Under ₹5,000",
-  "5k_10k": "₹5,000 – ₹10,000",
-  "5k_15k": "₹5,000 – ₹15,000",
-  "15k_20k": "₹15,000 – ₹20,000",
-  "15k_30k": "₹15,000 – ₹30,000",
-  "30k_40k": "₹30,000 – ₹40,000",
-  "30k_50k": "₹30,000 – ₹50,000",
-  "50k_75k": "₹50,000 – ₹75,000",
-  "50k_1l": "₹50,000 – ₹1,00,000",
-  "1l_2l": "₹1,00,000 – ₹2,00,000",
-  "1l_3l": "₹1,00,000 – ₹3,00,000",
-  "3l_plus": "₹3,00,000+",
-};
+
 
 const findStorageKeyByLabel = (map, label) =>
   Object.entries(map).find(([, value]) => value === String(label || "").trim())?.[0] || "";
@@ -574,6 +566,7 @@ let cachedMarketplaceServices = [];
 let marketplaceServicesRequest = null;
 let cachedMarketplaceNiches = [];
 let marketplaceNichesRequest = null;
+const cachedPositiveKeywordsByServiceId = {};
 
 const fetchMarketplaceServices = async () => {
   if (cachedMarketplaceServices.length) {
@@ -634,6 +627,28 @@ const fetchMarketplaceNiches = async () => {
   }
 
   return marketplaceNichesRequest;
+};
+
+const fetchServicePositiveKeywords = async (serviceId) => {
+  if (!serviceId) return [];
+  if (cachedPositiveKeywordsByServiceId[serviceId]) {
+    return cachedPositiveKeywordsByServiceId[serviceId];
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/marketplace/filters/keywords?serviceId=${serviceId}`,
+    );
+    if (!response.ok) return [];
+    const payload = await response.json();
+    const keywords = Array.isArray(payload?.data)
+      ? payload.data.map((entry) => String(entry?.name || "").trim()).filter(Boolean)
+      : [];
+    cachedPositiveKeywordsByServiceId[serviceId] = keywords;
+    return keywords;
+  } catch {
+    return [];
+  }
 };
 
 const getBasicProfileFieldError = (field, form) => {
@@ -705,6 +720,8 @@ const FreelancerOnboardingShell = () => {
     useState(false);
   const [dbServices, setDbServices] = useState(cachedMarketplaceServices);
   const [dbNiches, setDbNiches] = useState(cachedMarketplaceNiches);
+  const [suggestedKeywords, setSuggestedKeywords] = useState([]);
+  const [isSuggestedKeywordsLoading, setIsSuggestedKeywordsLoading] = useState(false);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [, setProfileError] = useState("");
   const [basicProfileErrors, setBasicProfileErrors] = useState({});
@@ -767,6 +784,9 @@ const FreelancerOnboardingShell = () => {
   const serviceSetupSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
     (slide) => slide.id === "serviceSetup",
   );
+  const serviceInfoSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+    (slide) => slide.id === "serviceInfo",
+  );
   const serviceReviewSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
     (slide) => slide.id === "serviceReview",
   );
@@ -819,8 +839,7 @@ const FreelancerOnboardingShell = () => {
         clampSlideIndex(storedDraft.currentSlideIndex, totalSlides),
       );
       setSelectedWorkPreference(
-        String(storedDraft.selectedWorkPreference || "individual").trim() ||
-          "individual",
+        String(storedDraft.selectedWorkPreference || "").trim(),
       );
       setBasicProfileForm(
         sanitizeBasicProfileFormForDraft(storedDraft.basicProfileForm),
@@ -931,7 +950,7 @@ const FreelancerOnboardingShell = () => {
       resume: buildRemoteResumeFile(existingResume) || currentForm.resume,
     }));
     setSelectedWorkPreference(
-      String(profileDetails.role || "individual").trim(),
+      String(profileDetails.role || "").trim(),
     );
     setAcceptInProgressProjectsValue(hydratedAcceptInProgressProjects);
     setDeliveryPolicyAccepted(hydratedDeliveryPolicyAccepted ?? false);
@@ -949,18 +968,12 @@ const FreelancerOnboardingShell = () => {
           SERVICE_EXPERIENCE_STORAGE_LABELS,
           detail.experience,
         );
-        detail.complexity = resolveStoredSelectKey(
-          PROJECT_COMPLEXITY_STORAGE_LABELS,
-          detail.complexity,
-        );
+
         detail.deliveryTimeline = resolveStoredSelectKey(
           DELIVERY_TIMELINE_STORAGE_LABELS,
           detail.deliveryTimeline,
         );
-        detail.priceRange = resolveStoredSelectKey(
-          STARTING_PRICE_STORAGE_LABELS,
-          detail.priceRange,
-        );
+        detail.priceRange = String(detail.priceRange || "").trim();
 
         if (index === 0) {
           if (!detail.title) {
@@ -972,12 +985,7 @@ const FreelancerOnboardingShell = () => {
               user?.serviceExperience,
             );
           }
-          if (!detail.complexity) {
-            detail.complexity = resolveStoredSelectKey(
-              PROJECT_COMPLEXITY_STORAGE_LABELS,
-              user?.serviceComplexity || user?.projectComplexity,
-            );
-          }
+
           if (!detail.description) {
             detail.description = String(user?.serviceDescription || "").trim();
           }
@@ -988,10 +996,7 @@ const FreelancerOnboardingShell = () => {
             );
           }
           if (!detail.priceRange) {
-            detail.priceRange = resolveStoredSelectKey(
-              STARTING_PRICE_STORAGE_LABELS,
-              user?.startingPrice,
-            );
+            detail.priceRange = String(user?.startingPrice || "").trim();
           }
           if (!detail.keywords.length && Array.isArray(user?.serviceKeywords)) {
             detail.keywords = normalizeStringArray(user.serviceKeywords);
@@ -1142,6 +1147,49 @@ const FreelancerOnboardingShell = () => {
   }, [dbServices, selectedServices]);
 
   useEffect(() => {
+    const selectedServiceIds = normalizeDraftSkillList(selectedServices)
+      .map((serviceKey) => getServiceCatalogMeta(dbServices, serviceKey).serviceId)
+      .filter((serviceId) => Number.isInteger(serviceId) && serviceId > 0);
+
+    if (!selectedServiceIds.length) {
+      return;
+    }
+
+    void Promise.all(
+      selectedServiceIds.map((serviceId) => fetchServicePositiveKeywords(serviceId)),
+    );
+  }, [dbServices, selectedServices]);
+
+  useEffect(() => {
+    const serviceId = currentService?.id;
+    if (!serviceId) {
+      setSuggestedKeywords([]);
+      setIsSuggestedKeywordsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsSuggestedKeywordsLoading(true);
+    fetchServicePositiveKeywords(serviceId)
+      .then((keywords) => {
+        if (!cancelled) {
+          startTransition(() => {
+            setSuggestedKeywords(keywords);
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsSuggestedKeywordsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentService?.id]);
+
+  useEffect(() => {
     if (!hasHydratedFromUser || !onboardingDraftStorageKey) {
       return undefined;
     }
@@ -1200,15 +1248,18 @@ const FreelancerOnboardingShell = () => {
     }
 
     let isCancelled = false;
-    setIsStateOptionsLoading(true);
+    const fallbackStates = resolveStateOptionsForCountry(selectedCountry);
+    setStateOptions(fallbackStates);
+    setIsStateOptionsLoading(fallbackStates.length === 0);
 
     fetchStatesByCountry(selectedCountry)
       .then((response) => {
         if (isCancelled) return;
 
-        const nextStates = Array.isArray(response?.states)
-          ? response.states.filter(Boolean)
-          : [];
+        const nextStates = resolveStateOptionsForCountry(
+          selectedCountry,
+          response?.states,
+        );
         setStateOptions(nextStates);
 
         setBasicProfileForm((currentForm) => {
@@ -1224,7 +1275,7 @@ const FreelancerOnboardingShell = () => {
       .catch((error) => {
         if (isCancelled) return;
         console.error("Failed to fetch states for country:", error);
-        setStateOptions([]);
+        setStateOptions(resolveStateOptionsForCountry(selectedCountry));
       })
       .finally(() => {
         if (!isCancelled) {
@@ -1374,9 +1425,8 @@ const FreelancerOnboardingShell = () => {
     () => ({
       title: currentServiceDraft.title,
       experience: currentServiceDraft.experience,
-      complexity: currentServiceDraft.complexity,
     }),
-    [currentServiceDraft.complexity, currentServiceDraft.experience, currentServiceDraft.title],
+    [currentServiceDraft.experience, currentServiceDraft.title],
   );
 
   const currentServicePricingForm = useMemo(
@@ -1404,18 +1454,134 @@ const FreelancerOnboardingShell = () => {
     [currentServiceDraft.keywords, currentServiceDraft.mediaFiles],
   );
 
+  const {
+    currentServiceCaseStudies,
+    currentActiveCaseStudy,
+    currentActiveCaseStudyId,
+    currentActiveCaseStudyIndex,
+  } = useMemo(() => {
+    const caseStudies = Array.isArray(currentServiceDraft.caseStudies)
+      ? currentServiceDraft.caseStudies
+      : [];
+    const activeCaseStudyId = String(
+      currentServiceDraft.activeCaseStudyId || "",
+    ).trim();
+    const activeCaseStudyIndex = caseStudies.findIndex(
+      (caseStudy) => String(caseStudy?.id || "").trim() === activeCaseStudyId,
+    );
+    const resolvedActiveCaseStudyIndex =
+      activeCaseStudyIndex >= 0 ? activeCaseStudyIndex : 0;
+    const resolvedActiveCaseStudy =
+      caseStudies[resolvedActiveCaseStudyIndex] || createEmptyServiceCaseStudy();
+
+    return {
+      currentServiceCaseStudies:
+        caseStudies.length > 0 ? caseStudies : [resolvedActiveCaseStudy],
+      currentActiveCaseStudy: resolvedActiveCaseStudy,
+      currentActiveCaseStudyId: String(resolvedActiveCaseStudy?.id || "").trim(),
+      currentActiveCaseStudyIndex: resolvedActiveCaseStudyIndex,
+    };
+  }, [currentServiceDraft.activeCaseStudyId, currentServiceDraft.caseStudies]);
+
   const currentCaseStudyForm = useMemo(
     () => ({
-      title: String(currentServiceDraft.caseStudy?.title ?? ""),
-      description: String(currentServiceDraft.caseStudy?.description ?? ""),
-      projectLink: String(currentServiceDraft.caseStudy?.projectLink || "").trim(),
-      projectFile: currentServiceDraft.caseStudy?.projectFile || null,
-      role: String(currentServiceDraft.caseStudy?.role || "").trim(),
-      timeline: String(currentServiceDraft.caseStudy?.timeline || "").trim(),
-      budget: String(currentServiceDraft.caseStudy?.budget || "").trim(),
-      niche: String(currentServiceDraft.caseStudy?.niche || "").trim(),
+      id: String(currentActiveCaseStudy?.id || "").trim(),
+      title: String(currentActiveCaseStudy?.title ?? ""),
+      description: String(currentActiveCaseStudy?.description ?? ""),
+      projectLink: String(currentActiveCaseStudy?.projectLink || "").trim(),
+      projectFile: currentActiveCaseStudy?.projectFile || null,
+      role: String(currentActiveCaseStudy?.role || "").trim(),
+      timeline: String(currentActiveCaseStudy?.timeline || "").trim(),
+      budget: String(currentActiveCaseStudy?.budget || "").trim(),
+      niche: String(currentActiveCaseStudy?.niche || "").trim(),
     }),
-    [currentServiceDraft.caseStudy],
+    [currentActiveCaseStudy],
+  );
+
+  const handleActiveCaseStudyChange = useCallback(
+    (caseStudyId) => {
+      const normalizedCaseStudyId = String(caseStudyId || "").trim();
+      if (!normalizedCaseStudyId) {
+        return;
+      }
+
+      updateCurrentServiceDraft((draft) => ({
+        ...draft,
+        activeCaseStudyId: normalizedCaseStudyId,
+      }));
+    },
+    [updateCurrentServiceDraft],
+  );
+
+  const handleAddCaseStudy = useCallback(() => {
+    const nextCaseStudy = createEmptyServiceCaseStudy();
+
+    updateCurrentServiceDraft((draft) => ({
+      ...draft,
+      caseStudies: [...draft.caseStudies, nextCaseStudy],
+      activeCaseStudyId: nextCaseStudy.id,
+    }));
+  }, [updateCurrentServiceDraft]);
+
+  const handleRemoveCaseStudy = useCallback(
+    (caseStudyId) => {
+      const normalizedCaseStudyId = String(caseStudyId || "").trim();
+      if (!normalizedCaseStudyId) {
+        return;
+      }
+
+      updateCurrentServiceDraft((draft) => {
+        const remainingCaseStudies = draft.caseStudies.filter(
+          (caseStudy) => caseStudy.id !== normalizedCaseStudyId,
+        );
+
+        if (!remainingCaseStudies.length) {
+          const replacementCaseStudy = createEmptyServiceCaseStudy();
+
+          return {
+            ...draft,
+            caseStudies: [replacementCaseStudy],
+            activeCaseStudyId: replacementCaseStudy.id,
+          };
+        }
+
+        const removedIndex = draft.caseStudies.findIndex(
+          (caseStudy) => caseStudy.id === normalizedCaseStudyId,
+        );
+        const resolvedActiveCaseStudy =
+          normalizedCaseStudyId === draft.activeCaseStudyId
+            ? remainingCaseStudies[
+                Math.max(0, Math.min(removedIndex, remainingCaseStudies.length - 1))
+              ]
+            : remainingCaseStudies.find(
+                (caseStudy) => caseStudy.id === draft.activeCaseStudyId,
+              ) || remainingCaseStudies[0];
+
+        return {
+          ...draft,
+          caseStudies: remainingCaseStudies,
+          activeCaseStudyId: resolvedActiveCaseStudy.id,
+        };
+      });
+    },
+    [updateCurrentServiceDraft],
+  );
+
+  const handleCaseStudyFieldChange = useCallback(
+    (field, value) => {
+      updateCurrentServiceDraft((draft) => ({
+        ...draft,
+        caseStudies: draft.caseStudies.map((caseStudy) =>
+          caseStudy.id === draft.activeCaseStudyId
+            ? {
+                ...caseStudy,
+                [field]: value,
+              }
+            : caseStudy,
+        ),
+      }));
+    },
+    [updateCurrentServiceDraft],
   );
 
   const syncBasicProfileValidationErrors = (validationErrors) => {
@@ -1658,21 +1824,29 @@ const FreelancerOnboardingShell = () => {
       serviceKey,
       serviceId: serviceMeta.serviceId,
     });
-    const [mediaFiles, projectFile] = await Promise.all([
+    const [mediaFiles, caseStudies] = await Promise.all([
       persistServiceMediaEntries(normalizedDraft.mediaFiles),
-      persistCaseStudyProjectFile(normalizedDraft.caseStudy?.projectFile),
+      Promise.all(
+        normalizedDraft.caseStudies.map(async (caseStudy) => ({
+          ...caseStudy,
+          projectFile:
+            (await persistCaseStudyProjectFile(caseStudy?.projectFile)) || null,
+        })),
+      ),
     ]);
+    const activeCaseStudyId = caseStudies.some(
+      (caseStudy) => caseStudy.id === normalizedDraft.activeCaseStudyId,
+    )
+      ? normalizedDraft.activeCaseStudyId
+      : caseStudies[0]?.id || null;
 
     return normalizeServiceDraft(
       {
         ...normalizedDraft,
         mediaFiles,
-        caseStudy: normalizedDraft.caseStudy
-          ? {
-              ...normalizedDraft.caseStudy,
-              projectFile: projectFile || null,
-            }
-          : null,
+        caseStudies,
+        activeCaseStudyId,
+        caseStudy: caseStudies[0] || null,
       },
       {
         serviceKey,
@@ -1725,9 +1899,7 @@ const FreelancerOnboardingShell = () => {
             },
             serviceId: serviceMeta.serviceId,
             experienceLabelsByKey: SERVICE_EXPERIENCE_STORAGE_LABELS,
-            complexityLabelsByKey: PROJECT_COMPLEXITY_STORAGE_LABELS,
             deliveryLabelsByKey: DELIVERY_TIMELINE_STORAGE_LABELS,
-            priceLabelsByKey: STARTING_PRICE_STORAGE_LABELS,
           });
 
           return [serviceKey, { persistedDraft, serializedDetail }];
@@ -1880,7 +2052,7 @@ const FreelancerOnboardingShell = () => {
         clearStoredOnboardingDraft(onboardingDraftStorageKey);
         await refreshUser();
         toast.success("Freelancer onboarding saved.");
-        navigate("/freelancer");
+        navigate(FREELANCER_DASHBOARD_PATH);
       })
       .catch((error) => {
         setProfileError(error?.message || "Failed to save freelancer onboarding.");
@@ -2017,6 +2189,47 @@ const FreelancerOnboardingShell = () => {
 
     submitOnboardingAndNavigate();
   };
+
+  const handleServiceStepChange = useCallback(
+    (nextStepId) => {
+      if (isProfileSaving || !currentServiceKey) {
+        return;
+      }
+
+      const nextSlideIndex =
+        nextStepId === "overview"
+          ? serviceInfoSlideIndex
+          : nextStepId === "pricing"
+            ? servicePricingSlideIndex
+            : nextStepId === "visuals"
+              ? serviceVisualsSlideIndex
+              : nextStepId === "caseStudy"
+                ? caseStudySlideIndex
+                : nextStepId === "preview"
+                  ? serviceReviewSlideIndex
+                  : -1;
+
+      if (
+        !Number.isInteger(nextSlideIndex) ||
+        nextSlideIndex < 0 ||
+        nextSlideIndex === currentSlideIndex
+      ) {
+        return;
+      }
+
+      setCurrentSlideIndex(nextSlideIndex);
+    },
+    [
+      caseStudySlideIndex,
+      currentServiceKey,
+      currentSlideIndex,
+      isProfileSaving,
+      serviceInfoSlideIndex,
+      servicePricingSlideIndex,
+      serviceReviewSlideIndex,
+      serviceVisualsSlideIndex,
+    ],
+  );
 
   const handleServiceInfoSkip = () => {
     if (isProfileSaving) {
@@ -2367,7 +2580,8 @@ const FreelancerOnboardingShell = () => {
       : isContinueDisabled || isProfileSaving;
 
   return (
-    <main className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-background text-[#f1f5f9] h-[100dvh]">
+    <DarkGradientBg className="text-[#f1f5f9]">
+      <main className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-transparent h-[100dvh]">
       <header className="relative z-20 shrink-0 border-b border-white/8 bg-card">
         <div
           className="absolute left-0 top-0 h-1 bg-[#facc15] transition-all duration-300"
@@ -2380,7 +2594,7 @@ const FreelancerOnboardingShell = () => {
               variant="secondary"
               className="h-10 rounded-full border border-white/10 bg-card px-4 text-sm font-semibold text-foreground shadow-none hover:bg-accent/10"
             >
-              <Link to="/freelancer">
+              <Link to={FREELANCER_DASHBOARD_PATH}>
                 <ChevronLeft className="h-4 w-4" />
                 Back to dashboard
               </Link>
@@ -2495,6 +2709,7 @@ const FreelancerOnboardingShell = () => {
                 currentServiceIndex={currentServiceIndex}
                 totalSelectedServices={selectedServices.length}
                 serviceDraft={currentServiceDraft}
+                onServiceStepChange={handleServiceStepChange}
                 onUpdateServiceDraft={updateCurrentServiceDraft}
                 serviceInfoForm={currentServiceInfoForm}
                 onServiceInfoFieldChange={(field, value) =>
@@ -2511,6 +2726,8 @@ const FreelancerOnboardingShell = () => {
                   }))
                 }
                 serviceVisualsForm={currentServiceVisualsForm}
+                suggestedKeywords={suggestedKeywords}
+                isSuggestedKeywordsLoading={isSuggestedKeywordsLoading}
                 onServiceVisualsFieldChange={(field, value) =>
                   updateCurrentServiceDraft((draft) => ({
                     ...draft,
@@ -2518,16 +2735,14 @@ const FreelancerOnboardingShell = () => {
                   }))
                 }
                 caseStudyForm={currentCaseStudyForm}
+                caseStudies={currentServiceCaseStudies}
+                activeCaseStudyId={currentActiveCaseStudyId}
+                activeCaseStudyIndex={currentActiveCaseStudyIndex}
                 nicheOptions={dbNiches}
-                onCaseStudyFieldChange={(field, value) =>
-                  updateCurrentServiceDraft((draft) => ({
-                    ...draft,
-                    caseStudy: {
-                      ...(draft.caseStudy || {}),
-                      [field]: value,
-                    },
-                  }))
-                }
+                onCaseStudyFieldChange={handleCaseStudyFieldChange}
+                onAddCaseStudy={handleAddCaseStudy}
+                onRemoveCaseStudy={handleRemoveCaseStudy}
+                onActiveCaseStudyChange={handleActiveCaseStudyChange}
                 acceptInProgressProjectsValue={acceptInProgressProjectsValue}
                 onAcceptInProgressProjectsChange={handleAcceptInProgressProjectsSelect}
                 onCommunicationPolicyReadinessChange={(isReady) =>
@@ -2626,7 +2841,8 @@ const FreelancerOnboardingShell = () => {
         onApply={handleProfilePhotoCropped}
         onCancel={closeProfileCropDialog}
       />
-    </main>
+      </main>
+    </DarkGradientBg>
   );
 };
 

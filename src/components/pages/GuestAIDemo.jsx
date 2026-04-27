@@ -4891,7 +4891,7 @@ const GuestAIDemo = () => {
         return (
             <form
                 onSubmit={handleSendMessage}
-                className={`rounded-3xl border p-2.5 shadow-md backdrop-blur-xl ${isDark
+                className={`rounded-[clamp(1.25rem,5vw,1.5rem)] md:rounded-3xl border p-[clamp(0.5rem,2.5vw,0.625rem)] md:p-2.5 shadow-md backdrop-blur-xl ${isDark
                     ? 'border-white/10 bg-[#2F2F2F]'
                     : 'border-slate-200 bg-[#F4F4F4]'
                     }`}
@@ -4964,7 +4964,7 @@ const GuestAIDemo = () => {
                         })}
                     </div>
                 )}
-                <div className="flex items-end gap-2">
+                <div className="flex items-end gap-[clamp(0.35rem,1.8vw,0.5rem)] md:gap-2">
                     <div className="flex flex-1 items-center bg-transparent">
                         <div className="flex flex-col flex-1">
                             <textarea
@@ -4986,7 +4986,7 @@ const GuestAIDemo = () => {
                                 }}
                                 rows={1}
                                 placeholder={composerPlaceholder}
-                                className={`max-h-[120px] min-h-[44px] w-full resize-none bg-transparent px-4 py-3 text-base outline-none ${isDark
+                                className={`max-h-[120px] min-h-[clamp(2.5rem,8vw,2.75rem)] md:min-h-[44px] w-full resize-none bg-transparent px-[clamp(0.75rem,3vw,1rem)] md:px-4 py-[clamp(0.65rem,2.8vw,0.75rem)] md:py-3 text-[clamp(0.95rem,3.6vw,1rem)] md:text-base outline-none ${isDark
                                     ? 'text-white placeholder:text-slate-400'
                                     : 'text-slate-900 placeholder:text-slate-500'
                                     }`}
@@ -4996,7 +4996,7 @@ const GuestAIDemo = () => {
                         </div>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-1.5 px-2 pb-1.5">
+                    <div className="flex shrink-0 items-center gap-[clamp(0.15rem,1vw,0.375rem)] md:gap-1.5 px-[clamp(0.25rem,1vw,0.5rem)] md:px-2 pb-[clamp(0.2rem,1vw,0.375rem)] md:pb-1.5">
                         <input
                             ref={attachmentInputRef}
                             type="file"
@@ -5011,9 +5011,9 @@ const GuestAIDemo = () => {
                             variant="ghost"
                             onClick={openAttachmentPicker}
                             disabled={isTyping || isUploadingAttachment}
-                            className={`h-9 w-9 rounded-full ${isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
+                            className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full ${isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
                         >
-                            <Paperclip className="h-4 w-4" />
+                            <Paperclip className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />
                         </Button>
                         {isSpeechSupported && (
                             <Button
@@ -5022,21 +5022,21 @@ const GuestAIDemo = () => {
                                 variant="ghost"
                                 onClick={toggleVoiceInput}
                                 disabled={isTyping || isUploadingAttachment}
-                                className={`h-9 w-9 rounded-full ${isListening ? 'bg-primary/20 text-primary animate-pulse' : isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
+                                className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full ${isListening ? 'bg-primary/20 text-primary animate-pulse' : isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
                             >
-                                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                                {isListening ? <MicOff className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" /> : <Mic className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />}
                             </Button>
                         )}
                         <Button
                             size="icon"
                             type="submit"
                             disabled={((!input.trim() && pendingAttachments.length === 0) || (isPendingOptionFollowup && !input.trim())) || isTyping || isUploadingAttachment}
-                            className={`h-9 w-9 rounded-full transition-colors ${input.trim() || pendingAttachments.length > 0
+                            className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full transition-colors ${input.trim() || pendingAttachments.length > 0
                                     ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
                                     : isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-400'
                                 }`}
                         >
-                            <Send className="h-4 w-4 shrink-0" />
+                            <Send className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4 shrink-0" />
                         </Button>
                     </div>
                 </div>
@@ -5050,7 +5050,7 @@ const GuestAIDemo = () => {
     };
 
     return (
-        <div className="mt-16 flex h-[calc(100svh-4rem)] overflow-hidden bg-background lg:mt-20 lg:h-[calc(100svh-5rem)]">
+        <div className="mt-16 flex h-[calc(100dvh-4rem)] min-h-[calc(100dvh-4rem)] overflow-hidden bg-background lg:mt-20 lg:h-[calc(100dvh-5rem)] lg:min-h-[calc(100dvh-5rem)]">
             {/* Backdrop — closes sidebar when clicking outside */}
             {!isSidebarCompact && (
                 <div
@@ -5372,7 +5372,7 @@ const GuestAIDemo = () => {
                 </div>
             </aside>
 
-            <section className={`relative flex min-w-0 flex-1 flex-col bg-transparent pt-3 ${isInitialScreen ? 'justify-center items-center' : ''}`}>
+            <section className={`relative flex min-w-0 flex-1 flex-col overflow-hidden bg-transparent pt-3 ${isInitialScreen ? 'md:items-center md:justify-center md:pt-0' : ''}`}>
 
                 {/* Sidebar toggle button in top-left of chat area */}
                 <div className="absolute left-3 top-3 z-20">
@@ -5388,8 +5388,11 @@ const GuestAIDemo = () => {
                     </Button>
                 </div>
 
-                <ScrollArea ref={scrollRef} className={`w-full transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''} ${isInitialScreen ? 'flex flex-col' : 'flex-1 min-h-0 pt-4'}`}>
-                    <div className={`mx-auto flex w-full max-w-4xl flex-col space-y-8 px-5 lg:px-8 ${isInitialScreen ? 'pt-8' : 'pt-4 pb-52'}`}>
+                <ScrollArea
+                    ref={scrollRef}
+                    className={`w-full transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''} ${isInitialScreen ? 'flex-1 min-h-0 pt-4 md:flex-none md:min-h-fit md:pt-0' : 'flex-1 min-h-0 pt-4'}`}
+                >
+                    <div className={`mx-auto flex w-full max-w-4xl flex-col space-y-8 px-4 sm:px-5 lg:px-8 ${isInitialScreen ? 'pt-14 pb-6 md:pt-0 md:pb-0' : 'pt-4 pb-10 sm:pb-12'}`}>
                         {messages.map((msg, idx) => {
                             const { text: messageContent, attachments: messageAttachments, urls: messageUrls } = parseMessageContentWithAttachments(
                                 msg.content,
@@ -5625,19 +5628,22 @@ const GuestAIDemo = () => {
                         )}
 
                         {isInitialScreen && (
-                            <div className="mt-8 w-full">
+                            <div className="mt-8 hidden w-full md:block">
                                 {renderChatInput()}
                             </div>
                         )}
+
                     </div>
                 </ScrollArea>
 
-                {/* Fixed bottom input box only when NOT initial screen */}
-                {!isInitialScreen && (
-                    <div className={`absolute bottom-0 w-full px-5 pb-4 pt-12 transition-[padding-left] duration-300 ease-in-out lg:px-8 ${!isSidebarCompact ? 'lg:pl-[20rem]' : ''} bg-gradient-to-t ${isDark ? 'from-[#212121] via-[#212121]/90 to-transparent' : 'from-[#F9F9F9] via-[#F9F9F9]/90 to-transparent'}`}>
+                {shouldShowTextInput && (
+                    <div
+                        className={`shrink-0 w-full px-[clamp(0.75rem,4vw,1rem)] pt-[clamp(0.75rem,4vw,1.5rem)] sm:px-5 lg:px-8 transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-[20rem]' : ''} ${isInitialScreen ? 'md:hidden' : ''} bg-gradient-to-t ${isDark ? 'from-[#212121] via-[#212121]/90 to-transparent' : 'from-[#F9F9F9] via-[#F9F9F9]/90 to-transparent'}`}
+                        style={{ paddingBottom: 'max(1.25rem, calc(env(safe-area-inset-bottom) + 0.5rem))' }}
+                    >
                         <div className="mx-auto w-full max-w-4xl space-y-2.5">
                             {renderChatInput()}
-                            <p className={`text-center text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <p className={`hidden text-center text-xs sm:block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                 AI can make mistakes. Check important info.
                             </p>
                         </div>

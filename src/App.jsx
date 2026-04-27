@@ -92,7 +92,7 @@ const FreelancerProposal = lazy(
   () => import("@/components/features/freelancer/FreelancerProposal"),
 );
 const FreelancerProfile = lazy(
-  () => import("@/components/features/freelancer/FreelancerProfile"),
+  () => import("@/pages/freelancer/FreelancerProfile.jsx"),
 );
 const FreelancerProjects = lazy(
   () => import("@/components/features/freelancer/FreelancerProjects"),
@@ -108,9 +108,6 @@ const FreelancerPayments = lazy(
 );
 const FreelancerOnboardingPage = lazy(
   () => import("@/pages/freelancer/FreelancerOnboarding.jsx"),
-);
-const FreelancerMultiStepForm = lazy(
-  () => import("@/components/features/freelancer/onboarding"),
 );
 const NotepadPage = lazy(() => import("@/components/pages/notepad-page"));
 const AdminDashboard = lazy(
@@ -138,6 +135,9 @@ const AdminServices = lazy(
 );
 const AdminServiceQuestions = lazy(
   () => import("@/components/features/admin/AdminServiceQuestions"),
+);
+const AdminBlogs = lazy(
+  () => import("@/components/features/admin/AdminBlogs"),
 );
 const GetStarted = lazy(() => import("@/components/features/auth/GetStarted"));
 const BrowseTalent = lazy(() => import("@/components/pages/BrowseTalent"));
@@ -545,7 +545,7 @@ const App = () => {
             <Route
               path="/freelancer/proposals"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProposal />
                 </ProtectedRoute>
               }
@@ -553,7 +553,7 @@ const App = () => {
             <Route
               path="/freelancer/proposals/received"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProposal filter="received" />
                 </ProtectedRoute>
               }
@@ -561,7 +561,7 @@ const App = () => {
             <Route
               path="/freelancer/proposals/accepted"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProposal filter="accepted" />
                 </ProtectedRoute>
               }
@@ -569,7 +569,7 @@ const App = () => {
             <Route
               path="/freelancer/project"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProjects />
                 </ProtectedRoute>
               }
@@ -577,7 +577,7 @@ const App = () => {
             <Route
               path="/freelancer/project/:projectId"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProjectDetail />
                 </ProtectedRoute>
               }
@@ -585,7 +585,7 @@ const App = () => {
             <Route
               path="/freelancer/messages"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerChat />
                 </ProtectedRoute>
               }
@@ -593,39 +593,26 @@ const App = () => {
             <Route
               path="/freelancer/payments"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerPayments />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/freelancer/onboarding/new"
-              element={
-                <ProtectedRoute loginPath="/signup?role=freelancer">
-                  <FreelancerOnboardingPage />
                 </ProtectedRoute>
               }
             />
             <Route
               path="/freelancer/onboarding"
               element={
-                <ProtectedRoute loginPath="/signup?role=freelancer">
-                  <FreelancerMultiStepForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/freelancer/verification-pending"
-              element={
-                <ProtectedRoute>
-                  <Navigate to="/freelancer" replace />
+                <ProtectedRoute
+                  allowFreelancerOnboardingOnly
+                  loginPath="/signup?role=freelancer"
+                >
+                  <FreelancerOnboardingPage />
                 </ProtectedRoute>
               }
             />
             <Route
               path="/freelancer/profile"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireFreelancerOnboardingComplete>
                   <FreelancerProfile />
                 </ProtectedRoute>
               }
@@ -677,6 +664,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminServiceQuestions />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/blogs"
+              element={
+                <AdminRoute>
+                  <AdminBlogs />
                 </AdminRoute>
               }
             />

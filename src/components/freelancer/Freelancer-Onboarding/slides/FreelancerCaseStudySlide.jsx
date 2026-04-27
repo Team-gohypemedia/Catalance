@@ -1,9 +1,11 @@
 import { useRef } from "react";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
+import Plus from "lucide-react/dist/esm/icons/plus";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 
+import { cn } from "@/shared/lib/utils";
 import {
   ServiceInfoStepper,
   CustomSelect,
@@ -24,6 +26,9 @@ const TIMELINE_OPTIONS = [
   { value: "8_12_weeks", label: "8–12 Weeks" },
   { value: "12_plus_weeks", label: "12+ Weeks" },
 ];
+
+const getCaseStudyLabel = (caseStudy = {}, index = 0) =>
+  String(caseStudy?.title || "").trim() || `Project ${index + 1}`;
 
 /* ──────────────────── File Upload Button ──────────────────── */
 
@@ -68,10 +73,16 @@ const FileUploadButton = ({ file, onChange }) => {
 const FreelancerCaseStudySlide = ({
   currentServiceName,
   caseStudyForm,
+  activeCaseStudyIndex = 0,
   nicheOptions = [],
   onCaseStudyFieldChange,
+  onAddCaseStudy,
+  onServiceStepChange,
 }) => {
   const serviceName = currentServiceName || "Service";
+  const activeCaseStudyLabel =
+    String(caseStudyForm?.title || "").trim() ||
+    `Project ${Number.isInteger(activeCaseStudyIndex) ? activeCaseStudyIndex + 1 : 1}`;
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
@@ -88,7 +99,10 @@ const FreelancerCaseStudySlide = ({
 
         {/* Stepper */}
         <div className="w-full">
-          <ServiceInfoStepper activeStepId="caseStudy" />
+          <ServiceInfoStepper
+            activeStepId="caseStudy"
+            onStepChange={onServiceStepChange}
+          />
         </div>
 
         {/* Step Content */}
@@ -103,10 +117,31 @@ const FreelancerCaseStudySlide = ({
             </p>
           </div>
 
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  Case Studies
+                </p>
+                <p className="text-xs leading-relaxed text-white/40">
+                  Add multiple projects and switch between them while filling the details.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onAddCaseStudy}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14"
+              >
+                <Plus className="h-4 w-4" />
+                Add Case Study
+              </button>
+            </div>
+          </div>
+
           {/* Project Header */}
           <h3 className="text-xl font-semibold text-white sm:text-2xl">
-            Project 1{" "}
-            <span className="font-normal text-white">({serviceName})</span>
+            {activeCaseStudyLabel}
           </h3>
 
           <div className="space-y-6">
@@ -139,6 +174,21 @@ const FreelancerCaseStudySlide = ({
                 placeholder="Briefly describe the project and its goals..."
                 rows={4}
                 className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              />
+            </div>
+
+            {/* Niche */}
+            <div className="space-y-2.5">
+              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                Niche
+              </label>
+              <CustomSelect
+                value={caseStudyForm.niche}
+                onChange={(val) => onCaseStudyFieldChange("niche", val)}
+                options={nicheOptions}
+                placeholder="select niche"
+                isSearchable
+                searchPlaceholder="Search niches"
               />
             </div>
 
@@ -226,18 +276,6 @@ const FreelancerCaseStudySlide = ({
               </div>
             </div>
 
-            {/* Niche */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                Niche
-              </label>
-              <CustomSelect
-                value={caseStudyForm.niche}
-                onChange={(val) => onCaseStudyFieldChange("niche", val)}
-                options={nicheOptions}
-                placeholder="select niche"
-              />
-            </div>
           </div>
         </div>
       </div>

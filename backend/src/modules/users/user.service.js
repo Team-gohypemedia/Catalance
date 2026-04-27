@@ -168,34 +168,26 @@ const withFreelancerProfileInclude = (query = {}) => {
 };
 
 const FREELANCER_PROFILE_FIELD_KEYS = new Set([
-  "bio",
   "professionalBio",
-  "skills",
-  "jobTitle",
   "companyName",
-  "location",
-  "available",
   "openToWork",
   "rating",
   "reviewCount",
   "experienceYears",
   "workExperience",
   "services",
-  "portfolio",
-  "linkedin",
-  "github",
-  "portfolioProjects",
   "resume",
   "serviceTitle",
   "serviceCategory",
   "serviceExperience",
-  "serviceComplexity",
   "serviceDescription",
   "deliveryTimeline",
   "startingPrice",
   "serviceKeywords",
   "serviceMedia",
-  "acceptInProgressProjects"
+  "acceptInProgressProjects",
+  "socialMediaLinks",
+  "coverImage"
 ]);
 
 const pickFreelancerProfileUpdates = (updates = {}) =>
@@ -237,20 +229,15 @@ const resolveFreelancerProfileDetails = (user = null) => {
 const resolveFreelancerProfileRecord = (user = null) => {
   if (!user || typeof user !== "object") {
     return {
-      skills: [],
       services: [],
-      portfolioProjects: [],
       workExperience: [],
       reviewCount: 0,
       rating: 0,
       experienceYears: 0,
-      available: true,
       openToWork: true,
       serviceTitle: null,
       serviceCategory: null,
       serviceExperience: null,
-      serviceComplexity: null,
-      projectComplexity: null,
       serviceDescription: null,
       deliveryTimeline: null,
       startingPrice: null,
@@ -267,26 +254,15 @@ const resolveFreelancerProfileRecord = (user = null) => {
   const read = (key) =>
     relation[key] !== undefined ? relation[key] : user[key];
 
-  const skills = Array.isArray(read("skills")) ? read("skills") : [];
   const services = Array.isArray(read("services")) ? read("services") : [];
-  const portfolioProjects = Array.isArray(read("portfolioProjects"))
-    ? read("portfolioProjects")
-    : [];
   const workExperienceRaw = read("workExperience");
   const workExperience = Array.isArray(workExperienceRaw) ? workExperienceRaw : [];
   const reviewCountRaw = read("reviewCount");
   const experienceYearsRaw = read("experienceYears");
 
   return {
-    bio: read("bio") ?? null,
-    skills,
-    jobTitle: read("jobTitle") ?? null,
+    professionalBio: read("professionalBio") ?? null,
     companyName: read("companyName") ?? null,
-    location: read("location") ?? null,
-    available:
-      typeof read("available") === "boolean"
-        ? read("available")
-        : user?.status === "ACTIVE",
     openToWork:
       typeof read("openToWork") === "boolean"
         ? read("openToWork")
@@ -298,18 +274,10 @@ const resolveFreelancerProfileRecord = (user = null) => {
       : 0,
     workExperience,
     services,
-    portfolio: read("portfolio") ?? null,
-    linkedin: read("linkedin") ?? null,
-    github: read("github") ?? null,
-    portfolioProjects,
     resume: read("resume") ?? null,
     serviceTitle: read("serviceTitle") ?? null,
     serviceCategory: read("serviceCategory") ?? null,
     serviceExperience: read("serviceExperience") ?? null,
-    serviceComplexity:
-      read("serviceComplexity") ?? read("projectComplexity") ?? null,
-    projectComplexity:
-      read("serviceComplexity") ?? read("projectComplexity") ?? null,
     serviceDescription: read("serviceDescription") ?? null,
     deliveryTimeline: read("deliveryTimeline") ?? null,
     startingPrice: read("startingPrice") ?? null,
@@ -521,6 +489,46 @@ const normalizePortfolioProjects = (projects) => {
   return Array.from(projectMap.values()).slice(0, 24);
 };
 
+const normalizeSocialMediaLinks = (links) => {
+  const entries = Array.isArray(links)
+    ? links
+    : links && typeof links === "object"
+      ? Object.entries(links).map(([platform, url]) => ({ platform, url }))
+      : [];
+  const linkMap = new Map();
+
+  entries.forEach((entry, index) => {
+    const normalizedEntry =
+      entry && typeof entry === "object"
+        ? entry
+        : { platform: "", url: String(entry || "") };
+    const platform = String(
+      normalizedEntry.platform ||
+        normalizedEntry.name ||
+        normalizedEntry.type ||
+        ""
+    ).trim();
+    const url = String(
+      normalizedEntry.url ||
+        normalizedEntry.link ||
+        normalizedEntry.href ||
+        ""
+    ).trim();
+
+    if (!platform && !url) return;
+
+    const dedupKey = `${platform.toLowerCase()}:${url.toLowerCase() || index}`;
+    if (linkMap.has(dedupKey)) return;
+
+    linkMap.set(dedupKey, {
+      platform,
+      url
+    });
+  });
+
+  return Array.from(linkMap.values()).slice(0, 24);
+};
+
 const normalizeServiceMedia = (media, { max = 3 } = {}) => {
   if (!Array.isArray(media)) return [];
 
@@ -663,6 +671,43 @@ const normalizeUsername = (value = "") =>
   String(value || "")
     .trim()
     .toLowerCase();
+
+const isPlainObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value);
+
+const cloneJsonValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => cloneJsonValue(entry));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, cloneJsonValue(entry)])
+    );
+  }
+
+  return value;
+};
+
+const mergeProfileDetailsPatch = (baseValue = {}, patchValue = {}) => {
+  const base = isPlainObject(baseValue) ? cloneJsonValue(baseValue) : {};
+  if (!isPlainObject(patchValue)) return base;
+
+  Object.entries(patchValue).forEach(([key, value]) => {
+    if (isPlainObject(value) && isPlainObject(base[key])) {
+      base[key] = mergeProfileDetailsPatch(base[key], value);
+      return;
+    }
+
+    base[key] = cloneJsonValue(value);
+  });
+
+  return base;
+};
+
+const profileDetailsPatchHasAny = (patch = {}, keys = []) =>
+  isPlainObject(patch) &&
+  keys.some((key) => Object.prototype.hasOwnProperty.call(patch, key));
 
 const normalizeFreelancerProfileDetails = (profileDetails) => {
   if (!profileDetails || typeof profileDetails !== "object") return {};
@@ -994,9 +1039,6 @@ const buildFreelancerProjectOnboardingSnapshot = ({
     ),
     deliveryTime: normalizeOptionalText(
       detail?.deliveryTime || detail?.deliveryDays || detail?.caseStudy?.timeline
-    ),
-    projectComplexityLevel: normalizeOptionalText(
-      detail?.serviceComplexity || detail?.projectComplexity
     ),
     acceptInProgressProjects: normalizeAcceptInProgressProjectsLabel(
       profileDetails?.acceptInProgressProjects
@@ -1375,9 +1417,6 @@ const deriveMarketplaceServiceDetails = ({
       ),
       averageProjectPriceRange: normalizeOptionalText(
         detail?.averageProjectPrice || detail?.averagePrice
-      ),
-      projectComplexityLevel: normalizeOptionalText(
-        detail?.serviceComplexity || detail?.projectComplexity
       )
     };
   });
@@ -1883,34 +1922,29 @@ export const updateUserProfile = async (userId, updates) => {
     "fullName",
     "phone",
     "phoneNumber",
-    "bio",
     "professionalBio",
-    "portfolio",
-    "linkedin",
-    "github",
     "avatar",
     "profileDetails",
+    "profileDetailsPatch",
     "onboardingComplete",
     "services",
-    "skills",
-    "portfolioProjects",
-    "location",
-    "jobTitle",
     "companyName",
-    "available",
+    "openToWork",
     "experienceYears",
     "workExperience",
     "resume",
     "serviceTitle",
     "serviceCategory",
     "serviceExperience",
-    "serviceComplexity",
     "serviceDescription",
     "deliveryTimeline",
     "startingPrice",
     "serviceKeywords",
     "serviceMedia",
-    "acceptInProgressProjects"
+    "acceptInProgressProjects",
+    "socialMediaLinks",
+    "coverImage",
+    "portfolioProjects"
   ];
   const cleanUpdates = {};
 
@@ -1921,30 +1955,27 @@ export const updateUserProfile = async (userId, updates) => {
         cleanUpdates[key] = extractBioText(updates[key]);
       } else if (key === "phone" || key === "phoneNumber") {
         cleanUpdates.phoneNumber = normalizeOptionalText(updates[key]);
-      } else if (key === "skills") {
-        cleanUpdates[key] = normalizeSkills(updates[key], {
-          strictTech: true,
-          max: 120
-        });
       } else if (key === "serviceKeywords") {
         cleanUpdates[key] = normalizeStringList(updates[key], { max: 5 });
       } else if (key === "serviceMedia") {
         cleanUpdates[key] = normalizeServiceMedia(updates[key], { max: 3 });
       } else if (key === "avatar") {
         cleanUpdates[key] = extractAvatarUrl(updates[key]);
-      } else if (key === "portfolioProjects") {
-        cleanUpdates[key] = normalizePortfolioProjects(updates[key]);
-      } else if (key === "location") {
-        cleanUpdates[key] = normalizeOptionalText(updates[key]);
+      } else if (key === "coverImage") {
+        cleanUpdates[key] = extractAvatarUrl(updates[key]);
       } else if (key === "profileDetails") {
+        cleanUpdates[key] = normalizeFreelancerProfileDetails(updates[key]);
+      } else if (key === "profileDetailsPatch") {
         cleanUpdates[key] = normalizeFreelancerProfileDetails(updates[key]);
       } else if (key === "services") {
         cleanUpdates[key] = normalizeMarketplaceServiceKeys(updates[key], {
           max: 64
         });
-      } else if (key === "available") {
-        cleanUpdates[key] = Boolean(updates[key]);
-      } else if (key === "acceptInProgressProjects") {
+      } else if (key === "portfolioProjects") {
+        cleanUpdates[key] = normalizePortfolioProjects(updates[key]);
+      } else if (key === "socialMediaLinks") {
+        cleanUpdates[key] = normalizeSocialMediaLinks(updates[key]);
+      } else if (key === "openToWork" || key === "acceptInProgressProjects") {
         const parsedBoolean = parseBooleanFilter(updates[key]);
         if (parsedBoolean !== undefined) {
           cleanUpdates[key] = parsedBoolean;
@@ -1958,26 +1989,16 @@ export const updateUserProfile = async (userId, updates) => {
       } else if (key === "workExperience") {
         cleanUpdates[key] = normalizeWorkExperienceEntries(updates[key]);
       } else if (
-        key === "portfolio" ||
-        key === "linkedin" ||
-        key === "github" ||
-        key === "jobTitle" ||
         key === "companyName" ||
         key === "resume" ||
         key === "serviceTitle" ||
         key === "serviceCategory" ||
         key === "serviceExperience" ||
-        key === "serviceComplexity" ||
-        key === "projectComplexity" ||
         key === "deliveryTimeline" ||
         key === "startingPrice"
       ) {
         const normalizedValue = normalizeOptionalText(updates[key]);
-        if (key === "serviceComplexity" || key === "projectComplexity") {
-          cleanUpdates.serviceComplexity = normalizedValue;
-        } else {
-          cleanUpdates[key] = normalizedValue;
-        }
+        cleanUpdates[key] = normalizedValue;
       } else if (key === "serviceDescription") {
         cleanUpdates[key] = normalizeOptionalText(updates[key]);
       } else {
@@ -1999,29 +2020,42 @@ export const updateUserProfile = async (userId, updates) => {
       );
     }
 
-    const hasExplicitSkillsUpdate = Object.prototype.hasOwnProperty.call(
-      cleanUpdates,
-      "skills"
-    );
-    const profileDerivedSkills = extractSkillsFromProfileDetails(
-      cleanUpdates.profileDetails,
-      { strictTech: true, max: 120 }
-    );
-
-    // Respect explicit skill edits from the profile UI (add/remove/reorder).
-    // Only derive skills from profileDetails when a direct skills update is not supplied.
-    if (!hasExplicitSkillsUpdate && profileDerivedSkills.length) {
-      cleanUpdates.skills = normalizeSkills(profileDerivedSkills, {
-        strictTech: true,
-        max: 120
-      });
-    }
-
     if (!Object.prototype.hasOwnProperty.call(cleanUpdates, "services")) {
       cleanUpdates.services = deriveMarketplaceServices({
         profileDetails: cleanUpdates.profileDetails
       });
     }
+  }
+
+  const hasProfileDetailsPatch = Object.prototype.hasOwnProperty.call(
+    cleanUpdates,
+    "profileDetailsPatch"
+  );
+  const profileDetailsPatch = hasProfileDetailsPatch
+    ? cleanUpdates.profileDetailsPatch
+    : undefined;
+  if (hasProfileDetailsPatch) {
+    delete cleanUpdates.profileDetailsPatch;
+
+    if (
+      !Object.prototype.hasOwnProperty.call(cleanUpdates, "professionalBio") &&
+      Object.prototype.hasOwnProperty.call(profileDetailsPatch, "professionalBio")
+    ) {
+      cleanUpdates.professionalBio = extractBioText(
+        profileDetailsPatch.professionalBio
+      );
+    }
+  }
+
+  const hasPortfolioProjectsUpdate = Object.prototype.hasOwnProperty.call(
+    cleanUpdates,
+    "portfolioProjects"
+  );
+  const resolvedPortfolioProjectsUpdate = hasPortfolioProjectsUpdate
+    ? cleanUpdates.portfolioProjects
+    : undefined;
+  if (hasPortfolioProjectsUpdate) {
+    delete cleanUpdates.portfolioProjects;
   }
 
   if (
@@ -2033,30 +2067,6 @@ export const updateUserProfile = async (userId, updates) => {
     );
     if (derivedAvatar) {
       cleanUpdates.avatar = derivedAvatar;
-    }
-  }
-
-  if (
-    !Object.prototype.hasOwnProperty.call(cleanUpdates, "location") &&
-    cleanUpdates.profileDetails?.identity
-  ) {
-    const derivedLocation = buildLocationFromIdentity(
-      cleanUpdates.profileDetails.identity
-    );
-    if (derivedLocation) {
-      cleanUpdates.location = derivedLocation;
-    }
-  }
-
-  if (
-    !Object.prototype.hasOwnProperty.call(cleanUpdates, "jobTitle") &&
-    cleanUpdates.profileDetails?.identity
-  ) {
-    const derivedJobTitle = buildJobTitleFromIdentity(
-      cleanUpdates.profileDetails.identity
-    );
-    if (derivedJobTitle) {
-      cleanUpdates.jobTitle = derivedJobTitle;
     }
   }
 
@@ -2113,28 +2123,44 @@ export const updateUserProfile = async (userId, updates) => {
     let resolvedProfileDetails = hasProfileDetailsUpdate
       ? nextFreelancerProfileUpdates.profileDetails
       : existingFreelancerProfile.profileDetails;
+    const shouldApplyProfileDetailsPatch =
+      hasProfileDetailsPatch && isPlainObject(profileDetailsPatch);
+    if (shouldApplyProfileDetailsPatch) {
+      resolvedProfileDetails = mergeProfileDetailsPatch(
+        resolvedProfileDetails,
+        profileDetailsPatch
+      );
+      nextFreelancerProfileUpdates.profileDetails = resolvedProfileDetails;
+    }
+
     let resolvedServices = Object.prototype.hasOwnProperty.call(
       nextFreelancerProfileUpdates,
       "services"
     )
       ? nextFreelancerProfileUpdates.services
       : existingFreelancerProfile.services;
-    let resolvedPortfolioProjects = Object.prototype.hasOwnProperty.call(
+    const hasServicesUpdate = Object.prototype.hasOwnProperty.call(
       nextFreelancerProfileUpdates,
-      "portfolioProjects"
-    )
-      ? nextFreelancerProfileUpdates.portfolioProjects
-      : existingFreelancerProfile.portfolioProjects;
+      "services"
+    );
+    const hasAnyProfileDetailsUpdate =
+      hasProfileDetailsUpdate || shouldApplyProfileDetailsPatch;
+    const profileDetailsPatchTouchesMarketplace =
+      shouldApplyProfileDetailsPatch &&
+      profileDetailsPatchHasAny(profileDetailsPatch, ["services", "serviceDetails"]);
+    const profileDetailsPatchTouchesProjects =
+      profileDetailsPatchTouchesMarketplace ||
+      (shouldApplyProfileDetailsPatch &&
+        profileDetailsPatchHasAny(profileDetailsPatch, ["portfolioProjects"]));
+    const profileDetailsPatchTouchesSkills =
+      profileDetailsPatchTouchesMarketplace ||
+      (shouldApplyProfileDetailsPatch &&
+        profileDetailsPatchHasAny(profileDetailsPatch, ["skills", "skillLevels"]));
     const shouldSyncFreelancerProfileDetails =
-      hasProfileDetailsUpdate ||
-      Object.prototype.hasOwnProperty.call(nextFreelancerProfileUpdates, "services") ||
-      Object.prototype.hasOwnProperty.call(
-        nextFreelancerProfileUpdates,
-        "portfolioProjects"
-      );
+      hasAnyProfileDetailsUpdate || hasServicesUpdate;
 
     let marketplaceHierarchy = null;
-    if (hasProfileDetailsUpdate) {
+    if (hasProfileDetailsUpdate || profileDetailsPatchTouchesMarketplace) {
       marketplaceHierarchy = await loadMarketplaceHierarchySnapshot(tx);
       const canonicalProfileDetails = buildCanonicalProfileDetails({
         profileDetails: resolvedProfileDetails,
@@ -2148,8 +2174,6 @@ export const updateUserProfile = async (userId, updates) => {
         ? canonicalProfileDetails.services
         : [];
       resolvedServices = nextFreelancerProfileUpdates.services;
-      nextFreelancerProfileUpdates.skills =
-        deriveTopLevelSkillsFromProfileDetails(canonicalProfileDetails);
 
       const primarySnapshot = buildPrimaryServiceSnapshot({
         profileDetails: canonicalProfileDetails,
@@ -2159,6 +2183,10 @@ export const updateUserProfile = async (userId, updates) => {
 
       Object.assign(nextFreelancerProfileUpdates, primarySnapshot);
     }
+
+    const resolvedPortfolioProjects = hasPortfolioProjectsUpdate
+      ? resolvedPortfolioProjectsUpdate
+      : normalizePortfolioProjects(resolvedProfileDetails?.portfolioProjects);
 
     if (Object.keys(nextFreelancerProfileUpdates).length) {
       await upsertFreelancerProfile({
@@ -2218,10 +2246,8 @@ export const updateUserProfile = async (userId, updates) => {
     const shouldSyncFreelancerProjects =
       isFreelancerUser &&
       (hasProfileDetailsUpdate ||
-        Object.prototype.hasOwnProperty.call(
-          nextFreelancerProfileUpdates,
-          "portfolioProjects"
-        ));
+        profileDetailsPatchTouchesProjects ||
+        hasPortfolioProjectsUpdate);
 
     if (shouldSyncFreelancerProjects) {
       const normalizedProjects = deriveFreelancerProjects({
@@ -2235,7 +2261,8 @@ export const updateUserProfile = async (userId, updates) => {
     const shouldSyncMarketplace =
       isFreelancerUser &&
       (hasProfileDetailsUpdate ||
-        Object.prototype.hasOwnProperty.call(nextFreelancerProfileUpdates, "services") ||
+        profileDetailsPatchTouchesMarketplace ||
+        hasServicesUpdate ||
         Object.prototype.hasOwnProperty.call(userUpdates, "onboardingComplete"));
 
     if (shouldSyncMarketplace) {
@@ -2253,7 +2280,8 @@ export const updateUserProfile = async (userId, updates) => {
 
     const shouldSyncFreelancerSkills =
       hasProfileDetailsUpdate ||
-      Object.prototype.hasOwnProperty.call(nextFreelancerProfileUpdates, "services");
+      profileDetailsPatchTouchesSkills ||
+      hasServicesUpdate;
 
     if (shouldSyncFreelancerSkills) {
       if (!marketplaceHierarchy) {
@@ -2696,31 +2724,11 @@ const createUserRecord = async (payload) => {
     const normalizedFreelancerProfile = normalizeFreelancerProfileDetails(
       payload.freelancerProfile
     );
-    const explicitLocation = String(payload.location || "").trim();
-    const identityLocation = buildLocationFromIdentity(
-      normalizedFreelancerProfile?.identity
-    );
-    const identityJobTitle = buildJobTitleFromIdentity(
-      normalizedFreelancerProfile?.identity
-    );
     const explicitAvatar = extractAvatarUrl(payload.avatar);
     const identityAvatar = extractAvatarUrl(
       normalizedFreelancerProfile?.identity?.profilePhoto
     );
     const resolvedAvatar = explicitAvatar || identityAvatar || null;
-    const resolvedLocation = explicitLocation || identityLocation || null;
-    const explicitSkills = normalizeSkills(payload.skills, {
-      strictTech: true,
-      max: 120
-    });
-    const profileDerivedSkills = extractSkillsFromProfileDetails(
-      normalizedFreelancerProfile,
-      { strictTech: true, max: 120 }
-    );
-    const mergedSkills = normalizeSkills(
-      [...explicitSkills, ...profileDerivedSkills],
-      { strictTech: true, max: 120 }
-    );
     const normalizedPortfolioProjects = normalizePortfolioProjects(
       payload.portfolioProjects
     );
@@ -2737,27 +2745,17 @@ const createUserRecord = async (payload) => {
         ? Math.round(parsedExperienceYears)
         : 0;
     const freelancerProfileData = {
-      bio: extractBioText(payload.bio),
-      skills: mergedSkills,
-      jobTitle: identityJobTitle || payload.jobTitle || null,
       companyName: String(payload.companyName || "").trim() || null,
-      location: resolvedLocation,
+      professionalBio: extractBioText(payload.bio),
       experienceYears: normalizedExperienceYears,
       workExperience: normalizedWorkExperience,
       services: normalizedServices,
-      portfolio: payload.portfolio || null,
-      linkedin: payload.linkedin || null,
-      github: payload.github || null,
-      portfolioProjects: normalizedPortfolioProjects,
       resume: payload.resume || null
     };
     const hasFreelancerProfileData =
       normalizedRole === "FREELANCER" ||
       Object.keys(normalizedFreelancerProfile || {}).length > 0 ||
-      Boolean(freelancerProfileData.bio) ||
-      freelancerProfileData.skills.length > 0 ||
       freelancerProfileData.services.length > 0 ||
-      freelancerProfileData.portfolioProjects.length > 0 ||
       freelancerProfileData.workExperience.length > 0;
     const roles = Array.isArray(payload.roles) && payload.roles.length
       ? Array.from(new Set(payload.roles.map((role) => String(role).toUpperCase())))
@@ -2886,23 +2884,19 @@ export const sanitizeUser = (user) => {
     : [...roles, normalizedRole];
   const isFreelancerProfile =
     normalizedRole === "FREELANCER" || mergedRoles.includes("FREELANCER");
-  const normalizedSkills = normalizeSkills(resolvedFreelancerProfile.skills, {
-    strictTech: true,
-    max: 120
-  });
   const profileDerivedSkills = extractSkillsFromProfileDetails(
     resolvedProfileDetails,
     { strictTech: true, max: 120 }
   );
-  const mergedSkills = normalizeSkills(
-    [...normalizedSkills, ...profileDerivedSkills],
-    { strictTech: true, max: 120 }
-  );
+  const mergedSkills = normalizeSkills(profileDerivedSkills, {
+    strictTech: true,
+    max: 120
+  });
   const profileSkillFallback = Array.isArray(resolvedProfileDetails?.skills)
     ? resolvedProfileDetails.skills
     : [];
   const fallbackSkills = normalizeSkills(
-    [...normalizedSkills, ...profileSkillFallback],
+    profileSkillFallback,
     { strictTech: false, max: 120 }
   );
   const normalizedWorkExperience = normalizeWorkExperienceEntries(
@@ -2919,7 +2913,10 @@ export const sanitizeUser = (user) => {
     services: resolvedFreelancerProfile.services
   });
   const normalizedPortfolioProjects = normalizePortfolioProjects(
-    resolvedFreelancerProfile.portfolioProjects
+    deriveFreelancerProjects({
+      profileDetails: resolvedProfileDetails,
+      portfolioProjects: []
+    })
   );
   const resolvedAvatar = safeUser.avatar || identityAvatar || null;
   const freelancerAvatar =
@@ -2929,36 +2926,31 @@ export const sanitizeUser = (user) => {
 
   return {
     ...safeUser,
-    bio: resolvedFreelancerProfile.bio || null,
+    bio:
+      resolvedFreelancerProfile.professionalBio ||
+      normalizeOptionalText(resolvedProfileDetails?.professionalBio) ||
+      null,
     profileDetails: resolvedProfileDetails,
     skills: mergedSkills.length ? mergedSkills : fallbackSkills,
     avatar: freelancerAvatar,
     isVerified: Boolean(resolvedFreelancerProfile.isVerified),
-    location: identityLocation || resolvedFreelancerProfile.location || null,
-    jobTitle: identityJobTitle || resolvedFreelancerProfile.jobTitle || null,
+    location: identityLocation || null,
+    jobTitle: identityJobTitle || null,
     companyName: resolvedFreelancerProfile.companyName || null,
-    available: resolvedFreelancerProfile.available,
     openToWork: resolvedFreelancerProfile.openToWork,
     rating: resolvedFreelancerProfile.rating ?? 0,
     reviewCount: resolvedFreelancerProfile.reviewCount ?? 0,
     experienceYears: resolvedFreelancerProfile.experienceYears ?? 0,
     services: resolvedServices,
-    portfolio: resolvedFreelancerProfile.portfolio || null,
-    linkedin: resolvedFreelancerProfile.linkedin || null,
-    github: resolvedFreelancerProfile.github || null,
+    portfolio: normalizeOptionalText(resolvedProfileDetails?.identity?.portfolioUrl),
+    linkedin: normalizeOptionalText(resolvedProfileDetails?.identity?.linkedinUrl),
+    github: normalizeOptionalText(resolvedProfileDetails?.identity?.githubUrl),
     portfolioProjects: normalizedPortfolioProjects,
     resume: resolvedFreelancerProfile.resume || null,
     serviceTitle: resolvedFreelancerProfile.serviceTitle || null,
     serviceCategory: resolvedFreelancerProfile.serviceCategory || null,
     serviceExperience: resolvedFreelancerProfile.serviceExperience || null,
-    serviceComplexity:
-      resolvedFreelancerProfile.serviceComplexity ||
-      resolvedFreelancerProfile.projectComplexity ||
-      null,
-    projectComplexity:
-      resolvedFreelancerProfile.serviceComplexity ||
-      resolvedFreelancerProfile.projectComplexity ||
-      null,
+
     serviceDescription: resolvedFreelancerProfile.serviceDescription || null,
     deliveryTimeline: resolvedFreelancerProfile.deliveryTimeline || null,
     startingPrice: resolvedFreelancerProfile.startingPrice || null,
@@ -2968,11 +2960,7 @@ export const sanitizeUser = (user) => {
     serviceMedia: Array.isArray(resolvedFreelancerProfile.serviceMedia)
       ? resolvedFreelancerProfile.serviceMedia
       : [],
-    headline:
-      identityJobTitle ||
-      resolvedFreelancerProfile.jobTitle ||
-      safeUser.headline ||
-      null,
+    headline: identityJobTitle || safeUser.headline || null,
     workExperience: mergedWorkExperience,
     roles: mergedRoles.length ? mergedRoles : [normalizedRole]
   };

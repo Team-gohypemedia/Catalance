@@ -197,8 +197,8 @@ const Contact = () => {
               {
                 icon: Phone,
                 title: "Phone",
-                value: "+91 8447788703",
-                link: "tel:+918447788703",
+                value: "+91 8882855425",
+                link: "tel:+918882855425",
               },
             ].map((item, idx) => (
               <div

@@ -506,10 +506,12 @@ const buildFreelancerSnapshot = (proposal = {}) => {
       Number.isFinite(Number(proposal?.amount)) && Number(proposal.amount) >= 0
         ? Math.round(Number(proposal.amount))
         : null,
-    jobTitle: cleanText(profile?.jobTitle) || null,
-    skills: Array.isArray(profile?.skills) ? uniqueItems(profile.skills) : [],
+    jobTitle:
+      cleanText(profile?.serviceTitle) ||
+      cleanText(profile?.profileRole) ||
+      null,
+    skills: [],
     services: Array.isArray(profile?.services) ? uniqueItems(profile.services) : [],
-    available: Boolean(profile?.available ?? true),
     openToWork: Boolean(profile?.openToWork ?? true),
     rating:
       Number.isFinite(Number(profile?.rating)) && Number(profile.rating) >= 0
@@ -523,9 +525,8 @@ const buildFreelancerSnapshot = (proposal = {}) => {
       Number.isFinite(Number(profile?.experienceYears)) && Number(profile.experienceYears) >= 0
         ? Math.round(Number(profile.experienceYears))
         : 0,
-    profileDetails: isPlainObject(profile?.profileDetails) ? profile.profileDetails : {},
     serviceDetails: isPlainObject(profile?.serviceDetails) ? profile.serviceDetails : {},
-    portfolioProjects: Array.isArray(profile?.portfolioProjects) ? profile.portfolioProjects : [],
+    portfolioProjects: [],
   };
 };
 
