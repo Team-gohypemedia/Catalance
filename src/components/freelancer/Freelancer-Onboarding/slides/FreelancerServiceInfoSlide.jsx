@@ -594,7 +594,7 @@ const FreelancerServiceInfoSlide = ({
         .filter((entry) => Boolean(entry?.isCustom) || !toPositiveInteger(entry?.subCategoryId))
         .map((entry) => ({
           value: getSubcategorySelectionKey(entry),
-          label: String(entry?.label || "").trim() || "Custom sub-category",
+          label: String(entry?.label || entry?.name || entry?.subCategoryLabel || "").trim() || "Custom sub-category",
           isCustom: true,
         }))
         .filter((entry) => entry.value && entry.label),

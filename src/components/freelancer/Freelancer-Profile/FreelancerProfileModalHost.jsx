@@ -25,7 +25,9 @@ const getModalPanelClassName = (modalType, fullProfileEditorSection) =>
                   ? "max-w-2xl max-h-[90vh] overflow-y-auto"
                   : modalType === "addProject"
                     ? "max-w-[1040px] overflow-hidden"
-                    : "max-w-md"
+                    : modalType === "service"
+                      ? "relative max-w-lg overflow-visible"
+                      : "max-w-md"
   }`;
 
 const FreelancerProfileModalHost = ({

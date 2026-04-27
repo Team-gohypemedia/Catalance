@@ -678,18 +678,18 @@ const ProfileSkillsCard = ({
                       openEditServiceProfileModal(activeService.serviceKey);
                     }
                   }}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-primary/35 bg-primary/10 text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Edit service details"
                   title="Edit service details"
                 >
-                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                  <Pencil className="h-4 w-4 text-foreground" aria-hidden="true" />
                 </button>
               ) : null}
               <button
                 type="button"
                 disabled={!canScrollPrevService}
                 onClick={() => serviceCarouselApi?.scrollPrev()}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/10 text-muted-foreground transition-colors hover:bg-white/15 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Previous specialization"
               >
                 <ChevronLeft className="h-5 w-5 text-foreground" aria-hidden="true" />
@@ -698,7 +698,7 @@ const ProfileSkillsCard = ({
                 type="button"
                 disabled={!canScrollNextService}
                 onClick={() => serviceCarouselApi?.scrollNext()}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/10 text-muted-foreground transition-colors hover:bg-white/15 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Next specialization"
               >
                 <ChevronRight className="h-5 w-5 text-foreground" aria-hidden="true" />
@@ -781,7 +781,7 @@ const ProfileSkillsCard = ({
                         type="button"
                         disabled={!canScrollPrevSubcategory}
                         onClick={() => subcategoryCarouselApi?.scrollPrev()}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/10 text-muted-foreground transition-colors hover:bg-white/15 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                         aria-label="Previous sub category"
                       >
                         <ChevronLeft className="h-4 w-4 text-foreground" aria-hidden="true" />
@@ -790,7 +790,7 @@ const ProfileSkillsCard = ({
                         type="button"
                         disabled={!canScrollNextSubcategory}
                         onClick={() => subcategoryCarouselApi?.scrollNext()}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/10 text-muted-foreground transition-colors hover:bg-white/15 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                         aria-label="Next sub category"
                       >
                         <ChevronRight className="h-4 w-4 text-foreground" aria-hidden="true" />
@@ -845,7 +845,7 @@ const ProfileSkillsCard = ({
                         type="button"
                         disabled={!canScrollPrevTechnology}
                         onClick={() => technologyCarouselApi?.scrollPrev()}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/10 text-muted-foreground transition-colors hover:bg-white/15 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                         aria-label="Previous core technology"
                       >
                         <ChevronLeft className="h-4 w-4 text-foreground" aria-hidden="true" />
@@ -854,7 +854,7 @@ const ProfileSkillsCard = ({
                         type="button"
                         disabled={!canScrollNextTechnology}
                         onClick={() => technologyCarouselApi?.scrollNext()}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/10 text-muted-foreground transition-colors hover:bg-white/15 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                         aria-label="Next core technology"
                       >
                         <ChevronRight className="h-4 w-4 text-foreground" aria-hidden="true" />
