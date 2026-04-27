@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -10,6 +10,7 @@ import Lock from "lucide-react/dist/esm/icons/lock";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import Lightbulb from "lucide-react/dist/esm/icons/lightbulb";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { useAuth } from "@/shared/context/AuthContext";
 import { PmShell } from "@/modules/project-manager/components/PmShell";
 import { pmApi } from "@/modules/project-manager/services/pm-api";
@@ -23,6 +24,7 @@ import { Progress } from "@/components/ui/progress";
 
 const sumMilestones = (rows) =>
   rows.reduce((sum, row) => sum + Number(row.percentage || 0), 0);
+const PROJECT_SETUP_DRAFT_KEY = "pm.project-setup-draft.v1";
 
 const fetchUsers = async (authFetch, role) => {
   const response = await authFetch(`/users?role=${role}&status=ACTIVE`);
@@ -72,6 +74,51 @@ const ProjectSetupPage = () => {
   const freelancers = useAsyncResource(() => fetchUsers(authFetch, "FREELANCER"), [authFetch]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const rawDraft = window.localStorage.getItem(PROJECT_SETUP_DRAFT_KEY);
+    if (!rawDraft) return;
+
+    try {
+      const draft = JSON.parse(rawDraft);
+      if (draft?.step1 && typeof draft.step1 === "object") {
+        setStep1((current) => ({ ...current, ...draft.step1 }));
+      }
+      if (draft?.step2 && typeof draft.step2 === "object") {
+        setStep2((current) => {
+          const nextMilestones = Array.isArray(draft.step2.milestones)
+            ? draft.step2.milestones
+                .map((row, index) => ({
+                  key: String(row?.key || `draft-${index + 1}`),
+                  label: String(row?.label || `Phase ${index + 1}`),
+                  percentage: Number(row?.percentage || 0),
+                  isCustom: Boolean(row?.isCustom),
+                }))
+                .filter((row) => row.key && row.label)
+            : current.milestones;
+
+          return {
+            ...current,
+            ...draft.step2,
+            milestones: nextMilestones,
+          };
+        });
+      }
+      if (draft?.step3 && typeof draft.step3 === "object") {
+        setStep3((current) => ({ ...current, ...draft.step3 }));
+      }
+      if (Number.isFinite(Number(draft?.step))) {
+        const nextStep = Math.max(0, Math.min(3, Number(draft.step)));
+        setStep(nextStep);
+      }
+
+      toast.info("Saved project setup draft restored.");
+    } catch {
+      window.localStorage.removeItem(PROJECT_SETUP_DRAFT_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!preselectedFreelancerId) return;
     const rows = Array.isArray(freelancers.data) ? freelancers.data : [];
     const hasFreelancer = rows.some(
@@ -90,6 +137,52 @@ const ProjectSetupPage = () => {
   const milestoneTotal = useMemo(() => sumMilestones(step2.milestones), [step2.milestones]);
   const progress = Math.round(((step + 1) / 4) * 100);
 
+  const saveDraft = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    window.localStorage.setItem(
+      PROJECT_SETUP_DRAFT_KEY,
+      JSON.stringify({
+        step,
+        step1,
+        step2,
+        step3,
+        savedAt: new Date().toISOString(),
+      })
+    );
+    toast.success("Project setup draft saved.");
+  }, [step, step1, step2, step3]);
+
+  const clearDraft = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(PROJECT_SETUP_DRAFT_KEY);
+  }, []);
+
+  const addCustomMilestone = () => {
+    setStep2((current) => {
+      const customCount = current.milestones.filter((row) => row.isCustom).length;
+      return {
+        ...current,
+        milestones: [
+          ...current.milestones,
+          {
+            key: `custom-${Date.now()}`,
+            label: `Custom Phase ${customCount + 1}`,
+            percentage: 0,
+            isCustom: true,
+          },
+        ],
+      };
+    });
+  };
+
+  const removeCustomMilestone = (key) => {
+    setStep2((current) => ({
+      ...current,
+      milestones: current.milestones.filter((row) => row.key !== key),
+    }));
+  };
+
   const canGoNext = () => {
     if (step === 0) return Boolean(step1.projectName && step1.clientId && step1.description);
     if (step === 1) return Number(step2.totalBudget || 0) > 0 && milestoneTotal === 100;
@@ -98,8 +191,8 @@ const ProjectSetupPage = () => {
 
   const steps = [
     { title: "DETAILS", icon: FileText },
-    { title: "TEAM", icon: Users },
     { title: "BUDGET", icon: CreditCard },
+    { title: "TEAM", icon: Users },
     { title: "REVIEW", icon: CheckCircle2 },
   ];
 
@@ -259,8 +352,14 @@ const ProjectSetupPage = () => {
                         </div>
                     </div>
                 </CardContent>
-                <div className="p-10 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
-                    <Button variant="ghost" className="text-sm font-black text-slate-400 hover:text-slate-900">Cancel</Button>
+                    <div className="p-10 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+                    <Button
+                        variant="ghost"
+                        className="text-sm font-black text-slate-400 hover:text-slate-900"
+                        onClick={() => navigate("/project-manager/projects")}
+                    >
+                        Cancel
+                    </Button>
                     <Button 
                         disabled={!canGoNext()}
                         onClick={() => setStep(1)}
@@ -344,7 +443,14 @@ const ProjectSetupPage = () => {
                                 </div>
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Payment Milestones</h3>
                             </div>
-                            <Button variant="link" className="text-xs font-black text-blue-600 hover:no-underline">+ Add Custom Phase</Button>
+                            <Button
+                                type="button"
+                                variant="link"
+                                onClick={addCustomMilestone}
+                                className="text-xs font-black text-blue-600 hover:no-underline"
+                            >
+                                + Add Custom Phase
+                            </Button>
                         </div>
 
                         <div className="space-y-4">
@@ -353,9 +459,22 @@ const ProjectSetupPage = () => {
                                     <div className="flex items-center justify-between">
                                         <div className="space-y-1">
                                             <h4 className="text-base font-black text-slate-900">Phase {idx + 1}: {m.label}</h4>
-                                            <p className="text-xs font-medium text-slate-400">Initial planning and requirements gathering.</p>
+                                            <p className="text-xs font-medium text-slate-400">
+                                              {m.isCustom ? "Custom milestone configured by PM." : "Initial planning and requirements gathering."}
+                                            </p>
                                         </div>
                                         <div className="flex items-center gap-4">
+                                            {m.isCustom ? (
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                className="h-10 w-10 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                                                onClick={() => removeCustomMilestone(m.key)}
+                                                aria-label={`Remove ${m.label}`}
+                                              >
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                            ) : null}
                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payout</span>
                                             <div className="relative w-24">
                                                 <Input 
@@ -387,7 +506,14 @@ const ProjectSetupPage = () => {
                 <div className="p-10 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
                     <Button variant="ghost" className="text-sm font-black text-slate-400 hover:text-slate-900" onClick={() => setStep(0)}>Back to Step 1</Button>
                     <div className="flex gap-4">
-                        <Button variant="outline" className="h-14 rounded-2xl border-slate-200 bg-white px-8 text-sm font-black text-slate-600">Save Draft</Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-14 rounded-2xl border-slate-200 bg-white px-8 text-sm font-black text-slate-600"
+                            onClick={saveDraft}
+                        >
+                            Save Draft
+                        </Button>
                         <Button 
                             disabled={!canGoNext()}
                             onClick={() => setStep(2)}
@@ -532,6 +658,7 @@ const ProjectSetupPage = () => {
                                         }
                                     };
                                     const created = await pmApi.createProjectSetup(authFetch, payload);
+                                    clearDraft();
                                     setResult(created);
                                     toast.success("Project published successfully!");
                                 } catch (e) {

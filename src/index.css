@@ -210,6 +210,35 @@ body[data-scroll-locked] {
   #root {
     overflow-x: hidden;
   }
+
+  .pm-light-theme {
+    color-scheme: light;
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --popover: #ffffff;
+    --popover-foreground: #0f172a;
+    --primary: #2563eb;
+    --primary-foreground: #ffffff;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #334155;
+    --muted: #f8fafc;
+    --muted-foreground: #64748b;
+    --accent: #e2e8f0;
+    --accent-foreground: #0f172a;
+    --border: #dbe3ef;
+    --input: #d7e5ff;
+    --ring: #3b82f6;
+    --sidebar: #ffffff;
+    --sidebar-foreground: #334155;
+    --sidebar-primary: #2563eb;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f1f5f9;
+    --sidebar-accent-foreground: #0f172a;
+    --sidebar-border: #e2e8f0;
+    --sidebar-ring: #3b82f6;
+  }
 }
 
 @layer utilities {
