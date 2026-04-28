@@ -9,6 +9,7 @@ import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";
 const MAX_KEYWORDS = 5;
 const MAX_IMAGES = 2;
 const MAX_VIDEOS = 1;
+const MAX_MEDIA_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 const normalizeKeywordValue = (value = "") =>
   String(value || "").trim().toLowerCase();
@@ -36,6 +37,9 @@ const getMediaMimeType = (value) => {
 const isVideoMedia = (value) =>
   String(value?.kind || "").trim().toLowerCase() === "video" ||
   getMediaMimeType(value).startsWith("video/");
+
+const getFileSizeInMb = (value = 0) =>
+  `${(Number(value || 0) / (1024 * 1024)).toFixed(2)}MB`;
 
 /* ──────────────────── Keyword Input ──────────────────── */
 
@@ -323,6 +327,8 @@ const KeywordInput = ({
 const UploadArea = ({ files, onChange }) => {
   const inputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadQueue, setUploadQueue] = useState([]);
+  const [uploadError, setUploadError] = useState("");
 
   const previewItems = useMemo(
     () =>
@@ -330,12 +336,7 @@ const UploadArea = ({ files, onChange }) => {
         const localFile = getMediaFile(entry);
         const isVideo = isVideoMedia(entry);
         const remoteUrl = getMediaUrl(entry);
-        const previewUrl =
-          !isVideo && localFile
-            ? URL.createObjectURL(localFile)
-            : !isVideo
-              ? remoteUrl
-              : "";
+        const previewUrl = localFile ? URL.createObjectURL(localFile) : remoteUrl;
 
         return {
           id:
@@ -359,9 +360,15 @@ const UploadArea = ({ files, onChange }) => {
 
   const imageCount = files.filter((file) => !isVideoMedia(file)).length;
   const videoCount = files.filter((file) => isVideoMedia(file)).length;
+  const queuedImageCount = uploadQueue.filter((entry) => !entry.isVideo).length;
+  const queuedVideoCount = uploadQueue.filter((entry) => entry.isVideo).length;
+  const effectiveImageCount = imageCount + queuedImageCount;
+  const effectiveVideoCount = videoCount + queuedVideoCount;
 
-  const canAddImage = imageCount < MAX_IMAGES;
-  const canAddVideo = videoCount < MAX_VIDEOS;
+  const hasAnyImage = effectiveImageCount > 0;
+  const hasAnyVideo = effectiveVideoCount > 0;
+  const canAddImage = !hasAnyVideo && effectiveImageCount < MAX_IMAGES;
+  const canAddVideo = !hasAnyImage && effectiveVideoCount < MAX_VIDEOS;
   const canAdd = canAddImage || canAddVideo;
 
   const acceptTypes = [
@@ -369,33 +376,143 @@ const UploadArea = ({ files, onChange }) => {
     ...(canAddVideo ? ["video/*"] : []),
   ].join(",");
 
-  const processFiles = useCallback(
-    (incoming) => {
-      let nextImageCount = imageCount;
-      let nextVideoCount = videoCount;
-      const valid = Array.from(incoming).filter((file) => {
-        if (file.type.startsWith("image/") && nextImageCount < MAX_IMAGES) {
-          nextImageCount += 1;
-          return true;
-        }
-        if (file.type.startsWith("video/") && nextVideoCount < MAX_VIDEOS) {
-          nextVideoCount += 1;
-          return true;
-        }
-        return false;
-      });
+  const uploadSingleFileWithProgress = useCallback((file) => {
+    const queueId = `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 7)}`;
+    const isVideo = String(file?.type || "").toLowerCase().startsWith("video/");
 
-      if (valid.length > 0) {
-        onChange([...files, ...valid]);
+    setUploadQueue((current) => [
+      ...current,
+      {
+        id: queueId,
+        name: file.name,
+        isVideo,
+        size: file.size,
+        progress: 0,
+      },
+    ]);
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onprogress = (event) => {
+        if (!event.lengthComputable) {
+          return;
+        }
+        const nextProgress = Math.min(
+          100,
+          Math.round((event.loaded / event.total) * 100),
+        );
+        setUploadQueue((current) =>
+          current.map((entry) =>
+            entry.id === queueId ? { ...entry, progress: nextProgress } : entry,
+          ),
+        );
+      };
+      reader.onload = () => {
+        setUploadQueue((current) => current.filter((entry) => entry.id !== queueId));
+        resolve(file);
+      };
+      reader.onerror = () => {
+        setUploadQueue((current) => current.filter((entry) => entry.id !== queueId));
+        reject(new Error(`Failed to upload ${file.name}`));
+      };
+
+      reader.readAsArrayBuffer(file);
+    });
+  }, []);
+
+  const processFiles = useCallback(
+    async (incoming) => {
+      const incomingFiles = Array.from(incoming || []);
+      if (!incomingFiles.length) {
+        return;
+      }
+
+      setUploadError("");
+
+      const selectedImages = incomingFiles.filter((file) =>
+        String(file?.type || "").toLowerCase().startsWith("image/"),
+      );
+      const selectedVideos = incomingFiles.filter((file) =>
+        String(file?.type || "").toLowerCase().startsWith("video/"),
+      );
+      const hasUnsupportedType =
+        selectedImages.length + selectedVideos.length !== incomingFiles.length;
+
+      if (hasUnsupportedType) {
+        setUploadError("Only image or video files are allowed.");
+      }
+
+      const oversizedFiles = incomingFiles.filter(
+        (file) => Number(file?.size || 0) > MAX_MEDIA_FILE_SIZE_BYTES,
+      );
+      if (oversizedFiles.length > 0) {
+        setUploadError("Each file must be 5MB or smaller.");
+      }
+
+      let allowedImages = canAddImage ? selectedImages : [];
+      let allowedVideos = canAddVideo ? selectedVideos : [];
+
+      if (hasAnyVideo || hasAnyImage) {
+        if (hasAnyVideo && selectedImages.length > 0) {
+          setUploadError("You can upload only 1 video OR up to 2 images.");
+        }
+        if (hasAnyImage && selectedVideos.length > 0) {
+          setUploadError("You can upload only 1 video OR up to 2 images.");
+        }
+      } else if (selectedImages.length > 0 && selectedVideos.length > 0) {
+        setUploadError("Please choose either images or a single video.");
+        return;
+      }
+
+      allowedImages = allowedImages.slice(
+        0,
+        Math.max(0, MAX_IMAGES - effectiveImageCount),
+      );
+      allowedVideos = allowedVideos.slice(
+        0,
+        Math.max(0, MAX_VIDEOS - effectiveVideoCount),
+      );
+
+      const validFiles = [...allowedImages, ...allowedVideos].filter(
+        (file) => Number(file?.size || 0) <= MAX_MEDIA_FILE_SIZE_BYTES,
+      );
+
+      if (!validFiles.length) {
+        return;
+      }
+
+      try {
+        const uploadedFiles = [];
+        // Keep upload updates deterministic per file.
+        for (const file of validFiles) {
+          // eslint-disable-next-line no-await-in-loop
+          const uploadedFile = await uploadSingleFileWithProgress(file);
+          uploadedFiles.push(uploadedFile);
+        }
+        if (uploadedFiles.length > 0) {
+          onChange([...files, ...uploadedFiles]);
+        }
+      } catch {
+        setUploadError("Something went wrong while uploading file(s).");
       }
     },
-    [files, imageCount, videoCount, onChange]
+    [
+      canAddImage,
+      canAddVideo,
+      files,
+      hasAnyImage,
+      hasAnyVideo,
+      onChange,
+      effectiveImageCount,
+      effectiveVideoCount,
+      uploadSingleFileWithProgress,
+    ],
   );
 
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragOver(false);
-    processFiles(e.dataTransfer.files);
+    void processFiles(e.dataTransfer.files);
   };
 
   const handleDragOver = (e) => {
@@ -423,6 +540,14 @@ const UploadArea = ({ files, onChange }) => {
                   alt={item.name}
                   className="h-full w-full object-cover"
                 />
+              ) : item.isVideo && item.previewUrl ? (
+                <video
+                  src={item.previewUrl}
+                  className="h-full w-full object-cover"
+                  muted
+                  playsInline
+                  preload="metadata"
+                />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-white/40">
                   <Image className="h-5 w-5" />
@@ -440,6 +565,50 @@ const UploadArea = ({ files, onChange }) => {
           ))}
         </div>
       )}
+
+      {previewItems.length > 0 ? (
+        <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          {previewItems.map((item) => (
+            <div
+              key={`uploaded-${item.id}`}
+              className="text-xs text-white/75"
+            >
+              <span className="font-medium text-white">{item.name}</span>
+              <span className="ml-2 text-emerald-400">100% uploaded</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {uploadQueue.length > 0 && (
+        <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+          {uploadQueue.map((entry) => {
+            return (
+              <div key={entry.id} className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="truncate text-white/80">{entry.name}</span>
+                  <span className="shrink-0 text-primary">
+                    {entry.progress}% uploaded
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-primary transition-[width] duration-150"
+                    style={{ width: `${entry.progress}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-white/45">
+                  Size: {getFileSizeInMb(entry.size)} / Max 5.00MB
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {uploadError ? (
+        <p className="text-xs font-medium text-rose-300">{uploadError}</p>
+      ) : null}
 
       {/* Drop zone */}
       {canAdd && (
@@ -471,7 +640,7 @@ const UploadArea = ({ files, onChange }) => {
         accept={acceptTypes}
         multiple
         onChange={(e) => {
-          processFiles(e.target.files);
+          void processFiles(e.target.files);
           e.target.value = "";
         }}
         className="hidden"
@@ -486,9 +655,6 @@ const FreelancerServiceVisualsSlide = ({
   serviceVisualsForm,
   onServiceVisualsFieldChange,
   onServiceStepChange,
-  suggestedKeywords,
-  isSuggestedKeywordsLoading,
-  currentServiceName,
 }) => {
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
@@ -497,7 +663,7 @@ const FreelancerServiceVisualsSlide = ({
         <div className="text-center">
           <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
             <span>Add </span>
-            <span className="text-primary">Keywords &amp; Media</span>
+            <span className="text-primary">Media</span>
           </h1>
         </div>
 
@@ -516,31 +682,11 @@ const FreelancerServiceVisualsSlide = ({
               Enhance Your Service
             </h2>
             <p className="text-sm text-muted-foreground sm:text-base">
-              Add relevant keywords and media for better visibility.
+              Add media for better visibility.
             </p>
           </div>
 
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
-            {/* Positive Keyword */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                Positive Keywords
-              </label>
-              <KeywordInput
-                keywords={serviceVisualsForm.keywords}
-                suggestions={suggestedKeywords}
-                serviceName={currentServiceName}
-                isLoading={isSuggestedKeywordsLoading}
-                onChange={(next) =>
-                  onServiceVisualsFieldChange("keywords", next)
-                }
-              />
-              <p className="text-xs leading-relaxed text-white/35">
-                Enter up to 5 positive keywords to improve search visibility of
-                your service, separating each with a comma.
-              </p>
-            </div>
-
             {/* Upload Media */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
@@ -552,9 +698,11 @@ const FreelancerServiceVisualsSlide = ({
                   onServiceVisualsFieldChange("mediaFiles", next)
                 }
               />
-              <p className="text-xs leading-relaxed text-white/35">
-                Upload 1 video or 2 image for service onboarding.
-              </p>
+              <div className="rounded-lg border border-primary/25 bg-primary/10 px-3 py-2">
+                <p className="text-xs font-semibold leading-relaxed text-primary">
+                  Upload rule: 1 video OR up to 2 images (max 5MB each).
+                </p>
+              </div>
             </div>
           </div>
         </div>

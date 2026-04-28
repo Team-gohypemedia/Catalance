@@ -169,6 +169,23 @@ const extractServiceMediaFile = (value) => {
   return value?.file instanceof File ? value.file : null;
 };
 
+const isServiceMediaVideo = (value) => {
+  const normalizedKind = String(value?.kind || "").trim().toLowerCase();
+  if (normalizedKind === "video") {
+    return true;
+  }
+
+  const file = extractServiceMediaFile(value);
+  if (file?.type) {
+    return String(file.type).trim().toLowerCase().startsWith("video/");
+  }
+
+  return String(value?.mimeType || value?.type || value?.contentType || "")
+    .trim()
+    .toLowerCase()
+    .startsWith("video/");
+};
+
 const buildRemoteServiceMedia = (value, index = 0) => {
   const uploadedUrl = extractServiceMediaUrl(value);
   if (!uploadedUrl) return null;
@@ -704,6 +721,7 @@ const FreelancerOnboardingShell = () => {
   const navigate = useNavigate();
   const { authFetch, refreshUser, user } = useAuth();
   const usernameCheckRequestRef = useRef(0);
+  const onboardingScrollContainerRef = useRef(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [selectedWorkPreference, setSelectedWorkPreference] = useState("");
   const [basicProfileForm, setBasicProfileForm] = useState(
@@ -770,7 +788,7 @@ const FreelancerOnboardingShell = () => {
   const isCommunicationPolicySlide = currentSlide.id === "communicationPolicy";
   const isProfileActionFooter = currentSlide.footerMode === "profileActions";
   const isFooterHidden = currentSlide.footerMode === "hidden";
-  const isContinueDisabled = isWorkPreferenceSlide
+  const isBaseContinueDisabled = isWorkPreferenceSlide
     ? selectedWorkPreference !== "individual"
     : isServicesSlide
       ? selectedServices.length === 0
@@ -820,6 +838,19 @@ const FreelancerOnboardingShell = () => {
         serviceId: currentService?.id,
       })
     : createEmptyServiceDraft();
+
+  useEffect(() => {
+    if (currentSlide.id !== "services") {
+      return;
+    }
+
+    const container = onboardingScrollContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    container.scrollTop = 0;
+  }, [currentSlide.id]);
 
   useEffect(() => {
     if (!user || hasHydratedFromUser) {
@@ -1497,6 +1528,109 @@ const FreelancerOnboardingShell = () => {
     }),
     [currentActiveCaseStudy],
   );
+
+  const isServiceInfoIncomplete = useMemo(() => {
+    const hasTitle = String(currentServiceInfoForm?.title || "").trim().length > 0;
+    const hasExperience =
+      String(currentServiceInfoForm?.experience || "").trim().length > 0;
+    const subcategories = Array.isArray(currentServiceDraft?.subcategories)
+      ? currentServiceDraft.subcategories
+      : [];
+    const hasCategory = subcategories.length > 0;
+    const hasSubcategorySkillSelection = subcategories.some((entry) => {
+      const hasSelectedTool =
+        Array.isArray(entry?.selectedToolIds) && entry.selectedToolIds.length > 0;
+      const hasCustomSkill =
+        Array.isArray(entry?.customSkillNames) &&
+        entry.customSkillNames.some((value) => String(value || "").trim().length > 0);
+      return hasSelectedTool || hasCustomSkill;
+    });
+    const hasLegacySkills =
+      Array.isArray(currentServiceDraft?.skillsAndTechnologies) &&
+      currentServiceDraft.skillsAndTechnologies.some(
+        (value) => String(value || "").trim().length > 0,
+      );
+    const hasSkills = hasSubcategorySkillSelection || hasLegacySkills;
+
+    return !(hasTitle && hasExperience && hasCategory && hasSkills);
+  }, [
+    currentServiceDraft?.skillsAndTechnologies,
+    currentServiceDraft?.subcategories,
+    currentServiceInfoForm?.experience,
+    currentServiceInfoForm?.title,
+  ]);
+
+  const isServicePricingIncomplete = useMemo(() => {
+    const hasDescription =
+      String(currentServicePricingForm?.description || "").trim().length > 0;
+    const hasDeliveryTimeline =
+      String(currentServicePricingForm?.deliveryTimeline || "").trim().length > 0;
+    const hasPrice = Number(currentServicePricingForm?.priceRange || 0) > 0;
+
+    return !(hasDescription && hasDeliveryTimeline && hasPrice);
+  }, [
+    currentServicePricingForm?.deliveryTimeline,
+    currentServicePricingForm?.description,
+    currentServicePricingForm?.priceRange,
+  ]);
+
+  const isServiceVisualsIncomplete = useMemo(() => {
+    const mediaFiles = Array.isArray(currentServiceVisualsForm?.mediaFiles)
+      ? currentServiceVisualsForm.mediaFiles
+      : [];
+    const videoCount = mediaFiles.filter((entry) => isServiceMediaVideo(entry)).length;
+    const imageCount = Math.max(0, mediaFiles.length - videoCount);
+    const hasValidUpload =
+      (videoCount === 1 && imageCount === 0) ||
+      (imageCount === 2 && videoCount === 0);
+
+    return !hasValidUpload;
+  }, [currentServiceVisualsForm?.mediaFiles]);
+
+  const isCaseStudyIncomplete = useMemo(() => {
+    const hasTitle = String(currentCaseStudyForm?.title || "").trim().length > 0;
+    const hasDescription =
+      String(currentCaseStudyForm?.description || "").trim().length > 0;
+    const hasNiche = String(currentCaseStudyForm?.niche || "").trim().length > 0;
+    const hasRole = String(currentCaseStudyForm?.role || "").trim().length > 0;
+    const hasTimeline =
+      String(currentCaseStudyForm?.timeline || "").trim().length > 0;
+    const hasBudget = Number(currentCaseStudyForm?.budget || 0) > 0;
+    const hasProjectProof =
+      String(currentCaseStudyForm?.projectLink || "").trim().length > 0 ||
+      Boolean(currentCaseStudyForm?.projectFile);
+
+    return !(
+      hasTitle &&
+      hasDescription &&
+      hasNiche &&
+      hasRole &&
+      hasTimeline &&
+      hasBudget &&
+      hasProjectProof
+    );
+  }, [
+    currentCaseStudyForm?.budget,
+    currentCaseStudyForm?.description,
+    currentCaseStudyForm?.niche,
+    currentCaseStudyForm?.projectFile,
+    currentCaseStudyForm?.projectLink,
+    currentCaseStudyForm?.role,
+    currentCaseStudyForm?.timeline,
+    currentCaseStudyForm?.title,
+  ]);
+
+  const isContinueDisabled = isBaseContinueDisabled
+    ? true
+    : isServiceInfoSlide
+      ? isServiceInfoIncomplete
+      : isServicePricingSlide
+        ? isServicePricingIncomplete
+        : isServiceVisualsSlide
+          ? isServiceVisualsIncomplete
+          : isCaseStudySlide
+            ? isCaseStudyIncomplete
+            : false;
 
   const handleActiveCaseStudyChange = useCallback(
     (caseStudyId) => {
@@ -2196,6 +2330,52 @@ const FreelancerOnboardingShell = () => {
         return;
       }
 
+      const currentServiceStepOrder =
+        currentSlide.id === "serviceInfo"
+          ? 0
+          : currentSlide.id === "servicePricing"
+            ? 1
+            : currentSlide.id === "serviceVisuals"
+              ? 2
+              : currentSlide.id === "caseStudy"
+                ? 3
+                : currentSlide.id === "serviceReview"
+                  ? 4
+                  : -1;
+      const nextServiceStepOrder =
+        nextStepId === "overview"
+          ? 0
+          : nextStepId === "pricing"
+            ? 1
+            : nextStepId === "visuals"
+              ? 2
+              : nextStepId === "caseStudy"
+                ? 3
+                : nextStepId === "preview"
+                  ? 4
+                  : -1;
+      let maxUnlockedServiceStepOrder = 0;
+      if (!isServiceInfoIncomplete) {
+        maxUnlockedServiceStepOrder = 1;
+      }
+      if (!isServicePricingIncomplete) {
+        maxUnlockedServiceStepOrder = 2;
+      }
+      if (!isServiceVisualsIncomplete) {
+        maxUnlockedServiceStepOrder = 3;
+      }
+      if (!isCaseStudyIncomplete) {
+        maxUnlockedServiceStepOrder = 4;
+      }
+
+      if (
+        currentServiceStepOrder < 0 ||
+        nextServiceStepOrder < 0 ||
+        nextServiceStepOrder > maxUnlockedServiceStepOrder
+      ) {
+        return;
+      }
+
       const nextSlideIndex =
         nextStepId === "overview"
           ? serviceInfoSlideIndex
@@ -2223,88 +2403,18 @@ const FreelancerOnboardingShell = () => {
       caseStudySlideIndex,
       currentServiceKey,
       currentSlideIndex,
+      isCaseStudyIncomplete,
       isProfileSaving,
+      isServiceInfoIncomplete,
+      isServicePricingIncomplete,
+      isServiceVisualsIncomplete,
       serviceInfoSlideIndex,
       servicePricingSlideIndex,
       serviceReviewSlideIndex,
       serviceVisualsSlideIndex,
+      currentSlide.id,
     ],
   );
-
-  const handleServiceInfoSkip = () => {
-    if (isProfileSaving) {
-      return;
-    }
-
-    if (servicePricingSlideIndex >= 0) {
-      setCurrentSlideIndex(servicePricingSlideIndex);
-      return;
-    }
-
-    setCurrentSlideIndex((currentIndex) =>
-      Math.min(currentIndex + 1, totalSlides - 1),
-    );
-  };
-
-  const handleServicePricingSkip = () => {
-    if (isProfileSaving) {
-      return;
-    }
-
-    if (serviceVisualsSlideIndex >= 0) {
-      setCurrentSlideIndex(serviceVisualsSlideIndex);
-      return;
-    }
-
-    setCurrentSlideIndex((currentIndex) =>
-      Math.min(currentIndex + 1, totalSlides - 1),
-    );
-  };
-
-  const handleServiceVisualsSkip = () => {
-    if (isProfileSaving) {
-      return;
-    }
-
-    if (caseStudySlideIndex >= 0) {
-      setCurrentSlideIndex(caseStudySlideIndex);
-      return;
-    }
-
-    setCurrentSlideIndex((currentIndex) =>
-      Math.min(currentIndex + 1, totalSlides - 1),
-    );
-  };
-
-  const handleCaseStudySkip = () => {
-    if (isProfileSaving) {
-      return;
-    }
-
-    if (serviceReviewSlideIndex >= 0) {
-      setCurrentSlideIndex(serviceReviewSlideIndex);
-      return;
-    }
-
-    setCurrentSlideIndex((currentIndex) =>
-      Math.min(currentIndex + 1, totalSlides - 1),
-    );
-  };
-
-  const handleServiceReviewSkip = () => {
-    if (isProfileSaving) {
-      return;
-    }
-
-    if (acceptInProgressProjectsSlideIndex >= 0) {
-      setCurrentSlideIndex(acceptInProgressProjectsSlideIndex);
-      return;
-    }
-
-    setCurrentSlideIndex((currentIndex) =>
-      Math.min(currentIndex + 1, totalSlides - 1),
-    );
-  };
 
   const handleBasicProfileFieldChange = (field, value) => {
     const normalizedValue =
@@ -2668,7 +2778,10 @@ const FreelancerOnboardingShell = () => {
         </div>
       </header>
 
-      <section className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto">
+      <section
+        ref={onboardingScrollContainerRef}
+        className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto"
+      >
         <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
           <AnimatePresence mode="wait">
             <motion.div
@@ -2773,61 +2886,6 @@ const FreelancerOnboardingShell = () => {
 
             {isProfileActionFooter ? (
               <div />
-            ) : isServiceInfoSlide ? (
-              <Button
-                type="button"
-                size="lg"
-                variant="outline"
-                onClick={handleServiceInfoSkip}
-                disabled={isProfileSaving}
-                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
-              >
-                Skip
-              </Button>
-            ) : isServicePricingSlide ? (
-              <Button
-                type="button"
-                size="lg"
-                variant="outline"
-                onClick={handleServicePricingSkip}
-                disabled={isProfileSaving}
-                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
-              >
-                Skip
-              </Button>
-            ) : isServiceVisualsSlide ? (
-              <Button
-                type="button"
-                size="lg"
-                variant="outline"
-                onClick={handleServiceVisualsSkip}
-                disabled={isProfileSaving}
-                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
-              >
-                Skip
-              </Button>
-            ) : isCaseStudySlide ? (
-              <Button
-                type="button"
-                size="lg"
-                variant="outline"
-                onClick={handleCaseStudySkip}
-                disabled={isProfileSaving}
-                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
-              >
-                Skip
-              </Button>
-            ) : isServiceReviewSlide ? (
-              <Button
-                type="button"
-                size="lg"
-                variant="outline"
-                onClick={handleServiceReviewSkip}
-                disabled={isProfileSaving}
-                className="h-11 justify-self-end bg-card px-10 text-base font-medium text-white hover:bg-accent/10"
-              >
-                Skip
-              </Button>
             ) : (
               <div />
             )}

@@ -1206,31 +1206,6 @@ const FreelancerServiceReviewSlide = ({
                   {deliveryLabel}
                 </p>
               </div>
-
-
-
-              <div className="rounded-[24px] border border-white/8 bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
-                <p className={CARD_LABEL_CLASS}>
-                  Positive Keywords
-                </p>
-
-                {keywordTags.length > 0 ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {keywordTags.slice(0, 5).map((keyword) => (
-                      <span
-                        key={keyword}
-                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/78"
-                      >
-                        {keyword}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className={CARD_VALUE_CLASS}>
-                    Not selected
-                  </p>
-                )}
-              </div>
             </div>
           </aside>
         </div>

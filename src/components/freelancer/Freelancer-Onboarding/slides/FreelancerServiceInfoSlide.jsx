@@ -1,15 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Check from "lucide-react/dist/esm/icons/check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
-import Plus from "lucide-react/dist/esm/icons/plus";
 import X from "lucide-react/dist/esm/icons/x";
 
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import {
-  appendCustomSubcategorySelection,
   deriveDraftSkillsAndTechnologies,
   getSubcategorySelectionKey,
-  normalizeCustomSkillNames,
   normalizeStringArray,
   syncDraftSubcategories,
 } from "../service-details";
@@ -40,19 +37,39 @@ const buildNumberSignature = (values = []) =>
     .join("|");
 
 const buildStringSignature = (values = []) => normalizeStringArray(values).join("|");
+const buildToolSelectionKey = (subCategoryId, toolId) => {
+  const normalizedSubCategoryId = toPositiveInteger(subCategoryId);
+  const normalizedToolId = toPositiveInteger(toolId);
+  if (!normalizedSubCategoryId || !normalizedToolId) {
+    return "";
+  }
+  return `${normalizedSubCategoryId}:${normalizedToolId}`;
+};
+
+const parseToolSelectionKey = (value = "") => {
+  const normalizedValue = String(value || "").trim();
+  const matched = normalizedValue.match(/^(\d+):(\d+)$/);
+  if (!matched) {
+    return null;
+  }
+
+  const subCategoryId = toPositiveInteger(matched[1]);
+  const toolId = toPositiveInteger(matched[2]);
+  if (!subCategoryId || !toolId) {
+    return null;
+  }
+
+  return { subCategoryId, toolId };
+};
 
 const TechnologiesInput = ({
   toolOptions = [],
   selectedToolIds = [],
   unresolvedToolIds = [],
-  customSkillNames = [],
   onSelectedToolIdsChange,
-  onCustomSkillNamesChange,
   isLoading,
 }) => {
-  const [customToolQuery, setCustomToolQuery] = useState("");
   const [toolSearchQuery, setToolSearchQuery] = useState("");
-  const [isAddingCustomTool, setIsAddingCustomTool] = useState(false);
 
   const normalizedToolOptions = useMemo(
     () =>
@@ -84,19 +101,6 @@ const TechnologiesInput = ({
     );
   }, [normalizedToolOptions, toolSearchQuery]);
 
-  const addCustomSkill = () => {
-    const nextSkill = String(customToolQuery || "").trim();
-    if (!nextSkill) {
-      return;
-    }
-
-    onCustomSkillNamesChange(
-      normalizeCustomSkillNames([...customSkillNames, nextSkill]),
-    );
-    setCustomToolQuery("");
-    setIsAddingCustomTool(false);
-  };
-
   const toggleTool = (toolId) => {
     const normalizedToolId = Number(toolId);
     if (!Number.isInteger(normalizedToolId) || normalizedToolId <= 0) {
@@ -113,14 +117,6 @@ const TechnologiesInput = ({
     onSelectedToolIdsChange([...selectedToolIds, normalizedToolId]);
   };
 
-  const removeCustomSkill = (skillName) => {
-    onCustomSkillNamesChange(
-      customSkillNames.filter(
-        (entry) => String(entry || "").toLowerCase() !== String(skillName || "").toLowerCase(),
-      ),
-    );
-  };
-
   return (
     <div className="space-y-3">
       <div className="space-y-2">
@@ -128,14 +124,6 @@ const TechnologiesInput = ({
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/45">
             Available Tools
           </p>
-          <button
-            type="button"
-            onClick={() => setIsAddingCustomTool((current) => !current)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-white/18 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:border-primary/35 hover:text-primary"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add More
-          </button>
         </div>
         <div className="rounded-xl border border-white/8 bg-card/60 p-2.5">
           {normalizedToolOptions.length > 0 ? (
@@ -184,47 +172,10 @@ const TechnologiesInput = ({
             </div>
           )}
 
-          {isAddingCustomTool && (
-            <div className="mt-3 flex flex-col gap-2 border-t border-white/8 pt-3 sm:flex-row">
-              <input
-                type="text"
-                value={customToolQuery}
-                onChange={(event) => setCustomToolQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    addCustomSkill();
-                  }
-                }}
-                placeholder="Add a custom skill or tool"
-                className="h-11 flex-1 rounded-xl border border-white/10 bg-card px-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-              />
-              <div className="flex gap-2 sm:flex-none">
-                <button
-                  type="button"
-                  onClick={addCustomSkill}
-                  disabled={!customToolQuery.trim()}
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-primary/35 bg-primary/12 px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/18 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-card disabled:text-white/35"
-                >
-                  Add
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomToolQuery("");
-                    setIsAddingCustomTool(false);
-                  }}
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-card px-4 text-sm font-medium text-white/70 transition-colors hover:border-white/18 hover:text-white"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {(selectedToolIds.length > 0 || unresolvedToolIds.length > 0 || customSkillNames.length > 0) && (
+      {(selectedToolIds.length > 0 || unresolvedToolIds.length > 0) && (
         <div className="flex flex-wrap gap-2">
           {normalizedToolOptions
             .filter((tool) => selectedToolIdSet.has(tool.id))
@@ -263,22 +214,6 @@ const TechnologiesInput = ({
               </button>
             </span>
           ))}
-
-          {customSkillNames.map((skillName) => (
-            <span
-              key={`custom-${skillName}`}
-              className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
-            >
-              {skillName}
-              <button
-                type="button"
-                onClick={() => removeCustomSkill(skillName)}
-                className="rounded-full p-0.5 transition-colors hover:bg-primary/20"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
         </div>
       )}
     </div>
@@ -289,10 +224,10 @@ const CategoryMultiSelect = ({
   options = [],
   selected = [],
   onChange,
-  onCreateOption,
   placeholder = "Select sub-categories",
+  searchPlaceholder = "Search sub-categories",
   isLoading = false,
-  allowCustom = false,
+  closeOnSelect = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -328,20 +263,6 @@ const CategoryMultiSelect = ({
         .includes(normalizedQuery),
     );
   }, [options, searchQuery]);
-  const trimmedSearchQuery = String(searchQuery || "").trim();
-  const canCreateCustomOption = useMemo(() => {
-    if (!allowCustom || !trimmedSearchQuery) {
-      return false;
-    }
-
-    const normalizedQuery = trimmedSearchQuery.toLowerCase();
-    return !options.some(
-      (option) => String(option?.label || "").trim().toLowerCase() === normalizedQuery,
-    );
-  }, [allowCustom, options, trimmedSearchQuery]);
-  const isCreateActionEnabled =
-    canCreateCustomOption && typeof onCreateOption === "function";
-
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -361,25 +282,32 @@ const CategoryMultiSelect = ({
     }
   }, [isOpen]);
 
-  const handleCreateOption = () => {
-    if (canCreateCustomOption && typeof onCreateOption === "function") {
-      onCreateOption(trimmedSearchQuery);
-      setSearchQuery("");
-      setIsOpen(false);
-      return;
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
     }
 
-    searchInputRef.current?.focus();
-  };
+    const frameId = requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [isOpen]);
 
   const toggleOption = (optionValue) => {
     const normalizedValue = String(optionValue);
     if (selectedSet.has(normalizedValue)) {
       onChange(normalizedSelected.filter((value) => value !== normalizedValue));
+      if (closeOnSelect) {
+        setIsOpen(false);
+      }
       return;
     }
 
     onChange([...normalizedSelected, normalizedValue]);
+    if (closeOnSelect) {
+      setIsOpen(false);
+    }
   };
 
   const removeOption = (optionValue) => {
@@ -387,98 +315,54 @@ const CategoryMultiSelect = ({
     onChange(normalizedSelected.filter((value) => value !== normalizedValue));
   };
 
-  const summaryText = useMemo(() => {
-    if (isLoading) {
-      return "Loading...";
-    }
-
-    if (selectedOptions.length === 0) {
-      return placeholder;
-    }
-
-    if (selectedOptions.length <= 2) {
-      return selectedOptions.map((option) => option.label).join(", ");
-    }
-
-    const visibleLabels = selectedOptions
-      .slice(0, 2)
-      .map((option) => option.label)
-      .join(", ");
-
-    return `${visibleLabels} +${selectedOptions.length - 2} more`;
-  }, [isLoading, placeholder, selectedOptions]);
+  const summaryText = useMemo(
+    () => (isLoading ? "Loading..." : placeholder),
+    [isLoading, placeholder],
+  );
 
   return (
     <div className="space-y-3">
       <div className="relative" ref={containerRef}>
-        <button
-          type="button"
-          onClick={() => setIsOpen((current) => !current)}
-          className={`flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 text-sm transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20 ${
-            selectedOptions.length > 0
-              ? "border-primary/25 text-white"
-              : "border-white/10 text-white/40"
-          }`}
-        >
-          <span className="truncate text-left">{summaryText}</span>
-          <ChevronDown
-            className={`h-4 w-4 transition-transform duration-200 ${
-              selectedOptions.length > 0 ? "text-primary" : "text-white/40"
-            } ${isOpen ? "rotate-180" : ""}`}
-          />
-        </button>
+        {isOpen ? (
+          <div className="flex h-12 w-full items-center gap-3 rounded-xl border border-primary/50 bg-card px-4 text-sm ring-1 ring-primary/20">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={searchPlaceholder}
+              className="h-full flex-1 bg-transparent text-white outline-none placeholder:text-white/40"
+            />
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full text-primary/80 transition-colors hover:bg-primary/10 hover:text-primary"
+              aria-label="Close sub-category search"
+            >
+              <ChevronDown className="h-4 w-4 rotate-180" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsOpen(true)}
+            className={`flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 text-sm transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20 ${
+              selectedOptions.length > 0
+                ? "border-primary/25 text-white"
+                : "border-white/10 text-white/40"
+            }`}
+          >
+            <span className="truncate text-left">{summaryText}</span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-200 ${
+                selectedOptions.length > 0 ? "text-primary" : "text-white/40"
+              }`}
+            />
+          </button>
+        )}
 
         {isOpen && (
           <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40">
-            <div className="border-b border-white/8 p-2.5">
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && canCreateCustomOption) {
-                    event.preventDefault();
-                    handleCreateOption();
-                  }
-                }}
-                placeholder="Search sub-categories"
-                className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-              />
-            </div>
-            {allowCustom ? (
-              <div className="border-b border-white/8 px-2.5 py-2">
-                <button
-                  type="button"
-                  onClick={handleCreateOption}
-                  className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
-                    isCreateActionEnabled
-                      ? "border-primary/20 bg-primary/8 hover:border-primary/35 hover:bg-primary/12"
-                      : "border-white/8 bg-white/[0.02] hover:border-white/14 hover:bg-white/[0.04]"
-                  }`}
-                >
-                  <span
-                    className={`font-medium ${
-                      isCreateActionEnabled ? "text-white" : "text-white/58"
-                    }`}
-                  >
-                    {!trimmedSearchQuery
-                      ? "Type above to add a custom sub-category"
-                      : canCreateCustomOption
-                        ? "Add custom sub-category"
-                        : "Matching sub-category already exists"}
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1.5 ${
-                      isCreateActionEnabled ? "text-primary" : "text-white/48"
-                    }`}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    {trimmedSearchQuery || "Custom"}
-                  </span>
-                </button>
-              </div>
-            ) : null}
             <div className="max-h-56 overflow-y-auto">
               {options.length === 0 ? (
                 <div className="px-4 py-3 text-sm text-white/40">
@@ -581,38 +465,9 @@ const FreelancerServiceInfoSlide = ({
   const selectedCatalogCategoryIdsSignature = buildNumberSignature(
     selectedCatalogCategoryIds,
   );
-  const pendingCategoryLabels = useMemo(
-    () =>
-      Array.isArray(serviceDraft?.pendingCategoryLabels)
-        ? normalizeStringArray(serviceDraft.pendingCategoryLabels)
-        : [],
-    [serviceDraft?.pendingCategoryLabels],
-  );
-  const customCategoryOptions = useMemo(
-    () =>
-      normalizedSubcategories
-        .filter((entry) => Boolean(entry?.isCustom) || !toPositiveInteger(entry?.subCategoryId))
-        .map((entry) => ({
-          value: getSubcategorySelectionKey(entry),
-          label: String(entry?.label || "").trim() || "Custom sub-category",
-          isCustom: true,
-        }))
-        .filter((entry) => entry.value && entry.label),
-    [normalizedSubcategories],
-  );
   const allCategoryOptions = useMemo(() => {
-    const seen = new Set();
-
-    return [...categoryOptions, ...customCategoryOptions].filter((option) => {
-      const optionValue = String(option?.value || "").trim();
-      if (!optionValue || seen.has(optionValue)) {
-        return false;
-      }
-
-      seen.add(optionValue);
-      return true;
-    });
-  }, [categoryOptions, customCategoryOptions]);
+    return [...categoryOptions];
+  }, [categoryOptions]);
   const categoryOptionsByValue = useMemo(
     () =>
       new Map(
@@ -627,39 +482,60 @@ const FreelancerServiceInfoSlide = ({
         .filter(Boolean),
     [categoryOptionsByValue, selectedCategoryKeys],
   );
-  const activeSkillCategoryId =
-    String(serviceDraft?.activeSkillCategory || "").trim() ||
-    selectedCategoryKeys[0] ||
-    null;
-  const activeSubcategory =
-    normalizedSubcategories.find(
-      (entry) => getSubcategorySelectionKey(entry) === activeSkillCategoryId,
-    ) || null;
-  const activeCategoryToolOptions = useMemo(
+  const categoryLabelById = useMemo(() => {
+    const labelById = new Map();
+    allCategoryOptions.forEach((option) => {
+      const matchedId = String(option?.value || "").match(/^catalog:(\d+)$/i)?.[1];
+      const categoryId = toPositiveInteger(matchedId);
+      if (!categoryId) {
+        return;
+      }
+      labelById.set(categoryId, String(option?.label || "").trim());
+    });
+    return labelById;
+  }, [allCategoryOptions]);
+  const skillOptions = useMemo(
     () =>
-      toolOptionsByCategory[
-        String(toPositiveInteger(activeSubcategory?.subCategoryId) || "")
-      ] || [],
-    [activeSubcategory?.subCategoryId, toolOptionsByCategory],
+      selectedCatalogCategoryIds.flatMap((subCategoryId) => {
+        const categoryLabel = String(categoryLabelById.get(subCategoryId) || "").trim();
+        const tools = Array.isArray(toolOptionsByCategory[String(subCategoryId)])
+          ? toolOptionsByCategory[String(subCategoryId)]
+          : [];
+
+        return tools
+          .map((tool) => {
+            const toolId = toPositiveInteger(tool?.id);
+            const toolLabel = String(tool?.label || tool?.name || "").trim();
+            const value = buildToolSelectionKey(subCategoryId, toolId);
+            if (!value || !toolLabel) {
+              return null;
+            }
+
+            return {
+              value,
+              label: categoryLabel ? `${toolLabel} (${categoryLabel})` : toolLabel,
+            };
+          })
+          .filter(Boolean);
+      }),
+    [categoryLabelById, selectedCatalogCategoryIds, toolOptionsByCategory],
   );
-  const activeSelectedToolIds = useMemo(
+  const selectedSkillValues = useMemo(
     () =>
-      Array.isArray(activeSubcategory?.selectedToolIds)
-        ? activeSubcategory.selectedToolIds
-        : [],
-    [activeSubcategory?.selectedToolIds],
-  );
-  const activeCustomSkillNames = Array.isArray(activeSubcategory?.customSkillNames)
-    ? activeSubcategory.customSkillNames
-    : [];
-  const activeToolIdsSet = useMemo(
-    () => new Set(activeCategoryToolOptions.map((option) => Number(option.id))),
-    [activeCategoryToolOptions],
-  );
-  const unresolvedActiveToolIds = useMemo(
-    () =>
-      activeSelectedToolIds.filter((toolId) => !activeToolIdsSet.has(Number(toolId))),
-    [activeSelectedToolIds, activeToolIdsSet],
+      normalizedSubcategories.flatMap((entry) => {
+        const subCategoryId = toPositiveInteger(entry?.subCategoryId);
+        if (!subCategoryId) {
+          return [];
+        }
+
+        const selectedToolIds = Array.isArray(entry?.selectedToolIds)
+          ? entry.selectedToolIds
+          : [];
+        return selectedToolIds
+          .map((toolId) => buildToolSelectionKey(subCategoryId, toolId))
+          .filter(Boolean);
+      }),
+    [normalizedSubcategories],
   );
   const derivedSkillsAndTechnologies = useMemo(
     () => deriveDraftSkillsAndTechnologies(serviceDraft, toolOptionsByCategory),
@@ -714,62 +590,39 @@ const FreelancerServiceInfoSlide = ({
   }, [resolvedServiceId]);
 
   useEffect(() => {
-    if (!categoryOptions.length || selectedCategoryKeys.length > 0 || !pendingCategoryLabels.length) {
+    if (!normalizedSubcategories.some((entry) => Boolean(entry?.isCustom))) {
       return;
     }
 
-    const resolvedCategoryValues = pendingCategoryLabels
-      .map((label) =>
-        categoryOptions.find(
-          (option) => option.label.toLowerCase() === label.toLowerCase(),
-        )?.value,
-      )
-      .filter(Boolean);
-    const unmatchedCategoryLabels = pendingCategoryLabels.filter(
-      (label) =>
-        !categoryOptions.some(
-          (option) => option.label.toLowerCase() === label.toLowerCase(),
-        ),
-    );
+    onUpdateServiceDraft((draft) => ({
+      ...draft,
+      subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).filter(
+        (entry) => !Boolean(entry?.isCustom) && toPositiveInteger(entry?.subCategoryId),
+      ),
+      pendingCategoryLabels: [],
+    }));
+  }, [normalizedSubcategories, onUpdateServiceDraft]);
 
-    onUpdateServiceDraft((draft) => {
-      let nextDraft = syncDraftSubcategories(draft, resolvedCategoryValues);
-
-      unmatchedCategoryLabels.forEach((label) => {
-        nextDraft = appendCustomSubcategorySelection(nextDraft, label);
-      });
-
-      const hasStructuredSkills = nextDraft.subcategories.some(
+  useEffect(() => {
+    if (
+      !normalizedSubcategories.some(
         (entry) =>
-          entry.selectedToolIds.length > 0 || entry.customSkillNames.length > 0,
-      );
+          Array.isArray(entry?.customSkillNames) && entry.customSkillNames.length > 0,
+      )
+    ) {
+      return;
+    }
 
-      if (!hasStructuredSkills && Array.isArray(draft?.skillsAndTechnologies) && draft.skillsAndTechnologies.length > 0) {
-        nextDraft.subcategories = nextDraft.subcategories.map((entry, index) =>
-          index === 0
-            ? {
-                ...entry,
-                customSkillNames: normalizeCustomSkillNames(
-                  draft.skillsAndTechnologies,
-                ),
-              }
-            : entry,
-        );
-      }
-
-      return {
-        ...nextDraft,
-        pendingCategoryLabels: [],
-      };
-    });
-  }, [
-    categoryOptions,
-    onUpdateServiceDraft,
-    pendingCategoryLabels,
-    selectedCategoryKeys.length,
-    selectedCatalogCategoryIdsSignature,
-    serviceDraft?.skillsAndTechnologies,
-  ]);
+    onUpdateServiceDraft((draft) => ({
+      ...draft,
+      subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
+        (entry) => ({
+          ...entry,
+          customSkillNames: [],
+        }),
+      ),
+    }));
+  }, [normalizedSubcategories, onUpdateServiceDraft]);
 
   useEffect(() => {
     if (!selectedCatalogCategoryIds.length) {
@@ -849,25 +702,36 @@ const FreelancerServiceInfoSlide = ({
     onUpdateServiceDraft((draft) => syncDraftSubcategories(draft, nextValues));
   };
 
-  const handleAddCustomCategory = (label) => {
-    onUpdateServiceDraft((draft) => appendCustomSubcategorySelection(draft, label));
-  };
+  const handleSelectedSkillsChange = (nextValues) => {
+    const selectedValues = Array.isArray(nextValues) ? nextValues : [];
+    const selectedToolIdsByCategory = new Map();
+    selectedValues.forEach((value) => {
+      const parsedValue = parseToolSelectionKey(value);
+      if (!parsedValue) {
+        return;
+      }
 
-  const handleActiveSubcategoryChange = (field, value) => {
-    if (!activeSkillCategoryId) {
-      return;
-    }
+      const { subCategoryId, toolId } = parsedValue;
+      const existingToolIds = selectedToolIdsByCategory.get(subCategoryId) || [];
+      if (!existingToolIds.includes(toolId)) {
+        selectedToolIdsByCategory.set(subCategoryId, [...existingToolIds, toolId]);
+      }
+    });
 
     onUpdateServiceDraft((draft) => ({
       ...draft,
       subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
-        (entry) =>
-          getSubcategorySelectionKey(entry) === activeSkillCategoryId
-            ? {
-                ...entry,
-                [field]: value,
-              }
-            : entry,
+        (entry) => {
+          const subCategoryId = toPositiveInteger(entry?.subCategoryId);
+          if (!subCategoryId) {
+            return entry;
+          }
+
+          return {
+            ...entry,
+            selectedToolIds: selectedToolIdsByCategory.get(subCategoryId) || [],
+          };
+        },
       ),
     }));
   };
@@ -930,13 +794,11 @@ const FreelancerServiceInfoSlide = ({
               <CategoryMultiSelect
                 selected={selectedCategoryKeys}
                 onChange={handleSelectedCategoriesChange}
-                onCreateOption={handleAddCustomCategory}
                 options={allCategoryOptions}
-                placeholder={
-                  isCategoriesLoading ? "Loading..." : "Select sub-categories"
-                }
+                placeholder={isCategoriesLoading ? "Loading..." : "Search here"}
+                searchPlaceholder="Search here"
                 isLoading={isCategoriesLoading}
-                allowCustom
+                closeOnSelect
               />
             </div>
 
@@ -950,54 +812,15 @@ const FreelancerServiceInfoSlide = ({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <CustomSelect
-                    value={activeSkillCategoryId ? String(activeSkillCategoryId) : ""}
-                    onChange={(value) =>
-                      onUpdateServiceDraft((draft) => ({
-                        ...draft,
-                        activeSkillCategory: String(value || "").trim(),
-                      }))
-                    }
-                    options={selectedCategoryOptions}
-                    placeholder="Select a sub-category for skills"
-                    isSearchable
-                    searchPlaceholder="Search sub-categories"
+                  <CategoryMultiSelect
+                    selected={selectedSkillValues}
+                    onChange={handleSelectedSkillsChange}
+                    options={skillOptions}
+                    placeholder={isToolsLoading ? "Loading..." : "Search here"}
+                    searchPlaceholder="Search here"
+                    isLoading={isToolsLoading}
+                    closeOnSelect
                   />
-
-                  <div className="rounded-xl border border-white/8 bg-card/60 p-3 sm:p-4">
-                    <p className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-white/55">
-                      Adding Skills To{" "}
-                      <span className="text-primary">
-                        {selectedCategoryOptions.find(
-                          (option) => String(option.value) === String(activeSkillCategoryId),
-                        )?.label || "Selected sub-category"}
-                      </span>
-                    </p>
-                    <p className="mb-3 text-xs text-white/45">
-                      Choose tools from the selected sub-category or add your own.
-                    </p>
-                    <TechnologiesInput
-                      toolOptions={activeCategoryToolOptions}
-                      selectedToolIds={activeSelectedToolIds}
-                      unresolvedToolIds={unresolvedActiveToolIds}
-                      customSkillNames={activeCustomSkillNames}
-                      onSelectedToolIdsChange={(nextValues) =>
-                        handleActiveSubcategoryChange(
-                          "selectedToolIds",
-                          nextValues
-                            .map((value) => toPositiveInteger(value))
-                            .filter(Boolean),
-                        )
-                      }
-                      onCustomSkillNamesChange={(nextValues) =>
-                        handleActiveSubcategoryChange(
-                          "customSkillNames",
-                          normalizeCustomSkillNames(nextValues),
-                        )
-                      }
-                      isLoading={isToolsLoading}
-                    />
-                  </div>
                 </div>
               )}
             </div>
