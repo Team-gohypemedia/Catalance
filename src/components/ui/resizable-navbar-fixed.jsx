@@ -298,7 +298,7 @@ export const NavbarLogo = () => (
       <img
         src={logo}
         alt="Catalance logo mark"
-        className="h-6 w-6 object-contain brightness-0 saturate-100"
+        className="h-8 w-8 object-contain brightness-0 saturate-100"
       />
     </div>
     <span className="text-lg font-bold tracking-tight text-black dark:text-white">
