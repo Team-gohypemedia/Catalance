@@ -152,14 +152,14 @@ const Hero = () => {
           <span className="block">Actually Trust</span>
         </h1>
 
-        <p className="mt-6 max-w-4xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-7 sm:text-base md:text-lg">
+        <p className="mt-6 mb-6 max-w-4xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-7 sm:mb-7 sm:text-base md:text-lg">
           Hire trusted experts focused on reliable and timely delivery.
         </p>
 
         <Button
           asChild
           size="lg"
-          className="px-8 text-lg font-semibold shadow-[0_14px_36px_rgba(255,204,0,0.22)] sm:mt-11"
+          className="px-8 text-lg font-semibold shadow-[0_14px_36px_rgba(255,204,0,0.22)]"
         >
           <Link to="/service">Hire Expert</Link>
         </Button>

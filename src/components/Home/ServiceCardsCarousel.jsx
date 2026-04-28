@@ -310,7 +310,10 @@ const ServiceCardsCarousel = () => {
   const syncCarouselState = React.useCallback(
     (emblaApi) => {
       if (!emblaApi || serviceCount === 0) return;
-      setSelectedIndex(emblaApi.selectedScrollSnap() % serviceCount);
+      const nextIndex = emblaApi.selectedScrollSnap() % serviceCount;
+      setSelectedIndex((currentIndex) =>
+        currentIndex === nextIndex ? currentIndex : nextIndex,
+      );
     },
     [serviceCount],
   );
