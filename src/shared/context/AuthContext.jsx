@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
+import Loader from "@/components/common/Loader";
 
 import {
   clearSession,
@@ -369,13 +370,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={authValue}>
-      {shouldShowGlobalLoader ? (
-        <div className="flex min-h-screen items-center justify-center">
-          <span className="loading loading-spinner text-primary" />
-        </div>
-      ) : (
-        children
-      )}
+      {shouldShowGlobalLoader ? <Loader /> : children}
     </AuthContext.Provider>
   );
 };
@@ -393,4 +388,6 @@ export const useAuth = () => {
 
   return context;
 };
+
+export const useOptionalAuth = () => useContext(AuthContext);
 

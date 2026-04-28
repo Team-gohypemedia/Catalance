@@ -8,14 +8,13 @@ import FolderKanban from "lucide-react/dist/esm/icons/folder-kanban";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
-import Clock from "lucide-react/dist/esm/icons/clock";
 import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
 import Star from "lucide-react/dist/esm/icons/star";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import SlidersHorizontal from "lucide-react/dist/esm/icons/sliders-horizontal";
-import { useNotifications } from "@/shared/context/NotificationContext";
+import Loader from "@/components/common/Loader";
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 import { getSession } from "@/shared/lib/auth-storage";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/shared/context/AuthContext";
+import { useNotifications } from "@/shared/context/NotificationContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import {
@@ -4135,9 +4135,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                     </div>
                     <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
                       {clientReviewsLoading ? (
-                        <div className="flex min-h-[140px] items-center justify-center gap-2 text-sm text-zinc-400">
-                          <Clock className="size-4 animate-pulse" />
-                          Loading client reviews...
+                        <div className="flex min-h-[140px] items-center justify-center">
+                          <Loader size="sm" />
                         </div>
                       ) : clientReviews.length === 0 ? (
                         <div className="flex min-h-[140px] flex-col items-center justify-center text-center">

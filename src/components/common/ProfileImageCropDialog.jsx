@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import Crop from "lucide-react/dist/esm/icons/crop";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Move from "lucide-react/dist/esm/icons/move";
+import Loader from "@/components/common/Loader";
 
 import {
   Dialog,
@@ -631,7 +631,7 @@ export default function ProfileImageCropDialog({
             >
               {isApplying ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader size="sm" className="mr-2" />
                   Saving...
                 </>
               ) : (

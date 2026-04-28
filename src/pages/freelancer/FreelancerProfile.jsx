@@ -3,12 +3,12 @@ import Camera from "lucide-react/dist/esm/icons/camera";
 import Check from "lucide-react/dist/esm/icons/check";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
+import Loader from "@/components/common/Loader";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -3966,7 +3966,7 @@ const FreelancerProfile = () => {
                                   }}
                                 >
                                   {projectCoverUploadingIndex === idx ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                                    <Loader size="sm" />
                                   ) : (
                                     <Camera className="h-3.5 w-3.5 text-primary" />
                                   )}
@@ -4099,7 +4099,7 @@ const FreelancerProfile = () => {
                 onClick={saveProjectsSection}
                 disabled={isSaving || !hasProjectChanges}
               >
-                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                {isSaving ? <Loader size="sm" /> : null}
                 Save changes
               </Button>
             </div>
@@ -4170,7 +4170,7 @@ const FreelancerProfile = () => {
                         disabled={newProjectLoading}
                       >
                         {newProjectLoading ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <Loader size="sm" />
                         ) : null}
                         Fetch details
                       </Button>
@@ -4371,7 +4371,7 @@ const FreelancerProfile = () => {
                 disabled={newProjectLoading}
               >
                 {newProjectLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader size="sm" />
                 ) : !isEditingProjectDraft ? (
                   <Plus className="h-3.5 w-3.5" />
                 ) : null}
@@ -4455,7 +4455,7 @@ const FreelancerProfile = () => {
                 disabled={isSaving}
                 className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
-                {isSaving && <Loader2 className="w-3 h-3 animate-spin" />}
+                {isSaving && <Loader size="sm" />}
                 Save changes
               </button>
             </div>

@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Loader from "@/components/common/Loader";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -258,7 +258,7 @@ const ProposalRowCard = ({
                   disabled={isSending || isPaying}
                 >
                   {isSending || isPaying ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader size="sm" className="mr-2" />
                   ) : null}
                   {primaryActionLabel}
                 </Button>

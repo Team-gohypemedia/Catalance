@@ -1,7 +1,7 @@
 import React from "react";
 import Star from "lucide-react/dist/esm/icons/star";
-import Clock from "lucide-react/dist/esm/icons/clock";
 import { cn } from "@/shared/lib/utils";
+import Loader from "@/components/common/Loader";
 import {
   FreelancerDashboardPanel,
   FreelancerDashboardSkeletonBlock,
@@ -67,9 +67,8 @@ const ClientReviewsPanel = ({ reviews = [], meta = {}, isLoading = false }) => {
 
       <FreelancerDashboardPanel className="h-fit self-start p-4 sm:p-5">
         {isLoading ? (
-          <div className="flex min-h-[140px] items-center justify-center gap-2 text-sm text-zinc-400">
-            <Clock className="size-4 animate-pulse" />
-            Loading client reviews...
+          <div className="flex min-h-[140px] items-center justify-center">
+            <Loader size="sm" />
           </div>
         ) : reviews.length === 0 ? (
           <div className="flex min-h-[140px] flex-col items-center justify-center text-center">

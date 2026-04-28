@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Loader from "@/components/common/Loader";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -103,7 +103,7 @@ const ProposalFreelancerDetailsDialog = ({
                         disabled={isUnsending}
                       >
                         {isUnsending ? (
-                          <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                          <Loader size="sm" className="mr-1.5" />
                         ) : (
                           <Trash2 className="mr-1.5 h-3 w-3" />
                         )}

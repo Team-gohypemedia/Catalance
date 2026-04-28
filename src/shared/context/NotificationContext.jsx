@@ -13,7 +13,7 @@ import {
 import { useLocation } from "react-router-dom";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
-import { useAuth } from "@/shared/context/AuthContext";
+import { useOptionalAuth } from "@/shared/context/AuthContext";
 import {
   SOCKET_IO_URL,
   SOCKET_OPTIONS,
@@ -197,7 +197,10 @@ const notificationMatchesAudience = (notification, audience, currentUserId) => {
 };
 
 export const NotificationProvider = ({ children }) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const auth = useOptionalAuth();
+  const user = auth?.user ?? null;
+  const isAuthenticated = Boolean(auth?.isAuthenticated);
+  const isLoading = Boolean(auth?.isLoading);
   const { pathname } = useLocation();
   const [notifications, setNotifications] = useState([]);
   const [socket, setSocket] = useState(null);

@@ -193,6 +193,34 @@ body[data-scroll-locked] {
     transform: translateY(calc(-100% - var(--gap)));
     }
   }
+
+  @keyframes spin-clockwise {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes spin-counter-clockwise {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
+  }
+}
+
+@layer utilities {
+  .animate-spin-clockwise {
+    animation: spin-clockwise 3s linear infinite;
+  }
+
+  .animate-spin-counter-clockwise {
+    animation: spin-counter-clockwise 3s linear infinite;
+  }
 }
 
 @layer base {
@@ -200,6 +228,7 @@ body[data-scroll-locked] {
     @apply border-border outline-ring/50;
   }
   html {
+    @apply bg-background text-foreground;
     scrollbar-gutter: stable;
     overflow-x: hidden;
   }
