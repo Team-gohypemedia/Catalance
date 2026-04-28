@@ -670,7 +670,7 @@ const ProjectSetupPage = () => {
                             disabled={publishing}
                             className="h-16 rounded-2xl bg-blue-600 px-12 text-base font-black text-white hover:bg-blue-700 shadow-xl shadow-blue-500/20"
                         >
-                            {publishing ? <Loader size=\"md\" /> : "Publish Workspace\"}
+                            {publishing ? <Loader size="md" /> : "Publish Workspace"}
                         </Button>
                     </div>
                 </Card>
