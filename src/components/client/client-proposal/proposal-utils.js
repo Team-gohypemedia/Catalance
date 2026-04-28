@@ -37,7 +37,7 @@ export const statusLabels = {
 export const proposalPanelClassName =
   "rounded-[28px] border border-white/[0.06] bg-card";
 export const clientProposalMetricBlockClassName =
-  "rounded-[14px] border border-white/[0.06] bg-card p-3 sm:p-3.5";
+  "min-w-0 rounded-[14px] border border-white/[0.06] bg-card p-3 sm:p-3.5";
 
 export const proposalCardStatusClasses = {
   draft: "border-border bg-transparent text-muted-foreground",

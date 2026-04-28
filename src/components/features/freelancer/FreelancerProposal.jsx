@@ -54,7 +54,7 @@ const GENERIC_PROPOSAL_CATEGORIES = new Set(["project", "general"]);
 const freelancerProposalPanelClassName =
   "rounded-[28px] border border-white/[0.06] bg-card";
 const freelancerProposalMetricBlockClassName =
-  "rounded-[14px] border border-white/[0.06] bg-card p-3 sm:p-3.5";
+  "min-w-0 rounded-[14px] border border-white/[0.06] bg-card p-3 sm:p-3.5";
 const freelancerProposalStatusClasses = {
   pending: "border-primary/35 bg-transparent text-primary",
   received: "border-primary/35 bg-transparent text-primary",
@@ -406,20 +406,26 @@ const ProposalRowCard = ({
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className={freelancerProposalMetricBlockClassName}>
-                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <div
+                className={freelancerProposalMetricBlockClassName}
+                style={{ containerType: "inline-size" }}
+              >
+                <p className="whitespace-nowrap text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.76rem]">
                   Budget
                 </p>
-                <div className="mt-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
+                <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
                   {budget}
                 </div>
               </div>
 
-              <div className={freelancerProposalMetricBlockClassName}>
-                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <div
+                className={freelancerProposalMetricBlockClassName}
+                style={{ containerType: "inline-size" }}
+              >
+                <p className="whitespace-nowrap text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.76rem]">
                   Timeline
                 </p>
-                <div className="mt-2 text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
+                <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
                   <span className="capitalize">{timeline}</span>
                 </div>
               </div>
@@ -1136,4 +1142,3 @@ const FreelancerProposal = ({ filter = "all" }) => (
 );
 
 export default FreelancerProposal;
-

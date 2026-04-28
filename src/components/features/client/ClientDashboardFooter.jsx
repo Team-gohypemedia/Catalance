@@ -38,12 +38,12 @@ const ClientDashboardFooter = ({ className, variant = "default" }) => {
           <span>&copy; {currentYear} Catalance. All rights reserved.</span>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-6 sm:justify-end">
+        <div className="flex items-center justify-center gap-4 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:justify-end sm:gap-6">
           {footerLinks.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className={cn("text-xs transition-colors", tone.link)}
+              className={cn("whitespace-nowrap text-xs transition-colors", tone.link)}
             >
               {item.label}
             </Link>

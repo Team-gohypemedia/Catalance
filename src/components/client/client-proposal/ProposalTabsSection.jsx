@@ -18,7 +18,7 @@ const statusTabConfig = [
 ];
 
 const segmentedControlClassName =
-  "inline-flex h-auto w-full flex-nowrap items-stretch justify-between gap-1 rounded-[32px] border border-border bg-background p-1 shadow-none sm:gap-2 sm:p-1.5";
+  "inline-flex h-auto w-full flex-nowrap items-stretch justify-between gap-0.5 rounded-[32px] border border-border bg-background p-0.5 shadow-none sm:gap-1 sm:p-1";
 
 const buildProposalBucketsByType = (grouped = {}) => {
   const buckets = {
@@ -173,12 +173,13 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
         title="Project Proposals"
         dateLabel={false}
         className="lg:items-start"
+        titleClassName="text-[clamp(1.35rem,2.1vw,2.55rem)] leading-[0.98] tracking-[-0.05em] whitespace-nowrap"
         actions={
-          <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end lg:flex-nowrap lg:items-center">
+          <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-nowrap sm:justify-end sm:overflow-x-auto sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden lg:flex-nowrap lg:items-center">
             <div
               className={cn(
                 segmentedControlClassName,
-                "max-w-none sm:w-auto sm:max-w-none",
+                "w-full max-w-none shrink-0 sm:w-auto sm:max-w-none",
               )}
               role="tablist"
               aria-label="Proposal type"
@@ -197,7 +198,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                       setActiveType(item.value);
                     }}
                     className={cn(
-                      "inline-flex h-10 min-w-[7rem] flex-1 items-center justify-center rounded-full border border-transparent px-4 text-sm font-semibold shadow-none transition sm:h-11 sm:px-5",
+                      "inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-full border border-transparent px-2.5 text-[clamp(0.62rem,1vw,0.88rem)] font-semibold leading-none tracking-[-0.02em] whitespace-nowrap shadow-none transition sm:h-11 sm:min-w-[6.5rem] sm:flex-none sm:px-4 sm:text-sm",
                       isActive
                         ? "border-primary/70 bg-primary text-primary-foreground"
                         : "bg-transparent text-muted-foreground hover:text-foreground",
@@ -206,7 +207,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                     <span>{item.label}</span>
                     <span
                       className={cn(
-                        "ml-2 inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
+                        "ml-1 hidden min-w-4 items-center justify-center rounded-full px-1.5 py-0.5 text-[8px] font-semibold leading-none xl:inline-flex",
                         isActive
                           ? "bg-black/10 text-primary-foreground/80"
                           : "bg-white/[0.05] text-muted-foreground",
@@ -222,7 +223,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
             <TabsList
               className={cn(
                 segmentedControlClassName,
-                "max-w-[26rem] sm:w-auto sm:max-w-none",
+                "w-full max-w-full shrink-0 sm:w-auto sm:max-w-none",
               )}
             >
               {statusTabConfig.map((item) => {
@@ -233,17 +234,14 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                     key={item.value}
                     value={item.value}
                     className={cn(
-                      "h-10 min-w-[4.75rem] flex-none rounded-full border border-transparent text-center text-[0.72rem] font-semibold text-muted-foreground shadow-none transition hover:text-foreground sm:h-11 sm:min-w-0 sm:flex-none sm:px-5 sm:text-[0.95rem] sm:leading-normal sm:tracking-normal sm:whitespace-nowrap data-[state=active]:!border-primary/70 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-none",
-                      item.value === "pending"
-                        ? "max-w-[7.75rem] whitespace-normal px-2 py-1 leading-[1.02] tracking-[-0.01em] sm:max-w-none sm:py-0"
-                        : "whitespace-nowrap px-4 leading-none tracking-[-0.01em]",
+                      "h-9 min-w-0 flex-1 rounded-full border border-transparent px-2 text-center text-[clamp(0.56rem,0.9vw,0.78rem)] font-semibold leading-none tracking-[-0.02em] whitespace-nowrap text-muted-foreground shadow-none transition hover:text-foreground sm:h-10 sm:px-3 sm:text-[clamp(0.64rem,0.8vw,0.88rem)] lg:h-11 lg:px-4 lg:text-[0.92rem] sm:flex-none data-[state=active]:!border-primary/70 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-none",
                     )}
                   >
-                    <span className="inline-flex items-center justify-center gap-2">
+                    <span className="inline-flex items-center justify-center gap-1.5">
                       <span>{item.label}</span>
                       <span
                         className={cn(
-                          "hidden min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none sm:inline-flex",
+                          "hidden min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none xl:inline-flex",
                           isStatusActive
                             ? "bg-black/10 text-primary-foreground/80"
                             : "bg-white/[0.05] text-muted-foreground",
