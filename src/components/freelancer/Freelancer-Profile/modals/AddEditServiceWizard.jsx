@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import Camera from "lucide-react/dist/esm/icons/camera";
 import Check from "lucide-react/dist/esm/icons/check";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
+import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ImageIcon from "lucide-react/dist/esm/icons/image";
@@ -63,6 +63,21 @@ const ROLE_OPTIONS = [
   { value: "partial_contribution", label: "Partial contribution" },
   { value: "team_project", label: "Team project" },
 ];
+
+const normalizeServiceLookupToken = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const toServiceHeadingLabel = (value = "") =>
+  String(value || "")
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 
 const normalizeKeywordValue = (value = "") =>
   String(value || "").trim().toLowerCase();
@@ -176,17 +191,25 @@ const AddEditServiceWizard = ({
   }, []);
 
   const resolvedServiceId = useMemo(() => {
-    // Try to find in fetched marketplace services first (for real IDs)
-    const normalizedKey = String(serviceKey || "").trim().toLowerCase().replace(/_/g, " ");
-    const mService = marketplaceServices.find(s => 
-      String(s.name || "").trim().toLowerCase() === normalizedKey
-    );
+    const normalizedKey = normalizeServiceLookupToken(serviceKey);
+    if (!normalizedKey) return null;
+
+    // Match against marketplace service key/name/label/id variants.
+    const mService = marketplaceServices.find((service) => {
+      const candidates = [service?.key, service?.name, service?.label, service?.id];
+      return candidates.some(
+        (candidate) => normalizeServiceLookupToken(candidate) === normalizedKey
+      );
+    });
     if (mService) return mService.id;
 
     // Fallback to prop-based catalog
-    const service = servicesCatalog.find(s => 
-      s.key === serviceKey || s.value === serviceKey || s.id === serviceKey
-    );
+    const service = servicesCatalog.find((entry) => {
+      const candidates = [entry?.key, entry?.value, entry?.id, entry?.label, entry?.name];
+      return candidates.some(
+        (candidate) => normalizeServiceLookupToken(candidate) === normalizedKey
+      );
+    });
     return service?.id || null;
   }, [serviceKey, servicesCatalog, marketplaceServices]);
 
@@ -408,6 +431,36 @@ const AddEditServiceWizard = ({
   };
 
   const serviceLabel = String(serviceProfileForm.serviceLabel || "").trim() || "Service";
+  const headerServiceLabel = useMemo(() => {
+    const normalizedKey = normalizeServiceLookupToken(serviceProfileForm.serviceKey);
+    if (!normalizedKey) return "Service";
+
+    const matchedMarketplaceService = marketplaceServices.find((service) => {
+      const candidates = [service?.key, service?.name, service?.label, service?.id];
+      return candidates.some(
+        (candidate) => normalizeServiceLookupToken(candidate) === normalizedKey
+      );
+    });
+
+    if (matchedMarketplaceService) {
+      return String(
+        matchedMarketplaceService?.name || matchedMarketplaceService?.label || ""
+      ).trim() || "Service";
+    }
+
+    const matchedCatalogService = servicesCatalog.find((service) => {
+      const candidates = [service?.key, service?.value, service?.id, service?.name, service?.label];
+      return candidates.some(
+        (candidate) => normalizeServiceLookupToken(candidate) === normalizedKey
+      );
+    });
+
+    if (matchedCatalogService) {
+      return String(matchedCatalogService?.label || matchedCatalogService?.name || "").trim() || "Service";
+    }
+
+    return toServiceHeadingLabel(serviceProfileForm.serviceKey) || "Service";
+  }, [serviceProfileForm.serviceKey, marketplaceServices, servicesCatalog]);
   const serviceTitleLength = String(serviceProfileForm.serviceLabel || "").length;
 
   const handleSelectedCategoriesChange = useCallback(
@@ -514,30 +567,39 @@ const AddEditServiceWizard = ({
   return (
     <div className="flex h-full min-h-0 flex-col bg-gradient-to-br from-background via-background/95 to-background/90 rounded-2xl overflow-hidden">
       {/* Header with Glassmorphism */}
-      <div className="flex-none mb-6 flex items-center justify-between border-b border-white/5 pt-8 pb-4 px-8 bg-white/[0.01] backdrop-blur-sm rounded-t-2xl">
-        <div className="flex items-center gap-4">
-           <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary">
-              {activeStepId === "overview" && <Check className="h-6 w-6" />}
-              {activeStepId === "pricing" && <IndianRupee className="h-6 w-6" />}
-              {activeStepId === "visuals" && <Camera className="h-6 w-6" />}
-              {activeStepId === "caseStudy" && <Plus className="h-6 w-6" />}
-           </div>
-           <div>
-             <div className="flex items-center gap-2">
-               <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-                 {isDraftingNewService ? "New Service Setup" : "Editing Service"}
-               </span>
-               <div className="h-1 w-1 rounded-full bg-white/20" />
-               <span className="text-[10px] uppercase font-bold tracking-widest text-white/30">Step {currentStepIndex + 1} of {steps.length}</span>
-             </div>
-             <h1 className="mt-1 text-2xl font-bold tracking-tight text-white drop-shadow-sm">
-               {serviceLabel}
-             </h1>
-           </div>
+      <div className="flex-none mb-6 h-20 border-b border-white/5 px-8 bg-card backdrop-blur-sm rounded-t-2xl">
+        <div className="relative flex h-full items-center justify-between">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={currentStepIndex > 0 ? handleBack : onCancel}
+            className="rounded-full border border-muted-foreground/30 hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={currentStepIndex > 0 ? "Go to previous step" : "Close wizard"}
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </Button>
+
+          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+            <div className="flex items-center justify-center">
+              <span className="inline-flex items-center justify-center text-center rounded-full border border-border bg-card px-2.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-foreground">
+                {isDraftingNewService ? "New Service Setup" : "Editing Service"}
+              </span>
+            </div>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-white drop-shadow-sm">
+              {headerServiceLabel}
+            </h1>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onCancel}
+            className="rounded-full hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Close wizard"
+          >
+            <X className="h-6 w-6" />
+          </Button>
         </div>
-        <Button variant="ghost" size="icon" onClick={onCancel} className="rounded-full hover:bg-white/5 text-white/30 hover:text-white transition-colors">
-          <X className="h-6 w-6" />
-        </Button>
       </div>
 
       {/* Stepper Implementation */}
@@ -617,31 +679,30 @@ const AddEditServiceWizard = ({
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {selectedSubcategories.length > 1 && (
-                        <div className="flex flex-wrap gap-2">
-                           {selectedSubcategories.map(sub => (
-                             <button
-                               key={sub.subCategoryKey}
-                               type="button"
-                               onClick={() => setServiceProfileForm(prev => ({...prev, activeSkillCategory: sub.subCategoryKey}))}
-                               className={cn(
-                                 "rounded-full border px-4 py-2 text-xs font-semibold transition-all",
-                                 activeSkillCategoryId === sub.subCategoryKey
-                                   ? "bg-primary/20 border-primary text-primary"
-                                   : "bg-white/5 border-white/10 text-white/40 hover:text-white"
-                               )}
-                             >
-                               {sub.label}
-                             </button>
-                           ))}
-                        </div>
-                      )}
+                      <CustomSelect
+                        value={activeSkillCategoryId || selectedSubcategories[0]?.subCategoryKey || ""}
+                        onChange={(value) =>
+                          setServiceProfileForm((prev) => ({
+                            ...prev,
+                            activeSkillCategory: value,
+                          }))
+                        }
+                        options={selectedSubcategories.map((subcategory) => {
+                          const lookup = allCategoryOptions.find(opt => opt.value === subcategory.subCategoryKey);
+                          return {
+                            value: subcategory.subCategoryKey,
+                            label: lookup?.label || subcategory.label || subcategory.name || "Selected sub-category",
+                          };
+                        })}
+                        placeholder="Select sub-category"
+                        viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
+                      />
 
                       <div className="rounded-xl border border-white/8 bg-card/60 p-3 sm:p-4">
                          <p className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-white/55">
                            Adding Skills To{" "}
                            <span className="text-primary">
-                             {activeSubcategory?.label || "Selected sub-category"}
+                             {allCategoryOptions.find(opt => opt.value === activeSubcategory?.subCategoryKey)?.label || activeSubcategory?.label || activeSubcategory?.name || "Selected sub-category"}
                            </span>
                          </p>
                          <p className="mb-3 text-xs text-white/45">
@@ -1021,20 +1082,11 @@ const AddEditServiceWizard = ({
       </div>
 
       {/* Footer Nav with Polished Glass Button */}
-      <div className="flex-none mt-4 flex items-center justify-between border-t border-white/5 pt-8 pb-4 px-8 bg-white/[0.01] backdrop-blur-sm rounded-b-2xl">
-        <Button variant="ghost" onClick={onCancel} className="rounded-2xl h-14 px-8 text-[15px] font-semibold text-white/40 hover:bg-white/5 hover:text-white transition-all transform active:scale-95">
-          Cancel
-        </Button>
+      <div className="flex-none mt-2 flex h-20 items-center justify-center border-t border-white/5 px-8 bg-card backdrop-blur-sm rounded-b-2xl">
         <div className="flex gap-4">
-          {currentStepIndex > 0 && (
-            <Button variant="outline" onClick={handleBack} className="rounded-2xl h-14 px-8 border-white/10 bg-white/[0.02] font-semibold text-white/80 hover:bg-white/10 hover:text-white transition-all transform active:scale-95">
-              Back
-            </Button>
-          )}
           <Button 
             onClick={handleNext} 
             disabled={savingServiceProfile || uploadingServiceCover}
-            className="rounded-2xl h-14 px-10 bg-primary text-white font-bold text-base shadow-[0_10px_30px_-10px_rgba(var(--primary),0.5)] transition-all transform hover:translate-y-[-2px] active:translate-y-[1px] disabled:opacity-50 disabled:translate-y-0"
           >
             {savingServiceProfile ? (
               <div className="flex items-center gap-3">
@@ -1044,7 +1096,6 @@ const AddEditServiceWizard = ({
             ) : (
               <div className="flex items-center gap-2">
                 <span>{currentStepIndex === steps.length - 1 ? (isDraftingNewService ? "Publish Service" : "Save Changes") : "Continue"}</span>
-                {currentStepIndex < steps.length - 1 && <Plus className="h-4 w-4 ml-1 opacity-60" />}
               </div>
             )}
           </Button>
@@ -1629,6 +1680,26 @@ const CategoryMultiSelect = ({
           )}
         />
       </button>
+
+      {selectedOptions.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {selectedOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() =>
+                onChange(
+                  selected.filter((value) => String(value) !== String(option.value))
+                )
+              }
+              className="inline-flex items-center gap-2 rounded-full border border-primary/45 bg-primary/12 px-3 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/18"
+            >
+              <span>{option.label}</span>
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {isOpen && (
         <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40 animate-in fade-in zoom-in-95 duration-200">

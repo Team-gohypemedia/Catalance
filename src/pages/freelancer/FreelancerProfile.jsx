@@ -3,12 +3,12 @@ import Camera from "lucide-react/dist/esm/icons/camera";
 import Check from "lucide-react/dist/esm/icons/check";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
+import Loader from "@/components/common/Loader";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -257,6 +257,7 @@ const FreelancerProfile = () => {
   const [skills, setSkills] = useState([]); // [{ name }]
   const [workExperience, setWorkExperience] = useState([]); // {title, period, description}
   const [services, setServices] = useState([]); // string[]
+  const [catalogServices, setCatalogServices] = useState([]); // [{ value, label }] from DB
   const [skillForm, setSkillForm] = useState(createInitialSkillForm);
   const [workForm, setWorkForm] = useState(initialWorkForm);
   const [editingIndex, setEditingIndex] = useState(null); // null = add, number = edit
@@ -354,6 +355,34 @@ const FreelancerProfile = () => {
       }
     };
   }, [newProjectImagePreview]);
+
+  // Fetch marketplace services (services table) for Add Service modal options.
+  useEffect(() => {
+    let active = true;
+    authFetch("/marketplace/filters/services")
+      .then((res) => res.json())
+      .then((payload) => {
+        if (!active) return;
+        const data = Array.isArray(payload?.data) ? payload.data : [];
+        const seen = new Set();
+        setCatalogServices(
+          data
+            .map((s) => ({
+              value: String(s?.key || s?.id || s?.name || "").trim(),
+              label: String(s?.label || s?.name || "").trim(),
+            }))
+            .filter((s) => s.value && s.label)
+            .filter((s) => {
+              const identity = normalizeServiceIdentity(s.value);
+              if (!identity || seen.has(identity)) return false;
+              seen.add(identity);
+              return true;
+            })
+        );
+      })
+      .catch(() => { });
+    return () => { active = false; };
+  }, [authFetch]);
 
   useEffect(() => {
     if (!modalType || typeof window === "undefined") return undefined;
@@ -702,8 +731,8 @@ const FreelancerProfile = () => {
           Array.isArray(normalized.socialMediaLinks)
             ? normalized.socialMediaLinks
             : Object.entries(normalized.socialMediaLinks || {}).map(
-                ([platform, url]) => ({ platform, url })
-              );
+              ([platform, url]) => ({ platform, url })
+            );
         setSocialMediaLinks(loadedSocialMediaLinks);
         setProfileDetails(loadedProfileDetails);
         setSkills(loadedSkills);
@@ -765,7 +794,7 @@ const FreelancerProfile = () => {
             profileDetails: {},
             socialMediaLinks: [],
           });
-  
+
         }
       } finally {
         if (active) setProfileLoading(false);
@@ -976,8 +1005,8 @@ const FreelancerProfile = () => {
     const nextWorkExperience =
       editingIndex !== null
         ? workExperience.map((item, idx) =>
-            idx === editingIndex ? newItem : item
-          )
+          idx === editingIndex ? newItem : item
+        )
         : [...workExperience, newItem];
 
     setWorkExperience(nextWorkExperience);
@@ -1625,12 +1654,12 @@ const FreelancerProfile = () => {
         setInitialData((prev) =>
           prev
             ? {
-                ...prev,
-                portfolio: {
-                  ...(prev.portfolio || {}),
-                  resume: resumeUrl,
-                },
-              }
+              ...prev,
+              portfolio: {
+                ...(prev.portfolio || {}),
+                resume: resumeUrl,
+              },
+            }
             : prev
         );
         toast.success("Resume uploaded");
@@ -1726,29 +1755,29 @@ const FreelancerProfile = () => {
     const normalizedCaseStudies =
       existingCaseStudies.length > 0
         ? existingCaseStudies.map((caseStudy, index) => ({
-            id: String(caseStudy?.id || "").trim() || `case-study-${index + 1}`,
-            title: String(caseStudy?.title || "").trim(),
-            description: String(caseStudy?.description || "").trim(),
-            projectLink: String(caseStudy?.projectLink || "").trim(),
-            projectFile: caseStudy?.projectFile || null,
-            role: String(caseStudy?.role || "").trim(),
-            timeline: String(caseStudy?.timeline || "").trim(),
-            budget: String(caseStudy?.budget || "").trim(),
-            niche: String(caseStudy?.niche || "").trim(),
-          }))
+          id: String(caseStudy?.id || "").trim() || `case-study-${index + 1}`,
+          title: String(caseStudy?.title || "").trim(),
+          description: String(caseStudy?.description || "").trim(),
+          projectLink: String(caseStudy?.projectLink || "").trim(),
+          projectFile: caseStudy?.projectFile || null,
+          role: String(caseStudy?.role || "").trim(),
+          timeline: String(caseStudy?.timeline || "").trim(),
+          budget: String(caseStudy?.budget || "").trim(),
+          niche: String(caseStudy?.niche || "").trim(),
+        }))
         : [
-            {
-              id: "case-study-1",
-              title: "",
-              description: "",
-              projectLink: "",
-              projectFile: null,
-              role: "",
-              timeline: "",
-              budget: "",
-              niche: "",
-            },
-          ];
+          {
+            id: "case-study-1",
+            title: "",
+            description: "",
+            projectLink: "",
+            projectFile: null,
+            role: "",
+            timeline: "",
+            budget: "",
+            niche: "",
+          },
+        ];
 
     setServiceProfileForm({
       serviceKey,
@@ -1933,20 +1962,20 @@ const FreelancerProfile = () => {
       .filter(Boolean);
     const rawCaseStudies =
       Array.isArray(serviceProfileForm.caseStudies) &&
-      serviceProfileForm.caseStudies.length > 0
+        serviceProfileForm.caseStudies.length > 0
         ? serviceProfileForm.caseStudies
         : serviceProfileForm.caseStudy &&
-            typeof serviceProfileForm.caseStudy === "object"
+          typeof serviceProfileForm.caseStudy === "object"
           ? [serviceProfileForm.caseStudy]
           : [];
     const nextCaseStudies = rawCaseStudies.map((caseStudy, index) => {
       const projectFile =
         typeof File !== "undefined" && caseStudy?.projectFile instanceof File
           ? {
-              name: caseStudy.projectFile.name,
-              type: caseStudy.projectFile.type,
-              size: caseStudy.projectFile.size,
-            }
+            name: caseStudy.projectFile.name,
+            type: caseStudy.projectFile.type,
+            size: caseStudy.projectFile.size,
+          }
           : caseStudy?.projectFile || null;
 
       return {
@@ -2030,8 +2059,7 @@ const FreelancerProfile = () => {
       }
 
       toast.success(
-        `${getServiceLabel(serviceKey)} ${
-          serviceAlreadyExists ? "updated" : "added"
+        `${getServiceLabel(serviceKey)} ${serviceAlreadyExists ? "updated" : "added"
         }`
       );
       setServiceSkillInput("");
@@ -2807,14 +2835,14 @@ const FreelancerProfile = () => {
   const quickResponseTimeLabel =
     normalizeValueLabel(
       profileDetails?.responseTime ||
-        profileDetails?.avgResponseTime ||
-        onboardingAvailability?.responseTime
+      profileDetails?.avgResponseTime ||
+      onboardingAvailability?.responseTime
     ) || "Not set yet";
   const quickTimeZoneLabel = useMemo(() => {
     const storedTimeZone = normalizeTimeZoneLabel(
       onboardingAvailability?.timezone ||
-        onboardingIdentity?.timezone ||
-        profileDetails?.identity?.timezone
+      onboardingIdentity?.timezone ||
+      profileDetails?.identity?.timezone
     );
 
     if (storedTimeZone) return storedTimeZone;
@@ -2915,23 +2943,41 @@ const FreelancerProfile = () => {
         })),
     [onboardingServiceEntries, services]
   );
+  const existingServiceIdentitySet = useMemo(
+    () =>
+      new Set(
+        Array.from(
+          new Set([
+            ...onboardingServiceEntries.map((entry) => entry?.serviceKey),
+            ...(Array.isArray(services) ? services : []),
+          ])
+        )
+          .map((serviceKey) => normalizeServiceIdentity(serviceKey))
+          .filter(Boolean)
+      ),
+    [onboardingServiceEntries, services]
+  );
   const availableServiceOptions = useMemo(() => {
-    const existingServiceKeys = new Set(
-      Array.from(
-        new Set([
-          ...onboardingServiceEntries.map((entry) => entry?.serviceKey),
-          ...(Array.isArray(services) ? services : []),
-        ])
-      )
-        .map((serviceKey) => normalizeServiceIdentity(serviceKey))
-        .filter(Boolean)
-    );
+    const sourceOptions = catalogServices.length > 0
+      ? catalogServices
+      : SERVICE_OPTIONS;
 
-    return SERVICE_OPTIONS.filter(
-      (option) =>
-        !existingServiceKeys.has(normalizeServiceIdentity(option.value))
-    );
-  }, [onboardingServiceEntries, services]);
+    const seen = new Set();
+    return sourceOptions.reduce((acc, option) => {
+      const identity = normalizeServiceIdentity(option?.value);
+      if (!identity || seen.has(identity)) return acc;
+      seen.add(identity);
+      acc.push({
+        ...option,
+        disabled: existingServiceIdentitySet.has(identity),
+      });
+      return acc;
+    }, []);
+  }, [catalogServices, existingServiceIdentitySet]);
+  const selectableServiceOptionCount = useMemo(
+    () => availableServiceOptions.filter((option) => !option.disabled).length,
+    [availableServiceOptions]
+  );
   const openAddServiceModal = useCallback(() => {
     setServiceForm(createInitialServiceForm());
     setModalType("service");
@@ -3217,7 +3263,7 @@ const FreelancerProfile = () => {
   const canAddNewService = Boolean(
     (serviceForm.selectedServiceKey &&
       serviceForm.selectedServiceKey !== CUSTOM_SERVICE_OPTION_VALUE) ||
-      String(serviceForm.customServiceName || "").trim()
+    String(serviceForm.customServiceName || "").trim()
   );
 
   const hasServiceAveragePrice = Boolean(
@@ -3242,9 +3288,9 @@ const FreelancerProfile = () => {
       ? "Add a cover image"
       : !hasServiceAveragePrice
         ? "Set average price"
-          : !hasServiceSkills
-            ? "Add skills & technologies"
-            : "Ready to publish";
+        : !hasServiceSkills
+          ? "Add skills & technologies"
+          : "Ready to publish";
   const hasFeaturedProject = portfolioProjects.length > 0;
   const hasIndustryFocus = onboardingGlobalIndustry.length > 0;
 
@@ -3536,7 +3582,7 @@ const FreelancerProfile = () => {
         markAllAsRead={markAllAsRead}
         onNotificationClick={handleDashboardHeaderNotificationClick}
       >
-          <div className="w-full py-6 md:py-8">
+        <div className="w-full py-6 md:py-8">
 
           <ProfileHeroCard
             fileInputRef={fileInputRef}
@@ -3574,7 +3620,7 @@ const FreelancerProfile = () => {
           />
           <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
 
-            
+
             <div className="min-w-0 space-y-5">
               <ProfileSkillsCard
                 skills={skills}
@@ -3656,834 +3702,827 @@ const FreelancerProfile = () => {
             </div>
 
           </div>
-          </div>
+        </div>
       </FreelancerProfilePageShell>
       {/* Modal */}
       <FreelancerProfileModalHost
         modalType={modalType}
         fullProfileEditorSection={fullProfileEditorSection}
       >
-            {modalType === "skill" ? (
-              <>
-                <h1 className="text-lg font-semibold text-foreground">
-                  Add Skill
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Give the skill a name and score it on a 1-10 scale so clients can scan your strengths faster.
-                </p>
-                <div className="mt-4 space-y-4">
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      Skill name
-                    </span>
-                    <input
-                      value={skillForm.name}
-                      onChange={(event) =>
-                        setSkillForm((prev) => ({
-                          ...prev,
-                          name: event.target.value,
-                        }))
-                      }
-                      placeholder="Skill name"
-                      className="w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    />
-                  </label>
-                  <label className="block">
-                    <div className="mb-1.5 flex items-center justify-between gap-3">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Skill level
-                      </span>
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                        {formatSkillLevelLabel(skillForm.level)}
-                      </span>
-                    </div>
-                    <Select
-                      value={String(skillForm.level)}
-                      onValueChange={(value) =>
-                        setSkillForm((prev) => ({
-                          ...prev,
-                          level: normalizeSkillLevel(value),
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="h-11 w-full rounded-xl border-border/70 bg-card/70 px-3 text-[15px] text-foreground shadow-none focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/60">
-                        <SelectValue placeholder="Choose a skill level" />
-                      </SelectTrigger>
-                      <SelectContent className="border-border/70 bg-background text-foreground">
-                        {SKILL_LEVEL_OPTIONS.map((levelOption) => (
-                          <SelectItem key={levelOption} value={String(levelOption)}>
-                            Level {levelOption}/10
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </label>
+        {modalType === "skill" ? (
+          <>
+            <h1 className="text-lg font-semibold text-foreground">
+              Add Skill
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Give the skill a name and score it on a 1-10 scale so clients can scan your strengths faster.
+            </p>
+            <div className="mt-4 space-y-4">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                  Skill name
+                </span>
+                <input
+                  value={skillForm.name}
+                  onChange={(event) =>
+                    setSkillForm((prev) => ({
+                      ...prev,
+                      name: event.target.value,
+                    }))
+                  }
+                  placeholder="Skill name"
+                  className="w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                />
+              </label>
+              <label className="block">
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Skill level
+                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                    {formatSkillLevelLabel(skillForm.level)}
+                  </span>
                 </div>
-                <div className="mt-5 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setModalType(null)}
-                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground transition-colors hover:bg-muted/40"
+                <Select
+                  value={String(skillForm.level)}
+                  onValueChange={(value) =>
+                    setSkillForm((prev) => ({
+                      ...prev,
+                      level: normalizeSkillLevel(value),
+                    }))
+                  }
+                >
+                  <SelectTrigger className="h-11 w-full rounded-xl border-border/70 bg-card/70 px-3 text-[15px] text-foreground shadow-none focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/60">
+                    <SelectValue placeholder="Choose a skill level" />
+                  </SelectTrigger>
+                  <SelectContent className="border-border/70 bg-background text-foreground">
+                    {SKILL_LEVEL_OPTIONS.map((levelOption) => (
+                      <SelectItem key={levelOption} value={String(levelOption)}>
+                        Level {levelOption}/10
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+            </div>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setModalType(null)}
+                className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground transition-colors hover:bg-muted/40"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={addSkill}
+                disabled={isSaving || !formatSkillLabel(skillForm.name)}
+                className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background transition-colors hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving ? "Saving..." : "Add"}
+              </button>
+            </div>
+          </>
+        ) : modalType === "service" ? (
+          <>
+            <h1 className="text-lg font-semibold text-foreground">
+              Add New Service
+            </h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Pick a service from the catalog, then fill in its profile
+              details next.
+            </p>
+            <div className="mt-6 space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-muted-foreground">
+                  Service catalog
+                </span>
+                <Select
+                  modal={false}
+                  value={serviceForm.selectedServiceKey || undefined}
+                  onValueChange={(value) =>
+                    setServiceForm((prev) => ({
+                      ...prev,
+                      selectedServiceKey: value,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="h-11 w-full border-border/70 bg-card/70 px-4 text-[15px] text-foreground shadow-none focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/60">
+                    <SelectValue placeholder="Choose a service" />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    sideOffset={6}
+                    className="max-h-[26rem] rounded-xl border-border/70 bg-card text-foreground"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={addSkill}
-                    disabled={isSaving || !formatSkillLabel(skillForm.name)}
-                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background transition-colors hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isSaving ? "Saving..." : "Add"}
-                  </button>
-                </div>
-              </>
-            ) : modalType === "service" ? (
-              <>
-                <h1 className="text-lg font-semibold text-foreground">
-                  Add New Service
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Pick a service from the catalog or add a custom offer, then
-                  fill in its profile details next.
-                </p>
-                <div className="mt-4 space-y-4">
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      Service catalog
-                    </span>
-                    <Select
-                      modal={false}
-                      value={serviceForm.selectedServiceKey || undefined}
-                      onValueChange={(value) =>
-                        setServiceForm((prev) => ({
-                          ...prev,
-                          selectedServiceKey: value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="h-11 w-full rounded-xl border-border/70 bg-card/70 px-3 text-[15px] text-foreground shadow-none focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/60">
-                        <SelectValue placeholder="Choose a predefined service" />
-                      </SelectTrigger>
-                      <SelectContent className="border-border/70 bg-background text-foreground">
-                        {availableServiceOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value={CUSTOM_SERVICE_OPTION_VALUE}>
-                          Custom service
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {availableServiceOptions.length > 0
-                        ? "Choose from your remaining service catalog options."
-                        : "All catalog services are already on your profile. Add a custom service below."}
-                    </p>
-                  </label>
-
-                  {isCustomServiceSelected ? (
-                    <label className="block">
-                      <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                        Custom service name
-                      </span>
-                      <input
-                        value={serviceForm.customServiceName}
-                        onChange={(event) =>
-                          setServiceForm((prev) => ({
-                            ...prev,
-                            customServiceName: event.target.value,
-                          }))
-                        }
-                        placeholder="Service name (e.g. Rust Development)"
-                        className="w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                      />
-                    </label>
-                  ) : null}
-                </div>
-                <div className="mt-5 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setServiceForm(createInitialServiceForm());
-                      setModalType(null);
-                    }}
-                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={addService}
-                    disabled={!canAddNewService}
-                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background transition-colors hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Continue
-                  </button>
-                </div>
-              </>
-            ) : modalType === "viewAllProjects" ? (
-              <>
-                <div className="border-b border-border/70 pb-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                          All Featured Projects
-                        </h1>
-                        <span className="inline-flex items-center rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                          {displayPortfolioProjects.length}{" "}
-                          {displayPortfolioProjects.length === 1 ? "project" : "projects"}
+                    {availableServiceOptions.map((option) => (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                        disabled={option.disabled}
+                      >
+                        <span className="flex w-full items-center justify-between gap-3">
+                          <span>{option.label}</span>
+                          {option.disabled ? (
+                            <span className="rounded-full border border-border/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                              Already added
+                            </span>
+                          ) : null}
                         </span>
-                        {hasProjectChanges ? (
-                          <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
-                            Unsaved changes
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1.5 text-sm text-muted-foreground">
-                        Manage every project in your profile portfolio.
-                      </p>
-                    </div>
-                    <Button type="button" onClick={openAddProjectModal}>
-                      <Plus className="h-4 w-4" />
-                      Add project
-                    </Button>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {availableServiceOptions.length > 0
+                    ? selectableServiceOptionCount > 0
+                      ? "Services already on your profile are marked as Already added and cannot be selected."
+                      : "All catalog services are already on your profile."
+                    : "No services found in the catalog."}
+                </p>
+              </label>
+            </div>
+            <div className="mt-7 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setServiceForm(createInitialServiceForm());
+                  setModalType(null);
+                }}
+                className="rounded-md border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={addService}
+                disabled={!canAddNewService}
+                className="rounded-md bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background transition-colors hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Continue
+              </button>
+            </div>
+          </>
+        ) : modalType === "viewAllProjects" ? (
+          <>
+            <div className="border-b border-border/70 pb-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                      All Featured Projects
+                    </h1>
+                    <span className="inline-flex items-center rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                      {displayPortfolioProjects.length}{" "}
+                      {displayPortfolioProjects.length === 1 ? "project" : "projects"}
+                    </span>
+                    {hasProjectChanges ? (
+                      <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
+                        Unsaved changes
+                      </span>
+                    ) : null}
                   </div>
+                  <p className="mt-1.5 text-sm text-muted-foreground">
+                    Manage every project in your profile portfolio.
+                  </p>
+                </div>
+                <Button type="button" onClick={openAddProjectModal}>
+                  <Plus className="h-4 w-4" />
+                  Add project
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {displayPortfolioProjects.length > 0 ? (
+                <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+                  {displayPortfolioProjects.map((project, idx) => {
+                    const projectLink = normalizeProjectLinkValue(project?.link);
+                    const projectHost = getProjectTitleFallback(projectLink || "");
+                    const projectTitle = String(
+                      project?.title || projectHost || "Project"
+                    ).trim();
+                    const projectDescription = String(
+                      project?.description || ""
+                    ).trim();
+                    const projectServiceLabels = resolveProjectServiceLabels(project);
+                    const visibleProjectServiceLabels = projectServiceLabels.slice(0, 2);
+                    const hiddenProjectServiceLabelCount = Math.max(
+                      0,
+                      projectServiceLabels.length - visibleProjectServiceLabels.length
+                    );
+
+                    return (
+                      <article
+                        key={`project-modal-${projectLink || projectTitle}-${idx}`}
+                        className="group overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]"
+                      >
+                        <div className="relative h-40 overflow-hidden lg:h-44">
+                          <ProjectCoverMedia
+                            project={project}
+                            containerClassName="h-full w-full"
+                            imageClassName="h-full w-full object-cover"
+                            fallbackTitleClassName="text-3xl"
+                          />
+                          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.08),rgba(2,6,23,0.52)_72%,rgba(7,7,10,0.86)_100%)]" />
+                          <div className="absolute right-3 top-3 z-10">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/10 bg-background text-foreground opacity-0 shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition-all duration-200 translate-y-1 pointer-events-none group-hover:translate-y-0 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-focus-within:pointer-events-auto focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:pointer-events-auto data-[state=open]:translate-y-0 data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto hover:scale-105 hover:bg-background hover:text-primary"
+                                  title="Project actions"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="end"
+                                className="w-44 border-white/10 bg-background text-foreground"
+                              >
+                                {projectLink ? (
+                                  <DropdownMenuItem asChild>
+                                    <a
+                                      href={projectLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="cursor-pointer"
+                                    >
+                                      <ExternalLink className="h-3.5 w-3.5 text-primary" />
+                                      Open project
+                                    </a>
+                                  </DropdownMenuItem>
+                                ) : null}
+                                <DropdownMenuItem onSelect={() => openEditProject(project, idx)}>
+                                  <Edit2 className="h-3.5 w-3.5 text-primary" />
+                                  Edit details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={(event) => {
+                                    event.preventDefault();
+                                    document
+                                      .getElementById(`project-cover-modal-${idx}`)
+                                      ?.click();
+                                  }}
+                                >
+                                  {projectCoverUploadingIndex === idx ? (
+                                    <Loader size="sm" />
+                                  ) : (
+                                    <Camera className="h-3.5 w-3.5 text-primary" />
+                                  )}
+                                  Upload cover
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onSelect={() => removeProject(idx)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Remove project
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          <input
+                            id={`project-cover-modal-${idx}`}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(event) =>
+                              handleProjectCoverInputChange(idx, event)
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2.5 px-4 pb-4 pt-3">
+                          <div className="min-h-[3.5rem]">
+                            <h2
+                              className="line-clamp-1 text-base font-semibold tracking-tight text-foreground"
+                              title={projectTitle}
+                            >
+                              {projectTitle}
+                            </h2>
+                            {projectLink ? (
+                              <a
+                                href={projectLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-1 line-clamp-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/85 hover:underline"
+                                title={projectLink}
+                              >
+                                {projectHost}
+                              </a>
+                            ) : (
+                              <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35">
+                                Link not added
+                              </p>
+                            )}
+                          </div>
+                          <p
+                            className="min-h-[4rem] line-clamp-3 text-sm leading-6 text-white/68"
+                            title={projectDescription || ""}
+                          >
+                            {projectDescription ||
+                              "Add a short project description so clients can quickly understand the scope and outcome."}
+                          </p>
+                          <div className="flex items-start justify-between gap-3 border-t border-white/6 pt-3">
+                            <div className="flex flex-wrap gap-2">
+                              {visibleProjectServiceLabels.length ? (
+                                visibleProjectServiceLabels.map((label) => (
+                                  <span
+                                    key={`${projectTitle}-${label}`}
+                                    className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65"
+                                  >
+                                    {label}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65">
+                                  Featured work
+                                </span>
+                              )}
+                              {hiddenProjectServiceLabelCount > 0 ? (
+                                <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+                                  +{hiddenProjectServiceLabelCount} more
+                                </span>
+                              ) : null}
+                            </div>
+                            {projectLink ? (
+                              <a
+                                href={projectLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary transition-all duration-200 hover:bg-primary hover:text-primary-foreground"
+                              >
+                                Open
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.045] px-2.5 py-1.5 text-xs text-white/40">
+                                Link missing
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex min-h-[260px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-background/35 px-6 text-center">
+                  <p className="text-base font-semibold text-foreground">
+                    No projects yet
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Add your first project to start showcasing your work.
+                  </p>
+                  <Button
+                    type="button"
+                    className="mt-4"
+                    onClick={openAddProjectModal}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add project
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalType(null)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={saveProjectsSection}
+                disabled={isSaving || !hasProjectChanges}
+              >
+                {isSaving ? <Loader size="sm" /> : null}
+                Save changes
+              </Button>
+            </div>
+          </>
+        ) : modalType === "onboardingService" ? (
+          <AddEditServiceWizard
+            serviceProfileForm={serviceProfileForm}
+            setServiceProfileForm={setServiceProfileForm}
+            onSave={saveOnboardingServiceProfile}
+            onCancel={() => {
+              setServiceSkillInput("");
+              setModalType(null);
+            }}
+            isDraftingNewService={isDraftingNewService}
+            uploadingServiceCover={uploadingServiceCover}
+            savingServiceProfile={savingServiceProfile}
+            serviceTechSuggestionOptions={serviceTechSuggestionOptions}
+            serviceSkillInput={serviceSkillInput}
+            setServiceSkillInput={setServiceSkillInput}
+            addServiceSkillTag={addServiceSkillTag}
+            removeServiceSkillTag={removeServiceSkillTag}
+            servicesCatalog={SERVICE_OPTIONS}
+            onCoverChange={handleServiceCoverImageChange}
+          />
+        ) : modalType === "addProject" ? (
+          <>
+            <div className="border-b border-border/70 pb-2.5">
+              <span className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+                {isEditingProjectDraft ? "Update featured project" : "Create featured project"}
+              </span>
+              <div className="mt-2 max-w-[38rem]">
+                <h1 className="text-[1.55rem] font-semibold tracking-tight text-foreground">
+                  {isEditingProjectDraft ? "Edit Project" : "Add Project"}
+                </h1>
+                <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
+                  {isEditingProjectDraft
+                    ? "Refresh the link, summary, services, and cover."
+                    : "Add a live URL, short summary, service mapping, and cover image."}
+                </p>
+              </div>
+            </div>
+            <div className="mt-2.5">
+              <section className="rounded-md border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-3">
+                <div className="mb-2">
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-foreground/90">
+                    Project Details
+                  </h2>
                 </div>
 
-                <div className="mt-4 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                  {displayPortfolioProjects.length > 0 ? (
-                    <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
-                      {displayPortfolioProjects.map((project, idx) => {
-                        const projectLink = normalizeProjectLinkValue(project?.link);
-                        const projectHost = getProjectTitleFallback(projectLink || "");
-                        const projectTitle = String(
-                          project?.title || projectHost || "Project"
-                        ).trim();
-                        const projectDescription = String(
-                          project?.description || ""
-                        ).trim();
-                        const projectServiceLabels = resolveProjectServiceLabels(project);
-                        const visibleProjectServiceLabels = projectServiceLabels.slice(0, 2);
-                        const hiddenProjectServiceLabelCount = Math.max(
-                          0,
-                          projectServiceLabels.length - visibleProjectServiceLabels.length
-                        );
-
-                        return (
-                          <article
-                            key={`project-modal-${projectLink || projectTitle}-${idx}`}
-                            className="group overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]"
-                          >
-                            <div className="relative h-40 overflow-hidden lg:h-44">
-                              <ProjectCoverMedia
-                                project={project}
-                                containerClassName="h-full w-full"
-                                imageClassName="h-full w-full object-cover"
-                                fallbackTitleClassName="text-3xl"
-                              />
-                              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.08),rgba(2,6,23,0.52)_72%,rgba(7,7,10,0.86)_100%)]" />
-                              <div className="absolute right-3 top-3 z-10">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button
-                                      type="button"
-                                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/10 bg-background text-foreground opacity-0 shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition-all duration-200 translate-y-1 pointer-events-none group-hover:translate-y-0 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-focus-within:pointer-events-auto focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:pointer-events-auto data-[state=open]:translate-y-0 data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto hover:scale-105 hover:bg-background hover:text-primary"
-                                      title="Project actions"
-                                    >
-                                      <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent
-                                    align="end"
-                                    className="w-44 border-white/10 bg-background text-foreground"
-                                  >
-                                    {projectLink ? (
-                                      <DropdownMenuItem asChild>
-                                        <a
-                                          href={projectLink}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="cursor-pointer"
-                                        >
-                                          <ExternalLink className="h-3.5 w-3.5 text-primary" />
-                                          Open project
-                                        </a>
-                                      </DropdownMenuItem>
-                                    ) : null}
-                                    <DropdownMenuItem onSelect={() => openEditProject(project, idx)}>
-                                      <Edit2 className="h-3.5 w-3.5 text-primary" />
-                                      Edit details
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onSelect={(event) => {
-                                        event.preventDefault();
-                                        document
-                                          .getElementById(`project-cover-modal-${idx}`)
-                                          ?.click();
-                                      }}
-                                    >
-                                      {projectCoverUploadingIndex === idx ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                                      ) : (
-                                        <Camera className="h-3.5 w-3.5 text-primary" />
-                                      )}
-                                      Upload cover
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      variant="destructive"
-                                      onSelect={() => removeProject(idx)}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                      Remove project
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                              <input
-                                id={`project-cover-modal-${idx}`}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(event) =>
-                                  handleProjectCoverInputChange(idx, event)
-                                }
-                              />
-                            </div>
-                            <div className="space-y-2.5 px-4 pb-4 pt-3">
-                              <div className="min-h-[3.5rem]">
-                                <h2
-                                  className="line-clamp-1 text-base font-semibold tracking-tight text-foreground"
-                                  title={projectTitle}
-                                >
-                                  {projectTitle}
-                                </h2>
-                                {projectLink ? (
-                                  <a
-                                    href={projectLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="mt-1 line-clamp-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/85 hover:underline"
-                                    title={projectLink}
-                                  >
-                                    {projectHost}
-                                  </a>
-                                ) : (
-                                  <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35">
-                                    Link not added
-                                  </p>
-                                )}
-                              </div>
-                              <p
-                                className="min-h-[4rem] line-clamp-3 text-sm leading-6 text-white/68"
-                                title={projectDescription || ""}
-                              >
-                                {projectDescription ||
-                                  "Add a short project description so clients can quickly understand the scope and outcome."}
-                              </p>
-                              <div className="flex items-start justify-between gap-3 border-t border-white/6 pt-3">
-                                <div className="flex flex-wrap gap-2">
-                                  {visibleProjectServiceLabels.length ? (
-                                    visibleProjectServiceLabels.map((label) => (
-                                      <span
-                                        key={`${projectTitle}-${label}`}
-                                        className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65"
-                                      >
-                                        {label}
-                                      </span>
-                                    ))
-                                  ) : (
-                                    <span className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65">
-                                      Featured work
-                                    </span>
-                                  )}
-                                  {hiddenProjectServiceLabelCount > 0 ? (
-                                    <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
-                                      +{hiddenProjectServiceLabelCount} more
-                                    </span>
-                                  ) : null}
-                                </div>
-                                {projectLink ? (
-                                  <a
-                                    href={projectLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary transition-all duration-200 hover:bg-primary hover:text-primary-foreground"
-                                  >
-                                    Open
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                  </a>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.045] px-2.5 py-1.5 text-xs text-white/40">
-                                    Link missing
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex min-h-[260px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-background/35 px-6 text-center">
-                      <p className="text-base font-semibold text-foreground">
-                        No projects yet
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Add your first project to start showcasing your work.
-                      </p>
+                <div className="space-y-2">
+                  <label className="block">
+                    <span className="mb-0.5 block text-sm font-medium text-muted-foreground">
+                      Live URL*
+                    </span>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        value={newProjectUrl}
+                        onChange={(event) => setNewProjectUrl(event.target.value)}
+                        onBlur={handleUrlBlur}
+                        placeholder="https://yourproject.com"
+                        className="h-9 w-full rounded-md border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                      />
                       <Button
                         type="button"
-                        className="mt-4"
-                        onClick={openAddProjectModal}
+                        variant="outline"
+                        className="h-9 shrink-0"
+                        onClick={handleUrlBlur}
+                        disabled={newProjectLoading}
                       >
-                        <Plus className="h-4 w-4" />
-                        Add project
+                        {newProjectLoading ? (
+                          <Loader size="sm" />
+                        ) : null}
+                        Fetch details
                       </Button>
                     </div>
-                  )}
-                </div>
+                  </label>
 
-                <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setModalType(null)}
-                  >
-                    Close
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={saveProjectsSection}
-                    disabled={isSaving || !hasProjectChanges}
-                  >
-                    {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                    Save changes
-                  </Button>
-                </div>
-              </>
-) : modalType === "onboardingService" ? (
-  <AddEditServiceWizard
-    serviceProfileForm={serviceProfileForm}
-    setServiceProfileForm={setServiceProfileForm}
-    onSave={saveOnboardingServiceProfile}
-    onCancel={() => {
-      setServiceSkillInput("");
-      setModalType(null);
-    }}
-    isDraftingNewService={isDraftingNewService}
-    uploadingServiceCover={uploadingServiceCover}
-    savingServiceProfile={savingServiceProfile}
-    serviceTechSuggestionOptions={serviceTechSuggestionOptions}
-    serviceSkillInput={serviceSkillInput}
-    setServiceSkillInput={setServiceSkillInput}
-    addServiceSkillTag={addServiceSkillTag}
-    removeServiceSkillTag={removeServiceSkillTag}
-    servicesCatalog={SERVICE_OPTIONS}
-    onCoverChange={handleServiceCoverImageChange}
-  />
-) : modalType === "addProject" ? (
-              <>
-                <div className="border-b border-border/70 pb-2.5">
-                  <span className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-                    {isEditingProjectDraft ? "Update featured project" : "Create featured project"}
-                  </span>
-                  <div className="mt-2 max-w-[38rem]">
-                    <h1 className="text-[1.55rem] font-semibold tracking-tight text-foreground">
-                      {isEditingProjectDraft ? "Edit Project" : "Add Project"}
-                    </h1>
-                    <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
-                      {isEditingProjectDraft
-                        ? "Refresh the link, summary, services, and cover."
-                        : "Add a live URL, short summary, service mapping, and cover image."}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-2.5">
-                  <section className="rounded-md border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-3">
-                    <div className="mb-2">
-                      <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-foreground/90">
-                        Project Details
-                      </h2>
+                  <label className="block">
+                    <span className="mb-0.5 block text-sm font-medium text-muted-foreground">
+                      Project title
+                    </span>
+                    <input
+                      value={newProjectTitle}
+                      onChange={(event) => setNewProjectTitle(event.target.value)}
+                      placeholder="Enter project title"
+                      className="h-9 w-full rounded-md border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <div className="mb-0.5 flex items-center justify-between gap-3">
+                      <span className="block text-sm font-medium text-muted-foreground">
+                        Description
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {String(newProjectDescription || "").length}/320
+                      </span>
                     </div>
+                    <textarea
+                      value={newProjectDescription}
+                      onChange={(event) => setNewProjectDescription(event.target.value)}
+                      rows={2}
+                      maxLength={320}
+                      placeholder="What this project does and the impact it created."
+                      className="min-h-[68px] w-full rounded-md border border-border/70 bg-card/70 px-3 py-1.5 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    />
+                  </label>
 
-                    <div className="space-y-2">
-                      <label className="block">
-                        <span className="mb-0.5 block text-sm font-medium text-muted-foreground">
-                          Live URL*
+                  <div className="block">
+                    <div className="mb-0.5 flex items-center justify-between gap-3">
+                      <span className="block text-sm font-medium text-muted-foreground">
+                        Link to services
+                      </span>
+                      {newProjectServiceKeys.length > 0 ? (
+                        <button
+                          type="button"
+                          className="text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                          onClick={() => setNewProjectServiceKeys([])}
+                        >
+                          Clear all
+                        </button>
+                      ) : null}
+                    </div>
+                    {linkableServiceOptions.length > 0 ? (
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        {linkableServiceOptions.map((option) => {
+                          const isSelected = newProjectServiceKeys.some(
+                            (entry) =>
+                              normalizeServiceIdentity(entry) ===
+                              normalizeServiceIdentity(option.value)
+                          );
+
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              aria-pressed={isSelected}
+                              onClick={() =>
+                                toggleProjectServiceSelection(option.value)
+                              }
+                              className={`flex min-h-8 items-center justify-between gap-2 rounded-md border px-2.5 py-1 text-left text-[13px] transition-colors ${isSelected
+                                ? "border-primary/45 bg-primary/10 text-foreground"
+                                : "border-border/70 bg-card/70 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                                }`}
+                            >
+                              <span className="leading-4">{option.label}</span>
+                              <span
+                                className={`inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-colors ${isSelected
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-white/12 bg-transparent text-transparent"
+                                  }`}
+                              >
+                                <Check className="h-3 w-3" aria-hidden="true" />
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed border-border/70 bg-card/40 px-3 py-3 text-sm text-muted-foreground">
+                        Add services first, then you can link this project to one or more service cards.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 pt-0.5">
+                    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <span className="block text-sm font-medium text-muted-foreground">
+                          Project cover
                         </span>
-                        <div className="flex flex-col gap-2 sm:flex-row">
-                          <input
-                            value={newProjectUrl}
-                            onChange={(event) => setNewProjectUrl(event.target.value)}
-                            onBlur={handleUrlBlur}
-                            placeholder="https://yourproject.com"
-                            className="h-9 w-full rounded-md border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                          />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {newProjectImagePreview ? (
                           <Button
                             type="button"
-                            variant="outline"
-                            className="h-9 shrink-0"
-                            onClick={handleUrlBlur}
-                            disabled={newProjectLoading}
+                            variant="ghost"
+                            size="sm"
+                            className="h-9"
+                            onClick={clearNewProjectImageDraft}
                           >
-                            {newProjectLoading ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : null}
-                            Fetch details
+                            Remove
                           </Button>
-                        </div>
-                      </label>
+                        ) : null}
+                      </div>
+                    </div>
 
-                      <label className="block">
-                        <span className="mb-0.5 block text-sm font-medium text-muted-foreground">
-                          Project title
-                        </span>
-                        <input
-                          value={newProjectTitle}
-                          onChange={(event) => setNewProjectTitle(event.target.value)}
-                          placeholder="Enter project title"
-                          className="h-9 w-full rounded-md border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                        />
-                      </label>
+                    <input
+                      id="new-project-image-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleNewProjectImageChange}
+                    />
 
-                      <label className="block">
-                        <div className="mb-0.5 flex items-center justify-between gap-3">
-                          <span className="block text-sm font-medium text-muted-foreground">
-                            Description
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {String(newProjectDescription || "").length}/320
-                          </span>
-                        </div>
-                        <textarea
-                          value={newProjectDescription}
-                          onChange={(event) => setNewProjectDescription(event.target.value)}
-                          rows={2}
-                          maxLength={320}
-                          placeholder="What this project does and the impact it created."
-                          className="min-h-[68px] w-full rounded-md border border-border/70 bg-card/70 px-3 py-1.5 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                        />
-                      </label>
-
-                      <div className="block">
-                        <div className="mb-0.5 flex items-center justify-between gap-3">
-                          <span className="block text-sm font-medium text-muted-foreground">
-                            Link to services
-                          </span>
-                          {newProjectServiceKeys.length > 0 ? (
-                            <button
-                              type="button"
-                              className="text-xs font-medium text-primary transition-colors hover:text-primary/80"
-                              onClick={() => setNewProjectServiceKeys([])}
-                            >
-                              Clear all
-                            </button>
-                          ) : null}
-                        </div>
-                        {linkableServiceOptions.length > 0 ? (
-                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                            {linkableServiceOptions.map((option) => {
-                              const isSelected = newProjectServiceKeys.some(
-                                (entry) =>
-                                  normalizeServiceIdentity(entry) ===
-                                  normalizeServiceIdentity(option.value)
-                              );
-
-                              return (
-                                <button
-                                  key={option.value}
-                                  type="button"
-                                  aria-pressed={isSelected}
-                                  onClick={() =>
-                                    toggleProjectServiceSelection(option.value)
-                                  }
-                                  className={`flex min-h-8 items-center justify-between gap-2 rounded-md border px-2.5 py-1 text-left text-[13px] transition-colors ${
-                                    isSelected
-                                      ? "border-primary/45 bg-primary/10 text-foreground"
-                                      : "border-border/70 bg-card/70 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                                  }`}
-                                >
-                                  <span className="leading-4">{option.label}</span>
-                                  <span
-                                    className={`inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-colors ${
-                                      isSelected
-                                        ? "border-primary bg-primary text-primary-foreground"
-                                        : "border-white/12 bg-transparent text-transparent"
-                                    }`}
-                                  >
-                                    <Check className="h-3 w-3" aria-hidden="true" />
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
+                    <label
+                      htmlFor="new-project-image-input"
+                      role="button"
+                      aria-label="Upload project cover"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          document.getElementById("new-project-image-input")?.click();
+                        }
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        if (event.dataTransfer) {
+                          event.dataTransfer.dropEffect = "copy";
+                        }
+                        setIsProjectCoverDragActive(true);
+                      }}
+                      onDragLeave={(event) => {
+                        if (event.currentTarget === event.target) {
+                          setIsProjectCoverDragActive(false);
+                        }
+                      }}
+                      onDrop={handleNewProjectImageDrop}
+                      className={`block cursor-pointer overflow-hidden rounded-md border transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60 ${isProjectCoverDragActive ? "border-primary/60 bg-primary/10" : "border-white/8 bg-background/45"}`}
+                    >
+                      <div className="relative h-24 overflow-hidden bg-background/60 sm:h-28">
+                        {newProjectImagePreview ? (
+                          <>
+                            <img
+                              src={newProjectImagePreview}
+                              alt="Project cover preview"
+                              className="h-full w-full object-cover"
+                            />
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 py-2 text-xs font-medium text-white">
+                              Click or drag and drop to replace
+                            </div>
+                          </>
                         ) : (
-                          <div className="rounded-md border border-dashed border-border/70 bg-card/40 px-3 py-3 text-sm text-muted-foreground">
-                            Add services first, then you can link this project to one or more service cards.
+                          <div className="pointer-events-none flex h-full flex-col items-center justify-center gap-2 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_55%)] px-4 text-center">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/20 bg-primary/10">
+                              <Camera className="h-4 w-4 text-primary" />
+                            </span>
+                            <div>
+                              <p className="text-sm font-medium text-foreground">
+                                Click or drag and drop a cover image
+                              </p>
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                PNG, JPG, or WebP up to 8MB
+                              </p>
+                            </div>
                           </div>
                         )}
                       </div>
-
-                      <div className="space-y-1.5 pt-0.5">
-                        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <span className="block text-sm font-medium text-muted-foreground">
-                              Project cover
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {newProjectImagePreview ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-9"
-                                onClick={clearNewProjectImageDraft}
-                              >
-                                Remove
-                              </Button>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        <input
-                          id="new-project-image-input"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleNewProjectImageChange}
-                        />
-
-                        <label
-                          htmlFor="new-project-image-input"
-                          role="button"
-                          aria-label="Upload project cover"
-                          tabIndex={0}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              document.getElementById("new-project-image-input")?.click();
-                            }
-                          }}
-                          onDragOver={(event) => {
-                            event.preventDefault();
-                            if (event.dataTransfer) {
-                              event.dataTransfer.dropEffect = "copy";
-                            }
-                            setIsProjectCoverDragActive(true);
-                          }}
-                          onDragLeave={(event) => {
-                            if (event.currentTarget === event.target) {
-                              setIsProjectCoverDragActive(false);
-                            }
-                          }}
-                          onDrop={handleNewProjectImageDrop}
-                          className={`block cursor-pointer overflow-hidden rounded-md border transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60 ${isProjectCoverDragActive ? "border-primary/60 bg-primary/10" : "border-white/8 bg-background/45"}`}
-                        >
-                          <div className="relative h-24 overflow-hidden bg-background/60 sm:h-28">
-                            {newProjectImagePreview ? (
-                              <>
-                                <img
-                                  src={newProjectImagePreview}
-                                  alt="Project cover preview"
-                                  className="h-full w-full object-cover"
-                                />
-                                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 py-2 text-xs font-medium text-white">
-                                  Click or drag and drop to replace
-                                </div>
-                              </>
-                            ) : (
-                              <div className="pointer-events-none flex h-full flex-col items-center justify-center gap-2 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_55%)] px-4 text-center">
-                                <span className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/20 bg-primary/10">
-                                  <Camera className="h-4 w-4 text-primary" />
-                                </span>
-                                <div>
-                                  <p className="text-sm font-medium text-foreground">
-                                    Click or drag and drop a cover image
-                                  </p>
-                                  <p className="mt-0.5 text-xs text-muted-foreground">
-                                    PNG, JPG, or WebP up to 8MB
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-                  </section>
+                    </label>
+                  </div>
                 </div>
-                <div className="mt-2.5 flex items-center justify-end gap-2.5 border-t border-border/70 pt-2.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      resetProjectDraft();
-                      setModalType(null);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleAddProject}
-                    disabled={newProjectLoading}
-                  >
-                    {newProjectLoading ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : !isEditingProjectDraft ? (
-                      <Plus className="h-3.5 w-3.5" />
-                    ) : null}
-                    {isEditingProjectDraft ? "Save changes" : "Add project"}
-                  </Button>
-                </div>
-              </>
-            ) : modalType === "portfolio" ? (
-              <>
-                <h1 className="text-lg font-semibold text-foreground">
-                  Edit Professional Links
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Update your public links shown in the profile header.
-                </p>
+              </section>
+            </div>
+            <div className="mt-2.5 flex items-center justify-end gap-2.5 border-t border-border/70 pt-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  resetProjectDraft();
+                  setModalType(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleAddProject}
+                disabled={newProjectLoading}
+              >
+                {newProjectLoading ? (
+                  <Loader size="sm" />
+                ) : !isEditingProjectDraft ? (
+                  <Plus className="h-3.5 w-3.5" />
+                ) : null}
+                {isEditingProjectDraft ? "Save changes" : "Add project"}
+              </Button>
+            </div>
+          </>
+        ) : modalType === "portfolio" ? (
+          <>
+            <h1 className="text-lg font-semibold text-foreground">
+              Edit Professional Links
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Update your public links shown in the profile header.
+            </p>
 
-                <div className="mt-4 space-y-4">
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      Portfolio URL
-                    </span>
-                    <input
-                      value={portfolio.portfolioUrl || ""}
-                      onChange={(event) =>
-                        setPortfolio((prev) => ({
-                          ...prev,
-                          portfolioUrl: event.target.value,
-                        }))
-                      }
-                      placeholder="https://yourportfolio.com"
-                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    />
-                  </label>
+            <div className="mt-4 space-y-4">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                  Portfolio URL
+                </span>
+                <input
+                  value={portfolio.portfolioUrl || ""}
+                  onChange={(event) =>
+                    setPortfolio((prev) => ({
+                      ...prev,
+                      portfolioUrl: event.target.value,
+                    }))
+                  }
+                  placeholder="https://yourportfolio.com"
+                  className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                />
+              </label>
 
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      LinkedIn URL
-                    </span>
-                    <input
-                      value={portfolio.linkedinUrl || ""}
-                      onChange={(event) =>
-                        setPortfolio((prev) => ({
-                          ...prev,
-                          linkedinUrl: event.target.value,
-                        }))
-                      }
-                      placeholder="https://linkedin.com/in/username"
-                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    />
-                  </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                  LinkedIn URL
+                </span>
+                <input
+                  value={portfolio.linkedinUrl || ""}
+                  onChange={(event) =>
+                    setPortfolio((prev) => ({
+                      ...prev,
+                      linkedinUrl: event.target.value,
+                    }))
+                  }
+                  placeholder="https://linkedin.com/in/username"
+                  className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                />
+              </label>
 
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      GitHub URL
-                    </span>
-                    <input
-                      value={portfolio.githubUrl || ""}
-                      onChange={(event) =>
-                        setPortfolio((prev) => ({
-                          ...prev,
-                          githubUrl: event.target.value,
-                        }))
-                      }
-                      placeholder="https://github.com/username"
-                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    />
-                  </label>
-                </div>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                  GitHub URL
+                </span>
+                <input
+                  value={portfolio.githubUrl || ""}
+                  onChange={(event) =>
+                    setPortfolio((prev) => ({
+                      ...prev,
+                      githubUrl: event.target.value,
+                    }))
+                  }
+                  placeholder="https://github.com/username"
+                  className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                />
+              </label>
+            </div>
 
-                <div className="mt-6 flex items-center justify-end gap-2.5 border-t border-border/70 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setModalType(null)}
-                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={savePortfolioSection}
-                    disabled={isSaving}
-                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-                  >
-                    {isSaving && <Loader2 className="w-3 h-3 animate-spin" />}
-                    Save changes
-                  </button>
-                </div>
-              </>
-            ) : modalType === "fullProfile" ? (
-              <FullProfileEditorModalContent
-                fullProfileForm={fullProfileForm}
-                section={fullProfileEditorSection}
-                handleFullProfileFieldChange={handleFullProfileFieldChange}
-                setFullProfileForm={setFullProfileForm}
-                addEducationEntry={addEducationEntry}
-                handleEducationFieldChange={handleEducationFieldChange}
-                removeEducationEntry={removeEducationEntry}
-                saveFullProfileEditor={saveFullProfileEditor}
-                isSaving={isSaving}
-                setModalType={setModalType}
-              />
-            ) : modalType === "education" ? (
-              <EducationModalContent
-                fullProfileForm={fullProfileForm}
-                addEducationEntry={addEducationEntry}
-                handleEducationFieldChange={handleEducationFieldChange}
-                removeEducationEntry={removeEducationEntry}
-                saveEducationSection={saveEducationSection}
-                isSaving={isSaving}
-                setModalType={setModalType}
-                MONTH_OPTIONS={MONTH_OPTIONS}
-                YEAR_OPTIONS={YEAR_OPTIONS}
-              />
-            ) : modalType === "personal" ? (
-              <PersonalDetailsModalContent
-                personal={personal}
-                portfolio={portfolio}
-                onboardingIdentity={onboardingIdentity}
-                onboardingLanguages={onboardingLanguages}
-                handlePersonalChange={handlePersonalChange}
-                handlePersonalUsernameChange={handlePersonalUsernameChange}
-                handlePersonalLanguagesChange={handlePersonalLanguagesChange}
-                handlePersonalOtherLanguageChange={handlePersonalOtherLanguageChange}
-                setPortfolio={setPortfolio}
-                socialMediaLinks={socialMediaLinks}
-                setSocialMediaLinks={setSocialMediaLinks}
-                savePersonalSection={savePersonalSection}
-                isSaving={isSaving}
-                setModalType={setModalType}
-                coverInputRef={coverInputRef}
-                coverImageUrl={profileCoverUrl}
-                uploadingCoverImage={uploadingCoverImage}
-                removeCoverImage={removeCoverImage}
-              />
-            ) : (
-              <WorkExperienceModalContent
-                editingIndex={editingIndex}
-                workForm={workForm}
-                setWorkForm={setWorkForm}
-                buildMonthYearLabel={buildMonthYearLabel}
-                MONTH_OPTIONS={MONTH_OPTIONS}
-                YEAR_OPTIONS={YEAR_OPTIONS}
-                EMPLOYMENT_TYPE_OPTIONS={EMPLOYMENT_TYPE_OPTIONS}
-                LOCATION_TYPE_OPTIONS={LOCATION_TYPE_OPTIONS}
-                initialWorkForm={initialWorkForm}
-                saveExperience={saveExperience}
-                isSaving={isSaving}
-                setModalType={setModalType}
-                setEditingIndex={setEditingIndex}
-              />
-            )}
+            <div className="mt-6 flex items-center justify-end gap-2.5 border-t border-border/70 pt-4">
+              <button
+                type="button"
+                onClick={() => setModalType(null)}
+                className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={savePortfolioSection}
+                disabled={isSaving}
+                className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {isSaving && <Loader size="sm" />}
+                Save changes
+              </button>
+            </div>
+          </>
+        ) : modalType === "fullProfile" ? (
+          <FullProfileEditorModalContent
+            fullProfileForm={fullProfileForm}
+            section={fullProfileEditorSection}
+            handleFullProfileFieldChange={handleFullProfileFieldChange}
+            setFullProfileForm={setFullProfileForm}
+            addEducationEntry={addEducationEntry}
+            handleEducationFieldChange={handleEducationFieldChange}
+            removeEducationEntry={removeEducationEntry}
+            saveFullProfileEditor={saveFullProfileEditor}
+            isSaving={isSaving}
+            setModalType={setModalType}
+          />
+        ) : modalType === "education" ? (
+          <EducationModalContent
+            fullProfileForm={fullProfileForm}
+            addEducationEntry={addEducationEntry}
+            handleEducationFieldChange={handleEducationFieldChange}
+            removeEducationEntry={removeEducationEntry}
+            saveEducationSection={saveEducationSection}
+            isSaving={isSaving}
+            setModalType={setModalType}
+            MONTH_OPTIONS={MONTH_OPTIONS}
+            YEAR_OPTIONS={YEAR_OPTIONS}
+          />
+        ) : modalType === "personal" ? (
+          <PersonalDetailsModalContent
+            personal={personal}
+            portfolio={portfolio}
+            onboardingIdentity={onboardingIdentity}
+            onboardingLanguages={onboardingLanguages}
+            handlePersonalChange={handlePersonalChange}
+            handlePersonalUsernameChange={handlePersonalUsernameChange}
+            handlePersonalLanguagesChange={handlePersonalLanguagesChange}
+            handlePersonalOtherLanguageChange={handlePersonalOtherLanguageChange}
+            setPortfolio={setPortfolio}
+            socialMediaLinks={socialMediaLinks}
+            setSocialMediaLinks={setSocialMediaLinks}
+            savePersonalSection={savePersonalSection}
+            isSaving={isSaving}
+            setModalType={setModalType}
+            coverInputRef={coverInputRef}
+            coverImageUrl={profileCoverUrl}
+            uploadingCoverImage={uploadingCoverImage}
+            removeCoverImage={removeCoverImage}
+          />
+        ) : (
+          <WorkExperienceModalContent
+            editingIndex={editingIndex}
+            workForm={workForm}
+            setWorkForm={setWorkForm}
+            buildMonthYearLabel={buildMonthYearLabel}
+            MONTH_OPTIONS={MONTH_OPTIONS}
+            YEAR_OPTIONS={YEAR_OPTIONS}
+            EMPLOYMENT_TYPE_OPTIONS={EMPLOYMENT_TYPE_OPTIONS}
+            LOCATION_TYPE_OPTIONS={LOCATION_TYPE_OPTIONS}
+            initialWorkForm={initialWorkForm}
+            saveExperience={saveExperience}
+            isSaving={isSaving}
+            setModalType={setModalType}
+            setEditingIndex={setEditingIndex}
+          />
+        )}
       </FreelancerProfileModalHost>
       <ProfileImageCropDialog
         open={isProfileCropOpen}

@@ -81,9 +81,12 @@ aiRouter.post("/proposal", async (req, res) => {
   }
 });
 
-aiRouter.get("/services", async (_req, res) => {
+aiRouter.get("/services", async (req, res) => {
   try {
-    const services = await getAllServices();
+    const includeInactive = ["1", "true", "yes", "on"].includes(
+      String(req?.query?.includeInactive || "").trim().toLowerCase()
+    );
+    const services = await getAllServices({ includeInactive });
     res.json({ success: true, services });
   } catch (error) {
     console.error("AI Services Error:", error);

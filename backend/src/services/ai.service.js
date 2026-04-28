@@ -101,7 +101,6 @@ const loadServiceCatalogFromDb = async () => {
 
     // NEW: Fetch from Relational Tables
     const services = await prisma.service.findMany({
-      where: { active: true },
       include: {
         questions: {
           orderBy: { order: 'asc' }
@@ -4528,10 +4527,14 @@ export const getServiceInfo = async (serviceId) => {
   return servicesData.services.find((service) => service.id === serviceId);
 };
 
-export const getAllServices = async () => {
+export const getAllServices = async (options = {}) => {
+  const includeInactive = options?.includeInactive === true;
   await ensureServicesCatalogLoaded();
-  // Always filter to active-only – the DB query already does this,
-  // but the JSON-file fallback may include inactive entries.
+
+  if (includeInactive) {
+    return servicesData.services || [];
+  }
+
   return (servicesData.services || []).filter(
     (s) => s.active === undefined || s.active === true
   );

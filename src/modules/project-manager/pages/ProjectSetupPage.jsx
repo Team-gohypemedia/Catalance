@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Users from "lucide-react/dist/esm/icons/users";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import Lock from "lucide-react/dist/esm/icons/lock";
 import Globe from "lucide-react/dist/esm/icons/globe";
+import Loader from "@/components/common/Loader";
 import Lightbulb from "lucide-react/dist/esm/icons/lightbulb";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
@@ -670,7 +670,7 @@ const ProjectSetupPage = () => {
                             disabled={publishing}
                             className="h-16 rounded-2xl bg-blue-600 px-12 text-base font-black text-white hover:bg-blue-700 shadow-xl shadow-blue-500/20"
                         >
-                            {publishing ? <Loader2 className="h-5 w-5 animate-spin" /> : "Publish Workspace"}
+                            {publishing ? <Loader size=\"md\" /> : "Publish Workspace\"}
                         </Button>
                     </div>
                 </Card>

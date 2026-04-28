@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Sparkles, Send, X, Key, Loader2, Bot, User } from "lucide-react/dist/esm/lucide-react";
+import { Sparkles, Send, X, Key, Bot, User } from "lucide-react/dist/esm/lucide-react";
+import Loader from "@/components/common/Loader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -236,7 +237,7 @@ ${JSON.stringify({
                     <Bot className="h-4 w-4" />
                   </div>
                   <div className="flex items-center gap-2 rounded-2xl bg-white/5 border border-white/10 text-slate-200 px-4 py-2.5 rounded-tl-sm">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                    <Loader size="sm" />
                     <span className="text-[13px] text-muted-foreground">Thinking...</span>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import * as React from "react"
 import useEmblaCarousel from "embla-carousel-react";
-import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
-import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -165,7 +165,7 @@ function CarouselPrevious({
       disabled={!canScrollPrev}
       onClick={scrollPrev}
       {...props}>
-      <ArrowLeft />
+      <ChevronLeft />
       <span className="sr-only">Previous slide</span>
     </Button>
   );
@@ -190,7 +190,7 @@ function CarouselNext({
       disabled={!canScrollNext}
       onClick={scrollNext}
       {...props}>
-      <ArrowRight />
+      <ChevronRight />
       <span className="sr-only">Next slide</span>
     </Button>
   );

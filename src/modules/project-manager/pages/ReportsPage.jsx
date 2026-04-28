@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Send from "lucide-react/dist/esm/icons/send";
 import { toast } from "sonner";
+import Loader from "@/components/common/Loader";
 import { useAuth } from "@/shared/context/AuthContext";
 import { PmShell } from "@/modules/project-manager/components/PmShell";
 import { pmApi } from "@/modules/project-manager/services/pm-api";
@@ -86,7 +86,7 @@ const ReportsPage = () => {
           <CardContent className="space-y-4">
             {projects.loading && !projectRows.length ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader size="sm" />
                 Loading project list...
               </div>
             ) : projectRows.length === 0 ? (
@@ -177,7 +177,7 @@ const ReportsPage = () => {
                     disabled={submitting || !form.projectId || !form.description.trim()}
                     className="h-10 rounded-lg bg-blue-600 px-4 text-xs font-black uppercase tracking-wider text-white hover:bg-blue-700"
                   >
-                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    {submitting ? <Loader size="sm" /> : <Send className="h-4 w-4" />}
                     <span className="ml-2">Submit Report</span>
                   </Button>
                 </div>
@@ -193,7 +193,7 @@ const ReportsPage = () => {
           <CardContent className="space-y-2">
             {reports.loading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader size="sm" />
                 Loading reports...
               </div>
             ) : (Array.isArray(reports.data) ? reports.data : []).length === 0 ? (

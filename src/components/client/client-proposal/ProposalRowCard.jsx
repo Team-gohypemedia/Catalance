@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Loader from "@/components/common/Loader";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,7 +84,7 @@ const ProposalRowCard = ({
   return (
     <Card className={cn("h-full w-full overflow-hidden shadow-none", proposalPanelClassName)}>
       <CardContent className="p-0">
-        <div className="flex h-full flex-col gap-6 p-4 sm:p-5 xl:p-6">
+        <div className="flex h-full flex-col gap-5 p-4 sm:gap-6 sm:p-5 xl:p-6">
           <div className="flex items-center justify-between gap-4">
             <Badge
               variant="outline"
@@ -116,11 +116,17 @@ const ProposalRowCard = ({
 
           <div className="space-y-5">
             <div className="space-y-2">
-              <h3 className="max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
+              <h3
+                className="w-full truncate text-[clamp(1.4rem,1.9vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white"
+                title={cardTitle}
+              >
                 {cardTitle}
               </h3>
               {showServiceTypeInHeader ? (
-                <p className="mt-1 break-words whitespace-pre-line text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <p
+                  className="mt-1 w-full truncate text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+                  title={proposalServiceType}
+                >
                   {proposalServiceType}
                 </p>
               ) : null}
@@ -168,20 +174,26 @@ const ProposalRowCard = ({
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
-                <div className={clientProposalMetricBlockClassName}>
-                  <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                <div
+                  className={clientProposalMetricBlockClassName}
+                  style={{ containerType: "inline-size" }}
+                >
+                  <p className="whitespace-nowrap text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.76rem]">
                     Budget
                   </p>
-                  <div className="mt-2 break-words text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
+                  <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
                     {details.budget}
                   </div>
                 </div>
 
-                <div className={clientProposalMetricBlockClassName}>
-                  <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                <div
+                  className={clientProposalMetricBlockClassName}
+                  style={{ containerType: "inline-size" }}
+                >
+                  <p className="whitespace-nowrap text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.76rem]">
                     Timeline
                   </p>
-                  <div className="mt-2 break-words text-[1.2rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.35rem]">
+                  <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
                     {details.delivery}
                   </div>
                 </div>
@@ -231,7 +243,7 @@ const ProposalRowCard = ({
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   type="button"
-                  className="h-11 rounded-[14px] border border-border bg-background/35 px-6 text-sm font-semibold text-foreground shadow-none hover:bg-background"
+                  className="h-11 rounded-[14px] border border-border bg-background/35 px-4 text-[clamp(0.72rem,0.95vw,0.95rem)] font-semibold text-foreground shadow-none hover:bg-background sm:px-6 sm:text-sm"
                   onClick={() => onOpen?.(proposal)}
                 >
                   View Details
@@ -239,7 +251,7 @@ const ProposalRowCard = ({
 
                 <Button
                   type="button"
-                  className="h-11 rounded-[14px] bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
+                  className="h-11 rounded-[14px] bg-primary px-4 text-[clamp(0.72rem,0.95vw,0.95rem)] font-semibold text-primary-foreground shadow-none hover:bg-primary/90 sm:px-6 sm:text-sm"
                   onClick={() => {
                     if (canSendToFreelancers) {
                       if (canIncreaseBudget) {
@@ -258,7 +270,7 @@ const ProposalRowCard = ({
                   disabled={isSending || isPaying}
                 >
                   {isSending || isPaying ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader size="sm" className="mr-2" />
                   ) : null}
                   {primaryActionLabel}
                 </Button>
@@ -266,7 +278,7 @@ const ProposalRowCard = ({
             ) : (
               <Button
                 type="button"
-                className="h-14 rounded-[14px] bg-primary px-6 text-base font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
+                className="h-14 rounded-[14px] bg-primary px-4 text-[clamp(0.85rem,1vw,1rem)] font-semibold text-primary-foreground shadow-none hover:bg-primary/90 sm:px-6"
                 onClick={() => onOpen?.(proposal)}
               >
                 View Details

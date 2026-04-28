@@ -2,7 +2,7 @@ import React, { memo, useMemo } from "react";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Layers3 from "lucide-react/dist/esm/icons/layers-3";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Loader from "@/components/common/Loader";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Send from "lucide-react/dist/esm/icons/send";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
@@ -147,7 +147,7 @@ const ProposalDetailsDialog = ({
                         disabled={isSavingProposal}
                       >
                         {isSavingProposal ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <Loader size="sm" className="mr-2" />
                         ) : null}
                         {isSavingProposal ? "Saving..." : "Save Changes"}
                       </Button>
@@ -300,7 +300,7 @@ const ProposalDetailsDialog = ({
                 >
                   {isLoadingProposal ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader size="sm" />
                       Loading details...
                     </div>
                   ) : isEditingProposal ? (
@@ -552,7 +552,7 @@ const ProposalDetailsDialog = ({
                 disabled={processingPaymentProposalId === activeProposal?.id}
               >
                 {processingPaymentProposalId === activeProposal?.id ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader size="sm" className="mr-2" />
                 ) : (
                   <CreditCard className="mr-2 h-4 w-4" />
                 )}

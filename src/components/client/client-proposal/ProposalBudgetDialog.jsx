@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Loader from "@/components/common/Loader";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

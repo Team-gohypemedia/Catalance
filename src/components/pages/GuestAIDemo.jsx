@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 import { generateRandomString } from "@/components/ui/evervault-card";
 
@@ -1240,6 +1240,96 @@ const normalizeServiceItem = (service = {}) => {
         name: normalizeServiceDisplayName(service?.name),
         title: normalizeServiceDisplayName(service?.title),
     };
+};
+
+// Keep the service cards grouped by intent: development first, then design/marketing, then the rest.
+const SERVICE_CARD_ORDER_GROUPS = [
+    [
+        "Web Development",
+        "Web Dev",
+        "Website Development",
+    ],
+    [
+        "Mobile App Development",
+        "App Development",
+        "App Dev",
+    ],
+    [
+        "AI Automation",
+    ],
+    [
+        "CRM & ERP Integrated Solutions",
+        "CRM and ERP Integrated Solutions",
+        "CRM ERP Integrated Solutions",
+        "CRM & ERP",
+    ],
+    [
+        "Voice Agent",
+    ],
+    [
+        "Creative & Design",
+        "Creative and Design",
+    ],
+    [
+        "Branding Kit",
+        "Branding",
+    ],
+    [
+        "UGC Marketing",
+    ],
+    [
+        "Paid Advertising",
+        "Paid Advertising Performance",
+        "Performance Marketing",
+    ],
+    [
+        "Social Media Marketing (Organic)",
+        "Social Media Marketing",
+    ],
+    [
+        "Video Services",
+    ],
+    [
+        "Writing & Content",
+        "Writing and Content",
+    ],
+    [
+        "3D Animation/CGI Videos",
+        "3D Animation CGI Videos",
+        "CGI Video Services",
+    ],
+    [
+        "Influencer Marketing",
+    ],
+    [
+        "SEO / GMB",
+        "SEO",
+    ],
+];
+
+const SERVICE_CARD_ORDER_INDEX = new Map(
+    SERVICE_CARD_ORDER_GROUPS.flatMap((aliases, index) =>
+        aliases.map((alias) => [normalizeServiceLogoKey(alias), index]),
+    ),
+);
+
+const getServiceCardOrderIndex = (service = {}) => {
+    const candidates = [
+        service?.name,
+        service?.title,
+        service?.slug,
+        service?.id,
+    ]
+        .map((value) => normalizeServiceLogoKey(value))
+        .filter(Boolean);
+
+    for (const candidate of candidates) {
+        if (SERVICE_CARD_ORDER_INDEX.has(candidate)) {
+            return SERVICE_CARD_ORDER_INDEX.get(candidate);
+        }
+    }
+
+    return SERVICE_CARD_ORDER_GROUPS.length + candidates.length;
 };
 
 const isProposalMessage = (content = "") => {
@@ -2817,6 +2907,20 @@ const GuestAIDemo = () => {
     const selectedProposalPreviewCtaLabel = isAgencyProposalMessage(selectedProposalPreview?.content || '')
         ? 'Find Agency for this proposal'
         : 'Find Freelancer for this proposal';
+    const orderedServices = useMemo(() => {
+        if (!Array.isArray(services) || services.length < 2) {
+            return Array.isArray(services) ? services : [];
+        }
+
+        return [...services]
+            .map((service, index) => ({
+                service,
+                index,
+                order: getServiceCardOrderIndex(service),
+            }))
+            .sort((a, b) => a.order - b.order || a.index - b.index)
+            .map((entry) => entry.service);
+    }, [services]);
 
     useEffect(() => {
         messagesRef.current = messages;
@@ -4662,12 +4766,12 @@ const GuestAIDemo = () => {
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 relative z-10">
-                            {services.length === 0 ? (
+                            {orderedServices.length === 0 ? (
                                 <div className="col-span-1 sm:col-span-2 lg:col-span-5 text-center text-white/60 py-10">
                                     {servicesError || (loading ? 'Loading services...' : 'No services available.')}
                                 </div>
                             ) : (
-                                services.map((feature, index) => {
+                                orderedServices.map((feature, index) => {
                                     const featureId = getServiceIdentifier(feature);
                                     const isAgencyCardSelected = agencySelectedServiceIds.includes(featureId);
 

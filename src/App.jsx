@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
-import { lazy, Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -152,21 +152,55 @@ const PrivacyPolicy = lazy(() => import("@/components/pages/PrivacyPolicy"));
 const RefundPolicy = lazy(() => import("@/components/pages/RefundPolicy"));
 const FeesPricing = lazy(() => import("@/components/pages/FeesPricing"));
 const Security = lazy(() => import("@/components/pages/Security"));
+import Loader from "@/components/common/Loader";
+
 const ContactUs = lazy(() => import("@/components/pages/ContactUs"));
 const GuestAIDemo = lazy(() => import("@/components/pages/GuestAIDemo"));
 const ServiceDetails = lazy(() => import("@/components/pages/ServiceDetails"));
 
-const RouteFallback = () => (
-  <div className="flex min-h-screen items-center justify-center">
-    <span className="loading loading-spinner text-primary" />
-  </div>
-);
+const RouteFallback = () => <Loader />;
+
+const isWorkspacePath = (pathname = "") =>
+  pathname.startsWith("/client") || pathname.startsWith("/freelancer");
+
+const DashboardRouteTransitionLoader = () => {
+  const { pathname } = useLocation();
+  const previousPathRef = useRef(pathname);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const previousPath = previousPathRef.current;
+    previousPathRef.current = pathname;
+
+    if (previousPath === pathname) {
+      return undefined;
+    }
+
+    if (!isWorkspacePath(previousPath) && !isWorkspacePath(pathname)) {
+      return undefined;
+    }
+
+    setIsVisible(true);
+    const timeoutId = window.setTimeout(() => setIsVisible(false), 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [pathname]);
+
+  if (!isVisible) {
+    return null;
+  }
+
+  return (
+    <Loader className="fixed inset-0 z-[120] bg-background" />
+  );
+};
 
 const App = () => {
   return (
     <main>
       <ThemeProvider defaultTheme="dark" storageKey="freelancer-ui-theme-v1">
         <Suspense fallback={<RouteFallback />}>
+          <DashboardRouteTransitionLoader />
           <Routes>
             <Route path="/ai-demo" element={<GuestAIDemo />} />
             <Route

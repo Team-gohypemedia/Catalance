@@ -28,6 +28,7 @@ const ClientPageHeader = ({
   actions = null,
   dateLabel,
   className,
+  titleClassName,
   mobileDateFirst = false,
 }) => {
   const resolvedDateLabel =
@@ -51,7 +52,12 @@ const ClientPageHeader = ({
       ) : null}
 
       <div className="max-w-[40rem]">
-        <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
+        <h1
+          className={cn(
+            "text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white",
+            titleClassName,
+          )}
+        >
           {title}
         </h1>
         {description ? (
@@ -76,7 +82,11 @@ const ClientPageHeader = ({
               {resolvedDateLabel}
             </p>
           ) : null}
-          {actions ? <div className="flex justify-start lg:justify-end">{actions}</div> : null}
+          {actions ? (
+            <div className="flex w-full justify-start lg:w-auto lg:justify-end">
+              {actions}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>
