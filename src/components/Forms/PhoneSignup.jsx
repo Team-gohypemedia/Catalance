@@ -301,7 +301,7 @@ function PhoneSignup() {
                 <img
                   src={logo}
                   alt="Catalance logo"
-                  className="h-14 w-14 object-contain sm:h-16 sm:w-16"
+                  className="h-14 w-14 object-contain sm:h-25 sm:w-25"
                 />
               </div>
 
