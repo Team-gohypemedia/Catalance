@@ -782,6 +782,13 @@ const FreelancerOnboardingShell = () => {
   const isServiceVisualsSlide = currentSlide.id === "serviceVisuals";
   const isCaseStudySlide = currentSlide.id === "caseStudy";
   const isServiceReviewSlide = currentSlide.id === "serviceReview";
+  const isServiceSectionSlide =
+    currentSlide.id === "serviceSetup" ||
+    isServiceInfoSlide ||
+    isServicePricingSlide ||
+    isServiceVisualsSlide ||
+    isCaseStudySlide ||
+    isServiceReviewSlide;
   const isAcceptInProgressProjectsSlide =
     currentSlide.id === "acceptInProgressProjects";
   const isDeliveryPolicySlide = currentSlide.id === "deliveryPolicy";
@@ -2197,6 +2204,35 @@ const FreelancerOnboardingShell = () => {
       });
   };
 
+  const handleSkipServicesSection = useCallback(() => {
+    if (isProfileSaving || !isServiceSectionSlide) {
+      return;
+    }
+
+    if (acceptInProgressProjectsSlideIndex >= 0) {
+      setCurrentSlideIndex(acceptInProgressProjectsSlideIndex);
+      return;
+    }
+
+    if (deliveryPolicySlideIndex >= 0) {
+      setCurrentSlideIndex(deliveryPolicySlideIndex);
+      return;
+    }
+
+    if (communicationPolicySlideIndex >= 0) {
+      setCurrentSlideIndex(communicationPolicySlideIndex);
+      return;
+    }
+
+    submitOnboardingAndNavigate();
+  }, [
+    acceptInProgressProjectsSlideIndex,
+    communicationPolicySlideIndex,
+    deliveryPolicySlideIndex,
+    isProfileSaving,
+    isServiceSectionSlide,
+  ]);
+
   const handleBack = () => {
     if (currentSlide.id === "serviceSetup" && currentServiceIndex > 0) {
       setCurrentServiceIndex((currentIndex) => Math.max(currentIndex - 1, 0));
@@ -2887,7 +2923,20 @@ const FreelancerOnboardingShell = () => {
             {isProfileActionFooter ? (
               <div />
             ) : (
-              <div />
+              <div className="flex justify-end">
+                {isServiceSectionSlide ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="lg"
+                    onClick={handleSkipServicesSection}
+                    disabled={isProfileSaving}
+                    className="h-11 px-10"
+                  >
+                    Skip
+                  </Button>
+                ) : null}
+              </div>
             )}
           </div>
         </footer>
