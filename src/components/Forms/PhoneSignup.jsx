@@ -92,14 +92,14 @@ function AppleLogo({ className }) {
   );
 }
 
-function ClientPhoneSignup() {
+function PhoneSignup() {
   const navigate = useNavigate();
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY);
   const [phoneDigits, setPhoneDigits] = useState("");
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
-    document.title = "Client sign up | Catalance";
+    document.title = "Sign up | Catalance";
   }, []);
 
   const selectedCountry = useMemo(
@@ -126,9 +126,9 @@ function ClientPhoneSignup() {
 
     navigate("/signup", {
       state: {
-        clientPhoneNumber: `${selectedCountry.dialCode} ${formattedPhone}`,
-        clientPhoneCountry: selectedCountry.code,
-        signupSource: "client-phone",
+        phoneNumber: `${selectedCountry.dialCode} ${formattedPhone}`,
+        phoneCountry: selectedCountry.code,
+        signupSource: "phone",
       },
     });
   };
@@ -159,22 +159,9 @@ function ClientPhoneSignup() {
             </div>
 
             <section className="mt-3 w-full">
-              <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white">
-                Sign up as a client
-              </h2>
-              <p className="mt-2 text-[0.82rem] leading-relaxed text-white/64">
-                Enter your phone number to get started.
-              </p>
-
               <Card className="mx-auto mt-3 w-full rounded-lg border border-white/10 bg-[#101010]/90 p-3.5 shadow-none backdrop-blur-2xl">
                 <form className="space-y-3" onSubmit={handleSubmit} noValidate>
                   <div className="w-full space-y-2">
-                    <label
-                      htmlFor="phoneNumber"
-                      className="block text-center text-[0.98rem] font-medium text-white/92"
-                    >
-                      Phone number
-                    </label>
                     <div className="grid w-full grid-cols-[6.25rem_minmax(0,1fr)] gap-1.5">
                       <Select value={countryCode} onValueChange={setCountryCode}>
                         <SelectTrigger
@@ -222,6 +209,7 @@ function ClientPhoneSignup() {
                         type="tel"
                         inputMode="numeric"
                         autoComplete="tel-national"
+                        aria-label="Phone number"
                         placeholder="999 999 9999"
                         value={formattedPhone}
                         onChange={(event) => {
@@ -284,7 +272,7 @@ function ClientPhoneSignup() {
               <p className="mt-2.5 text-center text-[0.82rem] text-white/68">
                 Already have an account?{" "}
                 <Link
-                  to="/login?role=client"
+                  to="/login"
                   className="text-primary underline-offset-4 hover:underline"
                 >
                   Sign in
@@ -363,31 +351,22 @@ function ClientPhoneSignup() {
 
           <section className="order-1 flex justify-center xl:order-2 xl:justify-end">
             <div className="flex w-full max-w-[42rem] flex-col">
-              <Card className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
+              <Card className="relative overflow-hidden rounded-lg border border-white/10 bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
                 <div className="relative p-6 sm:p-8 md:p-12">
+                  <p className="px-4 text-center text-3xl font-semibold uppercase text-white sm:px-6 md:px-12">
+                Sign up
+              </p>
+              <p className="px-4 text-center text-md text-white/72 sm:px-6 md:px-12 text-nowrap mb-4">
+                Create your account to get started.
+              </p>
                   <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-                    <header className="space-y-3 text-center">
-                      <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-                        Client sign up
-                      </h2>
-                      <p className="text-base leading-relaxed text-white/64 sm:text-lg">
-                        Create a client account to hire verified freelancers.
-                      </p>
-                    </header>
-
                     <div className="space-y-3">
-                      <label
-                        htmlFor="phoneNumber"
-                        className="text-lg font-medium text-white/92"
-                      >
-                        Phone number
-                      </label>
                       <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-2 sm:grid-cols-[7.75rem_minmax(0,1fr)]">
                         <Select value={countryCode} onValueChange={setCountryCode}>
                           <SelectTrigger
                             type="button"
                             aria-label="Select country code"
-                            className="!h-12 !w-full cursor-pointer rounded-[14px] border-white/10 bg-[#171717] px-3.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]"
+                            className="!h-12 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-3.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]"
                           >
                             <div className="pointer-events-none flex min-w-0 items-center gap-2.5 select-none">
                               <CountryFlag code={selectedCountry.code} />
@@ -426,6 +405,7 @@ function ClientPhoneSignup() {
                           type="tel"
                           inputMode="numeric"
                           autoComplete="tel-national"
+                          aria-label="Phone number"
                           placeholder="999 999 9999"
                           value={formattedPhone}
                           onChange={(event) => {
@@ -433,7 +413,7 @@ function ClientPhoneSignup() {
                             setPhoneDigits(digits);
                             if (formError) setFormError("");
                           }}
-                          className="!h-12 !py-0 rounded-[14px] border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                          className="!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
                         />
                       </div>
                       {formError ? (
@@ -445,7 +425,7 @@ function ClientPhoneSignup() {
 
                     <Button
                       type="submit"
-                      className="!h-14 w-full rounded-[16px] bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl"
+                      className="!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl"
                     >
                       Continue
                       <ArrowRight className="size-5" />
@@ -462,7 +442,7 @@ function ClientPhoneSignup() {
                         type="button"
                         variant="outline"
                         onClick={() => handleSocialClick("Google")}
-                        className="!h-14 w-full rounded-[16px] border-white/12 bg-white/[0.03] text-base font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-base font-medium text-white hover:bg-white/[0.06] hover:text-white"
                       >
                         <img
                           src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
@@ -476,7 +456,7 @@ function ClientPhoneSignup() {
                         type="button"
                         variant="outline"
                         onClick={() => handleSocialClick("Apple")}
-                        className="!h-14 w-full rounded-[16px] border-white/12 bg-white/[0.03] text-base font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-base font-medium text-white hover:bg-white/[0.06] hover:text-white"
                       >
                         <AppleLogo className="size-5" />
                         Continue with Apple
@@ -494,7 +474,7 @@ function ClientPhoneSignup() {
                       <p className="text-base text-white/68">
                         Already have an account?{" "}
                         <Link
-                          to="/login?role=client"
+                          to="/login"
                           className="text-primary underline-offset-4 hover:underline"
                         >
                           Sign in
@@ -524,4 +504,4 @@ function ClientPhoneSignup() {
   );
 }
 
-export default ClientPhoneSignup;
+export default PhoneSignup;

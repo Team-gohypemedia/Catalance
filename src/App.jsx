@@ -75,8 +75,8 @@ const ManagerProjectSetup = lazy(
 const SignupPage = lazy(
   () => import("@/components/features/auth/forms/Signup"),
 );
-const ClientPhoneSignupPage = lazy(
-  () => import("@/components/Forms/ClientPhoneSignup"),
+const PhoneSignupPage = lazy(
+  () => import("@/components/Forms/PhoneSignup"),
 );
 const LoginPage = lazy(() => import("@/components/features/auth/forms/Login"));
 const ForgotPasswordPage = lazy(
@@ -233,7 +233,7 @@ const App = () => {
             />
             <Route path="/get-started" element={<GetStarted />} />
             <Route path="/signup" element={<SignupPage />} />
-            <Route path="/signup/client-phone" element={<ClientPhoneSignupPage />} />
+            <Route path="/signup/phone" element={<PhoneSignupPage />} />
             <Route
               path="/about"
               element={
