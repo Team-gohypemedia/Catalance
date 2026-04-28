@@ -368,7 +368,7 @@ const ServiceCardsCarousel = () => {
             type="button"
             onClick={handleScrollPrev}
             aria-label="Previous services"
-            className="absolute left-1 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:left-2 sm:flex lg:left-4"
+            className="absolute -left-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:left-2 sm:h-11 sm:w-11 lg:left-4"
             disabled={!api}
           >
             <ChevronLeft className="h-5 w-5" />
@@ -378,7 +378,7 @@ const ServiceCardsCarousel = () => {
             type="button"
             onClick={handleScrollNext}
             aria-label="Next services"
-            className="absolute right-1 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:right-2 sm:flex lg:right-4"
+            className="absolute -right-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:right-2 sm:h-11 sm:w-11 lg:right-4"
             disabled={!api}
           >
             <ChevronRight className="h-5 w-5" />
@@ -398,7 +398,7 @@ const ServiceCardsCarousel = () => {
               {HOME_SERVICE_CARDS.map((service) => (
                 <CarouselItem
                   key={service.id}
-                  className="min-w-0 basis-[88%] pl-4 sm:basis-1/2 sm:pl-5 lg:basis-1/3 lg:pl-6 xl:basis-1/4 2xl:basis-1/5"
+                  className="min-w-0 basis-full pl-4 sm:basis-1/2 sm:pl-5 lg:basis-1/3 lg:pl-6 xl:basis-1/4 2xl:basis-1/5"
                 >
                   <ServiceRailCard
                     service={service}
@@ -411,7 +411,7 @@ const ServiceCardsCarousel = () => {
         </div>
 
         {serviceCount > 1 && (
-          <div className="flex items-center justify-center gap-2">
+          <div className="-mt-5 flex items-center justify-center gap-1.5 sm:mt-0 sm:gap-2">
             {Array.from({ length: serviceCount }).map((_, index) => (
               <button
                 key={`service-carousel-dot-${index}`}
@@ -420,8 +420,8 @@ const ServiceCardsCarousel = () => {
                 onClick={() => api?.scrollTo(index)}
                 disabled={!api}
                 className={cn(
-                  "h-2.5 rounded-full bg-white/22 transition-all duration-300 hover:bg-white/38 disabled:pointer-events-none disabled:opacity-40",
-                  index === selectedIndex ? "w-7 bg-primary" : "w-2.5",
+                  "h-2 rounded-full bg-white/22 transition-all duration-300 hover:bg-white/38 disabled:pointer-events-none disabled:opacity-40 sm:h-2.5",
+                  index === selectedIndex ? "w-5 bg-primary sm:w-7" : "w-2 sm:w-2.5",
                 )}
               />
             ))}

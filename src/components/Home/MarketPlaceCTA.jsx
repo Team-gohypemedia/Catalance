@@ -220,7 +220,7 @@ const MarketPlaceCTA = () => {
           </div>
         </div>
 
-        <div className="grid gap-10 border-t border-white/10 pt-10 text-center md:grid-cols-3 md:gap-8 lg:pt-12">
+        <div className="mt-10 grid gap-10 border-t border-white/10 pt-10 text-center sm:mt-0 md:grid-cols-3 md:gap-8 lg:pt-12">
           {MARKETPLACE_STATS.map((stat) => (
             <div key={stat.label} className="mx-auto max-w-xs">
               <p className="text-sm font-medium text-white/88 sm:text-base">
