@@ -83,14 +83,16 @@ function TestimonialCard({ testimonial }) {
 
 const Testimonidals = () => {
   const [api, setApi] = React.useState(null)
+  const isHoveringRef = React.useRef(false)
+  const isPointerDownRef = React.useRef(false)
 
   const autoScrollPlugins = React.useMemo(
     () => [
       AutoScroll({
-        speed: 2,
+        speed: 1.25,
         startDelay: 0,
         direction: 'forward',
-        defaultInteraction: false,
+        stopOnInteraction: true,
       }),
     ],
     [],
@@ -100,35 +102,54 @@ const Testimonidals = () => {
     if (!api) return undefined
 
     const autoScroll = api.plugins().autoScroll
+    const rootNode = api.rootNode()
 
-    if (!autoScroll) return undefined
+    if (!autoScroll || !rootNode) return undefined
 
     autoScroll.play(0)
 
-    const handleSettle = () => {
-      autoScroll.play(0)
+    const handlePointerDown = () => {
+      isPointerDownRef.current = true
     }
 
-    const handleInteraction = (_, event) => {
-      const { interaction, isPointerDown } = event.detail
+    const handlePointerUp = () => {
+      isPointerDownRef.current = false
+    }
 
-      if (interaction === 'pointerdown' || interaction === 'slidefocus') {
-        autoScroll.stop()
-        return
-      }
+    const handleMouseEnter = () => {
+      isHoveringRef.current = true
+      autoScroll.stop()
+    }
 
-      if (interaction === 'slidefocusout' && !isPointerDown) {
+    const handleMouseLeave = () => {
+      isHoveringRef.current = false
+
+      if (!isPointerDownRef.current) {
         autoScroll.play(0)
       }
     }
 
-    api.on('autoscroll:interaction', handleInteraction)
+    const handleSettle = () => {
+      if (!isHoveringRef.current) {
+        autoScroll.play(0)
+      }
+    }
+
+    rootNode.addEventListener('mouseenter', handleMouseEnter)
+    rootNode.addEventListener('mouseleave', handleMouseLeave)
+    api.on('pointerDown', handlePointerDown)
+    api.on('pointerUp', handlePointerUp)
     api.on('settle', handleSettle)
 
     return () => {
-      api.off('autoscroll:interaction', handleInteraction)
+      rootNode.removeEventListener('mouseenter', handleMouseEnter)
+      rootNode.removeEventListener('mouseleave', handleMouseLeave)
+      api.off('pointerDown', handlePointerDown)
+      api.off('pointerUp', handlePointerUp)
       api.off('settle', handleSettle)
       autoScroll.stop()
+      isHoveringRef.current = false
+      isPointerDownRef.current = false
     }
   }, [api])
 
@@ -164,7 +185,7 @@ const Testimonidals = () => {
             }}
             className="w-full"
           >
-            <CarouselContent className="-ml-4 items-stretch sm:-ml-5 lg:-ml-6">
+            <CarouselContent className="-ml-4 items-stretch sm:-ml-5 lg:-ml-6 [backface-visibility:hidden] [will-change:transform]">
               {testimonials.map((testimonial) => (
                 <CarouselItem
                   key={testimonial.name}
