@@ -6,6 +6,9 @@ import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { loginWithGoogle } from "@/shared/lib/api-client";
+import { useAuth } from "@/shared/context/AuthContext";
+import { resolveWorkspaceHomePath } from "@/shared/lib/dashboard-preference";
 import {
   Select,
   SelectContent,
@@ -14,11 +17,13 @@ import {
 } from "@/components/ui/select";
 import logo from "@/assets/logos/logo.svg";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
-import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Search from "lucide-react/dist/esm/icons/search";
 
 const DEFAULT_COUNTRY = "IN";
+const CLIENT_ROLE = "CLIENT";
 
 const codeToFlagEmoji = (code) => {
   const normalizedCode = String(code || "").trim().toUpperCase();
@@ -57,6 +62,54 @@ const COUNTRY_OPTIONS = Array.from(
 
 const MIN_PHONE_DIGITS = 6;
 
+const normalizeAvatarUrl = (value) => {
+  const url = String(value || "").trim();
+  if (!url || url.startsWith("blob:")) return "";
+  return url;
+};
+
+const getGoogleAvatarFromFirebaseUser = (firebaseUser) => {
+  if (!firebaseUser) return "";
+
+  const providerPhoto = Array.isArray(firebaseUser.providerData)
+    ? firebaseUser.providerData.find((entry) => Boolean(entry?.photoURL))
+        ?.photoURL || ""
+    : "";
+
+  return normalizeAvatarUrl(firebaseUser.photoURL || providerPhoto || "");
+};
+
+const mergeAuthUserWithAvatar = (apiUser, fallbackAvatar) => {
+  if (!apiUser || typeof apiUser !== "object") return apiUser;
+
+  const existingIdentityAvatar =
+    apiUser?.profileDetails?.identity?.profilePhoto || "";
+  const resolvedAvatar = normalizeAvatarUrl(
+    apiUser?.avatar || existingIdentityAvatar || fallbackAvatar,
+  );
+
+  if (!resolvedAvatar) return apiUser;
+
+  return {
+    ...apiUser,
+    avatar: resolvedAvatar,
+    profileDetails: {
+      ...(apiUser.profileDetails && typeof apiUser.profileDetails === "object"
+        ? apiUser.profileDetails
+        : {}),
+      identity: {
+        ...((apiUser.profileDetails &&
+          typeof apiUser.profileDetails === "object" &&
+          apiUser.profileDetails.identity &&
+          typeof apiUser.profileDetails.identity === "object"
+          ? apiUser.profileDetails.identity
+          : {})),
+        profilePhoto: existingIdentityAvatar || resolvedAvatar,
+      },
+    },
+  };
+};
+
 const formatPhoneNumber = (value) => {
   const digits = String(value || "").replace(/\D/g, "").slice(0, 15);
   const groups = digits.match(/.{1,5}/g);
@@ -94,9 +147,11 @@ function AppleLogo({ className }) {
 
 function PhoneSignup() {
   const navigate = useNavigate();
+  const { login: setAuthSession } = useAuth();
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY);
   const [phoneDigits, setPhoneDigits] = useState("");
   const [formError, setFormError] = useState("");
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   useEffect(() => {
     document.title = "Sign up | Catalance";
@@ -133,8 +188,39 @@ function PhoneSignup() {
     });
   };
 
-  const handleSocialClick = (provider) => {
-    toast.info(`${provider} sign-up is not connected yet.`);
+  const handleGoogleSignUp = async () => {
+    setIsGoogleLoading(true);
+    setFormError("");
+
+    try {
+      const { signInWithGoogle } = await import("@/shared/lib/firebase");
+      const firebaseUser = await signInWithGoogle();
+      const idToken = await firebaseUser.getIdToken();
+      const authPayload = await loginWithGoogle(idToken, CLIENT_ROLE, "signup");
+
+      if (!authPayload?.user || !authPayload?.accessToken) {
+        throw new Error("Unable to complete Google sign-up. Please try again.");
+      }
+
+      const googleAvatar = getGoogleAvatarFromFirebaseUser(firebaseUser);
+      const sessionUser = mergeAuthUserWithAvatar(authPayload.user, googleAvatar);
+
+      setAuthSession(sessionUser, authPayload.accessToken);
+      toast.success(
+        `Welcome, ${sessionUser?.fullName || firebaseUser.displayName || "User"}!`,
+      );
+      navigate(resolveWorkspaceHomePath(sessionUser), { replace: true });
+    } catch (error) {
+      console.error("Google sign-up error:", error);
+      const message = error?.message || "Unable to sign up with Google.";
+      toast.error(message);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleAppleClick = () => {
+    toast.info("Apple sign-up is not connected yet.");
   };
 
   return (
@@ -154,7 +240,7 @@ function PhoneSignup() {
                 Catalance
               </h1>
               <p className="mt-1 text-[0.78rem] leading-tight text-white/68">
-                Hire verified creative freelancers.
+                Hire verified freelancers for your next project.
               </p>
             </div>
 
@@ -229,6 +315,7 @@ function PhoneSignup() {
 
                   <Button
                     type="submit"
+                    disabled={isGoogleLoading}
                     className="!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
                   >
                     Continue
@@ -247,21 +334,27 @@ function PhoneSignup() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleSocialClick("Google")}
+                  onClick={handleGoogleSignUp}
+                  disabled={isGoogleLoading}
                   className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[13px] font-medium text-white hover:bg-white/[0.06] hover:text-white"
                 >
-                  <img
-                    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                    alt=""
-                    className="size-[18px]"
-                  />
-                  Continue with Google
+                  {isGoogleLoading ? (
+                    <Loader2 className="size-[18px] animate-spin" />
+                  ) : (
+                    <img
+                      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                      alt=""
+                      className="size-[18px]"
+                    />
+                  )}
+                  {isGoogleLoading ? "Signing up..." : "Continue with Google"}
                 </Button>
 
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleSocialClick("Apple")}
+                  onClick={handleAppleClick}
+                  disabled={isGoogleLoading}
                   className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[13px] font-medium text-white hover:bg-white/[0.06] hover:text-white"
                 >
                   <AppleLogo className="size-[18px] text-white" />
@@ -275,7 +368,7 @@ function PhoneSignup() {
                   to="/login"
                   className="text-primary underline-offset-4 hover:underline"
                 >
-                  Sign in
+                  Log in
                 </Link>
               </p>
 
@@ -310,7 +403,7 @@ function PhoneSignup() {
                   Catalance
                 </h1>
                 <p className="max-w-lg text-lg leading-tight text-white/72 sm:text-2xl">
-                  Hire verified creative freelancers.
+                  Hire verified freelancers for your next project.
                 </p>
               </div>
 
@@ -322,7 +415,7 @@ function PhoneSignup() {
                 >
                   <Link to="/talent" className="gap-2.5">
                     <Search className="size-4 text-primary" />
-                    Find talent
+                    Hire freelancers
                   </Link>
                 </Button>
                 <Button
@@ -330,9 +423,9 @@ function PhoneSignup() {
                   variant="outline"
                   className="h-12 rounded-full border-white/15 bg-white/[0.03] px-5 text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
                 >
-                  <Link to="/services" className="gap-2.5">
-                    <CalendarDays className="size-4 text-primary" />
-                    Book services
+                  <Link to="/get-started" className="gap-2.5">
+                    <Briefcase className="size-4 text-primary" />
+                    Post a project
                   </Link>
                 </Button>
                 <Button
@@ -342,7 +435,7 @@ function PhoneSignup() {
                 >
                   <Link to="/contact" className="gap-2.5">
                     <MessageCircle className="size-4 text-primary" />
-                    Chat live
+                    Message freelancers
                   </Link>
                 </Button>
               </div>
@@ -425,6 +518,7 @@ function PhoneSignup() {
 
                     <Button
                       type="submit"
+                      disabled={isGoogleLoading}
                       className="!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl"
                     >
                       Continue
@@ -441,21 +535,27 @@ function PhoneSignup() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => handleSocialClick("Google")}
+                        onClick={handleGoogleSignUp}
+                        disabled={isGoogleLoading}
                         className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-base font-medium text-white hover:bg-white/[0.06] hover:text-white"
                       >
-                        <img
-                          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                          alt=""
-                          className="size-5"
-                        />
-                        Continue with Google
+                        {isGoogleLoading ? (
+                          <Loader2 className="size-5 animate-spin" />
+                        ) : (
+                          <img
+                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                            alt=""
+                            className="size-5"
+                          />
+                        )}
+                        {isGoogleLoading ? "Signing up..." : "Continue with Google"}
                       </Button>
 
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => handleSocialClick("Apple")}
+                        onClick={handleAppleClick}
+                        disabled={isGoogleLoading}
                         className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-base font-medium text-white hover:bg-white/[0.06] hover:text-white"
                       >
                         <AppleLogo className="size-5" />
@@ -465,7 +565,7 @@ function PhoneSignup() {
 
                     <div className="space-y-4 text-center">
                       <Link
-                        to="/signup"
+                        to="/signup/email"
                         className="inline-flex text-lg text-primary underline-offset-4 hover:underline"
                       >
                         Sign up with email instead
@@ -474,10 +574,10 @@ function PhoneSignup() {
                       <p className="text-base text-white/68">
                         Already have an account?{" "}
                         <Link
-                          to="/login/email-or-phone"
+                          to="/login/phone"
                           className="text-primary underline-offset-4 hover:underline"
                         >
-                          Sign in
+                          Log in
                         </Link>
                       </p>
                     </div>

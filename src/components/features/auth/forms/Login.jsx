@@ -234,7 +234,6 @@ function Login({ className, ...props }) {
     } catch (error) {
       console.error("Google sign-in error:", error);
       const message = error?.message || "Unable to sign in with Google.";
-      setFormError(message);
       toast.error(message);
     } finally {
       setIsGoogleLoading(false);

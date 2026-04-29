@@ -405,7 +405,6 @@ function Signup({ className, ...props }) {
     } catch (error) {
       console.error("Google sign-up error:", error);
       const message = error?.message || "Unable to sign up with Google.";
-      setFormError(message);
       toast.error(message);
     } finally {
       setIsGoogleLoading(false);

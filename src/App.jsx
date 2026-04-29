@@ -78,9 +78,11 @@ const SignupPage = lazy(
 const PhoneSignupPage = lazy(
   () => import("@/components/Forms/PhoneSignup"),
 );
-const EmailOrPhoneSignInPage = lazy(
-  () => import("@/components/Forms/EmailSignup"),
+const PhoneLoginPage = lazy(() => import("@/components/Forms/PhoneLogin"));
+const EmailSignUpPage = lazy(
+  () => import("@/components/Forms/EmailSignUp"),
 );
+const EmailLoginPage = lazy(() => import("@/components/Forms/EmailLogin"));
 const LoginPage = lazy(() => import("@/components/features/auth/forms/Login"));
 const ForgotPasswordPage = lazy(
   () => import("@/components/features/auth/forms/ForgotPassword"),
@@ -239,11 +241,19 @@ const App = () => {
             <Route path="/signup/phone" element={<PhoneSignupPage />} />
             <Route
               path="/signup/email"
-              element={<Navigate to="/login/email-or-phone" replace />}
+              element={<EmailSignUpPage />}
+            />
+            <Route
+              path="/login/phone"
+              element={<PhoneLoginPage />}
+            />
+            <Route
+              path="/login/email"
+              element={<EmailLoginPage />}
             />
             <Route
               path="/login/email-or-phone"
-              element={<EmailOrPhoneSignInPage />}
+              element={<EmailLoginPage />}
             />
             <Route
               path="/about"
