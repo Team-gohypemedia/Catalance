@@ -122,6 +122,14 @@ const Footer = () => {
                 <Link to="/blog" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                   Blog
                 </Link>
+                <a
+                  href="/sitemap.xml"
+                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Sitemap
+                </a>
               </nav>
             </div>
 
