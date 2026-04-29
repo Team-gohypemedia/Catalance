@@ -140,9 +140,9 @@ const Hero = () => {
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center px-4 text-center sm:px-6">
         <Badge
           variant="outline"
-          className="mb-7 inline-flex gap-1.5 rounded-full bg-background/35 px-4 py-1 text-sm font-medium text-white backdrop-blur-md sm:mb-9"
+          className="mb-3 inline-flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-center gap-x-1 gap-y-0.5 rounded-full bg-background/35 px-3 py-1 text-[0.72rem] font-medium leading-none text-white backdrop-blur-md sm:mb-9 sm:max-w-none sm:gap-1.5 sm:px-4 sm:text-sm"
         >
-          <Star className="size-4 fill-primary text-primary" />
+          <Star className="size-3.5 shrink-0 fill-primary text-primary sm:size-4" />
           <span className="font-semibold text-primary">10,000+</span>
           <span className="text-white/90">Projects delivered on Catalance</span>
         </Badge>

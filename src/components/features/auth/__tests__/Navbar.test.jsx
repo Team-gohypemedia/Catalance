@@ -101,6 +101,52 @@ describe("Navbar service tab visibility", () => {
     expect(screen.getByText("Marketplace")).toBeTruthy();
   });
 
+  it("highlights Home instead of Dashboard in the authenticated mobile nav on the home page", async () => {
+    mockUseDashboardSwitcher.mockReturnValue({
+      currentDashboard: "client",
+      dashboardPath: "/client",
+      profilePath: "/client/profile",
+    });
+
+    renderNavbar("/");
+
+    fireEvent.click(screen.getByRole("button", { name: /open navigation menu/i }));
+
+    const homeLink = await screen.findByRole("link", { name: /^home$/i });
+    const dashboardLink = screen.getByRole("link", { name: /^dashboard$/i });
+    const homeTileClassName = homeLink.firstElementChild?.className || "";
+    const dashboardTileClassName = dashboardLink.firstElementChild?.className || "";
+
+    expect(homeLink.getAttribute("aria-current")).toBe("page");
+    expect(homeTileClassName).toContain("bg-primary");
+    expect(homeTileClassName).toContain("text-background");
+    expect(dashboardLink.getAttribute("aria-current")).toBeNull();
+    expect(dashboardTileClassName).not.toContain("bg-primary");
+  });
+
+  it("uses the deepest matching workspace route in the authenticated mobile nav", async () => {
+    mockUseDashboardSwitcher.mockReturnValue({
+      currentDashboard: "client",
+      dashboardPath: "/client",
+      profilePath: "/client/profile",
+    });
+
+    renderNavbar("/client/project/123");
+
+    fireEvent.click(screen.getByRole("button", { name: /open navigation menu/i }));
+
+    const projectsLink = await screen.findByRole("link", { name: /^projects$/i });
+    const dashboardLink = screen.getByRole("link", { name: /^dashboard$/i });
+    const projectsTileClassName = projectsLink.firstElementChild?.className || "";
+    const dashboardTileClassName = dashboardLink.firstElementChild?.className || "";
+
+    expect(projectsLink.getAttribute("aria-current")).toBe("page");
+    expect(projectsTileClassName).toContain("bg-primary");
+    expect(projectsTileClassName).toContain("text-background");
+    expect(dashboardLink.getAttribute("aria-current")).toBeNull();
+    expect(dashboardTileClassName).not.toContain("bg-primary");
+  });
+
   it("opens the public mobile sheet menu for logged-out users", async () => {
     mockUseAuth.mockReturnValue({
       user: null,

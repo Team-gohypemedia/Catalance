@@ -78,6 +78,38 @@ const isFreelancerSidePath = (pathname = "") => {
   return normalizedPath.startsWith("/freelancer") || normalizedPath === "/opportunity";
 };
 
+const normalizePathname = (value = "") => {
+  const [pathname] = String(value || "").trim().split(/[?#]/);
+  const normalized = pathname.replace(/\/+$/, "");
+  return normalized || "/";
+};
+
+const isNavItemActive = (currentPath = "", targetPath = "") => {
+  const normalizedCurrentPath = normalizePathname(currentPath);
+  const normalizedTargetPath = normalizePathname(targetPath);
+
+  if (normalizedTargetPath === "/") {
+    return normalizedCurrentPath === "/";
+  }
+
+  return (
+    normalizedCurrentPath === normalizedTargetPath ||
+    normalizedCurrentPath.startsWith(`${normalizedTargetPath}/`)
+  );
+};
+
+const getActiveNavKey = (items = [], currentPath = "") => {
+  const activeItem = items
+    .filter((item) => isNavItemActive(currentPath, item.to || item.link))
+    .sort(
+      (a, b) =>
+        normalizePathname(b.to || b.link).length -
+        normalizePathname(a.to || a.link).length,
+    )[0];
+
+  return activeItem?.key || null;
+};
+
 const getDisplayName = (user) =>
   user?.fullName || user?.name || user?.email?.split("@")[0] || "Profile";
 
@@ -150,6 +182,7 @@ const Navbar = () => {
     currentDashboard,
     profilePath,
   } = useDashboardSwitcher();
+  const currentPath = location.pathname;
   const shouldShowAuthenticatedNav =
     isAuthenticated || (authLoading && Boolean(user && token));
   const isFreelancerUser = useMemo(
@@ -179,6 +212,14 @@ const Navbar = () => {
     activeDashboard === "freelancer"
       ? freelancerWorkspaceNavItems
       : clientWorkspaceNavItems;
+  const activeMarketingKey = useMemo(
+    () => getActiveNavKey(mobileMarketingNavItems, currentPath),
+    [currentPath, mobileMarketingNavItems],
+  );
+  const activeWorkspaceKey = useMemo(
+    () => getActiveNavKey(workspaceNavItems, currentPath),
+    [currentPath, workspaceNavItems],
+  );
 
   const closeMobileMenu = () => {};
   const isDark = true;
@@ -192,6 +233,7 @@ const Navbar = () => {
           items={navItems}
           onItemClick={closeMobileMenu}
           isHome={isHome}
+          currentPath={currentPath}
         />
         <div className="flex shrink-0 items-center gap-3">
           <AuthButtons
@@ -221,20 +263,20 @@ const Navbar = () => {
           }}
           profileInitial={getInitials(displayName)}
           profileTo={profilePath}
-          activeMarketingKey={null}
-          activeWorkspaceKey="dashboard"
+          activeMarketingKey={activeMarketingKey}
+          activeWorkspaceKey={activeWorkspaceKey}
           marketingNavItems={mobileMarketingNavItems}
           workspaceNavItems={workspaceNavItems}
           onLogout={logout}
         />
       ) : (
-        <PublicMobileSidebar navItems={navItems} />
+        <PublicMobileSidebar navItems={navItems} currentPath={currentPath} />
       )}
     </ResizableNavbar>
   );
 };
 
-const PublicMobileSidebar = ({ navItems }) => {
+const PublicMobileSidebar = ({ navItems, currentPath }) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -285,16 +327,26 @@ const PublicMobileSidebar = ({ navItems }) => {
 
             <div className="flex min-h-0 flex-1 flex-col px-4.5 pb-4 pt-3">
               <nav className="space-y-1.5">
-                {navItems.map((item) => (
-                  <SheetClose asChild key={item.link}>
-                    <Link
-                      to={item.link}
-                      className="flex min-h-10 w-full items-center justify-center rounded-[15px] border border-white/[0.05] bg-white/[0.03] px-3 py-1.5 text-[0.9rem] font-medium text-muted-foreground transition-colors hover:border-white/[0.08] hover:bg-white/[0.05] hover:text-foreground"
-                    >
-                      {item.name}
-                    </Link>
-                  </SheetClose>
-                ))}
+                {navItems.map((item) => {
+                  const isActive = isNavItemActive(currentPath, item.link);
+
+                  return (
+                    <SheetClose asChild key={item.link}>
+                      <Link
+                        to={item.link}
+                        aria-current={isActive ? "page" : undefined}
+                        className={cn(
+                          "flex min-h-10 w-full items-center justify-center rounded-[15px] border px-3 py-1.5 text-[0.9rem] font-medium transition-colors",
+                          isActive
+                            ? "border-primary bg-primary text-background"
+                            : "border-white/[0.05] bg-white/[0.03] text-muted-foreground hover:border-white/[0.08] hover:bg-white/[0.05] hover:text-foreground",
+                        )}
+                      >
+                        {item.name}
+                      </Link>
+                    </SheetClose>
+                  );
+                })}
               </nav>
 
               <div className="mt-auto space-y-2 pt-6">

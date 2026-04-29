@@ -90,7 +90,7 @@ const MobileMenuLink = ({
         className={cn(
           "flex w-full items-center gap-2.5 rounded-[15px] px-3 py-1 text-left transition-colors duration-200",
           active
-            ? "bg-[#302915] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+            ? "bg-primary text-background shadow-[inset_0_0_0_1px_rgba(255,193,7,0.32)]"
             : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground",
         )}
       >
@@ -98,7 +98,7 @@ const MobileMenuLink = ({
           className={cn(
             "flex size-6 shrink-0 items-center justify-center rounded-[10px] transition-colors duration-200",
             active
-              ? "bg-[#241f11] text-[#ffc107] shadow-[inset_0_0_0_1px_rgba(255,193,7,0.12)]"
+              ? "bg-background/15 text-background shadow-[inset_0_0_0_1px_rgba(20,20,20,0.12)]"
               : "text-muted-foreground",
           )}
         >
@@ -111,14 +111,14 @@ const MobileMenuLink = ({
         className={cn(
           "flex min-h-9 items-center gap-2 rounded-[15px] border px-3 py-1 text-left transition-colors duration-200",
           active
-            ? "border-[#5d4d18] bg-[#302915] text-foreground"
+            ? "border-primary bg-primary text-background"
             : "border-white/[0.05] bg-white/[0.03] text-muted-foreground hover:border-white/[0.08] hover:bg-white/[0.05] hover:text-foreground",
         )}
       >
         <span
           className={cn(
             "flex size-5.5 shrink-0 items-center justify-center rounded-[10px]",
-            active ? "text-[#ffc107]" : "text-muted-foreground",
+            active ? "text-background" : "text-muted-foreground",
           )}
         >
           {Icon ? <Icon className="size-3.5" /> : null}
@@ -132,6 +132,7 @@ const MobileMenuLink = ({
       <SheetClose asChild>
         <button
           type="button"
+          aria-current={active ? "page" : undefined}
           onClick={() => onSelect(item.key)}
           className={cn("block", priority === "primary" && "w-full", className)}
         >
@@ -145,6 +146,7 @@ const MobileMenuLink = ({
     <SheetClose asChild>
       <Link
         to={item.to}
+        aria-current={active ? "page" : undefined}
         className={cn("block", priority === "primary" && "w-full", className)}
       >
         {content}
