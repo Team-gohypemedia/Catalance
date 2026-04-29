@@ -9,6 +9,7 @@ import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 
 import AdminLayout from "./AdminLayout";
 import { AdminTopBar } from "./AdminTopBar";
+import BlogMarkdown from "@/components/blog/BlogMarkdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/shared/context/AuthContext";
 import { toast } from "sonner";
@@ -48,6 +50,31 @@ const STATUS_OPTIONS = [
   { value: "PUBLISHED", label: "Published" },
   { value: "ARCHIVED", label: "Archived" }
 ];
+
+const BLOG_MARKDOWN_PLACEHOLDER = `# Opening headline
+
+Write the full article in markdown.
+
+## Section heading
+
+Intro paragraph with **bold**, *italic*, and [links](https://catalance.in).
+
+### Key points
+
+- Bullet point
+- Another bullet point
+
+1. Numbered point
+2. Next step
+
+> Highlight an important quote or callout.
+
+\`\`\`js
+const result = "Code blocks are supported";
+console.log(result);
+\`\`\`
+
+![Descriptive image alt text](https://your-image-url.com/blog-image.jpg)`;
 
 const slugify = (value = "") =>
   String(value || "")
@@ -487,7 +514,34 @@ const AdminBlogs = () => {
 
                   <div className="space-y-2">
                     <Label>Content (Markdown)</Label>
-                    <Textarea value={form.content} onChange={(event) => setField("content", event.target.value)} placeholder={"# Opening headline\n\nWrite the full article in markdown..."} className="min-h-[420px] font-mono text-sm" />
+                    <CardDescription className="text-xs leading-6 text-slate-400">
+                      Supports headings, subheadings, paragraphs, bullet lists, numbered lists, links, blockquotes, code blocks, and inline images using markdown syntax.
+                    </CardDescription>
+                    <Tabs defaultValue="write" className="gap-4">
+                      <TabsList className="w-full justify-start rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+                        <TabsTrigger value="write" className="rounded-xl px-4">Write</TabsTrigger>
+                        <TabsTrigger value="preview" className="rounded-xl px-4">Preview</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="write">
+                        <Textarea
+                          value={form.content}
+                          onChange={(event) => setField("content", event.target.value)}
+                          placeholder={BLOG_MARKDOWN_PLACEHOLDER}
+                          className="min-h-[420px] font-mono text-sm"
+                        />
+                      </TabsContent>
+                      <TabsContent value="preview">
+                        <div className="min-h-[420px] rounded-[1.5rem] border border-white/10 bg-[#101010] px-5 py-6 sm:px-6">
+                          {form.content.trim() ? (
+                            <BlogMarkdown content={form.content} className="prose-sm sm:prose-base" />
+                          ) : (
+                            <p className="text-sm leading-7 text-slate-500">
+                              Start writing markdown to preview the article layout here.
+                            </p>
+                          )}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </div>
 
                   <Separator />

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
 import { Link, useParams } from "react-router-dom";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
@@ -8,13 +7,11 @@ import Clock from "lucide-react/dist/esm/icons/clock";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import User from "lucide-react/dist/esm/icons/user";
 
+import BlogMarkdown from "@/components/blog/BlogMarkdown";
 import SeoMeta from "@/components/common/SeoMeta";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { request } from "@/shared/lib/api-client";
-
-const markdownClassName =
-  "prose prose-invert max-w-none prose-headings:font-semibold prose-headings:text-white prose-p:text-slate-300 prose-p:leading-8 prose-li:text-slate-300 prose-li:leading-7 prose-a:text-[#ffc800] prose-strong:text-white prose-blockquote:border-l-[#ffc800] prose-blockquote:text-slate-300 prose-code:text-[#ffc800]";
 
 const BlogPost = () => {
   const { slug } = useParams();
@@ -173,9 +170,7 @@ const BlogPost = () => {
             </div>
 
             <div className="mt-10 rounded-[2rem] border border-white/10 bg-[#101010] px-5 py-8 sm:px-8 lg:px-10">
-              <div className={markdownClassName}>
-                <ReactMarkdown>{post.content}</ReactMarkdown>
-              </div>
+              <BlogMarkdown content={post.content} />
             </div>
           </article>
 
