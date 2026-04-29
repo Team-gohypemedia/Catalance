@@ -292,9 +292,10 @@ function EmailSignUp() {
               <p className="mt-2.5 text-center text-[0.82rem] text-white/68">
                 <Link
                   to="/signup/phone"
-                  className="text-primary underline-offset-4 hover:underline"
+                  className="inline-flex items-baseline gap-1 text-white/68 underline-offset-4 hover:underline "
                 >
-                  Sign up with phone instead
+                  <span>Continue with</span>
+                  <span className="text-primary underline">Phone</span>
                 </Link>
               </p>
 
@@ -302,7 +303,7 @@ function EmailSignUp() {
                 Already have an account?{" "}
                 <Link
                   to="/login/phone"
-                  className="text-primary underline-offset-4 hover:underline"
+                  className="text-primary underline-offset-4 underline sm:hover:underline"
                 >
                   Log in
                 </Link>
@@ -496,9 +497,10 @@ function EmailSignUp() {
                     <div className="space-y-4 text-center">
                       <Link
                         to="/signup/phone"
-                        className="inline-flex text-lg text-primary underline-offset-4 hover:underline"
+                        className="inline-flex items-baseline gap-1 text-lg text-white/68 underline-offset-4 hover:underline"
                       >
-                        Sign up with Phone instead
+                        <span>Continue with</span>
+                        <span className="text-primary underline">Phone</span>
                       </Link>
 
                       <p className="text-base text-white/68">

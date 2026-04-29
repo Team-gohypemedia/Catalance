@@ -587,12 +587,15 @@ function EmailLogin() {
                     </div>
 
                     <div className="space-y-4 text-center">
-                      <Link
-                        to={signUpPath}
-                        className="inline-flex text-lg text-white/58 underline-offset-4 hover:underline"
-                      >
-                        Need an account?&nbsp;<span className="text-primary">Sign up</span>
-                      </Link>
+                      <p className="text-lg text-white/58">
+                        Need an account?{" "}
+                        <Link
+                          to={signUpPath}
+                          className="text-primary underline-offset-4 hover:underline"
+                        >
+                          Sign up
+                        </Link>
+                      </p>
                     </div>
                   </form>
                 </div>
