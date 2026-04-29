@@ -498,7 +498,7 @@ function EmailSignUp() {
                         to="/signup/phone"
                         className="inline-flex text-lg text-primary underline-offset-4 hover:underline"
                       >
-                        Sign up with phone instead
+                        Sign up with Phone instead
                       </Link>
 
                       <p className="text-base text-white/68">
