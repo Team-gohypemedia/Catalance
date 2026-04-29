@@ -24,7 +24,6 @@ import {
   buildCanonicalProfileDetails,
   buildFreelancerSkillRows,
   buildPrimaryServiceSnapshot,
-  deriveTopLevelSkillsFromProfileDetails,
 } from "./freelancer-service-details.js";
 
 const OTP_TTL_MINUTES = 15;
@@ -327,6 +326,38 @@ const syncFreelancerProfileDetails = async ({
 
 const normalizeRoleValue = (value) =>
   typeof value === "string" ? value.toUpperCase() : null;
+
+const normalizeLoginPhoneDigits = (value) =>
+  String(value || "").replace(/\D/g, "");
+
+const findUserByLoginPhone = async (identifier) => {
+  const phoneDigits = normalizeLoginPhoneDigits(identifier);
+  if (!phoneDigits) return null;
+
+  const candidates = await prisma.user.findMany(
+    withFreelancerProfileInclude({
+      where: {
+        OR: [
+          { phoneNumber: { contains: phoneDigits } },
+          { phone: { contains: phoneDigits } }
+        ]
+      }
+    })
+  );
+
+  return (
+    candidates.find((candidate) => {
+      const candidateDigits = normalizeLoginPhoneDigits(
+        candidate?.phoneNumber || candidate?.phone || ""
+      );
+      return (
+        candidateDigits &&
+        (candidateDigits.includes(phoneDigits) ||
+          phoneDigits.includes(candidateDigits))
+      );
+    }) || null
+  );
+};
 
 const hasRole = (user, role) => {
   const targetRole = normalizeRoleValue(role);
@@ -2521,13 +2552,16 @@ export const resendOtp = async (email) => {
   };
 };
 
-export const authenticateUser = async ({ email, password, role }) => {
-  const normalizedEmail = String(email || "").toLowerCase().trim();
-  const user = await prisma.user.findUnique(
-    withFreelancerProfileInclude({
-      where: { email: normalizedEmail }
-    })
-  );
+export const authenticateUser = async ({ email, identifier, password, role }) => {
+  const rawIdentifier = String(identifier || email || "").trim();
+  const normalizedEmail = rawIdentifier.toLowerCase();
+  const user = rawIdentifier.includes("@")
+    ? await prisma.user.findUnique(
+        withFreelancerProfileInclude({
+          where: { email: normalizedEmail }
+        })
+      )
+    : await findUserByLoginPhone(rawIdentifier);
 
   let isValid =
     user?.passwordHash && password
@@ -2548,7 +2582,7 @@ export const authenticateUser = async ({ email, password, role }) => {
   }
 
   if (!isValid) {
-    throw new AppError("Invalid email or password", 401);
+    throw new AppError("Invalid email, phone number, or password", 401);
   }
 
   if (!user.isVerified) {

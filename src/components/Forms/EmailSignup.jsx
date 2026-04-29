@@ -1,81 +1,81 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
-import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { login } from "@/shared/lib/api-client";
+import { useAuth } from "@/shared/context/AuthContext";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
+  canAccessDashboard,
+  FREELANCER_DASHBOARD,
+  getDashboardEntryPath,
+  resolveDashboardValue,
+  resolveFreelancerPath,
+  resolveWorkspaceHomePath,
+  setStoredDashboardPreference,
+} from "@/shared/lib/dashboard-preference";
 import logo from "@/assets/logos/logo.svg";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import EyeOff from "lucide-react/dist/esm/icons/eye-off";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
 import Search from "lucide-react/dist/esm/icons/search";
 
-const DEFAULT_COUNTRY = "IN";
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_PATTERN = /^[+\d][\d\s()-]*$/;
+const MIN_PHONE_DIGITS = 6;
+const PASSWORD_HELPER_TEXT = "Use the password for your account.";
 
-const codeToFlagEmoji = (code) => {
-  const normalizedCode = String(code || "").trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(normalizedCode)) {
-    return "🏳️";
+const isValidIdentifier = (value) => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return false;
+
+  if (normalized.includes("@")) {
+    return EMAIL_PATTERN.test(normalized.toLowerCase());
   }
 
-  return normalizedCode.replace(/[A-Z]/g, (char) =>
-    String.fromCodePoint(127397 + char.charCodeAt(0)),
-  );
-};
-
-const COUNTRY_OPTIONS = Array.from(
-  COUNTRY_CODES.reduce((accumulator, country) => {
-    const code = String(country?.code || "").trim().toUpperCase();
-    const label = String(country?.name || "").trim();
-    const dialCode = String(country?.dial_code || "").trim();
-
-    if (!code || !label || !dialCode || accumulator.has(code)) {
-      return accumulator;
-    }
-
-    accumulator.set(code, {
-      code,
-      label,
-      dialCode,
-    });
-
-    return accumulator;
-  }, new Map()).values(),
-).sort((a, b) => {
-  if (a.code === DEFAULT_COUNTRY) return -1;
-  if (b.code === DEFAULT_COUNTRY) return 1;
-  return a.label.localeCompare(b.label);
-});
-
-const MIN_PHONE_DIGITS = 6;
-
-const formatPhoneNumber = (value) => {
-  const digits = String(value || "").replace(/\D/g, "").slice(0, 15);
-  const groups = digits.match(/.{1,5}/g);
-  return groups ? groups.join(" ") : "";
-};
-
-function CountryFlag({ code, className }) {
   return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "inline-flex size-5 items-center justify-center rounded-sm border border-white/10 bg-white/5 text-[0.95rem] leading-none",
-        className,
-      )}
-    >
-      {codeToFlagEmoji(code)}
-    </span>
+    PHONE_PATTERN.test(normalized) &&
+    normalized.replace(/\D/g, "").length >= MIN_PHONE_DIGITS
   );
-}
+};
+
+const navigateAfterLogin = ({
+  navigate,
+  redirectTo,
+  requestedRole,
+  user,
+}) => {
+  const requestedDashboard = resolveDashboardValue(requestedRole);
+
+  if (requestedDashboard === FREELANCER_DASHBOARD) {
+    setStoredDashboardPreference(user, requestedDashboard);
+    navigate(getDashboardEntryPath(user, requestedDashboard), { replace: true });
+    return;
+  }
+
+  if (redirectTo) {
+    navigate(resolveFreelancerPath(user, redirectTo), { replace: true });
+    return;
+  }
+
+  if (requestedDashboard && canAccessDashboard(user, requestedDashboard)) {
+    setStoredDashboardPreference(user, requestedDashboard);
+    navigate(getDashboardEntryPath(user, requestedDashboard), { replace: true });
+    return;
+  }
+
+  navigate(resolveWorkspaceHomePath(user), { replace: true });
+};
 
 function AppleLogo({ className }) {
   return (
@@ -92,49 +92,111 @@ function AppleLogo({ className }) {
   );
 }
 
-function PhoneSignup() {
+function EmailOrPhoneSignIn() {
+  const location = useLocation();
   const navigate = useNavigate();
-  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY);
-  const [phoneDigits, setPhoneDigits] = useState("");
+  const [searchParams] = useSearchParams();
+  const { login: setAuthSession } = useAuth();
+  const [identifier, setIdentifier] = useState(() =>
+    typeof location.state?.identifier === "string"
+      ? location.state.identifier
+      : typeof location.state?.email === "string"
+        ? location.state.email
+        : "",
+  );
+  const [password, setPassword] = useState(() =>
+    typeof location.state?.password === "string"
+      ? location.state.password
+      : "",
+  );
   const [formError, setFormError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    document.title = "Sign up | Catalance";
+    document.title = "Sign in | Catalance";
   }, []);
 
-  const selectedCountry = useMemo(
-    () =>
-      COUNTRY_OPTIONS.find((option) => option.code === countryCode) ??
-      COUNTRY_OPTIONS[0],
-    [countryCode],
-  );
+  const redirectParam = searchParams.get("redirect");
+  const openMessageParam = searchParams.get("openMessage");
+  const buildReturnUrl = () => {
+    if (!redirectParam) return null;
+    const extra = openMessageParam ? `?openMessage=${openMessageParam}` : "";
+    return `${redirectParam}${extra}`;
+  };
 
-  const formattedPhone = formatPhoneNumber(phoneDigits);
-  const normalizedDigits = phoneDigits.replace(/\D/g, "");
-  const isPhoneValid = normalizedDigits.length >= MIN_PHONE_DIGITS;
-
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError("");
 
-    if (!isPhoneValid) {
-      setFormError(
-        `Enter a valid ${selectedCountry.label.toLowerCase()} phone number to continue.`,
-      );
+    const normalizedIdentifier = identifier.trim();
+    const looksLikeEmail = normalizedIdentifier.includes("@");
+    const loginIdentifier = looksLikeEmail
+      ? normalizedIdentifier.toLowerCase()
+      : normalizedIdentifier;
+
+    if (!isValidIdentifier(normalizedIdentifier)) {
+      setFormError("Enter a valid email address or phone number to continue.");
       return;
     }
 
-    navigate("/signup", {
-      state: {
-        phoneNumber: `${selectedCountry.dialCode} ${formattedPhone}`,
-        phoneCountry: selectedCountry.code,
-        signupSource: "phone",
-      },
-    });
+    if (!password.trim()) {
+      setFormError("Enter your password to continue.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const requestedRole =
+        searchParams.get("role")?.toUpperCase() ||
+        (typeof location.state?.role === "string"
+          ? location.state.role.toUpperCase()
+          : undefined);
+
+      const authPayload = await login({
+        identifier: loginIdentifier,
+        password,
+        role: requestedRole,
+      });
+
+      if (authPayload?.requiresVerification) {
+        toast.info(authPayload.message || "Please verify your email.");
+        navigate("/signup", {
+          state: {
+            verifyEmail: authPayload.email,
+            showVerification: true,
+          },
+          replace: true,
+        });
+        return;
+      }
+
+      setAuthSession(authPayload?.user, authPayload?.accessToken);
+      toast.success("Signed in successfully.");
+      setIdentifier("");
+      setPassword("");
+
+      const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
+
+      navigateAfterLogin({
+        navigate,
+        redirectTo,
+        requestedRole,
+        user: authPayload?.user,
+      });
+    } catch (error) {
+      const message =
+        error?.message || "Unable to sign in with those details.";
+      setFormError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSocialClick = (provider) => {
-    toast.info(`${provider} sign-up is not connected yet.`);
+    toast.info(`${provider} sign-in is not connected yet.`);
   };
 
   return (
@@ -162,64 +224,52 @@ function PhoneSignup() {
               <Card className="mx-auto mt-3 w-full rounded-lg border border-white/10 bg-[#101010]/90 p-3.5 shadow-none backdrop-blur-2xl">
                 <form className="space-y-3" onSubmit={handleSubmit} noValidate>
                   <div className="w-full space-y-2">
-                    <div className="grid w-full grid-cols-[6.25rem_minmax(0,1fr)] gap-1.5">
-                      <Select value={countryCode} onValueChange={setCountryCode}>
-                        <SelectTrigger
-                          type="button"
-                          aria-label="Select country code"
-                          className="!h-10 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-2.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]"
-                        >
-                          <div className="pointer-events-none flex min-w-0 items-center gap-2.5 select-none">
-                            <CountryFlag
-                              code={selectedCountry.code}
-                              className="size-[1.05rem] rounded-sm text-[0.86rem]"
-                            />
-                            <span className="truncate text-[13px] font-medium">
-                              {selectedCountry.dialCode}
-                            </span>
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent
-                          position="popper"
-                          sideOffset={8}
-                          className="z-[60] min-w-[18rem] border-white/10 bg-[#121212] text-white shadow-2xl sm:min-w-[26rem]"
-                        >
-                          {COUNTRY_OPTIONS.map((option) => (
-                            <SelectItem
-                              key={option.code}
-                              value={option.code}
-                              className="cursor-pointer text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white"
-                            >
-                              <span className="flex w-full items-center gap-3">
-                                <CountryFlag code={option.code} />
-                                <span className="min-w-0 flex-1 truncate">
-                                  {option.label}
-                                </span>
-                                <span className="shrink-0 text-white/45">
-                                  {option.code} {option.dialCode}
-                                </span>
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
+                    <Input
+                      id="loginIdentifier"
+                      name="identifier"
+                      type="text"
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      aria-label="Email or phone number"
+                      placeholder="name@example.com or 999 999 9999"
+                      value={identifier}
+                      onChange={(event) => {
+                        setIdentifier(event.target.value);
+                        if (formError) setFormError("");
+                      }}
+                      className="!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                    />
+                    <div className="relative">
                       <Input
-                        id="phoneNumber"
-                        type="tel"
-                        inputMode="numeric"
-                        autoComplete="tel-national"
-                        aria-label="Phone number"
-                        placeholder="999 999 9999"
-                        value={formattedPhone}
+                        id="loginPasswordMobile"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        aria-label="Password"
+                        placeholder="Enter your password"
+                        value={password}
                         onChange={(event) => {
-                          const digits = event.target.value.replace(/\D/g, "").slice(0, 15);
-                          setPhoneDigits(digits);
+                          setPassword(event.target.value);
                           if (formError) setFormError("");
                         }}
-                        className="!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                        className="!h-10 !py-0 pr-10 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        className="absolute inset-y-0 right-0 flex items-center px-3 text-zinc-400 transition-colors hover:text-white"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
+                    <p className="text-[11px] leading-4 text-white/52">
+                      {PASSWORD_HELPER_TEXT}
+                    </p>
                     {formError ? (
                       <p className="pt-1 text-sm text-red-400" aria-live="polite">
                         {formError}
@@ -229,10 +279,15 @@ function PhoneSignup() {
 
                   <Button
                     type="submit"
+                    disabled={isSubmitting}
                     className="!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
                   >
-                    Continue
-                    <ArrowRight className="size-[0.95rem]" />
+                    {isSubmitting ? "Signing in..." : "Sign in"}
+                    {isSubmitting ? (
+                      <Loader2 className="size-[0.95rem] animate-spin" />
+                    ) : (
+                      <ArrowRight className="size-[0.95rem]" />
+                    )}
                   </Button>
                 </form>
               </Card>
@@ -270,22 +325,28 @@ function PhoneSignup() {
               </div>
 
               <p className="mt-2.5 text-center text-[0.82rem] text-white/68">
-                Already have an account?{" "}
+                Need an account?{" "}
                 <Link
-                  to="/login"
+                  to="/signup"
                   className="text-primary underline-offset-4 hover:underline"
                 >
-                  Sign in
+                  Sign up
                 </Link>
               </p>
 
               <p className="mx-auto mt-2.5 max-w-[19rem] text-center text-[11px] leading-4 text-white/58">
                 By continuing you agree to Catalance&apos;s{" "}
-                <Link to="/terms" className="text-primary underline-offset-4 hover:underline">
+                <Link
+                  to="/terms"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link to="/privacy" className="text-primary underline-offset-4 hover:underline">
+                <Link
+                  to="/privacy"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
                   Privacy Policy
                 </Link>
                 .
@@ -354,68 +415,59 @@ function PhoneSignup() {
               <Card className="relative overflow-hidden rounded-lg border border-white/10 bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
                 <div className="relative p-6 sm:p-8 md:p-12">
                   <p className="px-4 text-center text-3xl font-semibold uppercase text-white sm:px-6 md:px-12">
-                Sign up
-              </p>
-              <p className="px-4 text-center text-md text-white/72 sm:px-6 md:px-12 text-nowrap mb-4">
-                Create your account to get started.
-              </p>
+                    Sign in
+                  </p>
+                  <p className="mb-4 px-4 text-center text-md text-nowrap text-white/72 sm:px-6 md:px-12">
+                    Use your email or phone number and password to continue.
+                  </p>
                   <form className="space-y-6" onSubmit={handleSubmit} noValidate>
                     <div className="space-y-3">
-                      <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-2 sm:grid-cols-[7.75rem_minmax(0,1fr)]">
-                        <Select value={countryCode} onValueChange={setCountryCode}>
-                          <SelectTrigger
-                            type="button"
-                            aria-label="Select country code"
-                            className="!h-12 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-3.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]"
-                          >
-                            <div className="pointer-events-none flex min-w-0 items-center gap-2.5 select-none">
-                              <CountryFlag code={selectedCountry.code} />
-                              <span className="truncate text-[15px] font-medium">
-                                {selectedCountry.dialCode}
-                              </span>
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent
-                            position="popper"
-                            sideOffset={8}
-                            className="z-[60] min-w-[18rem] border-white/10 bg-[#121212] text-white shadow-2xl sm:min-w-[26rem]"
-                          >
-                            {COUNTRY_OPTIONS.map((option) => (
-                              <SelectItem
-                                key={option.code}
-                                value={option.code}
-                                className="cursor-pointer text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white"
-                              >
-                                <span className="flex w-full items-center gap-3">
-                                  <CountryFlag code={option.code} />
-                                  <span className="min-w-0 flex-1 truncate">
-                                    {option.label}
-                                  </span>
-                                  <span className="shrink-0 text-white/45">
-                                    {option.code} {option.dialCode}
-                                  </span>
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-
+                      <Input
+                        id="loginIdentifierDesktop"
+                        name="identifier"
+                        type="text"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        aria-label="Email or phone number"
+                        placeholder="name@example.com or 999 999 9999"
+                        value={identifier}
+                        onChange={(event) => {
+                          setIdentifier(event.target.value);
+                          if (formError) setFormError("");
+                        }}
+                        className="!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                      />
+                      <div className="relative">
                         <Input
-                          id="phoneNumber"
-                          type="tel"
-                          inputMode="numeric"
-                          autoComplete="tel-national"
-                          aria-label="Phone number"
-                          placeholder="999 999 9999"
-                          value={formattedPhone}
+                          id="loginPasswordDesktop"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="current-password"
+                          aria-label="Password"
+                          placeholder="Enter your password"
+                          value={password}
                           onChange={(event) => {
-                            const digits = event.target.value.replace(/\D/g, "").slice(0, 15);
-                            setPhoneDigits(digits);
+                            setPassword(event.target.value);
                             if (formError) setFormError("");
                           }}
-                          className="!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                          className="!h-12 !py-0 pr-10 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          className="absolute inset-y-0 right-0 flex items-center px-3 text-zinc-400 transition-colors hover:text-white"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
                       </div>
+                      <p className="text-xs leading-5 text-white/52">
+                        {PASSWORD_HELPER_TEXT}
+                      </p>
                       {formError ? (
                         <p className="pt-1 text-sm text-red-400" aria-live="polite">
                           {formError}
@@ -425,10 +477,15 @@ function PhoneSignup() {
 
                     <Button
                       type="submit"
+                      disabled={isSubmitting}
                       className="!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl"
                     >
-                      Continue
-                      <ArrowRight className="size-5" />
+                      {isSubmitting ? "Signing in..." : "Sign in"}
+                      {isSubmitting ? (
+                        <Loader2 className="size-5 animate-spin" />
+                      ) : (
+                        <ArrowRight className="size-5" />
+                      )}
                     </Button>
 
                     <div className="flex items-center gap-4 text-white/42">
@@ -468,18 +525,8 @@ function PhoneSignup() {
                         to="/signup"
                         className="inline-flex text-lg text-primary underline-offset-4 hover:underline"
                       >
-                        Sign up with email instead
+                        Need an account? Sign up
                       </Link>
-
-                      <p className="text-base text-white/68">
-                        Already have an account?{" "}
-                        <Link
-                          to="/login/email-or-phone"
-                          className="text-primary underline-offset-4 hover:underline"
-                        >
-                          Sign in
-                        </Link>
-                      </p>
                     </div>
                   </form>
                 </div>
@@ -487,11 +534,17 @@ function PhoneSignup() {
 
               <p className="mt-10 px-4 text-center text-[13px] leading-relaxed text-white/58 sm:text-sm sm:whitespace-nowrap">
                 By continuing you agree to Catalance&apos;s{" "}
-                <Link to="/terms" className="text-primary underline-offset-4 hover:underline">
+                <Link
+                  to="/terms"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link to="/privacy" className="text-primary underline-offset-4 hover:underline">
+                <Link
+                  to="/privacy"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
                   Privacy Policy
                 </Link>
                 .
@@ -504,4 +557,4 @@ function PhoneSignup() {
   );
 }
 
-export default PhoneSignup;
+export default EmailOrPhoneSignIn;

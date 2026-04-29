@@ -23,11 +23,17 @@ export const listUsersSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  body: z.object({
-    email: z.string().email(),
-    password: z.string().min(8).max(72),
-    role: userRoleEnum.optional()
-  })
+  body: z
+    .object({
+      email: z.string().trim().min(1).max(255).optional(),
+      identifier: z.string().trim().min(1).max(255).optional(),
+      password: z.string().min(8).max(72),
+      role: userRoleEnum.optional()
+    })
+    .refine((data) => Boolean(data.email || data.identifier), {
+      message: "Email or phone number is required",
+      path: ["email"]
+    })
 });
 
 export const googleLoginSchema = z.object({

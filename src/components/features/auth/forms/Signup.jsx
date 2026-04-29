@@ -138,9 +138,23 @@ function Signup({ className, ...props }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState(() => {
-    // Pre-fill email if redirected from login for verification
-    if (location.state?.verifyEmail) {
-      return { ...initialFormState, email: location.state.verifyEmail };
+    const prefilledEmail =
+      typeof location.state?.verifyEmail === "string"
+        ? location.state.verifyEmail
+        : typeof location.state?.email === "string"
+          ? location.state.email
+          : "";
+    const prefilledPassword =
+      typeof location.state?.password === "string"
+        ? location.state.password
+        : "";
+
+    if (prefilledEmail || prefilledPassword) {
+      return {
+        ...initialFormState,
+        ...(prefilledEmail ? { email: prefilledEmail } : {}),
+        ...(prefilledPassword ? { password: prefilledPassword } : {}),
+      };
     }
     return initialFormState;
   });
@@ -254,7 +268,9 @@ function Signup({ className, ...props }) {
 
           toast.info("Account already exists. Redirecting to login...");
           const roleParam = searchParams.get("role");
-          const loginPath = roleParam ? `/login?role=${roleParam}` : "/login";
+          const loginPath = roleParam
+            ? `/login/email-or-phone?role=${roleParam}`
+            : "/login/email-or-phone";
           const normalizedRoleParam =
             typeof roleParam === "string" ? roleParam.toUpperCase() : null;
           const redirectTo =
@@ -565,7 +581,7 @@ function Signup({ className, ...props }) {
                       </Field>
 
                       <FieldDescription className="text-center">
-                        Already have an account? <Link to={`/login${searchParams.get("role") ? `?role=${searchParams.get("role")}` : ""}`} className="underline hover:text-primary">Log in</Link>
+                        Already have an account? <Link to={`/login/email-or-phone${searchParams.get("role") ? `?role=${searchParams.get("role")}` : ""}`} className="underline hover:text-primary">Log in</Link>
                       </FieldDescription>
                     </>
                   )}

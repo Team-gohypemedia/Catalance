@@ -176,10 +176,10 @@ export const signup = ({
   });
 };
 
-export const login = ({ email, password, role }) => {
+export const login = ({ email, identifier, password, role }) => {
   return request("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password, role })
+    body: JSON.stringify({ email, identifier, password, role })
   });
 };
 
