@@ -5165,21 +5165,21 @@ const GuestAIDemo = () => {
             )}
 
             {/* Sidebar drawer — slides in from left as fixed overlay */}
-            <aside className={`fixed left-0 top-16 bottom-0 z-40 flex flex-col w-72 shadow-2xl transition-transform duration-300 ease-in-out lg:top-20 ${isSidebarCompact ? '-translate-x-full' : 'translate-x-0'} ${isDark ? 'bg-[#171717] border-r border-white/[0.06]' : 'bg-white border-r border-slate-200'}`}>
+            <aside className={`fixed left-0 top-16 bottom-0 z-40 flex w-72 flex-col transition-transform duration-300 ease-in-out lg:top-20 ${isSidebarCompact ? '-translate-x-full' : 'translate-x-0'} ${isDark ? 'border-r border-white/5 bg-[#151515]' : 'border-r border-slate-200/70 bg-[#fcfcfb]'}`}>
                 {/* ── Sidebar header ── */}
-                <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center justify-between px-4 pb-1 pt-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg ${isDark ? 'bg-amber-300/15' : 'bg-amber-100'}`}>
-                            <img src={cataLogo} alt="CATA" className="h-4 w-4 object-contain" />
+                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-white/8' : 'bg-slate-200/70'}`}>
+                            <img src={cataLogo} alt="CATA" className="h-3.5 w-3.5 object-contain" />
                         </div>
-                        <span className={`truncate text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        <span className={`truncate text-sm font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
                             {isAgencyFlowActive ? 'Agency Brief' : (selectedService?.name || 'Catalance AI')}
                         </span>
                     </div>
                     <button
                         type="button"
                         onClick={toggleSidebarSize}
-                        className={`h-7 w-7 rounded-md flex items-center justify-center ${isDark ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
+                        className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors ${isDark ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}
                         title="Close sidebar"
                     >
                         <PanelLeftClose className="h-4 w-4" />
@@ -5187,47 +5187,45 @@ const GuestAIDemo = () => {
                 </div>
 
                 {/* ── Back to services ── */}
-                <div className={`px-3 pb-2 flex gap-1.5 ${isDark ? 'border-b border-white/[0.06]' : 'border-b border-slate-100'}`}>
-                    <button
-                        type="button"
-                        onClick={handleBackToServices}
-                        className={`flex flex-1 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
-                        title="Back to services"
-                    >
-                        <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-                        Back
-                    </button>
+                <div className="flex flex-col gap-1 px-3 pb-3 pt-2">
                     <button
                         type="button"
                         onClick={() => {
                             void handleRestartCurrentFlow();
                         }}
-                        className={`flex flex-1 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${isDark ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors ${isDark ? 'text-slate-100 hover:bg-white/4' : 'text-slate-800 hover:bg-slate-200/40'}`}
                         title="Start a new chat"
                     >
                         <MessageSquarePlus className="h-3.5 w-3.5 shrink-0" />
                         New Chat
                     </button>
+                    <button
+                        type="button"
+                        onClick={handleBackToServices}
+                        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] transition-colors ${isDark ? 'text-slate-400 hover:bg-white/4 hover:text-white' : 'text-slate-500 hover:bg-slate-200/40 hover:text-slate-800'}`}
+                        title="Back to services"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+                        Back
+                    </button>
                 </div>
 
                 {/* ── Scrollable content ── */}
-                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
                     {/* ── Proposals section ── */}
-                    <div className="mb-1 px-3">
+                    <div className="mb-0.5">
                         <button
                             type="button"
                             onClick={() => toggleSidebarDropdown('proposals')}
-                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                            className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                         >
-                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-50 text-amber-600'}`}>
-                                <Sparkles className="h-3 w-3" />
-                            </div>
-                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                            <Sparkles className={`h-4 w-4 shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                            <span className={`flex-1 text-left text-[13px] font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
                                 Proposals
                             </span>
                             <div className="flex items-center gap-2">
-                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-primary/25 text-primary' : 'bg-amber-100 text-amber-700'}`}>
+                                <span className={`shrink-0 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                     {generatedProposals.length}
                                 </span>
                                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.proposals ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
@@ -5235,29 +5233,26 @@ const GuestAIDemo = () => {
                         </button>
                         {sidebarDropdowns.proposals ? (
                             generatedProposals.length === 0 ? (
-                                <div className="px-2 pb-2 pt-1">
+                                <div className="px-9 pb-2 pt-1">
                                     <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No proposals yet. Chat with CATA AI to generate one.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-1 px-1 pb-1">
+                                <div className="space-y-0.5 pb-1 pl-8 pr-1">
                                     {generatedProposals.map((proposal, index) => (
                                         <button
                                             key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
                                             type="button"
                                             onClick={() => handleOpenProposalPreview(proposal)}
-                                            className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${isDark ? 'border-white/10 bg-white/[0.03] hover:bg-white/10' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+                                            className={`w-full rounded-lg px-3 py-1.5 text-left transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                                         >
-                                            <p className={`truncate text-sm font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                            <p className={`truncate text-[13px] font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                                                 {proposal.projectTitle || 'AI Proposal'}
                                             </p>
                                             {(proposal.budget || proposal.timeline) ? (
-                                                <p className={`mt-1 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                <p className={`mt-1 text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                                     {[proposal.budget && `Budget: ${proposal.budget}`, proposal.timeline && `Timeline: ${proposal.timeline}`].filter(Boolean).join(' | ')}
                                                 </p>
                                             ) : null}
-                                            <p className={`mt-1 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
-                                            </p>
                                         </button>
                                     ))}
                                 </div>
@@ -5266,23 +5261,21 @@ const GuestAIDemo = () => {
                     </div>
 
                     {/* ── Divider ── */}
-                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
+                    <div className="h-3" />
 
                     {/* ── Saved links section ── */}
-                    <div className="mb-1 px-3">
+                    <div className="mb-0.5">
                         <button
                             type="button"
                             onClick={() => toggleSidebarDropdown('links')}
-                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                            className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                         >
-                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                <Globe className="h-3 w-3" />
-                            </div>
-                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                            <Globe className={`h-4 w-4 shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                            <span className={`flex-1 text-left text-[13px] font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
                                 Saved Links
                             </span>
                             <div className="flex items-center gap-2">
-                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                <span className={`shrink-0 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                     {sharedLinks.length}
                                 </span>
                                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.links ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
@@ -5290,25 +5283,22 @@ const GuestAIDemo = () => {
                         </button>
                         {sidebarDropdowns.links ? (
                             sharedLinks.length === 0 ? (
-                                <div className="px-2 pb-2 pt-1">
+                                <div className="px-9 pb-2 pt-1">
                                     <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Links shared in this chat will appear here.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-1 px-1 pb-1">
+                                <div className="space-y-0.5 pb-1 pl-8 pr-1">
                                     {sharedLinks.map((linkEntry) => (
                                         <a
                                             key={linkEntry.id}
                                             href={linkEntry.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                                            className={`flex items-start gap-2 rounded-lg px-3 py-1.5 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                                         >
-                                            <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
-                                                <Globe className="h-3.5 w-3.5" />
-                                            </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{linkEntry.label}</p>
-                                                <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{linkEntry.url}</p>
+                                                <p className={`truncate text-[13px] font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{linkEntry.label}</p>
+                                                <p className={`truncate text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{linkEntry.url}</p>
                                             </div>
                                         </a>
                                     ))}
@@ -5317,20 +5307,18 @@ const GuestAIDemo = () => {
                         ) : null}
                     </div>
 
-                    <div className="mb-1 px-3">
+                    <div className="mb-0.5">
                         <button
                             type="button"
                             onClick={() => toggleSidebarDropdown('files')}
-                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                            className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                         >
-                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                <FileText className="h-3 w-3" />
-                            </div>
-                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                            <FileText className={`h-4 w-4 shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                            <span className={`flex-1 text-left text-[13px] font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
                                 Shared Files & Media
                             </span>
                             <div className="flex items-center gap-2">
-                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                <span className={`shrink-0 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                     {sharedAttachments.length}
                                 </span>
                                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.files ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
@@ -5338,25 +5326,25 @@ const GuestAIDemo = () => {
                         </button>
                         {sidebarDropdowns.files ? (
                             sharedAttachments.length === 0 ? (
-                                <div className="px-2 pb-2 pt-1">
+                                <div className="px-9 pb-2 pt-1">
                                     <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Documents, PDFs, and images you upload will appear here.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-1 px-1 pb-1">
+                                <div className="space-y-0.5 pb-1 pl-8 pr-1">
                                     {sharedAttachments.map((attachment) => (
                                         <a
                                             key={attachment.id}
                                             href={attachment.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                                            className={`flex items-start gap-2 rounded-lg px-3 py-1.5 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                                         >
-                                            <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                                            <div className={`mt-0.5 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                                 {attachment.isImage ? <ImageIcon className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{attachment.name}</p>
-                                                <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                <p className={`truncate text-[13px] font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{attachment.name}</p>
+                                                <p className={`truncate text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                                     {[attachment.kindLabel, formatBytes(attachment.size)].filter(Boolean).join(' | ')}
                                                 </p>
                                             </div>
@@ -5367,91 +5355,68 @@ const GuestAIDemo = () => {
                         ) : null}
                     </div>
 
-                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
-                    <div className="mb-1 px-3">
-                        <button
-                            type="button"
-                            onClick={() => toggleSidebarDropdown('chats')}
-                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-                        >
-                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                <MessageSquarePlus className="h-3 w-3" />
+                    <div className="h-5" />
+                    <p className={`px-2 pb-2 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        Recents
+                    </p>
+                    <div className="mb-1">
+                        {visiblePreviousChats.length === 0 ? (
+                            <div className="px-2 pb-2">
+                                <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>No previous chats.</p>
                             </div>
-                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
-                                Recent Chats
-                            </span>
-                            <div className="flex items-center gap-2">
-                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                    {visiblePreviousChats.length}
-                                </span>
-                                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.chats ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                            </div>
-                        </button>
-                        {sidebarDropdowns.chats ? (
-                            visiblePreviousChats.length === 0 ? (
-                                <div className="px-2 pb-2 pt-1">
-                                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>No previous chats.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-0.5 px-1 pb-1">
-                                    {visiblePreviousChats.map((chat) => {
-                                        const isCurrent = chat.sessionId === sessionId;
-                                        const isLoadingHistory = loadingHistoryId === chat.sessionId;
-                                        const brandName = chat.businessName || '';
-                                        const preview = brandName
-                                            ? `${chat.serviceName || 'Service'} - ${brandName}`
-                                            : (chat.preview || chat.serviceName || 'No preview');
-                                        return (
-                                            <div
-                                                key={chat.sessionId}
-                                                className={`group relative flex items-center gap-1.5 rounded-md px-2 py-2 transition-colors ${isCurrent
-                                                    ? isDark ? 'bg-white/10' : 'bg-slate-100'
-                                                    : isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'
-                                                    }`}
+                        ) : (
+                            <div className="space-y-0.5 px-2 pb-1">
+                                {visiblePreviousChats.map((chat) => {
+                                    const isCurrent = chat.sessionId === sessionId;
+                                    const isLoadingHistory = loadingHistoryId === chat.sessionId;
+                                    const brandName = chat.businessName || '';
+                                    const preview = brandName
+                                        ? `${chat.serviceName || 'Service'} - ${brandName}`
+                                        : (chat.preview || chat.serviceName || 'No preview');
+                                    return (
+                                        <div
+                                            key={chat.sessionId}
+                                            className={`group relative flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/35'}`}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => handleLoadPreviousChat(chat)}
+                                                disabled={isLoadingHistory || isCurrent}
+                                                className="min-w-0 flex-1 text-left outline-none"
                                             >
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleLoadPreviousChat(chat)}
-                                                    disabled={isLoadingHistory || isCurrent}
-                                                    className="min-w-0 flex-1 text-left outline-none"
-                                                >
-                                                    <p className={`truncate text-sm font-medium transition-colors ${isCurrent
-                                                        ? isDark ? 'text-amber-300' : 'text-amber-600'
-                                                        : isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-600 group-hover:text-slate-900'
-                                                        }`}>
-                                                        {isLoadingHistory ? 'Loading...' : preview}
-                                                    </p>
-                                                    <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                        {formatPreviousChatTime(chat.updatedAt)}
-                                                    </p>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => handleDeletePreviousChat(e, chat)}
-                                                    disabled={isLoadingHistory}
-                                                    className={`shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 ${isDark ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}
-                                                    aria-label="Delete chat"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )
-                        ) : null}
+                                                <p className={`truncate text-[13px] font-normal transition-colors ${isCurrent
+                                                    ? isDark ? 'text-white' : 'text-slate-900'
+                                                    : isDark ? 'text-slate-300 group-hover:text-slate-100' : 'text-slate-700 group-hover:text-slate-900'
+                                                    }`}>
+                                                    {isLoadingHistory ? 'Loading...' : preview}
+                                                </p>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleDeletePreviousChat(e, chat)}
+                                                disabled={isLoadingHistory}
+                                                className={`shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 ${isDark ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}
+                                                aria-label="Delete chat"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 {/* ── Bottom: user / login ── */}
-                <div className={`shrink-0 border-t px-3 py-3 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                <div className={`shrink-0 border-t px-3 py-3 ${isDark ? 'border-white/5' : 'border-slate-200/70'}`}>
                     {isAuthLoading ? (
                         <div className="flex items-center gap-2 px-2">
                             <span className={`h-2 w-2 animate-pulse rounded-full ${isDark ? 'bg-amber-400/50' : 'bg-amber-500/50'}`} />
                             <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Checking...</p>
                         </div>
                     ) : isUserLoggedIn ? (
-                        <div className={`flex items-center gap-3 rounded-md px-2 py-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
+                        <div className={`flex items-center gap-3 rounded-xl px-2 py-2 ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/35'}`}>
                             <div className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-white/15 bg-white/10' : 'border-slate-200 bg-slate-100'}`}>
                                 {userAvatar
                                     ? <img src={userAvatar} alt={userDisplayName} className="h-full w-full object-cover" />
@@ -5459,15 +5424,15 @@ const GuestAIDemo = () => {
                                 }
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className={`truncate text-sm font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>{userDisplayName}</p>
-                                <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{userDisplayEmail || 'Authenticated'}</p>
+                                <p className={`truncate text-[13px] font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>{userDisplayName}</p>
+                                <p className={`truncate text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{userDisplayEmail || 'Authenticated'}</p>
                             </div>
                         </div>
                     ) : (
                         <button
                             type="button"
                             onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
-                            className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-slate-100'}`}
+                            className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-[13px] font-medium transition-colors ${isDark ? 'text-slate-300 hover:bg-white/4' : 'text-slate-600 hover:bg-slate-200/35'}`}
                         >
                             <LogIn className="h-4 w-4 shrink-0" />
                             Login to save progress
@@ -5742,7 +5707,7 @@ const GuestAIDemo = () => {
 
                 {shouldShowTextInput && (
                     <div
-                        className={`shrink-0 w-full px-[clamp(0.75rem,4vw,1rem)] pt-[clamp(0.75rem,4vw,1.5rem)] sm:px-5 lg:px-8 transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-[20rem]' : ''} ${isInitialScreen ? 'md:hidden' : ''} bg-gradient-to-t ${isDark ? 'from-[#212121] via-[#212121]/90 to-transparent' : 'from-[#F9F9F9] via-[#F9F9F9]/90 to-transparent'}`}
+                        className={`shrink-0 w-full px-[clamp(0.75rem,4vw,1rem)] pt-[clamp(0.75rem,4vw,1.5rem)] sm:px-5 lg:px-8 transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''} ${isInitialScreen ? 'md:hidden' : ''} bg-gradient-to-t ${isDark ? 'from-[#212121] via-[#212121]/90 to-transparent' : 'from-[#F9F9F9] via-[#F9F9F9]/90 to-transparent'}`}
                         style={{ paddingBottom: 'max(1.25rem, calc(env(safe-area-inset-bottom) + 0.5rem))' }}
                     >
                         <div className="mx-auto w-full max-w-4xl space-y-2.5">
