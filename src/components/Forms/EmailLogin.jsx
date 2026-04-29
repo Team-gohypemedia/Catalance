@@ -123,7 +123,7 @@ function EmailLogin() {
   const openMessageParam = searchParams.get("openMessage");
   const loginSearch = searchParams.toString();
   const phoneLoginPath = loginSearch ? `/login/phone?${loginSearch}` : "/login/phone";
-  const signUpPath = loginSearch ? `/signup/email?${loginSearch}` : "/signup/email";
+  const signUpPath = loginSearch ? `/signup/phone?${loginSearch}` : "/signup/phone";
 
   const buildReturnUrl = () => {
     if (!redirectParam) return null;

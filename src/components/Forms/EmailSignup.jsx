@@ -290,12 +290,11 @@ function EmailSignUp() {
               </div>
 
               <p className="mt-2.5 text-center text-[0.82rem] text-white/68">
-                Prefer phone?{" "}
                 <Link
                   to="/signup/phone"
                   className="text-primary underline-offset-4 hover:underline"
                 >
-                  Use phone signup
+                  Sign up with phone instead
                 </Link>
               </p>
 
@@ -389,7 +388,7 @@ function EmailSignUp() {
             <div className="flex w-full max-w-[42rem] flex-col">
               <Card className="relative overflow-hidden rounded-lg border border-white/10 bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
                 <div className="relative p-6 sm:p-8 md:p-12">
-                  <p className="mb-6 px-4 text-center text-3xl font-semibold uppercase text-white sm:px-6 md:mb-7 md:px-12">
+                  <p className="mb-6 px-4 text-center text-3xl font-semibold text-white sm:px-6 md:mb-7 md:px-12">
                     Sign up
                   </p>
                   <form className="space-y-6" onSubmit={handleSubmit} noValidate>
@@ -499,7 +498,7 @@ function EmailSignUp() {
                         to="/signup/phone"
                         className="inline-flex text-lg text-primary underline-offset-4 hover:underline"
                       >
-                        Use phone signup instead
+                        Sign up with phone instead
                       </Link>
 
                       <p className="text-base text-white/68">

@@ -362,6 +362,15 @@ function PhoneSignup() {
                 </Button>
               </div>
 
+              <p className="mt-2 text-center text-[0.82rem] text-white/68">
+                <Link
+                  to="/signup/email"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  Sign up with email instead
+                </Link>
+              </p>
+
               <p className="mt-2.5 text-center text-[0.82rem] text-white/68">
                 Already have an account?{" "}
                 <Link
@@ -446,9 +455,9 @@ function PhoneSignup() {
             <div className="flex w-full max-w-[42rem] flex-col">
               <Card className="relative overflow-hidden rounded-lg border border-white/10 bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
                 <div className="relative p-6 sm:p-8 md:p-12">
-                  <p className="px-4 text-center text-3xl font-semibold uppercase text-white sm:px-6 md:px-12">
-                Sign up
-              </p>
+                  <p className="px-4 text-center text-3xl font-semibold text-white sm:px-6 md:px-12">
+                    Sign up
+                  </p>
               <p className="px-4 text-center text-md text-white/72 sm:px-6 md:px-12 text-nowrap mb-4">
                 Create your account to get started.
               </p>

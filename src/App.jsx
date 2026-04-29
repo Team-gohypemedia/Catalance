@@ -75,6 +75,9 @@ const ManagerProjectSetup = lazy(
 const SignupPage = lazy(
   () => import("@/components/features/auth/forms/Signup"),
 );
+const EmailSignupPage = lazy(
+  () => import("@/components/Forms/EmailSignup"),
+);
 const PhoneSignupPage = lazy(
   () => import("@/components/Forms/PhoneSignup"),
 );
@@ -238,7 +241,7 @@ const App = () => {
             <Route path="/signup/phone" element={<PhoneSignupPage />} />
             <Route
               path="/signup/email"
-              element={<SignupPage />}
+              element={<EmailSignupPage />}
             />
             <Route
               path="/login/phone"
