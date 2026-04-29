@@ -167,7 +167,7 @@ const Footer = () => {
             <div className="w-full max-w-md">
               <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleNewsletterSubmit}>
                 <input
-                  className="w-full rounded-lg border border-border/60 bg-card px-5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40"
+                  className="h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40"
                   placeholder="name@catalance.in"
                   type="email"
                   autoComplete="email"
@@ -177,7 +177,8 @@ const Footer = () => {
                   disabled={isSubmittingNewsletter}
                 />
                 <Button
-                size="lg"
+                  size="lg"
+                  className="h-12 rounded-xl px-6"
                   type="submit"
                   disabled={isSubmittingNewsletter}
                   aria-label="Subscribe to newsletter"
