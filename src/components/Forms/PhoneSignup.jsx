@@ -365,7 +365,7 @@ function PhoneSignup() {
               <p className="mt-2.5 text-center text-[0.82rem] text-white/68">
                 Already have an account?{" "}
                 <Link
-                  to="/login"
+                  to="/login/phone"
                   className="text-primary underline-offset-4 hover:underline"
                 >
                   Log in
