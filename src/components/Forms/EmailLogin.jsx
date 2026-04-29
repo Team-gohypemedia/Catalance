@@ -203,7 +203,7 @@ function EmailLogin() {
   return (
     <main className="relative min-h-svh overflow-hidden bg-background text-foreground">
       <div className="relative mx-auto min-h-svh w-full max-w-[88rem] px-4 py-2 sm:px-10 lg:px-12 lg:py-8">
-        <div className="lg:hidden flex min-h-[calc(100svh-1rem)] w-full items-center">
+        <div className="xl:hidden flex min-h-[calc(100svh-1rem)] w-full items-center">
           <div className="mx-auto flex w-full max-w-[28rem] flex-col items-center text-center">
             <div className="mt-2 flex flex-col items-center text-center">
               <div className="mb-2.5 flex size-12 items-center justify-center rounded-[18px] border border-primary/70 bg-primary">
@@ -387,7 +387,7 @@ function EmailLogin() {
           </div>
         </div>
 
-        <div className="hidden lg:grid min-h-[calc(100svh-4rem)] w-full items-center gap-12 xl:grid-cols-[1.05fr_0.95fr] xl:gap-16">
+        <div className="hidden xl:grid min-h-[calc(100svh-4rem)] w-full items-center gap-12 xl:grid-cols-[1.05fr_0.95fr] xl:gap-16">
           <section className="order-2 flex justify-center xl:order-1 xl:justify-start">
             <div className="flex w-full max-w-xl flex-col items-center text-center">
               <div className="relative mb-8 flex size-28 items-center justify-center rounded-[22px] border border-primary/70 bg-primary sm:size-32">
