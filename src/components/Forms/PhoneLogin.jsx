@@ -320,10 +320,10 @@ function PhoneLogin() {
               <p className="mt-2.5 text-center text-[0.82rem] text-white/68">
                 Need an account?{" "}
                 <Link
-                  to="/Login/phone"
+                  to="/signup/phone"
                   className="text-primary underline-offset-4 hover:underline"
                 >
-                  Log in
+                  Sign up
                 </Link>
               </p>
 

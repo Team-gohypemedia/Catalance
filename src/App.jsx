@@ -79,9 +79,6 @@ const PhoneSignupPage = lazy(
   () => import("@/components/Forms/PhoneSignup"),
 );
 const PhoneLoginPage = lazy(() => import("@/components/Forms/PhoneLogin"));
-const EmailSignUpPage = lazy(
-  () => import("@/components/Forms/EmailSignUp"),
-);
 const EmailLoginPage = lazy(() => import("@/components/Forms/EmailLogin"));
 const LoginPage = lazy(() => import("@/components/features/auth/forms/Login"));
 const ForgotPasswordPage = lazy(
@@ -241,7 +238,7 @@ const App = () => {
             <Route path="/signup/phone" element={<PhoneSignupPage />} />
             <Route
               path="/signup/email"
-              element={<EmailSignUpPage />}
+              element={<SignupPage />}
             />
             <Route
               path="/login/phone"
