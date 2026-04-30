@@ -144,9 +144,9 @@ function PhoneAuth() {
     [countryCode],
   );
   const formattedPhone = formatPhoneNumber(phoneDigits);
-  const emailLoginPath = searchParams.toString()
-    ? `/login/email?${searchParams.toString()}`
-    : "/login/email";
+  const emailSigninPath = searchParams.toString()
+    ? `/signin/email?${searchParams.toString()}`
+    : "/signin/email";
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -314,7 +314,7 @@ function PhoneAuth() {
 
               <div className="mt-3 text-center text-[0.82rem] text-white/68">
                 <Link
-                  to={emailLoginPath}
+                  to={emailSigninPath}
                   className="text-primary underline-offset-4 hover:underline"
                 >
                   Sign in with email and password
@@ -514,7 +514,7 @@ function PhoneAuth() {
 
                     <div className="pt-1 text-center text-base text-white/68">
                       <Link
-                        to={emailLoginPath}
+                        to={emailSigninPath}
                         className="text-primary underline-offset-4 hover:underline"
                       >
                         Sign in with email and password

@@ -99,9 +99,9 @@ function EmailAuth() {
   const redirectParam = searchParams.get("redirect");
   const openMessageParam = searchParams.get("openMessage");
   const queryString = searchParams.toString();
-  const phoneLoginPath = queryString
-    ? `/login/phone?${queryString}`
-    : "/login/phone";
+  const phoneSigninPath = queryString
+    ? `/signin/phone?${queryString}`
+    : "/signin/phone";
   const identifierLabel = "Email address";
   const identifierPlaceholder = "name@example.com";
   const identifierInputType = "email";
@@ -338,8 +338,8 @@ function EmailAuth() {
               </div>
 
               <div className="mt-3 text-center text-[0.82rem] text-white/68">
-                <Link
-                  to={phoneLoginPath}
+                  <Link
+                  to={phoneSigninPath}
                   className="text-primary underline-offset-4 hover:underline"
                 >
                   Back to phone sign-in
@@ -558,8 +558,8 @@ function EmailAuth() {
                     </div>
 
                     <div className="text-center text-[0.95rem] text-white/68">
-                      <Link
-                        to={phoneLoginPath}
+                        <Link
+                        to={phoneSigninPath}
                         className="text-primary underline-offset-4 hover:underline"
                       >
                         Back to phone sign-in
