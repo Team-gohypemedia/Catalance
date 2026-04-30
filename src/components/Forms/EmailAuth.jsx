@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  Link,
-  useLocation,
-  useNavigate,
-  useSearchParams,
-} from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,23 +19,21 @@ import {
 import logo from "@/assets/logos/logo.svg";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import Mail from "lucide-react/dist/esm/icons/mail";
-import Search from "lucide-react/dist/esm/icons/search";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
+import Search from "lucide-react/dist/esm/icons/search";
 
-const PHONE_PATTERN = /^[+\d][\d\s()-]*$/;
-const MIN_PHONE_DIGITS = 6;
-const WHATSAPP_SUPPORT_URL = "https://wa.me/918882855425";
+const CLIENT_ROLE = "CLIENT";
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 8;
 
-const isValidPhoneNumber = (value) => {
-  const normalized = String(value || "").trim();
+const isValidEmail = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
   if (!normalized) return false;
 
-  return (
-    PHONE_PATTERN.test(normalized) &&
-    normalized.replace(/\D/g, "").length >= MIN_PHONE_DIGITS
-  );
+  return EMAIL_PATTERN.test(normalized);
 };
 
 const navigateAfterLogin = ({ navigate, redirectTo, requestedRole, user }) => {
@@ -81,47 +74,39 @@ function AppleLogo({ className }) {
   );
 }
 
-function WhatsAppSVG({ className = "size-[18px]" }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={cn("shrink-0", className)}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-    >
-      <path
-        fill="#25D366"
-        d="M16.6 14c-.2-.1-1.5-.7-1.7-.8c-.2-.1-.4-.1-.6.1c-.2.2-.6.8-.8 1c-.1.2-.3.2-.5.1c-.7-.3-1.4-.7-2-1.2c-.5-.5-1-1.1-1.4-1.7c-.1-.2 0-.4.1-.5c.1-.1.2-.3.4-.4c.1-.1.2-.3.2-.4c.1-.1.1-.3 0-.4c-.1-.1-.6-1.3-.8-1.8c-.1-.7-.3-.7-.5-.7h-.5c-.2 0-.5.2-.6.3c-.6.6-.9 1.3-.9 2.1c.1.9.4 1.8 1 2.6c1.1 1.6 2.5 2.9 4.2 3.7c.5.2.9.4 1.4.5c.5.2 1 .2 1.6.1c.7-.1 1.3-.6 1.7-1.2c.2-.4.2-.8.1-1.2l-.4-.2m2.5-9.1C15.2 1 8.9 1 5 4.9c-3.2 3.2-3.8 8.1-1.6 12L2 22l5.3-1.4c1.5.8 3.1 1.2 4.7 1.2c5.5 0 9.9-4.4 9.9-9.9c.1-2.6-1-5.1-2.8-7m-2.7 14c-1.3.8-2.8 1.3-4.4 1.3c-1.5 0-2.9-.4-4.2-1.1l-.3-.2l-3.1.8l.8-3l-.2-.3c-2.4-4-1.2-9 2.7-11.5S16.6 3.7 19 7.5c2.4 3.9 1.3 9-2.6 11.4"
-      />
-    </svg>
-  );
-}
-
-function PhoneLogin() {
+function EmailAuth() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login: setAuthSession } = useAuth();
 
-  const [identifier, setIdentifier] = useState(() =>
-    typeof location.state?.identifier === "string"
-      ? location.state.identifier
-      : typeof location.state?.phoneNumber === "string"
-        ? location.state.phoneNumber
+  const [email, setEmail] = useState(() =>
+    typeof location.state?.email === "string"
+      ? location.state.email
+      : typeof location.state?.identifier === "string"
+        ? location.state.identifier
         : "",
   );
-
+  const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    document.title = "Log in | Catalance";
+    document.title = "Signin | Catalance";
   }, []);
 
   const redirectParam = searchParams.get("redirect");
   const openMessageParam = searchParams.get("openMessage");
-  const loginSearch = searchParams.toString();
-  const emailLoginPath = loginSearch ? `/login/email?${loginSearch}` : "/login/email";
+  const queryString = searchParams.toString();
+  const phoneLoginPath = queryString
+    ? `/login/phone?${queryString}`
+    : "/login/phone";
+  const identifierLabel = "Email address";
+  const identifierPlaceholder = "name@example.com";
+  const identifierInputType = "email";
+  const identifierInputMode = "email";
+  const identifierAutoComplete = "email";
 
   const buildReturnUrl = () => {
     if (!redirectParam) return null;
@@ -133,10 +118,15 @@ function PhoneLogin() {
     event.preventDefault();
     setFormError("");
 
-    const normalizedIdentifier = identifier.trim();
+    const normalizedIdentifier = email.trim();
 
-    if (!isValidPhoneNumber(normalizedIdentifier)) {
-      setFormError("Enter a valid phone number to continue.");
+    if (!isValidEmail(normalizedIdentifier)) {
+      setFormError("Enter a valid email address to continue.");
+      return;
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setFormError("Enter your password to continue.");
       return;
     }
 
@@ -151,12 +141,13 @@ function PhoneLogin() {
 
       const authPayload = await login({
         identifier: normalizedIdentifier,
+        password,
         role: requestedRole,
       });
 
       if (authPayload?.requiresVerification) {
         toast.info(authPayload.message || "Please verify your email.");
-        navigate("/Logup", {
+        navigate("/signup", {
           state: {
             verifyEmail: authPayload.email,
             showVerification: true,
@@ -167,8 +158,9 @@ function PhoneLogin() {
       }
 
       setAuthSession(authPayload?.user, authPayload?.accessToken);
-      toast.success("Loged in successfully.");
-      setIdentifier("");
+      toast.success("Logged in successfully.");
+      setEmail("");
+      setPassword("");
 
       const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
 
@@ -179,7 +171,7 @@ function PhoneLogin() {
         user: authPayload?.user,
       });
     } catch (error) {
-      const message = error?.message || "Unable to Log in with those details.";
+      const message = error?.message || "Unable to log in with those details.";
       setFormError(message);
       toast.error(message);
     } finally {
@@ -217,24 +209,79 @@ function PhoneLogin() {
             <section className="mt-3 w-full">
               <Card className="mx-auto mt-3 w-full rounded-lg border border-white/10 bg-[#101010]/90 p-3.5 shadow-none backdrop-blur-2xl">
                 <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-                  <div className="w-full space-y-2">
-                    <Input
-                      id="loginIdentifier"
-                      name="identifier"
-                      type="tel"
-                      inputMode="tel"
-                      autoComplete="tel"
-                      autoCapitalize="none"
-                      spellCheck={false}
-                      aria-label="Phone number"
-                      placeholder="999 999 9999"
-                      value={identifier}
-                      onChange={(event) => {
-                        setIdentifier(event.target.value);
-                        if (formError) setFormError("");
-                      }}
-                      className="!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                    />
+                  <div className="w-full space-y-3 text-left">
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="loginEmail"
+                        className="block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
+                      >
+                        Email address
+                      </label>
+                      <Input
+                        id="loginEmail"
+                        name="identifier"
+                        type={identifierInputType}
+                        inputMode={identifierInputMode}
+                        autoComplete={identifierAutoComplete}
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        aria-label={identifierLabel}
+                        placeholder={identifierPlaceholder}
+                        value={email}
+                        onChange={(event) => {
+                          setEmail(event.target.value);
+                          if (formError) setFormError("");
+                        }}
+                        className="!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <label
+                          htmlFor="loginPassword"
+                          className="block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
+                        >
+                          Password
+                        </label>
+
+                        <Link
+                          to="/forgot-password"
+                          className="text-[11px] font-medium text-primary underline-offset-4 hover:underline"
+                        >
+                          Forgot password?
+                        </Link>
+                      </div>
+                      <div className="relative">
+                        <Input
+                          id="loginPassword"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="current-password"
+                          aria-label="Password"
+                          placeholder="Enter your password"
+                          value={password}
+                          onChange={(event) => {
+                            setPassword(event.target.value);
+                            if (formError) setFormError("");
+                          }}
+                          className="!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 pr-10 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          className="absolute inset-y-0 right-0 flex items-center px-3 text-white/42 transition-colors hover:text-white"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="size-4" />
+                          ) : (
+                            <Eye className="size-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
 
                     {formError ? (
                       <p className="pt-1 text-sm text-red-400" aria-live="polite">
@@ -288,58 +335,24 @@ function PhoneLogin() {
                   <AppleLogo className="size-[18px] text-white" />
                   Continue with Apple
                 </Button>
-
-                <Button
-                  asChild
-                  variant="outline"
-                  className="!h-10 w-full rounded-md border-emerald-500/20 bg-emerald-500/5 text-[12px] font-medium text-emerald-50 hover:bg-emerald-500/10 hover:text-white sm:text-[13px]"
-                >
-                  <a
-                    href={WHATSAPP_SUPPORT_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="gap-2"
-                  >
-                    <WhatsAppSVG className="size-[18px]" />
-                    WhatsApp
-                  </a>
-                </Button>
-
-                <Button
-                  asChild
-                  variant="outline"
-                  className="!h-10 w-full rounded-md border-primary/20 bg-primary/5 text-[12px] font-medium text-white hover:bg-primary/10 hover:text-white sm:text-[13px]"
-                >
-                  <Link to={emailLoginPath} className="gap-2">
-                    <Mail className="size-[18px] text-primary" />
-                    Email
-                  </Link>
-                </Button>
               </div>
 
-              <p className="mt-2.5 text-center text-[0.82rem] text-white/68">
-                Need an account?{" "}
+              <div className="mt-3 text-center text-[0.82rem] text-white/68">
                 <Link
-                  to="/signup/phone"
+                  to={phoneLoginPath}
                   className="text-primary underline-offset-4 hover:underline"
                 >
-                  Sign up
+                  Back to phone sign-in
                 </Link>
-              </p>
+              </div>
 
               <p className="mx-auto mt-2.5 max-w-[19rem] text-center text-[11px] leading-4 text-white/58">
                 By continuing you agree to Catalance&apos;s{" "}
-                <Link
-                  to="/terms"
-                  className="text-primary underline-offset-4 hover:underline"
-                >
+                <Link to="/terms" className="text-primary underline-offset-4 hover:underline">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link
-                  to="/privacy"
-                  className="text-primary underline-offset-4 hover:underline"
-                >
+                <Link to="/privacy" className="text-primary underline-offset-4 hover:underline">
                   Privacy Policy
                 </Link>
                 .
@@ -411,32 +424,86 @@ function PhoneLogin() {
               <Card className="relative overflow-hidden rounded-lg border border-white/10 bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
                 <div className="relative p-6 sm:p-8 md:p-12">
                   <p className="px-4 text-center text-3xl font-semibold uppercase text-white sm:px-6 md:px-12">
-                    Login
+                    Sign in
                   </p>
 
                   <p className="mb-4 px-4 text-center text-md text-nowrap text-white/72 sm:px-6 md:px-12">
-                    Use your phone number to continue.
+                    Use your email to continue.
                   </p>
 
                   <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-                    <div className="space-y-3">
-                      <Input
-                        id="loginIdentifierDesktop"
-                        name="identifier"
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="tel"
-                        autoCapitalize="none"
-                        spellCheck={false}
-                        aria-label="Phone number"
-                        placeholder="999 999 9999"
-                        value={identifier}
-                        onChange={(event) => {
-                          setIdentifier(event.target.value);
-                          if (formError) setFormError("");
-                        }}
-                        className="!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                      />
+                    <div className="space-y-4">
+                      <div className="space-y-1.5 text-left">
+                        <label
+                          htmlFor="loginEmailDesktop"
+                          className="block text-[12px] font-medium uppercase tracking-[0.2em] text-white/55"
+                        >
+                          Email address
+                        </label>
+                        <Input
+                          id="loginEmailDesktop"
+                          name="identifier"
+                          type={identifierInputType}
+                          inputMode={identifierInputMode}
+                          autoComplete={identifierAutoComplete}
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          aria-label={identifierLabel}
+                          placeholder={identifierPlaceholder}
+                          value={email}
+                          onChange={(event) => {
+                            setEmail(event.target.value);
+                            if (formError) setFormError("");
+                          }}
+                          className="!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5 text-left">
+                        <div className="flex items-center justify-between gap-3">
+                          <label
+                            htmlFor="loginPasswordDesktop"
+                            className="block text-[12px] font-medium uppercase tracking-[0.2em] text-white/55"
+                          >
+                            Password
+                          </label>
+                          <Link
+                            to="/forgot-password"
+                            className="shrink-0 text-[11px] font-medium text-primary/90 underline-offset-4 transition hover:text-primary hover:underline"
+                          >
+                            Forgot password?
+                          </Link>
+                        </div>
+                        <div className="relative">
+                          <Input
+                            id="loginPasswordDesktop"
+                            name="password"
+                            type={showPassword ? "text" : "password"}
+                            autoComplete="current-password"
+                            aria-label="Password"
+                            placeholder="Enter your password"
+                            value={password}
+                            onChange={(event) => {
+                              setPassword(event.target.value);
+                              if (formError) setFormError("");
+                            }}
+                            className="!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 pr-11 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            className="absolute inset-y-0 right-0 flex items-center px-3 text-white/42 transition-colors hover:text-white"
+                          >
+                            {showPassword ? (
+                              <EyeOff className="size-4" />
+                            ) : (
+                              <Eye className="size-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
 
                       {formError ? (
                         <p className="pt-1 text-sm text-red-400" aria-live="polite">
@@ -450,7 +517,7 @@ function PhoneLogin() {
                       disabled={isSubmitting}
                       className="!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl"
                     >
-                      {isSubmitting ? "Loging in..." : "Log in"}
+                      {isSubmitting ? "Logging in..." : "Log in"}
                       {isSubmitting ? (
                         <Loader2 className="size-5 animate-spin" />
                       ) : (
@@ -484,52 +551,25 @@ function PhoneLogin() {
                         variant="outline"
                         onClick={() => handleSocialClick("Apple")}
                         className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
-                      >
-                        <AppleLogo className="size-5 text-white" />
-                        Continue with Apple
-                      </Button>
-
-                      <Button
-                        asChild
-                        variant="outline"
-                        className="!h-14 w-full rounded-md border-emerald-500/20 bg-emerald-500/5 text-sm font-medium text-emerald-50 hover:bg-emerald-500/10 hover:text-white"
-                      >
-                        <a
-                          href={WHATSAPP_SUPPORT_URL}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="gap-2"
                         >
-                          <WhatsAppSVG className="size-5" />
-                          Continue with WhatsApp
-                        </a>
-                      </Button>
-
-                      <Button
-                        asChild
-                        variant="outline"
-                        className="!h-14 w-full rounded-md border-primary/20 bg-primary/5 text-sm font-medium text-white hover:bg-primary/10 hover:text-white"
-                      >
-                        <Link to={emailLoginPath} className="gap-2">
-                          <Mail className="size-5 text-primary" />
-                          Continue with Email
-                        </Link>
+                          <AppleLogo className="size-5 text-white" />
+                          Continue with Apple
                       </Button>
                     </div>
 
-                    <div className="space-y-4 text-center">
+                    <div className="text-center text-[0.95rem] text-white/68">
                       <Link
-                        to="/Signup/phone"
-                        className="inline-flex text-lg text-white/58 underline-offset-4 hover:underline"
+                        to={phoneLoginPath}
+                        className="text-primary underline-offset-4 hover:underline"
                       >
-                        Need an account?&nbsp;<span className="text-primary">Sign up</span>
+                        Back to phone sign-in
                       </Link>
                     </div>
                   </form>
                 </div>
               </Card>
 
-              <p className="mt-10 px-4 text-center text-[13px] leading-relaxed text-white/58 sm:text-sm sm:whitespace-nowrap">
+              <p className="mt-6 px-4 text-center text-[13px] leading-relaxed text-white/58 sm:text-sm sm:whitespace-nowrap">
                 By continuing you agree to Catalance&apos;s{" "}
                 <Link
                   to="/terms"
@@ -554,4 +594,4 @@ function PhoneLogin() {
   );
 }
 
-export default PhoneLogin;
+export default EmailAuth;

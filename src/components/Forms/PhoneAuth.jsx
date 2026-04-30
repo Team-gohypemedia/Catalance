@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { loginWithGoogle } from "@/shared/lib/api-client";
-import { useAuth } from "@/shared/context/AuthContext";
-import { resolveWorkspaceHomePath } from "@/shared/lib/dashboard-preference";
 import {
   Select,
   SelectContent,
@@ -19,11 +16,12 @@ import logo from "@/assets/logos/logo.svg";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Search from "lucide-react/dist/esm/icons/search";
 
 const DEFAULT_COUNTRY = "IN";
-const CLIENT_ROLE = "CLIENT";
+const MIN_PHONE_DIGITS = 6;
+
+const normalizePhoneNumber = (value) => String(value || "").replace(/\D/g, "");
 
 const codeToFlagEmoji = (code) => {
   const normalizedCode = String(code || "").trim().toUpperCase();
@@ -60,56 +58,6 @@ const COUNTRY_OPTIONS = Array.from(
   return a.label.localeCompare(b.label);
 });
 
-const MIN_PHONE_DIGITS = 6;
-
-const normalizeAvatarUrl = (value) => {
-  const url = String(value || "").trim();
-  if (!url || url.startsWith("blob:")) return "";
-  return url;
-};
-
-const getGoogleAvatarFromFirebaseUser = (firebaseUser) => {
-  if (!firebaseUser) return "";
-
-  const providerPhoto = Array.isArray(firebaseUser.providerData)
-    ? firebaseUser.providerData.find((entry) => Boolean(entry?.photoURL))
-        ?.photoURL || ""
-    : "";
-
-  return normalizeAvatarUrl(firebaseUser.photoURL || providerPhoto || "");
-};
-
-const mergeAuthUserWithAvatar = (apiUser, fallbackAvatar) => {
-  if (!apiUser || typeof apiUser !== "object") return apiUser;
-
-  const existingIdentityAvatar =
-    apiUser?.profileDetails?.identity?.profilePhoto || "";
-  const resolvedAvatar = normalizeAvatarUrl(
-    apiUser?.avatar || existingIdentityAvatar || fallbackAvatar,
-  );
-
-  if (!resolvedAvatar) return apiUser;
-
-  return {
-    ...apiUser,
-    avatar: resolvedAvatar,
-    profileDetails: {
-      ...(apiUser.profileDetails && typeof apiUser.profileDetails === "object"
-        ? apiUser.profileDetails
-        : {}),
-      identity: {
-        ...((apiUser.profileDetails &&
-          typeof apiUser.profileDetails === "object" &&
-          apiUser.profileDetails.identity &&
-          typeof apiUser.profileDetails.identity === "object"
-          ? apiUser.profileDetails.identity
-          : {})),
-        profilePhoto: existingIdentityAvatar || resolvedAvatar,
-      },
-    },
-  };
-};
-
 const formatPhoneNumber = (value) => {
   const digits = String(value || "").replace(/\D/g, "").slice(0, 15);
   const groups = digits.match(/.{1,5}/g);
@@ -145,16 +93,48 @@ function AppleLogo({ className }) {
   );
 }
 
-function PhoneSignup() {
-  const navigate = useNavigate();
-  const { login: setAuthSession } = useAuth();
-  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY);
-  const [phoneDigits, setPhoneDigits] = useState("");
+function PhoneAuth() {
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  const initialCountryCode = (() => {
+    const candidate =
+      typeof location.state?.phoneCountry === "string"
+        ? location.state.phoneCountry.toUpperCase()
+        : DEFAULT_COUNTRY;
+
+    return COUNTRY_OPTIONS.some((option) => option.code === candidate)
+      ? candidate
+      : DEFAULT_COUNTRY;
+  })();
+
+  const initialCountry =
+    COUNTRY_OPTIONS.find((option) => option.code === initialCountryCode) ??
+    COUNTRY_OPTIONS[0];
+
+  const initialPhoneDigits = (() => {
+    const rawValue =
+      typeof location.state?.phoneNumber === "string"
+        ? location.state.phoneNumber
+        : typeof location.state?.identifier === "string"
+          ? location.state.identifier
+          : "";
+    const digits = normalizePhoneNumber(rawValue);
+    const dialDigits = normalizePhoneNumber(initialCountry?.dialCode || "");
+
+    if (dialDigits && digits.startsWith(dialDigits)) {
+      return digits.slice(dialDigits.length);
+    }
+
+    return digits;
+  })();
+
+  const [countryCode, setCountryCode] = useState(initialCountryCode);
+  const [phoneDigits, setPhoneDigits] = useState(initialPhoneDigits);
   const [formError, setFormError] = useState("");
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   useEffect(() => {
-    document.title = "Sign up | Catalance";
+    document.title = "Log in | Catalance";
   }, []);
 
   const selectedCountry = useMemo(
@@ -163,64 +143,27 @@ function PhoneSignup() {
       COUNTRY_OPTIONS[0],
     [countryCode],
   );
-
   const formattedPhone = formatPhoneNumber(phoneDigits);
-  const normalizedDigits = phoneDigits.replace(/\D/g, "");
-  const isPhoneValid = normalizedDigits.length >= MIN_PHONE_DIGITS;
+  const emailLoginPath = searchParams.toString()
+    ? `/login/email?${searchParams.toString()}`
+    : "/login/email";
 
   const handleSubmit = (event) => {
     event.preventDefault();
     setFormError("");
 
-    if (!isPhoneValid) {
-      setFormError(
-        `Enter a valid ${selectedCountry.label.toLowerCase()} phone number to continue.`,
-      );
+    const normalizedPhoneNumber = normalizePhoneNumber(phoneDigits);
+
+    if (normalizedPhoneNumber.length < MIN_PHONE_DIGITS) {
+      setFormError("Enter a valid phone number to continue.");
       return;
     }
 
-    navigate("/signup", {
-      state: {
-        phoneNumber: `${selectedCountry.dialCode} ${formattedPhone}`,
-        phoneCountry: selectedCountry.code,
-        signupSource: "phone",
-      },
-    });
+    toast.info("Phone sign-in is not connected yet. Use email sign-in for now.");
   };
 
-  const handleGoogleSignUp = async () => {
-    setIsGoogleLoading(true);
-    setFormError("");
-
-    try {
-      const { signInWithGoogle } = await import("@/shared/lib/firebase");
-      const firebaseUser = await signInWithGoogle();
-      const idToken = await firebaseUser.getIdToken();
-      const authPayload = await loginWithGoogle(idToken, CLIENT_ROLE, "signup");
-
-      if (!authPayload?.user || !authPayload?.accessToken) {
-        throw new Error("Unable to complete Google sign-up. Please try again.");
-      }
-
-      const googleAvatar = getGoogleAvatarFromFirebaseUser(firebaseUser);
-      const sessionUser = mergeAuthUserWithAvatar(authPayload.user, googleAvatar);
-
-      setAuthSession(sessionUser, authPayload.accessToken);
-      toast.success(
-        `Welcome, ${sessionUser?.fullName || firebaseUser.displayName || "User"}!`,
-      );
-      navigate(resolveWorkspaceHomePath(sessionUser), { replace: true });
-    } catch (error) {
-      console.error("Google sign-up error:", error);
-      const message = error?.message || "Unable to sign up with Google.";
-      toast.error(message);
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
-
-  const handleAppleClick = () => {
-    toast.info("Apple sign-up is not connected yet.");
+  const handleSocialClick = (provider) => {
+    toast.info(`${provider} sign-in is not connected yet.`);
   };
 
   return (
@@ -236,76 +179,90 @@ function PhoneSignup() {
                   className="h-7 w-7 object-contain"
                 />
               </div>
+
               <h1 className="text-[2.15rem] font-medium leading-none tracking-[-0.02em] text-white">
                 Catalance
               </h1>
+
               <p className="mt-1 text-[0.78rem] leading-tight text-white/68">
-                Hire verified freelancers for your next project.
+                Hire verified creative freelancers.
               </p>
             </div>
 
             <section className="mt-3 w-full">
               <Card className="mx-auto mt-3 w-full rounded-lg border border-white/10 bg-[#101010]/90 p-3.5 shadow-none backdrop-blur-2xl">
-                <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-                  <div className="w-full space-y-2">
-                    <div className="grid w-full grid-cols-[6.25rem_minmax(0,1fr)] gap-1.5">
-                      <Select value={countryCode} onValueChange={setCountryCode}>
-                        <SelectTrigger
-                          type="button"
-                          aria-label="Select country code"
-                          className="!h-10 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-2.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]"
-                        >
-                          <div className="pointer-events-none flex min-w-0 items-center gap-2.5 select-none">
-                            <CountryFlag
-                              code={selectedCountry.code}
-                              className="size-[1.05rem] rounded-sm text-[0.86rem]"
-                            />
-                            <span className="truncate text-[13px] font-medium">
-                              {selectedCountry.dialCode}
-                            </span>
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent
-                          position="popper"
-                          sideOffset={8}
-                          className="z-[60] min-w-[18rem] border-white/10 bg-[#121212] text-white shadow-2xl sm:min-w-[26rem]"
-                        >
-                          {COUNTRY_OPTIONS.map((option) => (
-                            <SelectItem
-                              key={option.code}
-                              value={option.code}
-                              className="cursor-pointer text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white"
-                            >
-                              <span className="flex w-full items-center gap-3">
-                                <CountryFlag code={option.code} />
-                                <span className="min-w-0 flex-1 truncate">
-                                  {option.label}
-                                </span>
-                                <span className="shrink-0 text-white/45">
-                                  {option.code} {option.dialCode}
-                                </span>
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                <form className="space-y-3 text-left" onSubmit={handleSubmit} noValidate>
+                  <div className="w-full space-y-3">
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="phoneNumber"
+                        className="block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
+                      >
+                        Phone number
+                      </label>
 
-                      <Input
-                        id="phoneNumber"
-                        type="tel"
-                        inputMode="numeric"
-                        autoComplete="tel-national"
-                        aria-label="Phone number"
-                        placeholder="999 999 9999"
-                        value={formattedPhone}
-                        onChange={(event) => {
-                          const digits = event.target.value.replace(/\D/g, "").slice(0, 15);
-                          setPhoneDigits(digits);
-                          if (formError) setFormError("");
-                        }}
-                        className="!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                      />
+                      <div className="grid w-full grid-cols-[6.25rem_minmax(0,1fr)] gap-1.5">
+                        <Select value={countryCode} onValueChange={setCountryCode}>
+                          <SelectTrigger
+                            type="button"
+                            aria-label="Select country code"
+                            className="!h-10 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-2.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]"
+                          >
+                            <div className="pointer-events-none flex min-w-0 items-center gap-2.5 select-none">
+                              <CountryFlag
+                                code={selectedCountry.code}
+                                className="size-[1.05rem] rounded-sm text-[0.86rem]"
+                              />
+                              <span className="truncate text-[13px] font-medium">
+                                {selectedCountry.dialCode}
+                              </span>
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent
+                            position="popper"
+                            sideOffset={8}
+                            className="z-[60] min-w-[18rem] border-white/10 bg-[#121212] text-white shadow-2xl sm:min-w-[26rem]"
+                          >
+                            {COUNTRY_OPTIONS.map((option) => (
+                              <SelectItem
+                                key={option.code}
+                                value={option.code}
+                                className="cursor-pointer text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white"
+                              >
+                                <span className="flex w-full items-center gap-3">
+                                  <CountryFlag code={option.code} />
+                                  <span className="min-w-0 flex-1 truncate">
+                                    {option.label}
+                                  </span>
+                                  <span className="shrink-0 text-white/45">
+                                    {option.code} {option.dialCode}
+                                  </span>
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Input
+                          id="phoneNumber"
+                          type="tel"
+                          inputMode="numeric"
+                          autoComplete="tel-national"
+                          aria-label="Phone number"
+                          placeholder="999 999 9999"
+                          value={formattedPhone}
+                          onChange={(event) => {
+                            const digits = event.target.value
+                              .replace(/\D/g, "")
+                              .slice(0, 15);
+                            setPhoneDigits(digits);
+                            if (formError) setFormError("");
+                          }}
+                          className="!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                        />
+                      </div>
                     </div>
+
                     {formError ? (
                       <p className="pt-1 text-sm text-red-400" aria-live="polite">
                         {formError}
@@ -315,7 +272,6 @@ function PhoneSignup() {
 
                   <Button
                     type="submit"
-                    disabled={isGoogleLoading}
                     className="!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
                   >
                     Continue
@@ -330,59 +286,42 @@ function PhoneSignup() {
                 <span className="h-px flex-1 bg-white/12" />
               </div>
 
-              <div className="mt-2.5 space-y-2">
+              <div className="mt-2.5 space-y-2.5">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleGoogleSignUp}
-                  disabled={isGoogleLoading}
-                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[13px] font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                  onClick={() => handleSocialClick("Google")}
+                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[12px] font-medium text-white hover:bg-white/[0.06] hover:text-white sm:text-[13px]"
                 >
-                  {isGoogleLoading ? (
-                    <Loader2 className="size-[18px] animate-spin" />
-                  ) : (
-                    <img
-                      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                      alt=""
-                      className="size-[18px]"
-                    />
-                  )}
-                  {isGoogleLoading ? "Signing up..." : "Continue with Google"}
+                  <img
+                    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                    alt=""
+                    className="size-[18px]"
+                  />
+                  Continue with Google
                 </Button>
 
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleAppleClick}
-                  disabled={isGoogleLoading}
-                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[13px] font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                  onClick={() => handleSocialClick("Apple")}
+                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[12px] font-medium text-white hover:bg-white/[0.06] hover:text-white sm:text-[13px]"
                 >
                   <AppleLogo className="size-[18px] text-white" />
                   Continue with Apple
                 </Button>
               </div>
 
-              <p className="mt-2 text-center text-[0.82rem] text-white/68">
+              <div className="mt-3 text-center text-[0.82rem] text-white/68">
                 <Link
-                  to="/signup/email"
-                  className="text-white/68"
+                  to={emailLoginPath}
+                  className="text-primary underline-offset-4 hover:underline"
                 >
-                  <span>Continue with </span>
-                  <span className="text-primary underline decoration-primary underline-offset-4">Email</span>
+                  Sign in with email and password
                 </Link>
-              </p>
+              </div>
 
-              <p className="mt-2.5 text-center text-[0.82rem] text-white/68">
-                Already have an account?{" "}
-                <Link
-                  to="/login/phone"
-                  className="text-primary underline-offset-4 underline sm:hover:underline"
-                >
-                  Log in
-                </Link>
-              </p>
-
-              <p className="mx-auto mt-2.5 max-w-[19rem] text-center text-[11px] leading-4 text-white/58">
+              <p className="mx-auto mt-2 max-w-[19rem] text-center text-[11px] leading-4 text-white/58">
                 By continuing you agree to Catalance&apos;s{" "}
                 <Link to="/terms" className="text-primary underline-offset-4 hover:underline">
                   Terms of Service
@@ -412,8 +351,9 @@ function PhoneSignup() {
                 <h1 className="text-4xl font-semibold tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl">
                   Catalance
                 </h1>
+
                 <p className="max-w-lg text-lg leading-tight text-white/72 sm:text-2xl">
-                  Hire verified freelancers for your next project.
+                  Hire verified creative freelancers.
                 </p>
               </div>
 
@@ -428,6 +368,7 @@ function PhoneSignup() {
                     Hire freelancers
                   </Link>
                 </Button>
+
                 <Button
                   asChild
                   variant="outline"
@@ -438,6 +379,7 @@ function PhoneSignup() {
                     Post a project
                   </Link>
                 </Button>
+
                 <Button
                   asChild
                   variant="outline"
@@ -455,15 +397,16 @@ function PhoneSignup() {
           <section className="order-1 flex justify-center xl:order-2 xl:justify-end">
             <div className="flex w-full max-w-[42rem] flex-col">
               <Card className="relative overflow-hidden rounded-lg border border-white/10 bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
-                <div className="relative p-6 sm:p-8 md:p-12">
-                  <p className="px-4 text-center text-3xl font-semibold text-white sm:px-6 md:px-12">
-                    Sign up
-                  </p>
-              <p className="px-4 text-center text-md text-white/72 sm:px-6 md:px-12 text-nowrap mb-4">
-                Create your account to get started.
-              </p>
-                  <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-                    <div className="space-y-3">
+                <div className="relative p-6 sm:p-8 md:p-10">
+                  <form className="space-y-5 text-left" onSubmit={handleSubmit} noValidate>
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="phoneNumberDesktop"
+                        className="block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
+                      >
+                        Phone number
+                      </label>
+
                       <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-2 sm:grid-cols-[7.75rem_minmax(0,1fr)]">
                         <Select value={countryCode} onValueChange={setCountryCode}>
                           <SelectTrigger
@@ -504,7 +447,7 @@ function PhoneSignup() {
                         </Select>
 
                         <Input
-                          id="phoneNumber"
+                          id="phoneNumberDesktop"
                           type="tel"
                           inputMode="numeric"
                           autoComplete="tel-national"
@@ -512,23 +455,25 @@ function PhoneSignup() {
                           placeholder="999 999 9999"
                           value={formattedPhone}
                           onChange={(event) => {
-                            const digits = event.target.value.replace(/\D/g, "").slice(0, 15);
+                            const digits = event.target.value
+                              .replace(/\D/g, "")
+                              .slice(0, 15);
                             setPhoneDigits(digits);
                             if (formError) setFormError("");
                           }}
                           className="!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
                         />
                       </div>
-                      {formError ? (
-                        <p className="pt-1 text-sm text-red-400" aria-live="polite">
-                          {formError}
-                        </p>
-                      ) : null}
                     </div>
+
+                    {formError ? (
+                      <p className="pt-1 text-sm text-red-400" aria-live="polite">
+                        {formError}
+                      </p>
+                    ) : null}
 
                     <Button
                       type="submit"
-                      disabled={isGoogleLoading}
                       className="!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl"
                     >
                       Continue
@@ -545,64 +490,53 @@ function PhoneSignup() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handleGoogleSignUp}
-                        disabled={isGoogleLoading}
-                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-base font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                        onClick={() => handleSocialClick("Google")}
+                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
                       >
-                        {isGoogleLoading ? (
-                          <Loader2 className="size-5 animate-spin" />
-                        ) : (
-                          <img
-                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                            alt=""
-                            className="size-5"
-                          />
-                        )}
-                        {isGoogleLoading ? "Signing up..." : "Continue with Google"}
+                        <img
+                          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                          alt=""
+                          className="size-5"
+                        />
+                        Continue with Google
                       </Button>
 
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handleAppleClick}
-                        disabled={isGoogleLoading}
-                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-base font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                        onClick={() => handleSocialClick("Apple")}
+                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
                       >
-                        <AppleLogo className="size-5" />
+                        <AppleLogo className="size-5 text-white" />
                         Continue with Apple
                       </Button>
                     </div>
 
-                    <div className="space-y-4 text-center">
+                    <div className="pt-1 text-center text-base text-white/68">
                       <Link
-                        to="/signup/email"
-                        className="inline-flex items-baseline gap-1 text-lg text-white/68"
+                        to={emailLoginPath}
+                        className="text-primary underline-offset-4 hover:underline"
                       >
-                        <span>Continue with</span>
-                        <span className="text-primary underline decoration-primary underline-offset-4">Email</span>
+                        Sign in with email and password
                       </Link>
-
-                      <p className="text-base text-white/68">
-                        Already have an account?{" "}
-                        <Link
-                          to="/login/phone"
-                          className="text-primary underline-offset-4 hover:underline"
-                        >
-                          Log in
-                        </Link>
-                      </p>
                     </div>
                   </form>
                 </div>
               </Card>
 
-              <p className="mt-10 px-4 text-center text-[13px] leading-relaxed text-white/58 sm:text-sm sm:whitespace-nowrap">
+              <p className="mt-5 px-4 text-center text-[13px] leading-relaxed text-white/58 sm:text-sm sm:whitespace-nowrap">
                 By continuing you agree to Catalance&apos;s{" "}
-                <Link to="/terms" className="text-primary underline-offset-4 hover:underline">
+                <Link
+                  to="/terms"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link to="/privacy" className="text-primary underline-offset-4 hover:underline">
+                <Link
+                  to="/privacy"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
                   Privacy Policy
                 </Link>
                 .
@@ -615,4 +549,4 @@ function PhoneSignup() {
   );
 }
 
-export default PhoneSignup;
+export default PhoneAuth;

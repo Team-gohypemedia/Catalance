@@ -75,14 +75,8 @@ const ManagerProjectSetup = lazy(
 const SignupPage = lazy(
   () => import("@/components/features/auth/forms/Signup"),
 );
-const EmailSignupPage = lazy(
-  () => import("@/components/Forms/EmailSignup"),
-);
-const PhoneSignupPage = lazy(
-  () => import("@/components/Forms/PhoneSignup"),
-);
-const PhoneLoginPage = lazy(() => import("@/components/Forms/PhoneLogin"));
-const EmailLoginPage = lazy(() => import("@/components/Forms/EmailLogin"));
+const EmailAuthPage = lazy(() => import("@/components/Forms/EmailAuth"));
+const PhoneAuthPage = lazy(() => import("@/components/Forms/PhoneAuth"));
 const LoginPage = lazy(() => import("@/components/features/auth/forms/Login"));
 const ForgotPasswordPage = lazy(
   () => import("@/components/features/auth/forms/ForgotPassword"),
@@ -238,23 +232,8 @@ const App = () => {
             />
             <Route path="/get-started" element={<GetStarted />} />
             <Route path="/signup" element={<SignupPage />} />
-            <Route path="/signup/phone" element={<PhoneSignupPage />} />
-            <Route
-              path="/signup/email"
-              element={<EmailSignupPage />}
-            />
-            <Route
-              path="/login/phone"
-              element={<PhoneLoginPage />}
-            />
-            <Route
-              path="/login/email"
-              element={<EmailLoginPage />}
-            />
-            <Route
-              path="/login/email-or-phone"
-              element={<EmailLoginPage />}
-            />
+            <Route path="/login/phone" element={<PhoneAuthPage />} />
+            <Route path="/login/email" element={<EmailAuthPage />} />
             <Route
               path="/about"
               element={

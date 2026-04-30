@@ -269,8 +269,8 @@ function Signup({ className, ...props }) {
           toast.info("Account already exists. Redirecting to login...");
           const roleParam = searchParams.get("role");
           const loginPath = roleParam
-            ? `/login/email-or-phone?role=${roleParam}`
-            : "/login/email-or-phone";
+            ? `/login/email?role=${roleParam}`
+            : "/login/email";
           const normalizedRoleParam =
             typeof roleParam === "string" ? roleParam.toUpperCase() : null;
           const redirectTo =
@@ -580,7 +580,7 @@ function Signup({ className, ...props }) {
                       </Field>
 
                       <FieldDescription className="text-center">
-                        Already have an account? <Link to={`/login/email-or-phone${searchParams.get("role") ? `?role=${searchParams.get("role")}` : ""}`} className="underline hover:text-primary">Log in</Link>
+                        Already have an account? <Link to={`/login/email${searchParams.get("role") ? `?role=${searchParams.get("role")}` : ""}`} className="underline hover:text-primary">Log in</Link>
                       </FieldDescription>
                     </>
                   )}
