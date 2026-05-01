@@ -2,11 +2,6 @@ import Building2 from "lucide-react/dist/esm/icons/building-2";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
 
 import { cn } from "@/shared/lib/utils";
-import {
-  ONBOARDING_PAGE_TITLE_CLASS,
-  ONBOARDING_CARD_DESCRIPTION_CLASS,
-  ONBOARDING_CARD_TITLE_CLASS,
-} from "../typography";
 
 const FreelancerWorkPreferenceSlide = ({
   selectedWorkPreference,
@@ -14,14 +9,14 @@ const FreelancerWorkPreferenceSlide = ({
 }) => {
   return (
     <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 text-center sm:min-h-[70vh] sm:px-6">
-      <div className="w-full max-w-4xl space-y-12">
+      <div className="w-full">
         <div className="text-center">
-          <h1 className={cn(ONBOARDING_PAGE_TITLE_CLASS, "text-primary")}>
+          <h1 className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl font-medium text-primary mb-5 sm:mb-8">
             How Do You Want To Work On Catalance?
           </h1>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-2">
           <button
             type="button"
             onClick={() => onSelectWorkPreference("individual")}
@@ -40,7 +35,7 @@ const FreelancerWorkPreferenceSlide = ({
                   "h-7 w-7",
                   selectedWorkPreference === "individual"
                     ? "text-primary"
-                    : "text-[#d4d4d4]"
+                    : "text-white"
                 )}
               />
 
@@ -64,18 +59,16 @@ const FreelancerWorkPreferenceSlide = ({
               </span>
             </div>
 
-            <div className="mt-5 space-y-1">
+            <div className="mt-5">
               <h2
-                className={cn(
-                  ONBOARDING_CARD_TITLE_CLASS,
-                  selectedWorkPreference === "individual"
-                    ? "text-primary"
-                    : "text-white"
-                )}
+                className="text-xl lg:text-2xl font-medium"
+                style={{
+                  color: selectedWorkPreference === "individual" ? "var(--primary)" : "var(--white)",
+                }}
               >
                 Individual Freelancer
               </h2>
-              <p className={ONBOARDING_CARD_DESCRIPTION_CLASS + " text-muted-foreground"}>
+              <p className="text-sm md:text-base font-regular text-muted-foreground">
                 Working independently on projects
               </p>
             </div>
@@ -123,18 +116,16 @@ const FreelancerWorkPreferenceSlide = ({
               </span>
             </div>
 
-            <div className="mt-5 space-y-1">
+            <div className="mt-5">
               <h2
-                className={cn(
-                  ONBOARDING_CARD_TITLE_CLASS,
-                  selectedWorkPreference === "agency"
-                    ? "text-primary"
-                    : "text-white"
-                )}
+                className="text-xl lg:text-2xl font-medium"
+                style={{
+                  color: selectedWorkPreference === "agency" ? "var(--primary)" : "var(--white)",
+                }}
               >
                 Agency / Studio
               </h2>
-              <p className={ONBOARDING_CARD_DESCRIPTION_CLASS + " text-muted-foreground"}>
+              <p className="text-sm md:text-base font-regular text-muted-foreground">
                 Team of professionals
               </p>
             </div>
