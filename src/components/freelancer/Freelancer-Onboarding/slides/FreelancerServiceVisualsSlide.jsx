@@ -5,6 +5,12 @@ import Image from "lucide-react/dist/esm/icons/image";
 
 import { cn } from "@/shared/lib/utils";
 import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";
+import {
+  ONBOARDING_FIELD_LABEL_CLASS,
+  ONBOARDING_PAGE_TITLE_CLASS,
+  ONBOARDING_SECTION_DESCRIPTION_CLASS,
+  ONBOARDING_SECTION_TITLE_CLASS,
+} from "../typography";
 
 const MAX_KEYWORDS = 5;
 const MAX_IMAGES = 2;
@@ -661,7 +667,7 @@ const FreelancerServiceVisualsSlide = ({
       <div className="w-full space-y-8">
         {/* Heading */}
         <div className="text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Add </span>
             <span className="text-primary">Media</span>
           </h1>
@@ -678,10 +684,10 @@ const FreelancerServiceVisualsSlide = ({
         {/* Step Content */}
         <div className="w-full space-y-7">
           <div className="space-y-2">
-            <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+            <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
               Enhance Your Service
             </h2>
-            <p className="text-sm text-muted-foreground sm:text-base">
+            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
               Add media for better visibility.
             </p>
           </div>
@@ -689,7 +695,7 @@ const FreelancerServiceVisualsSlide = ({
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
             {/* Upload Media */}
             <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                 Upload Media
               </label>
               <UploadArea

@@ -21,6 +21,10 @@ import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import Video from "lucide-react/dist/esm/icons/video";
 
 import { cn } from "@/shared/lib/utils";
+import {
+  ONBOARDING_PAGE_SUBTITLE_CLASS,
+  ONBOARDING_SERVICE_SETUP_TITLE_CLASS,
+} from "../typography";
 
 /* ── Icon lookup by service name ── */
 
@@ -71,10 +75,10 @@ const FreelancerServicesSlide = ({
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
       <div className="w-full max-w-6xl space-y-8">
         <div className="space-y-3 text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-primary sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className={cn(ONBOARDING_SERVICE_SETUP_TITLE_CLASS, "text-primary")}>
             {slide.title}
           </h1>
-          <p className="text-base text-muted-foreground sm:text-lg">
+          <p className={ONBOARDING_PAGE_SUBTITLE_CLASS + " text-muted-foreground"}>
             {slide.description}
           </p>
         </div>

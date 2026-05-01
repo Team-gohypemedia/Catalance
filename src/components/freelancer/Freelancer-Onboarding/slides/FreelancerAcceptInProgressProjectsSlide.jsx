@@ -1,4 +1,5 @@
 import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_SERVICE_SETUP_TITLE_CLASS } from "../typography";
 
 const IN_PROGRESS_PROJECT_OPTIONS = [
   {
@@ -20,12 +21,12 @@ const FreelancerAcceptInProgressProjectsSlide = ({
   onAcceptInProgressProjectsChange,
 }) => (
   <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6">
-    <div className="w-full max-w-4xl space-y-6">
-      <div className="text-center">
-        <h1 className="text-balance text-3xl font-semibold tracking-[-0.035em] text-primary sm:text-4xl lg:text-[3rem] lg:leading-[1.06]">
+      <div className="w-full max-w-4xl space-y-6">
+        <div className="text-center">
+          <h1 className={cn(ONBOARDING_SERVICE_SETUP_TITLE_CLASS, "text-primary")}>
           Do You Accept Projects That Are Already In Progress Or Partially Completed?
-        </h1>
-      </div>
+          </h1>
+        </div>
 
       <div className="space-y-4">
         {IN_PROGRESS_PROJECT_OPTIONS.map((option) => {

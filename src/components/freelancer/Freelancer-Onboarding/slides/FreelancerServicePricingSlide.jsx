@@ -2,6 +2,13 @@ import {
   ServiceInfoStepper,
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
+import { cn } from "@/shared/lib/utils";
+import {
+  ONBOARDING_FIELD_LABEL_CLASS,
+  ONBOARDING_PAGE_TITLE_CLASS,
+  ONBOARDING_SECTION_DESCRIPTION_CLASS,
+  ONBOARDING_SECTION_TITLE_CLASS,
+} from "../typography";
 
 const DELIVERY_TIMELINE_OPTIONS = [
   { value: "1_week", label: "1 Week" },
@@ -31,7 +38,7 @@ const FreelancerServicePricingSlide = ({
       <div className="w-full space-y-8">
         {/* Heading */}
         <div className="text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Set Your </span>
             <span className="text-primary">{serviceName}</span>
             <span> Service Price</span>
@@ -49,10 +56,10 @@ const FreelancerServicePricingSlide = ({
         {/* Step Content */}
         <div className="w-full space-y-7">
           <div className="space-y-2">
-            <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+            <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
               Set Your Price
             </h2>
-            <p className="text-sm text-muted-foreground sm:text-base">
+            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
               Provide the details of the service you will offer.
             </p>
           </div>
@@ -60,7 +67,7 @@ const FreelancerServicePricingSlide = ({
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
             {/* Service Description */}
             <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                 Service Description
               </label>
               <textarea
@@ -76,7 +83,7 @@ const FreelancerServicePricingSlide = ({
 
             {/* Delivery Timeline */}
             <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                 Delivery Timeline
               </label>
               <CustomSelect
@@ -91,7 +98,7 @@ const FreelancerServicePricingSlide = ({
 
             {/* Starting Price */}
             <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                 Starting Price
               </label>
               <div className="relative">

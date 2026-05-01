@@ -4,6 +4,7 @@ import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import X from "lucide-react/dist/esm/icons/x";
 
 import { API_BASE_URL } from "@/shared/lib/api-client";
+import { cn } from "@/shared/lib/utils";
 import {
   deriveDraftSkillsAndTechnologies,
   getSubcategorySelectionKey,
@@ -14,6 +15,12 @@ import {
   ServiceInfoStepper,
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
+import {
+  ONBOARDING_FIELD_LABEL_CLASS,
+  ONBOARDING_PAGE_TITLE_CLASS,
+  ONBOARDING_SECTION_DESCRIPTION_CLASS,
+  ONBOARDING_SECTION_TITLE_CLASS,
+} from "../typography";
 
 const EXPERIENCE_OPTIONS = [
   { value: "entry", label: "Entry Level (0–1 years)" },
@@ -740,7 +747,7 @@ const FreelancerServiceInfoSlide = ({
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
       <div className="w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Fill Your </span>
             <span className="text-primary">{serviceName}</span>
             <span> Service Info</span>
@@ -756,17 +763,17 @@ const FreelancerServiceInfoSlide = ({
 
         <div className="w-full space-y-7">
           <div className="space-y-2">
-            <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+            <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
               Add service info
             </h2>
-            <p className="text-sm text-muted-foreground sm:text-base">
+            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
               Provide the details of the service you will offer.
             </p>
           </div>
 
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
             <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                 Service Title
               </label>
               <div className="relative">
@@ -788,7 +795,7 @@ const FreelancerServiceInfoSlide = ({
             </div>
 
             <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                 Select Category
               </label>
               <CategoryMultiSelect
@@ -803,11 +810,11 @@ const FreelancerServiceInfoSlide = ({
             </div>
 
             <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                 Skills
               </label>
               {selectedCategoryOptions.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/12 bg-card px-4 py-3 text-sm text-muted-foreground">
+                <div className={cn("rounded-xl border border-dashed border-white/12 bg-card px-4 py-3", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
                   Select at least one sub-category to add skills.
                 </div>
               ) : (
@@ -826,7 +833,7 @@ const FreelancerServiceInfoSlide = ({
             </div>
 
             <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                 Experience
               </label>
               <CustomSelect

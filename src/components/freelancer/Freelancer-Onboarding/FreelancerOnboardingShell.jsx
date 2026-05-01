@@ -24,6 +24,10 @@ import {
 } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
+  ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS,
+  ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS,
+} from "./typography";
+import {
   COUNTRY_OPTIONS,
   LANGUAGE_OPTIONS,
   resolveStateOptionsForCountry,
@@ -2738,7 +2742,7 @@ const FreelancerOnboardingShell = () => {
             <Button
               asChild
               variant="secondary"
-              className="h-10 rounded-full border border-white/10 bg-card px-4 text-sm font-semibold text-foreground shadow-none hover:bg-accent/10"
+              className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
             >
               <Link to={FREELANCER_DASHBOARD_PATH}>
                 <ChevronLeft className="h-4 w-4" />
@@ -2915,7 +2919,7 @@ const FreelancerOnboardingShell = () => {
               size="lg"
               onClick={footerPrimaryAction}
               disabled={footerPrimaryDisabled}
-              className="h-11 px-10"
+              className={ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS}
             >
               {footerPrimaryLabel}
             </Button>
@@ -2931,7 +2935,7 @@ const FreelancerOnboardingShell = () => {
                     size="lg"
                     onClick={handleSkipServicesSection}
                     disabled={isProfileSaving}
-                    className="h-11 px-10"
+                    className={ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS}
                   >
                     Skip
                   </Button>

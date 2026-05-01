@@ -2,6 +2,11 @@ import Building2 from "lucide-react/dist/esm/icons/building-2";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
 
 import { cn } from "@/shared/lib/utils";
+import {
+  ONBOARDING_PAGE_TITLE_CLASS,
+  ONBOARDING_CARD_DESCRIPTION_CLASS,
+  ONBOARDING_CARD_TITLE_CLASS,
+} from "../typography";
 
 const FreelancerWorkPreferenceSlide = ({
   selectedWorkPreference,
@@ -11,7 +16,7 @@ const FreelancerWorkPreferenceSlide = ({
     <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 text-center sm:min-h-[70vh] sm:px-6">
       <div className="w-full max-w-4xl space-y-12">
         <div className="text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-primary sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className={cn(ONBOARDING_PAGE_TITLE_CLASS, "text-primary")}>
             How Do You Want To Work On Catalance?
           </h1>
         </div>
@@ -62,7 +67,7 @@ const FreelancerWorkPreferenceSlide = ({
             <div className="mt-5 space-y-1">
               <h2
                 className={cn(
-                  "text-xl sm:text-2xl font-semibold leading-tight",
+                  ONBOARDING_CARD_TITLE_CLASS,
                   selectedWorkPreference === "individual"
                     ? "text-primary"
                     : "text-white"
@@ -70,7 +75,7 @@ const FreelancerWorkPreferenceSlide = ({
               >
                 Individual Freelancer
               </h2>
-              <p className="text-base text-muted-foreground">
+              <p className={ONBOARDING_CARD_DESCRIPTION_CLASS + " text-muted-foreground"}>
                 Working independently on projects
               </p>
             </div>
@@ -121,7 +126,7 @@ const FreelancerWorkPreferenceSlide = ({
             <div className="mt-5 space-y-1">
               <h2
                 className={cn(
-                  "text-xl sm:text-2xl font-semibold leading-tight",
+                  ONBOARDING_CARD_TITLE_CLASS,
                   selectedWorkPreference === "agency"
                     ? "text-primary"
                     : "text-white"
@@ -129,7 +134,7 @@ const FreelancerWorkPreferenceSlide = ({
               >
                 Agency / Studio
               </h2>
-              <p className="text-base text-muted-foreground">
+              <p className={ONBOARDING_CARD_DESCRIPTION_CLASS + " text-muted-foreground"}>
                 Team of professionals
               </p>
             </div>

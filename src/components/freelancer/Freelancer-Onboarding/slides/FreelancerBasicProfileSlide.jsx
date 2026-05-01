@@ -22,9 +22,14 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
+import {
+  ONBOARDING_FIELD_LABEL_CLASS,
+  ONBOARDING_SECTION_DESCRIPTION_CLASS,
+  ONBOARDING_SECTION_TITLE_CLASS,
+} from "../typography";
 
 const fieldLabelClassName =
-  "text-[11px] font-semibold uppercase tracking-[0.32em] text-white/48";
+  `${ONBOARDING_FIELD_LABEL_CLASS} text-white/48`;
 const inputClassName =
   "h-14 rounded-[18px] border border-white/[0.04] bg-card px-5 text-base text-white shadow-none placeholder:text-white/20 focus-visible:border-primary/45 focus-visible:ring-primary/15";
 const selectTriggerClassName =
@@ -291,7 +296,7 @@ const FreelancerBasicProfileSlide = ({
           <div className="space-y-3">
             <div className="flex items-center gap-2.5">
               <Paperclip className="size-4 text-primary" />
-              <p className="text-lg font-medium text-white">Upload Your CV</p>
+              <p className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>Upload Your CV</p>
             </div>
 
             <div
@@ -326,7 +331,7 @@ const FreelancerBasicProfileSlide = ({
                     <span className="truncate">{resumeLabel}</span>
                   </div>
                 ) : null}
-                <p className={cn("text-xs text-white/35", hasResume && "mt-1")}>
+                <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-white/35", hasResume && "mt-1")}>
                   PDF or DOCX file, max 5MB
                 </p>
               </div>

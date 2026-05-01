@@ -3,6 +3,10 @@ import { createPortal } from "react-dom";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 
 import { cn } from "@/shared/lib/utils";
+import {
+  ONBOARDING_STEP_LABEL_CLASS,
+  ONBOARDING_STEP_NUMBER_CLASS,
+} from "../../typography";
 
 /* ──────────────────── Service Info Steps ──────────────────── */
 
@@ -33,7 +37,7 @@ const StepperItem = ({
       type="button"
       onClick={() => onStepChange?.(step.id)}
       className={cn(
-        "relative flex h-9 w-full min-w-0 items-center rounded-full border text-sm font-medium transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10",
+        "relative flex h-9 w-full min-w-0 items-center rounded-full border text-sm transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10",
         isActive
           ? "justify-center gap-0 border-primary bg-primary px-3 text-primary-foreground shadow-[0_0_16px_rgba(250,204,21,0.22)] sm:gap-2 sm:px-4"
           : isCompleted
@@ -43,13 +47,13 @@ const StepperItem = ({
       aria-current={isActive ? "step" : undefined}
       aria-label={`${step.step}. ${step.label}`}
     >
-      <span className="hidden shrink-0 text-xs font-bold sm:inline">{step.step}</span>
+      <span className={ONBOARDING_STEP_NUMBER_CLASS}>{step.step}</span>
       <span
         className={cn(
-          "min-w-0 text-center opacity-100 transition-[opacity,color] duration-300 ease-out",
+          ONBOARDING_STEP_LABEL_CLASS,
           isActive
-            ? "max-w-none whitespace-nowrap text-primary-foreground"
-            : "max-w-full truncate text-inherit",
+            ? "max-w-none whitespace-nowrap font-medium text-primary-foreground"
+            : "max-w-full truncate font-normal text-inherit",
         )}
       >
         {step.label}

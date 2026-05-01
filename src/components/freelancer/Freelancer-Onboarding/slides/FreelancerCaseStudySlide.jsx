@@ -7,6 +7,12 @@ import X from "lucide-react/dist/esm/icons/x";
 
 import { cn } from "@/shared/lib/utils";
 import {
+  ONBOARDING_FIELD_LABEL_CLASS,
+  ONBOARDING_PAGE_TITLE_CLASS,
+  ONBOARDING_SECTION_DESCRIPTION_CLASS,
+  ONBOARDING_SECTION_TITLE_CLASS,
+} from "../typography";
+import {
   ServiceInfoStepper,
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
@@ -89,7 +95,7 @@ const FreelancerCaseStudySlide = ({
       <div className="w-full space-y-8">
         {/* Heading */}
         <div className="text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.03em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Tell Us About </span>
             <span className="text-primary">Your</span>
             <span> Previous </span>
@@ -108,10 +114,10 @@ const FreelancerCaseStudySlide = ({
         {/* Step Content */}
         <div className="w-full space-y-6">
           <div className="space-y-2">
-            <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+            <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
               Project Portfolio
             </h2>
-            <p className="text-sm text-muted-foreground sm:text-base">
+            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
               We need some details to verify your identity. Please complete the
               form below.
             </p>
@@ -120,10 +126,10 @@ const FreelancerCaseStudySlide = ({
           <div className="space-y-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <p className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                   Case Studies
                 </p>
-                <p className="text-xs leading-relaxed text-white/40">
+                <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-white/40")}>
                   Add multiple projects and switch between them while filling the details.
                 </p>
               </div>
@@ -140,14 +146,14 @@ const FreelancerCaseStudySlide = ({
           </div>
 
           {/* Project Header */}
-          <h3 className="text-xl font-semibold text-white sm:text-2xl">
+          <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
             {activeCaseStudyLabel}
           </h3>
 
           <div className="space-y-6">
             {/* Case Study Title */}
             <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                 Case Study Title
               </label>
               <input
@@ -163,7 +169,7 @@ const FreelancerCaseStudySlide = ({
 
             {/* Description */}
             <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                 Description
               </label>
               <textarea
@@ -179,7 +185,7 @@ const FreelancerCaseStudySlide = ({
 
             {/* Niche */}
             <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                 Niche
               </label>
               <CustomSelect
@@ -196,7 +202,7 @@ const FreelancerCaseStudySlide = ({
             <div className="grid gap-5 sm:grid-cols-3">
               {/* Project Link */}
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                   Project Link (Optional)
                 </label>
                 <div className="relative">
@@ -215,7 +221,7 @@ const FreelancerCaseStudySlide = ({
 
               {/* Project File */}
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                   Project File (Optional)
                 </label>
                 <FileUploadButton
@@ -228,7 +234,7 @@ const FreelancerCaseStudySlide = ({
 
               {/* Your Role */}
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                   Your Role
                 </label>
                 <CustomSelect
@@ -244,7 +250,7 @@ const FreelancerCaseStudySlide = ({
             <div className="grid gap-5 sm:grid-cols-2">
               {/* Timeline */}
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                   Timeline
                 </label>
                 <CustomSelect
@@ -257,7 +263,7 @@ const FreelancerCaseStudySlide = ({
 
               {/* Budget */}
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
                   Budget
                 </label>
                 <div className="relative">
