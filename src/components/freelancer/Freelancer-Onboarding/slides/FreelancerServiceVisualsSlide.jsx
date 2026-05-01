@@ -5,12 +5,12 @@ import Image from "lucide-react/dist/esm/icons/image";
 
 import { cn } from "@/shared/lib/utils";
 import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";
-import {
-  ONBOARDING_FIELD_LABEL_CLASS,
-  ONBOARDING_PAGE_TITLE_CLASS,
-  ONBOARDING_SECTION_DESCRIPTION_CLASS,
-  ONBOARDING_SECTION_TITLE_CLASS,
-} from "../typography";
+
+const ONBOARDING_PAGE_TITLE_CLASS =
+  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
+const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
+const ONBOARDING_FIELD_LABEL_CLASS = "text-xs font-medium leading-5 tracking-normal";
 
 const MAX_KEYWORDS = 5;
 const MAX_IMAGES = 2;
@@ -272,7 +272,7 @@ const KeywordInput = ({
           }}
           disabled={keywords.length >= MAX_KEYWORDS}
           placeholder={keywords.length === 0 ? "Add relevant keywords" : ""}
-          className="min-w-[120px] flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40 disabled:cursor-not-allowed"
+          className="min-w-[120px] flex-1 bg-transparent !text-[14px] !leading-5 text-white outline-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-white/20 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 disabled:cursor-not-allowed"
         />
       </div>
 
@@ -682,8 +682,8 @@ const FreelancerServiceVisualsSlide = ({
         </div>
 
         {/* Step Content */}
-        <div className="w-full space-y-7">
-          <div className="space-y-2">
+        <div className="w-full space-y-5">
+          <div>
             <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
               Enhance Your Service
             </h2>
@@ -694,8 +694,8 @@ const FreelancerServiceVisualsSlide = ({
 
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
             {/* Upload Media */}
-            <div className="space-y-2.5">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
                 Upload Media
               </label>
               <UploadArea
@@ -704,8 +704,8 @@ const FreelancerServiceVisualsSlide = ({
                   onServiceVisualsFieldChange("mediaFiles", next)
                 }
               />
-              <div className="rounded-lg border border-primary/25 bg-primary/10 px-3 py-2">
-                <p className="text-xs font-semibold leading-relaxed text-primary">
+              <div className="rounded-lg border bg-card px-3 py-2">
+                <p className="text-xs font-semibold leading-relaxed text-white/48">
                   Upload rule: 1 video OR up to 2 images (max 5MB each).
                 </p>
               </div>

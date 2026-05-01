@@ -1,5 +1,4 @@
 import { cn } from "@/shared/lib/utils";
-import { ONBOARDING_SERVICE_SETUP_TITLE_CLASS } from "../typography";
 
 const IN_PROGRESS_PROJECT_OPTIONS = [
   {
@@ -23,7 +22,7 @@ const FreelancerAcceptInProgressProjectsSlide = ({
   <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6">
       <div className="w-full max-w-4xl space-y-6">
         <div className="text-center">
-          <h1 className={cn(ONBOARDING_SERVICE_SETUP_TITLE_CLASS, "text-primary")}>
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-medium text-primary">
           Do You Accept Projects That Are Already In Progress Or Partially Completed?
           </h1>
         </div>

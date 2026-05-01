@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import { cn } from "@/shared/lib/utils";
-import {
-  ONBOARDING_PAGE_TITLE_CLASS,
-  ONBOARDING_SECTION_DESCRIPTION_CLASS,
-  ONBOARDING_SECTION_TITLE_CLASS,
-} from "../typography";
+
+const ONBOARDING_PAGE_TITLE_CLASS =
+  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
+const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
 const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChange }) => {
   const agreementRef = useRef(null);
@@ -45,7 +45,7 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
     <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6">
       <div className="w-full max-w-5xl space-y-6">
         <div className="space-y-2 text-center">
-          <h1 className={cn(ONBOARDING_PAGE_TITLE_CLASS, "text-[#facc15]")}>
+          <h1 className={cn(ONBOARDING_PAGE_TITLE_CLASS, "text-primary")}>
             Freelancer Agreement &amp; Terms And Conditions
           </h1>
         </div>
@@ -56,14 +56,13 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           className="max-h-[430px] space-y-4 overflow-y-auto rounded-2xl border border-white/10 bg-card p-6 sm:p-7"
         >
           <div className="space-y-2">
-            <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#facc15]")}>Freelancer Agreement</h3>
-            <p className="text-base font-medium text-[#e5e7eb]">Catalance</p>
-            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>Freelancer Agreement</h3>
+            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground text-sm font-regular")}>
               This Freelancer Agreement ("Agreement") governs the relationship
               between Catalance ("Company") and the independent freelancer
               ("Freelancer") engaged for project-based services.
             </p>
-            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground text-sm font-regular")}>
               By accepting any project, assignment, or task from Catalance, the
               Freelancer acknowledges that they have read, understood, and agreed
               to the terms outlined below.
@@ -71,8 +70,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </div>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>1. Engagement &amp; Scope of Work</h4>
-            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>1. Engagement &amp; Scope of Work</h4>
+            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground text-sm font-regular")}>
               <li>The Freelancer is engaged on a project-by-project basis.</li>
               <li>
                 Each project will have a defined scope, timeline, deliverables,
@@ -87,8 +86,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </section>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>2. Project Completion &amp; Payment</h4>
-            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>2. Project Completion &amp; Payment</h4>
+            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground text-sm font-regular")}>
               <li>
                 Payment shall be made only upon successful completion and final
                 approval of the assigned project, as per the agreed scope,
@@ -108,8 +107,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </section>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>3. No Advance Payments</h4>
-            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>3. No Advance Payments</h4>
+            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground text-sm font-regular")}>
               <li>
                 Catalance does not provide advance or upfront payments unless
                 explicitly agreed in writing.
@@ -122,8 +121,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </section>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>4. Ownership &amp; Intellectual Property</h4>
-            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>4. Ownership &amp; Intellectual Property</h4>
+            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground text-sm font-regular")}>
               <li>
                 Upon full payment, all rights, title, and interest in the
                 completed work shall transfer exclusively to Catalance.
@@ -137,8 +136,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </section>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>5. Quality Standards &amp; Revisions</h4>
-            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>5. Quality Standards &amp; Revisions</h4>
+            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground text-sm font-regular")}>
               <li>
                 The Freelancer must adhere strictly to project briefs, brand
                 guidelines, technical specifications, and revision instructions.
@@ -154,8 +153,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </section>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>6. Communication &amp; Deadlines</h4>
-            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>6. Communication &amp; Deadlines</h4>
+            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground text-sm font-regular")}>
               <li>
                 The Freelancer must maintain timely and professional
                 communication.
@@ -170,8 +169,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </section>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>7. Confidentiality</h4>
-            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>7. Confidentiality</h4>
+            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground text-sm font-regular")}>
               <li>
                 The Freelancer agrees to maintain strict confidentiality of all
                 project materials, strategies, client information, credentials,
@@ -188,8 +187,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </section>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>8. Non-Solicitation &amp; Non-Compete</h4>
-            <div className={cn("space-y-2", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>8. Non-Solicitation &amp; Non-Compete</h4>
+            <div className={cn("space-y-2", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
               <p className="font-semibold">8.1 Non-Solicitation of Clients</p>
               <p>
                 The Freelancer agrees that during the engagement period and for
@@ -228,8 +227,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </section>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>9. Termination</h4>
-            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>9. Termination</h4>
+            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground text-sm font-regular")}>
               <li>
                 Catalance reserves the right to terminate any project or
                 engagement if the Freelancer fails to meet agreed requirements.
@@ -247,8 +246,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </section>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>10. Independent Contractor Status</h4>
-            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>10. Independent Contractor Status</h4>
+            <ul className={cn("list-disc space-y-1 pl-6", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground text-sm font-regular")}>
               <li>The Freelancer is engaged as an independent contractor.</li>
               <li>
                 Nothing in this Agreement creates an employment, partnership, or
@@ -262,8 +261,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </section>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>11. Limitation of Liability</h4>
-            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>11. Limitation of Liability</h4>
+            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
               Catalance shall not be liable for any indirect, incidental, or
               consequential damages arising from project engagement. Total
               liability, if any, shall not exceed the agreed project fee.
@@ -271,12 +270,12 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           </section>
 
           <section className="space-y-2">
-            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-[#e5e7eb]")}>12. Acceptance of Agreement</h4>
-            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <h4 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>12. Acceptance of Agreement</h4>
+            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
               By accepting any assignment or continuing work with Catalance, the
               Freelancer confirms that:
             </p>
-            <ul className={cn("space-y-2", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
+            <ul className={cn("space-y-2", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
               <li className="flex items-start gap-2.5">
                 <BadgeCheck className="mt-[0.6rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />
                 <span>They have read and understood this Agreement.</span>
@@ -291,12 +290,6 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
               </li>
             </ul>
           </section>
-
-          <p className={cn("rounded-xl border border-[#facc15]/35 bg-card px-4 py-3", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#e5e7eb]")}>
-            I have read, understood, and agree to the Freelancer Agreement and
-            Terms &amp; Conditions of Catalance. I acknowledge that this
-            agreement is legally binding upon accepting any project assignment.
-          </p>
         </div>
 
         <label

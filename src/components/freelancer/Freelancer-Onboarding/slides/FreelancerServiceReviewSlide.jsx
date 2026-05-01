@@ -21,12 +21,12 @@ import { useAuth } from "@/shared/context/AuthContext";
 import { getSubcategorySelectionKey } from "../service-details";
 import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";
 import { API_BASE_URL } from "@/shared/lib/api-client";
-import {
-  ONBOARDING_FIELD_LABEL_CLASS,
-  ONBOARDING_PAGE_TITLE_CLASS,
-  ONBOARDING_SECTION_DESCRIPTION_CLASS,
-  ONBOARDING_SECTION_TITLE_CLASS,
-} from "../typography";
+
+const ONBOARDING_PAGE_TITLE_CLASS =
+  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
+const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
+const ONBOARDING_FIELD_LABEL_CLASS = "text-xs font-medium leading-5 tracking-normal";
 
 const EXPERIENCE_LABELS = {
   entry: "0-1 Years",
@@ -54,7 +54,7 @@ const SECTION_SUBTITLE_CLASS =
   `${ONBOARDING_SECTION_DESCRIPTION_CLASS} text-white/48`;
 const SECTION_BODY_CLASS =
   `max-w-3xl ${ONBOARDING_SECTION_DESCRIPTION_CLASS} text-white/72`;
-const CARD_LABEL_CLASS = `${ONBOARDING_FIELD_LABEL_CLASS} text-white/38`;
+const CARD_LABEL_CLASS = `${ONBOARDING_FIELD_LABEL_CLASS} mb-1 block text-white/48`;
 const CARD_VALUE_CLASS = "mt-3 text-xl font-semibold tracking-[-0.03em] text-white";
 const CASE_STUDY_META_PILL_CLASS =
   "inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/78";
@@ -978,7 +978,7 @@ const FreelancerServiceReviewSlide = ({
                 <h3 className={SECTION_TITLE_CLASS}>
                   Description
                 </h3>
-                <p className={SECTION_BODY_CLASS}>
+                <p className={`${SECTION_SUBTITLE_CLASS} max-w-3xl`}>
                   {description}
                 </p>
               </div>

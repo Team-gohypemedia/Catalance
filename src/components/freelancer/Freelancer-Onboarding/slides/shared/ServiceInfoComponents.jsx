@@ -5,7 +5,6 @@ import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import { cn } from "@/shared/lib/utils";
 import {
   ONBOARDING_STEP_LABEL_CLASS,
-  ONBOARDING_STEP_NUMBER_CLASS,
 } from "../../typography";
 
 /* ──────────────────── Service Info Steps ──────────────────── */
@@ -47,16 +46,15 @@ const StepperItem = ({
       aria-current={isActive ? "step" : undefined}
       aria-label={`${step.step}. ${step.label}`}
     >
-      <span className={ONBOARDING_STEP_NUMBER_CLASS}>{step.step}</span>
       <span
         className={cn(
           ONBOARDING_STEP_LABEL_CLASS,
           isActive
-            ? "max-w-none whitespace-nowrap font-medium text-primary-foreground"
-            : "max-w-full truncate font-normal text-inherit",
+            ? "max-w-none whitespace-nowrap text-sm font-medium text-primary-foreground"
+            : "max-w-full truncate text-sm font-normal text-inherit",
         )}
       >
-        {step.label}
+          {step.label}
       </span>
     </button>
   </div>
@@ -244,7 +242,7 @@ export const CustomSelect = ({
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={searchPlaceholder}
-              className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-white/20 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
             />
           </div>
         ) : null}
@@ -291,12 +289,12 @@ export const CustomSelect = ({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-card px-4 text-sm transition-colors",
-          value ? "text-white" : "text-white/40",
+          "flex h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 transition-colors",
+          value ? "text-white" : "text-white/20",
           isOpen && "border-primary/50 ring-1 ring-primary/20"
         )}
       >
-        <span>{selectedOption?.label || placeholder}</span>
+        <span className="text-[14px] leading-5">{selectedOption?.label || placeholder}</span>
         <ChevronDown
           className={cn(
             "h-4 w-4 text-white/40 transition-transform duration-200",

@@ -31,4 +31,4 @@ export const ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS =
   "h-11 px-10 text-base font-medium";
 
 export const ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS =
-  "h-11 px-10 text-base font-normal";
+  "h-11 px-6 text-base font-normal";
