@@ -242,7 +242,7 @@ export const CustomSelect = ({
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={searchPlaceholder}
-              className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-white/20 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
             />
           </div>
         ) : null}
@@ -290,7 +290,7 @@ export const CustomSelect = ({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "flex h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 transition-colors",
-          value ? "text-white" : "text-white/20",
+          value ? "text-white" : "text-muted-foreground",
           isOpen && "border-primary/50 ring-1 ring-primary/20"
         )}
       >

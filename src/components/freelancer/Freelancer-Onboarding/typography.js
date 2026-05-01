@@ -19,7 +19,7 @@ export const ONBOARDING_CARD_DESCRIPTION_CLASS =
   ONBOARDING_SECTION_DESCRIPTION_CLASS;
 
 export const ONBOARDING_FIELD_LABEL_CLASS =
-  "text-xs font-medium leading-5 tracking-normal";
+  "text-sm font-medium leading-5 tracking-normal text-white";
 
 export const ONBOARDING_STEP_NUMBER_CLASS =
   "hidden shrink-0 text-sm font-medium sm:inline";

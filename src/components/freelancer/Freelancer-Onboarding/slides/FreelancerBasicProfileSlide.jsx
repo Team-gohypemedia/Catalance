@@ -21,15 +21,14 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 
-const fieldLabelClassName =
-  "mb-1 block text-xs font-medium leading-5 tracking-normal text-white/48";
 const inputClassName =
-  "h-14 rounded-[18px] border border-white/[0.04] bg-card px-5 !text-[14px] !leading-5 text-white shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-white/20 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15";
+  "h-14 rounded-[18px] border border-white/[0.04] bg-card px-5 !text-[14px] !leading-5 text-white shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15";
 const selectTriggerClassName =
-  "flex h-14 w-full appearance-none items-center justify-between gap-3 rounded-[18px] border border-white/[0.04] !bg-card px-5 text-left !text-[14px] !leading-5 text-white shadow-none outline-none transition-[border-color,box-shadow] data-[size=default]:!h-14 data-[placeholder]:!text-[14px] data-[placeholder]:!leading-5 data-[placeholder]:text-white/20 hover:!bg-card focus-visible:border-primary/45 focus-visible:ring-3 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-50 [&_[data-slot=select-value]]:!text-[14px] [&_[data-slot=select-value]]:!leading-5";
+  "flex h-14 w-full appearance-none items-center justify-between gap-3 rounded-[18px] border border-white/[0.04] !bg-card px-5 text-left !text-[14px] !leading-5 text-white shadow-none outline-none transition-[border-color,box-shadow] data-[size=default]:!h-14 data-[placeholder]:!text-[14px] data-[placeholder]:!leading-5 data-[placeholder]:text-muted-foreground hover:!bg-card focus-visible:border-primary/45 focus-visible:ring-3 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-50 [&_[data-slot=select-value]]:!text-[14px] [&_[data-slot=select-value]]:!leading-5";
 const textAreaClassName =
-  "min-h-[120px] rounded-[24px] border border-white/[0.04] bg-card px-5 py-4 !text-[14px] !leading-5 text-white shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-white/20 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15 md:min-h-[80px]";
+  "min-h-[120px] rounded-[24px] border border-white/[0.04] bg-card px-5 py-4 !text-[14px] !leading-5 text-white shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15 md:min-h-[80px]";
 const dangerFieldClassName =
   "border-destructive/75 text-destructive focus-visible:border-destructive focus-visible:ring-destructive/20";
 
@@ -118,7 +117,11 @@ const FreelancerBasicProfileSlide = ({
   const hasResume = Boolean(resumeLabel);
 
   const getFieldLabelClasses = (hasError) =>
-    cn(fieldLabelClassName, hasError && "text-destructive");
+    cn(
+      ONBOARDING_FIELD_LABEL_CLASS,
+      "mb-1 block",
+      hasError && "!text-destructive",
+    );
 
   const getInputClasses = (hasError, className) =>
     cn(inputClassName, hasError && dangerFieldClassName, className);
@@ -499,7 +502,7 @@ const FreelancerBasicProfileSlide = ({
                   <span
                     className={cn(
                       "truncate text-left !text-[14px] !leading-5",
-                      selectedLanguages.length ? "text-white" : "text-white/20",
+                      selectedLanguages.length ? "text-white" : "text-muted-foreground",
                     )}
                   >
                     {selectedLanguageSummary}

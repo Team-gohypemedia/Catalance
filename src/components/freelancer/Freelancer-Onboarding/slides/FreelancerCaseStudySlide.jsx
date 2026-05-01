@@ -6,16 +6,16 @@ import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 
 import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
+import {
+  ServiceInfoStepper,
+  CustomSelect,
+} from "./shared/ServiceInfoComponents";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
 const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
-const ONBOARDING_FIELD_LABEL_CLASS = "text-xs font-medium leading-5 tracking-normal";
-import {
-  ServiceInfoStepper,
-  CustomSelect,
-} from "./shared/ServiceInfoComponents";
 
 const ROLE_OPTIONS = [
   { value: "full_execution", label: "Full execution" },
@@ -142,7 +142,7 @@ const FreelancerCaseStudySlide = ({
           <div className="space-y-6">
             {/* Case Study Title */}
             <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Case Study Title
               </label>
               <input
@@ -152,13 +152,13 @@ const FreelancerCaseStudySlide = ({
                   onCaseStudyFieldChange("title", e.target.value)
                 }
                 placeholder="e.g. E-commerce Platform Redesign"
-                className="h-12 w-full rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-white/20 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className="h-12 w-full rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
               />
             </div>
 
             {/* Description */}
             <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Description
               </label>
               <textarea
@@ -168,13 +168,13 @@ const FreelancerCaseStudySlide = ({
                 }
                 placeholder="Briefly describe the project and its goals..."
                 rows={4}
-                className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-white/20 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
               />
             </div>
 
             {/* Niche */}
             <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Niche
               </label>
               <CustomSelect
@@ -191,7 +191,7 @@ const FreelancerCaseStudySlide = ({
             <div className="grid gap-5 sm:grid-cols-3">
               {/* Project Link */}
               <div className="space-y-0">
-                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Project Link (Optional)
                 </label>
                 <div className="relative">
@@ -203,14 +203,14 @@ const FreelancerCaseStudySlide = ({
                       onCaseStudyFieldChange("projectLink", e.target.value)
                     }
                     placeholder="https://..."
-                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-white/20 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
               </div>
 
               {/* Project File */}
               <div className="space-y-0">
-                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Project File (Optional)
                 </label>
                 <FileUploadButton
@@ -223,7 +223,7 @@ const FreelancerCaseStudySlide = ({
 
               {/* Your Role */}
               <div className="space-y-0">
-                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Your Role
                 </label>
                 <CustomSelect
@@ -239,7 +239,7 @@ const FreelancerCaseStudySlide = ({
             <div className="grid gap-5 sm:grid-cols-2">
               {/* Timeline */}
               <div className="space-y-0">
-                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Timeline
                 </label>
                 <CustomSelect
@@ -252,7 +252,7 @@ const FreelancerCaseStudySlide = ({
 
               {/* Budget */}
               <div className="space-y-0">
-                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Budget
                 </label>
                 <div className="relative">
@@ -265,7 +265,7 @@ const FreelancerCaseStudySlide = ({
                       onCaseStudyFieldChange("budget", val);
                     }}
                     placeholder="e.g. 5000"
-                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-white/20 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
               </div>

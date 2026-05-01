@@ -1,10 +1,10 @@
 import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 
 const PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
 const SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
-const FIELD_LABEL_CLASS = "text-xs font-medium leading-5 tracking-normal";
 
 const FreelancerDeliveryPolicySlide = () => (
   <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6">
@@ -26,7 +26,7 @@ const FreelancerDeliveryPolicySlide = () => (
         </div>
 
         <div className="mt-5 space-y-2">
-          <h3 className={cn(FIELD_LABEL_CLASS)}>Key SOP Rules</h3>
+          <h3 className={cn(ONBOARDING_FIELD_LABEL_CLASS)}>Key SOP Rules</h3>
           <ul className="space-y-2 text-base font-normal leading-7 text-muted-foreground">
             <li className="flex items-start gap-3">
               <BadgeCheck className="mt-[0.55rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />

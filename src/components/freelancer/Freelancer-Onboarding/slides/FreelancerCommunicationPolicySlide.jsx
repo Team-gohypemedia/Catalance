@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
@@ -296,9 +297,9 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           className={cn(
             "flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors",
             hasReachedEnd
-              ? "border-[#facc15]/35 bg-card text-[#e5e7eb]"
-              : "border-white/10 bg-card/70 text-white/50",
-            ONBOARDING_SECTION_DESCRIPTION_CLASS,
+              ? "border-[#facc15]/35 bg-card"
+              : "border-white/10 bg-card/70",
+            ONBOARDING_FIELD_LABEL_CLASS,
           )}
         >
           <input

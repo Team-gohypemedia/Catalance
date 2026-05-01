@@ -3,12 +3,12 @@ import {
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
 import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
 const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
-const ONBOARDING_FIELD_LABEL_CLASS = "text-xs font-medium leading-5 tracking-normal";
 
 const DELIVERY_TIMELINE_OPTIONS = [
   { value: "1_week", label: "1 Week" },
@@ -67,7 +67,7 @@ const FreelancerServicePricingSlide = ({
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
             {/* Service Description */}
             <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Service Description
               </label>
               <textarea
@@ -77,13 +77,13 @@ const FreelancerServicePricingSlide = ({
                 }
                 placeholder="Description..."
                 rows={4}
-                className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-white/20 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
               />
             </div>
 
             {/* Delivery Timeline */}
             <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Delivery Timeline
               </label>
               <CustomSelect
@@ -98,7 +98,7 @@ const FreelancerServicePricingSlide = ({
 
             {/* Starting Price */}
             <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block text-white/48")}>
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Starting Price
               </label>
               <div className="relative">
@@ -112,7 +112,7 @@ const FreelancerServicePricingSlide = ({
                     onServicePricingFieldChange("priceRange", digitsOnly);
                   }}
                   placeholder="Enter starting price"
-                  className="w-full rounded-xl border border-white/10 bg-card pl-8 pr-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-white/20 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-white/10 bg-card pl-8 pr-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                 />
               </div>
             </div>
