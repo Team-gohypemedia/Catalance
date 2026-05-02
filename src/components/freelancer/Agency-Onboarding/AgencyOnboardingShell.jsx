@@ -742,7 +742,11 @@ const buildBasicProfileValidationErrors = (form) =>
 const getFirstBasicProfileError = (errors) =>
   BASIC_PROFILE_FIELD_ORDER.map((field) => errors[field]).find(Boolean) || "";
 
-const FreelancerOnboardingShell = () => {
+const AgencyOnboardingShell = ({
+  embedded = false,
+  onExitAgencyFlow = null,
+  onResetOnboarding = null,
+} = {}) => {
   const navigate = useNavigate();
   const { authFetch, refreshUser, user } = useAuth();
   const usernameCheckRequestRef = useRef(0);
@@ -783,6 +787,10 @@ const FreelancerOnboardingShell = () => {
   const [usernameStatus, setUsernameStatus] = useState("idle");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResettingOnboarding, setIsResettingOnboarding] = useState(false);
+  const shouldUseEmbeddedExit =
+    embedded && typeof onExitAgencyFlow === "function";
+  const shouldUseEmbeddedReset =
+    embedded && typeof onResetOnboarding === "function";
   const countryOptions = COUNTRY_OPTIONS;
   const languageOptions = LANGUAGE_OPTIONS.filter(
     (option) => option.value !== "Other",
@@ -2223,6 +2231,11 @@ const FreelancerOnboardingShell = () => {
     }
 
     if (isFirstSlide) {
+      if (shouldUseEmbeddedExit) {
+        onExitAgencyFlow();
+        return;
+      }
+
       navigate(FREELANCER_ONBOARDING_PATH, { replace: true });
       return;
     }
@@ -2920,6 +2933,12 @@ const FreelancerOnboardingShell = () => {
       return;
     }
 
+    if (shouldUseEmbeddedReset) {
+      setIsSettingsOpen(false);
+      onResetOnboarding();
+      return;
+    }
+
     setIsResettingOnboarding(true);
     setIsSettingsOpen(false);
     resetOnboardingLocally();
@@ -2936,8 +2955,20 @@ const FreelancerOnboardingShell = () => {
       toast.error("Onboarding reset locally, but account sync failed.");
     } finally {
       setIsResettingOnboarding(false);
+      if (shouldUseEmbeddedExit) {
+        onExitAgencyFlow();
+      }
     }
-  }, [isResettingOnboarding, refreshUser, resetOnboardingLocally, user?.id]);
+  }, [
+    isResettingOnboarding,
+    onExitAgencyFlow,
+    refreshUser,
+    resetOnboardingLocally,
+    shouldUseEmbeddedExit,
+    shouldUseEmbeddedReset,
+    onResetOnboarding,
+    user?.id,
+  ]);
 
   const footerPrimaryAction = isProfileActionFooter
     ? handleBasicProfileNext
@@ -2977,16 +3008,29 @@ const FreelancerOnboardingShell = () => {
         />
         <div className="relative flex items-center justify-between px-4 py-4 sm:px-6">
           {isFirstSlide ? (
-            <Button
-              asChild
-              variant="secondary"
-              className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
-            >
-              <Link to={FREELANCER_DASHBOARD_PATH}>
+            shouldUseEmbeddedExit ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon-lg"
+                className="rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                onClick={onExitAgencyFlow}
+                aria-label="Go back"
+              >
                 <ChevronLeft className="h-4 w-4" />
-                Back to dashboard
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button
+                asChild
+                variant="secondary"
+                className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
+              >
+                <Link to={FREELANCER_DASHBOARD_PATH}>
+                  <ChevronLeft className="h-4 w-4" />
+                  Back to dashboard
+                </Link>
+              </Button>
+            )
           ) : (
             <Button
               type="button"
@@ -3188,4 +3232,4 @@ const FreelancerOnboardingShell = () => {
   );
 };
 
-export default FreelancerOnboardingShell;
+export default AgencyOnboardingShell;

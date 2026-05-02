@@ -47,8 +47,8 @@ import {
   resolveServiceKey,
   serializeServiceDraft,
 } from "./service-details";
-import { AGENCY_ONBOARDING_PATH } from "@/shared/lib/dashboard-preference";
 import { getOnboardingSlides as getOnboardingSlideSet } from "./constants";
+import AgencyOnboardingShell from "../Agency-Onboarding/AgencyOnboardingShell";
 import FreelancerWelcomeSlide from "./slides/FreelancerWelcomeSlide";
 import FreelancerWorkPreferenceSlide from "./slides/FreelancerWorkPreferenceSlide";
 import FreelancerIndividualProofSlide from "./slides/FreelancerIndividualProofSlide";
@@ -730,6 +730,7 @@ const FreelancerOnboardingShell = () => {
   const onboardingScrollContainerRef = useRef(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [selectedWorkPreference, setSelectedWorkPreference] = useState("");
+  const [showAgencyFlow, setShowAgencyFlow] = useState(false);
   const [basicProfileForm, setBasicProfileForm] = useState(
     createInitialBasicProfileForm(),
   );
@@ -1246,7 +1247,7 @@ const FreelancerOnboardingShell = () => {
   }, [currentService?.id]);
 
   useEffect(() => {
-    if (!hasHydratedFromUser || !onboardingDraftStorageKey) {
+    if (showAgencyFlow || !hasHydratedFromUser || !onboardingDraftStorageKey) {
       return undefined;
     }
 
@@ -1286,6 +1287,7 @@ const FreelancerOnboardingShell = () => {
     selectedWorkPreference,
     serviceDraftsByKey,
     totalSlides,
+    showAgencyFlow,
   ]);
 
   useEffect(() => {
@@ -2302,7 +2304,7 @@ const FreelancerOnboardingShell = () => {
 
     if (normalizedNextValue === "agency") {
       clearStoredOnboardingDraft(onboardingDraftStorageKey);
-      navigate(AGENCY_ONBOARDING_PATH);
+      setShowAgencyFlow(true);
       return;
     }
 
@@ -2776,6 +2778,7 @@ const FreelancerOnboardingShell = () => {
 
     setCurrentSlideIndex(0);
     setSelectedWorkPreference("");
+    setShowAgencyFlow(false);
     setBasicProfileForm(createInitialBasicProfileForm());
     setSelectedServices([]);
     setServiceDraftsByKey({});
@@ -2843,6 +2846,16 @@ const FreelancerOnboardingShell = () => {
   const serviceVisualsValidationErrors =
     serviceValidationErrorsByStep.serviceVisuals || {};
   const caseStudyValidationErrors = serviceValidationErrorsByStep.caseStudy || {};
+
+  if (showAgencyFlow) {
+    return (
+      <AgencyOnboardingShell
+        embedded
+        onExitAgencyFlow={() => setShowAgencyFlow(false)}
+        onResetOnboarding={handleResetOnboarding}
+      />
+    );
+  }
 
   return (
     <DarkGradientBg className="text-[#f1f5f9]">
