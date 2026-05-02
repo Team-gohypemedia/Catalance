@@ -117,26 +117,15 @@ const FreelancerCaseStudySlide = ({
             </p>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                  Case Studies
-                </p>
-                <p className="text-xs leading-relaxed text-white/40">
-                  Add multiple projects and switch between them while filling the details.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={onAddCaseStudy}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14"
-              >
-                <Plus className="h-4 w-4" />
-                Add Case Study
-              </button>
-            </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onAddCaseStudy}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14"
+            >
+              <Plus className="h-4 w-4" />
+              Add Case Study
+            </button>
           </div>
 
           {/* Project Header */}

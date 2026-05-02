@@ -3,15 +3,13 @@ import { cn } from "@/shared/lib/utils";
 const IN_PROGRESS_PROJECT_OPTIONS = [
   {
     value: true,
-    label: "Yes, I Accept In-Progress Projects",
-    description:
-      "I can take over partially completed projects and continue from the current stage.",
+    label:
+      "Yes, I can take over partially completed projects and continue from the current stage.",
   },
   {
     value: false,
-    label: "No, I Prefer New Projects",
-    description:
-      "I prefer projects that start from scratch so I can manage the full process.",
+    label:
+      "No, I prefer projects that start from scratch so I can manage the full process.",
   },
 ];
 
@@ -22,7 +20,7 @@ const FreelancerAcceptInProgressProjectsSlide = ({
   <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6">
     <div className="w-full max-w-4xl space-y-6">
       <div className="text-center">
-        <h1 className="text-balance text-3xl font-semibold tracking-[-0.035em] text-primary sm:text-4xl lg:text-[3rem] lg:leading-[1.06]">
+        <h1 className="text-balance text-3xl font-medium tracking-[-0.035em] text-white sm:text-4xl lg:text-[40px] lg:leading-[1.06]">
           Do You Accept Projects That Are Already In Progress Or Partially Completed?
         </h1>
       </div>
@@ -46,7 +44,7 @@ const FreelancerAcceptInProgressProjectsSlide = ({
             >
               <p
                 className={cn(
-                  "text-base font-semibold sm:text-lg",
+                  "text-base font-normal sm:text-base",
                   isSelected ? "text-primary" : "text-white",
                 )}
               >

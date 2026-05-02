@@ -465,6 +465,25 @@ const FreelancerServiceInfoSlide = ({
   const selectedCatalogCategoryIdsSignature = buildNumberSignature(
     selectedCatalogCategoryIds,
   );
+  const pendingCategoryLabels = useMemo(
+    () =>
+      Array.isArray(serviceDraft?.pendingCategoryLabels)
+        ? normalizeStringArray(serviceDraft.pendingCategoryLabels)
+        : [],
+    [serviceDraft?.pendingCategoryLabels],
+  );
+  const customCategoryOptions = useMemo(
+    () =>
+      normalizedSubcategories
+        .filter((entry) => Boolean(entry?.isCustom) || !toPositiveInteger(entry?.subCategoryId))
+        .map((entry) => ({
+          value: getSubcategorySelectionKey(entry),
+          label: String(entry?.label || entry?.name || entry?.subCategoryLabel || "").trim() || "Custom sub-category",
+          isCustom: true,
+        }))
+        .filter((entry) => entry.value && entry.label),
+    [normalizedSubcategories],
+  );
   const allCategoryOptions = useMemo(() => {
     return [...categoryOptions];
   }, [categoryOptions]);
@@ -482,22 +501,9 @@ const FreelancerServiceInfoSlide = ({
         .filter(Boolean),
     [categoryOptionsByValue, selectedCategoryKeys],
   );
-  const categoryLabelById = useMemo(() => {
-    const labelById = new Map();
-    allCategoryOptions.forEach((option) => {
-      const matchedId = String(option?.value || "").match(/^catalog:(\d+)$/i)?.[1];
-      const categoryId = toPositiveInteger(matchedId);
-      if (!categoryId) {
-        return;
-      }
-      labelById.set(categoryId, String(option?.label || "").trim());
-    });
-    return labelById;
-  }, [allCategoryOptions]);
   const skillOptions = useMemo(
     () =>
       selectedCatalogCategoryIds.flatMap((subCategoryId) => {
-        const categoryLabel = String(categoryLabelById.get(subCategoryId) || "").trim();
         const tools = Array.isArray(toolOptionsByCategory[String(subCategoryId)])
           ? toolOptionsByCategory[String(subCategoryId)]
           : [];
@@ -513,12 +519,12 @@ const FreelancerServiceInfoSlide = ({
 
             return {
               value,
-              label: categoryLabel ? `${toolLabel} (${categoryLabel})` : toolLabel,
+              label: toolLabel,
             };
           })
           .filter(Boolean);
       }),
-    [categoryLabelById, selectedCatalogCategoryIds, toolOptionsByCategory],
+    [selectedCatalogCategoryIds, toolOptionsByCategory],
   );
   const selectedSkillValues = useMemo(
     () =>

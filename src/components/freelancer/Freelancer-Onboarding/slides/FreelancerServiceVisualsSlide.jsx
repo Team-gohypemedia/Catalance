@@ -698,8 +698,8 @@ const FreelancerServiceVisualsSlide = ({
                   onServiceVisualsFieldChange("mediaFiles", next)
                 }
               />
-              <div className="rounded-lg border border-primary/25 bg-primary/10 px-3 py-2">
-                <p className="text-xs font-semibold leading-relaxed text-primary">
+              <div className="rounded-lg border border-white/12 bg-transparent px-3 py-2">
+                <p className="text-xs font-normal leading-relaxed text-white/60">
                   Upload rule: 1 video OR up to 2 images (max 5MB each).
                 </p>
               </div>
