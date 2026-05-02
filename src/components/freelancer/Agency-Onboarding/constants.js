@@ -302,7 +302,7 @@ const SERVICE_REVIEW_SLIDE = {
 const ACCEPT_IN_PROGRESS_PROJECTS_SLIDE = {
   id: "acceptInProgressProjects",
   title:
-    "Do You Accept Projects That Are Already In Progress Or Partially Completed?",
+    "Accept partially completed or ongoing projects?",
   progressValue: 96,
   continueLabel: "Continue",
   footerMode: "hidden",

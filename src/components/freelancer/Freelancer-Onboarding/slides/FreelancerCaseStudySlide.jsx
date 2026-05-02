@@ -128,8 +128,7 @@ const FreelancerCaseStudySlide = ({
                 Project Portfolio
               </h2>
               <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-                We need some details to verify your identity. Please complete the
-                form below.
+                Provide details to verify your identity securely.
               </p>
             </div>
 

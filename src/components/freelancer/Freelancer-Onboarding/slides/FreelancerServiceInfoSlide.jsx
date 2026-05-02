@@ -627,7 +627,7 @@ const FreelancerServiceInfoSlide = ({
                 Add service info
               </h2>
               <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-                Provide the details of the service you will offer.
+                Enter details of your service
               </p>
             </div>
 

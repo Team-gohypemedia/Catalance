@@ -1230,7 +1230,7 @@ const AgencyServiceReviewSlide = ({
                     Skills Category
                   </h3>
                   <p className={SECTION_SUBTITLE_CLASS}>
-                    The sub-categories clients will associate with this service.
+                    Subcategories clients will link to service
                   </p>
                 </div>
 

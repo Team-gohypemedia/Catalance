@@ -23,7 +23,7 @@ const FreelancerAcceptInProgressProjectsSlide = ({
       <div className="w-full max-w-4xl space-y-6">
         <div className="text-center">
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-medium text-primary">
-          Do You Accept Projects That Are Already In Progress Or Partially Completed?
+          Accept partially completed or ongoing projects?
           </h1>
         </div>
 

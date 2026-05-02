@@ -11,7 +11,7 @@ const FreelancerWelcomeSlide = () => {
         </h1>
 
         <p className={`mx-auto md:max-w-xl lg:max-w-2xl md:text-base lg:text-lg font-regular text-muted-foreground`}>
-          Tell us what you're great at so we can match you with clients who'll actually appreciate it. No boring forms, we promise.
+          Share your strengths, we'll match you with clients who value them.
         </p>
       </div>
     </section>

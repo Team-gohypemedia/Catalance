@@ -429,7 +429,7 @@ const FreelancerServiceVisualsSlide = ({
               ) : null}
               <div className="rounded-lg border bg-card px-3 py-2">
                 <p className="text-xs font-semibold leading-relaxed text-white/48">
-                  Upload rule: 1 video OR up to 2 images (max 5MB each).
+                  1 video OR up to 2 images (max 5MB each).
                 </p>
               </div>
             </div>
