@@ -62,7 +62,7 @@ const buildOtpTemplatePayload = ({ to, otpCode, templateName, templateLanguage, 
             },
             {
               type: "text",
-              text: String(ttlMinutes || 15)
+              text: env.SUPPORT_PHONE || "+918882855425"
             }
           ]
         },
@@ -100,8 +100,10 @@ const parseWhatsAppError = (payload) => {
 
   return {
     code: error.code ?? null,
+    subcode: error.error_subcode ?? null,
     type: error.type ?? null,
     fbtraceId: error.fbtrace_id ?? null,
+    details: error.error_data?.details || null,
     message: error.error_user_msg || error.message || "WhatsApp Cloud API error"
   };
 };

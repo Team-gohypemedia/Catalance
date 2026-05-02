@@ -2727,27 +2727,20 @@ export const requestWhatsappOtp = async ({
     console.log(
       `[WhatsApp OTP] Created phone-only login user for ${maskLoginPhone(normalizedPhone)}.`
     );
-  }
-
-  if (role && !hasRole(user, role)) {
-    console.warn(
-      `[WhatsApp OTP] Send skipped: role mismatch for phone ${maskLoginPhone(normalizedPhone)}. Requested role: ${role}.`
-    );
-
-    return {
-      message: WHATSAPP_OTP_GENERIC_MESSAGE,
-      phone: normalizedPhone,
-      expiresInMinutes: ttlMinutes
-    };
-  }
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      otpCode,
-      otpExpires
+  } else {
+    // Ensure the existing user has the requested role if provided
+    if (role) {
+      user = await ensureUserRoles(user, role);
     }
-  });
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otpCode,
+        otpExpires
+      }
+    });
+  }
 
   const whatsappResult = await sendWhatsappOtp({
     to: normalizedPhone,

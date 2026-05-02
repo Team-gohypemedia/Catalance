@@ -23,10 +23,22 @@ whatsappWebhookRouter.get("/", (req, res) => {
 });
 
 whatsappWebhookRouter.post("/", (req, res) => {
-  const entryCount = Array.isArray(req.body?.entry) ? req.body.entry.length : 0;
+  if (env.NODE_ENV !== "production") {
+    console.log("[WhatsApp Webhook] Body:", JSON.stringify(req.body, null, 2));
+  } else {
+    const entry = req.body?.entry?.[0];
+    const changes = entry?.changes?.[0];
+    const value = changes?.value;
+    const status = value?.statuses?.[0];
 
-  if (entryCount > 0) {
-    console.log(`[WhatsApp Webhook] Received ${entryCount} entr${entryCount === 1 ? "y" : "ies"}.`);
+    if (status) {
+      console.log(`[WhatsApp Webhook] Status update: ${status.status} for ${status.recipient_id}. ID: ${status.id}`);
+      if (status.errors) {
+        console.error(`[WhatsApp Webhook] Status errors:`, JSON.stringify(status.errors, null, 2));
+      }
+    } else {
+      console.log(`[WhatsApp Webhook] Received event: ${value?.messaging_product || "unknown"}`);
+    }
   }
 
   return res.sendStatus(200);

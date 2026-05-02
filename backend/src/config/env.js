@@ -62,7 +62,8 @@ const envSchema = z.object({
   WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
   WHATSAPP_OTP_TEMPLATE_NAME: z.string().default("login_otp"),
   WHATSAPP_OTP_TEMPLATE_LANGUAGE: z.string().default("en_US"),
-  WHATSAPP_OTP_TTL_MINUTES: z.coerce.number().int().positive().default(15)
+  WHATSAPP_OTP_TTL_MINUTES: z.coerce.number().int().positive().default(15),
+  SUPPORT_PHONE: z.string().optional().default("+918882855425")
 });
 
 let env;
@@ -119,7 +120,8 @@ try {
     WHATSAPP_WEBHOOK_VERIFY_TOKEN: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN,
     WHATSAPP_OTP_TEMPLATE_NAME: process.env.WHATSAPP_OTP_TEMPLATE_NAME || "login_otp",
     WHATSAPP_OTP_TEMPLATE_LANGUAGE: process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || "en_US",
-    WHATSAPP_OTP_TTL_MINUTES: Number(process.env.WHATSAPP_OTP_TTL_MINUTES) || 15
+    WHATSAPP_OTP_TTL_MINUTES: Number(process.env.WHATSAPP_OTP_TTL_MINUTES) || 15,
+    SUPPORT_PHONE: process.env.SUPPORT_PHONE || "+918882855425"
   };
 
   env = fallbackEnv;
