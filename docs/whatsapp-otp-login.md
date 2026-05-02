@@ -67,6 +67,7 @@ WHATSAPP_GRAPH_VERSION=vXX.X
 WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
 WHATSAPP_WABA_ID=your_waba_id
 WHATSAPP_ACCESS_TOKEN=your_permanent_system_user_token
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=your_webhook_verify_token
 WHATSAPP_OTP_TEMPLATE_NAME=login_otp
 WHATSAPP_OTP_TEMPLATE_LANGUAGE=en_US
 WHATSAPP_OTP_TTL_MINUTES=15
@@ -81,6 +82,8 @@ Use two new backend endpoints beside the current auth endpoints:
 ```txt
 POST /api/auth/whatsapp/request-otp
 POST /api/auth/whatsapp/verify-otp
+GET /api/webhooks/whatsapp
+POST /api/webhooks/whatsapp
 ```
 
 Recommended minimal behavior:
@@ -94,6 +97,14 @@ Recommended minimal behavior:
 7. User submits OTP to `/api/auth/whatsapp/verify-otp`.
 8. Backend validates OTP and returns the same `{ user, accessToken }` shape used by existing login.
 9. Frontend calls the existing `useAuth().login(user, accessToken)` and redirects using the same post-login logic.
+
+Meta webhook verification uses `GET /api/webhooks/whatsapp`. The callback URL for the live frontend domain is:
+
+```txt
+https://catalance.in/api/webhooks/whatsapp
+```
+
+The frontend deployment rewrites `/api/*` to the backend deployment. The verify token entered in Meta must exactly match `WHATSAPP_WEBHOOK_VERIFY_TOKEN` in the backend runtime environment.
 
 For strict "no backend flow change", make this existing-user login only. If no user exists for the phone number, return a generic success message but do not create an account. Phone-first signup would require separate product decisions and likely schema changes.
 
