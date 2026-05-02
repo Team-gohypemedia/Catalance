@@ -9,6 +9,7 @@ import AdminRoute from "@/components/features/auth/AdminRoute";
 import ProtectedRoute from "@/components/features/auth/ProtectedRoute";
 import CataButton from "@/components/common/CataButton";
 import {
+  AGENCY_ONBOARDING_PATH,
   FREELANCER_DASHBOARD,
   canAccessDashboard,
 } from "@/shared/lib/dashboard-preference";
@@ -110,6 +111,9 @@ const FreelancerPayments = lazy(
 );
 const FreelancerOnboardingPage = lazy(
   () => import("@/pages/freelancer/FreelancerOnboarding.jsx"),
+);
+const AgencyOnboardingPage = lazy(
+  () => import("@/pages/agency/AgencyOnboarding.jsx"),
 );
 const NotepadPage = lazy(() => import("@/components/pages/notepad-page"));
 const AdminDashboard = lazy(
@@ -644,6 +648,17 @@ const App = () => {
                   loginPath="/signup?role=freelancer"
                 >
                   <FreelancerOnboardingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={AGENCY_ONBOARDING_PATH}
+              element={
+                <ProtectedRoute
+                  allowFreelancerOnboardingOnly
+                  loginPath="/signup?role=freelancer"
+                >
+                  <AgencyOnboardingPage />
                 </ProtectedRoute>
               }
             />
