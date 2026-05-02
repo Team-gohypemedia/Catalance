@@ -68,19 +68,19 @@ const FreelancerServicesSlide = ({
   const services = Array.isArray(dbServices) ? dbServices : [];
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
-      <div className="w-full max-w-6xl space-y-8">
-        <div className="space-y-3 text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-primary sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+    <section className="mx-auto flex w-full max-w-[340px] flex-col items-center px-4 sm:max-w-[380px] md:max-w-6xl md:px-0">
+      <div className="w-full space-y-8">
+        <div className="text-center">
+          <h1 className="text-xl md:text-4xl lg:text-5xl font-medium text-primary mb-1 md:mb-2 lg:mb-2">
             {slide.title}
           </h1>
-          <p className="text-base text-muted-foreground sm:text-lg">
+          <p className="text-muted-foreground font-regular text-sm md:text-lg lg:text-base">
             {slide.description}
           </p>
         </div>
 
         {services.length > 0 ? (
-          <div className="grid justify-center gap-3.5 [grid-template-columns:repeat(2,minmax(0,172px))] md:[grid-template-columns:repeat(3,172px)] xl:[grid-template-columns:repeat(5,172px)]">
+          <div className="grid w-full grid-cols-2 justify-center gap-3.5 md:[grid-template-columns:repeat(3,172px)] xl:[grid-template-columns:repeat(5,172px)]">
             {services.map((service) => {
               const Icon = resolveIcon(service.name);
               const serviceKey = resolveServiceKey(service);
@@ -107,7 +107,7 @@ const FreelancerServicesSlide = ({
                   />
                   <span
                     className={cn(
-                      "text-[13px] font-semibold leading-[1.3]",
+                      "text-sm font-semibold leading-[1.3]",
                       isSelected ? "text-primary" : "text-white"
                     )}
                   >

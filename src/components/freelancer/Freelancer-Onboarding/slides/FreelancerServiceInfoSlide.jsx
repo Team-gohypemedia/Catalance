@@ -4,6 +4,8 @@ import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import X from "lucide-react/dist/esm/icons/x";
 
 import { API_BASE_URL } from "@/shared/lib/api-client";
+import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 import {
   deriveDraftSkillsAndTechnologies,
   getSubcategorySelectionKey,
@@ -14,6 +16,11 @@ import {
   ServiceInfoStepper,
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
+
+const ONBOARDING_PAGE_TITLE_CLASS =
+  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
+const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
 const EXPERIENCE_OPTIONS = [
   { value: "entry", label: "Entry Level (0–1 years)" },
@@ -134,7 +141,7 @@ const TechnologiesInput = ({
                   value={toolSearchQuery}
                   onChange={(event) => setToolSearchQuery(event.target.value)}
                   placeholder="Search skills or tools"
-                  className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                  className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 text-sm text-white outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                 />
               </div>
               {filteredToolOptions.map((tool) => {
@@ -324,14 +331,14 @@ const CategoryMultiSelect = ({
     <div className="space-y-3">
       <div className="relative" ref={containerRef}>
         {isOpen ? (
-          <div className="flex h-12 w-full items-center gap-3 rounded-xl border border-primary/50 bg-card px-4 text-sm ring-1 ring-primary/20">
+          <div className="flex h-12 w-full items-center gap-3 rounded-xl border border-primary/50 bg-card px-4 !text-[14px] !leading-5 ring-1 ring-primary/20">
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={searchPlaceholder}
-              className="h-full flex-1 bg-transparent text-white outline-none placeholder:text-white/40"
+              className="h-full flex-1 bg-transparent !text-[14px] !leading-5 text-white outline-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5"
             />
             <button
               type="button"
@@ -346,10 +353,10 @@ const CategoryMultiSelect = ({
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className={`flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 text-sm transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20 ${
+            className={`flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20 ${
               selectedOptions.length > 0
                 ? "border-primary/25 text-white"
-                : "border-white/10 text-white/40"
+                : "border-white/10 text-muted-foreground"
             }`}
           >
             <span className="truncate text-left">{summaryText}</span>
@@ -740,7 +747,7 @@ const FreelancerServiceInfoSlide = ({
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
       <div className="w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className="text-xl md:text-4xl lg:text-5xl font-medium">
             <span>Fill Your </span>
             <span className="text-primary">{serviceName}</span>
             <span> Service Info</span>
@@ -754,19 +761,19 @@ const FreelancerServiceInfoSlide = ({
           />
         </div>
 
-        <div className="w-full space-y-7">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+        <div className="w-full space-y-5">
+          <div>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-medium text-white">
               Add service info
             </h2>
-            <p className="text-sm text-muted-foreground sm:text-base">
+            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
               Provide the details of the service you will offer.
             </p>
           </div>
 
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Service Title
               </label>
               <div className="relative">
@@ -779,7 +786,7 @@ const FreelancerServiceInfoSlide = ({
                     }
                   }}
                   placeholder="I will do something I'm really good at"
-                  className="h-12 w-full rounded-xl border border-white/10 bg-card px-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                  className="h-12 w-full rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-white/30">
                   {serviceInfoForm.title.length} / {SERVICE_TITLE_MAX} MAX
@@ -787,8 +794,8 @@ const FreelancerServiceInfoSlide = ({
               </div>
             </div>
 
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Select Category
               </label>
               <CategoryMultiSelect
@@ -802,12 +809,12 @@ const FreelancerServiceInfoSlide = ({
               />
             </div>
 
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Skills
               </label>
               {selectedCategoryOptions.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/12 bg-card px-4 py-3 text-sm text-muted-foreground">
+                <div className="rounded-xl border border-dashed border-white/12 bg-card px-4 py-3 text-[14px] leading-5 text-white/20">
                   Select at least one sub-category to add skills.
                 </div>
               ) : (
@@ -825,8 +832,8 @@ const FreelancerServiceInfoSlide = ({
               )}
             </div>
 
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Experience
               </label>
               <CustomSelect

@@ -6,10 +6,16 @@ import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 
 import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 import {
   ServiceInfoStepper,
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
+
+const ONBOARDING_PAGE_TITLE_CLASS =
+  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
+const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
 const ROLE_OPTIONS = [
   { value: "full_execution", label: "Full execution" },
@@ -40,7 +46,7 @@ const FileUploadButton = ({ file, onChange }) => {
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-card px-4 text-sm text-white/40 transition-colors hover:border-white/20"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 text-white/20 transition-colors hover:border-white/20"
       >
         <Upload className="h-4 w-4" />
         <span>{file ? file.name : "Upload file"}</span>
@@ -89,7 +95,7 @@ const FreelancerCaseStudySlide = ({
       <div className="w-full space-y-8">
         {/* Heading */}
         <div className="text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.03em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Tell Us About </span>
             <span className="text-primary">Your</span>
             <span> Previous </span>
@@ -106,48 +112,37 @@ const FreelancerCaseStudySlide = ({
         </div>
 
         {/* Step Content */}
-        <div className="w-full space-y-6">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-semibold text-white sm:text-3xl">
-              Project Portfolio
-            </h2>
-            <p className="text-sm text-muted-foreground sm:text-base">
-              We need some details to verify your identity. Please complete the
-              form below.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                  Case Studies
-                </p>
-                <p className="text-xs leading-relaxed text-white/40">
-                  Add multiple projects and switch between them while filling the details.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={onAddCaseStudy}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14"
-              >
-                <Plus className="h-4 w-4" />
-                Add Case Study
-              </button>
+        <div className="w-full space-y-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
+                Project Portfolio
+              </h2>
+              <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
+                We need some details to verify your identity. Please complete the
+                form below.
+              </p>
             </div>
+
+            <button
+              type="button"
+              onClick={onAddCaseStudy}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14"
+            >
+              <Plus className="h-4 w-4" />
+              Add Case Study
+            </button>
           </div>
 
           {/* Project Header */}
-          <h3 className="text-xl font-semibold text-white sm:text-2xl">
+          <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
             {activeCaseStudyLabel}
           </h3>
 
           <div className="space-y-6">
             {/* Case Study Title */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Case Study Title
               </label>
               <input
@@ -157,13 +152,13 @@ const FreelancerCaseStudySlide = ({
                   onCaseStudyFieldChange("title", e.target.value)
                 }
                 placeholder="e.g. E-commerce Platform Redesign"
-                className="h-12 w-full rounded-xl border border-white/10 bg-card px-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className="h-12 w-full rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
               />
             </div>
 
             {/* Description */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Description
               </label>
               <textarea
@@ -173,13 +168,13 @@ const FreelancerCaseStudySlide = ({
                 }
                 placeholder="Briefly describe the project and its goals..."
                 rows={4}
-                className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
               />
             </div>
 
             {/* Niche */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Niche
               </label>
               <CustomSelect
@@ -195,8 +190,8 @@ const FreelancerCaseStudySlide = ({
             {/* 3-column row: Project Link, Project File, Your Role */}
             <div className="grid gap-5 sm:grid-cols-3">
               {/* Project Link */}
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Project Link (Optional)
                 </label>
                 <div className="relative">
@@ -208,14 +203,14 @@ const FreelancerCaseStudySlide = ({
                       onCaseStudyFieldChange("projectLink", e.target.value)
                     }
                     placeholder="https://..."
-                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
               </div>
 
               {/* Project File */}
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Project File (Optional)
                 </label>
                 <FileUploadButton
@@ -227,8 +222,8 @@ const FreelancerCaseStudySlide = ({
               </div>
 
               {/* Your Role */}
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Your Role
                 </label>
                 <CustomSelect
@@ -243,8 +238,8 @@ const FreelancerCaseStudySlide = ({
             {/* 2-column row: Timeline, Budget */}
             <div className="grid gap-5 sm:grid-cols-2">
               {/* Timeline */}
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Timeline
                 </label>
                 <CustomSelect
@@ -256,8 +251,8 @@ const FreelancerCaseStudySlide = ({
               </div>
 
               {/* Budget */}
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Budget
                 </label>
                 <div className="relative">
@@ -270,7 +265,7 @@ const FreelancerCaseStudySlide = ({
                       onCaseStudyFieldChange("budget", val);
                     }}
                     placeholder="e.g. 5000"
-                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
               </div>
