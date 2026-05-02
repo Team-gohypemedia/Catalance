@@ -106,7 +106,7 @@ https://catalance.in/api/webhooks/whatsapp
 
 The frontend deployment rewrites `/api/*` to the backend deployment. The verify token entered in Meta must exactly match `WHATSAPP_WEBHOOK_VERIFY_TOKEN` in the backend runtime environment.
 
-For strict "no backend flow change", make this existing-user login only. If no user exists for the phone number, return a generic success message but do not create an account. Phone-first signup would require separate product decisions and likely schema changes.
+If no user exists for the phone number, the backend creates a phone-only user with a generated placeholder email and sends the OTP. On successful verification, the phone-only user is marked verified and receives the normal `{ user, accessToken }` auth payload.
 
 ## Request/Response Contract
 
