@@ -3,6 +3,20 @@ import { AppError } from "../utils/app-error.js";
 
 const WHATSAPP_PROVIDER = "whatsapp";
 
+// ── E.164 phone validation ─────────────────────────────────────────
+const E164_PHONE_REGEX = /^\+[1-9]\d{7,14}$/;
+
+const assertE164Phone = (value, fieldName) => {
+  if (!E164_PHONE_REGEX.test(value)) {
+    throw new AppError(
+      `${fieldName} must be a valid E.164 phone number, e.g. +918882855425`,
+      500,
+      { provider: WHATSAPP_PROVIDER, reason: "invalid_phone_format", field: fieldName }
+    );
+  }
+};
+
+// ── Helpers ─────────────────────────────────────────────────────────
 const maskPhone = (value = "") => {
   const digits = String(value || "").replace(/\D/g, "");
   return digits ? `***${digits.slice(-4)}` : "unknown";
@@ -14,6 +28,7 @@ const getWhatsAppConfig = () => {
   const accessToken = String(env.WHATSAPP_ACCESS_TOKEN || "").trim();
   const templateName = String(env.WHATSAPP_OTP_TEMPLATE_NAME || "login_otp").trim();
   const templateLanguage = String(env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || "en_US").trim();
+  const businessNumber = String(env.WHATSAPP_BUSINESS_NUMBER || "").trim();
 
   return {
     graphVersion,
@@ -21,12 +36,14 @@ const getWhatsAppConfig = () => {
     accessToken,
     templateName,
     templateLanguage,
+    businessNumber,
     isConfigured: Boolean(
       graphVersion &&
         phoneNumberId &&
         accessToken &&
         templateName &&
-        templateLanguage
+        templateLanguage &&
+        businessNumber
     )
   };
 };
@@ -41,7 +58,11 @@ const buildMissingConfigError = () =>
     }
   );
 
-const buildOtpTemplatePayload = ({ to, otpCode, templateName, templateLanguage, ttlMinutes }) => {
+// ── Template payload builder ────────────────────────────────────────
+const buildOtpTemplatePayload = ({ to, otpCode, templateName, templateLanguage, businessNumber }) => {
+  // Validate that {{2}} (businessNumber) is a real phone number — never an email
+  assertE164Phone(businessNumber, "WHATSAPP_BUSINESS_NUMBER");
+
   const payload = {
     messaging_product: "whatsapp",
     recipient_type: "individual",
@@ -58,11 +79,11 @@ const buildOtpTemplatePayload = ({ to, otpCode, templateName, templateLanguage, 
           parameters: [
             {
               type: "text",
-              text: otpCode
+              text: otpCode                // {{1}} — the OTP code
             },
             {
               type: "text",
-              text: env.SUPPORT_PHONE || "+918882855425"
+              text: businessNumber          // {{2}} — must be phone, not email
             }
           ]
         },
@@ -88,6 +109,7 @@ const buildOtpTemplatePayload = ({ to, otpCode, templateName, templateLanguage, 
   return payload;
 };
 
+// ── Error parser ────────────────────────────────────────────────────
 const parseWhatsAppError = (payload) => {
   const error = payload?.error;
 
@@ -108,6 +130,7 @@ const parseWhatsAppError = (payload) => {
   };
 };
 
+// ── Public API ──────────────────────────────────────────────────────
 export const sendWhatsappOtp = async ({ to, otpCode }) => {
   const config = getWhatsAppConfig();
 
@@ -145,7 +168,7 @@ export const sendWhatsappOtp = async ({ to, otpCode }) => {
         otpCode,
         templateName: config.templateName,
         templateLanguage: config.templateLanguage,
-        ttlMinutes: env.WHATSAPP_OTP_TTL_MINUTES || 15
+        businessNumber: config.businessNumber
       })
     )
   });

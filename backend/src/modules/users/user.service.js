@@ -2717,6 +2717,7 @@ export const requestWhatsappOtp = async ({
   const otpExpires = new Date(Date.now() + ttlMinutes * 60 * 1000);
 
   if (!user) {
+    // New phone number — create a phone-only user with the requested role
     user = await createOrUpdatePhoneOnlyUser({
       normalizedPhone,
       role,
@@ -2728,11 +2729,23 @@ export const requestWhatsappOtp = async ({
       `[WhatsApp OTP] Created phone-only login user for ${maskLoginPhone(normalizedPhone)}.`
     );
   } else {
-    // Ensure the existing user has the requested role if provided
-    if (role) {
-      user = await ensureUserRoles(user, role);
+    // Existing user — reject if role doesn't match (Option A: explicit 409)
+    const requestedRole = normalizeRoleValue(role);
+    if (requestedRole && !hasRole(user, requestedRole)) {
+      console.warn("[WhatsApp OTP] Role mismatch", {
+        phone: maskLoginPhone(normalizedPhone),
+        existingRoles: user.roles,
+        requestedRole
+      });
+
+      throw new AppError(
+        "This WhatsApp number is already registered with a different account type. Please select the correct role or contact support.",
+        409,
+        { code: "ROLE_MISMATCH" }
+      );
     }
 
+    // Role matches (or no role requested) — save OTP and send
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -2775,10 +2788,11 @@ export const verifyWhatsappOtp = async ({
     message: "Too many OTP attempts. Please request a new code."
   });
 
+  // Resolve user from phone — do NOT trust the frontend role for lookup
   const user = await findUserByLoginPhone(normalizedPhone);
   const invalidCodeError = new AppError("Invalid or expired verification code", 400);
 
-  if (!user || (role && !hasRole(user, role))) {
+  if (!user) {
     throw invalidCodeError;
   }
 
@@ -2811,15 +2825,16 @@ export const verifyWhatsappOtp = async ({
     await maybeSendWelcomeEmail(updatedUser);
   }
 
-  updatedUser = await ensureUserRoles(updatedUser, role);
-  const activeRole = resolveActiveUserRole(updatedUser, role);
-  const sessionUser = sanitizeUser({ ...updatedUser, role: activeRole });
+  // Use the user's existing role as the authoritative source.
+  // The frontend 'role' is only a hint to pick among existing roles.
+  const finalRole = resolveActiveUserRole(updatedUser, role);
+  const sessionUser = sanitizeUser({ ...updatedUser, role: finalRole });
 
   whatsappOtpVerifyAttempts.delete(rateLimitKey);
 
   return {
     user: sessionUser,
-    accessToken: issueAccessToken(updatedUser, activeRole)
+    accessToken: issueAccessToken(updatedUser, finalRole)
   };
 };
 
