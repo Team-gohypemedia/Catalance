@@ -9,13 +9,17 @@ import {
   verifyResetTokenHandler,
   resetPasswordHandler,
   verifyOtpHandler,
-  resendOtpHandler
+  resendOtpHandler,
+  requestWhatsappOtpHandler,
+  verifyWhatsappOtpHandler
 } from "../controllers/auth.controller.js";
 import { validateResource } from "../middlewares/validate-resource.js";
 import {
   createUserSchema,
   loginSchema,
-  googleLoginSchema
+  googleLoginSchema,
+  whatsappOtpRequestSchema,
+  whatsappOtpVerifySchema
 } from "../modules/users/user.schema.js";
 import {
   forgotPasswordSchema,
@@ -28,6 +32,16 @@ export const authRouter = Router();
 authRouter.post("/signup", validateResource(createUserSchema), signupHandler);
 authRouter.post("/verify-otp", verifyOtpHandler);
 authRouter.post("/resend-otp", resendOtpHandler);
+authRouter.post(
+  "/whatsapp/request-otp",
+  validateResource(whatsappOtpRequestSchema),
+  requestWhatsappOtpHandler
+);
+authRouter.post(
+  "/whatsapp/verify-otp",
+  validateResource(whatsappOtpVerifySchema),
+  verifyWhatsappOtpHandler
+);
 authRouter.post("/login", validateResource(loginSchema), loginHandler);
 authRouter.post("/google-login", validateResource(googleLoginSchema), googleLoginHandler);
 authRouter.get("/profile", requireAuth, profileHandler);

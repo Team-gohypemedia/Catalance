@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { requestWhatsappOtp, verifyWhatsappOtp } from "@/shared/lib/api-client";
+import { useAuth } from "@/shared/context/AuthContext";
+import {
+  canAccessDashboard,
+  FREELANCER_DASHBOARD,
+  getDashboardEntryPath,
+  resolveDashboardValue,
+  resolveFreelancerPath,
+  resolveWorkspaceHomePath,
+  setStoredDashboardPreference,
+} from "@/shared/lib/dashboard-preference";
 import {
   Select,
   SelectContent,
@@ -15,11 +26,13 @@ import {
 import logo from "@/assets/logos/logo.svg";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
 import Search from "lucide-react/dist/esm/icons/search";
 
 const DEFAULT_COUNTRY = "IN";
 const MIN_PHONE_DIGITS = 6;
+const OTP_LENGTH = 6;
 
 const normalizePhoneNumber = (value) => String(value || "").replace(/\D/g, "");
 
@@ -64,6 +77,29 @@ const formatPhoneNumber = (value) => {
   return groups ? groups.join(" ") : "";
 };
 
+const navigateAfterLogin = ({ navigate, redirectTo, requestedRole, user }) => {
+  const requestedDashboard = resolveDashboardValue(requestedRole);
+
+  if (requestedDashboard === FREELANCER_DASHBOARD) {
+    setStoredDashboardPreference(user, requestedDashboard);
+    navigate(getDashboardEntryPath(user, requestedDashboard), { replace: true });
+    return;
+  }
+
+  if (redirectTo) {
+    navigate(resolveFreelancerPath(user, redirectTo), { replace: true });
+    return;
+  }
+
+  if (requestedDashboard && canAccessDashboard(user, requestedDashboard)) {
+    setStoredDashboardPreference(user, requestedDashboard);
+    navigate(getDashboardEntryPath(user, requestedDashboard), { replace: true });
+    return;
+  }
+
+  navigate(resolveWorkspaceHomePath(user), { replace: true });
+};
+
 function CountryFlag({ code, className }) {
   return (
     <span
@@ -95,7 +131,9 @@ function AppleLogo({ className }) {
 
 function PhoneAuth() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { login: setAuthSession } = useAuth();
 
   const initialCountryCode = (() => {
     const candidate =
@@ -131,7 +169,13 @@ function PhoneAuth() {
 
   const [countryCode, setCountryCode] = useState(initialCountryCode);
   const [phoneDigits, setPhoneDigits] = useState(initialPhoneDigits);
+  const [otpDigits, setOtpDigits] = useState("");
+  const [authStep, setAuthStep] = useState("phone");
+  const [pendingPhone, setPendingPhone] = useState(null);
+  const [otpExpiresInMinutes, setOtpExpiresInMinutes] = useState(15);
   const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   useEffect(() => {
     document.title = "Log in | Catalance";
@@ -147,23 +191,329 @@ function PhoneAuth() {
   const emailSigninPath = searchParams.toString()
     ? `/signin/email?${searchParams.toString()}`
     : "/signin/email";
+  const redirectParam = searchParams.get("redirect");
+  const openMessageParam = searchParams.get("openMessage");
+  const requestedRole =
+    searchParams.get("role")?.toUpperCase() ||
+    (typeof location.state?.role === "string"
+      ? location.state.role.toUpperCase()
+      : undefined);
+  const pendingPhoneLabel = pendingPhone
+    ? `${pendingPhone.countryCode} ${formatPhoneNumber(pendingPhone.phoneNumber)}`
+    : "";
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    setFormError("");
+  const buildReturnUrl = () => {
+    if (!redirectParam) return null;
+    const extra = openMessageParam ? `?openMessage=${openMessageParam}` : "";
+    return `${redirectParam}${extra}`;
+  };
 
+  const getPhonePayload = () => {
     const normalizedPhoneNumber = normalizePhoneNumber(phoneDigits);
 
     if (normalizedPhoneNumber.length < MIN_PHONE_DIGITS) {
       setFormError("Enter a valid phone number to continue.");
+      return null;
+    }
+
+    return {
+      countryCode: selectedCountry.dialCode,
+      phoneNumber: normalizedPhoneNumber,
+    };
+  };
+
+  const requestOtp = async ({ resend = false } = {}) => {
+    setFormError("");
+
+    const phonePayload = resend ? pendingPhone : getPhonePayload();
+    if (!phonePayload) return;
+
+    if (resend) {
+      setIsResending(true);
+    } else {
+      setIsSubmitting(true);
+    }
+
+    try {
+      const result = await requestWhatsappOtp({
+        ...phonePayload,
+        role: requestedRole,
+      });
+      setPendingPhone(phonePayload);
+      setOtpExpiresInMinutes(Number(result?.expiresInMinutes) || 15);
+      setAuthStep("otp");
+      toast.success(result?.message || "OTP sent on WhatsApp.");
+    } catch (error) {
+      const message = error?.message || "Unable to send WhatsApp OTP.";
+      setFormError(message);
+      toast.error(message);
+    } finally {
+      if (resend) {
+        setIsResending(false);
+      } else {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  const verifyOtpCode = async () => {
+    setFormError("");
+
+    const otp = normalizePhoneNumber(otpDigits).slice(0, OTP_LENGTH);
+    if (otp.length !== OTP_LENGTH) {
+      setFormError("Enter the 6-digit verification code.");
       return;
     }
 
-    toast.info("Phone sign-in is not connected yet. Use email sign-in for now.");
+    const phonePayload = pendingPhone || getPhonePayload();
+    if (!phonePayload) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const authPayload = await verifyWhatsappOtp({
+        ...phonePayload,
+        otp,
+        role: requestedRole,
+      });
+
+      if (!authPayload?.user || !authPayload?.accessToken) {
+        throw new Error("Invalid login payload received.");
+      }
+
+      setAuthSession(authPayload.user, authPayload.accessToken);
+      toast.success("Logged in successfully.");
+      setPhoneDigits("");
+      setOtpDigits("");
+      setPendingPhone(null);
+
+      const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
+
+      navigateAfterLogin({
+        navigate,
+        redirectTo,
+        requestedRole,
+        user: authPayload.user,
+      });
+    } catch (error) {
+      const message = error?.message || "Unable to verify WhatsApp OTP.";
+      setFormError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (authStep === "otp") {
+      await verifyOtpCode();
+      return;
+    }
+
+    await requestOtp();
+  };
+
+  const handleChangePhone = () => {
+    setAuthStep("phone");
+    setOtpDigits("");
+    setPendingPhone(null);
+    setOtpExpiresInMinutes(15);
+    setFormError("");
+  };
+
+  const handleResendOtp = () => {
+    void requestOtp({ resend: true });
   };
 
   const handleSocialClick = (provider) => {
     toast.info(`${provider} sign-in is not connected yet.`);
+  };
+
+  const renderAuthForm = ({ compact = false } = {}) => {
+    const phoneInputId = compact ? "phoneNumber" : "phoneNumberDesktop";
+    const otpInputId = compact ? "whatsappOtp" : "whatsappOtpDesktop";
+    const isOtpStep = authStep === "otp";
+    const buttonLabel = isOtpStep ? "Verify OTP" : "Continue";
+    const loadingLabel = isOtpStep ? "Verifying..." : "Sending OTP...";
+    const formSpacing = compact ? "space-y-3" : "space-y-5";
+    const labelClass = "block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55";
+    const phoneGridClass = compact
+      ? "grid w-full grid-cols-[6.25rem_minmax(0,1fr)] gap-1.5"
+      : "grid grid-cols-[7rem_minmax(0,1fr)] gap-2 sm:grid-cols-[7.75rem_minmax(0,1fr)]";
+    const selectTriggerClass = compact
+      ? "!h-10 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-2.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]"
+      : "!h-12 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-3.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]";
+    const phoneInputClass = compact
+      ? "!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+      : "!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
+    const otpInputClass = compact
+      ? "!h-10 rounded-md border-white/10 bg-[#171717] px-3 text-center font-mono text-[16px] text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+      : "!h-12 rounded-md border-white/10 bg-[#171717] px-4 text-center font-mono text-lg text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
+    const submitButtonClass = compact
+      ? "!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
+      : "!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl";
+
+    return (
+      <form className={`${formSpacing} text-left`} onSubmit={handleSubmit} noValidate>
+        <div className="w-full space-y-3">
+          {!isOtpStep ? (
+            <div className="space-y-1.5">
+              <label htmlFor={phoneInputId} className={labelClass}>
+                Phone number
+              </label>
+
+              <div className={phoneGridClass}>
+                <Select
+                  value={countryCode}
+                  onValueChange={(value) => {
+                    setCountryCode(value);
+                    if (formError) setFormError("");
+                  }}
+                  disabled={isSubmitting || isResending}
+                >
+                  <SelectTrigger
+                    type="button"
+                    aria-label="Select country code"
+                    className={selectTriggerClass}
+                  >
+                    <div className="pointer-events-none flex min-w-0 items-center gap-2.5 select-none">
+                      <CountryFlag
+                        code={selectedCountry.code}
+                        className={
+                          compact ? "size-[1.05rem] rounded-sm text-[0.86rem]" : undefined
+                        }
+                      />
+                      <span className={compact ? "truncate text-[13px] font-medium" : "truncate text-[15px] font-medium"}>
+                        {selectedCountry.dialCode}
+                      </span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    sideOffset={8}
+                    className="z-[60] min-w-[18rem] border-white/10 bg-[#121212] text-white shadow-2xl sm:min-w-[26rem]"
+                  >
+                    {COUNTRY_OPTIONS.map((option) => (
+                      <SelectItem
+                        key={option.code}
+                        value={option.code}
+                        className="cursor-pointer text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white"
+                      >
+                        <span className="flex w-full items-center gap-3">
+                          <CountryFlag code={option.code} />
+                          <span className="min-w-0 flex-1 truncate">
+                            {option.label}
+                          </span>
+                          <span className="shrink-0 text-white/45">
+                            {option.code} {option.dialCode}
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Input
+                  id={phoneInputId}
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  aria-label="Phone number"
+                  placeholder="999 999 9999"
+                  value={formattedPhone}
+                  disabled={isSubmitting || isResending}
+                  onChange={(event) => {
+                    const digits = event.target.value
+                      .replace(/\D/g, "")
+                      .slice(0, 15);
+                    setPhoneDigits(digits);
+                    if (formError) setFormError("");
+                  }}
+                  className={phoneInputClass}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <label htmlFor={otpInputId} className={labelClass}>
+                    Verification code
+                  </label>
+                  <p className="mt-1 truncate text-xs text-white/55">
+                    WhatsApp OTP sent to {pendingPhoneLabel}
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleChangePhone}
+                  disabled={isSubmitting || isResending}
+                  className="h-8 shrink-0 px-2 text-xs text-primary hover:bg-white/[0.06] hover:text-primary"
+                >
+                  Change
+                </Button>
+              </div>
+
+              <Input
+                id={otpInputId}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                aria-label="WhatsApp verification code"
+                placeholder="123456"
+                value={otpDigits}
+                maxLength={OTP_LENGTH}
+                disabled={isSubmitting}
+                onChange={(event) => {
+                  const digits = event.target.value
+                    .replace(/\D/g, "")
+                    .slice(0, OTP_LENGTH);
+                  setOtpDigits(digits);
+                  if (formError) setFormError("");
+                }}
+                className={otpInputClass}
+              />
+
+              <div className="flex items-center justify-between gap-3 text-xs text-white/50">
+                <span>Code expires in {otpExpiresInMinutes} minutes.</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleResendOtp}
+                  disabled={isSubmitting || isResending}
+                  className="h-8 px-2 text-xs text-primary hover:bg-white/[0.06] hover:text-primary"
+                >
+                  {isResending ? "Resending..." : "Resend code"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {formError ? (
+            <p className="pt-1 text-sm text-red-400" aria-live="polite">
+              {formError}
+            </p>
+          ) : null}
+        </div>
+
+        <Button
+          type="submit"
+          disabled={isSubmitting || isResending}
+          className={submitButtonClass}
+        >
+          {isSubmitting ? loadingLabel : buttonLabel}
+          {isSubmitting ? (
+            <Loader2 className={compact ? "size-[0.95rem] animate-spin" : "size-5 animate-spin"} />
+          ) : (
+            <ArrowRight className={compact ? "size-[0.95rem]" : "size-5"} />
+          )}
+        </Button>
+      </form>
+    );
   };
 
   return (
@@ -191,93 +541,7 @@ function PhoneAuth() {
 
             <section className="mt-3 w-full">
               <Card className="mx-auto mt-3 w-full rounded-lg border border-white/10 bg-[#101010]/90 p-3.5 shadow-none backdrop-blur-2xl">
-                <form className="space-y-3 text-left" onSubmit={handleSubmit} noValidate>
-                  <div className="w-full space-y-3">
-                    <div className="space-y-1.5">
-                      <label
-                        htmlFor="phoneNumber"
-                        className="block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
-                      >
-                        Phone number
-                      </label>
-
-                      <div className="grid w-full grid-cols-[6.25rem_minmax(0,1fr)] gap-1.5">
-                        <Select value={countryCode} onValueChange={setCountryCode}>
-                          <SelectTrigger
-                            type="button"
-                            aria-label="Select country code"
-                            className="!h-10 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-2.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]"
-                          >
-                            <div className="pointer-events-none flex min-w-0 items-center gap-2.5 select-none">
-                              <CountryFlag
-                                code={selectedCountry.code}
-                                className="size-[1.05rem] rounded-sm text-[0.86rem]"
-                              />
-                              <span className="truncate text-[13px] font-medium">
-                                {selectedCountry.dialCode}
-                              </span>
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent
-                            position="popper"
-                            sideOffset={8}
-                            className="z-[60] min-w-[18rem] border-white/10 bg-[#121212] text-white shadow-2xl sm:min-w-[26rem]"
-                          >
-                            {COUNTRY_OPTIONS.map((option) => (
-                              <SelectItem
-                                key={option.code}
-                                value={option.code}
-                                className="cursor-pointer text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white"
-                              >
-                                <span className="flex w-full items-center gap-3">
-                                  <CountryFlag code={option.code} />
-                                  <span className="min-w-0 flex-1 truncate">
-                                    {option.label}
-                                  </span>
-                                  <span className="shrink-0 text-white/45">
-                                    {option.code} {option.dialCode}
-                                  </span>
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-
-                        <Input
-                          id="phoneNumber"
-                          type="tel"
-                          inputMode="numeric"
-                          autoComplete="tel-national"
-                          aria-label="Phone number"
-                          placeholder="999 999 9999"
-                          value={formattedPhone}
-                          onChange={(event) => {
-                            const digits = event.target.value
-                              .replace(/\D/g, "")
-                              .slice(0, 15);
-                            setPhoneDigits(digits);
-                            if (formError) setFormError("");
-                          }}
-                          className="!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                        />
-                      </div>
-                    </div>
-
-                    {formError ? (
-                      <p className="pt-1 text-sm text-red-400" aria-live="polite">
-                        {formError}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
-                  >
-                    Continue
-                    <ArrowRight className="size-[0.95rem]" />
-                  </Button>
-                </form>
+                {renderAuthForm({ compact: true })}
               </Card>
 
               <div className="mt-2.5 flex items-center gap-3 text-white/42">
@@ -398,129 +662,48 @@ function PhoneAuth() {
             <div className="flex w-full max-w-[42rem] flex-col">
               <Card className="relative overflow-hidden rounded-lg border border-white/10 bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
                 <div className="relative p-6 sm:p-8 md:p-10">
-                  <form className="space-y-5 text-left" onSubmit={handleSubmit} noValidate>
-                    <div className="space-y-1.5">
-                      <label
-                        htmlFor="phoneNumberDesktop"
-                        className="block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
-                      >
-                        Phone number
-                      </label>
+                  {renderAuthForm()}
 
-                      <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-2 sm:grid-cols-[7.75rem_minmax(0,1fr)]">
-                        <Select value={countryCode} onValueChange={setCountryCode}>
-                          <SelectTrigger
-                            type="button"
-                            aria-label="Select country code"
-                            className="!h-12 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-3.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]"
-                          >
-                            <div className="pointer-events-none flex min-w-0 items-center gap-2.5 select-none">
-                              <CountryFlag code={selectedCountry.code} />
-                              <span className="truncate text-[15px] font-medium">
-                                {selectedCountry.dialCode}
-                              </span>
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent
-                            position="popper"
-                            sideOffset={8}
-                            className="z-[60] min-w-[18rem] border-white/10 bg-[#121212] text-white shadow-2xl sm:min-w-[26rem]"
-                          >
-                            {COUNTRY_OPTIONS.map((option) => (
-                              <SelectItem
-                                key={option.code}
-                                value={option.code}
-                                className="cursor-pointer text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white"
-                              >
-                                <span className="flex w-full items-center gap-3">
-                                  <CountryFlag code={option.code} />
-                                  <span className="min-w-0 flex-1 truncate">
-                                    {option.label}
-                                  </span>
-                                  <span className="shrink-0 text-white/45">
-                                    {option.code} {option.dialCode}
-                                  </span>
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                  <div className="mt-5 flex items-center gap-4 text-white/42">
+                    <span className="h-px flex-1 bg-white/12" />
+                    <span className="text-sm tracking-[0.28em]">OR</span>
+                    <span className="h-px flex-1 bg-white/12" />
+                  </div>
 
-                        <Input
-                          id="phoneNumberDesktop"
-                          type="tel"
-                          inputMode="numeric"
-                          autoComplete="tel-national"
-                          aria-label="Phone number"
-                          placeholder="999 999 9999"
-                          value={formattedPhone}
-                          onChange={(event) => {
-                            const digits = event.target.value
-                              .replace(/\D/g, "")
-                              .slice(0, 15);
-                            setPhoneDigits(digits);
-                            if (formError) setFormError("");
-                          }}
-                          className="!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                        />
-                      </div>
-                    </div>
-
-                    {formError ? (
-                      <p className="pt-1 text-sm text-red-400" aria-live="polite">
-                        {formError}
-                      </p>
-                    ) : null}
-
+                  <div className="mt-5 space-y-3">
                     <Button
-                      type="submit"
-                      className="!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl"
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleSocialClick("Google")}
+                      className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
                     >
-                      Continue
-                      <ArrowRight className="size-5" />
+                      <img
+                        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                        alt=""
+                        className="size-5"
+                      />
+                      Continue with Google
                     </Button>
 
-                    <div className="flex items-center gap-4 text-white/42">
-                      <span className="h-px flex-1 bg-white/12" />
-                      <span className="text-sm tracking-[0.28em]">OR</span>
-                      <span className="h-px flex-1 bg-white/12" />
-                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleSocialClick("Apple")}
+                      className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                    >
+                      <AppleLogo className="size-5 text-white" />
+                      Continue with Apple
+                    </Button>
+                  </div>
 
-                    <div className="space-y-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => handleSocialClick("Google")}
-                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
-                      >
-                        <img
-                          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                          alt=""
-                          className="size-5"
-                        />
-                        Continue with Google
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => handleSocialClick("Apple")}
-                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
-                      >
-                        <AppleLogo className="size-5 text-white" />
-                        Continue with Apple
-                      </Button>
-                    </div>
-
-                    <div className="pt-1 text-center text-base text-white/68">
-                      <Link
-                        to={emailSigninPath}
-                        className="text-primary underline-offset-4 hover:underline"
-                      >
-                        Sign in with email and password
-                      </Link>
-                    </div>
-                  </form>
+                  <div className="pt-5 text-center text-base text-white/68">
+                    <Link
+                      to={emailSigninPath}
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      Sign in with email and password
+                    </Link>
+                  </div>
                 </div>
               </Card>
 
