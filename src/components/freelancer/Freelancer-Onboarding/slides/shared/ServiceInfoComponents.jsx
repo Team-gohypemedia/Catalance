@@ -54,7 +54,11 @@ const StepperItem = ({
             : "max-w-full truncate text-sm font-normal text-inherit",
         )}
       >
-          {step.label}
+        {/* Mobile: active -> show label, inactive -> show step number. Desktop (sm+): always show full label. */}
+        <span className={cn(isActive ? "block sm:hidden" : "block sm:hidden")}>
+          {isActive ? step.label : String(step.step)}
+        </span>
+        <span className="hidden sm:inline">{step.label}</span>
       </span>
     </button>
   </div>

@@ -16,6 +16,8 @@ import {
   ServiceInfoStepper,
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
+import { Button } from "@/components/ui/button";
+import { ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS } from "../typography";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
@@ -189,13 +191,13 @@ const TechnologiesInput = ({
             .map((tool) => (
               <span
                 key={`tool-${tool.id}`}
-                className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+                className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-card px-3 py-1.5 text-sm font-medium text-white"
               >
                 {tool.label}
                 <button
                   type="button"
                   onClick={() => toggleTool(tool.id)}
-                  className="rounded-full p-0.5 transition-colors hover:bg-primary/20"
+                  className="rounded-full p-0.5 transition-colors hover:bg-white/10"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -331,7 +333,7 @@ const CategoryMultiSelect = ({
     <div className="space-y-3">
       <div className="relative" ref={containerRef}>
         {isOpen ? (
-          <div className="flex h-12 w-full items-center gap-3 rounded-xl border border-primary/50 bg-card px-4 !text-[14px] !leading-5 ring-1 ring-primary/20">
+          <div className="flex h-12 w-full items-center gap-3 rounded-xl border border-white/15 bg-card px-4 !text-[14px] !leading-5 ring-1 ring-white/10">
             <input
               ref={searchInputRef}
               type="text"
@@ -353,16 +355,16 @@ const CategoryMultiSelect = ({
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className={`flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20 ${
+            className={`flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors focus:border-white/20 focus:ring-1 focus:ring-white/10 ${
               selectedOptions.length > 0
-                ? "border-primary/25 text-white"
+                ? "border-white/10 text-white"
                 : "border-white/10 text-muted-foreground"
             }`}
           >
             <span className="truncate text-left">{summaryText}</span>
             <ChevronDown
               className={`h-4 w-4 transition-transform duration-200 ${
-                selectedOptions.length > 0 ? "text-primary" : "text-white/40"
+                selectedOptions.length > 0 ? "text-white/60" : "text-white/40"
               }`}
             />
           </button>
@@ -389,15 +391,14 @@ const CategoryMultiSelect = ({
                       onClick={() => toggleOption(option.value)}
                       className={`mx-2 my-1 flex w-[calc(100%-1rem)] items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
                         isSelected
-                          ? "border-primary/30 bg-primary/12 text-primary"
+                          ? "border-white/10 bg-accent text-white"
                           : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
                       }`}
                     >
                       <span className="font-medium">{option.label}</span>
                       {isSelected ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-accent text-white">
                           <Check className="h-3.5 w-3.5" />
-                          Selected
                         </span>
                       ) : null}
                     </button>
@@ -414,13 +415,13 @@ const CategoryMultiSelect = ({
           {selectedOptions.map((option) => (
             <span
               key={option.value}
-              className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-card px-3 py-1.5 text-sm font-medium text-white"
             >
               {option.label}
               <button
                 type="button"
                 onClick={() => removeOption(option.value)}
-                className="rounded-full p-0.5 transition-colors hover:bg-primary/20"
+                className="rounded-full p-0.5 transition-colors hover:bg-white/10"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -440,6 +441,7 @@ const FreelancerServiceInfoSlide = ({
   onServiceInfoFieldChange,
   onUpdateServiceDraft,
   onServiceStepChange,
+  onSkipServices,
 }) => {
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
@@ -762,13 +764,28 @@ const FreelancerServiceInfoSlide = ({
         </div>
 
         <div className="w-full space-y-5">
-          <div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-medium text-white">
-              Add service info
-            </h2>
-            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-              Provide the details of the service you will offer.
-            </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-lg sm:text-xl md:text-2xl font-medium text-white">
+                Add service info
+              </h2>
+              <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
+                Provide the details of the service you will offer.
+              </p>
+            </div>
+
+            <div className="ml-4 mr-2 mt-0.5 flex items-start sm:mt-0 sm:items-center">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onSkipServices?.()}
+                disabled={false}
+                className="h-auto px-0 py-0 text-sm font-normal text-white/75 hover:text-white hover:!bg-transparent hover:underline sm:h-11 sm:px-6 sm:text-base"
+              >
+                Skip
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
@@ -805,7 +822,6 @@ const FreelancerServiceInfoSlide = ({
                 placeholder={isCategoriesLoading ? "Loading..." : "Search here"}
                 searchPlaceholder="Search here"
                 isLoading={isCategoriesLoading}
-                closeOnSelect
               />
             </div>
 
@@ -826,7 +842,6 @@ const FreelancerServiceInfoSlide = ({
                     placeholder={isToolsLoading ? "Loading..." : "Search here"}
                     searchPlaceholder="Search here"
                     isLoading={isToolsLoading}
-                    closeOnSelect
                   />
                 </div>
               )}

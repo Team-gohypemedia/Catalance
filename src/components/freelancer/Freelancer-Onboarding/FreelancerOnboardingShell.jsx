@@ -2903,6 +2903,7 @@ const FreelancerOnboardingShell = () => {
                 }
                 isProfileSaving={isProfileSaving}
                 user={user}
+                onSkipServices={handleSkipServicesSection}
               />
             </motion.div>
           </AnimatePresence>
@@ -2910,7 +2911,7 @@ const FreelancerOnboardingShell = () => {
       </section>
 
       {isFooterHidden ? null : (
-        <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6">
+        <footer className="relative z-20 shrink-0 px-4 py-4 sm:px-6">
           <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
             <div />
 
@@ -2928,7 +2929,7 @@ const FreelancerOnboardingShell = () => {
               <div />
             ) : (
               <div className="flex justify-end">
-                {isServiceSectionSlide ? (
+                {isServiceSectionSlide && currentSlide.id !== "serviceSetup" && currentSlide.id !== "serviceInfo" ? (
                   <Button
                     type="button"
                     variant="secondary"
