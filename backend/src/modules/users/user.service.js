@@ -414,6 +414,11 @@ const consumeOtpRateLimit = ({ store, key, maxAttempts, message }) => {
 const buildWhatsappOtpRateLimitKey = ({ phone, requestIp }) =>
   `${phone}:${String(requestIp || "unknown").trim() || "unknown"}`;
 
+const maskLoginPhone = (value = "") => {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits ? `***${digits.slice(-4)}` : "unknown";
+};
+
 const resolveActiveUserRole = (user, role) => {
   const requestedRole = normalizeRoleValue(role);
   const roles = Array.isArray(user?.roles)
@@ -2641,6 +2646,10 @@ export const requestWhatsappOtp = async ({
   const user = await findUserByLoginPhone(normalizedPhone);
 
   if (!user) {
+    console.warn(
+      `[WhatsApp OTP] Send skipped: no user matched phone ${maskLoginPhone(normalizedPhone)}.`
+    );
+
     return {
       message: WHATSAPP_OTP_GENERIC_MESSAGE,
       phone: normalizedPhone,
@@ -2649,6 +2658,10 @@ export const requestWhatsappOtp = async ({
   }
 
   if (role && !hasRole(user, role)) {
+    console.warn(
+      `[WhatsApp OTP] Send skipped: role mismatch for phone ${maskLoginPhone(normalizedPhone)}. Requested role: ${role}.`
+    );
+
     return {
       message: WHATSAPP_OTP_GENERIC_MESSAGE,
       phone: normalizedPhone,

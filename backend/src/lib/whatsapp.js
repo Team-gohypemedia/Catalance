@@ -3,6 +3,11 @@ import { AppError } from "../utils/app-error.js";
 
 const WHATSAPP_PROVIDER = "whatsapp";
 
+const maskPhone = (value = "") => {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits ? `***${digits.slice(-4)}` : "unknown";
+};
+
 const getWhatsAppConfig = () => {
   const graphVersion = String(env.WHATSAPP_GRAPH_VERSION || "").trim().replace(/^\/+|\/+$/g, "");
   const phoneNumberId = String(env.WHATSAPP_PHONE_NUMBER_ID || "").trim();
@@ -76,7 +81,10 @@ const buildOtpTemplatePayload = ({ to, otpCode, templateName, templateLanguage, 
     }
   };
 
-  console.log("[WhatsApp OTP] Payload:", JSON.stringify(payload, null, 2));
+  if (env.NODE_ENV !== "production") {
+    console.log("[WhatsApp OTP] Payload:", JSON.stringify(payload, null, 2));
+  }
+
   return payload;
 };
 
@@ -107,7 +115,7 @@ export const sendWhatsappOtp = async ({ to, otpCode }) => {
     }
 
     console.warn("[WhatsApp OTP] Missing WhatsApp Cloud API configuration.");
-    console.log(`[DEV] WhatsApp OTP for ${to}: ${otpCode}`);
+    console.log(`[DEV] WhatsApp OTP for ${maskPhone(to)}: ${otpCode}`);
     return { delivered: false, reason: "missing_config" };
   }
 
@@ -157,7 +165,7 @@ export const sendWhatsappOtp = async ({ to, otpCode }) => {
 
   const messageId = payload?.messages?.[0]?.id || null;
 
-  console.log(`[WhatsApp OTP] Accepted for ${to}. ID: ${messageId || "n/a"}`);
+  console.log(`[WhatsApp OTP] Accepted for ${maskPhone(to)}. ID: ${messageId || "n/a"}`);
   return {
     delivered: true,
     id: messageId,
