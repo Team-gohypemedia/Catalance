@@ -76,10 +76,57 @@ const placeCards = imageSources.flatMap((image, index) => {
   return cards;
 });
 
+const DESKTOP_LANE_BREAKPOINT = 1024;
+const galleryTopFadeStyle = {
+  WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 85%, transparent 100%)",
+  maskImage: "linear-gradient(to bottom, black 0%, black 85%, transparent 100%)",
+  WebkitMaskRepeat: "no-repeat",
+  maskRepeat: "no-repeat",
+  WebkitMaskSize: "100% 100%",
+  maskSize: "100% 100%",
+};
+const galleryBottomFadeStyle = {
+  WebkitMaskImage: "linear-gradient(to top, black 0%, black 85%, transparent 100%)",
+  maskImage: "linear-gradient(to top, black 0%, black 85%, transparent 100%)",
+  WebkitMaskRepeat: "no-repeat",
+  maskRepeat: "no-repeat",
+  WebkitMaskSize: "100% 100%",
+  maskSize: "100% 100%",
+};
+
+function useLaneCount() {
+  const [laneCount, setLaneCount] = React.useState(() =>
+    typeof window !== "undefined" && window.innerWidth >= DESKTOP_LANE_BREAKPOINT ? 4 : 2
+  );
+
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia(`(min-width: ${DESKTOP_LANE_BREAKPOINT}px)`);
+
+    const updateLaneCount = () => {
+      setLaneCount(mediaQuery.matches ? 4 : 2);
+    };
+
+    updateLaneCount();
+    mediaQuery.addEventListener("change", updateLaneCount);
+
+    return () => mediaQuery.removeEventListener("change", updateLaneCount);
+  }, []);
+
+  return laneCount;
+}
+
+function createVerticalLanes(laneCount) {
+  return Array.from({ length: laneCount }, (_, laneIndex) => ({
+    key: `lane-${laneCount}-${laneIndex}`,
+    items: placeCards.filter((_, itemIndex) => itemIndex % laneCount === laneIndex),
+    reverse: laneIndex % 2 === 1,
+  }));
+}
+
 function PlaceCard({ place }) {
   return (
     <article
-      className="group relative overflow-hidden rounded-4xl border border-border bg-background"
+      className="group relative overflow-hidden rounded-[20px] border border-border bg-background"
       style={{ aspectRatio: `${place.width} / ${place.height}` }}
     >
       <div className="relative h-full w-full overflow-hidden bg-muted">
@@ -117,16 +164,14 @@ function PlaceCard({ place }) {
   );
 }
 
-const verticalLanes = Array.from({ length: 4 }, (_, laneIndex) => ({
-  key: `lane-${laneIndex}`,
-  items: placeCards.filter((_, itemIndex) => itemIndex % 4 === laneIndex),
-  reverse: laneIndex % 2 === 1,
-}));
-
-const laneFadeMaskClassName =
-  "[mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_88%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_88%,transparent_100%)] [mask-repeat:no-repeat] [-webkit-mask-repeat:no-repeat] [mask-size:100%_100%] [-webkit-mask-size:100%_100%]";
-
 const MadeOnCatalance = () => {
+  const laneCount = useLaneCount();
+  const verticalLanes = createVerticalLanes(laneCount);
+  const galleryGridClassName =
+    laneCount === 4
+      ? "relative grid min-h-0 flex-1 grid-cols-4 gap-6 overflow-hidden py-6"
+      : "relative grid min-h-0 flex-1 grid-cols-2 gap-4 overflow-hidden py-6";
+
   return (
     <section className="relative h-screen overflow-hidden bg-background text-foreground">
 
@@ -137,12 +182,12 @@ const MadeOnCatalance = () => {
           </h2>
         </header>
 
-        <div className="relative grid min-h-0 flex-1 grid-cols-2 gap-4 py-6 lg:grid-cols-4 lg:gap-6">
+        <div className={galleryGridClassName}>
           {verticalLanes.map((lane) => (
             <Marquee
               key={lane.key}
               vertical
-              className={`h-full min-h-0 flex-1 p-0 [--gap:1.25rem] ${laneFadeMaskClassName}`}
+              className="h-full min-h-0 flex-1 p-0 [--gap:1.25rem]"
               pauseOnHover={false}
               repeat={2}
               reverse={lane.reverse}
@@ -152,6 +197,16 @@ const MadeOnCatalance = () => {
               ))}
             </Marquee>
           ))}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-24 bg-background sm:h-32"
+            style={galleryTopFadeStyle}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-24 bg-background sm:h-32"
+            style={galleryBottomFadeStyle}
+          />
         </div>
       </div>
     </section>

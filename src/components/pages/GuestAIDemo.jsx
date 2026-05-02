@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { startTransition, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 import { generateRandomString } from "@/components/ui/evervault-card";
 
@@ -479,6 +479,17 @@ const formatBytes = (bytes = 0) => {
     if (value < 1024) return `${value} B`;
     if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
     return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const formatServiceStartingPrice = (service = {}) => {
+    if (service?.price) return service.price;
+
+    const minBudget = Number(service?.min_budget);
+    if (Number.isFinite(minBudget) && minBudget > 0) {
+        return `\u20B9${minBudget.toLocaleString('en-IN')}/-`;
+    }
+
+    return '\u20B910,000/-';
 };
 
 const buildAttachmentToken = (attachment = {}) => {
@@ -2749,6 +2760,260 @@ const ProposalPreview = ({ content, isDark }) => {
     );
 };
 
+const BRIEFING_KICKOFF_OPTIONS = [
+    'ASAP',
+    'This week',
+    'Next week',
+    'In 2 weeks',
+    'This month',
+    'Flexible',
+];
+
+const BRIEFING_DURATION_OPTIONS = [
+    'Under 1 week',
+    '1-2 weeks',
+    '3-4 weeks',
+    '1-2 months',
+    '3-6 months',
+    'Ongoing',
+];
+
+const createInitialBriefingAnswers = () => ({
+    role: '',
+    goal: '',
+    budgetMin: '',
+    budgetMax: '',
+    kickoff: '',
+    duration: '',
+});
+
+const BRIEFING_STEP_DEFINITIONS = [
+    {
+        key: 'role',
+        label: 'Who should step into this brief?',
+        eyebrow: 'Set the direction',
+        placeholder: 'e.g. Full-Stack Developer, Brand Designer, SEO Specialist...',
+    },
+    {
+        key: 'goal',
+        label: 'What should they help you bring to life?',
+        eyebrow: 'Shape the outcome',
+        placeholder: 'e.g. build an MVP from scratch, redesign our brand, automate lead follow-up...',
+    },
+    {
+        key: 'references',
+        label: 'Anything to share that helps us read the brief faster?',
+        eyebrow: 'Optional references',
+        placeholder: 'Paste a Figma, Dribbble, Loom, Notion, or docs link...',
+    },
+];
+
+const normalizeBriefingFragment = (value = '') =>
+    String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+const formatBriefingBudgetRange = (minValue = '', maxValue = '') => {
+    const min = normalizeBriefingFragment(minValue);
+    const max = normalizeBriefingFragment(maxValue);
+    if (min && max) return `₹${min} - ₹${max}`;
+    if (min) return `from ₹${min}`;
+    if (max) return `up to ₹${max}`;
+    return '';
+};
+
+const buildBriefingSentenceParts = ({
+    role = '',
+    goal = '',
+    budgetMin = '',
+    budgetMax = '',
+    kickoff = '',
+    duration = '',
+    referenceCount = 0,
+}) => ({
+    role: normalizeBriefingFragment(role),
+    goal: normalizeBriefingFragment(goal),
+    budget: formatBriefingBudgetRange(budgetMin, budgetMax),
+    kickoff: normalizeBriefingFragment(kickoff),
+    duration: normalizeBriefingFragment(duration),
+    references: referenceCount > 0 ? `${referenceCount} reference${referenceCount === 1 ? '' : 's'} attached` : '',
+});
+
+const buildBriefingSummary = ({
+    answers = createInitialBriefingAnswers(),
+    referenceLinks = [],
+    attachmentCount = 0,
+}) => {
+    const parts = buildBriefingSentenceParts({
+        ...answers,
+        referenceCount: (Array.isArray(referenceLinks) ? referenceLinks.length : 0) + Number(attachmentCount || 0),
+    });
+    const lines = [
+        `I'm looking for ${parts.role || 'the right specialist'} to ${parts.goal || 'move this project forward'}.`,
+    ];
+
+    if (parts.budget || parts.kickoff || parts.duration) {
+        lines.push([
+            parts.budget ? `Budget: ${parts.budget}` : '',
+            parts.kickoff ? `Kickoff: ${parts.kickoff}` : '',
+            parts.duration ? `Duration: ${parts.duration}` : '',
+        ].filter(Boolean).join(' | '));
+    }
+
+    const normalizedLinks = (Array.isArray(referenceLinks) ? referenceLinks : []).filter(Boolean);
+    if (normalizedLinks.length > 0) {
+        lines.push(`Reference links:\n${normalizedLinks.map((link) => `- ${link}`).join('\n')}`);
+    }
+
+    if (attachmentCount > 0) {
+        lines.push(`Attached ${attachmentCount} reference file${attachmentCount === 1 ? '' : 's'} for context.`);
+    }
+
+    return lines.filter(Boolean).join('\n\n').trim();
+};
+
+const buildBriefingGoalSuggestions = (role = '') => {
+    const normalizedRole = normalizeServiceLogoKey(role);
+    if (/\b(brand|design|ui|ux|creative)\b/.test(normalizedRole)) {
+        return [
+            'refresh our visual identity',
+            'design a polished landing page',
+            'create a modern brand system',
+            'improve product UX across key flows',
+        ];
+    }
+    if (/\b(seo|content|writer|copy)\b/.test(normalizedRole)) {
+        return [
+            'grow organic traffic',
+            'rewrite our website messaging',
+            'publish SEO-focused content',
+            'improve local search visibility',
+        ];
+    }
+    if (/\b(video|editor|motion|ugc|cgi)\b/.test(normalizedRole)) {
+        return [
+            'edit short-form content for paid ads',
+            'create launch videos for a product',
+            'produce polished reel-style edits',
+            'turn raw footage into branded content',
+        ];
+    }
+    if (/\b(ai|automation|agent|crm|erp)\b/.test(normalizedRole)) {
+        return [
+            'automate lead follow-up',
+            'build an internal AI assistant',
+            'streamline operations with workflows',
+            'connect our CRM with customer support',
+        ];
+    }
+    if (/\b(app|mobile|ios|android)\b/.test(normalizedRole)) {
+        return [
+            'build an MVP from scratch',
+            'ship a mobile app for customers',
+            'add new product features',
+            'turn an idea into a working prototype',
+        ];
+    }
+    return [
+        'build an MVP from scratch',
+        'launch a stronger online presence',
+        'redesign an existing product experience',
+        'grow demand with sharper positioning',
+    ];
+};
+
+const BRIEFING_SERVICE_MATCHERS = [
+    {
+        test: /\b(website|landing page|landing pages|web app|webapp|portal|dashboard|frontend|full stack|full-stack|saas|mvp|site)\b/i,
+        aliases: ['website development', 'web development', 'web dev', 'software development'],
+    },
+    {
+        test: /\b(mobile app|ios|android|react native|flutter|app store|play store)\b/i,
+        aliases: ['app development', 'mobile app development'],
+    },
+    {
+        test: /\b(ai automation|automation|workflow|agent|chatbot|voice bot|voice agent|whatsapp bot|ai assistant)\b/i,
+        aliases: ['ai automation', 'voice agent', 'crm and erp integrated solutions'],
+    },
+    {
+        test: /\b(brand|branding|identity|logo|visual system)\b/i,
+        aliases: ['branding', 'branding kit', 'creative and design'],
+    },
+    {
+        test: /\b(ui|ux|product design|wireframe|figma|design system)\b/i,
+        aliases: ['creative and design', 'website development'],
+    },
+    {
+        test: /\b(seo|search engine|organic traffic|gmb|google business)\b/i,
+        aliases: ['seo', 'seo / gmb'],
+    },
+    {
+        test: /\b(content|copywriting|blog|articles|messaging|writer)\b/i,
+        aliases: ['writing and content'],
+    },
+    {
+        test: /\b(video|reel|shorts|ugc|editor|editing|motion|cgi)\b/i,
+        aliases: ['video services', 'ugc marketing', 'cgi video services'],
+    },
+    {
+        test: /\b(meta ads|google ads|performance marketing|paid ads|paid advertising)\b/i,
+        aliases: ['paid advertising', 'performance marketing'],
+    },
+    {
+        test: /\b(social media|instagram|linkedin|content calendar|organic social)\b/i,
+        aliases: ['social media marketing', 'social media marketing organic'],
+    },
+];
+
+const inferBriefingService = (services = [], answers = {}) => {
+    const source = normalizeServiceLogoKey([
+        answers?.role,
+        answers?.goal,
+    ].filter(Boolean).join(' '));
+    if (!source) return Array.isArray(services) ? services[0] || null : null;
+
+    const normalizedServices = Array.isArray(services)
+        ? services.map((service) => ({
+            service,
+            haystack: normalizeServiceLogoKey([
+                service?.name,
+                service?.title,
+                service?.slug,
+                service?.id,
+            ].filter(Boolean).join(' ')),
+        }))
+        : [];
+
+    let bestMatch = null;
+    let bestScore = -1;
+
+    BRIEFING_SERVICE_MATCHERS.forEach((matcher, matcherIndex) => {
+        if (!matcher.test.test(source)) return;
+
+        normalizedServices.forEach((entry) => {
+            const aliasScore = matcher.aliases.reduce((score, alias) => {
+                const normalizedAlias = normalizeServiceLogoKey(alias);
+                return entry.haystack.includes(normalizedAlias) ? score + 5 : score;
+            }, 0);
+            const tokenScore = entry.haystack
+                .split(' ')
+                .filter((token) => token.length >= 3 && source.includes(token))
+                .length;
+            const score = aliasScore + tokenScore - matcherIndex * 0.01;
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = entry.service;
+            }
+        });
+    });
+
+    if (bestMatch) return bestMatch;
+
+    return normalizedServices.find((entry) =>
+        /\bwebsite development\b|\bweb development\b|\bsoftware development\b|\bapp development\b/.test(entry.haystack)
+    )?.service || normalizedServices[0]?.service || null;
+};
+
 const GuestAIDemo = () => {
     const mouseX = useMotionValue(0);
     const mouseY = useMotionValue(0);
@@ -2826,6 +3091,14 @@ const GuestAIDemo = () => {
     const [services, setServices] = useState([]);
     const [servicesError, setServicesError] = useState("");
     const [loading, setLoading] = useState(true);
+    const [briefingAnswers, setBriefingAnswers] = useState(() => createInitialBriefingAnswers());
+    const [briefingStepIndex, setBriefingStepIndex] = useState(0);
+    const [briefingReferenceInput, setBriefingReferenceInput] = useState('');
+    const [briefingReferenceLinks, setBriefingReferenceLinks] = useState([]);
+    const [briefingFiles, setBriefingFiles] = useState([]);
+    const [briefingSubmitting, setBriefingSubmitting] = useState(false);
+    const [showAllRoleServices, setShowAllRoleServices] = useState(false);
+    const [pendingBriefSubmission, setPendingBriefSubmission] = useState(null);
     const [selectedService, setSelectedService] = useState(null);
     const [agencySelectedServiceIds, setAgencySelectedServiceIds] = useState([]);
     const [agencyFlowState, setAgencyFlowState] = useState(() => createEmptyAgencyFlowState());
@@ -2858,6 +3131,7 @@ const GuestAIDemo = () => {
     const scrollRef = useRef(null);
     const inputRef = useRef(null);
     const attachmentInputRef = useRef(null);
+    const briefingAttachmentInputRef = useRef(null);
     const recognitionRef = useRef(null);
     const thinkingIntervalRef = useRef(null);
     const messagesRef = useRef(messages);
@@ -2921,6 +3195,18 @@ const GuestAIDemo = () => {
             .sort((a, b) => a.order - b.order || a.index - b.index)
             .map((entry) => entry.service);
     }, [services]);
+    const briefingGoalSuggestions = useMemo(
+        () => buildBriefingGoalSuggestions(briefingAnswers.role),
+        [briefingAnswers.role]
+    );
+    const inferredBriefingService = useMemo(
+        () => inferBriefingService(orderedServices, briefingAnswers),
+        [orderedServices, briefingAnswers]
+    );
+    const briefingSentence = useMemo(() => buildBriefingSentenceParts({
+        ...briefingAnswers,
+        referenceCount: briefingReferenceLinks.length + briefingFiles.length,
+    }), [briefingAnswers, briefingReferenceLinks.length, briefingFiles.length]);
 
     useEffect(() => {
         messagesRef.current = messages;
@@ -3652,15 +3938,6 @@ const GuestAIDemo = () => {
         }
     }, [input, isListening, isSpeechSupported, isTyping]);
 
-    const isAllowedUploadFile = useCallback((file) => {
-        if (!file) return false;
-        if (file.type?.startsWith('image/')) return true;
-        if (ALLOWED_UPLOAD_MIME_TYPES.has(file.type)) return true;
-
-        const name = String(file.name || '').toLowerCase();
-        return ALLOWED_UPLOAD_EXTENSIONS.some((ext) => name.endsWith(ext));
-    }, []);
-
     const handleAttachmentPick = (event) => {
         const files = Array.from(event.target.files || []);
         event.target.value = '';
@@ -3737,6 +4014,146 @@ const GuestAIDemo = () => {
             url: data.url,
         };
     }, []);
+
+    const isAllowedUploadFile = useCallback((file) => {
+        if (!file) return false;
+        if (file.type?.startsWith('image/')) return true;
+        if (ALLOWED_UPLOAD_MIME_TYPES.has(file.type)) return true;
+
+        const name = String(file.name || '').toLowerCase();
+        return ALLOWED_UPLOAD_EXTENSIONS.some((ext) => name.endsWith(ext));
+    }, []);
+
+    const resetBriefingState = useCallback(() => {
+        setBriefingAnswers(createInitialBriefingAnswers());
+        setBriefingStepIndex(0);
+        setBriefingReferenceInput('');
+        setBriefingReferenceLinks([]);
+        setBriefingFiles([]);
+        setBriefingSubmitting(false);
+        setPendingBriefSubmission(null);
+    }, []);
+
+    const updateBriefingAnswer = useCallback((key, value) => {
+        setBriefingAnswers((current) => ({
+            ...current,
+            [key]: value,
+        }));
+    }, []);
+
+    const addBriefingReferenceLink = useCallback(() => {
+        const normalizedLink = normalizeSharedUrl(briefingReferenceInput);
+        if (!normalizedLink) {
+            if (briefingReferenceInput.trim()) {
+                toast.error('Enter a valid link to add it to the brief.');
+            }
+            return false;
+        }
+
+        let added = false;
+        setBriefingReferenceLinks((current) => {
+            if (current.includes(normalizedLink)) return current;
+            added = true;
+            return [...current, normalizedLink].slice(0, 5);
+        });
+        setBriefingReferenceInput('');
+        return added;
+    }, [briefingReferenceInput]);
+
+    const removeBriefingReferenceLink = useCallback((index) => {
+        setBriefingReferenceLinks((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    }, []);
+
+    const handleBriefingFilePick = useCallback((event) => {
+        const files = Array.from(event.target.files || []);
+        event.target.value = '';
+        if (files.length === 0) return;
+
+        const nextValidFiles = [];
+        files.forEach((file) => {
+            if (!isAllowedUploadFile(file)) {
+                toast.error(`Unsupported file type: ${file.name}`);
+                return;
+            }
+            if (file.size > MAX_UPLOAD_BYTES) {
+                toast.error(`"${file.name}" is larger than 10 MB.`);
+                return;
+            }
+            nextValidFiles.push(file);
+        });
+
+        if (nextValidFiles.length === 0) return;
+
+        setBriefingFiles((current) => {
+            const deduped = [...current];
+            nextValidFiles.forEach((file) => {
+                const exists = deduped.some((entry) =>
+                    entry.name === file.name
+                    && entry.size === file.size
+                    && entry.lastModified === file.lastModified
+                );
+                if (!exists) deduped.push(file);
+            });
+            return deduped.slice(0, 5);
+        });
+    }, [isAllowedUploadFile]);
+
+    const removeBriefingFile = useCallback((index) => {
+        setBriefingFiles((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    }, []);
+
+    const currentBriefingStepKey = BRIEFING_STEP_DEFINITIONS[briefingStepIndex]?.key || 'role';
+
+    const isCurrentBriefingStepValid = useMemo(() => {
+        if (currentBriefingStepKey === 'role') return normalizeBriefingFragment(briefingAnswers.role).length >= 3;
+        if (currentBriefingStepKey === 'goal') return normalizeBriefingFragment(briefingAnswers.goal).length >= 8;
+        if (currentBriefingStepKey === 'budget') return Boolean(formatBriefingBudgetRange(briefingAnswers.budgetMin, briefingAnswers.budgetMax));
+        if (currentBriefingStepKey === 'kickoff') return Boolean(normalizeBriefingFragment(briefingAnswers.kickoff));
+        if (currentBriefingStepKey === 'duration') return Boolean(normalizeBriefingFragment(briefingAnswers.duration));
+        return true;
+    }, [briefingAnswers, currentBriefingStepKey]);
+
+    const goToNextBriefingStep = useCallback(() => {
+        if (!isCurrentBriefingStepValid) return;
+        startTransition(() => {
+            setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
+        });
+    }, [isCurrentBriefingStepValid]);
+
+    const goToPreviousBriefingStep = useCallback(() => {
+        startTransition(() => {
+            setBriefingStepIndex((current) => Math.max(0, current - 1));
+        });
+    }, []);
+
+    async function startBriefingConversation() {
+        if (!inferredBriefingService) {
+            toast.error(servicesError || 'We could not match the brief to a service yet.');
+            return;
+        }
+
+        const summary = buildBriefingSummary({
+            answers: briefingAnswers,
+            referenceLinks: briefingReferenceLinks,
+            attachmentCount: briefingFiles.length,
+        });
+
+        setBriefingSubmitting(true);
+        setPendingBriefSubmission({
+            content: summary,
+            attachments: briefingFiles,
+        });
+
+        const started = await startServiceConversation(inferredBriefingService, {
+            preserveExistingMessages: false,
+            flowMode: SERVICE_SELECTION_MODES.FREELANCER,
+        });
+
+        if (!started) {
+            setPendingBriefSubmission(null);
+            setBriefingSubmitting(false);
+        }
+    }
 
     const fetchServices = async () => {
         try {
@@ -4225,6 +4642,9 @@ const GuestAIDemo = () => {
     const handleSendMessage = async (e, forcedContent = null, options = {}) => {
         if (e) e.preventDefault();
         const ignorePendingOptionFollowup = Boolean(options?.ignorePendingOptionFollowup);
+        const attachmentSource = Array.isArray(options?.pendingAttachmentsOverride)
+            ? options.pendingAttachmentsOverride
+            : pendingAttachments;
         let contentToSend = forcedContent ?? input;
 
         if (!ignorePendingOptionFollowup && pendingOptionValue) {
@@ -4269,7 +4689,7 @@ const GuestAIDemo = () => {
         const extractedSharedUrls = extractSharedUrlsFromText(trimmedTextPayload);
         const normalizedTextPayload = extractedSharedUrls.text.trim();
         const hasSharedUrls = extractedSharedUrls.urls.length > 0;
-        const hasAttachments = pendingAttachments.length > 0;
+        const hasAttachments = attachmentSource.length > 0;
 
         if ((!trimmedTextPayload && !hasAttachments && !hasSharedUrls) || !sessionId || isTyping || isUploadingAttachment) return;
         if (isArrayPayload && normalizedArray.length === 0 && !hasAttachments && !hasSharedUrls) return;
@@ -4292,7 +4712,7 @@ const GuestAIDemo = () => {
             setIsUploadingAttachment(hasAttachments);
             const uploadStartedAt = getNowTimestamp();
             const uploadedAttachments = hasAttachments
-                ? await Promise.all(pendingAttachments.map((file) => uploadGuestAttachment(file)))
+                ? await Promise.all(attachmentSource.map((file) => uploadGuestAttachment(file)))
                 : [];
             const uploadDurationMs = hasAttachments
                 ? Math.max(0, getNowTimestamp() - uploadStartedAt)
@@ -4589,6 +5009,28 @@ const GuestAIDemo = () => {
         }
     };
 
+    useEffect(() => {
+        if (!pendingBriefSubmission || !sessionId || !selectedService || loading || isTyping) return;
+
+        const nextBriefPayload = pendingBriefSubmission;
+        setPendingBriefSubmission(null);
+        void handleSendMessage(null, nextBriefPayload.content, {
+            ignorePendingOptionFollowup: true,
+            pendingAttachmentsOverride: nextBriefPayload.attachments,
+        }).finally(() => {
+            setBriefingSubmitting(false);
+            resetBriefingState();
+        });
+    }, [
+        handleSendMessage,
+        isTyping,
+        loading,
+        pendingBriefSubmission,
+        resetBriefingState,
+        selectedService,
+        sessionId,
+    ]);
+
     const handleProceed = (proposalContent, sourceProposal = null) => {
         const nextProposals = upsertStoredGeneratedProposal(
             proposalContent,
@@ -4618,6 +5060,7 @@ const GuestAIDemo = () => {
         replaceMessages([]);
         resetChatComposerState();
         resetAgencyFlow();
+        resetBriefingState();
     };
 
     const handleOpenProposalPreview = (proposal) => {
@@ -4657,7 +5100,451 @@ const GuestAIDemo = () => {
         toast.success('Chat removed');
     };
 
+    const currentBriefingStep = BRIEFING_STEP_DEFINITIONS[briefingStepIndex] || BRIEFING_STEP_DEFINITIONS[0];
+    const isLastBriefingStep = briefingStepIndex === BRIEFING_STEP_DEFINITIONS.length - 1;
+    const canContinueBriefing = isLastBriefingStep
+        ? Boolean(inferredBriefingService) && !briefingSubmitting
+        : isCurrentBriefingStepValid;
+    const briefingBackdropClasses = isDark
+        ? 'bg-[radial-gradient(circle_at_top,rgba(255,200,0,0.14),transparent_30%),radial-gradient(circle_at_bottom,rgba(255,200,0,0.08),transparent_24%),linear-gradient(180deg,rgba(24,24,27,1)_0%,rgba(15,15,18,1)_100%)]'
+        : 'bg-[radial-gradient(circle_at_top,rgba(255,200,0,0.18),transparent_30%),radial-gradient(circle_at_bottom,rgba(255,200,0,0.08),transparent_24%),linear-gradient(180deg,#fffdfa_0%,#f8f6f0_100%)]';
+    const briefingGlowClasses = isDark ? 'bg-[#ffc800]/10' : 'bg-[#ffc800]/12';
+    const briefingEyebrowClasses = isDark ? 'text-[#d6c4a2]' : 'text-[#8a6d47]';
+    const briefingDotClasses = isDark ? 'bg-[#ffc800] shadow-[0_0_0_5px_rgba(255,200,0,0.12)]' : 'bg-[#ffc800] shadow-[0_0_0_5px_rgba(255,200,0,0.16)]';
+    const briefingHeadingClasses = isDark ? 'text-white' : 'text-[#17110d]';
+    const briefingHeadingSizeClasses = isDark
+        ? 'text-[clamp(1.55rem,2.5vw,2.55rem)] leading-[1.18] tracking-[-0.02em]'
+        : 'text-[clamp(1.85rem,3.5vw,3.1rem)] leading-[1.14] tracking-[-0.024em]';
+    const briefingMutedSentenceClasses = isDark ? 'text-white/28' : 'text-[#d2c4b2]';
+    const briefingAccentTextClasses = isDark ? 'text-[#ffd75a]' : 'text-[#ba7a07]';
+    const briefingAccentPillClasses = isDark ? 'bg-[#ffc800]/12 text-[#ffd75a]' : 'bg-[#fff0bf] text-[#ba7a07]';
+    const briefingBodyClasses = isDark ? 'text-muted-foreground' : 'text-[#695847]';
+    const briefingCardClasses = isDark
+        ? 'border-[#ffc800]/12 bg-card/90 shadow-[0_0_0_1px_rgba(255,200,0,0.05),0_0_38px_rgba(255,200,0,0.1),0_40px_90px_-55px_rgba(0,0,0,0.72)]'
+        : 'border-[#eadfce] bg-white/92 shadow-[0_40px_90px_-55px_rgba(98,77,36,0.24)]';
+    const briefingCardDividerClasses = isDark ? 'border-border/70' : 'border-[#efe2d3]';
+    const briefingStepEyebrowClasses = isDark ? 'text-[#f0cc6b]' : 'text-[#c28712]';
+    const briefingStepTitleClasses = isDark ? 'text-white' : 'text-[#211810]';
+    const briefingInputBorderClasses = isDark ? 'border-border/70' : 'border-[#eadbc9]';
+    const briefingFieldTextClasses = isDark ? 'text-white placeholder:text-white/30' : 'text-[#20150f] placeholder:text-[#c6b9ab]';
+    const briefingMicroLabelClasses = isDark ? 'text-[#c4b38f]' : 'text-[#a28469]';
+    const briefingChipClasses = isDark
+        ? 'border-border/70 bg-transparent text-zinc-200 hover:border-[#ffc800]/50 hover:bg-[#ffc800]/10 hover:text-white'
+        : 'border-[#e8d7c4] text-[#5f4935] hover:border-[#ffc800]/60 hover:bg-[#fff8e8]';
+    const briefingSelectedChipClasses = isDark ? 'border-[#ffc800] bg-[#ffc800] text-black' : 'border-[#1f1b16] bg-[#1f1b16] text-white';
+    const briefingBudgetFieldClasses = isDark ? 'border-border/70 bg-white/[0.04]' : 'border-[#e9dac7] bg-white/70';
+    const briefingUploadClasses = isDark
+        ? 'border-border/70 bg-white/[0.03] text-zinc-300 hover:border-[#ffc800]/50 hover:bg-[#ffc800]/10'
+        : 'border-[#e5d1ba] bg-[#fffaf2] text-[#7d6148] hover:border-[#ffc800]/60 hover:bg-[#fff4de]';
+    const briefingTagClasses = isDark ? 'border-border/70 bg-white/[0.04]' : 'border-[#eadac8] bg-white/70';
+    const briefingTagTextClasses = isDark ? 'text-zinc-200' : 'text-[#5c4533]';
+    const briefingTagSubtleClasses = isDark ? 'text-zinc-400' : 'text-[#987b61]';
+    const briefingIconButtonClasses = isDark ? 'text-zinc-400 hover:bg-white/10 hover:text-white' : 'text-[#8b6c50] hover:bg-[#f6e7d2] hover:text-[#39261a]';
+    const briefingBackButtonClasses = briefingStepIndex === 0
+        ? (isDark ? 'cursor-not-allowed border-border/60 text-zinc-600' : 'cursor-not-allowed border-[#ece2d7] text-[#d2c6b9]')
+        : (isDark ? 'border-border/70 text-zinc-200 hover:border-[#ffc800]/50 hover:bg-[#ffc800]/10' : 'border-[#e8d7c4] text-[#5f4935] hover:border-[#ffc800]/60 hover:bg-[#fff5e4]');
+    const briefingHintClasses = isDark ? 'text-zinc-400' : 'text-[#8d7257]';
+    const briefingLikelyMatchClasses = isDark ? 'text-zinc-300' : 'text-[#7f6249]';
+    const briefingPrimaryButtonClasses = canContinueBriefing
+        ? 'bg-primary text-primary-foreground hover:-translate-y-0.5 hover:brightness-95'
+        : (isDark ? 'cursor-not-allowed bg-zinc-700 text-zinc-300' : 'cursor-not-allowed bg-[#d2ccc4] text-white');
+    const briefingInputTypographyClasses = isDark
+        ? 'text-[clamp(1.05rem,1.8vw,1.35rem)]'
+        : 'text-[clamp(1.2rem,2.3vw,1.65rem)]';
+    const briefingTextareaTypographyClasses = isDark
+        ? 'text-[clamp(1rem,1.7vw,1.28rem)]'
+        : 'text-[clamp(1.15rem,2.1vw,1.55rem)]';
+    const showBriefingGoal = briefingStepIndex >= 1;
+    const showBriefingBudget = false;
+    const showBriefingKickoff = false;
+    const showBriefingDuration = false;
+    const showBriefingReferences = briefingStepIndex >= 2;
+    const visibleRoleServices = showAllRoleServices ? orderedServices : orderedServices.slice(0, 7);
+
     if (!selectedService) {
+        return (
+            <>
+                <Navbar />
+                <main className="relative min-h-screen overflow-hidden bg-background pt-24 text-foreground transition-colors sm:pt-28">
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                        <div className={`absolute inset-0 ${briefingBackdropClasses}`} />
+                        <div className={`absolute left-1/2 top-24 h-[24rem] w-[24rem] -translate-x-1/2 rounded-full blur-[110px] ${briefingGlowClasses}`} />
+                    </div>
+
+                    <div className={`relative z-10 mx-auto w-full px-5 py-8 sm:px-8 lg:px-10 ${isDark ? 'max-w-[1280px]' : 'max-w-[1360px]'}`}>
+                        <div className="mx-auto flex min-h-[calc(100vh-6.5rem)] w-full max-w-[980px] flex-col justify-center sm:min-h-[calc(100vh-7rem)]">
+                        <div className="space-y-5">
+                            <div className={`inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.35em] ${briefingEyebrowClasses}`}>
+                                <span className={`h-2.5 w-2.5 rounded-full ${briefingDotClasses}`} />
+                                Briefing CATA
+                            </div>
+
+                            <div className={`${isDark ? 'max-w-[960px]' : 'max-w-[1040px]'}`}>
+                                <h1 className={`font-serif ${briefingHeadingSizeClasses} ${briefingHeadingClasses}`}>
+                                    <span className="block">
+                                        I&apos;m looking for{' '}
+                                        <span className={`inline-flex rounded-[1rem] ${isDark ? 'px-2.5 py-1' : 'px-3 py-1.5'} ${briefingSentence.role ? briefingAccentPillClasses : briefingMutedSentenceClasses}`}>
+                                            {briefingSentence.role || 'the right freelancer'}
+                                        </span>
+                                    </span>
+                                    <span className="mt-2 block">
+                                        <span className={showBriefingGoal ? briefingHeadingClasses : briefingMutedSentenceClasses}>
+                                            to help me with{' '}
+                                        </span>
+                                        <span className={showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses}>
+                                            {showBriefingGoal && briefingSentence.goal ? briefingSentence.goal : 'my project'}
+                                        </span>
+                                        <span className={showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses}>.</span>
+                                    </span>
+                                </h1>
+                            </div>
+                        </div>
+
+                        <form
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                if (isLastBriefingStep) {
+                                    if (canContinueBriefing) {
+                                        void startBriefingConversation();
+                                    }
+                                    return;
+                                }
+
+                                if (isCurrentBriefingStepValid) {
+                                    goToNextBriefingStep();
+                                }
+                            }}
+                            className={`mt-8 overflow-hidden border backdrop-blur ${isDark ? 'rounded-[1.7rem]' : 'rounded-[2rem]'} ${briefingCardClasses}`}
+                        >
+                            <div className={`border-b ${isDark ? 'px-5 py-4 sm:px-6' : 'px-6 py-5 sm:px-8'} ${briefingCardDividerClasses}`}>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span className="inline-flex rounded-full bg-[#ffc800] px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-black">
+                                        {String(briefingStepIndex + 1).padStart(2, '0')}
+                                    </span>
+                                    <div>
+                                        <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingStepEyebrowClasses}`}>
+                                            {currentBriefingStep.eyebrow}
+                                        </p>
+                                        <h2 className={`mt-1 text-lg font-semibold sm:text-xl ${briefingStepTitleClasses}`}>
+                                            {currentBriefingStep.label}
+                                        </h2>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={`${isDark ? 'space-y-5 px-5 py-5 sm:px-6 sm:py-5' : 'space-y-6 px-6 py-6 sm:px-8 sm:py-7'}`}>
+                                {currentBriefingStep.key === 'role' ? (
+                                    <>
+                                        <input
+                                            value={briefingAnswers.role}
+                                            onChange={(event) => updateBriefingAnswer('role', event.target.value)}
+                                            placeholder={currentBriefingStep.placeholder}
+                                            className={`w-full border-b bg-transparent ${isDark ? 'pb-3' : 'pb-4'} font-serif italic outline-none ${briefingInputTypographyClasses} ${briefingInputBorderClasses} ${briefingFieldTextClasses}`}
+                                        />
+                                        <div className="space-y-3">
+                                            <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Popular directions</p>
+                                            <div className="flex flex-wrap gap-3">
+                                                {visibleRoleServices.map((service) => (
+                                                    <button
+                                                        key={getServiceIdentifier(service)}
+                                                        type="button"
+                                                        onClick={() => updateBriefingAnswer('role', service?.name || service?.title || '')}
+                                                        className={`rounded-full border px-4 py-2 text-sm transition-colors ${briefingChipClasses}`}
+                                                    >
+                                                        {service?.name || service?.title}
+                                                    </button>
+                                                ))}
+                                                {!showAllRoleServices && orderedServices.length > 7 ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowAllRoleServices(true)}
+                                                        className={`rounded-full border px-4 py-2 text-sm transition-colors ${briefingChipClasses}`}
+                                                    >
+                                                        Other
+                                                    </button>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : null}
+
+                                {currentBriefingStep.key === 'goal' ? (
+                                    <>
+                                        <textarea
+                                            value={briefingAnswers.goal}
+                                            onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
+                                            rows={2}
+                                            placeholder={currentBriefingStep.placeholder}
+                                            className={`w-full resize-none border-b bg-transparent ${isDark ? 'min-h-[78px] pb-3' : 'min-h-[98px] pb-4'} font-serif italic outline-none ${briefingTextareaTypographyClasses} ${briefingInputBorderClasses} ${briefingFieldTextClasses}`}
+                                        />
+                                        <div className="space-y-3">
+                                            <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Suggested phrasing</p>
+                                            <div className="flex flex-wrap gap-3">
+                                                {briefingGoalSuggestions.map((suggestion) => (
+                                                    <button
+                                                        key={suggestion}
+                                                        type="button"
+                                                        onClick={() => updateBriefingAnswer('goal', suggestion)}
+                                                        className={`rounded-full border px-4 py-2 text-sm transition-colors ${briefingChipClasses}`}
+                                                    >
+                                                        {suggestion}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : null}
+
+                                {currentBriefingStep.key === 'budget' ? (
+                                    <div className="grid gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
+                                        <div className="space-y-2">
+                                            <p className={`text-[11px] font-semibold uppercase tracking-[0.3em] ${briefingMicroLabelClasses}`}>Min</p>
+                                            <div className={`flex items-center rounded-2xl border px-4 py-3 ${briefingBudgetFieldClasses}`}>
+                                                <span className="mr-2 text-lg text-[#d37b28]">₹</span>
+                                                <input
+                                                    value={briefingAnswers.budgetMin}
+                                                    onChange={(event) => updateBriefingAnswer('budgetMin', event.target.value.replace(/[^\d,]/g, ''))}
+                                                    placeholder="50,000"
+                                                    className={`w-full bg-transparent text-xl font-serif italic outline-none sm:text-2xl ${briefingFieldTextClasses}`}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className={`hidden pb-4 text-center sm:block ${briefingMicroLabelClasses}`}>-</div>
+                                        <div className="space-y-2">
+                                            <p className={`text-[11px] font-semibold uppercase tracking-[0.3em] ${briefingMicroLabelClasses}`}>Max</p>
+                                            <div className={`flex items-center rounded-2xl border px-4 py-3 ${briefingBudgetFieldClasses}`}>
+                                                <span className="mr-2 text-lg text-[#d37b28]">₹</span>
+                                                <input
+                                                    value={briefingAnswers.budgetMax}
+                                                    onChange={(event) => updateBriefingAnswer('budgetMax', event.target.value.replace(/[^\d,]/g, ''))}
+                                                    placeholder="1,00,000"
+                                                    className={`w-full bg-transparent text-xl font-serif italic outline-none sm:text-2xl ${briefingFieldTextClasses}`}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : null}
+
+                                {currentBriefingStep.key === 'kickoff' ? (
+                                    <div className="space-y-3">
+                                        <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Pick one</p>
+                                        <div className="flex flex-wrap gap-3">
+                                            {BRIEFING_KICKOFF_OPTIONS.map((option) => {
+                                                const isSelected = briefingAnswers.kickoff === option;
+                                                return (
+                                                    <button
+                                                        key={option}
+                                                        type="button"
+                                                        onClick={() => updateBriefingAnswer('kickoff', option)}
+                                                        className={`rounded-full border px-4 py-2.5 text-sm transition-colors ${isSelected ? briefingSelectedChipClasses : briefingChipClasses}`}
+                                                    >
+                                                        {option}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ) : null}
+
+                                {currentBriefingStep.key === 'duration' ? (
+                                    <div className="space-y-3">
+                                        <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Pick one</p>
+                                        <div className="flex flex-wrap gap-3">
+                                            {BRIEFING_DURATION_OPTIONS.map((option) => {
+                                                const isSelected = briefingAnswers.duration === option;
+                                                return (
+                                                    <button
+                                                        key={option}
+                                                        type="button"
+                                                        onClick={() => updateBriefingAnswer('duration', option)}
+                                                        className={`rounded-full border px-4 py-2.5 text-sm transition-colors ${isSelected ? briefingSelectedChipClasses : briefingChipClasses}`}
+                                                    >
+                                                        {option}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ) : null}
+
+                                {currentBriefingStep.key === 'references' ? (
+                                    <div className="space-y-4">
+                                        <div className="flex flex-col gap-3 sm:flex-row">
+                                            <input
+                                                value={briefingReferenceInput}
+                                                onChange={(event) => setBriefingReferenceInput(event.target.value)}
+                                                placeholder={currentBriefingStep.placeholder}
+                                                className={`min-w-0 flex-1 rounded-2xl border outline-none ${isDark ? 'px-4 py-2.5 text-sm' : 'px-5 py-3 text-base'} ${briefingBudgetFieldClasses} ${briefingFieldTextClasses}`}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={addBriefingReferenceLink}
+                                                className={`inline-flex items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground transition-all hover:brightness-95 ${isDark ? 'h-[46px] px-5 text-sm' : 'h-[54px] px-6 text-sm'}`}
+                                            >
+                                                Add link
+                                            </button>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => briefingAttachmentInputRef.current?.click()}
+                                            className={`flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed transition-colors ${isDark ? 'px-4 py-3 text-[13px]' : 'px-5 py-4 text-sm'} ${briefingUploadClasses}`}
+                                        >
+                                            <Paperclip className="h-4 w-4" />
+                                            Upload a SOW, PRD, brief, or visual reference
+                                        </button>
+                                        <input
+                                            ref={briefingAttachmentInputRef}
+                                            type="file"
+                                            multiple
+                                            accept={CHAT_FILE_ACCEPT}
+                                            className="hidden"
+                                            onChange={handleBriefingFilePick}
+                                        />
+
+                                        {(briefingReferenceLinks.length > 0 || briefingFiles.length > 0) ? (
+                                            <div className="space-y-2">
+                                                {briefingReferenceLinks.map((link, index) => (
+                                                    <div key={link} className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${briefingTagClasses}`}>
+                                                        <p className={`truncate text-sm ${briefingTagTextClasses}`}>{link}</p>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeBriefingReferenceLink(index)}
+                                                            className={`rounded-full p-1 transition-colors ${briefingIconButtonClasses}`}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {briefingFiles.map((file, index) => (
+                                                    <div key={`${file.name}-${file.size}-${index}`} className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${briefingTagClasses}`}>
+                                                        <div className="min-w-0">
+                                                            <p className={`truncate text-sm font-medium ${briefingTagTextClasses}`}>{file.name}</p>
+                                                            <p className={`text-xs ${briefingTagSubtleClasses}`}>{formatBytes(file.size)}</p>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeBriefingFile(index)}
+                                                            className={`rounded-full p-1 transition-colors ${briefingIconButtonClasses}`}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : null}
+
+                                        <p className={`text-sm ${briefingHintClasses}`}>
+                                            Optional. The AI will still infer the service fit without references.
+                                        </p>
+                                    </div>
+                                ) : null}
+                            </div>
+
+                            <div className={`flex flex-col gap-4 border-t sm:flex-row sm:items-center sm:justify-between ${isDark ? 'px-5 py-4 sm:px-6' : 'px-6 py-5 sm:px-8'} ${briefingCardDividerClasses}`}>
+                                <div className={`flex items-center gap-3 text-sm ${briefingHintClasses}`}>
+                                    <button
+                                        type="button"
+                                        onClick={goToPreviousBriefingStep}
+                                        disabled={briefingStepIndex === 0}
+                                        className={`inline-flex items-center justify-center rounded-full border transition-colors ${isDark ? 'h-10 w-10' : 'h-11 w-11'} ${briefingBackButtonClasses}`}
+                                    >
+                                        <ArrowLeft className="h-4 w-4" />
+                                    </button>
+                                    <span>Press Enter to continue</span>
+                                </div>
+
+                                <div className="flex flex-col items-start gap-3 sm:items-end">
+                                    <div className={`text-sm ${briefingLikelyMatchClasses}`}>
+                                        {loading
+                                            ? 'Loading service intelligence...'
+                                            : inferredBriefingService
+                                                ? <>Likely match: <span className={`font-semibold ${briefingAccentTextClasses}`}>{inferredBriefingService?.name || inferredBriefingService?.title}</span></>
+                                                : (servicesError || 'We will infer the best fit once the brief is clearer.')}
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={!canContinueBriefing}
+                                        className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all ${isDark ? 'h-11 px-5 text-sm' : 'h-12 px-6 text-sm'} ${briefingPrimaryButtonClasses}`}
+                                    >
+                                        <span>{isLastBriefingStep ? (briefingSubmitting ? 'Starting...' : 'Continue') : 'Continue'}</span>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        </div>
+
+                        <section className="mt-20 border-t border-white/6 pt-12">
+                            <div className="mb-8 text-center">
+                                <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingEyebrowClasses}`}>Explore Services</p>
+                                <h2 className={`mt-3 text-2xl font-semibold sm:text-3xl ${briefingHeadingClasses}`}>Browse service categories</h2>
+                                <p className={`mx-auto mt-3 max-w-2xl text-sm ${briefingBodyClasses}`}>
+                                    Prefer to browse first? You can still jump directly into a service below.
+                                </p>
+                            </div>
+
+                            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                                {orderedServices.map((feature, index) => (
+                                    <div
+                                        key={feature.id || index}
+                                        onClick={() => handleServiceSelect(feature)}
+                                        onMouseMove={handleCardGlowMouseMove}
+                                        style={{ '--card-glow-x': '50%', '--card-glow-y': '50%' }}
+                                        className="group relative h-full cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-card/85 transition-all duration-500 hover:-translate-y-2 hover:border-[#ffc800]/50"
+                                    >
+                                        <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                                        <div
+                                            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                                            style={{
+                                                background:
+                                                    'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(255, 200, 0, 0.18) 0%, rgba(255, 200, 0, 0.08) 30%, transparent 65%)',
+                                            }}
+                                        />
+                                        <div className="relative z-10 flex h-full flex-col p-5">
+                                            <div className="relative mb-3 flex h-32 w-full items-center justify-center">
+                                                <img
+                                                    src={resolveServiceLogoSrc(feature)}
+                                                    alt={feature.title || feature.name}
+                                                    className="z-10 h-24 w-24 object-contain drop-shadow-2xl transition-transform duration-500 ease-out group-hover:scale-110"
+                                                />
+                                            </div>
+
+                                            <div className="flex grow flex-col items-center text-center">
+                                                <h3 className="mb-2 text-lg font-bold leading-tight text-white transition-colors duration-300 group-hover:text-[#ffc800]">
+                                                    {feature.title || feature.name}
+                                                </h3>
+
+                                                <p className="mb-4 line-clamp-3 text-sm font-medium leading-relaxed text-muted-foreground transition-colors">
+                                                    {feature.description}
+                                                </p>
+
+                                                <div className="mt-auto flex w-full items-end justify-between border-t border-white/5 pt-4 text-left">
+                                                    <div>
+                                                        <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                                                            Starting at
+                                                        </p>
+                                                        <p className="text-lg font-bold text-white transition-colors duration-300 group-hover:text-[#ffc800]">
+                                                            {formatServiceStartingPrice(feature)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-white transition-colors duration-300 group-hover:border-[#ffc800] group-hover:bg-[#ffc800]/10 group-hover:text-[#ffc800]">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    </div>
+                </main>
+            </>
+        );
+    }
+
+    if (!selectedService && currentBriefingStepKey === '__legacy_service_picker__') {
         return (
             <>
                 <Navbar />
@@ -4834,7 +5721,7 @@ const GuestAIDemo = () => {
                                                             </p>
                                                             <p className={`text-lg font-bold transition-colors duration-300 ${isAgencyCardSelected ? 'text-[#ffc800]' : 'text-white group-hover:text-[#ffc800]'
                                                                 }`}>
-                                                                {feature.price || (feature.min_budget ? `₹${feature.min_budget.toLocaleString('en-IN')}/-` : '₹10,000/-')}
+                                                                {formatServiceStartingPrice(feature)}
                                                             </p>
                                                         </div>
                                                         <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors duration-300 ${isAgencyCardSelected
@@ -5165,21 +6052,21 @@ const GuestAIDemo = () => {
             )}
 
             {/* Sidebar drawer — slides in from left as fixed overlay */}
-            <aside className={`fixed left-0 top-16 bottom-0 z-40 flex flex-col w-72 shadow-2xl transition-transform duration-300 ease-in-out lg:top-20 ${isSidebarCompact ? '-translate-x-full' : 'translate-x-0'} ${isDark ? 'bg-[#171717] border-r border-white/[0.06]' : 'bg-white border-r border-slate-200'}`}>
+            <aside className={`fixed left-0 top-16 bottom-0 z-40 flex w-72 flex-col transition-transform duration-300 ease-in-out lg:top-20 ${isSidebarCompact ? '-translate-x-full' : 'translate-x-0'} ${isDark ? 'border-r border-white/5 bg-[#151515]' : 'border-r border-slate-200/70 bg-[#fcfcfb]'}`}>
                 {/* ── Sidebar header ── */}
-                <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center justify-between px-4 pb-1 pt-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg ${isDark ? 'bg-amber-300/15' : 'bg-amber-100'}`}>
-                            <img src={cataLogo} alt="CATA" className="h-4 w-4 object-contain" />
+                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-white/8' : 'bg-slate-200/70'}`}>
+                            <img src={cataLogo} alt="CATA" className="h-3.5 w-3.5 object-contain" />
                         </div>
-                        <span className={`truncate text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        <span className={`truncate text-sm font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
                             {isAgencyFlowActive ? 'Agency Brief' : (selectedService?.name || 'Catalance AI')}
                         </span>
                     </div>
                     <button
                         type="button"
                         onClick={toggleSidebarSize}
-                        className={`h-7 w-7 rounded-md flex items-center justify-center ${isDark ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
+                        className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors ${isDark ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}
                         title="Close sidebar"
                     >
                         <PanelLeftClose className="h-4 w-4" />
@@ -5187,47 +6074,45 @@ const GuestAIDemo = () => {
                 </div>
 
                 {/* ── Back to services ── */}
-                <div className={`px-3 pb-2 flex gap-1.5 ${isDark ? 'border-b border-white/[0.06]' : 'border-b border-slate-100'}`}>
-                    <button
-                        type="button"
-                        onClick={handleBackToServices}
-                        className={`flex flex-1 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
-                        title="Back to services"
-                    >
-                        <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-                        Back
-                    </button>
+                <div className="flex flex-col gap-1 px-3 pb-3 pt-2">
                     <button
                         type="button"
                         onClick={() => {
                             void handleRestartCurrentFlow();
                         }}
-                        className={`flex flex-1 items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${isDark ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors ${isDark ? 'text-slate-100 hover:bg-white/4' : 'text-slate-800 hover:bg-slate-200/40'}`}
                         title="Start a new chat"
                     >
                         <MessageSquarePlus className="h-3.5 w-3.5 shrink-0" />
                         New Chat
                     </button>
+                    <button
+                        type="button"
+                        onClick={handleBackToServices}
+                        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] transition-colors ${isDark ? 'text-slate-400 hover:bg-white/4 hover:text-white' : 'text-slate-500 hover:bg-slate-200/40 hover:text-slate-800'}`}
+                        title="Back to services"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+                        Back
+                    </button>
                 </div>
 
                 {/* ── Scrollable content ── */}
-                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
                     {/* ── Proposals section ── */}
-                    <div className="mb-1 px-3">
+                    <div className="mb-0.5">
                         <button
                             type="button"
                             onClick={() => toggleSidebarDropdown('proposals')}
-                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                            className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                         >
-                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-50 text-amber-600'}`}>
-                                <Sparkles className="h-3 w-3" />
-                            </div>
-                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                            <Sparkles className={`h-4 w-4 shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                            <span className={`flex-1 text-left text-[13px] font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
                                 Proposals
                             </span>
                             <div className="flex items-center gap-2">
-                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-primary/25 text-primary' : 'bg-amber-100 text-amber-700'}`}>
+                                <span className={`shrink-0 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                     {generatedProposals.length}
                                 </span>
                                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.proposals ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
@@ -5235,29 +6120,26 @@ const GuestAIDemo = () => {
                         </button>
                         {sidebarDropdowns.proposals ? (
                             generatedProposals.length === 0 ? (
-                                <div className="px-2 pb-2 pt-1">
+                                <div className="px-9 pb-2 pt-1">
                                     <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No proposals yet. Chat with CATA AI to generate one.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-1 px-1 pb-1">
+                                <div className="space-y-0.5 pb-1 pl-8 pr-1">
                                     {generatedProposals.map((proposal, index) => (
                                         <button
                                             key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
                                             type="button"
                                             onClick={() => handleOpenProposalPreview(proposal)}
-                                            className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${isDark ? 'border-white/10 bg-white/[0.03] hover:bg-white/10' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+                                            className={`w-full rounded-lg px-3 py-1.5 text-left transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                                         >
-                                            <p className={`truncate text-sm font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                            <p className={`truncate text-[13px] font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                                                 {proposal.projectTitle || 'AI Proposal'}
                                             </p>
                                             {(proposal.budget || proposal.timeline) ? (
-                                                <p className={`mt-1 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                <p className={`mt-1 text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                                     {[proposal.budget && `Budget: ${proposal.budget}`, proposal.timeline && `Timeline: ${proposal.timeline}`].filter(Boolean).join(' | ')}
                                                 </p>
                                             ) : null}
-                                            <p className={`mt-1 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
-                                            </p>
                                         </button>
                                     ))}
                                 </div>
@@ -5266,23 +6148,21 @@ const GuestAIDemo = () => {
                     </div>
 
                     {/* ── Divider ── */}
-                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
+                    <div className="h-3" />
 
                     {/* ── Saved links section ── */}
-                    <div className="mb-1 px-3">
+                    <div className="mb-0.5">
                         <button
                             type="button"
                             onClick={() => toggleSidebarDropdown('links')}
-                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                            className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                         >
-                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                <Globe className="h-3 w-3" />
-                            </div>
-                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                            <Globe className={`h-4 w-4 shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                            <span className={`flex-1 text-left text-[13px] font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
                                 Saved Links
                             </span>
                             <div className="flex items-center gap-2">
-                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                <span className={`shrink-0 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                     {sharedLinks.length}
                                 </span>
                                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.links ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
@@ -5290,25 +6170,22 @@ const GuestAIDemo = () => {
                         </button>
                         {sidebarDropdowns.links ? (
                             sharedLinks.length === 0 ? (
-                                <div className="px-2 pb-2 pt-1">
+                                <div className="px-9 pb-2 pt-1">
                                     <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Links shared in this chat will appear here.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-1 px-1 pb-1">
+                                <div className="space-y-0.5 pb-1 pl-8 pr-1">
                                     {sharedLinks.map((linkEntry) => (
                                         <a
                                             key={linkEntry.id}
                                             href={linkEntry.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                                            className={`flex items-start gap-2 rounded-lg px-3 py-1.5 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                                         >
-                                            <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
-                                                <Globe className="h-3.5 w-3.5" />
-                                            </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{linkEntry.label}</p>
-                                                <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{linkEntry.url}</p>
+                                                <p className={`truncate text-[13px] font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{linkEntry.label}</p>
+                                                <p className={`truncate text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{linkEntry.url}</p>
                                             </div>
                                         </a>
                                     ))}
@@ -5317,20 +6194,18 @@ const GuestAIDemo = () => {
                         ) : null}
                     </div>
 
-                    <div className="mb-1 px-3">
+                    <div className="mb-0.5">
                         <button
                             type="button"
                             onClick={() => toggleSidebarDropdown('files')}
-                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                            className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                         >
-                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                <FileText className="h-3 w-3" />
-                            </div>
-                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
+                            <FileText className={`h-4 w-4 shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                            <span className={`flex-1 text-left text-[13px] font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
                                 Shared Files & Media
                             </span>
                             <div className="flex items-center gap-2">
-                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                <span className={`shrink-0 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                     {sharedAttachments.length}
                                 </span>
                                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.files ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
@@ -5338,25 +6213,25 @@ const GuestAIDemo = () => {
                         </button>
                         {sidebarDropdowns.files ? (
                             sharedAttachments.length === 0 ? (
-                                <div className="px-2 pb-2 pt-1">
+                                <div className="px-9 pb-2 pt-1">
                                     <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Documents, PDFs, and images you upload will appear here.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-1 px-1 pb-1">
+                                <div className="space-y-0.5 pb-1 pl-8 pr-1">
                                     {sharedAttachments.map((attachment) => (
                                         <a
                                             key={attachment.id}
                                             href={attachment.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className={`flex items-start gap-2 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+                                            className={`flex items-start gap-2 rounded-lg px-3 py-1.5 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/40'}`}
                                         >
-                                            <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                                            <div className={`mt-0.5 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                                 {attachment.isImage ? <ImageIcon className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{attachment.name}</p>
-                                                <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                <p className={`truncate text-[13px] font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{attachment.name}</p>
+                                                <p className={`truncate text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                                     {[attachment.kindLabel, formatBytes(attachment.size)].filter(Boolean).join(' | ')}
                                                 </p>
                                             </div>
@@ -5367,91 +6242,68 @@ const GuestAIDemo = () => {
                         ) : null}
                     </div>
 
-                    <div className={`mx-4 my-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`} />
-                    <div className="mb-1 px-3">
-                        <button
-                            type="button"
-                            onClick={() => toggleSidebarDropdown('chats')}
-                            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-                        >
-                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                <MessageSquarePlus className="h-3 w-3" />
+                    <div className="h-5" />
+                    <p className={`px-2 pb-2 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        Recents
+                    </p>
+                    <div className="mb-1">
+                        {visiblePreviousChats.length === 0 ? (
+                            <div className="px-2 pb-2">
+                                <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>No previous chats.</p>
                             </div>
-                            <span className={`flex-1 text-left text-sm font-medium ${isDark ? 'text-white' : 'text-slate-600'}`}>
-                                Recent Chats
-                            </span>
-                            <div className="flex items-center gap-2">
-                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                    {visiblePreviousChats.length}
-                                </span>
-                                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sidebarDropdowns.chats ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                            </div>
-                        </button>
-                        {sidebarDropdowns.chats ? (
-                            visiblePreviousChats.length === 0 ? (
-                                <div className="px-2 pb-2 pt-1">
-                                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>No previous chats.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-0.5 px-1 pb-1">
-                                    {visiblePreviousChats.map((chat) => {
-                                        const isCurrent = chat.sessionId === sessionId;
-                                        const isLoadingHistory = loadingHistoryId === chat.sessionId;
-                                        const brandName = chat.businessName || '';
-                                        const preview = brandName
-                                            ? `${chat.serviceName || 'Service'} - ${brandName}`
-                                            : (chat.preview || chat.serviceName || 'No preview');
-                                        return (
-                                            <div
-                                                key={chat.sessionId}
-                                                className={`group relative flex items-center gap-1.5 rounded-md px-2 py-2 transition-colors ${isCurrent
-                                                    ? isDark ? 'bg-white/10' : 'bg-slate-100'
-                                                    : isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'
-                                                    }`}
+                        ) : (
+                            <div className="space-y-0.5 px-2 pb-1">
+                                {visiblePreviousChats.map((chat) => {
+                                    const isCurrent = chat.sessionId === sessionId;
+                                    const isLoadingHistory = loadingHistoryId === chat.sessionId;
+                                    const brandName = chat.businessName || '';
+                                    const preview = brandName
+                                        ? `${chat.serviceName || 'Service'} - ${brandName}`
+                                        : (chat.preview || chat.serviceName || 'No preview');
+                                    return (
+                                        <div
+                                            key={chat.sessionId}
+                                            className={`group relative flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/35'}`}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => handleLoadPreviousChat(chat)}
+                                                disabled={isLoadingHistory || isCurrent}
+                                                className="min-w-0 flex-1 text-left outline-none"
                                             >
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleLoadPreviousChat(chat)}
-                                                    disabled={isLoadingHistory || isCurrent}
-                                                    className="min-w-0 flex-1 text-left outline-none"
-                                                >
-                                                    <p className={`truncate text-sm font-medium transition-colors ${isCurrent
-                                                        ? isDark ? 'text-amber-300' : 'text-amber-600'
-                                                        : isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-600 group-hover:text-slate-900'
-                                                        }`}>
-                                                        {isLoadingHistory ? 'Loading...' : preview}
-                                                    </p>
-                                                    <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                        {formatPreviousChatTime(chat.updatedAt)}
-                                                    </p>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => handleDeletePreviousChat(e, chat)}
-                                                    disabled={isLoadingHistory}
-                                                    className={`shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 ${isDark ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}
-                                                    aria-label="Delete chat"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )
-                        ) : null}
+                                                <p className={`truncate text-[13px] font-normal transition-colors ${isCurrent
+                                                    ? isDark ? 'text-white' : 'text-slate-900'
+                                                    : isDark ? 'text-slate-300 group-hover:text-slate-100' : 'text-slate-700 group-hover:text-slate-900'
+                                                    }`}>
+                                                    {isLoadingHistory ? 'Loading...' : preview}
+                                                </p>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleDeletePreviousChat(e, chat)}
+                                                disabled={isLoadingHistory}
+                                                className={`shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 ${isDark ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}
+                                                aria-label="Delete chat"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 {/* ── Bottom: user / login ── */}
-                <div className={`shrink-0 border-t px-3 py-3 ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                <div className={`shrink-0 border-t px-3 py-3 ${isDark ? 'border-white/5' : 'border-slate-200/70'}`}>
                     {isAuthLoading ? (
                         <div className="flex items-center gap-2 px-2">
                             <span className={`h-2 w-2 animate-pulse rounded-full ${isDark ? 'bg-amber-400/50' : 'bg-amber-500/50'}`} />
                             <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Checking...</p>
                         </div>
                     ) : isUserLoggedIn ? (
-                        <div className={`flex items-center gap-3 rounded-md px-2 py-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
+                        <div className={`flex items-center gap-3 rounded-xl px-2 py-2 ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/35'}`}>
                             <div className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-white/15 bg-white/10' : 'border-slate-200 bg-slate-100'}`}>
                                 {userAvatar
                                     ? <img src={userAvatar} alt={userDisplayName} className="h-full w-full object-cover" />
@@ -5459,15 +6311,15 @@ const GuestAIDemo = () => {
                                 }
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className={`truncate text-sm font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>{userDisplayName}</p>
-                                <p className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{userDisplayEmail || 'Authenticated'}</p>
+                                <p className={`truncate text-[13px] font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>{userDisplayName}</p>
+                                <p className={`truncate text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{userDisplayEmail || 'Authenticated'}</p>
                             </div>
                         </div>
                     ) : (
                         <button
                             type="button"
                             onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
-                            className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors ${isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-slate-100'}`}
+                            className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-[13px] font-medium transition-colors ${isDark ? 'text-slate-300 hover:bg-white/4' : 'text-slate-600 hover:bg-slate-200/35'}`}
                         >
                             <LogIn className="h-4 w-4 shrink-0" />
                             Login to save progress
@@ -5742,7 +6594,7 @@ const GuestAIDemo = () => {
 
                 {shouldShowTextInput && (
                     <div
-                        className={`shrink-0 w-full px-[clamp(0.75rem,4vw,1rem)] pt-[clamp(0.75rem,4vw,1.5rem)] sm:px-5 lg:px-8 transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-[20rem]' : ''} ${isInitialScreen ? 'md:hidden' : ''} bg-gradient-to-t ${isDark ? 'from-[#212121] via-[#212121]/90 to-transparent' : 'from-[#F9F9F9] via-[#F9F9F9]/90 to-transparent'}`}
+                        className={`shrink-0 w-full px-[clamp(0.75rem,4vw,1rem)] pt-[clamp(0.75rem,4vw,1.5rem)] sm:px-5 lg:px-8 transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''} ${isInitialScreen ? 'md:hidden' : ''} bg-gradient-to-t ${isDark ? 'from-[#212121] via-[#212121]/90 to-transparent' : 'from-[#F9F9F9] via-[#F9F9F9]/90 to-transparent'}`}
                         style={{ paddingBottom: 'max(1.25rem, calc(env(safe-area-inset-bottom) + 0.5rem))' }}
                     >
                         <div className="mx-auto w-full max-w-4xl space-y-2.5">
@@ -5995,3 +6847,5 @@ const GuestAIDemo = () => {
 };
 
 export default GuestAIDemo;
+
+

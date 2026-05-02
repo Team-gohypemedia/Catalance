@@ -10,12 +10,33 @@ import {
   useSpring,
 } from "framer-motion";
 
-import React, { useState } from "react";
+import React from "react";
+import { Link } from "react-router-dom";
 import logo from "@/assets/logos/logo.svg";
 
 const DESKTOP_NAV_SCROLL_RANGE = 180;
 const DESKTOP_NAV_EXPANDED_MAX_WIDTH = "80rem";
 const DESKTOP_NAV_COLLAPSED_MAX_WIDTH = "56rem";
+
+const normalizePathname = (value = "") => {
+  const [pathname] = String(value || "").trim().split(/[?#]/);
+  const normalized = pathname.replace(/\/+$/, "");
+  return normalized || "/";
+};
+
+const isNavItemActive = (currentPath = "", targetPath = "") => {
+  const normalizedCurrentPath = normalizePathname(currentPath);
+  const normalizedTargetPath = normalizePathname(targetPath);
+
+  if (normalizedTargetPath === "/") {
+    return normalizedCurrentPath === "/";
+  }
+
+  return (
+    normalizedCurrentPath === normalizedTargetPath ||
+    normalizedCurrentPath.startsWith(`${normalizedTargetPath}/`)
+  );
+};
 
 export const Navbar = ({ children, className, isHome, isDark }) => {
   const { scrollY } = useScroll();
@@ -166,37 +187,52 @@ export const NavBody = ({
   );
 };
 
-export const NavItems = ({ items, className, onItemClick, textColor }) => {
-  const [hovered, setHovered] = useState(null);
-
+export const NavItems = ({
+  items,
+  className,
+  onItemClick,
+  textColor,
+  currentPath = "",
+}) => {
   return (
-    <motion.div
-      onMouseLeave={() => setHovered(null)}
+    <div
       className={cn(
         "hidden min-w-0 flex-1 flex-row items-center justify-center gap-1 px-4 text-sm font-medium transition duration-200 lg:flex",
         className
       )}
     >
-      {items.map((item, idx) => (
-        <a
-          onMouseEnter={() => setHovered(idx)}
-          onClick={onItemClick}
-          className="relative rounded-full px-3 py-2 transition-colors"
-          key={`link-${idx}`}
-          href={item.link}
-        >
-          {hovered === idx && (
-            <motion.div
-              layoutId="hovered"
-              className="absolute inset-0 h-full w-full rounded-full bg-gray-100 dark:bg-neutral-800"
-            />
-          )}
-          <span className="relative z-20">
-            <motion.span style={{ color: textColor }}>{item.name}</motion.span>
-          </span>
-        </a>
-      ))}
-    </motion.div>
+      {items.map((item, idx) => {
+        const isActive = isNavItemActive(currentPath, item.link);
+
+        return (
+          <Link
+            aria-current={isActive ? "page" : undefined}
+            data-active={isActive ? "true" : "false"}
+            key={`link-${idx}`}
+            onClick={onItemClick}
+            to={item.link}
+            className={cn(
+              "relative inline-flex items-center justify-center rounded-full px-3 py-2 transition-colors duration-200",
+              isActive
+                ? "bg-primary text-background shadow-[inset_0_0_0_1px_rgba(255,193,7,0.32)]"
+                : "text-foreground/85 hover:bg-white/5 hover:text-foreground dark:hover:bg-neutral-800/70",
+            )}
+          >
+            <span className="relative z-20">
+              <motion.span
+                style={{ color: isActive ? "var(--background)" : textColor }}
+                className={cn(
+                  "transition-colors duration-200",
+                  isActive && "font-semibold text-background",
+                )}
+              >
+                {item.name}
+              </motion.span>
+            </span>
+          </Link>
+        );
+      })}
+    </div>
   );
 };
 

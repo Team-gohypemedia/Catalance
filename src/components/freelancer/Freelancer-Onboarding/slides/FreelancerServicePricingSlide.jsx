@@ -2,6 +2,13 @@ import {
   ServiceInfoStepper,
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
+import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
+
+const ONBOARDING_PAGE_TITLE_CLASS =
+  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
+const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
 const DELIVERY_TIMELINE_OPTIONS = [
   { value: "1_week", label: "1 Week" },
@@ -23,15 +30,21 @@ const FreelancerServicePricingSlide = ({
   servicePricingForm,
   onServicePricingFieldChange,
   onServiceStepChange,
+  servicePricingValidationErrors = {},
 }) => {
   const serviceName = currentServiceName || "Service";
+  const descriptionError = String(servicePricingValidationErrors.description || "").trim();
+  const deliveryTimelineError = String(
+    servicePricingValidationErrors.deliveryTimeline || "",
+  ).trim();
+  const priceRangeError = String(servicePricingValidationErrors.priceRange || "").trim();
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
       <div className="w-full space-y-8">
         {/* Heading */}
         <div className="text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Set Your </span>
             <span className="text-primary">{serviceName}</span>
             <span> Service Price</span>
@@ -47,20 +60,20 @@ const FreelancerServicePricingSlide = ({
         </div>
 
         {/* Step Content */}
-        <div className="w-full space-y-7">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+        <div className="w-full space-y-5">
+          <div>
+            <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
               Set Your Price
             </h2>
-            <p className="text-sm text-muted-foreground sm:text-base">
+            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
               Provide the details of the service you will offer.
             </p>
           </div>
 
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
             {/* Service Description */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Service Description
               </label>
               <textarea
@@ -70,13 +83,22 @@ const FreelancerServicePricingSlide = ({
                 }
                 placeholder="Description..."
                 rows={4}
-                className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className={cn(
+                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  descriptionError
+                    ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                    : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                )}
+                aria-invalid={Boolean(descriptionError)}
               />
+              {descriptionError ? (
+                <p className="mt-1 text-sm text-destructive">{descriptionError}</p>
+              ) : null}
             </div>
 
             {/* Delivery Timeline */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Delivery Timeline
               </label>
               <CustomSelect
@@ -86,12 +108,18 @@ const FreelancerServicePricingSlide = ({
                 }
                 options={DELIVERY_TIMELINE_OPTIONS}
                 placeholder="Select delivery time"
+                hasError={Boolean(deliveryTimelineError)}
               />
+              {deliveryTimelineError ? (
+                <p className="mt-1 text-sm text-destructive">
+                  {deliveryTimelineError}
+                </p>
+              ) : null}
             </div>
 
             {/* Starting Price */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Starting Price
               </label>
               <div className="relative">
@@ -102,12 +130,21 @@ const FreelancerServicePricingSlide = ({
                   value={servicePricingForm.priceRange || ""}
                   onChange={(e) => {
                     const digitsOnly = e.target.value.replace(/\D/g, "");
-                    onServicePricingFieldChange("priceRange", digitsOnly);
+                  onServicePricingFieldChange("priceRange", digitsOnly);
                   }}
                   placeholder="Enter starting price"
-                  className="w-full rounded-xl border border-white/10 bg-card pl-8 pr-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                  className={cn(
+                    "w-full rounded-xl border bg-card pl-8 pr-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                    priceRangeError
+                      ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                      : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                  )}
+                  aria-invalid={Boolean(priceRangeError)}
                 />
               </div>
+              {priceRangeError ? (
+                <p className="mt-1 text-sm text-destructive">{priceRangeError}</p>
+              ) : null}
             </div>
           </div>
         </div>

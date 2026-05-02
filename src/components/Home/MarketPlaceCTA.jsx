@@ -220,13 +220,13 @@ const MarketPlaceCTA = () => {
           </div>
         </div>
 
-        <div className="grid gap-10 border-t border-white/10 pt-10 text-center md:grid-cols-3 md:gap-8 lg:pt-12">
+        <div className="mt-10 grid grid-cols-3 gap-3 border-t border-white/10 pt-10 text-center sm:mt-0 sm:gap-4 md:gap-8 lg:pt-12">
           {MARKETPLACE_STATS.map((stat) => (
-            <div key={stat.label} className="mx-auto max-w-xs">
-              <p className="text-sm font-medium text-white/88 sm:text-base">
+            <div key={stat.label} className="min-w-0">
+              <p className="text-[0.65rem] font-medium leading-tight text-white/88 sm:text-base">
                 {stat.label}
               </p>
-              <p className="mt-4 text-[2.6rem] font-medium leading-none tracking-tight text-white sm:text-[3.4rem]">
+              <p className="mt-3 text-[clamp(1.35rem,8vw,3.4rem)] font-medium leading-none tracking-tight text-white">
                 {stat.value}
               </p>
             </div>

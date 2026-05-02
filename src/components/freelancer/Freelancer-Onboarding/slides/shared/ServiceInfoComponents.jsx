@@ -3,6 +3,9 @@ import { createPortal } from "react-dom";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 
 import { cn } from "@/shared/lib/utils";
+import {
+  ONBOARDING_STEP_LABEL_CLASS,
+} from "../../typography";
 
 /* ──────────────────── Service Info Steps ──────────────────── */
 
@@ -44,16 +47,20 @@ const StepperItem = ({
       aria-current={isActive ? "step" : undefined}
       aria-label={`${step.step}. ${step.label}`}
     >
-      <span className="hidden shrink-0 text-xs font-bold sm:inline">{step.step}</span>
       <span
         className={cn(
           "min-w-0 whitespace-nowrap text-center opacity-100 transition-[opacity,color] duration-300 ease-out",
+          ONBOARDING_STEP_LABEL_CLASS,
           isActive
-            ? "max-w-none whitespace-nowrap text-primary-foreground"
-            : "max-w-full truncate text-inherit",
+            ? "max-w-none whitespace-nowrap text-sm font-medium text-primary-foreground"
+            : "max-w-full truncate text-sm font-normal text-inherit",
         )}
       >
-        {step.label}
+        {/* Mobile: active -> show label, inactive -> show step number. Desktop (sm+): always show full label. */}
+        <span className={cn(isActive ? "block sm:hidden" : "block sm:hidden")}>
+          {isActive ? step.label : String(step.step)}
+        </span>
+        <span className="hidden sm:inline">{step.label}</span>
       </span>
     </button>
   </div>
@@ -120,6 +127,7 @@ export const CustomSelect = ({
   onChange,
   options,
   placeholder,
+  hasError = false,
   popupMode = "attached",
   popupClassName = "",
   isSearchable = false,
@@ -273,7 +281,7 @@ export const CustomSelect = ({
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={searchPlaceholder}
-              className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
             />
           </div>
         ) : null}
@@ -320,12 +328,15 @@ export const CustomSelect = ({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-card px-4 text-sm transition-colors",
-          value ? "text-white" : "text-white/40",
-          isOpen && "border-primary/50 ring-1 ring-primary/20"
+          "flex h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 transition-colors",
+          value ? "text-white" : "text-muted-foreground",
+          hasError
+            ? "border-destructive/70 ring-1 ring-destructive/20"
+            : isOpen && "border-primary/50 ring-1 ring-primary/20",
         )}
+        aria-invalid={hasError}
       >
-        <span>{selectedOption?.label || placeholder}</span>
+        <span className="text-[14px] leading-5">{selectedOption?.label || placeholder}</span>
         <ChevronDown
           className={cn(
             "h-4 w-4 text-white/40 transition-transform duration-200",

@@ -308,7 +308,7 @@ export default function ProfileImageCropDialog({
   const previousLayoutRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [imageMeta, setImageMeta] = useState({ width: 0, height: 0 });
-  const [stageSize, setStageSize] = useState(0);
+  const [stageBounds, setStageBounds] = useState({ width: 0, height: 0 });
   const [crop, setCrop] = useState(null);
   const [dragState, setDragState] = useState(null);
   const [error, setError] = useState("");
@@ -318,7 +318,7 @@ export default function ProfileImageCropDialog({
     if (!open || !file) {
       setPreviewUrl("");
       setImageMeta({ width: 0, height: 0 });
-      setStageSize(0);
+      setStageBounds({ width: 0, height: 0 });
       setCrop(null);
       setDragState(null);
       setError("");
@@ -346,11 +346,16 @@ export default function ProfileImageCropDialog({
     if (!open) return undefined;
 
     const measureStage = () => {
-      const nextSize = Math.round(
-        stageRef.current?.getBoundingClientRect?.().width || 0
-      );
-      if (nextSize > 0) {
-        setStageSize(nextSize);
+      const rect = stageRef.current?.getBoundingClientRect?.();
+      const nextWidth = Math.round(rect?.width || 0);
+      const nextHeight = Math.round(rect?.height || 0);
+
+      if (nextWidth > 0 && nextHeight > 0) {
+        setStageBounds((currentBounds) =>
+          currentBounds.width === nextWidth && currentBounds.height === nextHeight
+            ? currentBounds
+            : { width: nextWidth, height: nextHeight }
+        );
       }
     };
 
@@ -374,13 +379,23 @@ export default function ProfileImageCropDialog({
   }, [open, previewUrl]);
 
   const imageLayout = useMemo(() => {
-    if (!stageSize || !imageMeta.width || !imageMeta.height) return null;
+    if (
+      !stageBounds.width ||
+      !stageBounds.height ||
+      !imageMeta.width ||
+      !imageMeta.height
+    ) {
+      return null;
+    }
 
-    const scale = Math.min(stageSize / imageMeta.width, stageSize / imageMeta.height);
+    const scale = Math.max(
+      stageBounds.width / imageMeta.width,
+      stageBounds.height / imageMeta.height
+    );
     const width = imageMeta.width * scale;
     const height = imageMeta.height * scale;
-    const left = (stageSize - width) / 2;
-    const top = (stageSize - height) / 2;
+    const left = (stageBounds.width - width) / 2;
+    const top = (stageBounds.height - height) / 2;
 
     return {
       scale,
@@ -391,7 +406,7 @@ export default function ProfileImageCropDialog({
       right: left + width,
       bottom: top + height,
     };
-  }, [imageMeta.height, imageMeta.width, stageSize]);
+  }, [imageMeta.height, imageMeta.width, stageBounds.height, stageBounds.width]);
 
   useEffect(() => {
     if (!imageLayout) return;
@@ -464,6 +479,14 @@ export default function ProfileImageCropDialog({
       imageMeta.height &&
       !isApplying
   );
+  const previewAspectRatio =
+    imageMeta.width && imageMeta.height
+      ? `${imageMeta.width} / ${imageMeta.height}`
+      : "1 / 1";
+  const stageMaxWidth =
+    imageMeta.width && imageMeta.height
+      ? Math.min(520, Math.round(360 * (imageMeta.width / imageMeta.height)))
+      : 420;
 
   const handleApply = async () => {
     if (!canApply || !previewImageRef.current) return;
@@ -510,9 +533,9 @@ export default function ProfileImageCropDialog({
     >
       <DialogContent
         showCloseButton={!isApplying}
-        className="max-w-3xl gap-0 overflow-hidden border-border/70 p-0 sm:max-w-3xl"
+        className="max-w-2xl gap-0 overflow-hidden border-border/70 p-0 sm:max-w-2xl"
       >
-        <div className="space-y-6 p-6 sm:p-7">
+        <div className="space-y-4 p-5 sm:p-6">
           <DialogHeader className="text-left">
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
               <Crop className="h-3.5 w-3.5" />
@@ -526,10 +549,14 @@ export default function ProfileImageCropDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-3xl border border-border/60 bg-muted/20 p-4 sm:p-5">
+          <div className="rounded-2xl border border-border/60 bg-muted/20 p-3 sm:p-4">
             <div
               ref={stageRef}
-              className="relative mx-auto aspect-square w-full max-w-[520px] overflow-hidden rounded-[28px] border border-border/60 bg-black/90"
+              className="relative mx-auto w-full overflow-hidden border border-border/60 bg-black/90"
+              style={{
+                aspectRatio: previewAspectRatio,
+                maxWidth: `${stageMaxWidth}px`,
+              }}
             >
               {previewUrl ? (
                 <>
@@ -540,7 +567,7 @@ export default function ProfileImageCropDialog({
                     draggable={false}
                     onLoad={handleImageLoad}
                     onError={() => setError("Failed to load image.")}
-                    className={imageLayout ? "pointer-events-none absolute select-none" : "h-full w-full select-none object-contain"}
+                    className={imageLayout ? "pointer-events-none absolute block select-none" : "block h-full w-full select-none object-cover"}
                     style={
                       imageLayout
                         ? {

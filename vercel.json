@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/webhooks/whatsapp",
+      "destination": "/api/webhooks/whatsapp"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "https://catalance-backend.vercel.app/api/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

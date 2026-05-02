@@ -24,6 +24,10 @@ import {
 } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
+  ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS,
+  ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS,
+} from "./typography";
+import {
   COUNTRY_OPTIONS,
   LANGUAGE_OPTIONS,
   resolveStateOptionsForCountry,
@@ -34,6 +38,8 @@ import {
   createEmptyServiceCaseStudy,
   createEmptyServiceDraft,
   deriveDraftSkillsAndTechnologies,
+  getServiceStepValidationErrors,
+  getServiceStepValidationMessage,
   getServiceCatalogMeta,
   normalizeServiceDraft,
   normalizeStringArray as normalizeDraftSkillList,
@@ -41,8 +47,8 @@ import {
   resolveServiceKey,
   serializeServiceDraft,
 } from "./service-details";
-
-import { FREELANCER_ONBOARDING_SLIDES } from "./constants";
+import { AGENCY_ONBOARDING_PATH } from "@/shared/lib/dashboard-preference";
+import { getOnboardingSlides as getOnboardingSlideSet } from "./constants";
 import FreelancerWelcomeSlide from "./slides/FreelancerWelcomeSlide";
 import FreelancerWorkPreferenceSlide from "./slides/FreelancerWorkPreferenceSlide";
 import FreelancerIndividualProofSlide from "./slides/FreelancerIndividualProofSlide";
@@ -280,7 +286,7 @@ const buildLocationLabel = ({ state, country }) =>
     .filter(Boolean)
     .join(", ");
 
-const ONBOARDING_DRAFT_STORAGE_VERSION = 1;
+const ONBOARDING_DRAFT_STORAGE_VERSION = 2;
 const ONBOARDING_DRAFT_STORAGE_PREFIX = "catalance.freelancer-onboarding";
 
 const buildOnboardingDraftStorageKey = (userId) => {
@@ -743,6 +749,8 @@ const FreelancerOnboardingShell = () => {
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [, setProfileError] = useState("");
   const [basicProfileErrors, setBasicProfileErrors] = useState({});
+  const [serviceValidationErrorsByStep, setServiceValidationErrorsByStep] =
+    useState({});
   const [stateOptions, setStateOptions] = useState([]);
   const [isStateOptionsLoading, setIsStateOptionsLoading] = useState(false);
   const [pendingProfilePhotoFile, setPendingProfilePhotoFile] = useState(null);
@@ -766,10 +774,14 @@ const FreelancerOnboardingShell = () => {
     [user?.id],
   );
 
-  const totalSlides = FREELANCER_ONBOARDING_SLIDES.length;
+  const onboardingSlides = useMemo(
+    () => getOnboardingSlideSet(selectedWorkPreference),
+    [selectedWorkPreference],
+  );
+
+  const totalSlides = onboardingSlides.length;
   const currentSlide =
-    FREELANCER_ONBOARDING_SLIDES[currentSlideIndex] ||
-    FREELANCER_ONBOARDING_SLIDES[0];
+    onboardingSlides[currentSlideIndex] || onboardingSlides[0];
   const ActiveSlide = slideRegistry[currentSlide.id];
   const progressValue =
     currentSlide.progressValue ??
@@ -788,6 +800,12 @@ const FreelancerOnboardingShell = () => {
     isServiceVisualsSlide ||
     isCaseStudySlide ||
     isServiceReviewSlide;
+  const isServiceSectionSlide =
+    isServiceInfoSlide ||
+    isServicePricingSlide ||
+    isServiceVisualsSlide ||
+    isCaseStudySlide ||
+    isServiceReviewSlide;
   const isAcceptInProgressProjectsSlide =
     currentSlide.id === "acceptInProgressProjects";
   const isDeliveryPolicySlide = currentSlide.id === "deliveryPolicy";
@@ -795,7 +813,7 @@ const FreelancerOnboardingShell = () => {
   const isProfileActionFooter = currentSlide.footerMode === "profileActions";
   const isFooterHidden = currentSlide.footerMode === "hidden";
   const isBaseContinueDisabled = isWorkPreferenceSlide
-    ? selectedWorkPreference !== "individual"
+    ? !selectedWorkPreference
     : isServicesSlide
       ? selectedServices.length === 0
       : isAcceptInProgressProjectsSlide
@@ -805,32 +823,32 @@ const FreelancerOnboardingShell = () => {
       : isCommunicationPolicySlide
         ? !communicationPolicyReady
       : false;
-  const serviceSetupSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+  const serviceSetupSlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "serviceSetup",
   );
-  const serviceInfoSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+  const serviceInfoSlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "serviceInfo",
   );
-  const serviceReviewSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+  const serviceReviewSlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "serviceReview",
   );
-  const servicePricingSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+  const servicePricingSlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "servicePricing",
   );
-  const serviceVisualsSlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+  const serviceVisualsSlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "serviceVisuals",
   );
-  const caseStudySlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+  const caseStudySlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "caseStudy",
   );
   const acceptInProgressProjectsSlideIndex =
-    FREELANCER_ONBOARDING_SLIDES.findIndex(
+    onboardingSlides.findIndex(
       (slide) => slide.id === "acceptInProgressProjects",
     );
-  const deliveryPolicySlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+  const deliveryPolicySlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "deliveryPolicy",
   );
-  const communicationPolicySlideIndex = FREELANCER_ONBOARDING_SLIDES.findIndex(
+  const communicationPolicySlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "communicationPolicy",
   );
   const currentServiceKey = selectedServices[currentServiceIndex] || "";
@@ -861,6 +879,12 @@ const FreelancerOnboardingShell = () => {
 
     const storedDraft = readStoredOnboardingDraft(onboardingDraftStorageKey);
     if (storedDraft) {
+      const storedWorkPreference = String(
+        storedDraft.selectedWorkPreference || "",
+      ).trim();
+      const normalizedStoredWorkPreference =
+        storedWorkPreference === "individual" ? storedWorkPreference : "";
+      const storedSlides = getOnboardingSlideSet(normalizedStoredWorkPreference);
       const nextServices = normalizeDraftSkillList(
         (Array.isArray(storedDraft.selectedServices)
           ? storedDraft.selectedServices
@@ -869,11 +893,9 @@ const FreelancerOnboardingShell = () => {
       );
 
       setCurrentSlideIndex(
-        clampSlideIndex(storedDraft.currentSlideIndex, totalSlides),
+        clampSlideIndex(storedDraft.currentSlideIndex, storedSlides.length),
       );
-      setSelectedWorkPreference(
-        String(storedDraft.selectedWorkPreference || "").trim(),
-      );
+      setSelectedWorkPreference(normalizedStoredWorkPreference);
       setBasicProfileForm(
         sanitizeBasicProfileFormForDraft(storedDraft.basicProfileForm),
       );
@@ -983,7 +1005,9 @@ const FreelancerOnboardingShell = () => {
       resume: buildRemoteResumeFile(existingResume) || currentForm.resume,
     }));
     setSelectedWorkPreference(
-      String(profileDetails.role || "").trim(),
+      String(profileDetails.role || "").trim() === "individual"
+        ? "individual"
+        : "",
     );
     setAcceptInProgressProjectsValue(hydratedAcceptInProgressProjects);
     setDeliveryPolicyAccepted(hydratedDeliveryPolicyAccepted ?? false);
@@ -1616,103 +1640,7 @@ const FreelancerOnboardingShell = () => {
     currentCaseStudyForm?.title,
   ]);
 
-  const isContinueDisabled = isBaseContinueDisabled
-    ? true
-    : isServiceInfoSlide
-      ? isServiceInfoIncomplete
-      : isServicePricingSlide
-        ? isServicePricingIncomplete
-        : isServiceVisualsSlide
-          ? isServiceVisualsIncomplete
-          : isCaseStudySlide
-            ? isCaseStudyIncomplete
-            : false;
-
-  const handleActiveCaseStudyChange = useCallback(
-    (caseStudyId) => {
-      const normalizedCaseStudyId = String(caseStudyId || "").trim();
-      if (!normalizedCaseStudyId) {
-        return;
-      }
-
-      updateCurrentServiceDraft((draft) => ({
-        ...draft,
-        activeCaseStudyId: normalizedCaseStudyId,
-      }));
-    },
-    [updateCurrentServiceDraft],
-  );
-
-  const handleAddCaseStudy = useCallback(() => {
-    const nextCaseStudy = createEmptyServiceCaseStudy();
-
-    updateCurrentServiceDraft((draft) => ({
-      ...draft,
-      caseStudies: [...draft.caseStudies, nextCaseStudy],
-      activeCaseStudyId: nextCaseStudy.id,
-    }));
-  }, [updateCurrentServiceDraft]);
-
-  const handleRemoveCaseStudy = useCallback(
-    (caseStudyId) => {
-      const normalizedCaseStudyId = String(caseStudyId || "").trim();
-      if (!normalizedCaseStudyId) {
-        return;
-      }
-
-      updateCurrentServiceDraft((draft) => {
-        const remainingCaseStudies = draft.caseStudies.filter(
-          (caseStudy) => caseStudy.id !== normalizedCaseStudyId,
-        );
-
-        if (!remainingCaseStudies.length) {
-          const replacementCaseStudy = createEmptyServiceCaseStudy();
-
-          return {
-            ...draft,
-            caseStudies: [replacementCaseStudy],
-            activeCaseStudyId: replacementCaseStudy.id,
-          };
-        }
-
-        const removedIndex = draft.caseStudies.findIndex(
-          (caseStudy) => caseStudy.id === normalizedCaseStudyId,
-        );
-        const resolvedActiveCaseStudy =
-          normalizedCaseStudyId === draft.activeCaseStudyId
-            ? remainingCaseStudies[
-                Math.max(0, Math.min(removedIndex, remainingCaseStudies.length - 1))
-              ]
-            : remainingCaseStudies.find(
-                (caseStudy) => caseStudy.id === draft.activeCaseStudyId,
-              ) || remainingCaseStudies[0];
-
-        return {
-          ...draft,
-          caseStudies: remainingCaseStudies,
-          activeCaseStudyId: resolvedActiveCaseStudy.id,
-        };
-      });
-    },
-    [updateCurrentServiceDraft],
-  );
-
-  const handleCaseStudyFieldChange = useCallback(
-    (field, value) => {
-      updateCurrentServiceDraft((draft) => ({
-        ...draft,
-        caseStudies: draft.caseStudies.map((caseStudy) =>
-          caseStudy.id === draft.activeCaseStudyId
-            ? {
-                ...caseStudy,
-                [field]: value,
-              }
-            : caseStudy,
-        ),
-      }));
-    },
-    [updateCurrentServiceDraft],
-  );
+  const isContinueDisabled = isBaseContinueDisabled;
 
   const syncBasicProfileValidationErrors = (validationErrors) => {
     setBasicProfileErrors((currentErrors) => {
@@ -2062,8 +1990,8 @@ const FreelancerOnboardingShell = () => {
     );
     const profileDetails = {
       ...currentProfileDetails,
-      profileDetailsVersion: 2,
-      role: selectedWorkPreference || currentProfileDetails.role || "individual",
+      profileDetailsVersion: 3,
+      role: selectedWorkPreference || "individual",
       professionalBio: basicProfileForm.professionalBio.trim(),
       services: orderedSelectedServices,
       serviceDetails: nextServiceDetails,
@@ -2185,14 +2113,37 @@ const FreelancerOnboardingShell = () => {
         navigate(FREELANCER_DASHBOARD_PATH);
       })
       .catch((error) => {
-        setProfileError(error?.message || "Failed to save freelancer onboarding.");
-        toast.error(error?.message || "Failed to save freelancer onboarding.");
+        const fallbackMessage = "Failed to save freelancer onboarding.";
+        setProfileError(error?.message || fallbackMessage);
+        toast.error(error?.message || fallbackMessage);
       })
       .finally(() => {
         setIsProfileSaving(false);
       });
   };
 
+  const handleSkipServicesSection = () => {
+    if (isProfileSaving || !isServiceSectionSlide) {
+      return;
+    }
+
+    if (acceptInProgressProjectsSlideIndex >= 0) {
+      setCurrentSlideIndex(acceptInProgressProjectsSlideIndex);
+      return;
+    }
+
+    if (deliveryPolicySlideIndex >= 0) {
+      setCurrentSlideIndex(deliveryPolicySlideIndex);
+      return;
+    }
+
+    if (communicationPolicySlideIndex >= 0) {
+      setCurrentSlideIndex(communicationPolicySlideIndex);
+      return;
+    }
+
+    submitOnboardingAndNavigate();
+  };
   const handleBack = () => {
     if (currentSlide.id === "serviceSetup" && currentServiceIndex > 0) {
       setCurrentServiceIndex((currentIndex) => Math.max(currentIndex - 1, 0));
@@ -2207,8 +2158,58 @@ const FreelancerOnboardingShell = () => {
     setCurrentSlideIndex((currentIndex) => Math.max(currentIndex - 1, 0));
   };
 
+  const clearServiceStepValidationErrors = useCallback((stepId) => {
+    const normalizedStepId = String(stepId || "").trim();
+    if (!normalizedStepId) {
+      return;
+    }
+
+    setServiceValidationErrorsByStep((currentErrors) => {
+      if (!currentErrors[normalizedStepId]) {
+        return currentErrors;
+      }
+
+      const nextErrors = { ...currentErrors };
+      delete nextErrors[normalizedStepId];
+      return nextErrors;
+    });
+  }, []);
+
+  const validateServiceStepBeforeContinue = useCallback(
+    (stepId = currentSlide.id) => {
+      const validationErrors = getServiceStepValidationErrors(
+        currentServiceDraft,
+        stepId,
+      );
+      const validationMessage = getServiceStepValidationMessage(
+        currentServiceDraft,
+        stepId,
+      );
+
+      if (validationMessage) {
+        const normalizedStepId = String(stepId || "").trim();
+        if (normalizedStepId) {
+          setServiceValidationErrorsByStep((currentErrors) => ({
+            ...currentErrors,
+            [normalizedStepId]: validationErrors,
+          }));
+        }
+        toast.error(validationMessage);
+        return false;
+      }
+
+      clearServiceStepValidationErrors(stepId);
+      return true;
+    },
+    [clearServiceStepValidationErrors, currentServiceDraft, currentSlide.id],
+  );
+
   const handleContinue = () => {
     if (isContinueDisabled) {
+      return;
+    }
+
+    if (isServiceSectionSlide && !validateServiceStepBeforeContinue()) {
       return;
     }
 
@@ -2302,11 +2303,22 @@ const FreelancerOnboardingShell = () => {
   };
 
   const handleWorkPreferenceSelect = (nextValue) => {
-    setSelectedWorkPreference(nextValue);
+    const normalizedNextValue = String(nextValue || "").trim();
 
-    if (nextValue === "individual" && isWorkPreferenceSlide) {
+    if (normalizedNextValue === "agency") {
+      clearStoredOnboardingDraft(onboardingDraftStorageKey);
+      navigate(AGENCY_ONBOARDING_PATH);
+      return;
+    }
+
+    setSelectedWorkPreference(normalizedNextValue);
+
+    if (isWorkPreferenceSlide) {
       setCurrentSlideIndex((currentIndex) =>
-        Math.min(currentIndex + 1, totalSlides - 1)
+        Math.min(
+          currentIndex + 1,
+          Math.max(getOnboardingSlideSet(normalizedNextValue).length - 1, 0),
+        ),
       );
     }
   };
@@ -2380,6 +2392,9 @@ const FreelancerOnboardingShell = () => {
         nextServiceStepOrder < 0 ||
         nextServiceStepOrder > maxUnlockedServiceStepOrder
       ) {
+        if (nextServiceStepOrder > maxUnlockedServiceStepOrder) {
+          validateServiceStepBeforeContinue();
+        }
         return;
       }
 
@@ -2415,12 +2430,142 @@ const FreelancerOnboardingShell = () => {
       isServiceInfoIncomplete,
       isServicePricingIncomplete,
       isServiceVisualsIncomplete,
+      validateServiceStepBeforeContinue,
       serviceInfoSlideIndex,
       servicePricingSlideIndex,
       serviceReviewSlideIndex,
       serviceVisualsSlideIndex,
       currentSlide.id,
     ],
+  );
+
+  const handleServiceInfoFieldChange = useCallback(
+    (field, value) => {
+      clearServiceStepValidationErrors("serviceInfo");
+      updateCurrentServiceDraft((draft) => ({
+        ...draft,
+        [field]: value,
+      }));
+    },
+    [clearServiceStepValidationErrors, updateCurrentServiceDraft],
+  );
+
+  const handleServiceInfoDraftUpdate = useCallback(
+    (updater) => {
+      clearServiceStepValidationErrors("serviceInfo");
+      updateCurrentServiceDraft(updater);
+    },
+    [clearServiceStepValidationErrors, updateCurrentServiceDraft],
+  );
+
+  const handleServicePricingFieldChange = useCallback(
+    (field, value) => {
+      clearServiceStepValidationErrors("servicePricing");
+      updateCurrentServiceDraft((draft) => ({
+        ...draft,
+        [field]: value,
+      }));
+    },
+    [clearServiceStepValidationErrors, updateCurrentServiceDraft],
+  );
+
+  const handleServiceVisualsFieldChange = useCallback(
+    (field, value) => {
+      clearServiceStepValidationErrors("serviceVisuals");
+      updateCurrentServiceDraft((draft) => ({
+        ...draft,
+        [field]: value,
+      }));
+    },
+    [clearServiceStepValidationErrors, updateCurrentServiceDraft],
+  );
+
+  const handleCaseStudyFieldChange = useCallback(
+    (field, value) => {
+      clearServiceStepValidationErrors("caseStudy");
+      updateCurrentServiceDraft((draft) => {
+        const caseStudies = Array.isArray(draft.caseStudies) ? draft.caseStudies : [];
+        const activeCaseStudyId = String(draft.activeCaseStudyId || "").trim();
+
+        return {
+          ...draft,
+          caseStudies: caseStudies.map((caseStudy) =>
+            String(caseStudy?.id || "").trim() === activeCaseStudyId
+              ? {
+                  ...caseStudy,
+                  [field]: value,
+                }
+              : caseStudy,
+          ),
+        };
+      });
+    },
+    [clearServiceStepValidationErrors, updateCurrentServiceDraft],
+  );
+
+  const handleAddCaseStudy = useCallback(() => {
+    clearServiceStepValidationErrors("caseStudy");
+    const nextCaseStudy = createEmptyServiceCaseStudy();
+
+    updateCurrentServiceDraft((draft) => ({
+      ...draft,
+      caseStudies: [...draft.caseStudies, nextCaseStudy],
+      activeCaseStudyId: nextCaseStudy.id,
+    }));
+  }, [clearServiceStepValidationErrors, updateCurrentServiceDraft]);
+
+  const handleRemoveCaseStudy = useCallback(
+    (caseStudyId) => {
+      clearServiceStepValidationErrors("caseStudy");
+      const normalizedCaseStudyId = String(caseStudyId || "").trim();
+      if (!normalizedCaseStudyId) {
+        return;
+      }
+
+      updateCurrentServiceDraft((draft) => {
+        const remainingCaseStudies = draft.caseStudies.filter(
+          (caseStudy) => caseStudy.id !== normalizedCaseStudyId,
+        );
+
+        if (!remainingCaseStudies.length) {
+          const replacementCaseStudy = createEmptyServiceCaseStudy();
+
+          return {
+            ...draft,
+            caseStudies: [replacementCaseStudy],
+            activeCaseStudyId: replacementCaseStudy.id,
+          };
+        }
+
+        const nextActiveCaseStudyId =
+          draft.activeCaseStudyId === normalizedCaseStudyId
+            ? remainingCaseStudies[0]?.id || null
+            : draft.activeCaseStudyId;
+
+        return {
+          ...draft,
+          caseStudies: remainingCaseStudies,
+          activeCaseStudyId: nextActiveCaseStudyId,
+        };
+      });
+    },
+    [clearServiceStepValidationErrors, updateCurrentServiceDraft],
+  );
+
+  const handleActiveCaseStudyChange = useCallback(
+    (caseStudyId) => {
+      clearServiceStepValidationErrors("caseStudy");
+      const normalizedCaseStudyId = String(caseStudyId || "").trim();
+      if (!normalizedCaseStudyId) {
+        return;
+      }
+
+      updateCurrentServiceDraft((draft) => ({
+        ...draft,
+        activeCaseStudyId: normalizedCaseStudyId,
+      }));
+    },
+    [clearServiceStepValidationErrors, updateCurrentServiceDraft],
   );
 
   const handleBasicProfileFieldChange = (field, value) => {
@@ -2651,6 +2796,7 @@ const FreelancerOnboardingShell = () => {
     setPendingProfilePhotoFile(null);
     setIsProfileCropOpen(false);
     setUsernameStatus("idle");
+    setServiceValidationErrorsByStep({});
   }, [basicProfileForm.profilePhoto]);
 
   const handleResetOnboarding = useCallback(async () => {
@@ -2695,6 +2841,13 @@ const FreelancerOnboardingShell = () => {
     : isDeliveryPolicySlide
       ? isProfileSaving
       : isContinueDisabled || isProfileSaving;
+  const serviceInfoValidationErrors =
+    serviceValidationErrorsByStep.serviceInfo || {};
+  const servicePricingValidationErrors =
+    serviceValidationErrorsByStep.servicePricing || {};
+  const serviceVisualsValidationErrors =
+    serviceValidationErrorsByStep.serviceVisuals || {};
+  const caseStudyValidationErrors = serviceValidationErrorsByStep.caseStudy || {};
 
   return (
     <DarkGradientBg className="text-[#f1f5f9]">
@@ -2709,7 +2862,7 @@ const FreelancerOnboardingShell = () => {
             <Button
               asChild
               variant="secondary"
-              className="h-10 rounded-full border border-white/10 bg-card px-4 text-sm font-semibold text-foreground shadow-none hover:bg-accent/10"
+              className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
             >
               <Link to={FREELANCER_DASHBOARD_PATH}>
                 <ChevronLeft className="h-4 w-4" />
@@ -2761,7 +2914,7 @@ const FreelancerOnboardingShell = () => {
                     Slide {currentSlideIndex + 1} of {totalSlides}
                   </p>
                   <p className="mt-1 text-sm text-white/60">
-                    {currentSlide.title || "Freelancer onboarding"}
+                    {currentSlide.title || "Onboarding"}
                   </p>
                 </div>
 
@@ -2830,30 +2983,18 @@ const FreelancerOnboardingShell = () => {
                 totalSelectedServices={selectedServices.length}
                 serviceDraft={currentServiceDraft}
                 onServiceStepChange={handleServiceStepChange}
-                onUpdateServiceDraft={updateCurrentServiceDraft}
+                onUpdateServiceDraft={handleServiceInfoDraftUpdate}
                 serviceInfoForm={currentServiceInfoForm}
-                onServiceInfoFieldChange={(field, value) =>
-                  updateCurrentServiceDraft((draft) => ({
-                    ...draft,
-                    [field]: value,
-                  }))
-                }
+                onServiceInfoFieldChange={handleServiceInfoFieldChange}
+                serviceInfoValidationErrors={serviceInfoValidationErrors}
                 servicePricingForm={currentServicePricingForm}
-                onServicePricingFieldChange={(field, value) =>
-                  updateCurrentServiceDraft((draft) => ({
-                    ...draft,
-                    [field === "description" ? "description" : field]: value,
-                  }))
-                }
+                onServicePricingFieldChange={handleServicePricingFieldChange}
+                servicePricingValidationErrors={servicePricingValidationErrors}
                 serviceVisualsForm={currentServiceVisualsForm}
                 suggestedKeywords={suggestedKeywords}
                 isSuggestedKeywordsLoading={isSuggestedKeywordsLoading}
-                onServiceVisualsFieldChange={(field, value) =>
-                  updateCurrentServiceDraft((draft) => ({
-                    ...draft,
-                    [field]: value,
-                  }))
-                }
+                onServiceVisualsFieldChange={handleServiceVisualsFieldChange}
+                serviceVisualsValidationErrors={serviceVisualsValidationErrors}
                 caseStudyForm={currentCaseStudyForm}
                 caseStudies={currentServiceCaseStudies}
                 activeCaseStudyId={currentActiveCaseStudyId}
@@ -2863,6 +3004,7 @@ const FreelancerOnboardingShell = () => {
                 onAddCaseStudy={handleAddCaseStudy}
                 onRemoveCaseStudy={handleRemoveCaseStudy}
                 onActiveCaseStudyChange={handleActiveCaseStudyChange}
+                caseStudyValidationErrors={caseStudyValidationErrors}
                 acceptInProgressProjectsValue={acceptInProgressProjectsValue}
                 onAcceptInProgressProjectsChange={handleAcceptInProgressProjectsSelect}
                 onCommunicationPolicyReadinessChange={(isReady) =>
@@ -2870,6 +3012,7 @@ const FreelancerOnboardingShell = () => {
                 }
                 isProfileSaving={isProfileSaving}
                 user={user}
+                onSkipServices={handleSkipServicesSection}
               />
             </motion.div>
           </AnimatePresence>
@@ -2877,7 +3020,7 @@ const FreelancerOnboardingShell = () => {
       </section>
 
       {isFooterHidden ? null : (
-        <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6">
+        <footer className="relative z-20 shrink-0 px-4 py-4 sm:px-6">
           <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
             <div />
 
@@ -2886,7 +3029,7 @@ const FreelancerOnboardingShell = () => {
               size="lg"
               onClick={footerPrimaryAction}
               disabled={footerPrimaryDisabled}
-              className="h-11 px-10"
+              className={ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS}
             >
               {footerPrimaryLabel}
             </Button>
@@ -2895,15 +3038,18 @@ const FreelancerOnboardingShell = () => {
               <div />
             ) : (
               <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleSkipOnboarding}
-                  disabled={isProfileSaving}
-                  className="h-11 px-4 text-sm text-white/75 hover:text-white"
-                >
-                  Skip
-                </Button>
+                {isServiceSectionSlide && currentSlide.id !== "serviceSetup" && currentSlide.id !== "serviceInfo" ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="lg"
+                    onClick={handleSkipServicesSection}
+                    disabled={isProfileSaving}
+                    className={ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS}
+                  >
+                    Skip
+                  </Button>
+                ) : null}
               </div>
             )}
           </div>

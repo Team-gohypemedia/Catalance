@@ -19,8 +19,14 @@ import {
 } from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
 import { useAuth } from "@/shared/context/AuthContext";
 import { getSubcategorySelectionKey } from "../service-details";
+import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";
 import { API_BASE_URL } from "@/shared/lib/api-client";
+
+const ONBOARDING_PAGE_TITLE_CLASS =
+  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
+const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
 const EXPERIENCE_LABELS = {
   entry: "0-1 Years",
@@ -43,12 +49,10 @@ const DELIVERY_TIMELINE_LABELS = {
 
 
 
-const SECTION_TITLE_CLASS =
-  "text-2xl font-semibold tracking-[-0.03em] text-white";
-const SECTION_SUBTITLE_CLASS = "text-sm text-white/48";
-const SECTION_BODY_CLASS =
-  "max-w-3xl text-sm leading-7 text-white/72 sm:text-base sm:leading-8";
-const CARD_LABEL_CLASS = "text-[11px] uppercase tracking-[0.22em] text-white/38";
+const SECTION_TITLE_CLASS = `${ONBOARDING_SECTION_TITLE_CLASS} text-white`;
+const SECTION_SUBTITLE_CLASS =
+  `${ONBOARDING_SECTION_DESCRIPTION_CLASS} text-white/48`;
+const CARD_LABEL_CLASS = `${ONBOARDING_FIELD_LABEL_CLASS} mb-1 block`;
 const CARD_VALUE_CLASS = "mt-3 text-xl font-semibold tracking-[-0.03em] text-white";
 const CASE_STUDY_META_PILL_CLASS =
   "inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/78";
@@ -864,7 +868,7 @@ const FreelancerServiceReviewSlide = ({
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
       <div className="w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Final </span>
             <span className="text-primary">Review</span>
             <span> Before </span>
@@ -883,7 +887,7 @@ const FreelancerServiceReviewSlide = ({
           <article className="space-y-7">
             <div className="space-y-3">
               <div className="space-y-2">
-                <h2 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+                <h2 className={SECTION_TITLE_CLASS}>
                   {reviewTitle}
                 </h2>
               </div>
@@ -972,7 +976,7 @@ const FreelancerServiceReviewSlide = ({
                 <h3 className={SECTION_TITLE_CLASS}>
                   Description
                 </h3>
-                <p className={SECTION_BODY_CLASS}>
+                <p className={`${SECTION_SUBTITLE_CLASS} max-w-3xl`}>
                   {description}
                 </p>
               </div>
@@ -1120,7 +1124,7 @@ const FreelancerServiceReviewSlide = ({
                     Skills Category
                   </h3>
                   <p className={SECTION_SUBTITLE_CLASS}>
-                    The sub-categories clients will associate with this service.
+                    Subcategories clients will link to service
                   </p>
                 </div>
 

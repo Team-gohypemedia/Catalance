@@ -50,7 +50,7 @@ const FreelancerClientCards = () => {
           </p>
         </div>
 
-        <div className="mt-20 grid w-full max-w-6xl items-center gap-8 lg:grid-cols-[minmax(0,1fr)_120px_minmax(0,1fr)] lg:gap-10">
+        <div className="mt-10 grid w-full max-w-6xl items-center gap-8 sm:mt-14 lg:mt-20 lg:grid-cols-[minmax(0,1fr)_120px_minmax(0,1fr)] lg:gap-10">
           <div className="relative group overflow-visible">
             <img
               src={Mascot1}

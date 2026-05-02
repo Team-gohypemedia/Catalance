@@ -176,10 +176,10 @@ export const signup = ({
   });
 };
 
-export const login = ({ email, password, role }) => {
+export const login = ({ email, identifier, password, role }) => {
   return request("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password, role })
+    body: JSON.stringify({ email, identifier, password, role })
   });
 };
 
@@ -221,6 +221,20 @@ export const resendOtp = (email) => {
   return request("/auth/resend-otp", {
     method: "POST",
     body: JSON.stringify({ email })
+  });
+};
+
+export const requestWhatsappOtp = ({ countryCode, phoneNumber, role }) => {
+  return request("/auth/whatsapp/request-otp", {
+    method: "POST",
+    body: JSON.stringify({ countryCode, phoneNumber, role })
+  });
+};
+
+export const verifyWhatsappOtp = ({ countryCode, phoneNumber, otp, role }) => {
+  return request("/auth/whatsapp/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({ countryCode, phoneNumber, otp, role })
   });
 };
 
@@ -354,6 +368,8 @@ export const apiClient = {
   fetchChatMessages,
   sendChatMessage,
   verifyOtp,
+  requestWhatsappOtp,
+  verifyWhatsappOtp,
   submitContactInquiry,
   subscribeNewsletter
 };

@@ -9,6 +9,7 @@ import {
 } from "../../utils/skill-utils.js";
 import { env } from "../../config/env.js";
 import { ensureResendClient } from "../../lib/resend.js";
+import { sendWhatsappOtp } from "../../lib/whatsapp.js";
 import { hashPassword, verifyPassword, verifyLegacyPassword } from "./password.utils.js";
 import {
   generatePasswordResetEmail,
@@ -24,12 +25,19 @@ import {
   buildCanonicalProfileDetails,
   buildFreelancerSkillRows,
   buildPrimaryServiceSnapshot,
-  deriveTopLevelSkillsFromProfileDetails,
 } from "./freelancer-service-details.js";
 
 const OTP_TTL_MINUTES = 15;
 const OTP_EMAIL_RETRY_ATTEMPTS = 2;
 const PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS = 2;
+const WHATSAPP_OTP_GENERIC_MESSAGE =
+  "If this phone number can receive WhatsApp messages, an OTP has been sent.";
+const WHATSAPP_OTP_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const WHATSAPP_OTP_MAX_REQUESTS_PER_WINDOW = 5;
+const WHATSAPP_OTP_MAX_VERIFY_ATTEMPTS_PER_WINDOW = 8;
+const PHONE_ONLY_EMAIL_DOMAIN = "phone.catalance.local";
+const whatsappOtpRequestAttempts = new Map();
+const whatsappOtpVerifyAttempts = new Map();
 const marketplaceSupportsServiceDetails = (() => {
   try {
     const models = Prisma?.dmmf?.datamodel?.models || [];
@@ -327,6 +335,168 @@ const syncFreelancerProfileDetails = async ({
 
 const normalizeRoleValue = (value) =>
   typeof value === "string" ? value.toUpperCase() : null;
+
+const normalizeLoginPhoneDigits = (value) =>
+  String(value || "").replace(/\D/g, "");
+
+const buildPhoneOnlyEmail = (normalizedPhone) =>
+  `phone-${normalizeLoginPhoneDigits(normalizedPhone)}@${PHONE_ONLY_EMAIL_DOMAIN}`;
+
+const isPhoneOnlyEmail = (value = "") =>
+  String(value || "").toLowerCase().endsWith(`@${PHONE_ONLY_EMAIL_DOMAIN}`);
+
+const findUserByLoginPhone = async (identifier) => {
+  const phoneDigits = normalizeLoginPhoneDigits(identifier);
+  if (!phoneDigits) return null;
+  const lookupDigits = Array.from(
+    new Set([
+      phoneDigits,
+      phoneDigits.length > 10 ? phoneDigits.slice(-10) : ""
+    ].filter(Boolean))
+  );
+
+  const candidates = await prisma.user.findMany(
+    withFreelancerProfileInclude({
+      where: {
+        OR: lookupDigits.flatMap((digits) => [
+          { phoneNumber: { contains: digits } },
+          { phone: { contains: digits } }
+        ])
+      }
+    })
+  );
+
+  return (
+    candidates.find((candidate) => {
+      const candidateDigits = normalizeLoginPhoneDigits(
+        candidate?.phoneNumber || candidate?.phone || ""
+      );
+      return (
+        candidateDigits &&
+        (candidateDigits.includes(phoneDigits) ||
+          phoneDigits.includes(candidateDigits))
+      );
+    }) || null
+  );
+};
+
+const getWhatsappOtpTtlMinutes = () => {
+  const configuredTtl = Number(env.WHATSAPP_OTP_TTL_MINUTES);
+  return Number.isFinite(configuredTtl) && configuredTtl > 0
+    ? Math.min(Math.round(configuredTtl), 60)
+    : OTP_TTL_MINUTES;
+};
+
+const normalizeWhatsappPhone = ({ countryCode, phoneNumber }) => {
+  const countryDigits = normalizeLoginPhoneDigits(countryCode);
+  const phoneDigits = normalizeLoginPhoneDigits(phoneNumber).replace(/^0+/, "");
+
+  if (!countryDigits) {
+    throw new AppError("Country code is required", 400);
+  }
+
+  if (phoneDigits.length < 6) {
+    throw new AppError("Enter a valid phone number to continue.", 400);
+  }
+
+  const normalizedPhone = phoneDigits.startsWith(countryDigits)
+    ? phoneDigits
+    : `${countryDigits}${phoneDigits}`;
+
+  if (normalizedPhone.length < 8 || normalizedPhone.length > 15) {
+    throw new AppError("Enter a valid phone number to continue.", 400);
+  }
+
+  return normalizedPhone;
+};
+
+const consumeOtpRateLimit = ({ store, key, maxAttempts, message }) => {
+  const now = Date.now();
+  const attempts = (store.get(key) || []).filter(
+    (timestamp) => now - timestamp < WHATSAPP_OTP_RATE_LIMIT_WINDOW_MS
+  );
+
+  if (attempts.length >= maxAttempts) {
+    throw new AppError(message, 429);
+  }
+
+  attempts.push(now);
+  store.set(key, attempts);
+};
+
+const buildWhatsappOtpRateLimitKey = ({ phone, requestIp }) =>
+  `${phone}:${String(requestIp || "unknown").trim() || "unknown"}`;
+
+const maskLoginPhone = (value = "") => {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits ? `***${digits.slice(-4)}` : "unknown";
+};
+
+const createOrUpdatePhoneOnlyUser = async ({ normalizedPhone, role, otpCode, otpExpires }) => {
+  const normalizedRole = normalizeRoleValue(role) || "CLIENT";
+  const syntheticEmail = buildPhoneOnlyEmail(normalizedPhone);
+  const existingUser = await prisma.user.findUnique(
+    withFreelancerProfileInclude({
+      where: { email: syntheticEmail }
+    })
+  );
+
+  if (existingUser) {
+    return prisma.user.update(
+      withFreelancerProfileInclude({
+        where: { id: existingUser.id },
+        data: {
+          phoneNumber: normalizedPhone,
+          phone: normalizedPhone,
+          role: normalizeRoleValue(existingUser.role) || normalizedRole,
+          roles: Array.from(
+            new Set([
+              ...(Array.isArray(existingUser.roles)
+                ? existingUser.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+                : []),
+              normalizedRole
+            ])
+          ),
+          otpCode,
+          otpExpires,
+          isVerified: false
+        }
+      })
+    );
+  }
+
+  const randomPassword = crypto.randomBytes(24).toString("hex");
+
+  return prisma.user.create(
+    withFreelancerProfileInclude({
+      data: {
+        email: syntheticEmail,
+        fullName: "WhatsApp User",
+        passwordHash: await hashUserPassword(randomPassword),
+        phoneNumber: normalizedPhone,
+        phone: normalizedPhone,
+        role: normalizedRole,
+        roles: [normalizedRole],
+        status: normalizedRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE",
+        onboardingComplete: false,
+        isVerified: false,
+        otpCode,
+        otpExpires
+      }
+    })
+  );
+};
+
+const resolveActiveUserRole = (user, role) => {
+  const requestedRole = normalizeRoleValue(role);
+  const roles = Array.isArray(user?.roles)
+    ? user.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+    : [];
+
+  return requestedRole && roles.includes(requestedRole)
+    ? requestedRole
+    : normalizeRoleValue(user?.role) || "FREELANCER";
+};
 
 const hasRole = (user, role) => {
   const targetRole = normalizeRoleValue(role);
@@ -2521,13 +2691,163 @@ export const resendOtp = async (email) => {
   };
 };
 
-export const authenticateUser = async ({ email, password, role }) => {
-  const normalizedEmail = String(email || "").toLowerCase().trim();
-  const user = await prisma.user.findUnique(
+export const requestWhatsappOtp = async ({
+  countryCode,
+  phoneNumber,
+  role,
+  requestIp
+}) => {
+  const normalizedPhone = normalizeWhatsappPhone({ countryCode, phoneNumber });
+  const ttlMinutes = getWhatsappOtpTtlMinutes();
+  const rateLimitKey = buildWhatsappOtpRateLimitKey({
+    phone: normalizedPhone,
+    requestIp
+  });
+
+  consumeOtpRateLimit({
+    store: whatsappOtpRequestAttempts,
+    key: rateLimitKey,
+    maxAttempts: WHATSAPP_OTP_MAX_REQUESTS_PER_WINDOW,
+    message: "Too many OTP requests. Please try again later."
+  });
+
+  let user = await findUserByLoginPhone(normalizedPhone);
+
+  const otpCode = crypto.randomInt(100000, 999999).toString();
+  const otpExpires = new Date(Date.now() + ttlMinutes * 60 * 1000);
+
+  if (!user) {
+    // New phone number — create a phone-only user with the requested role
+    user = await createOrUpdatePhoneOnlyUser({
+      normalizedPhone,
+      role,
+      otpCode,
+      otpExpires
+    });
+
+    console.log(
+      `[WhatsApp OTP] Created phone-only login user for ${maskLoginPhone(normalizedPhone)}.`
+    );
+  } else {
+    // Existing user — reject if role doesn't match (Option A: explicit 409)
+    const requestedRole = normalizeRoleValue(role);
+    if (requestedRole && !hasRole(user, requestedRole)) {
+      console.warn("[WhatsApp OTP] Role mismatch", {
+        phone: maskLoginPhone(normalizedPhone),
+        existingRoles: user.roles,
+        requestedRole
+      });
+
+      throw new AppError(
+        "This WhatsApp number is already registered with a different account type. Please select the correct role or contact support.",
+        409,
+        { code: "ROLE_MISMATCH" }
+      );
+    }
+
+    // Role matches (or no role requested) — save OTP and send
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otpCode,
+        otpExpires
+      }
+    });
+  }
+
+  const whatsappResult = await sendWhatsappOtp({
+    to: normalizedPhone,
+    otpCode
+  });
+
+  return {
+    message: WHATSAPP_OTP_GENERIC_MESSAGE,
+    phone: normalizedPhone,
+    expiresInMinutes: ttlMinutes,
+    whatsappDelivery: whatsappResult?.delivered ? "accepted" : "not_sent"
+  };
+};
+
+export const verifyWhatsappOtp = async ({
+  countryCode,
+  phoneNumber,
+  otp,
+  role,
+  requestIp
+}) => {
+  const normalizedPhone = normalizeWhatsappPhone({ countryCode, phoneNumber });
+  const rateLimitKey = buildWhatsappOtpRateLimitKey({
+    phone: normalizedPhone,
+    requestIp
+  });
+
+  consumeOtpRateLimit({
+    store: whatsappOtpVerifyAttempts,
+    key: rateLimitKey,
+    maxAttempts: WHATSAPP_OTP_MAX_VERIFY_ATTEMPTS_PER_WINDOW,
+    message: "Too many OTP attempts. Please request a new code."
+  });
+
+  // Resolve user from phone — do NOT trust the frontend role for lookup
+  const user = await findUserByLoginPhone(normalizedPhone);
+  const invalidCodeError = new AppError("Invalid or expired verification code", 400);
+
+  if (!user) {
+    throw invalidCodeError;
+  }
+
+  if (!user.otpCode || !user.otpExpires) {
+    throw invalidCodeError;
+  }
+
+  if (String(user.otpCode) !== String(otp).trim()) {
+    throw invalidCodeError;
+  }
+
+  if (new Date() > new Date(user.otpExpires)) {
+    throw invalidCodeError;
+  }
+
+  let updatedUser = await prisma.user.update(
     withFreelancerProfileInclude({
-      where: { email: normalizedEmail }
+      where: { id: user.id },
+      data: {
+        isVerified: true,
+        otpCode: null,
+        otpExpires: null,
+        phoneNumber: user.phoneNumber || normalizedPhone,
+        phone: user.phone || normalizedPhone
+      }
     })
   );
+
+  if (!user.isVerified && !isPhoneOnlyEmail(user.email)) {
+    await maybeSendWelcomeEmail(updatedUser);
+  }
+
+  // Use the user's existing role as the authoritative source.
+  // The frontend 'role' is only a hint to pick among existing roles.
+  const finalRole = resolveActiveUserRole(updatedUser, role);
+  const sessionUser = sanitizeUser({ ...updatedUser, role: finalRole });
+
+  whatsappOtpVerifyAttempts.delete(rateLimitKey);
+
+  return {
+    user: sessionUser,
+    accessToken: issueAccessToken(updatedUser, finalRole)
+  };
+};
+
+export const authenticateUser = async ({ email, identifier, password, role }) => {
+  const rawIdentifier = String(identifier || email || "").trim();
+  const normalizedEmail = rawIdentifier.toLowerCase();
+  const user = rawIdentifier.includes("@")
+    ? await prisma.user.findUnique(
+        withFreelancerProfileInclude({
+          where: { email: normalizedEmail }
+        })
+      )
+    : await findUserByLoginPhone(rawIdentifier);
 
   let isValid =
     user?.passwordHash && password
@@ -2548,7 +2868,7 @@ export const authenticateUser = async ({ email, password, role }) => {
   }
 
   if (!isValid) {
-    throw new AppError("Invalid email or password", 401);
+    throw new AppError("Invalid email, phone number, or password", 401);
   }
 
   if (!user.isVerified) {

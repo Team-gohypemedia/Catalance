@@ -4,6 +4,7 @@ export const CLIENT_DASHBOARD = "client";
 export const FREELANCER_DASHBOARD = "freelancer";
 export const FREELANCER_DASHBOARD_PATH = "/freelancer";
 export const FREELANCER_ONBOARDING_PATH = "/freelancer/onboarding";
+export const AGENCY_ONBOARDING_PATH = "/agency/onboarding";
 
 const DASHBOARD_PREFERENCE_KEY_PREFIX = "lastDashboard:v1";
 const DASHBOARD_PATHS = Object.freeze({

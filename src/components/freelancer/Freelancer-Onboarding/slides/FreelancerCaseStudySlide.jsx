@@ -6,10 +6,16 @@ import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 
 import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 import {
   ServiceInfoStepper,
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
+
+const ONBOARDING_PAGE_TITLE_CLASS =
+  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
+const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
 const ROLE_OPTIONS = [
   { value: "full_execution", label: "Full execution" },
@@ -27,12 +33,9 @@ const TIMELINE_OPTIONS = [
   { value: "12_plus_weeks", label: "12+ Weeks" },
 ];
 
-const getCaseStudyLabel = (caseStudy = {}, index = 0) =>
-  String(caseStudy?.title || "").trim() || `Project ${index + 1}`;
-
 /* ──────────────────── File Upload Button ──────────────────── */
 
-const FileUploadButton = ({ file, onChange }) => {
+const FileUploadButton = ({ file, onChange, hasError = false }) => {
   const inputRef = useRef(null);
 
   return (
@@ -40,7 +43,13 @@ const FileUploadButton = ({ file, onChange }) => {
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-card px-4 text-sm text-white/40 transition-colors hover:border-white/20"
+        className={cn(
+          "flex h-12 w-full items-center justify-center gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-white/20 transition-colors",
+          hasError
+            ? "border-destructive/70 hover:border-destructive/80"
+            : "border-white/10 hover:border-white/20",
+        )}
+        aria-invalid={hasError}
       >
         <Upload className="h-4 w-4" />
         <span>{file ? file.name : "Upload file"}</span>
@@ -71,25 +80,31 @@ const FileUploadButton = ({ file, onChange }) => {
 /* ──────────────────── Main Slide ──────────────────── */
 
 const FreelancerCaseStudySlide = ({
-  currentServiceName,
   caseStudyForm,
   activeCaseStudyIndex = 0,
   nicheOptions = [],
   onCaseStudyFieldChange,
   onAddCaseStudy,
   onServiceStepChange,
+  caseStudyValidationErrors = {},
 }) => {
-  const serviceName = currentServiceName || "Service";
   const activeCaseStudyLabel =
     String(caseStudyForm?.title || "").trim() ||
     `Project ${Number.isInteger(activeCaseStudyIndex) ? activeCaseStudyIndex + 1 : 1}`;
+  const titleError = String(caseStudyValidationErrors.title || "").trim();
+  const descriptionError = String(caseStudyValidationErrors.description || "").trim();
+  const nicheError = String(caseStudyValidationErrors.niche || "").trim();
+  const projectProofError = String(caseStudyValidationErrors.projectProof || "").trim();
+  const roleError = String(caseStudyValidationErrors.role || "").trim();
+  const timelineError = String(caseStudyValidationErrors.timeline || "").trim();
+  const budgetError = String(caseStudyValidationErrors.budget || "").trim();
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
       <div className="w-full space-y-8">
         {/* Heading */}
         <div className="text-center">
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.03em] text-white sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
+          <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Tell Us About </span>
             <span className="text-primary">Your</span>
             <span> Previous </span>
@@ -106,18 +121,16 @@ const FreelancerCaseStudySlide = ({
         </div>
 
         {/* Step Content */}
-        <div className="w-full space-y-6">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-semibold text-white sm:text-3xl">
-              Project Portfolio
-            </h2>
-            <p className="text-sm text-muted-foreground sm:text-base">
-              We need some details to verify your identity. Please complete the
-              form below.
-            </p>
-          </div>
-
-          <div className="flex justify-end">
+        <div className="w-full space-y-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
+                Project Portfolio
+              </h2>
+              <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
+                Provide details to verify your identity securely.
+              </p>
+            </div>
             <button
               type="button"
               onClick={onAddCaseStudy}
@@ -129,14 +142,14 @@ const FreelancerCaseStudySlide = ({
           </div>
 
           {/* Project Header */}
-          <h3 className="text-xl font-semibold text-white sm:text-2xl">
+          <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
             {activeCaseStudyLabel}
           </h3>
 
           <div className="space-y-6">
             {/* Case Study Title */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Case Study Title
               </label>
               <input
@@ -146,13 +159,22 @@ const FreelancerCaseStudySlide = ({
                   onCaseStudyFieldChange("title", e.target.value)
                 }
                 placeholder="e.g. E-commerce Platform Redesign"
-                className="h-12 w-full rounded-xl border border-white/10 bg-card px-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className={cn(
+                  "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  titleError
+                    ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                    : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                )}
+                aria-invalid={Boolean(titleError)}
               />
+              {titleError ? (
+                <p className="mt-1 text-sm text-destructive">{titleError}</p>
+              ) : null}
             </div>
 
             {/* Description */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Description
               </label>
               <textarea
@@ -162,13 +184,22 @@ const FreelancerCaseStudySlide = ({
                 }
                 placeholder="Briefly describe the project and its goals..."
                 rows={4}
-                className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className={cn(
+                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  descriptionError
+                    ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                    : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                )}
+                aria-invalid={Boolean(descriptionError)}
               />
+              {descriptionError ? (
+                <p className="mt-1 text-sm text-destructive">{descriptionError}</p>
+              ) : null}
             </div>
 
             {/* Niche */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Niche
               </label>
               <CustomSelect
@@ -178,14 +209,18 @@ const FreelancerCaseStudySlide = ({
                 placeholder="select niche"
                 isSearchable
                 searchPlaceholder="Search niches"
+                hasError={Boolean(nicheError)}
               />
+              {nicheError ? (
+                <p className="mt-1 text-sm text-destructive">{nicheError}</p>
+              ) : null}
             </div>
 
             {/* 3-column row: Project Link, Project File, Your Role */}
             <div className="grid gap-5 sm:grid-cols-3">
               {/* Project Link */}
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Project Link (Optional)
                 </label>
                 <div className="relative">
@@ -197,14 +232,20 @@ const FreelancerCaseStudySlide = ({
                       onCaseStudyFieldChange("projectLink", e.target.value)
                     }
                     placeholder="https://..."
-                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className={cn(
+                      "h-12 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      projectProofError
+                        ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                        : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                    )}
+                    aria-invalid={Boolean(projectProofError)}
                   />
                 </div>
               </div>
 
               {/* Project File */}
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Project File (Optional)
                 </label>
                 <FileUploadButton
@@ -212,12 +253,13 @@ const FreelancerCaseStudySlide = ({
                   onChange={(file) =>
                     onCaseStudyFieldChange("projectFile", file)
                   }
+                  hasError={Boolean(projectProofError)}
                 />
               </div>
 
               {/* Your Role */}
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Your Role
                 </label>
                 <CustomSelect
@@ -225,15 +267,22 @@ const FreelancerCaseStudySlide = ({
                   onChange={(val) => onCaseStudyFieldChange("role", val)}
                   options={ROLE_OPTIONS}
                   placeholder="Select role"
+                  hasError={Boolean(roleError)}
                 />
+                {roleError ? (
+                  <p className="mt-1 text-sm text-destructive">{roleError}</p>
+                ) : null}
               </div>
             </div>
+            {projectProofError ? (
+              <p className="mt-1 text-sm text-destructive">{projectProofError}</p>
+            ) : null}
 
             {/* 2-column row: Timeline, Budget */}
             <div className="grid gap-5 sm:grid-cols-2">
               {/* Timeline */}
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Timeline
                 </label>
                 <CustomSelect
@@ -241,12 +290,16 @@ const FreelancerCaseStudySlide = ({
                   onChange={(val) => onCaseStudyFieldChange("timeline", val)}
                   options={TIMELINE_OPTIONS}
                   placeholder="Select duration"
+                  hasError={Boolean(timelineError)}
                 />
+                {timelineError ? (
+                  <p className="mt-1 text-sm text-destructive">{timelineError}</p>
+                ) : null}
               </div>
 
               {/* Budget */}
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Budget
                 </label>
                 <div className="relative">
@@ -259,9 +312,18 @@ const FreelancerCaseStudySlide = ({
                       onCaseStudyFieldChange("budget", val);
                     }}
                     placeholder="e.g. 5000"
-                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className={cn(
+                      "h-12 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      budgetError
+                        ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                        : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                    )}
+                    aria-invalid={Boolean(budgetError)}
                   />
                 </div>
+                {budgetError ? (
+                  <p className="mt-1 text-sm text-destructive">{budgetError}</p>
+                ) : null}
               </div>
             </div>
 

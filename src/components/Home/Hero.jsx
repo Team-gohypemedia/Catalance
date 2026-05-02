@@ -140,10 +140,10 @@ const Hero = () => {
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center px-4 text-center sm:px-6">
         <Badge
           variant="outline"
-          className="mb-7 inline-flex gap-1.5 rounded-full bg-background/35 px-4 py-1 text-sm font-medium text-white backdrop-blur-md sm:mb-9"
+          className="mb-3 inline-flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 rounded-full bg-background/35 px-4 py-1.5 text-[0.64rem] font-medium leading-none text-white backdrop-blur-md sm:mb-9 sm:max-w-none sm:gap-2 sm:px-5 sm:text-sm"
         >
-          <Star className="size-4 fill-primary text-primary" />
-          <span className="font-semibold text-primary">10,000+</span>
+          <Star className="size-3.5 shrink-0 fill-primary text-primary sm:size-4" />
+          <span className="px-1 font-semibold text-primary">10,000+</span>
           <span className="text-white/90">Projects delivered on Catalance</span>
         </Badge>
 
@@ -152,14 +152,14 @@ const Hero = () => {
           <span className="block">Actually Trust</span>
         </h1>
 
-        <p className="mt-6 max-w-4xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-7 sm:text-base md:text-lg">
+        <p className="mt-6 mb-6 max-w-4xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-7 sm:mb-7 sm:text-base md:text-lg">
           Hire trusted experts focused on reliable and timely delivery.
         </p>
 
         <Button
           asChild
           size="lg"
-          className="px-8 text-lg font-semibold shadow-[0_14px_36px_rgba(255,204,0,0.22)] sm:mt-11"
+          className="px-8 text-lg font-semibold shadow-[0_14px_36px_rgba(255,204,0,0.22)]"
         >
           <Link to="/service">Hire Expert</Link>
         </Button>

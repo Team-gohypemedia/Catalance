@@ -1,6 +1,6 @@
 import React from 'react'
-import { Wormhole } from '@/components/ui/Wormhole'
-import { Marquee } from '@/components/ui/marquee'
+import AutoScroll from 'embla-carousel-auto-scroll'
+import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel'
 import testimonial1 from '@/assets/images/testimonials/Ajay-prajapati.jpg'
 import testimonial2 from '@/assets/images/testimonials/mohd-kaif.jpg'
 import testimonial3 from '@/assets/images/testimonials/nitin-nayak.jpg'
@@ -58,7 +58,7 @@ function StarRating() {
 
 function TestimonialCard({ testimonial }) {
   return (
-    <article className="group flex w-[21rem] shrink-0 flex-col justify-between rounded-[1.75rem] border border-white/10 bg-transparent p-6 text-left backdrop-blur-md transition-transform duration-300 hover:-translate-y-1 sm:w-[23rem]">
+    <article className="group flex h-full w-full select-none flex-col justify-between rounded-[1.75rem] border border-white/10 bg-black/20 p-6 text-left backdrop-blur-md transition-transform duration-300 hover:-translate-y-1">
       <div>
         <StarRating />
         <p className="mt-4 text-lg leading-8 text-white/90">{testimonial.quote}</p>
@@ -75,7 +75,6 @@ function TestimonialCard({ testimonial }) {
         <div>
           <p className="text-base font-semibold text-white">{testimonial.name}</p>
           <p className="text-sm text-white/65">{testimonial.role}</p>
-          <p className="text-sm text-white/45">{testimonial.handle}</p>
         </div>
       </div>
     </article>
@@ -83,37 +82,79 @@ function TestimonialCard({ testimonial }) {
 }
 
 const Testimonidals = () => {
+  const [api, setApi] = React.useState(null)
+  const isHoveringRef = React.useRef(false)
+  const isPointerDownRef = React.useRef(false)
+
+  const autoScrollPlugins = React.useMemo(
+    () => [
+      AutoScroll({
+        speed: 1.25,
+        startDelay: 0,
+        direction: 'forward',
+        stopOnInteraction: true,
+      }),
+    ],
+    [],
+  )
+
+  React.useEffect(() => {
+    if (!api) return undefined
+
+    const autoScroll = api.plugins().autoScroll
+    const rootNode = api.rootNode()
+
+    if (!autoScroll || !rootNode) return undefined
+
+    autoScroll.play(0)
+
+    const handlePointerDown = () => {
+      isPointerDownRef.current = true
+    }
+
+    const handlePointerUp = () => {
+      isPointerDownRef.current = false
+    }
+
+    const handleMouseEnter = () => {
+      isHoveringRef.current = true
+      autoScroll.stop()
+    }
+
+    const handleMouseLeave = () => {
+      isHoveringRef.current = false
+
+      if (!isPointerDownRef.current) {
+        autoScroll.play(0)
+      }
+    }
+
+    const handleSettle = () => {
+      if (!isHoveringRef.current) {
+        autoScroll.play(0)
+      }
+    }
+
+    rootNode.addEventListener('mouseenter', handleMouseEnter)
+    rootNode.addEventListener('mouseleave', handleMouseLeave)
+    api.on('pointerDown', handlePointerDown)
+    api.on('pointerUp', handlePointerUp)
+    api.on('settle', handleSettle)
+
+    return () => {
+      rootNode.removeEventListener('mouseenter', handleMouseEnter)
+      rootNode.removeEventListener('mouseleave', handleMouseLeave)
+      api.off('pointerDown', handlePointerDown)
+      api.off('pointerUp', handlePointerUp)
+      api.off('settle', handleSettle)
+      autoScroll.stop()
+      isHoveringRef.current = false
+      isPointerDownRef.current = false
+    }
+  }, [api])
+
   return (
     <section className="relative h-screen overflow-hidden bg-background text-white">
-      <div className="pointer-events-none absolute inset-0 opacity-95" aria-hidden="true">
-        <Wormhole
-          lines={{
-            delay: 1.4,
-            duration: 1.4,
-            stroke: 1.1,
-            opacity: [0.18, 1, 0.45],
-            colors: ["rgb(135, 72, 0)", "rgb(135, 72, 0)", "rgb(135, 72, 0)"],
-          }}
-          rings={{
-            delay: 0.4,
-            duration: 0.4,
-            stagger: 0.06,
-            offset: -30,
-            stroke: 1.1,
-            opacity: [0.18, 1, 0.45],
-            colors: ["rgb(255, 255, 255)", "rgb(255, 255, 255)", "rgb(255, 255, 255)"],
-          }}
-          pulse={{
-            delay: 1.4,
-            loopDelay: 0,
-            duration: 1.4,
-            stroke: 1.25,
-            opacity: [0.1, 0.85, 0.2],
-            colors: ["var(--primary)", "var(--primary)", "var(--primary)"],
-          }}
-        />
-      </div>
-
       <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col px-4 pt-20 pb-15 sm:px-6 lg:px-10">
         <div className="mx-auto inline-flex rounded-full border border-white/10 bg-black/20 px-4 py-1 text-sm font-medium text-white/90 backdrop-blur-md">
           Testimonials
@@ -133,11 +174,28 @@ const Testimonidals = () => {
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-linear-to-r from-background to-transparent sm:w-32" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-linear-to-l from-background to-transparent sm:w-32" />
 
-          <Marquee className="p-0 [--duration:68s] [--gap:1.5rem]" pauseOnHover={false} repeat={5}>
-            {testimonials.map((testimonial) => (
-              <TestimonialCard key={testimonial.handle} testimonial={testimonial} />
-            ))}
-          </Marquee>
+          <Carousel
+            setApi={setApi}
+            plugins={autoScrollPlugins}
+            opts={{
+              align: "start",
+              loop: true,
+              slidesToScroll: 1,
+              containScroll: "trimSnaps",
+            }}
+            className="w-full"
+          >
+            <CarouselContent className="-ml-4 items-stretch sm:-ml-5 lg:-ml-6 [backface-visibility:hidden] [will-change:transform]">
+              {testimonials.map((testimonial) => (
+                <CarouselItem
+                  key={testimonial.name}
+                  className="basis-[86%] pl-4 sm:basis-[24rem] sm:pl-5 md:basis-1/2 lg:basis-1/3 lg:pl-6"
+                >
+                  <TestimonialCard testimonial={testimonial} />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
         </div>
       </div>
     </section>

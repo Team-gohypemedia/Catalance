@@ -67,7 +67,7 @@ const ClientCTA = () => {
 
           <div className="relative z-10 flex min-h-[360px] items-center justify-center">
             <div className="w-full max-w-[760px] text-center">
-              <h2 className="text-[3rem] font-semibold leading-[0.9] tracking-[-0.07em] text-foreground sm:text-[4rem] lg:text-[5rem]">
+              <h2 className="text-[3rem] font-semibold leading-[0.9] text-foreground sm:text-[4rem] lg:text-[5rem]">
                 <span className="block">Freelance services</span>
                 <span className="block">at your fingertips</span>
               </h2>
