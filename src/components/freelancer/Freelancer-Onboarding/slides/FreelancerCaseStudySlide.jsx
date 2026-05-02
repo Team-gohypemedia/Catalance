@@ -33,12 +33,9 @@ const TIMELINE_OPTIONS = [
   { value: "12_plus_weeks", label: "12+ Weeks" },
 ];
 
-const getCaseStudyLabel = (caseStudy = {}, index = 0) =>
-  String(caseStudy?.title || "").trim() || `Project ${index + 1}`;
-
 /* ──────────────────── File Upload Button ──────────────────── */
 
-const FileUploadButton = ({ file, onChange }) => {
+const FileUploadButton = ({ file, onChange, hasError = false }) => {
   const inputRef = useRef(null);
 
   return (
@@ -46,7 +43,13 @@ const FileUploadButton = ({ file, onChange }) => {
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 text-white/20 transition-colors hover:border-white/20"
+        className={cn(
+          "flex h-12 w-full items-center justify-center gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-white/20 transition-colors",
+          hasError
+            ? "border-destructive/70 hover:border-destructive/80"
+            : "border-white/10 hover:border-white/20",
+        )}
+        aria-invalid={hasError}
       >
         <Upload className="h-4 w-4" />
         <span>{file ? file.name : "Upload file"}</span>
@@ -77,18 +80,24 @@ const FileUploadButton = ({ file, onChange }) => {
 /* ──────────────────── Main Slide ──────────────────── */
 
 const FreelancerCaseStudySlide = ({
-  currentServiceName,
   caseStudyForm,
   activeCaseStudyIndex = 0,
   nicheOptions = [],
   onCaseStudyFieldChange,
   onAddCaseStudy,
   onServiceStepChange,
+  caseStudyValidationErrors = {},
 }) => {
-  const serviceName = currentServiceName || "Service";
   const activeCaseStudyLabel =
     String(caseStudyForm?.title || "").trim() ||
     `Project ${Number.isInteger(activeCaseStudyIndex) ? activeCaseStudyIndex + 1 : 1}`;
+  const titleError = String(caseStudyValidationErrors.title || "").trim();
+  const descriptionError = String(caseStudyValidationErrors.description || "").trim();
+  const nicheError = String(caseStudyValidationErrors.niche || "").trim();
+  const projectProofError = String(caseStudyValidationErrors.projectProof || "").trim();
+  const roleError = String(caseStudyValidationErrors.role || "").trim();
+  const timelineError = String(caseStudyValidationErrors.timeline || "").trim();
+  const budgetError = String(caseStudyValidationErrors.budget || "").trim();
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
@@ -152,8 +161,17 @@ const FreelancerCaseStudySlide = ({
                   onCaseStudyFieldChange("title", e.target.value)
                 }
                 placeholder="e.g. E-commerce Platform Redesign"
-                className="h-12 w-full rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className={cn(
+                  "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  titleError
+                    ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                    : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                )}
+                aria-invalid={Boolean(titleError)}
               />
+              {titleError ? (
+                <p className="mt-1 text-sm text-destructive">{titleError}</p>
+              ) : null}
             </div>
 
             {/* Description */}
@@ -168,8 +186,17 @@ const FreelancerCaseStudySlide = ({
                 }
                 placeholder="Briefly describe the project and its goals..."
                 rows={4}
-                className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className={cn(
+                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  descriptionError
+                    ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                    : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                )}
+                aria-invalid={Boolean(descriptionError)}
               />
+              {descriptionError ? (
+                <p className="mt-1 text-sm text-destructive">{descriptionError}</p>
+              ) : null}
             </div>
 
             {/* Niche */}
@@ -184,7 +211,11 @@ const FreelancerCaseStudySlide = ({
                 placeholder="select niche"
                 isSearchable
                 searchPlaceholder="Search niches"
+                hasError={Boolean(nicheError)}
               />
+              {nicheError ? (
+                <p className="mt-1 text-sm text-destructive">{nicheError}</p>
+              ) : null}
             </div>
 
             {/* 3-column row: Project Link, Project File, Your Role */}
@@ -203,7 +234,13 @@ const FreelancerCaseStudySlide = ({
                       onCaseStudyFieldChange("projectLink", e.target.value)
                     }
                     placeholder="https://..."
-                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className={cn(
+                      "h-12 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      projectProofError
+                        ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                        : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                    )}
+                    aria-invalid={Boolean(projectProofError)}
                   />
                 </div>
               </div>
@@ -218,6 +255,7 @@ const FreelancerCaseStudySlide = ({
                   onChange={(file) =>
                     onCaseStudyFieldChange("projectFile", file)
                   }
+                  hasError={Boolean(projectProofError)}
                 />
               </div>
 
@@ -231,9 +269,16 @@ const FreelancerCaseStudySlide = ({
                   onChange={(val) => onCaseStudyFieldChange("role", val)}
                   options={ROLE_OPTIONS}
                   placeholder="Select role"
+                  hasError={Boolean(roleError)}
                 />
+                {roleError ? (
+                  <p className="mt-1 text-sm text-destructive">{roleError}</p>
+                ) : null}
               </div>
             </div>
+            {projectProofError ? (
+              <p className="mt-1 text-sm text-destructive">{projectProofError}</p>
+            ) : null}
 
             {/* 2-column row: Timeline, Budget */}
             <div className="grid gap-5 sm:grid-cols-2">
@@ -247,7 +292,11 @@ const FreelancerCaseStudySlide = ({
                   onChange={(val) => onCaseStudyFieldChange("timeline", val)}
                   options={TIMELINE_OPTIONS}
                   placeholder="Select duration"
+                  hasError={Boolean(timelineError)}
                 />
+                {timelineError ? (
+                  <p className="mt-1 text-sm text-destructive">{timelineError}</p>
+                ) : null}
               </div>
 
               {/* Budget */}
@@ -265,9 +314,18 @@ const FreelancerCaseStudySlide = ({
                       onCaseStudyFieldChange("budget", val);
                     }}
                     placeholder="e.g. 5000"
-                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className={cn(
+                      "h-12 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      budgetError
+                        ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                        : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                    )}
+                    aria-invalid={Boolean(budgetError)}
                   />
                 </div>
+                {budgetError ? (
+                  <p className="mt-1 text-sm text-destructive">{budgetError}</p>
+                ) : null}
               </div>
             </div>
 

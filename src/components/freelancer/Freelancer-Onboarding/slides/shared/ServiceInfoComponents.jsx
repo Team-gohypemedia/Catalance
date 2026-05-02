@@ -93,6 +93,7 @@ export const CustomSelect = ({
   onChange,
   options,
   placeholder,
+  hasError = false,
   popupMode = "attached",
   popupClassName = "",
   isSearchable = false,
@@ -295,8 +296,11 @@ export const CustomSelect = ({
         className={cn(
           "flex h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 transition-colors",
           value ? "text-white" : "text-muted-foreground",
-          isOpen && "border-primary/50 ring-1 ring-primary/20"
+          hasError
+            ? "border-destructive/70 ring-1 ring-destructive/20"
+            : isOpen && "border-primary/50 ring-1 ring-primary/20",
         )}
+        aria-invalid={hasError}
       >
         <span className="text-[14px] leading-5">{selectedOption?.label || placeholder}</span>
         <ChevronDown

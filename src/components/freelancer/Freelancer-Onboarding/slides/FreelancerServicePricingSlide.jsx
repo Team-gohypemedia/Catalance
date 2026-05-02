@@ -30,8 +30,14 @@ const FreelancerServicePricingSlide = ({
   servicePricingForm,
   onServicePricingFieldChange,
   onServiceStepChange,
+  servicePricingValidationErrors = {},
 }) => {
   const serviceName = currentServiceName || "Service";
+  const descriptionError = String(servicePricingValidationErrors.description || "").trim();
+  const deliveryTimelineError = String(
+    servicePricingValidationErrors.deliveryTimeline || "",
+  ).trim();
+  const priceRangeError = String(servicePricingValidationErrors.priceRange || "").trim();
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
@@ -77,8 +83,17 @@ const FreelancerServicePricingSlide = ({
                 }
                 placeholder="Description..."
                 rows={4}
-                className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className={cn(
+                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  descriptionError
+                    ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                    : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                )}
+                aria-invalid={Boolean(descriptionError)}
               />
+              {descriptionError ? (
+                <p className="mt-1 text-sm text-destructive">{descriptionError}</p>
+              ) : null}
             </div>
 
             {/* Delivery Timeline */}
@@ -93,7 +108,13 @@ const FreelancerServicePricingSlide = ({
                 }
                 options={DELIVERY_TIMELINE_OPTIONS}
                 placeholder="Select delivery time"
+                hasError={Boolean(deliveryTimelineError)}
               />
+              {deliveryTimelineError ? (
+                <p className="mt-1 text-sm text-destructive">
+                  {deliveryTimelineError}
+                </p>
+              ) : null}
             </div>
 
             {/* Starting Price */}
@@ -109,12 +130,21 @@ const FreelancerServicePricingSlide = ({
                   value={servicePricingForm.priceRange || ""}
                   onChange={(e) => {
                     const digitsOnly = e.target.value.replace(/\D/g, "");
-                    onServicePricingFieldChange("priceRange", digitsOnly);
+                  onServicePricingFieldChange("priceRange", digitsOnly);
                   }}
                   placeholder="Enter starting price"
-                  className="w-full rounded-xl border border-white/10 bg-card pl-8 pr-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                  className={cn(
+                    "w-full rounded-xl border bg-card pl-8 pr-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                    priceRangeError
+                      ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                      : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                  )}
+                  aria-invalid={Boolean(priceRangeError)}
                 />
               </div>
+              {priceRangeError ? (
+                <p className="mt-1 text-sm text-destructive">{priceRangeError}</p>
+              ) : null}
             </div>
           </div>
         </div>
