@@ -43,3 +43,20 @@ export const googleLoginSchema = z.object({
     mode: z.enum(["login", "signup"]).optional()
   })
 });
+
+const whatsappPhoneFields = {
+  countryCode: z.string().trim().min(1).max(8),
+  phoneNumber: z.string().trim().min(6).max(32),
+  role: userRoleEnum.optional()
+};
+
+export const whatsappOtpRequestSchema = z.object({
+  body: z.object(whatsappPhoneFields)
+});
+
+export const whatsappOtpVerifySchema = z.object({
+  body: z.object({
+    ...whatsappPhoneFields,
+    otp: z.string().trim().regex(/^\d{4,8}$/, "OTP must contain only digits")
+  })
+});

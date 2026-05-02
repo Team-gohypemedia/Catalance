@@ -10,6 +10,8 @@ import {
   resetPassword,
   verifyUserOtp,
   resendOtp,
+  requestWhatsappOtp,
+  verifyWhatsappOtp,
   updateUserProfile
 } from "../modules/users/user.service.js";
 import { AppError } from "../utils/app-error.js";
@@ -29,6 +31,22 @@ export const resendOtpHandler = asyncHandler(async (req, res) => {
   const { email } = req.body;
   const result = await resendOtp(email);
   res.json({ data: result });
+});
+
+export const requestWhatsappOtpHandler = asyncHandler(async (req, res) => {
+  const result = await requestWhatsappOtp({
+    ...req.body,
+    requestIp: req.ip
+  });
+  res.json({ data: result });
+});
+
+export const verifyWhatsappOtpHandler = asyncHandler(async (req, res) => {
+  const authPayload = await verifyWhatsappOtp({
+    ...req.body,
+    requestIp: req.ip
+  });
+  res.json({ data: authPayload });
 });
 
 export const loginHandler = asyncHandler(async (req, res) => {

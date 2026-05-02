@@ -9,6 +9,7 @@ import {
 } from "../../utils/skill-utils.js";
 import { env } from "../../config/env.js";
 import { ensureResendClient } from "../../lib/resend.js";
+import { sendWhatsappOtp } from "../../lib/whatsapp.js";
 import { hashPassword, verifyPassword, verifyLegacyPassword } from "./password.utils.js";
 import {
   generatePasswordResetEmail,
@@ -29,6 +30,13 @@ import {
 const OTP_TTL_MINUTES = 15;
 const OTP_EMAIL_RETRY_ATTEMPTS = 2;
 const PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS = 2;
+const WHATSAPP_OTP_GENERIC_MESSAGE =
+  "If an account exists for this phone number, an OTP has been sent.";
+const WHATSAPP_OTP_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const WHATSAPP_OTP_MAX_REQUESTS_PER_WINDOW = 5;
+const WHATSAPP_OTP_MAX_VERIFY_ATTEMPTS_PER_WINDOW = 8;
+const whatsappOtpRequestAttempts = new Map();
+const whatsappOtpVerifyAttempts = new Map();
 const marketplaceSupportsServiceDetails = (() => {
   try {
     const models = Prisma?.dmmf?.datamodel?.models || [];
@@ -357,6 +365,64 @@ const findUserByLoginPhone = async (identifier) => {
       );
     }) || null
   );
+};
+
+const getWhatsappOtpTtlMinutes = () => {
+  const configuredTtl = Number(env.WHATSAPP_OTP_TTL_MINUTES);
+  return Number.isFinite(configuredTtl) && configuredTtl > 0
+    ? Math.min(Math.round(configuredTtl), 60)
+    : OTP_TTL_MINUTES;
+};
+
+const normalizeWhatsappPhone = ({ countryCode, phoneNumber }) => {
+  const countryDigits = normalizeLoginPhoneDigits(countryCode);
+  const phoneDigits = normalizeLoginPhoneDigits(phoneNumber).replace(/^0+/, "");
+
+  if (!countryDigits) {
+    throw new AppError("Country code is required", 400);
+  }
+
+  if (phoneDigits.length < 6) {
+    throw new AppError("Enter a valid phone number to continue.", 400);
+  }
+
+  const normalizedPhone = phoneDigits.startsWith(countryDigits)
+    ? phoneDigits
+    : `${countryDigits}${phoneDigits}`;
+
+  if (normalizedPhone.length < 8 || normalizedPhone.length > 15) {
+    throw new AppError("Enter a valid phone number to continue.", 400);
+  }
+
+  return normalizedPhone;
+};
+
+const consumeOtpRateLimit = ({ store, key, maxAttempts, message }) => {
+  const now = Date.now();
+  const attempts = (store.get(key) || []).filter(
+    (timestamp) => now - timestamp < WHATSAPP_OTP_RATE_LIMIT_WINDOW_MS
+  );
+
+  if (attempts.length >= maxAttempts) {
+    throw new AppError(message, 429);
+  }
+
+  attempts.push(now);
+  store.set(key, attempts);
+};
+
+const buildWhatsappOtpRateLimitKey = ({ phone, requestIp }) =>
+  `${phone}:${String(requestIp || "unknown").trim() || "unknown"}`;
+
+const resolveActiveUserRole = (user, role) => {
+  const requestedRole = normalizeRoleValue(role);
+  const roles = Array.isArray(user?.roles)
+    ? user.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+    : [];
+
+  return requestedRole && roles.includes(requestedRole)
+    ? requestedRole
+    : normalizeRoleValue(user?.role) || "FREELANCER";
 };
 
 const hasRole = (user, role) => {
@@ -2549,6 +2615,136 @@ export const resendOtp = async (email) => {
       ? "New verification code sent to your email"
       : "In development mode, use the OTP printed in backend logs.",
     emailDelivery: otpEmail?.delivered ? "sent" : "not_sent"
+  };
+};
+
+export const requestWhatsappOtp = async ({
+  countryCode,
+  phoneNumber,
+  role,
+  requestIp
+}) => {
+  const normalizedPhone = normalizeWhatsappPhone({ countryCode, phoneNumber });
+  const ttlMinutes = getWhatsappOtpTtlMinutes();
+  const rateLimitKey = buildWhatsappOtpRateLimitKey({
+    phone: normalizedPhone,
+    requestIp
+  });
+
+  consumeOtpRateLimit({
+    store: whatsappOtpRequestAttempts,
+    key: rateLimitKey,
+    maxAttempts: WHATSAPP_OTP_MAX_REQUESTS_PER_WINDOW,
+    message: "Too many OTP requests. Please try again later."
+  });
+
+  const user = await findUserByLoginPhone(normalizedPhone);
+
+  if (!user) {
+    return {
+      message: WHATSAPP_OTP_GENERIC_MESSAGE,
+      phone: normalizedPhone,
+      expiresInMinutes: ttlMinutes
+    };
+  }
+
+  if (role && !hasRole(user, role)) {
+    return {
+      message: WHATSAPP_OTP_GENERIC_MESSAGE,
+      phone: normalizedPhone,
+      expiresInMinutes: ttlMinutes
+    };
+  }
+
+  const otpCode = crypto.randomInt(100000, 999999).toString();
+  const otpExpires = new Date(Date.now() + ttlMinutes * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      otpCode,
+      otpExpires
+    }
+  });
+
+  const whatsappResult = await sendWhatsappOtp({
+    to: normalizedPhone,
+    otpCode
+  });
+
+  return {
+    message: WHATSAPP_OTP_GENERIC_MESSAGE,
+    phone: normalizedPhone,
+    expiresInMinutes: ttlMinutes,
+    whatsappDelivery: whatsappResult?.delivered ? "accepted" : "not_sent"
+  };
+};
+
+export const verifyWhatsappOtp = async ({
+  countryCode,
+  phoneNumber,
+  otp,
+  role,
+  requestIp
+}) => {
+  const normalizedPhone = normalizeWhatsappPhone({ countryCode, phoneNumber });
+  const rateLimitKey = buildWhatsappOtpRateLimitKey({
+    phone: normalizedPhone,
+    requestIp
+  });
+
+  consumeOtpRateLimit({
+    store: whatsappOtpVerifyAttempts,
+    key: rateLimitKey,
+    maxAttempts: WHATSAPP_OTP_MAX_VERIFY_ATTEMPTS_PER_WINDOW,
+    message: "Too many OTP attempts. Please request a new code."
+  });
+
+  const user = await findUserByLoginPhone(normalizedPhone);
+  const invalidCodeError = new AppError("Invalid or expired verification code", 400);
+
+  if (!user || (role && !hasRole(user, role))) {
+    throw invalidCodeError;
+  }
+
+  if (!user.otpCode || !user.otpExpires) {
+    throw invalidCodeError;
+  }
+
+  if (String(user.otpCode) !== String(otp).trim()) {
+    throw invalidCodeError;
+  }
+
+  if (new Date() > new Date(user.otpExpires)) {
+    throw invalidCodeError;
+  }
+
+  let updatedUser = await prisma.user.update(
+    withFreelancerProfileInclude({
+      where: { id: user.id },
+      data: {
+        isVerified: true,
+        otpCode: null,
+        otpExpires: null,
+        phoneNumber: user.phoneNumber || normalizedPhone,
+        phone: user.phone || normalizedPhone
+      }
+    })
+  );
+
+  if (!user.isVerified) {
+    await maybeSendWelcomeEmail(updatedUser);
+  }
+
+  updatedUser = await ensureUserRoles(updatedUser, role);
+  const activeRole = resolveActiveUserRole(updatedUser, role);
+  const sessionUser = sanitizeUser({ ...updatedUser, role: activeRole });
+
+  whatsappOtpVerifyAttempts.delete(rateLimitKey);
+
+  return {
+    user: sessionUser,
+    accessToken: issueAccessToken(updatedUser, activeRole)
   };
 };
 

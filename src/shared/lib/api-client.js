@@ -224,6 +224,20 @@ export const resendOtp = (email) => {
   });
 };
 
+export const requestWhatsappOtp = ({ countryCode, phoneNumber, role }) => {
+  return request("/auth/whatsapp/request-otp", {
+    method: "POST",
+    body: JSON.stringify({ countryCode, phoneNumber, role })
+  });
+};
+
+export const verifyWhatsappOtp = ({ countryCode, phoneNumber, otp, role }) => {
+  return request("/auth/whatsapp/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({ countryCode, phoneNumber, otp, role })
+  });
+};
+
 export const submitContactInquiry = ({ name, email, subject, message }) => {
   return request("/contact/inquiry", {
     method: "POST",
@@ -354,6 +368,8 @@ export const apiClient = {
   fetchChatMessages,
   sendChatMessage,
   verifyOtp,
+  requestWhatsappOtp,
+  verifyWhatsappOtp,
   submitContactInquiry,
   subscribeNewsletter
 };

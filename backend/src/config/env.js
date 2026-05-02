@@ -54,7 +54,14 @@ const envSchema = z.object({
   OPENROUTER_MODEL_FALLBACK: z.string().default("meta-llama/llama-3.2-3b-instruct:free"),
   FRONTEND_URL: z.string().optional(),
   RAZORPAY_API_KEY: z.string().optional(),
-  RAZORPAY_API_SECRET: z.string().optional()
+  RAZORPAY_API_SECRET: z.string().optional(),
+  WHATSAPP_GRAPH_VERSION: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_WABA_ID: z.string().optional(),
+  WHATSAPP_ACCESS_TOKEN: z.string().optional(),
+  WHATSAPP_OTP_TEMPLATE_NAME: z.string().default("login_otp"),
+  WHATSAPP_OTP_TEMPLATE_LANGUAGE: z.string().default("en_US"),
+  WHATSAPP_OTP_TTL_MINUTES: z.coerce.number().int().positive().default(15)
 });
 
 let env;
@@ -103,7 +110,14 @@ try {
     OPENROUTER_MODEL_FALLBACK: process.env.OPENROUTER_MODEL_FALLBACK || "meta-llama/llama-3.2-3b-instruct:free",
     FRONTEND_URL: process.env.FRONTEND_URL,
     RAZORPAY_API_KEY: process.env.RAZORPAY_API_KEY,
-    RAZORPAY_API_SECRET: process.env.RAZORPAY_API_SECRET
+    RAZORPAY_API_SECRET: process.env.RAZORPAY_API_SECRET,
+    WHATSAPP_GRAPH_VERSION: process.env.WHATSAPP_GRAPH_VERSION,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    WHATSAPP_WABA_ID: process.env.WHATSAPP_WABA_ID,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_OTP_TEMPLATE_NAME: process.env.WHATSAPP_OTP_TEMPLATE_NAME || "login_otp",
+    WHATSAPP_OTP_TEMPLATE_LANGUAGE: process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || "en_US",
+    WHATSAPP_OTP_TTL_MINUTES: Number(process.env.WHATSAPP_OTP_TTL_MINUTES) || 15
   };
 
   env = fallbackEnv;
