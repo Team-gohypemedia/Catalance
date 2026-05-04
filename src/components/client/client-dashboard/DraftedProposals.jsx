@@ -447,7 +447,7 @@ const DraftProposalListPanel = memo(function DraftProposalListPanel({
   );
 });
 
-const DraftedProposals = memo(function DraftedProposals({
+const Proposals = memo(function Proposals({
   draftProposalRows,
   onOpenQuickProject,
   className = "",
@@ -945,7 +945,7 @@ const DraftedProposals = memo(function DraftedProposals({
         <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
           <div className="min-w-0">
             <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
-              Drafted Proposals
+              Proposals
             </h2>
           </div>
 
@@ -1067,4 +1067,4 @@ const DraftedProposals = memo(function DraftedProposals({
   );
 });
 
-export default DraftedProposals;
+export default Proposals;

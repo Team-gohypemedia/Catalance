@@ -11,7 +11,6 @@ import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Users from "lucide-react/dist/esm/icons/users";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import {
-  DashboardPanel,
   ProjectCarouselControls,
   ProjectCarouselDots,
 } from "./shared.jsx";
@@ -127,6 +126,8 @@ const ActiveProjects = memo(function ActiveProjects({
   const shouldUseProjectCarousel = isMobile
     ? totalVisibleProjectCards > 1
     : totalVisibleProjectCards > 3;
+  // Hide the whole section when there are no running projects to show.
+  const shouldHideEmptySection = !resolvedIsLoading && items.length === 0;
 
   useEffect(() => {
     if (!projectCarouselApi || !shouldUseProjectCarousel) {
@@ -210,6 +211,10 @@ const ActiveProjects = memo(function ActiveProjects({
       window.cancelAnimationFrame(frameId);
     };
   }, [isMobile, measureProjectCardHeights, shouldUseProjectCarousel, items.length]);
+
+  if (shouldHideEmptySection) {
+    return null;
+  }
 
   return (
     <section className={cn("mt-14", className)}>
@@ -331,19 +336,7 @@ const ActiveProjects = memo(function ActiveProjects({
             </div>
           )}
         </>
-      ) : (
-        <DashboardPanel className="flex min-h-[220px] items-center justify-center bg-card p-8 text-center">
-          <div className="max-w-md">
-            <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
-              No active projects yet
-            </p>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Projects will appear here once a freelancer is assigned and work
-              has started.
-            </p>
-          </div>
-        </DashboardPanel>
-      )}
+      ) : null}
     </section>
   );
 });

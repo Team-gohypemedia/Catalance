@@ -51,11 +51,11 @@ import ClientDashboardDialogs from "@/components/features/client/ClientDashboard
 import {
   ActiveChats,
   ActiveProjects,
-  DraftedProposals,
   HeroGreetingBlock,
   OverviewMetricsGrid,
   ProjectProgress,
   RecentActivity,
+  Proposals,
 } from "@/components/client/client-dashboard";
 
 const PROPOSAL_BLOCKED_STATUSES = new Set(["PENDING", "ACCEPTED"]);
@@ -3273,7 +3273,7 @@ const ClientDashboardContent = () => {
             />
 
             {!isLoading && !hasShowcaseItems ? (
-              <DraftedProposals
+              <Proposals
                 draftProposalRows={draftProposalRows}
                 onOpenQuickProject={handleOpenQuickProject}
                 className="mt-14"
@@ -3292,7 +3292,7 @@ const ClientDashboardContent = () => {
             <section className="mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
               <div className="min-w-0 flex flex-col gap-5 sm:gap-6 xl:gap-7">
                 {!isLoading && hasShowcaseItems ? (
-                  <DraftedProposals
+                  <Proposals
                     draftProposalRows={draftProposalRows}
                     onOpenQuickProject={handleOpenQuickProject}
                   />

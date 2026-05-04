@@ -305,6 +305,15 @@ const OverviewMetricsGrid = memo(function OverviewMetricsGrid({
   }, [dashboardData, metrics]);
   const resolvedIsLoading =
     Array.isArray(metrics) || !dashboardData ? isLoading : dashboardData.isLoading;
+  // Keep the dashboard clean until the client has at least one running project.
+  const shouldHideForEmptyWorkspace =
+    !Array.isArray(metrics) &&
+    Boolean(dashboardData) &&
+    Number(dashboardData.activeProjectCount || 0) === 0;
+
+  if (shouldHideForEmptyWorkspace) {
+    return null;
+  }
 
   return (
     <section

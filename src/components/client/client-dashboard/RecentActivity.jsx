@@ -15,6 +15,9 @@ import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
 
 const MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT = 2;
+const LOW_ACTIVITY_THRESHOLD = 2;
+const RECENT_ACTIVITY_PANEL_MIN_HEIGHT_CLASSNAME =
+  "min-h-[320px] sm:min-h-[370px]";
 
 const activityIconMap = {
   proposal: BriefcaseBusiness,
@@ -103,7 +106,7 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
         tabIndex={0}
         onClick={item.onClick}
         onKeyDown={handleRowKeyDown}
-        className="flex w-full items-start gap-4 rounded-[18px] px-3 py-3 text-left transition-colors hover:bg-white/2"
+        className="flex w-full items-start gap-4 rounded-[18px] px-3 py-3 text-left transition-colors hover:bg-white/[0.02]"
       >
         <div
           className={cn(
@@ -135,7 +138,7 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
       tabIndex={0}
       onClick={item.onClick}
       onKeyDown={handleRowKeyDown}
-      className="flex w-full flex-col gap-3 px-4 py-4 text-left transition-colors hover:bg-white/2 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
+      className="flex w-full flex-col gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.02] sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
     >
       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
         <div
@@ -195,6 +198,8 @@ const RecentActivity = memo(function RecentActivity({
     0,
     items.length - MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT,
   );
+  const shouldShowLowActivityFiller =
+    !isMobile && items.length > 0 && items.length <= LOW_ACTIVITY_THRESHOLD;
   const handleOpenViewAll = useCallback(() => {
     if (typeof onOpenNotifications === "function") {
       onOpenNotifications();
@@ -207,7 +212,7 @@ const RecentActivity = memo(function RecentActivity({
   }, [onOpenNotifications]);
 
   return (
-    <section className={cn("w-full min-w-0", className)}>
+    <section className={cn("flex h-full w-full min-w-0 flex-col", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
           Recent Activity
@@ -223,7 +228,15 @@ const RecentActivity = memo(function RecentActivity({
         ) : null}
       </div>
 
-      <DashboardPanel className="overflow-hidden bg-card">
+      <DashboardPanel
+        className={cn(
+          "overflow-hidden bg-card",
+          (items.length === 0 || shouldShowLowActivityFiller) && [
+            "flex flex-1 flex-col",
+            RECENT_ACTIVITY_PANEL_MIN_HEIGHT_CLASSNAME,
+          ],
+        )}
+      >
         {resolvedIsLoading ? (
           <div>
             {[0, 1, 2, 3].map((item) => (
@@ -279,10 +292,26 @@ const RecentActivity = memo(function RecentActivity({
             ) : null}
           </div>
         ) : (
-          <div>
-            {items.map((item) => (
-              <ActivityRow key={item.id} item={item} />
-            ))}
+          <div className={cn(shouldShowLowActivityFiller && "flex flex-1 flex-col")}>
+            <div>
+              {items.map((item) => (
+                <ActivityRow key={item.id} item={item} />
+              ))}
+            </div>
+
+            {shouldShowLowActivityFiller ? (
+              <div className="flex flex-1 items-center justify-center border-t border-white/[0.06] px-6 py-10 text-center">
+                <div className="max-w-xl">
+                  <p className="text-sm font-semibold text-white/85">
+                    More updates will appear here as your client activity grows.
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    Proposal decisions, project starts, milestones, and message
+                    activity will automatically fill this space.
+                  </p>
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
       </DashboardPanel>

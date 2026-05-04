@@ -71,7 +71,7 @@ const WishlistedFreelancers = memo(function WishlistedFreelancers({
   }, [navigate]);
 
   return (
-    <section className={cn("w-full min-w-0", className)}>
+    <section className={cn("flex h-full w-full min-w-0 flex-col", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white">
           Wishlisted Freelancers
@@ -80,7 +80,7 @@ const WishlistedFreelancers = memo(function WishlistedFreelancers({
 
       <DashboardPanel
         className={cn(
-          "w-full overflow-hidden bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+          "flex flex-1 flex-col overflow-hidden bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
           resolvedItems.length === 0
             ? "p-0"
             : "px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6",
@@ -101,7 +101,7 @@ const WishlistedFreelancers = memo(function WishlistedFreelancers({
             ))}
           </div>
         ) : resolvedItems.length === 0 ? (
-          <div className="flex min-h-[220px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[260px] sm:px-6 sm:py-12">
+          <div className="flex flex-1 min-h-[220px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[260px] sm:px-6 sm:py-12">
             <div className="flex size-12 items-center justify-center rounded-full bg-white/6 text-muted-foreground sm:size-14">
               <Heart className="size-6" />
             </div>

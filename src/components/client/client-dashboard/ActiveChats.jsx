@@ -96,6 +96,11 @@ const ActiveChats = memo(function ActiveChats({
   const resolvedIsLoading = isLoading || dashboardData?.isLoading;
   const hasUnlockedChats = resolvedAcceptedFreelancersCount > 0;
   const hasMoreProjectsInMessages = resolvedAcceptedFreelancersTotalCount > items.length;
+  // Hide the section entirely until the client has at least one active project.
+  const shouldHideEmptySection =
+    !resolvedIsLoading &&
+    Boolean(dashboardData) &&
+    Number(dashboardData.activeProjectCount || 0) === 0;
   const handleOpenMessages = useCallback(() => {
     if (typeof onOpenMessages === "function") {
       onOpenMessages();
@@ -104,6 +109,10 @@ const ActiveChats = memo(function ActiveChats({
 
     navigate("/client/messages");
   }, [navigate, onOpenMessages]);
+
+  if (shouldHideEmptySection) {
+    return null;
+  }
 
   return (
     <section className={cn("w-full min-w-0", className)}>
