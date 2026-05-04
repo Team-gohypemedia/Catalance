@@ -8,6 +8,8 @@ import {
   forgotPasswordHandler,
   verifyResetTokenHandler,
   resetPasswordHandler,
+  requestEmailSigninOtpHandler,
+  verifyEmailSigninOtpHandler,
   verifyOtpHandler,
   resendOtpHandler,
   requestWhatsappOtpHandler,
@@ -16,6 +18,8 @@ import {
 import { validateResource } from "../middlewares/validate-resource.js";
 import {
   createUserSchema,
+  emailOtpRequestSchema,
+  emailOtpVerifySchema,
   loginSchema,
   googleLoginSchema,
   whatsappOtpRequestSchema,
@@ -32,6 +36,16 @@ export const authRouter = Router();
 authRouter.post("/signup", validateResource(createUserSchema), signupHandler);
 authRouter.post("/verify-otp", verifyOtpHandler);
 authRouter.post("/resend-otp", resendOtpHandler);
+authRouter.post(
+  "/email/request-otp",
+  validateResource(emailOtpRequestSchema),
+  requestEmailSigninOtpHandler
+);
+authRouter.post(
+  "/email/verify-otp",
+  validateResource(emailOtpVerifySchema),
+  verifyEmailSigninOtpHandler
+);
 authRouter.post(
   "/whatsapp/request-otp",
   validateResource(whatsappOtpRequestSchema),

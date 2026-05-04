@@ -183,6 +183,20 @@ export const login = ({ email, identifier, password, role }) => {
   });
 };
 
+export const requestEmailOtp = ({ email, role }) => {
+  return request("/auth/email/request-otp", {
+    method: "POST",
+    body: JSON.stringify({ email, role })
+  });
+};
+
+export const verifyEmailOtp = ({ email, otp, role }) => {
+  return request("/auth/email/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({ email, otp, role })
+  });
+};
+
 export const forgotPassword = (email) => {
   return request("/auth/forgot-password", {
     method: "POST",
@@ -363,6 +377,8 @@ export const fetchStatesByCountry = (country) => {
 export const apiClient = {
   signup,
   login,
+  requestEmailOtp,
+  verifyEmailOtp,
   createChatConversation,
   fetchChatConversations,
   fetchChatMessages,

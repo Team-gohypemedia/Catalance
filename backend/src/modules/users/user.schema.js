@@ -36,6 +36,21 @@ export const loginSchema = z.object({
     })
 });
 
+export const emailOtpRequestSchema = z.object({
+  body: z.object({
+    email: z.string().trim().email().max(255),
+    role: userRoleEnum.optional()
+  })
+});
+
+export const emailOtpVerifySchema = z.object({
+  body: z.object({
+    email: z.string().trim().email().max(255),
+    otp: z.string().trim().regex(/^\d{4,8}$/, "OTP must contain only digits"),
+    role: userRoleEnum.optional()
+  })
+});
+
 export const googleLoginSchema = z.object({
   body: z.object({
     token: z.string().min(1),

@@ -5,7 +5,11 @@ import { cn } from "@/shared/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { login, loginWithGoogle } from "@/shared/lib/api-client";
+import {
+  loginWithGoogle,
+  requestEmailOtp,
+  verifyEmailOtp,
+} from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
   ACCOUNT_ONBOARDING_PATH,
@@ -21,15 +25,13 @@ import {
 import logo from "@/assets/logos/logo.svg";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
-import Eye from "lucide-react/dist/esm/icons/eye";
-import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
 import Search from "lucide-react/dist/esm/icons/search";
 
 const CLIENT_ROLE = "CLIENT";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MIN_PASSWORD_LENGTH = 8;
+const OTP_LENGTH = 6;
 
 const normalizeAvatarUrl = (value) => {
   const url = String(value || "").trim();
@@ -135,11 +137,14 @@ function EmailAuth() {
         ? location.state.identifier
         : "",
   );
-  const [password, setPassword] = useState("");
+  const [otpDigits, setOtpDigits] = useState("");
+  const [authStep, setAuthStep] = useState("email");
+  const [pendingEmail, setPendingEmail] = useState(null);
+  const [otpExpiresInMinutes, setOtpExpiresInMinutes] = useState(15);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     document.title = "Signin | Catalance";
@@ -156,6 +161,11 @@ function EmailAuth() {
   const identifierInputType = "email";
   const identifierInputMode = "email";
   const identifierAutoComplete = "email";
+  const requestedRole =
+    searchParams.get("role")?.toUpperCase() ||
+    (typeof location.state?.role === "string"
+      ? location.state.role.toUpperCase()
+      : undefined);
 
   const buildReturnUrl = () => {
     if (!redirectParam) return null;
@@ -163,52 +173,81 @@ function EmailAuth() {
     return `${redirectParam}${extra}`;
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const requestOtp = async ({ resend = false } = {}) => {
     setFormError("");
 
-    const normalizedIdentifier = email.trim();
+    const normalizedEmail = String(resend ? pendingEmail : email)
+      .trim()
+      .toLowerCase();
 
-    if (!isValidEmail(normalizedIdentifier)) {
+    if (!isValidEmail(normalizedEmail)) {
       setFormError("Enter a valid email address to continue.");
       return;
     }
 
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setFormError("Enter your password to continue.");
+    if (resend) {
+      setIsResending(true);
+    } else {
+      setIsSubmitting(true);
+    }
+
+    try {
+      const result = await requestEmailOtp({
+        email: normalizedEmail,
+        role: requestedRole,
+      });
+      const nextPendingEmail = result?.email || normalizedEmail;
+
+      setEmail(nextPendingEmail);
+      setPendingEmail(nextPendingEmail);
+      setOtpExpiresInMinutes(Number(result?.expiresInMinutes) || 15);
+      setAuthStep("otp");
+      toast.success(result?.message || "Verification code sent to your email.");
+    } catch (error) {
+      const message = error?.message || "Unable to send verification code.";
+      setFormError(message);
+      toast.error(message);
+    } finally {
+      if (resend) {
+        setIsResending(false);
+      } else {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  const verifyOtpCode = async () => {
+    setFormError("");
+
+    const normalizedEmail = String(pendingEmail || email).trim().toLowerCase();
+    const otp = otpDigits.replace(/\D/g, "").slice(0, OTP_LENGTH);
+
+    if (!isValidEmail(normalizedEmail)) {
+      setFormError("Enter a valid email address to continue.");
+      return;
+    }
+
+    if (otp.length !== OTP_LENGTH) {
+      setFormError("Enter the 6-digit verification code.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const requestedRole =
-        searchParams.get("role")?.toUpperCase() ||
-        (typeof location.state?.role === "string"
-          ? location.state.role.toUpperCase()
-          : undefined);
-
-      const authPayload = await login({
-        identifier: normalizedIdentifier,
-        password,
+      const authPayload = await verifyEmailOtp({
+        email: normalizedEmail,
+        otp,
         role: requestedRole,
       });
 
-      if (authPayload?.requiresVerification) {
-        toast.info(authPayload.message || "Please verify your email.");
-        navigate("/signup", {
-          state: {
-            verifyEmail: authPayload.email,
-            showVerification: true,
-          },
-          replace: true,
-        });
-        return;
+      if (!authPayload?.user || !authPayload?.accessToken) {
+        throw new Error("Invalid login payload received.");
       }
 
-      const shouldStartAccountOnboarding = requiresAccountOnboarding(
-        authPayload?.user,
-      );
+      const shouldStartAccountOnboarding =
+        authPayload?.requiresAccountOnboarding ??
+        requiresAccountOnboarding(authPayload?.user);
       const sessionUser = shouldStartAccountOnboarding
         ? { ...authPayload?.user, accountOnboardingPending: true }
         : authPayload?.user;
@@ -216,7 +255,8 @@ function EmailAuth() {
       setAuthSession(sessionUser, authPayload?.accessToken);
       toast.success("Logged in successfully.");
       setEmail("");
-      setPassword("");
+      setOtpDigits("");
+      setPendingEmail(null);
 
       const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
 
@@ -224,7 +264,7 @@ function EmailAuth() {
         navigate(ACCOUNT_ONBOARDING_PATH, {
           replace: true,
           state: {
-            fromEmailSignin: true,
+            fromEmailVerification: true,
             ...(redirectTo ? { redirectTo } : {}),
           },
         });
@@ -238,7 +278,7 @@ function EmailAuth() {
         user: sessionUser,
       });
     } catch (error) {
-      const message = error?.message || "Unable to log in with those details.";
+      const message = error?.message || "Unable to verify email code.";
       setFormError(message);
       toast.error(message);
     } finally {
@@ -246,20 +286,42 @@ function EmailAuth() {
     }
   };
 
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (authStep === "otp") {
+      await verifyOtpCode();
+      return;
+    }
+
+    await requestOtp();
+  };
+
+  const handleChangeEmail = () => {
+    setAuthStep("email");
+    setOtpDigits("");
+    setPendingEmail(null);
+    setOtpExpiresInMinutes(15);
+    setFormError("");
+  };
+
+  const handleResendOtp = () => {
+    void requestOtp({ resend: true });
+  };
+
   const handleGoogleSignIn = async () => {
     setFormError("");
     setIsGoogleLoading(true);
 
     try {
-      const requestedRole =
-        searchParams.get("role")?.toUpperCase() ||
-        (typeof location.state?.role === "string"
-          ? location.state.role.toUpperCase()
-          : CLIENT_ROLE);
       const { signInWithGoogle } = await import("@/shared/lib/firebase");
       const firebaseUser = await signInWithGoogle();
       const idToken = await firebaseUser.getIdToken();
-      const authPayload = await loginWithGoogle(idToken, requestedRole, "signup");
+      const authPayload = await loginWithGoogle(
+        idToken,
+        requestedRole || CLIENT_ROLE,
+        "signup",
+      );
       const googleAvatar = getGoogleAvatarFromFirebaseUser(firebaseUser);
       const mergedUser = mergeAuthUserWithAvatar(authPayload?.user, googleAvatar);
       const shouldStartAccountOnboarding = requiresAccountOnboarding(mergedUser);
@@ -302,6 +364,139 @@ function EmailAuth() {
     toast.info(`${provider} Log-in is not connected yet.`);
   };
 
+  const renderAuthForm = ({ compact = false } = {}) => {
+    const emailInputId = compact ? "loginEmail" : "loginEmailDesktop";
+    const otpInputId = compact ? "emailOtp" : "emailOtpDesktop";
+    const isOtpStep = authStep === "otp";
+    const buttonLabel = isOtpStep ? "Verify code" : "Sign in";
+    const loadingLabel = isOtpStep ? "Verifying..." : "Sending code...";
+    const formSpacing = compact ? "space-y-3" : "space-y-6";
+    const fieldSpacing = compact ? "space-y-3" : "space-y-4";
+    const labelClass = compact
+      ? "block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
+      : "block text-[12px] font-medium uppercase tracking-[0.2em] text-white/55";
+    const inputClass = compact
+      ? "!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+      : "!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
+    const otpInputClass = compact
+      ? "!h-10 rounded-md border-white/10 bg-[#171717] px-3 text-center font-mono text-[16px] text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+      : "!h-12 rounded-md border-white/10 bg-[#171717] px-4 text-center font-mono text-lg text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
+    const submitButtonClass = compact
+      ? "!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
+      : "!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl";
+
+    return (
+      <form className={formSpacing} onSubmit={handleSubmit} noValidate>
+        <div className={`${fieldSpacing} text-left`}>
+          {!isOtpStep ? (
+            <div className="space-y-1.5">
+              <label htmlFor={emailInputId} className={labelClass}>
+                Email address
+              </label>
+              <Input
+                id={emailInputId}
+                name="identifier"
+                type={identifierInputType}
+                inputMode={identifierInputMode}
+                autoComplete={identifierAutoComplete}
+                autoCapitalize="none"
+                spellCheck={false}
+                aria-label={identifierLabel}
+                placeholder={identifierPlaceholder}
+                value={email}
+                disabled={isSubmitting || isResending}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  if (formError) setFormError("");
+                }}
+                className={inputClass}
+              />
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <label htmlFor={otpInputId} className={labelClass}>
+                    Verification code
+                  </label>
+                  <p className="mt-1 truncate text-xs text-white/55">
+                    Email code sent to {pendingEmail}
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleChangeEmail}
+                  disabled={isSubmitting || isResending}
+                  className="h-8 shrink-0 px-2 text-xs text-primary hover:bg-white/[0.06] hover:text-primary"
+                >
+                  Change
+                </Button>
+              </div>
+
+              <Input
+                id={otpInputId}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                aria-label="Email verification code"
+                placeholder="123456"
+                value={otpDigits}
+                maxLength={OTP_LENGTH}
+                disabled={isSubmitting}
+                onChange={(event) => {
+                  const digits = event.target.value
+                    .replace(/\D/g, "")
+                    .slice(0, OTP_LENGTH);
+                  setOtpDigits(digits);
+                  if (formError) setFormError("");
+                }}
+                className={otpInputClass}
+              />
+
+              <div className="flex items-center justify-between gap-3 text-xs text-white/50">
+                <span>Code expires in {otpExpiresInMinutes} minutes.</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleResendOtp}
+                  disabled={isSubmitting || isResending}
+                  className="h-8 px-2 text-xs text-primary hover:bg-white/[0.06] hover:text-primary"
+                >
+                  {isResending ? "Resending..." : "Resend code"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {formError ? (
+            <p className="pt-1 text-sm text-red-400" aria-live="polite">
+              {formError}
+            </p>
+          ) : null}
+        </div>
+
+        <Button
+          type="submit"
+          disabled={isSubmitting || isResending}
+          className={submitButtonClass}
+        >
+          {isSubmitting ? loadingLabel : buttonLabel}
+          {isSubmitting ? (
+            <Loader2
+              className={
+                compact ? "size-[0.95rem] animate-spin" : "size-5 animate-spin"
+              }
+            />
+          ) : (
+            <ArrowRight className={compact ? "size-[0.95rem]" : "size-5"} />
+          )}
+        </Button>
+      </form>
+    );
+  };
+
   return (
     <main className="relative min-h-svh overflow-hidden bg-background text-foreground">
       <div className="relative mx-auto min-h-svh w-full max-w-[88rem] px-4 py-2 sm:px-10 lg:px-12 lg:py-8">
@@ -327,101 +522,7 @@ function EmailAuth() {
 
             <section className="mt-3 w-full">
               <Card className="mx-auto mt-3 w-full rounded-lg border border-white/10 bg-[#101010]/90 p-3.5 shadow-none backdrop-blur-2xl">
-                <form className="space-y-3" onSubmit={handleSubmit} noValidate>
-                  <div className="w-full space-y-3 text-left">
-                    <div className="space-y-1.5">
-                      <label
-                        htmlFor="loginEmail"
-                        className="block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
-                      >
-                        Email address
-                      </label>
-                      <Input
-                        id="loginEmail"
-                        name="identifier"
-                        type={identifierInputType}
-                        inputMode={identifierInputMode}
-                        autoComplete={identifierAutoComplete}
-                        autoCapitalize="none"
-                        spellCheck={false}
-                        aria-label={identifierLabel}
-                        placeholder={identifierPlaceholder}
-                        value={email}
-                        onChange={(event) => {
-                          setEmail(event.target.value);
-                          if (formError) setFormError("");
-                        }}
-                        className="!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-3">
-                        <label
-                          htmlFor="loginPassword"
-                          className="block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
-                        >
-                          Password
-                        </label>
-
-                        <Link
-                          to="/forgot-password"
-                          className="text-[11px] font-medium text-primary underline-offset-4 hover:underline"
-                        >
-                          Forgot password?
-                        </Link>
-                      </div>
-                      <div className="relative">
-                        <Input
-                          id="loginPassword"
-                          name="password"
-                          type={showPassword ? "text" : "password"}
-                          autoComplete="current-password"
-                          aria-label="Password"
-                          placeholder="Enter your password"
-                          value={password}
-                          onChange={(event) => {
-                            setPassword(event.target.value);
-                            if (formError) setFormError("");
-                          }}
-                          className="!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 pr-10 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                          className="absolute inset-y-0 right-0 flex items-center px-3 text-white/42 transition-colors hover:text-white"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="size-4" />
-                          ) : (
-                            <Eye className="size-4" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {formError ? (
-                      <p className="pt-1 text-sm text-red-400" aria-live="polite">
-                        {formError}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
-                  >
-                    {isSubmitting ? "Signing in..." : "Sign in"}
-                    {isSubmitting ? (
-                      <Loader2 className="size-[0.95rem] animate-spin" />
-                    ) : (
-                      <ArrowRight className="size-[0.95rem]" />
-                    )}
-                  </Button>
-                </form>
+                {renderAuthForm({ compact: true })}
               </Card>
 
               <div className="mt-2.5 flex items-center gap-3 text-white/42">
@@ -435,7 +536,7 @@ function EmailAuth() {
                   type="button"
                   variant="outline"
                   onClick={handleGoogleSignIn}
-                  disabled={isSubmitting || isGoogleLoading}
+                  disabled={isSubmitting || isResending || isGoogleLoading}
                   className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[12px] font-medium text-white hover:bg-white/[0.06] hover:text-white disabled:opacity-70 sm:text-[13px]"
                 >
                   {isGoogleLoading ? (
@@ -555,146 +656,53 @@ function EmailAuth() {
                     Use your email to continue.
                   </p>
 
-                  <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-                    <div className="space-y-4">
-                      <div className="space-y-1.5 text-left">
-                        <label
-                          htmlFor="loginEmailDesktop"
-                          className="block text-[12px] font-medium uppercase tracking-[0.2em] text-white/55"
-                        >
-                          Email address
-                        </label>
-                        <Input
-                          id="loginEmailDesktop"
-                          name="identifier"
-                          type={identifierInputType}
-                          inputMode={identifierInputMode}
-                          autoComplete={identifierAutoComplete}
-                          autoCapitalize="none"
-                          spellCheck={false}
-                          aria-label={identifierLabel}
-                          placeholder={identifierPlaceholder}
-                          value={email}
-                          onChange={(event) => {
-                            setEmail(event.target.value);
-                            if (formError) setFormError("");
-                          }}
-                          className="!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                        />
-                      </div>
+                  {renderAuthForm()}
 
-                      <div className="space-y-1.5 text-left">
-                        <div className="flex items-center justify-between gap-3">
-                          <label
-                            htmlFor="loginPasswordDesktop"
-                            className="block text-[12px] font-medium uppercase tracking-[0.2em] text-white/55"
-                          >
-                            Password
-                          </label>
-                          <Link
-                            to="/forgot-password"
-                            className="shrink-0 text-[11px] font-medium text-primary/90 underline-offset-4 transition hover:text-primary hover:underline"
-                          >
-                            Forgot password?
-                          </Link>
-                        </div>
-                        <div className="relative">
-                          <Input
-                            id="loginPasswordDesktop"
-                            name="password"
-                            type={showPassword ? "text" : "password"}
-                            autoComplete="current-password"
-                            aria-label="Password"
-                            placeholder="Enter your password"
-                            value={password}
-                            onChange={(event) => {
-                              setPassword(event.target.value);
-                              if (formError) setFormError("");
-                            }}
-                            className="!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 pr-11 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                          />
+                  <div className="mt-6 flex items-center gap-4 text-white/42">
+                    <span className="h-px flex-1 bg-white/12" />
+                    <span className="text-sm tracking-[0.28em]">OR</span>
+                    <span className="h-px flex-1 bg-white/12" />
+                  </div>
 
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword((prev) => !prev)}
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                            className="absolute inset-y-0 right-0 flex items-center px-3 text-white/42 transition-colors hover:text-white"
-                          >
-                            {showPassword ? (
-                              <EyeOff className="size-4" />
-                            ) : (
-                              <Eye className="size-4" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      {formError ? (
-                        <p className="pt-1 text-sm text-red-400" aria-live="polite">
-                          {formError}
-                        </p>
-                      ) : null}
-                    </div>
-
+                  <div className="mt-6 grid grid-cols-2 gap-3">
                     <Button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl"
+                      type="button"
+                      variant="outline"
+                      onClick={handleGoogleSignIn}
+                      disabled={isSubmitting || isResending || isGoogleLoading}
+                      className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white disabled:opacity-70"
                     >
-                      {isSubmitting ? "Signing in..." : "Sign in"}
-                      {isSubmitting ? (
+                      {isGoogleLoading ? (
                         <Loader2 className="size-5 animate-spin" />
                       ) : (
-                        <ArrowRight className="size-5" />
+                        <img
+                          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                          alt=""
+                          className="size-5"
+                        />
                       )}
+                      {isGoogleLoading ? "Connecting..." : "Continue with Google"}
                     </Button>
 
-                    <div className="flex items-center gap-4 text-white/42">
-                      <span className="h-px flex-1 bg-white/12" />
-                      <span className="text-sm tracking-[0.28em]">OR</span>
-                      <span className="h-px flex-1 bg-white/12" />
-                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleSocialClick("Apple")}
+                      className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                    >
+                      <AppleLogo className="size-5 text-white" />
+                      Continue with Apple
+                    </Button>
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleGoogleSignIn}
-                        disabled={isSubmitting || isGoogleLoading}
-                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white disabled:opacity-70"
-                      >
-                        {isGoogleLoading ? (
-                          <Loader2 className="size-5 animate-spin" />
-                        ) : (
-                          <img
-                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                            alt=""
-                            className="size-5"
-                          />
-                        )}
-                        {isGoogleLoading ? "Connecting..." : "Continue with Google"}
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => handleSocialClick("Apple")}
-                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
-                        >
-                          <AppleLogo className="size-5 text-white" />
-                          Continue with Apple
-                      </Button>
-                    </div>
-
-                    <div className="text-center text-[0.95rem] text-white/68">
-                        <Link
-                        to={phoneSigninPath}
-                        className="text-primary underline-offset-4 hover:underline"
-                      >
-                        Back to phone sign-in
-                      </Link>
-                    </div>
-                  </form>
+                  <div className="mt-6 text-center text-[0.95rem] text-white/68">
+                    <Link
+                      to={phoneSigninPath}
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      Back to phone sign-in
+                    </Link>
+                  </div>
                 </div>
               </Card>
 

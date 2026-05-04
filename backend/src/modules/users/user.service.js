@@ -36,6 +36,7 @@ const WHATSAPP_OTP_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const WHATSAPP_OTP_MAX_REQUESTS_PER_WINDOW = 5;
 const WHATSAPP_OTP_MAX_VERIFY_ATTEMPTS_PER_WINDOW = 8;
 const PHONE_ONLY_EMAIL_DOMAIN = "phone.catalance.local";
+const EMAIL_SIGNIN_DEFAULT_ROLE = "CLIENT";
 const whatsappOtpRequestAttempts = new Map();
 const whatsappOtpVerifyAttempts = new Map();
 const marketplaceSupportsServiceDetails = (() => {
@@ -344,6 +345,45 @@ const buildPhoneOnlyEmail = (normalizedPhone) =>
 
 const isPhoneOnlyEmail = (value = "") =>
   String(value || "").toLowerCase().endsWith(`@${PHONE_ONLY_EMAIL_DOMAIN}`);
+
+const buildEmailSigninFullName = (email = "") => {
+  const localPart = String(email || "").split("@")[0] || "";
+  const readableName = localPart
+    .replace(/[._+-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!readableName) {
+    return "Catalance User";
+  }
+
+  return readableName
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
+    .slice(0, 120);
+};
+
+const requiresEmailAccountOnboarding = (user = null) => {
+  if (!user) return false;
+
+  const primaryRole = normalizeRoleValue(user.role);
+  const roles = Array.isArray(user.roles)
+    ? user.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+    : [];
+  const hasPrivilegedRole =
+    ["ADMIN", "PROJECT_MANAGER"].includes(primaryRole) ||
+    roles.some((entry) => ["ADMIN", "PROJECT_MANAGER"].includes(entry));
+
+  if (hasPrivilegedRole) {
+    return false;
+  }
+
+  const fullName = String(user.fullName || "").trim();
+  const phoneDigits = normalizeLoginPhoneDigits(user.phoneNumber || user.phone);
+
+  return !fullName || phoneDigits.length < 6;
+};
 
 const findUserByLoginPhone = async (identifier) => {
   const phoneDigits = normalizeLoginPhoneDigits(identifier);
@@ -1847,14 +1887,35 @@ const buildWorkExperienceFromProfileDetails = (profileDetails = {}) => {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const buildOtpEmailContent = ({ otpCode, isResend = false }) => ({
-  subject: isResend
-    ? "Your New Verification Code - Catalance"
-    : "Verify Your Email - Catalance",
-  html: `<p>Your ${isResend ? "new " : ""}verification code is: <strong>${otpCode}</strong></p><p>This code expires in ${OTP_TTL_MINUTES} minutes.</p>`
-});
+const buildOtpEmailContent = ({
+  otpCode,
+  isResend = false,
+  purpose = "verification"
+}) => {
+  const isSignin = purpose === "signin";
+  const subject = isSignin
+    ? isResend
+      ? "Your New Catalance Sign-In Code"
+      : "Your Catalance Sign-In Code"
+    : isResend
+      ? "Your New Verification Code - Catalance"
+      : "Verify Your Email - Catalance";
+  const codeLabel = isSignin
+    ? "sign-in code"
+    : `${isResend ? "new " : ""}verification code`;
 
-const sendOtpEmail = async ({ email, otpCode, isResend = false }) => {
+  return {
+    subject,
+    html: `<p>Your ${codeLabel} is: <strong>${otpCode}</strong></p><p>This code expires in ${OTP_TTL_MINUTES} minutes.</p>`
+  };
+};
+
+const sendOtpEmail = async ({
+  email,
+  otpCode,
+  isResend = false,
+  purpose = "verification"
+}) => {
   const hasResendConfig = Boolean(env.RESEND_API_KEY && env.RESEND_FROM_EMAIL);
 
   if (!hasResendConfig) {
@@ -1873,7 +1934,11 @@ const sendOtpEmail = async ({ email, otpCode, isResend = false }) => {
   }
 
   const resend = ensureResendClient();
-  const { subject, html } = buildOtpEmailContent({ otpCode, isResend });
+  const { subject, html } = buildOtpEmailContent({
+    otpCode,
+    isResend,
+    purpose
+  });
   let lastError = null;
 
   for (let attempt = 1; attempt <= OTP_EMAIL_RETRY_ATTEMPTS; attempt += 1) {
@@ -2772,6 +2837,124 @@ export const resendOtp = async (email) => {
       ? "New verification code sent to your email"
       : "In development mode, use the OTP printed in backend logs.",
     emailDelivery: otpEmail?.delivered ? "sent" : "not_sent"
+  };
+};
+
+export const requestEmailSigninOtp = async ({ email, role }) => {
+  const normalizedEmail = normalizeOptionalEmail(email);
+  const normalizedRole =
+    normalizeOnboardingRoleValue(role) || EMAIL_SIGNIN_DEFAULT_ROLE;
+  const otpCode = crypto.randomInt(100000, 999999).toString();
+  const otpExpires = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
+
+  let user = await prisma.user.findUnique(
+    withFreelancerProfileInclude({
+      where: { email: normalizedEmail }
+    })
+  );
+
+  if (user) {
+    user = await prisma.user.update(
+      withFreelancerProfileInclude({
+        where: { id: user.id },
+        data: {
+          otpCode,
+          otpExpires
+        }
+      })
+    );
+  } else {
+    const randomPassword = crypto.randomBytes(24).toString("hex");
+
+    user = await createUserRecord({
+      email: normalizedEmail,
+      fullName: buildEmailSigninFullName(normalizedEmail),
+      password: randomPassword,
+      role: normalizedRole,
+      roles: [normalizedRole],
+      otpCode,
+      otpExpires,
+      onboardingComplete: false
+    });
+  }
+
+  const otpEmail = await sendOtpEmail({
+    email: user.email,
+    otpCode,
+    purpose: "signin"
+  });
+
+  return {
+    message: otpEmail?.delivered
+      ? "Verification code sent to your email."
+      : "In development mode, use the OTP printed in backend logs.",
+    email: user.email,
+    expiresInMinutes: OTP_TTL_MINUTES,
+    emailDelivery: otpEmail?.delivered ? "sent" : "not_sent"
+  };
+};
+
+export const verifyEmailSigninOtp = async ({ email, otp, role }) => {
+  const normalizedEmail = normalizeOptionalEmail(email);
+  const otpValue = String(otp || "").trim();
+  const invalidCodeError = new AppError(
+    "Invalid or expired verification code",
+    400
+  );
+
+  const user = await prisma.user.findUnique(
+    withFreelancerProfileInclude({
+      where: { email: normalizedEmail }
+    })
+  );
+
+  if (!user || !user.otpCode || !user.otpExpires) {
+    throw invalidCodeError;
+  }
+
+  if (String(user.otpCode) !== otpValue) {
+    throw invalidCodeError;
+  }
+
+  if (new Date() > new Date(user.otpExpires)) {
+    throw invalidCodeError;
+  }
+
+  let updatedUser = await prisma.user.update(
+    withFreelancerProfileInclude({
+      where: { id: user.id },
+      data: {
+        isVerified: true,
+        otpCode: null,
+        otpExpires: null
+      }
+    })
+  );
+
+  if (!user.isVerified) {
+    await maybeSendWelcomeEmail(updatedUser);
+  }
+
+  const requestedRole = normalizeOnboardingRoleValue(role);
+  const primaryRole = normalizeRoleValue(updatedUser.role);
+  const roles = Array.isArray(updatedUser.roles)
+    ? updatedUser.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+    : [];
+  const hasPrivilegedRole =
+    ["ADMIN", "PROJECT_MANAGER"].includes(primaryRole) ||
+    roles.some((entry) => ["ADMIN", "PROJECT_MANAGER"].includes(entry));
+
+  if (requestedRole && !hasPrivilegedRole) {
+    updatedUser = await ensureUserRoles(updatedUser, requestedRole);
+  }
+
+  const finalRole = resolveActiveUserRole(updatedUser, role);
+  const sessionUser = sanitizeUser({ ...updatedUser, role: finalRole });
+
+  return {
+    user: sessionUser,
+    accessToken: issueAccessToken(updatedUser, finalRole),
+    requiresAccountOnboarding: requiresEmailAccountOnboarding(sessionUser)
   };
 };
 

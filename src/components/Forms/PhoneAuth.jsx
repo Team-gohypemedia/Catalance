@@ -476,8 +476,12 @@ function PhoneAuth() {
     const submitButtonClass = compact
       ? "!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
       : "!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl";
-    const selectedCountryDialCodeLabel =
-      `+${normalizePhoneNumber(selectedCountry?.dialCode || "")}` || selectedCountry?.dialCode || "";
+    const selectedCountryDialDigits = normalizePhoneNumber(
+      selectedCountry?.dialCode || "",
+    );
+    const selectedCountryDialCodeLabel = selectedCountryDialDigits
+      ? `+${selectedCountryDialDigits}`
+      : selectedCountry?.dialCode || "";
 
     return (
       <form className={`${formSpacing} text-left`} onSubmit={handleSubmit} noValidate>
@@ -707,7 +711,7 @@ function PhoneAuth() {
                   to={emailSigninPath}
                   className="text-primary underline-offset-4 hover:underline"
                 >
-                  Sign in with email and password
+                  Sign in with email
                 </Link>
               </div>
 
@@ -832,7 +836,7 @@ function PhoneAuth() {
                       to={emailSigninPath}
                       className="text-primary underline-offset-4 hover:underline"
                     >
-                      Sign in with email and password
+                      Sign in with email
                     </Link>
                   </div>
                 </div>

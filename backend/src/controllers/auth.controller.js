@@ -8,6 +8,8 @@ import {
   requestPasswordReset,
   verifyResetToken,
   resetPassword,
+  requestEmailSigninOtp,
+  verifyEmailSigninOtp,
   verifyUserOtp,
   resendOtp,
   requestWhatsappOtp,
@@ -31,6 +33,16 @@ export const resendOtpHandler = asyncHandler(async (req, res) => {
   const { email } = req.body;
   const result = await resendOtp(email);
   res.json({ data: result });
+});
+
+export const requestEmailSigninOtpHandler = asyncHandler(async (req, res) => {
+  const result = await requestEmailSigninOtp(req.body);
+  res.json({ data: result });
+});
+
+export const verifyEmailSigninOtpHandler = asyncHandler(async (req, res) => {
+  const authPayload = await verifyEmailSigninOtp(req.body);
+  res.json({ data: authPayload });
 });
 
 export const requestWhatsappOtpHandler = asyncHandler(async (req, res) => {
