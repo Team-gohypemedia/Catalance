@@ -427,9 +427,9 @@ const FreelancerServiceVisualsSlide = ({
               {mediaFilesError ? (
                 <p className="mt-1 text-sm text-destructive">{mediaFilesError}</p>
               ) : null}
-              <div className="rounded-lg border bg-card px-3 py-2">
-                <p className="text-xs font-semibold leading-relaxed text-white/48">
-                  1 video OR up to 2 images (max 5MB each).
+              <div className="rounded-lg border border-white/12 bg-transparent px-3 py-2">
+                <p className="text-xs font-normal leading-relaxed text-white/60">
+                  Upload rule: 1 video OR up to 2 images (max 5MB each).
                 </p>
               </div>
             </div>

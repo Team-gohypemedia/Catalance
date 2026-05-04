@@ -7,6 +7,7 @@ import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/shared/context/AuthContext";
 import AdminRoute from "@/components/features/auth/AdminRoute";
 import ProtectedRoute from "@/components/features/auth/ProtectedRoute";
+import PublicRoute from "@/components/features/auth/PublicRoute";
 import CataButton from "@/components/common/CataButton";
 import {
   AGENCY_ONBOARDING_PATH,
@@ -235,9 +236,9 @@ const App = () => {
               }
             />
             <Route path="/get-started" element={<GetStarted />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/signin/phone" element={<PhoneAuthPage />} />
-            <Route path="/signin/email" element={<EmailAuthPage />} />
+            <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+            <Route path="/signin/phone" element={<PublicRoute><PhoneAuthPage /></PublicRoute>} />
+            <Route path="/signin/email" element={<PublicRoute><EmailAuthPage /></PublicRoute>} />
             <Route
               path="/about"
               element={
@@ -350,31 +351,10 @@ const App = () => {
                 </LayoutWithNavbar>
               }
             />
-            <Route
-              path="/login"
-              element={
-                <LayoutWithNavbar>
-                  <LoginPage />
-                </LayoutWithNavbar>
-              }
-            />
-            <Route
-              path="/forgot-password"
-              element={
-                <LayoutWithNavbar>
-                  <ForgotPasswordPage />
-                </LayoutWithNavbar>
-              }
-            />
-            <Route
-              path="/reset-password"
-              element={
-                <LayoutWithNavbar>
-                  <ResetPasswordPage />
-                </LayoutWithNavbar>
-              }
-            />
-            <Route path="/project-manager/login" element={<PMLogin />} />
+            <Route path="/login" element={<PublicRoute><LayoutWithNavbar><LoginPage /></LayoutWithNavbar></PublicRoute>} />
+            <Route path="/forgot-password" element={<PublicRoute><LayoutWithNavbar><ForgotPasswordPage /></LayoutWithNavbar></PublicRoute>} />
+            <Route path="/reset-password" element={<PublicRoute><LayoutWithNavbar><ResetPasswordPage /></LayoutWithNavbar></PublicRoute>} />
+            <Route path="/project-manager/login" element={<PublicRoute><PMLogin /></PublicRoute>} />
             <Route
               path="/client"
               element={
@@ -671,7 +651,7 @@ const App = () => {
               }
             />
             <Route path="/notepad" element={<NotepadPage />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
             <Route
               path="/admin"
               element={

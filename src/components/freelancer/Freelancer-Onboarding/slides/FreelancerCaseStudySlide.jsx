@@ -131,7 +131,6 @@ const FreelancerCaseStudySlide = ({
                 Provide details to verify your identity securely.
               </p>
             </div>
-
             <button
               type="button"
               onClick={onAddCaseStudy}

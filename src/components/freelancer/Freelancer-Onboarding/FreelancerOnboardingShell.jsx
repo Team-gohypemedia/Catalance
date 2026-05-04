@@ -795,8 +795,13 @@ const FreelancerOnboardingShell = () => {
   const isServiceVisualsSlide = currentSlide.id === "serviceVisuals";
   const isCaseStudySlide = currentSlide.id === "caseStudy";
   const isServiceReviewSlide = currentSlide.id === "serviceReview";
+  const isServiceWizardSlide =
+    isServiceInfoSlide ||
+    isServicePricingSlide ||
+    isServiceVisualsSlide ||
+    isCaseStudySlide ||
+    isServiceReviewSlide;
   const isServiceSectionSlide =
-    currentSlide.id === "serviceSetup" ||
     isServiceInfoSlide ||
     isServicePricingSlide ||
     isServiceVisualsSlide ||
@@ -860,17 +865,13 @@ const FreelancerOnboardingShell = () => {
     : createEmptyServiceDraft();
 
   useEffect(() => {
-    if (currentSlide.id !== "services") {
-      return;
-    }
-
     const container = onboardingScrollContainerRef.current;
     if (!container) {
       return;
     }
 
     container.scrollTop = 0;
-  }, [currentSlide.id]);
+  }, [currentSlide.id, currentServiceIndex]);
 
   useEffect(() => {
     if (!user || hasHydratedFromUser) {
@@ -1623,9 +1624,6 @@ const FreelancerOnboardingShell = () => {
     const hasTimeline =
       String(currentCaseStudyForm?.timeline || "").trim().length > 0;
     const hasBudget = Number(currentCaseStudyForm?.budget || 0) > 0;
-    const hasProjectProof =
-      String(currentCaseStudyForm?.projectLink || "").trim().length > 0 ||
-      Boolean(currentCaseStudyForm?.projectFile);
 
     return !(
       hasTitle &&
@@ -1633,15 +1631,12 @@ const FreelancerOnboardingShell = () => {
       hasNiche &&
       hasRole &&
       hasTimeline &&
-      hasBudget &&
-      hasProjectProof
+      hasBudget
     );
   }, [
     currentCaseStudyForm?.budget,
     currentCaseStudyForm?.description,
     currentCaseStudyForm?.niche,
-    currentCaseStudyForm?.projectFile,
-    currentCaseStudyForm?.projectLink,
     currentCaseStudyForm?.role,
     currentCaseStudyForm?.timeline,
     currentCaseStudyForm?.title,
@@ -2151,7 +2146,6 @@ const FreelancerOnboardingShell = () => {
 
     submitOnboardingAndNavigate();
   };
-
   const handleBack = () => {
     if (currentSlide.id === "serviceSetup" && currentServiceIndex > 0) {
       setCurrentServiceIndex((currentIndex) => Math.max(currentIndex - 1, 0));
@@ -2270,6 +2264,17 @@ const FreelancerOnboardingShell = () => {
     setCurrentSlideIndex((currentIndex) =>
       Math.min(currentIndex + 1, totalSlides - 1)
     );
+  };
+
+  const handleSkipOnboarding = () => {
+    if (isProfileSaving) {
+      return;
+    }
+
+    submitOnboardingAndNavigate({
+      deliveryPolicyAcceptedOverride: true,
+      communicationPolicyAcceptedOverride: true,
+    });
   };
 
   const handleDeliveryPolicyAgree = () => {
@@ -2948,16 +2953,16 @@ const FreelancerOnboardingShell = () => {
 
       <section
         ref={onboardingScrollContainerRef}
-        className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto"
+        className="subtle-scrollbar relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
       >
         <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-          <AnimatePresence mode="wait">
+          <AnimatePresence initial={false} mode="wait">
             <motion.div
               key={currentSlide.id}
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
               className="w-full"
             >
               <ActiveSlide
@@ -3042,7 +3047,7 @@ const FreelancerOnboardingShell = () => {
               {footerPrimaryLabel}
             </Button>
 
-            {isProfileActionFooter ? (
+            {isProfileActionFooter || !isServiceWizardSlide ? (
               <div />
             ) : (
               <div className="flex justify-end">
