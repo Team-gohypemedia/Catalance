@@ -641,7 +641,7 @@ function EmailAuth() {
                       disabled={isSubmitting}
                       className="!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl"
                     >
-                      {isSubmitting ? "Logging in..." : "Log in"}
+                      {isSubmitting ? "Signing in..." : "Sign in"}
                       {isSubmitting ? (
                         <Loader2 className="size-5 animate-spin" />
                       ) : (
