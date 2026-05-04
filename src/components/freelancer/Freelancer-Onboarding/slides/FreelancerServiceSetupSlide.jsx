@@ -9,8 +9,7 @@ const FreelancerServiceSetupSlide = ({ currentServiceName = "Service" }) => (
       </h1>
 
       <p className={`text-muted-foreground font-regular text-sm md:text-lg lg:text-base mx-auto max-w-sm sm:max-w-md md:max-w-xl lg:max-w-2xl`}>
-        Quickly describe what you offer to get matched with clients. You can
-        skip this for now.
+        Describe your services to get matched with clients.
       </p>
     </div>
   </section>

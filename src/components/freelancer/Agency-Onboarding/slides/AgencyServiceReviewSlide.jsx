@@ -18,10 +18,17 @@ import {
   resolveAvatarUrl,
 } from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
 import { useAuth } from "@/shared/context/AuthContext";
-import { getSubcategorySelectionKey } from "../service-details";
+import { getSubcategorySelectionKey } from "@/components/freelancer/Freelancer-Onboarding/service-details";
 import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";
 import { API_BASE_URL } from "@/shared/lib/api-client";
+import {
+  AGENCY_COLLABORATION_STYLE_OPTIONS,
+  AGENCY_CORE_ROLE_OPTIONS,
+  AGENCY_INDUSTRY_OPTIONS,
+  AGENCY_TEAM_SIZE_OPTIONS,
+  AGENCY_TYPE_OPTIONS,
+} from "../agency-details";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
@@ -343,15 +350,21 @@ const PreviewTag = ({ label, variant = "pill" }) => {
   );
 };
 
-const FreelancerServiceReviewSlide = ({
+const resolveAgencyOptionLabel = (options, value) =>
+  options.find((option) => option.value === String(value || "").trim())?.label ||
+  String(value || "").trim();
+
+const AgencyServiceReviewSlide = ({
   currentService,
   currentServiceName,
   serviceDraft,
   basicProfileForm,
+  agencyProfileForm,
   serviceInfoForm,
   servicePricingForm,
   serviceVisualsForm,
   user,
+  selectedWorkPreference,
   onServiceStepChange,
 }) => {
   const { authFetch } = useAuth();
@@ -367,6 +380,10 @@ const FreelancerServiceReviewSlide = ({
     String(servicePricingForm?.description || "").trim() ||
     "Add a short service description in the pricing tab to show it here.";
   const resolvedServiceId = toPositiveInteger(currentService?.id);
+  const isAgencyFlow = String(selectedWorkPreference || "").trim() === "agency";
+  const agencyCompanyName = String(agencyProfileForm?.companyName || "").trim();
+  const agencyCoreRoles = normalizeStringArray(agencyProfileForm?.coreRoles);
+  const agencyIndustries = normalizeStringArray(agencyProfileForm?.industries);
 
   const selectedSubcategoryEntries = useMemo(
     () =>
@@ -404,6 +421,7 @@ const FreelancerServiceReviewSlide = ({
 
   const freelancerName = useMemo(() => {
     const nameCandidates = [
+      isAgencyFlow ? agencyCompanyName : "",
       user?.profileDetails?.identity?.fullName,
       user?.profileDetails?.fullName,
       user?.displayName,
@@ -420,7 +438,7 @@ const FreelancerServiceReviewSlide = ({
     }
 
     return "Freelancer";
-  }, [basicProfileForm?.username, user]);
+  }, [agencyCompanyName, basicProfileForm?.username, isAgencyFlow, user]);
 
   const avatarFallbackInitial = freelancerName.charAt(0).toUpperCase() || "F";
 
@@ -916,6 +934,94 @@ const FreelancerServiceReviewSlide = ({
               </div>
             </div>
 
+            {isAgencyFlow ? (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <h3 className={SECTION_TITLE_CLASS}>Agency Snapshot</h3>
+                  <p className={SECTION_SUBTITLE_CLASS}>
+                    The agency metadata you will publish alongside this service.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/8 bg-[#151515] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">
+                      Agency Name
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      {agencyProfileForm?.companyName || "Not set yet"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/8 bg-[#151515] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">
+                      Agency Type
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      {resolveAgencyOptionLabel(
+                        AGENCY_TYPE_OPTIONS,
+                        agencyProfileForm?.agencyType,
+                      ) || "Not set yet"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/8 bg-[#151515] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">
+                      Team Size
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      {resolveAgencyOptionLabel(
+                        AGENCY_TEAM_SIZE_OPTIONS,
+                        agencyProfileForm?.teamSize,
+                      ) || "Not set yet"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/8 bg-[#151515] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">
+                      Collaboration
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      {resolveAgencyOptionLabel(
+                        AGENCY_COLLABORATION_STYLE_OPTIONS,
+                        agencyProfileForm?.collaborationStyle,
+                      ) || "Not set yet"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/8 bg-[#151515] p-4 sm:col-span-2">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">
+                      Industries
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      {agencyIndustries.length > 0
+                        ? agencyIndustries
+                            .map((value) =>
+                              resolveAgencyOptionLabel(AGENCY_INDUSTRY_OPTIONS, value),
+                            )
+                            .join(", ")
+                        : "Not set yet"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/8 bg-[#151515] p-4 sm:col-span-2">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">
+                      Core Roles
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      {agencyCoreRoles.length > 0
+                        ? agencyCoreRoles
+                            .map((value) =>
+                              resolveAgencyOptionLabel(AGENCY_CORE_ROLE_OPTIONS, value),
+                            )
+                            .join(", ")
+                        : "Not set yet"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="space-y-4">
               <div className="group relative overflow-hidden rounded-[30px] border border-white/8 bg-[#0d0d0d] shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
                 {mediaPreview?.url ? (
@@ -1218,4 +1324,4 @@ const FreelancerServiceReviewSlide = ({
   );
 };
 
-export default FreelancerServiceReviewSlide;
+export default AgencyServiceReviewSlide;

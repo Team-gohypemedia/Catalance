@@ -33,7 +33,10 @@ import {
   resolveStateOptionsForCountry,
 } from "@/components/features/freelancer/onboarding/constants";
 import { normalizeUsernameInput } from "@/components/features/freelancer/onboarding/utils";
-import { FREELANCER_DASHBOARD_PATH } from "@/shared/lib/dashboard-preference";
+import {
+  FREELANCER_DASHBOARD_PATH,
+  FREELANCER_ONBOARDING_PATH,
+} from "@/shared/lib/dashboard-preference";
 import {
   createEmptyServiceCaseStudy,
   createEmptyServiceDraft,
@@ -46,28 +49,42 @@ import {
   resolveServiceCatalogEntry,
   resolveServiceKey,
   serializeServiceDraft,
-} from "./service-details";
+} from "@/components/freelancer/Freelancer-Onboarding/service-details";
+import {
+  createInitialAgencyProfileForm,
+  getAgencyStepValidationErrors,
+  getAgencyStepValidationMessage,
+  sanitizeAgencyProfileFormForDraft,
+  AGENCY_SLIDE_IDS,
+} from "./agency-details";
 import { getOnboardingSlides as getOnboardingSlideSet } from "./constants";
-import AgencyOnboardingShell from "../Agency-Onboarding/AgencyOnboardingShell";
-import FreelancerWelcomeSlide from "./slides/FreelancerWelcomeSlide";
-import FreelancerWorkPreferenceSlide from "./slides/FreelancerWorkPreferenceSlide";
-import FreelancerIndividualProofSlide from "./slides/FreelancerIndividualProofSlide";
-import FreelancerBasicProfileSlide from "./slides/FreelancerBasicProfileSlide";
-import FreelancerServicesSlide from "./slides/FreelancerServicesSlide";
-import FreelancerServiceSetupSlide from "./slides/FreelancerServiceSetupSlide";
-import FreelancerServiceInfoSlide from "./slides/FreelancerServiceInfoSlide";
-import FreelancerServicePricingSlide from "./slides/FreelancerServicePricingSlide";
-import FreelancerServiceVisualsSlide from "./slides/FreelancerServiceVisualsSlide";
-import FreelancerCaseStudySlide from "./slides/FreelancerCaseStudySlide";
-import FreelancerServiceReviewSlide from "./slides/FreelancerServiceReviewSlide";
-import FreelancerAcceptInProgressProjectsSlide from "./slides/FreelancerAcceptInProgressProjectsSlide";
-import FreelancerDeliveryPolicySlide from "./slides/FreelancerDeliveryPolicySlide";
-import FreelancerCommunicationPolicySlide from "./slides/FreelancerCommunicationPolicySlide";
+import FreelancerWelcomeSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerWelcomeSlide";
+import FreelancerWorkPreferenceSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerWorkPreferenceSlide";
+import FreelancerIndividualProofSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerIndividualProofSlide";
+import AgencyOverviewSlide from "./slides/AgencyOverviewSlide";
+import AgencyTeamSlide from "./slides/AgencyTeamSlide";
+import AgencyOperationsSlide from "./slides/AgencyOperationsSlide";
+import AgencyTrustSlide from "./slides/AgencyTrustSlide";
+import FreelancerBasicProfileSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerBasicProfileSlide";
+import FreelancerServicesSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServicesSlide";
+import FreelancerServiceSetupSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceSetupSlide";
+import FreelancerServiceInfoSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceInfoSlide";
+import FreelancerServicePricingSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServicePricingSlide";
+import FreelancerServiceVisualsSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceVisualsSlide";
+import FreelancerCaseStudySlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerCaseStudySlide";
+import AgencyServiceReviewSlide from "./slides/AgencyServiceReviewSlide";
+import FreelancerAcceptInProgressProjectsSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerAcceptInProgressProjectsSlide";
+import FreelancerDeliveryPolicySlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerDeliveryPolicySlide";
+import FreelancerCommunicationPolicySlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerCommunicationPolicySlide";
 
 const slideRegistry = {
   welcome: FreelancerWelcomeSlide,
   workPreference: FreelancerWorkPreferenceSlide,
   individualProof: FreelancerIndividualProofSlide,
+  agencyOverview: AgencyOverviewSlide,
+  agencyTeam: AgencyTeamSlide,
+  agencyOperations: AgencyOperationsSlide,
+  agencyTrust: AgencyTrustSlide,
   basicProfile: FreelancerBasicProfileSlide,
   services: FreelancerServicesSlide,
   serviceSetup: FreelancerServiceSetupSlide,
@@ -75,7 +92,7 @@ const slideRegistry = {
   servicePricing: FreelancerServicePricingSlide,
   serviceVisuals: FreelancerServiceVisualsSlide,
   caseStudy: FreelancerCaseStudySlide,
-  serviceReview: FreelancerServiceReviewSlide,
+  serviceReview: AgencyServiceReviewSlide,
   acceptInProgressProjects: FreelancerAcceptInProgressProjectsSlide,
   deliveryPolicy: FreelancerDeliveryPolicySlide,
   communicationPolicy: FreelancerCommunicationPolicySlide,
@@ -287,7 +304,7 @@ const buildLocationLabel = ({ state, country }) =>
     .join(", ");
 
 const ONBOARDING_DRAFT_STORAGE_VERSION = 2;
-const ONBOARDING_DRAFT_STORAGE_PREFIX = "catalance.freelancer-onboarding";
+const ONBOARDING_DRAFT_STORAGE_PREFIX = "catalance.agency-onboarding";
 
 const buildOnboardingDraftStorageKey = (userId) => {
   const normalizedUserId = String(userId || "").trim();
@@ -445,6 +462,7 @@ const buildOnboardingDraftSnapshot = ({
   totalSlides,
   selectedWorkPreference,
   basicProfileForm,
+  agencyProfileForm,
   selectedServices,
   serviceDraftsByKey,
   currentServiceIndex,
@@ -464,6 +482,7 @@ const buildOnboardingDraftSnapshot = ({
     selectedWorkPreference:
       String(selectedWorkPreference || "").trim(),
     basicProfileForm: sanitizeBasicProfileFormForDraft(basicProfileForm),
+    agencyProfileForm: sanitizeAgencyProfileFormForDraft(agencyProfileForm),
     selectedServices: normalizedSelectedServices,
     serviceDraftsByKey: Object.fromEntries(
       normalizedSelectedServices.map((serviceKey) => {
@@ -723,16 +742,22 @@ const buildBasicProfileValidationErrors = (form) =>
 const getFirstBasicProfileError = (errors) =>
   BASIC_PROFILE_FIELD_ORDER.map((field) => errors[field]).find(Boolean) || "";
 
-const FreelancerOnboardingShell = () => {
+const AgencyOnboardingShell = ({
+  embedded = false,
+  onExitAgencyFlow = null,
+  onResetOnboarding = null,
+} = {}) => {
   const navigate = useNavigate();
   const { authFetch, refreshUser, user } = useAuth();
   const usernameCheckRequestRef = useRef(0);
   const onboardingScrollContainerRef = useRef(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-  const [selectedWorkPreference, setSelectedWorkPreference] = useState("");
-  const [showAgencyFlow, setShowAgencyFlow] = useState(false);
+  const [selectedWorkPreference, setSelectedWorkPreference] = useState("agency");
   const [basicProfileForm, setBasicProfileForm] = useState(
     createInitialBasicProfileForm(),
+  );
+  const [agencyProfileForm, setAgencyProfileForm] = useState(
+    createInitialAgencyProfileForm(),
   );
   const [selectedServices, setSelectedServices] = useState([]);
   const [serviceDraftsByKey, setServiceDraftsByKey] = useState({});
@@ -750,6 +775,8 @@ const FreelancerOnboardingShell = () => {
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [, setProfileError] = useState("");
   const [basicProfileErrors, setBasicProfileErrors] = useState({});
+  const [agencyValidationErrorsByStep, setAgencyValidationErrorsByStep] =
+    useState({});
   const [serviceValidationErrorsByStep, setServiceValidationErrorsByStep] =
     useState({});
   const [stateOptions, setStateOptions] = useState([]);
@@ -760,6 +787,10 @@ const FreelancerOnboardingShell = () => {
   const [usernameStatus, setUsernameStatus] = useState("idle");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResettingOnboarding, setIsResettingOnboarding] = useState(false);
+  const shouldUseEmbeddedExit =
+    embedded && typeof onExitAgencyFlow === "function";
+  const shouldUseEmbeddedReset =
+    embedded && typeof onResetOnboarding === "function";
   const countryOptions = COUNTRY_OPTIONS;
   const languageOptions = LANGUAGE_OPTIONS.filter(
     (option) => option.value !== "Other",
@@ -789,19 +820,15 @@ const FreelancerOnboardingShell = () => {
     ((currentSlideIndex + 1) / Math.max(totalSlides, 1)) * 100;
   const isFirstSlide = currentSlideIndex === 0;
   const isWorkPreferenceSlide = currentSlide.id === "workPreference";
+  const isAgencySectionSlide = AGENCY_SLIDE_IDS.includes(currentSlide.id);
   const isServicesSlide = currentSlide.id === "services";
   const isServiceInfoSlide = currentSlide.id === "serviceInfo";
   const isServicePricingSlide = currentSlide.id === "servicePricing";
   const isServiceVisualsSlide = currentSlide.id === "serviceVisuals";
   const isCaseStudySlide = currentSlide.id === "caseStudy";
   const isServiceReviewSlide = currentSlide.id === "serviceReview";
-  const isServiceWizardSlide =
-    isServiceInfoSlide ||
-    isServicePricingSlide ||
-    isServiceVisualsSlide ||
-    isCaseStudySlide ||
-    isServiceReviewSlide;
   const isServiceSectionSlide =
+    currentSlide.id === "serviceSetup" ||
     isServiceInfoSlide ||
     isServicePricingSlide ||
     isServiceVisualsSlide ||
@@ -865,13 +892,17 @@ const FreelancerOnboardingShell = () => {
     : createEmptyServiceDraft();
 
   useEffect(() => {
+    if (currentSlide.id !== "services") {
+      return;
+    }
+
     const container = onboardingScrollContainerRef.current;
     if (!container) {
       return;
     }
 
     container.scrollTop = 0;
-  }, [currentSlide.id, currentServiceIndex]);
+  }, [currentSlide.id]);
 
   useEffect(() => {
     if (!user || hasHydratedFromUser) {
@@ -880,12 +911,8 @@ const FreelancerOnboardingShell = () => {
 
     const storedDraft = readStoredOnboardingDraft(onboardingDraftStorageKey);
     if (storedDraft) {
-      const storedWorkPreference = String(
-        storedDraft.selectedWorkPreference || "",
-      ).trim();
-      const normalizedStoredWorkPreference =
-        storedWorkPreference === "individual" ? storedWorkPreference : "";
-      const storedSlides = getOnboardingSlideSet(normalizedStoredWorkPreference);
+      const storedWorkPreference = "agency";
+      const storedSlides = getOnboardingSlideSet(storedWorkPreference);
       const nextServices = normalizeDraftSkillList(
         (Array.isArray(storedDraft.selectedServices)
           ? storedDraft.selectedServices
@@ -896,9 +923,12 @@ const FreelancerOnboardingShell = () => {
       setCurrentSlideIndex(
         clampSlideIndex(storedDraft.currentSlideIndex, storedSlides.length),
       );
-      setSelectedWorkPreference(normalizedStoredWorkPreference);
+      setSelectedWorkPreference(storedWorkPreference);
       setBasicProfileForm(
         sanitizeBasicProfileFormForDraft(storedDraft.basicProfileForm),
+      );
+      setAgencyProfileForm(
+        sanitizeAgencyProfileFormForDraft(storedDraft.agencyProfileForm),
       );
       setSelectedServices(nextServices);
       setServiceDraftsByKey(() =>
@@ -949,6 +979,10 @@ const FreelancerOnboardingShell = () => {
       identity.profilePhoto || user.avatar || user.profilePhoto || "";
     const existingResume =
       user?.resume || user?.portfolio?.resume || profileDetails?.resume || "";
+    const existingAgencyDetails =
+      profileDetails.agencyDetails && typeof profileDetails.agencyDetails === "object"
+        ? profileDetails.agencyDetails
+        : {};
     const normalizedServiceDetails =
       profileDetails.serviceDetails && typeof profileDetails.serviceDetails === "object"
         ? profileDetails.serviceDetails
@@ -1005,11 +1039,17 @@ const FreelancerOnboardingShell = () => {
         buildRemoteProfilePhoto(existingPhoto) || currentForm.profilePhoto,
       resume: buildRemoteResumeFile(existingResume) || currentForm.resume,
     }));
-    setSelectedWorkPreference(
-      String(profileDetails.role || "").trim() === "individual"
-        ? "individual"
-        : "",
+    setAgencyProfileForm(
+      sanitizeAgencyProfileFormForDraft({
+        ...existingAgencyDetails,
+        companyName:
+          existingAgencyDetails.companyName ||
+          profileDetails.companyName ||
+          profileDetails.businessName ||
+          "",
+      }),
     );
+    setSelectedWorkPreference("agency");
     setAcceptInProgressProjectsValue(hydratedAcceptInProgressProjects);
     setDeliveryPolicyAccepted(hydratedDeliveryPolicyAccepted ?? false);
     setCommunicationPolicyAccepted(hydratedCommunicationPolicyAccepted ?? false);
@@ -1248,7 +1288,7 @@ const FreelancerOnboardingShell = () => {
   }, [currentService?.id]);
 
   useEffect(() => {
-    if (showAgencyFlow || !hasHydratedFromUser || !onboardingDraftStorageKey) {
+    if (!hasHydratedFromUser || !onboardingDraftStorageKey) {
       return undefined;
     }
 
@@ -1260,6 +1300,7 @@ const FreelancerOnboardingShell = () => {
           totalSlides,
           selectedWorkPreference,
           basicProfileForm,
+          agencyProfileForm,
           selectedServices,
           serviceDraftsByKey,
           currentServiceIndex,
@@ -1277,6 +1318,7 @@ const FreelancerOnboardingShell = () => {
   }, [
     acceptInProgressProjectsValue,
     basicProfileForm,
+    agencyProfileForm,
     communicationPolicyAccepted,
     currentServiceIndex,
     currentSlideIndex,
@@ -1288,7 +1330,6 @@ const FreelancerOnboardingShell = () => {
     selectedWorkPreference,
     serviceDraftsByKey,
     totalSlides,
-    showAgencyFlow,
   ]);
 
   useEffect(() => {
@@ -1624,6 +1665,9 @@ const FreelancerOnboardingShell = () => {
     const hasTimeline =
       String(currentCaseStudyForm?.timeline || "").trim().length > 0;
     const hasBudget = Number(currentCaseStudyForm?.budget || 0) > 0;
+    const hasProjectProof =
+      String(currentCaseStudyForm?.projectLink || "").trim().length > 0 ||
+      Boolean(currentCaseStudyForm?.projectFile);
 
     return !(
       hasTitle &&
@@ -1631,12 +1675,15 @@ const FreelancerOnboardingShell = () => {
       hasNiche &&
       hasRole &&
       hasTimeline &&
-      hasBudget
+      hasBudget &&
+      hasProjectProof
     );
   }, [
     currentCaseStudyForm?.budget,
     currentCaseStudyForm?.description,
     currentCaseStudyForm?.niche,
+    currentCaseStudyForm?.projectFile,
+    currentCaseStudyForm?.projectLink,
     currentCaseStudyForm?.role,
     currentCaseStudyForm?.timeline,
     currentCaseStudyForm?.title,
@@ -1987,16 +2034,27 @@ const FreelancerOnboardingShell = () => {
       parseBooleanChoice(communicationPolicyAcceptedOverride) ??
       parseBooleanChoice(communicationPolicyAccepted) ??
       parseBooleanChoice(currentProfileDetails.communicationPolicyAccepted);
+    const normalizedAgencyProfile =
+      sanitizeAgencyProfileFormForDraft(agencyProfileForm);
+    const isAgencyRole =
+      String(selectedWorkPreference || "").trim() === "agency";
     const nextServiceDetails = Object.fromEntries(
       persistedServices.map(([serviceKey, value]) => [serviceKey, value.serializedDetail]),
     );
     const profileDetails = {
       ...currentProfileDetails,
       profileDetailsVersion: 3,
-      role: selectedWorkPreference || "individual",
+      role: selectedWorkPreference || "agency",
       professionalBio: basicProfileForm.professionalBio.trim(),
       services: orderedSelectedServices,
       serviceDetails: nextServiceDetails,
+      ...(isAgencyRole
+        ? {
+            companyName: normalizedAgencyProfile.companyName,
+            businessName: normalizedAgencyProfile.companyName,
+            agencyDetails: normalizedAgencyProfile,
+          }
+        : {}),
       acceptInProgressProjects:
         typeof resolvedAcceptInProgressProjectsValue === "boolean"
           ? resolvedAcceptInProgressProjectsValue
@@ -2025,6 +2083,12 @@ const FreelancerOnboardingShell = () => {
       },
     };
 
+    if (!isAgencyRole) {
+      delete profileDetails.companyName;
+      delete profileDetails.businessName;
+      delete profileDetails.agencyDetails;
+    }
+
     delete profileDetails.serviceSubcategorySkills;
     delete profileDetails.serviceActiveSkillCategory;
 
@@ -2038,6 +2102,11 @@ const FreelancerOnboardingShell = () => {
       }),
       resume: resolvedResumeUrl || null,
     };
+
+    if (isAgencyRole) {
+      updatePayload.companyName = normalizedAgencyProfile.companyName || null;
+      updatePayload.businessName = normalizedAgencyProfile.companyName || null;
+    }
 
     if (resolvedAvatarUrl) {
       updatePayload.avatar = resolvedAvatarUrl;
@@ -2111,11 +2180,18 @@ const FreelancerOnboardingShell = () => {
       .then(async () => {
         clearStoredOnboardingDraft(onboardingDraftStorageKey);
         await refreshUser();
-        toast.success("Freelancer onboarding saved.");
+        toast.success(
+          String(selectedWorkPreference || "").trim() === "agency"
+            ? "Agency onboarding saved."
+            : "Freelancer onboarding saved.",
+        );
         navigate(FREELANCER_DASHBOARD_PATH);
       })
       .catch((error) => {
-        const fallbackMessage = "Failed to save freelancer onboarding.";
+        const fallbackMessage =
+          String(selectedWorkPreference || "").trim() === "agency"
+            ? "Failed to save agency onboarding."
+            : "Failed to save freelancer onboarding.";
         setProfileError(error?.message || fallbackMessage);
         toast.error(error?.message || fallbackMessage);
       })
@@ -2146,6 +2222,7 @@ const FreelancerOnboardingShell = () => {
 
     submitOnboardingAndNavigate();
   };
+
   const handleBack = () => {
     if (currentSlide.id === "serviceSetup" && currentServiceIndex > 0) {
       setCurrentServiceIndex((currentIndex) => Math.max(currentIndex - 1, 0));
@@ -2154,6 +2231,12 @@ const FreelancerOnboardingShell = () => {
     }
 
     if (isFirstSlide) {
+      if (shouldUseEmbeddedExit) {
+        onExitAgencyFlow();
+        return;
+      }
+
+      navigate(FREELANCER_ONBOARDING_PATH, { replace: true });
       return;
     }
 
@@ -2176,6 +2259,52 @@ const FreelancerOnboardingShell = () => {
       return nextErrors;
     });
   }, []);
+
+  const clearAgencyStepValidationErrors = useCallback((stepId) => {
+    const normalizedStepId = String(stepId || "").trim();
+    if (!normalizedStepId) {
+      return;
+    }
+
+    setAgencyValidationErrorsByStep((currentErrors) => {
+      if (!currentErrors[normalizedStepId]) {
+        return currentErrors;
+      }
+
+      const nextErrors = { ...currentErrors };
+      delete nextErrors[normalizedStepId];
+      return nextErrors;
+    });
+  }, []);
+
+  const validateAgencyStepBeforeContinue = useCallback(
+    (stepId = currentSlide.id) => {
+      const validationErrors = getAgencyStepValidationErrors(
+        agencyProfileForm,
+        stepId,
+      );
+      const validationMessage = getAgencyStepValidationMessage(
+        agencyProfileForm,
+        stepId,
+      );
+
+      if (validationMessage) {
+        const normalizedStepId = String(stepId || "").trim();
+        if (normalizedStepId) {
+          setAgencyValidationErrorsByStep((currentErrors) => ({
+            ...currentErrors,
+            [normalizedStepId]: validationErrors,
+          }));
+        }
+        toast.error(validationMessage);
+        return false;
+      }
+
+      clearAgencyStepValidationErrors(stepId);
+      return true;
+    },
+    [agencyProfileForm, clearAgencyStepValidationErrors, currentSlide.id],
+  );
 
   const validateServiceStepBeforeContinue = useCallback(
     (stepId = currentSlide.id) => {
@@ -2208,6 +2337,10 @@ const FreelancerOnboardingShell = () => {
 
   const handleContinue = () => {
     if (isContinueDisabled) {
+      return;
+    }
+
+    if (isAgencySectionSlide && !validateAgencyStepBeforeContinue()) {
       return;
     }
 
@@ -2266,17 +2399,6 @@ const FreelancerOnboardingShell = () => {
     );
   };
 
-  const handleSkipOnboarding = () => {
-    if (isProfileSaving) {
-      return;
-    }
-
-    submitOnboardingAndNavigate({
-      deliveryPolicyAcceptedOverride: true,
-      communicationPolicyAcceptedOverride: true,
-    });
-  };
-
   const handleDeliveryPolicyAgree = () => {
     if (isProfileSaving) {
       return;
@@ -2305,21 +2427,13 @@ const FreelancerOnboardingShell = () => {
   };
 
   const handleWorkPreferenceSelect = (nextValue) => {
-    const normalizedNextValue = String(nextValue || "").trim();
-
-    if (normalizedNextValue === "agency") {
-      clearStoredOnboardingDraft(onboardingDraftStorageKey);
-      setShowAgencyFlow(true);
-      return;
-    }
-
-    setSelectedWorkPreference(normalizedNextValue);
+    setSelectedWorkPreference(nextValue);
 
     if (isWorkPreferenceSlide) {
       setCurrentSlideIndex((currentIndex) =>
         Math.min(
           currentIndex + 1,
-          Math.max(getOnboardingSlideSet(normalizedNextValue).length - 1, 0),
+          Math.max(getOnboardingSlideSet(nextValue).length - 1, 0),
         ),
       );
     }
@@ -2775,6 +2889,17 @@ const FreelancerOnboardingShell = () => {
     }
   };
 
+  const handleAgencyFieldChange = useCallback(
+    (field, value) => {
+      clearAgencyStepValidationErrors(currentSlide.id);
+      setAgencyProfileForm((currentForm) => ({
+        ...currentForm,
+        [field]: value,
+      }));
+    },
+    [clearAgencyStepValidationErrors, currentSlide.id],
+  );
+
   const resetOnboardingLocally = useCallback(() => {
     const currentPhotoUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
 
@@ -2782,9 +2907,9 @@ const FreelancerOnboardingShell = () => {
     usernameCheckRequestRef.current += 1;
 
     setCurrentSlideIndex(0);
-    setSelectedWorkPreference("");
-    setShowAgencyFlow(false);
+    setSelectedWorkPreference("agency");
     setBasicProfileForm(createInitialBasicProfileForm());
+    setAgencyProfileForm(createInitialAgencyProfileForm());
     setSelectedServices([]);
     setServiceDraftsByKey({});
     setCurrentServiceIndex(0);
@@ -2799,11 +2924,18 @@ const FreelancerOnboardingShell = () => {
     setPendingProfilePhotoFile(null);
     setIsProfileCropOpen(false);
     setUsernameStatus("idle");
+    setAgencyValidationErrorsByStep({});
     setServiceValidationErrorsByStep({});
   }, [basicProfileForm.profilePhoto]);
 
   const handleResetOnboarding = useCallback(async () => {
     if (isResettingOnboarding) {
+      return;
+    }
+
+    if (shouldUseEmbeddedReset) {
+      setIsSettingsOpen(false);
+      onResetOnboarding();
       return;
     }
 
@@ -2823,8 +2955,20 @@ const FreelancerOnboardingShell = () => {
       toast.error("Onboarding reset locally, but account sync failed.");
     } finally {
       setIsResettingOnboarding(false);
+      if (shouldUseEmbeddedExit) {
+        onExitAgencyFlow();
+      }
     }
-  }, [isResettingOnboarding, refreshUser, resetOnboardingLocally, user?.id]);
+  }, [
+    isResettingOnboarding,
+    onExitAgencyFlow,
+    refreshUser,
+    resetOnboardingLocally,
+    shouldUseEmbeddedExit,
+    shouldUseEmbeddedReset,
+    onResetOnboarding,
+    user?.id,
+  ]);
 
   const footerPrimaryAction = isProfileActionFooter
     ? handleBasicProfileNext
@@ -2851,16 +2995,8 @@ const FreelancerOnboardingShell = () => {
   const serviceVisualsValidationErrors =
     serviceValidationErrorsByStep.serviceVisuals || {};
   const caseStudyValidationErrors = serviceValidationErrorsByStep.caseStudy || {};
-
-  if (showAgencyFlow) {
-    return (
-      <AgencyOnboardingShell
-        embedded
-        onExitAgencyFlow={() => setShowAgencyFlow(false)}
-        onResetOnboarding={handleResetOnboarding}
-      />
-    );
-  }
+  const agencyValidationErrors =
+    agencyValidationErrorsByStep[currentSlide.id] || {};
 
   return (
     <DarkGradientBg className="text-[#f1f5f9]">
@@ -2872,16 +3008,29 @@ const FreelancerOnboardingShell = () => {
         />
         <div className="relative flex items-center justify-between px-4 py-4 sm:px-6">
           {isFirstSlide ? (
-            <Button
-              asChild
-              variant="secondary"
-              className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
-            >
-              <Link to={FREELANCER_DASHBOARD_PATH}>
+            shouldUseEmbeddedExit ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon-lg"
+                className="rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                onClick={onExitAgencyFlow}
+                aria-label="Go back"
+              >
                 <ChevronLeft className="h-4 w-4" />
-                Back to dashboard
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button
+                asChild
+                variant="secondary"
+                className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
+              >
+                <Link to={FREELANCER_DASHBOARD_PATH}>
+                  <ChevronLeft className="h-4 w-4" />
+                  Back to dashboard
+                </Link>
+              </Button>
+            )
           ) : (
             <Button
               type="button"
@@ -2953,16 +3102,16 @@ const FreelancerOnboardingShell = () => {
 
       <section
         ref={onboardingScrollContainerRef}
-        className="subtle-scrollbar relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+        className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto"
       >
         <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-          <AnimatePresence initial={false} mode="wait">
+          <AnimatePresence mode="wait">
             <motion.div
               key={currentSlide.id}
-              initial={{ opacity: 0, x: 10 }}
+              initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
               className="w-full"
             >
               <ActiveSlide
@@ -2986,6 +3135,9 @@ const FreelancerOnboardingShell = () => {
                 resumeFile={basicProfileForm.resume}
                 onResumeSelect={handleResumeSelect}
                 onResumeRemove={handleResumeRemove}
+                agencyProfileForm={agencyProfileForm}
+                onAgencyFieldChange={handleAgencyFieldChange}
+                agencyValidationErrors={agencyValidationErrors}
                 selectedServices={selectedServices}
                 onToggleService={handleServiceToggle}
                 dbServices={dbServices}
@@ -3047,7 +3199,7 @@ const FreelancerOnboardingShell = () => {
               {footerPrimaryLabel}
             </Button>
 
-            {isProfileActionFooter || !isServiceWizardSlide ? (
+            {isProfileActionFooter ? (
               <div />
             ) : (
               <div className="flex justify-end">
@@ -3080,4 +3232,4 @@ const FreelancerOnboardingShell = () => {
   );
 };
 
-export default FreelancerOnboardingShell;
+export default AgencyOnboardingShell;

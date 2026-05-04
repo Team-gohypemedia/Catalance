@@ -901,8 +901,7 @@ const AddEditServiceWizard = ({
                 Project Portfolio
               </h2>
               <p className="text-sm text-muted-foreground sm:text-base">
-                We need some details to verify your identity. Please complete the
-                form below.
+                Provide details to verify your identity securely.
               </p>
             </div>
 

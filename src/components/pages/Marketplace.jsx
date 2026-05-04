@@ -190,6 +190,57 @@ const TRUST_PILLARS = [
   },
 ];
 
+const WHY_CATALANCE_COMPARISON_ROWS = [
+  {
+    id: "verification",
+    feature: "Talent Verification",
+    icon: BadgeCheck,
+    catalance: { label: "100% Verified Experts", tone: "positive" },
+    fiverr: { label: "No Verification", tone: "negative" },
+    upwork: { label: "Partial Verification", tone: "neutral" },
+  },
+  {
+    id: "pricing",
+    feature: "Transparent Pricing",
+    icon: Banknote,
+    catalance: { label: "Clear & Upfront Pricing", tone: "positive" },
+    fiverr: { label: "Service Fees Hidden", tone: "negative" },
+    upwork: { label: "Complex Fee Structure", tone: "negative" },
+  },
+  {
+    id: "support",
+    feature: "Dedicated Support",
+    icon: MessageSquare,
+    catalance: { label: "24/7 Human Support", tone: "positive" },
+    fiverr: { label: "Limited Support", tone: "negative" },
+    upwork: { label: "Limited Support", tone: "neutral" },
+  },
+  {
+    id: "guarantee",
+    feature: "Project Success Guarantee",
+    icon: Star,
+    catalance: { label: "Yes, We've Got Your Back", tone: "positive" },
+    fiverr: { label: "No Guarantee", tone: "negative" },
+    upwork: { label: "No Guarantee", tone: "negative" },
+  },
+  {
+    id: "offers",
+    feature: "Custom Offers",
+    icon: Tag,
+    catalance: { label: "Yes", tone: "positive" },
+    fiverr: { label: "Limited", tone: "negative" },
+    upwork: { label: "Yes", tone: "positive" },
+  },
+  {
+    id: "quality",
+    feature: "Quality of Work",
+    icon: Sparkles,
+    catalance: { label: "Top 1% Talent", tone: "positive" },
+    fiverr: { label: "Varies", tone: "negative" },
+    upwork: { label: "Good", tone: "positive" },
+  },
+];
+
 const FALLBACK_OPEN_PROJECTS = [
   {
     id: "fallback-project-1",
@@ -1277,27 +1328,6 @@ const Marketplace = () => {
     };
   }, [activeBrowseService?.label, activeService?.label, canViewProjectsMarketplace, projectData]);
 
-  const browseCategoryGrid = useMemo(() => serviceCategories.slice(0, 8), [serviceCategories]);
-
-  const categorySignalMap = useMemo(() => {
-    const counts = new Map();
-    data.forEach((item) => {
-      const key = resolveMarketplaceServiceKey({
-        value: item?.serviceKey,
-        slug: item?.serviceKey,
-        name: item?.service,
-      });
-      if (!key) return;
-      counts.set(key, (counts.get(key) || 0) + 1);
-    });
-    return counts;
-  }, [data]);
-
-  const handleCategoryGridSelect = (nextCategory) => {
-    setCategory(nextCategory);
-    scrollToSection("marketplace-results");
-  };
-
   const marketplaceBrowseActions = category !== "all" ? (
     <Dialog open={isFilterOpen} onOpenChange={(open) => { setIsFilterOpen(open); if (open) syncDraftFilters(); }}>
       <DialogTrigger asChild>
@@ -1940,63 +1970,6 @@ const Marketplace = () => {
         </section>
         ) : null}
 
-        <section id="browse-categories" className="rounded-[34px] border border-white/10 bg-white/[0.035] p-6 shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl sm:p-8">
-          <div className="space-y-2">
-            <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-              Browse by Category
-            </Badge>
-            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-              Explore premium service lanes
-            </h2>
-            <p className="max-w-2xl text-sm leading-7 text-slate-400">
-              Move beyond sliders and browse categories in a structured grid with direct entry into focused discovery.
-            </p>
-          </div>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {browseCategoryGrid.map((service) => {
-              const Icon = service.icon || Sparkles;
-              const active = category === service.value;
-              const categorySignals = categorySignalMap.get(service.value) || 0;
-              return (
-                <button
-                  key={service.value}
-                  type="button"
-                  onClick={() => handleCategoryGridSelect(service.value)}
-                  className={cn(
-                    "group rounded-[22px] border p-4 text-left transition-all duration-300",
-                    active
-                      ? "border-primary/45 bg-primary/10"
-                      : "border-white/10 bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.05]"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "inline-flex h-10 w-10 items-center justify-center rounded-xl border text-slate-200 transition-colors",
-                      active ? "border-primary/35 bg-primary/12 text-primary" : "border-white/12 bg-white/[0.04] group-hover:text-white"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <h3 className="mt-4 text-base font-semibold text-white">{service.label}</h3>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
-                    {service.description || "Browse specialists in this service lane."}
-                  </p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-slate-400">
-                      {categorySignals > 0 ? `${categorySignals} specialist signals` : "Curated lane"}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                      Explore
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
         <section id="how-it-works" className="space-y-6">
           <div className="space-y-2">
             <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
@@ -2053,6 +2026,131 @@ const Marketplace = () => {
                 </Card>
               );
             })}
+          </div>
+
+          <div className="relative overflow-hidden rounded-[34px] border border-white/10 bg-[#06080d]/95 p-5 shadow-[0_34px_100px_-44px_rgba(2,6,23,0.9)] sm:p-6">
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute left-[50%] top-[-34%] h-72 w-72 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl" />
+            </div>
+            <div className="relative mx-auto max-w-5xl space-y-4">
+              <div className="space-y-3 text-center">
+                <Badge className="rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                  Why Catalance
+                </Badge>
+                <div className="space-y-2.5">
+                  <h3 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-[56px] sm:leading-[1.02]">
+                    Why Catalance is <span className="text-primary">better</span> for your business
+                  </h3>
+                  <p className="mx-auto max-w-3xl text-sm leading-7 text-slate-300/90 sm:text-[16px]">
+                    We combine verified talent, transparent pricing, and premium support to deliver exceptional results every time.
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto lg:overflow-visible">
+                <div className="w-full min-w-[880px] overflow-hidden rounded-[24px] border border-white/12 bg-[#070a10]/92 lg:min-w-0">
+                  <div className="grid grid-cols-[1.14fr_0.95fr_0.95fr_0.95fr] border-b border-white/10">
+                    <div className="flex items-center px-6 py-4 text-[24px] font-semibold tracking-[-0.02em] text-white sm:text-[28px] lg:text-[31px]">Features</div>
+                    <div className="border-x border-primary/45 bg-gradient-to-b from-primary/[0.18] via-primary/[0.12] to-primary/[0.06] px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-primary/70 bg-primary/20 text-[15px] font-bold text-primary">
+                          C
+                        </span>
+                        <span className="text-[24px] font-semibold tracking-[-0.02em] text-white sm:text-[28px] lg:text-[31px]">Catalance</span>
+                      </div>
+                    </div>
+                    <div className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/95 text-[15px] font-bold text-black">
+                          fi
+                        </span>
+                        <span className="text-[24px] font-semibold tracking-[-0.02em] text-white sm:text-[28px] lg:text-[31px]">Fiverr</span>
+                      </div>
+                    </div>
+                    <div className="border-l border-white/10 px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-lime-500/95 text-[15px] font-bold text-black">
+                          up
+                        </span>
+                        <span className="text-[24px] font-semibold tracking-[-0.02em] text-white sm:text-[28px] lg:text-[31px]">Upwork</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {WHY_CATALANCE_COMPARISON_ROWS.map((row) => {
+                    const FeatureIcon = row.icon;
+                    const columns = [row.catalance, row.fiverr, row.upwork];
+                    return (
+                      <div key={row.id} className="grid grid-cols-[1.14fr_0.95fr_0.95fr_0.95fr] border-b border-white/10 last:border-b-0">
+                        <div className="flex items-center gap-3 px-6 py-2.5 text-slate-100 sm:py-3">
+                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary/35 bg-primary/10 text-primary">
+                            <FeatureIcon className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="text-[14px] font-normal leading-[1.2] text-slate-100/95 sm:text-[15px]">{row.feature}</span>
+                        </div>
+
+                        {columns.map((item, index) => {
+                          const isNegative = item.tone === "negative";
+                          const isNeutral = item.tone === "neutral";
+                          return (
+                            <div
+                              key={`${row.id}-${index}`}
+                              className={cn(
+                                "px-6 py-2.5 sm:py-3",
+                                index === 0
+                                  ? "border-x border-primary/45 bg-primary/[0.075]"
+                                  : index === 1
+                                    ? "border-r border-white/10"
+                                    : "border-r-0"
+                              )}
+                            >
+                              <div className="inline-flex items-center gap-2.5">
+                                <span
+                                  className={cn(
+                                    "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                                    isNegative
+                                      ? "border-slate-500/55 text-slate-400"
+                                      : isNeutral
+                                        ? "border-primary/70 text-primary"
+                                        : "border-primary/70 text-primary"
+                                  )}
+                                >
+                                  {isNegative ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+                                </span>
+                                <span className="text-[14px] font-normal leading-[1.2] text-slate-200 sm:text-[15px]">{item.label}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 rounded-[20px] border border-white/12 bg-black/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-primary/10 text-primary">
+                    <Star className="h-4 w-4" />
+                  </span>
+                  <div className="space-y-1">
+                    <p className="text-base font-semibold leading-tight text-white sm:text-lg">
+                      Built for businesses that value quality, speed, and reliability.
+                    </p>
+                    <p className="text-sm text-slate-400/95 sm:text-[16px]">Join thousands of businesses growing with Catalance.</p>
+                  </div>
+                </div>
+                <Button
+                  size="lg"
+                  className="h-11 rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                  onClick={() => scrollToSection("marketplace-results")}
+                >
+                  Hire Top Experts
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         </section>
 

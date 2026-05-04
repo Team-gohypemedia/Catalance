@@ -624,3 +624,191 @@ export const serializeServiceDraft = ({
       toOptionalString(normalizedDraft.activeSkillCategory) || null,
   };
 };
+
+const getActiveServiceCaseStudy = (normalizedDraft) => {
+  const caseStudies = Array.isArray(normalizedDraft?.caseStudies)
+    ? normalizedDraft.caseStudies
+    : [];
+  const requestedActiveCaseStudyId = String(
+    normalizedDraft?.activeCaseStudyId || "",
+  ).trim();
+
+  return (
+    caseStudies.find(
+      (caseStudy) => String(caseStudy?.id || "").trim() === requestedActiveCaseStudyId,
+    ) ||
+    caseStudies[0] ||
+    createEmptyServiceCaseStudy()
+  );
+};
+
+const hasServiceInfoSkillSelection = (normalizedDraft) => {
+  const subcategories = Array.isArray(normalizedDraft?.subcategories)
+    ? normalizedDraft.subcategories
+    : [];
+
+  const hasSubcategorySkillSelection = subcategories.some((entry) => {
+    const hasSelectedTool =
+      Array.isArray(entry?.selectedToolIds) && entry.selectedToolIds.length > 0;
+    const hasCustomSkill =
+      Array.isArray(entry?.customSkillNames) &&
+      entry.customSkillNames.some((value) => String(value || "").trim().length > 0);
+
+    return hasSelectedTool || hasCustomSkill;
+  });
+  const hasLegacySkills =
+    Array.isArray(normalizedDraft?.skillsAndTechnologies) &&
+    normalizedDraft.skillsAndTechnologies.some(
+      (value) => String(value || "").trim().length > 0,
+    );
+
+  return hasSubcategorySkillSelection || hasLegacySkills;
+};
+
+const buildServiceInfoValidationErrors = (normalizedDraft) => {
+  const errors = {};
+  const title = String(normalizedDraft.title || "").trim();
+  if (!title) {
+    errors.title = "Please enter a service title.";
+  }
+
+  const hasCategory = Array.isArray(normalizedDraft.subcategories)
+    ? normalizedDraft.subcategories.length > 0
+    : false;
+  if (!hasCategory) {
+    errors.category = "Please select a category.";
+  }
+
+  if (!hasServiceInfoSkillSelection(normalizedDraft)) {
+    errors.skills = "Please add at least one skill or technology.";
+  }
+
+  const experience = String(normalizedDraft.experience || "").trim();
+  if (!experience) {
+    errors.experience = "Please select your experience level.";
+  }
+
+  return errors;
+};
+
+const buildServicePricingValidationErrors = (normalizedDraft) => {
+  const errors = {};
+  const description = String(normalizedDraft.description || "").trim();
+  if (!description) {
+    errors.description = "Please add a service description.";
+  }
+
+  const deliveryTimeline = String(normalizedDraft.deliveryTimeline || "").trim();
+  if (!deliveryTimeline) {
+    errors.deliveryTimeline = "Please select a delivery timeline.";
+  }
+
+  const priceRange = String(normalizedDraft.priceRange || "").trim();
+  if (!priceRange) {
+    errors.priceRange = "Please set a service price.";
+  }
+
+  return errors;
+};
+
+const buildServiceVisualsValidationErrors = (normalizedDraft) => {
+  const errors = {};
+  const mediaFiles = Array.isArray(normalizedDraft.mediaFiles)
+    ? normalizedDraft.mediaFiles
+    : [];
+  const videoCount = mediaFiles.filter((entry) => {
+    const kind = String(entry?.kind || "").trim().toLowerCase();
+    const mimeType = String(
+      entry?.mimeType || entry?.type || entry?.contentType || "",
+    )
+      .trim()
+      .toLowerCase();
+
+    return kind === "video" || mimeType.startsWith("video/");
+  }).length;
+  const imageCount = Math.max(0, mediaFiles.length - videoCount);
+  const hasValidUpload =
+    (videoCount === 1 && imageCount === 0) ||
+    (imageCount === 2 && videoCount === 0);
+
+  if (!hasValidUpload) {
+    errors.mediaFiles = "Please add either 2 images or 1 video before continuing.";
+  }
+
+  return errors;
+};
+
+const buildCaseStudyValidationErrors = (normalizedDraft) => {
+  const errors = {};
+  const activeCaseStudy = getActiveServiceCaseStudy(normalizedDraft);
+
+  const title = String(activeCaseStudy.title || "").trim();
+  if (!title) {
+    errors.title = "Please enter a case study title.";
+  }
+
+  const description = String(activeCaseStudy.description || "").trim();
+  if (!description) {
+    errors.description = "Please add a case study description.";
+  }
+
+  const niche = String(activeCaseStudy.niche || "").trim();
+  if (!niche) {
+    errors.niche = "Please select a niche.";
+  }
+
+  const role = String(activeCaseStudy.role || "").trim();
+  if (!role) {
+    errors.role = "Please enter your role.";
+  }
+
+  const timeline = String(activeCaseStudy.timeline || "").trim();
+  if (!timeline) {
+    errors.timeline = "Please select a timeline.";
+  }
+
+  const budget = String(activeCaseStudy.budget || "").trim();
+  if (!budget) {
+    errors.budget = "Please set a budget.";
+  }
+
+  const hasProjectProof =
+    String(activeCaseStudy.projectLink || "").trim().length > 0 ||
+    Boolean(activeCaseStudy.projectFile);
+  if (!hasProjectProof) {
+    errors.projectProof = "Please add a project link or upload a project file.";
+  }
+
+  return errors;
+};
+
+export const getServiceStepValidationErrors = (draft = {}, stepId = "") => {
+  const normalizedDraft = normalizeServiceDraft(draft, {
+    serviceKey: draft?.serviceKey,
+    serviceId: draft?.serviceId,
+  });
+  const normalizedStepId = String(stepId || "").trim();
+
+  if (normalizedStepId === "serviceInfo") {
+    return buildServiceInfoValidationErrors(normalizedDraft);
+  }
+
+  if (normalizedStepId === "servicePricing") {
+    return buildServicePricingValidationErrors(normalizedDraft);
+  }
+
+  if (normalizedStepId === "serviceVisuals") {
+    return buildServiceVisualsValidationErrors(normalizedDraft);
+  }
+
+  if (normalizedStepId === "caseStudy") {
+    return buildCaseStudyValidationErrors(normalizedDraft);
+  }
+
+  return {};
+};
+
+export const getServiceStepValidationMessage = (draft = {}, stepId = "") => {
+  const errors = getServiceStepValidationErrors(draft, stepId);
+  return Object.values(errors).find(Boolean) || "";
+};
