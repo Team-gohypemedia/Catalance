@@ -512,6 +512,13 @@ const hasRole = (user, role) => {
   return roles.includes(targetRole);
 };
 
+const normalizeOnboardingRoleValue = (value) => {
+  const normalizedRole = normalizeRoleValue(value);
+  return normalizedRole === "CLIENT" || normalizedRole === "FREELANCER"
+    ? normalizedRole
+    : null;
+};
+
 const normalizeGoogleAuthMode = (value) => {
   const normalized = typeof value === "string" ? value.toLowerCase().trim() : "";
   return normalized === "signup" ? "signup" : "login";
@@ -1047,6 +1054,15 @@ const TECH_GROUP_KEY_REGEX = /(tech_stack|tools|platforms|technology|tech)/i;
 const normalizeOptionalText = (value) => {
   const normalized = String(value ?? "").trim();
   return normalized || null;
+};
+
+const normalizeOptionalEmail = (value) => {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (!normalized) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    throw new AppError("Enter a valid email address.", 400);
+  }
+  return normalized;
 };
 
 const normalizeAcceptInProgressProjectsLabel = (value) => {
@@ -2090,12 +2106,14 @@ export const listUsers = async (filters = {}) => {
 export const updateUserProfile = async (userId, updates) => {
   const allowedUpdates = [
     "fullName",
+    "email",
     "phone",
     "phoneNumber",
     "professionalBio",
     "avatar",
     "profileDetails",
     "profileDetailsPatch",
+    "onboardingRole",
     "onboardingComplete",
     "services",
     "companyName",
@@ -2123,6 +2141,11 @@ export const updateUserProfile = async (userId, updates) => {
       // Sanitize bio to plain text even if JSON/object slips in.
       if (key === "bio" || key === "professionalBio") {
         cleanUpdates[key] = extractBioText(updates[key]);
+      } else if (key === "email") {
+        const normalizedEmail = normalizeOptionalEmail(updates[key]);
+        if (normalizedEmail) {
+          cleanUpdates.email = normalizedEmail;
+        }
       } else if (key === "phone" || key === "phoneNumber") {
         cleanUpdates.phoneNumber = normalizeOptionalText(updates[key]);
       } else if (key === "serviceKeywords") {
@@ -2137,6 +2160,11 @@ export const updateUserProfile = async (userId, updates) => {
         cleanUpdates[key] = normalizeFreelancerProfileDetails(updates[key]);
       } else if (key === "profileDetailsPatch") {
         cleanUpdates[key] = normalizeFreelancerProfileDetails(updates[key]);
+      } else if (key === "onboardingRole") {
+        const normalizedRole = normalizeOnboardingRoleValue(updates[key]);
+        if (normalizedRole) {
+          cleanUpdates[key] = normalizedRole;
+        }
       } else if (key === "services") {
         cleanUpdates[key] = normalizeMarketplaceServiceKeys(updates[key], {
           max: 64
@@ -2228,6 +2256,11 @@ export const updateUserProfile = async (userId, updates) => {
     delete cleanUpdates.portfolioProjects;
   }
 
+  const selectedOnboardingRole = cleanUpdates.onboardingRole || null;
+  if (selectedOnboardingRole) {
+    delete cleanUpdates.onboardingRole;
+  }
+
   if (
     !Object.prototype.hasOwnProperty.call(cleanUpdates, "avatar") &&
     cleanUpdates.profileDetails?.identity
@@ -2242,6 +2275,7 @@ export const updateUserProfile = async (userId, updates) => {
 
   const userUpdateKeys = new Set([
     "fullName",
+    "email",
     "phoneNumber",
     "avatar",
     "onboardingComplete"
@@ -2267,25 +2301,65 @@ export const updateUserProfile = async (userId, updates) => {
     "profileDetails"
   );
 
-  const updatedUser = await prisma.$transaction(async (tx) => {
-    let user = null;
-    if (Object.keys(userUpdates).length) {
-      user = await tx.user.update(
-        withFreelancerProfileInclude({
-          where: { id: userId },
-          data: userUpdates
-        })
-      );
-    } else {
-      user = await tx.user.findUnique(
-        withFreelancerProfileInclude({
-          where: { id: userId }
-        })
-      );
-    }
+  let updatedUser = null;
+
+  try {
+    updatedUser = await prisma.$transaction(async (tx) => {
+    let user = await tx.user.findUnique(
+      withFreelancerProfileInclude({
+        where: { id: userId }
+      })
+    );
 
     if (!user) {
       throw new AppError("User not found", 404);
+    }
+
+    const roleUpdates = {};
+    if (selectedOnboardingRole) {
+      const currentPrimaryRole = normalizeRoleValue(user.role);
+      const currentRoles = Array.isArray(user.roles)
+        ? user.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+        : [];
+      const hasPrivilegedRole =
+        ["ADMIN", "PROJECT_MANAGER"].includes(currentPrimaryRole) ||
+        currentRoles.some((entry) => ["ADMIN", "PROJECT_MANAGER"].includes(entry));
+
+      if (!hasPrivilegedRole) {
+        const nextRoles = isPhoneOnlyEmail(user.email)
+          ? [selectedOnboardingRole]
+          : Array.from(
+              new Set([
+                ...currentRoles,
+                ...(currentPrimaryRole ? [currentPrimaryRole] : []),
+                selectedOnboardingRole
+              ])
+            );
+
+        roleUpdates.role = selectedOnboardingRole;
+        roleUpdates.roles = nextRoles;
+
+        if (selectedOnboardingRole === "FREELANCER") {
+          roleUpdates.status = "PENDING_APPROVAL";
+          roleUpdates.onboardingComplete = false;
+        } else if (user.status !== "SUSPENDED") {
+          roleUpdates.status = "ACTIVE";
+        }
+      }
+    }
+
+    const mergedUserUpdates = {
+      ...userUpdates,
+      ...roleUpdates
+    };
+
+    if (Object.keys(mergedUserUpdates).length) {
+      user = await tx.user.update(
+        withFreelancerProfileInclude({
+          where: { id: userId },
+          data: mergedUserUpdates
+        })
+      );
     }
 
     const existingFreelancerProfile = resolveFreelancerProfileRecord(user);
@@ -2482,7 +2556,17 @@ export const updateUserProfile = async (userId, updates) => {
         where: { id: user.id }
       })
     );
-  });
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new AppError("This email is already in use.", 409);
+    }
+
+    throw error;
+  }
 
   return sanitizeUser(updatedUser);
 };
@@ -2808,6 +2892,11 @@ export const verifyWhatsappOtp = async ({
     throw invalidCodeError;
   }
 
+  const userFullName = String(user.fullName || "").trim();
+  const shouldStartAccountOnboarding =
+    isPhoneOnlyEmail(user.email) &&
+    (!userFullName || userFullName === "WhatsApp User");
+
   let updatedUser = await prisma.user.update(
     withFreelancerProfileInclude({
       where: { id: user.id },
@@ -2834,7 +2923,8 @@ export const verifyWhatsappOtp = async ({
 
   return {
     user: sessionUser,
-    accessToken: issueAccessToken(updatedUser, finalRole)
+    accessToken: issueAccessToken(updatedUser, finalRole),
+    requiresAccountOnboarding: shouldStartAccountOnboarding
   };
 };
 

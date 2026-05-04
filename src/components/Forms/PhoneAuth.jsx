@@ -1,17 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import * as Flags from "country-flag-icons/react/3x2";
 import { cn } from "@/shared/lib/utils";
 import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { requestWhatsappOtp, verifyWhatsappOtp } from "@/shared/lib/api-client";
+import {
+  loginWithGoogle,
+  requestWhatsappOtp,
+  verifyWhatsappOtp,
+} from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
+  ACCOUNT_ONBOARDING_PATH,
   canAccessDashboard,
   FREELANCER_DASHBOARD,
   getDashboardEntryPath,
+  requiresAccountOnboarding,
   resolveDashboardValue,
   resolveFreelancerPath,
   resolveWorkspaceHomePath,
@@ -34,18 +41,53 @@ const DEFAULT_COUNTRY = "IN";
 const MIN_PHONE_DIGITS = 6;
 const OTP_LENGTH = 6;
 
-const normalizePhoneNumber = (value) => String(value || "").replace(/\D/g, "");
-
-const codeToFlagEmoji = (code) => {
-  const normalizedCode = String(code || "").trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(normalizedCode)) {
-    return "🏳️";
-  }
-
-  return normalizedCode.replace(/[A-Z]/g, (char) =>
-    String.fromCodePoint(127397 + char.charCodeAt(0)),
-  );
+const normalizeAvatarUrl = (value) => {
+  const url = String(value || "").trim();
+  if (!url || url.startsWith("blob:")) return "";
+  return url;
 };
+
+const getGoogleAvatarFromFirebaseUser = (firebaseUser) => {
+  if (!firebaseUser) return "";
+  const providerPhoto = Array.isArray(firebaseUser.providerData)
+    ? firebaseUser.providerData.find((entry) => Boolean(entry?.photoURL))
+      ?.photoURL || ""
+    : "";
+  return normalizeAvatarUrl(firebaseUser.photoURL || providerPhoto || "");
+};
+
+const mergeAuthUserWithAvatar = (apiUser, fallbackAvatar) => {
+  if (!apiUser || typeof apiUser !== "object") return apiUser;
+
+  const existingIdentityAvatar =
+    apiUser?.profileDetails?.identity?.profilePhoto || "";
+  const resolvedAvatar = normalizeAvatarUrl(
+    apiUser?.avatar || existingIdentityAvatar || fallbackAvatar,
+  );
+
+  if (!resolvedAvatar) return apiUser;
+
+  return {
+    ...apiUser,
+    avatar: resolvedAvatar,
+    profileDetails: {
+      ...(apiUser.profileDetails && typeof apiUser.profileDetails === "object"
+        ? apiUser.profileDetails
+        : {}),
+      identity: {
+        ...((apiUser.profileDetails &&
+          typeof apiUser.profileDetails === "object" &&
+          apiUser.profileDetails.identity &&
+          typeof apiUser.profileDetails.identity === "object"
+          ? apiUser.profileDetails.identity
+          : {})),
+        profilePhoto: existingIdentityAvatar || resolvedAvatar,
+      },
+    },
+  };
+};
+
+const normalizePhoneNumber = (value) => String(value || "").replace(/\D/g, "");
 
 const COUNTRY_OPTIONS = Array.from(
   COUNTRY_CODES.reduce((accumulator, country) => {
@@ -100,17 +142,34 @@ const navigateAfterLogin = ({ navigate, redirectTo, requestedRole, user }) => {
   navigate(resolveWorkspaceHomePath(user), { replace: true });
 };
 
-function CountryFlag({ code, className }) {
+function CountryFlag({ code, className = "h-5 w-5" }) {
+  const normalizedCode = String(code || "").trim().toUpperCase();
+
+  if (!/^[A-Z]{2}$/.test(normalizedCode)) {
+    return (
+      <div
+        aria-hidden="true"
+        className={cn("rounded-sm border border-white/10 bg-white/5", className)}
+      />
+    );
+  }
+
+  const FlagComponent = Flags[normalizedCode];
+
+  if (!FlagComponent) {
+    return (
+      <div
+        aria-hidden="true"
+        className={cn("rounded-sm border border-white/10 bg-white/5", className)}
+      />
+    );
+  }
+
   return (
-    <span
+    <FlagComponent
       aria-hidden="true"
-      className={cn(
-        "inline-flex size-5 items-center justify-center rounded-sm border border-white/10 bg-white/5 text-[0.95rem] leading-none",
-        className,
-      )}
-    >
-      {codeToFlagEmoji(code)}
-    </span>
+      className={cn("rounded-sm object-cover", className)}
+    />
   );
 }
 
@@ -176,6 +235,7 @@ function PhoneAuth() {
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   useEffect(() => {
     document.title = "Log in | Catalance";
@@ -281,7 +341,11 @@ function PhoneAuth() {
         throw new Error("Invalid login payload received.");
       }
 
-      setAuthSession(authPayload.user, authPayload.accessToken);
+      const sessionUser = authPayload.requiresAccountOnboarding
+        ? { ...authPayload.user, accountOnboardingPending: true }
+        : authPayload.user;
+
+      setAuthSession(sessionUser, authPayload.accessToken);
       toast.success("Logged in successfully.");
       setPhoneDigits("");
       setOtpDigits("");
@@ -289,11 +353,22 @@ function PhoneAuth() {
 
       const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
 
+      if (authPayload?.requiresAccountOnboarding) {
+        navigate(ACCOUNT_ONBOARDING_PATH, {
+          replace: true,
+          state: {
+            fromPhoneVerification: true,
+            ...(redirectTo ? { redirectTo } : {}),
+          },
+        });
+        return;
+      }
+
       navigateAfterLogin({
         navigate,
         redirectTo,
         requestedRole,
-        user: authPayload.user,
+        user: sessionUser,
       });
     } catch (error) {
       const message = error?.message || "Unable to verify WhatsApp OTP.";
@@ -327,6 +402,53 @@ function PhoneAuth() {
     void requestOtp({ resend: true });
   };
 
+  const handleGoogleSignIn = async () => {
+    setFormError("");
+    setIsGoogleLoading(true);
+
+    try {
+      const { signInWithGoogle } = await import("@/shared/lib/firebase");
+      const firebaseUser = await signInWithGoogle();
+      const idToken = await firebaseUser.getIdToken();
+      const authPayload = await loginWithGoogle(idToken, requestedRole, "signup");
+      const googleAvatar = getGoogleAvatarFromFirebaseUser(firebaseUser);
+      const mergedUser = mergeAuthUserWithAvatar(authPayload?.user, googleAvatar);
+      const shouldStartAccountOnboarding = requiresAccountOnboarding(mergedUser);
+      const sessionUser = shouldStartAccountOnboarding
+        ? { ...mergedUser, accountOnboardingPending: true }
+        : mergedUser;
+
+      setAuthSession(sessionUser, authPayload?.accessToken);
+      toast.success(`Welcome, ${sessionUser?.fullName || "User"}!`);
+
+      const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
+
+      if (shouldStartAccountOnboarding) {
+        navigate(ACCOUNT_ONBOARDING_PATH, {
+          replace: true,
+          state: {
+            fromGoogleSignin: true,
+            ...(redirectTo ? { redirectTo } : {}),
+          },
+        });
+        return;
+      }
+
+      navigateAfterLogin({
+        navigate,
+        redirectTo,
+        requestedRole,
+        user: sessionUser,
+      });
+    } catch (error) {
+      const message = error?.message || "Unable to sign in with Google.";
+      setFormError(message);
+      toast.error(message);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   const handleSocialClick = (provider) => {
     toast.info(`${provider} sign-in is not connected yet.`);
   };
@@ -340,11 +462,11 @@ function PhoneAuth() {
     const formSpacing = compact ? "space-y-3" : "space-y-5";
     const labelClass = "block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55";
     const phoneGridClass = compact
-      ? "grid w-full grid-cols-[6.25rem_minmax(0,1fr)] gap-1.5"
-      : "grid grid-cols-[7rem_minmax(0,1fr)] gap-2 sm:grid-cols-[7.75rem_minmax(0,1fr)]";
+      ? "grid w-full grid-cols-[7rem_minmax(0,1fr)] gap-1.5"
+      : "grid grid-cols-[7.5rem_minmax(0,1fr)] gap-2 sm:grid-cols-[8rem_minmax(0,1fr)]";
     const selectTriggerClass = compact
-      ? "!h-10 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-2.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]"
-      : "!h-12 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-3.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-[#1c1c1c]";
+      ? "!h-10 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-2.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+      : "!h-12 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-2.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
     const phoneInputClass = compact
       ? "!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
       : "!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
@@ -354,6 +476,8 @@ function PhoneAuth() {
     const submitButtonClass = compact
       ? "!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
       : "!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl";
+    const selectedCountryDialCodeLabel =
+      `+${normalizePhoneNumber(selectedCountry?.dialCode || "")}` || selectedCountry?.dialCode || "";
 
     return (
       <form className={`${formSpacing} text-left`} onSubmit={handleSubmit} noValidate>
@@ -378,15 +502,12 @@ function PhoneAuth() {
                     aria-label="Select country code"
                     className={selectTriggerClass}
                   >
-                    <div className="pointer-events-none flex min-w-0 items-center gap-2.5 select-none">
-                      <CountryFlag
-                        code={selectedCountry.code}
-                        className={
-                          compact ? "size-[1.05rem] rounded-sm text-[0.86rem]" : undefined
-                        }
-                      />
-                      <span className={compact ? "truncate text-[13px] font-medium" : "truncate text-[15px] font-medium"}>
-                        {selectedCountry.dialCode}
+                    <div className="pointer-events-none flex shrink-0 items-center gap-2 select-none">
+                      <CountryFlag code={selectedCountry.code} className="h-5 w-5" />
+                      <span
+                        className={compact ? "shrink-0 whitespace-nowrap text-[13px] font-medium" : "shrink-0 whitespace-nowrap text-[15px] font-medium"}
+                      >
+                        {selectedCountryDialCodeLabel}
                       </span>
                     </div>
                   </SelectTrigger>
@@ -399,15 +520,15 @@ function PhoneAuth() {
                       <SelectItem
                         key={option.code}
                         value={option.code}
-                        className="cursor-pointer text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white"
+                        className="group cursor-pointer pr-8 text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white group-data-[state=checked]:pr-14"
                       >
-                        <span className="flex w-full items-center gap-3">
-                          <CountryFlag code={option.code} />
-                          <span className="min-w-0 flex-1 truncate">
+                        <span className="flex w-full items-center gap-0">
+                          <CountryFlag code={option.code} className="h-5 w-5" />
+                          <span className="ml-3 min-w-0 flex-1 truncate text-[13px]">
                             {option.label}
                           </span>
-                          <span className="shrink-0 text-white/45">
-                            {option.code} {option.dialCode}
+                          <span className="absolute right-3 text-[13px] text-white/45 group-data-[state=checked]:right-8">
+                            +{option.dialCode.replace(/\D/g, "")}
                           </span>
                         </span>
                       </SelectItem>
@@ -554,15 +675,20 @@ function PhoneAuth() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleSocialClick("Google")}
-                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[12px] font-medium text-white hover:bg-white/[0.06] hover:text-white sm:text-[13px]"
+                  onClick={handleGoogleSignIn}
+                  disabled={isSubmitting || isResending || isGoogleLoading}
+                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[12px] font-medium text-white hover:bg-white/[0.06] hover:text-white disabled:opacity-70 sm:text-[13px]"
                 >
-                  <img
-                    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                    alt=""
-                    className="size-[18px]"
-                  />
-                  Continue with Google
+                  {isGoogleLoading ? (
+                    <Loader2 className="size-[18px] animate-spin" />
+                  ) : (
+                    <img
+                      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                      alt=""
+                      className="size-[18px]"
+                    />
+                  )}
+                  {isGoogleLoading ? "Connecting..." : "Continue with Google"}
                 </Button>
 
                 <Button
@@ -671,19 +797,24 @@ function PhoneAuth() {
                   </div>
 
                   <div className="mt-5 space-y-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleSocialClick("Google")}
-                      className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
-                    >
-                      <img
-                        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                        alt=""
-                        className="size-5"
-                      />
-                      Continue with Google
-                    </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGoogleSignIn}
+                  disabled={isSubmitting || isResending || isGoogleLoading}
+                  className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white disabled:opacity-70"
+                >
+                  {isGoogleLoading ? (
+                    <Loader2 className="size-5 animate-spin" />
+                  ) : (
+                    <img
+                      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                      alt=""
+                      className="size-5"
+                    />
+                  )}
+                  {isGoogleLoading ? "Connecting..." : "Continue with Google"}
+                </Button>
 
                     <Button
                       type="button"

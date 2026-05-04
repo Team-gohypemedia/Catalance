@@ -1,11 +1,14 @@
 import PropTypes from "prop-types";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 
 import { useAuth } from "@/shared/context/AuthContext";
 import {
+  ACCOUNT_ONBOARDING_PATH,
   FREELANCER_DASHBOARD,
   FREELANCER_DASHBOARD_PATH,
   canAccessDashboard,
+  isAccountOnboardingPath,
+  requiresAccountOnboarding,
   requiresFreelancerOnboarding,
 } from "@/shared/lib/dashboard-preference";
 
@@ -17,6 +20,7 @@ const ProtectedRoute = ({
   requireFreelancerOnboardingComplete = false,
 }) => {
   const { isAuthenticated, isCheckingAuth, user } = useAuth();
+  const location = useLocation();
 
   if (isCheckingAuth) {
     return (
@@ -28,6 +32,13 @@ const ProtectedRoute = ({
 
   if (!isAuthenticated) {
     return <Navigate to={loginPath} replace />;
+  }
+
+  if (
+    requiresAccountOnboarding(user) &&
+    !isAccountOnboardingPath(location.pathname)
+  ) {
+    return <Navigate to={ACCOUNT_ONBOARDING_PATH} replace />;
   }
 
   if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {

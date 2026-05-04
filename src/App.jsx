@@ -10,6 +10,7 @@ import ProtectedRoute from "@/components/features/auth/ProtectedRoute";
 import PublicRoute from "@/components/features/auth/PublicRoute";
 import CataButton from "@/components/common/CataButton";
 import {
+  ACCOUNT_ONBOARDING_PATH,
   AGENCY_ONBOARDING_PATH,
   FREELANCER_DASHBOARD,
   canAccessDashboard,
@@ -79,6 +80,9 @@ const SignupPage = lazy(
 );
 const EmailAuthPage = lazy(() => import("@/components/Forms/EmailAuth"));
 const PhoneAuthPage = lazy(() => import("@/components/Forms/PhoneAuth"));
+const PhoneRoleOnboarding = lazy(
+  () => import("@/components/features/auth/PhoneRoleOnboarding"),
+);
 const LoginPage = lazy(() => import("@/components/features/auth/forms/Login"));
 const ForgotPasswordPage = lazy(
   () => import("@/components/features/auth/forms/ForgotPassword"),
@@ -239,6 +243,14 @@ const App = () => {
             <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
             <Route path="/signin/phone" element={<PublicRoute><PhoneAuthPage /></PublicRoute>} />
             <Route path="/signin/email" element={<PublicRoute><EmailAuthPage /></PublicRoute>} />
+            <Route
+              path={ACCOUNT_ONBOARDING_PATH}
+              element={
+                <ProtectedRoute loginPath="/signin/phone">
+                  <PhoneRoleOnboarding />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/about"
               element={

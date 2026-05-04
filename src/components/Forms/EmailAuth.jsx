@@ -5,12 +5,14 @@ import { cn } from "@/shared/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { login } from "@/shared/lib/api-client";
+import { login, loginWithGoogle } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
+  ACCOUNT_ONBOARDING_PATH,
   canAccessDashboard,
   FREELANCER_DASHBOARD,
   getDashboardEntryPath,
+  requiresAccountOnboarding,
   resolveDashboardValue,
   resolveFreelancerPath,
   resolveWorkspaceHomePath,
@@ -28,6 +30,52 @@ import Search from "lucide-react/dist/esm/icons/search";
 const CLIENT_ROLE = "CLIENT";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
+
+const normalizeAvatarUrl = (value) => {
+  const url = String(value || "").trim();
+  if (!url || url.startsWith("blob:")) return "";
+  return url;
+};
+
+const getGoogleAvatarFromFirebaseUser = (firebaseUser) => {
+  if (!firebaseUser) return "";
+  const providerPhoto = Array.isArray(firebaseUser.providerData)
+    ? firebaseUser.providerData.find((entry) => Boolean(entry?.photoURL))
+      ?.photoURL || ""
+    : "";
+  return normalizeAvatarUrl(firebaseUser.photoURL || providerPhoto || "");
+};
+
+const mergeAuthUserWithAvatar = (apiUser, fallbackAvatar) => {
+  if (!apiUser || typeof apiUser !== "object") return apiUser;
+
+  const existingIdentityAvatar =
+    apiUser?.profileDetails?.identity?.profilePhoto || "";
+  const resolvedAvatar = normalizeAvatarUrl(
+    apiUser?.avatar || existingIdentityAvatar || fallbackAvatar,
+  );
+
+  if (!resolvedAvatar) return apiUser;
+
+  return {
+    ...apiUser,
+    avatar: resolvedAvatar,
+    profileDetails: {
+      ...(apiUser.profileDetails && typeof apiUser.profileDetails === "object"
+        ? apiUser.profileDetails
+        : {}),
+      identity: {
+        ...((apiUser.profileDetails &&
+          typeof apiUser.profileDetails === "object" &&
+          apiUser.profileDetails.identity &&
+          typeof apiUser.profileDetails.identity === "object"
+          ? apiUser.profileDetails.identity
+          : {})),
+        profilePhoto: existingIdentityAvatar || resolvedAvatar,
+      },
+    },
+  };
+};
 
 const isValidEmail = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
@@ -90,6 +138,7 @@ function EmailAuth() {
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
@@ -157,18 +206,36 @@ function EmailAuth() {
         return;
       }
 
-      setAuthSession(authPayload?.user, authPayload?.accessToken);
+      const shouldStartAccountOnboarding = requiresAccountOnboarding(
+        authPayload?.user,
+      );
+      const sessionUser = shouldStartAccountOnboarding
+        ? { ...authPayload?.user, accountOnboardingPending: true }
+        : authPayload?.user;
+
+      setAuthSession(sessionUser, authPayload?.accessToken);
       toast.success("Logged in successfully.");
       setEmail("");
       setPassword("");
 
       const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
 
+      if (shouldStartAccountOnboarding) {
+        navigate(ACCOUNT_ONBOARDING_PATH, {
+          replace: true,
+          state: {
+            fromEmailSignin: true,
+            ...(redirectTo ? { redirectTo } : {}),
+          },
+        });
+        return;
+      }
+
       navigateAfterLogin({
         navigate,
         redirectTo,
         requestedRole,
-        user: authPayload?.user,
+        user: sessionUser,
       });
     } catch (error) {
       const message = error?.message || "Unable to log in with those details.";
@@ -176,6 +243,58 @@ function EmailAuth() {
       toast.error(message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setFormError("");
+    setIsGoogleLoading(true);
+
+    try {
+      const requestedRole =
+        searchParams.get("role")?.toUpperCase() ||
+        (typeof location.state?.role === "string"
+          ? location.state.role.toUpperCase()
+          : CLIENT_ROLE);
+      const { signInWithGoogle } = await import("@/shared/lib/firebase");
+      const firebaseUser = await signInWithGoogle();
+      const idToken = await firebaseUser.getIdToken();
+      const authPayload = await loginWithGoogle(idToken, requestedRole, "signup");
+      const googleAvatar = getGoogleAvatarFromFirebaseUser(firebaseUser);
+      const mergedUser = mergeAuthUserWithAvatar(authPayload?.user, googleAvatar);
+      const shouldStartAccountOnboarding = requiresAccountOnboarding(mergedUser);
+      const sessionUser = shouldStartAccountOnboarding
+        ? { ...mergedUser, accountOnboardingPending: true }
+        : mergedUser;
+
+      setAuthSession(sessionUser, authPayload?.accessToken);
+      toast.success(`Welcome, ${sessionUser?.fullName || "User"}!`);
+
+      const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
+
+      if (shouldStartAccountOnboarding) {
+        navigate(ACCOUNT_ONBOARDING_PATH, {
+          replace: true,
+          state: {
+            fromGoogleSignin: true,
+            ...(redirectTo ? { redirectTo } : {}),
+          },
+        });
+        return;
+      }
+
+      navigateAfterLogin({
+        navigate,
+        redirectTo,
+        requestedRole,
+        user: sessionUser,
+      });
+    } catch (error) {
+      const message = error?.message || "Unable to sign in with Google.";
+      setFormError(message);
+      toast.error(message);
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -295,7 +414,7 @@ function EmailAuth() {
                     disabled={isSubmitting}
                     className="!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
                   >
-                    {isSubmitting ? "Logging in..." : "Log in"}
+                    {isSubmitting ? "Signing in..." : "Sign in"}
                     {isSubmitting ? (
                       <Loader2 className="size-[0.95rem] animate-spin" />
                     ) : (
@@ -315,15 +434,20 @@ function EmailAuth() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleSocialClick("Google")}
-                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[12px] font-medium text-white hover:bg-white/[0.06] hover:text-white sm:text-[13px]"
+                  onClick={handleGoogleSignIn}
+                  disabled={isSubmitting || isGoogleLoading}
+                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[12px] font-medium text-white hover:bg-white/[0.06] hover:text-white disabled:opacity-70 sm:text-[13px]"
                 >
-                  <img
-                    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                    alt=""
-                    className="size-[18px]"
-                  />
-                  Continue with Google
+                  {isGoogleLoading ? (
+                    <Loader2 className="size-[18px] animate-spin" />
+                  ) : (
+                    <img
+                      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                      alt=""
+                      className="size-[18px]"
+                    />
+                  )}
+                  {isGoogleLoading ? "Connecting..." : "Continue with Google"}
                 </Button>
 
                 <Button
@@ -535,15 +659,20 @@ function EmailAuth() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => handleSocialClick("Google")}
-                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                        onClick={handleGoogleSignIn}
+                        disabled={isSubmitting || isGoogleLoading}
+                        className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white disabled:opacity-70"
                       >
-                        <img
-                          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                          alt=""
-                          className="size-5"
-                        />
-                        Continue with Google
+                        {isGoogleLoading ? (
+                          <Loader2 className="size-5 animate-spin" />
+                        ) : (
+                          <img
+                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                            alt=""
+                            className="size-5"
+                          />
+                        )}
+                        {isGoogleLoading ? "Connecting..." : "Continue with Google"}
                       </Button>
 
                       <Button

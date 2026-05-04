@@ -22,9 +22,11 @@ import { Input } from "@/components/ui/input";
 import { login, loginWithGoogle } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
+  ACCOUNT_ONBOARDING_PATH,
   canAccessDashboard,
   FREELANCER_DASHBOARD,
   getDashboardEntryPath,
+  requiresAccountOnboarding,
   resolveDashboardValue,
   resolveFreelancerPath,
   resolveWorkspaceHomePath,
@@ -178,16 +180,34 @@ function Login({ className, ...props }) {
         return;
       }
 
-      setAuthSession(authPayload?.user, authPayload?.accessToken);
+      const shouldStartAccountOnboarding = requiresAccountOnboarding(
+        authPayload?.user
+      );
+      const sessionUser = shouldStartAccountOnboarding
+        ? { ...authPayload?.user, accountOnboardingPending: true }
+        : authPayload?.user;
+
+      setAuthSession(sessionUser, authPayload?.accessToken);
       toast.success("Logged in successfully.");
       setFormData(initialFormState);
       const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
+
+      if (shouldStartAccountOnboarding) {
+        navigate(ACCOUNT_ONBOARDING_PATH, {
+          replace: true,
+          state: {
+            fromEmailSignin: true,
+            ...(redirectTo ? { redirectTo } : {}),
+          },
+        });
+        return;
+      }
 
       navigateAfterLogin({
         navigate,
         redirectTo,
         requestedRole,
-        user: authPayload?.user,
+        user: sessionUser,
       });
     } catch (error) {
       const message = error?.message || "Unable to log in with those details.";
@@ -212,7 +232,11 @@ function Login({ className, ...props }) {
       // Perform backend Google auth (auto-creates account when missing)
       const authPayload = await loginWithGoogle(idToken, selectedRole, "signup");
       const googleAvatar = getGoogleAvatarFromFirebaseUser(firebaseUser);
-      const sessionUser = mergeAuthUserWithAvatar(authPayload?.user, googleAvatar);
+      const mergedUser = mergeAuthUserWithAvatar(authPayload?.user, googleAvatar);
+      const shouldStartAccountOnboarding = requiresAccountOnboarding(mergedUser);
+      const sessionUser = shouldStartAccountOnboarding
+        ? { ...mergedUser, accountOnboardingPending: true }
+        : mergedUser;
 
       setAuthSession(sessionUser, authPayload?.accessToken);
       toast.success(`Welcome, ${authPayload?.user?.fullName || "User"}!`);
@@ -222,8 +246,19 @@ function Login({ className, ...props }) {
         typeof selectedRole === "string"
           ? selectedRole.toUpperCase()
           : typeof location.state?.role === "string"
-            ? location.state.role.toUpperCase()
-            : null;
+          ? location.state.role.toUpperCase()
+          : null;
+
+      if (shouldStartAccountOnboarding) {
+        navigate(ACCOUNT_ONBOARDING_PATH, {
+          replace: true,
+          state: {
+            fromGoogleSignin: true,
+            ...(redirectTo ? { redirectTo } : {}),
+          },
+        });
+        return;
+      }
 
       navigateAfterLogin({
         navigate,

@@ -2,6 +2,7 @@ import { buildNamespacedStorageKey } from "./storage-keys.js";
 
 export const CLIENT_DASHBOARD = "client";
 export const FREELANCER_DASHBOARD = "freelancer";
+export const ACCOUNT_ONBOARDING_PATH = "/onboarding/role";
 export const FREELANCER_DASHBOARD_PATH = "/freelancer";
 export const FREELANCER_ONBOARDING_PATH = "/freelancer/onboarding";
 export const AGENCY_ONBOARDING_PATH = "/agency/onboarding";
@@ -15,6 +16,9 @@ const DASHBOARD_PROFILE_PATHS = Object.freeze({
   [CLIENT_DASHBOARD]: "/client/profile",
   [FREELANCER_DASHBOARD]: "/freelancer/profile",
 });
+const PHONE_ONLY_EMAIL_DOMAIN = "phone.catalance.local";
+const PHONE_ONLY_DEFAULT_FULL_NAME = "WhatsApp User";
+const ACCOUNT_ONBOARDING_EXEMPT_ROLES = ["ADMIN", "PROJECT_MANAGER"];
 const ROLE_IMPLIED_TOKENS = Object.freeze({
   CLIENT: ["FREELANCER"],
   FREELANCER: ["CLIENT"],
@@ -26,6 +30,9 @@ const normalizeRoleToken = (value = "") =>
   String(value || "")
     .trim()
     .toUpperCase();
+
+const normalizePhoneDigits = (value = "") =>
+  String(value || "").replace(/\D/g, "");
 
 const normalizePathnameToken = (value = "") => {
   const normalizedValue = String(value || "").trim();
@@ -192,8 +199,42 @@ export const requiresFreelancerOnboarding = (user = null) =>
   canAccessDashboard(user, FREELANCER_DASHBOARD) &&
   !hasCompletedFreelancerOnboarding(user);
 
+export const isPhoneOnlyAccountEmail = (value = "") =>
+  String(value || "").toLowerCase().endsWith(`@${PHONE_ONLY_EMAIL_DOMAIN}`);
+
+export const requiresAccountOnboarding = (user = null) => {
+  if (!user) {
+    return false;
+  }
+
+  if (user.accountOnboardingPending === true) {
+    return true;
+  }
+
+  const roleTokens = getUserRoleTokens(user);
+  if (ACCOUNT_ONBOARDING_EXEMPT_ROLES.some((role) => roleTokens.has(role))) {
+    return false;
+  }
+
+  const fullName = String(user.fullName || "").trim();
+  const phoneDigits = normalizePhoneDigits(user.phoneNumber || user.phone);
+
+  if (!fullName || fullName === PHONE_ONLY_DEFAULT_FULL_NAME) {
+    return true;
+  }
+
+  if (isPhoneOnlyAccountEmail(user.email)) {
+    return phoneDigits.length < 6;
+  }
+
+  return phoneDigits.length < 6;
+};
+
 export const isFreelancerOnboardingPath = (pathname = "") =>
   normalizePathnameToken(pathname) === FREELANCER_ONBOARDING_PATH;
+
+export const isAccountOnboardingPath = (pathname = "") =>
+  normalizePathnameToken(pathname) === ACCOUNT_ONBOARDING_PATH;
 
 export const isFreelancerDashboardPath = (pathname = "") =>
   normalizePathnameToken(pathname) === FREELANCER_DASHBOARD_PATH;

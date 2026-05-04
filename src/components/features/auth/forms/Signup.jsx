@@ -17,9 +17,11 @@ import { Input } from "@/components/ui/input";
 import { signup, loginWithGoogle, verifyOtp, resendOtp } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
+  ACCOUNT_ONBOARDING_PATH,
   canAccessDashboard,
   FREELANCER_DASHBOARD,
   getDashboardEntryPath,
+  requiresAccountOnboarding,
   resolveDashboardValue,
   resolveFreelancerPath,
   resolveWorkspaceHomePath,
@@ -169,6 +171,8 @@ function Signup({ className, ...props }) {
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isResendingOtp, setIsResendingOtp] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [isRedirectingToAccountOnboarding, setIsRedirectingToAccountOnboarding] =
+    useState(false);
 
   const navigate = useNavigate();
   const { login: setAuthSession, isAuthenticated, user } = useAuth();
@@ -191,6 +195,7 @@ function Signup({ className, ...props }) {
   const isFromProposal = Boolean(location.state?.fromProposal);
 
   useEffect(() => {
+    if (isRedirectingToAccountOnboarding) return;
     if (!isAuthenticated || !user) return;
 
     navigateAfterSignup({
@@ -199,7 +204,14 @@ function Signup({ className, ...props }) {
       requestedRole,
       user,
     });
-  }, [isAuthenticated, navigate, requestedRedirectTo, requestedRole, user]);
+  }, [
+    isAuthenticated,
+    isRedirectingToAccountOnboarding,
+    navigate,
+    requestedRedirectTo,
+    requestedRole,
+    user,
+  ]);
 
   // Redirect clients to service selection if not coming from proposal
   useEffect(() => {
@@ -327,16 +339,17 @@ function Signup({ className, ...props }) {
         otp: otpValue,
       });
 
-      setAuthSession(authPayload?.user, authPayload?.accessToken);
+      const sessionUser = authPayload?.user
+        ? { ...authPayload.user, accountOnboardingPending: true }
+        : authPayload?.user;
+
+      setIsRedirectingToAccountOnboarding(true);
+      setAuthSession(sessionUser, authPayload?.accessToken);
       toast.success("Email verified! Welcome to Catalance.");
       setFormData(initialFormState);
-      const requestedRole = searchParams.get("role")?.toUpperCase();
-
-      navigateAfterSignup({
-        navigate,
-        redirectTo: requestedRedirectTo,
-        requestedRole,
-        user: authPayload?.user,
+      navigate(ACCOUNT_ONBOARDING_PATH, {
+        replace: true,
+        state: { fromEmailVerification: true },
       });
     } catch (error) {
       const message = error?.message || "Invalid verification code. Please try again.";
@@ -390,11 +403,26 @@ function Signup({ className, ...props }) {
       // Authenticate via backend Google endpoint (creates user if needed)
       const authPayload = await loginWithGoogle(idToken, selectedRole, "signup");
       const googleAvatar = getGoogleAvatarFromFirebaseUser(firebaseUser);
-      const sessionUser = mergeAuthUserWithAvatar(authPayload?.user, googleAvatar);
+      const mergedUser = mergeAuthUserWithAvatar(authPayload?.user, googleAvatar);
+      const shouldStartAccountOnboarding = requiresAccountOnboarding(mergedUser);
+      const sessionUser = shouldStartAccountOnboarding
+        ? { ...mergedUser, accountOnboardingPending: true }
+        : mergedUser;
 
       setAuthSession(sessionUser, authPayload?.accessToken);
       toast.success(`Welcome, ${firebaseUser.displayName || 'User'}!`);
       const requestedRole = selectedRole?.toUpperCase();
+
+      if (shouldStartAccountOnboarding) {
+        navigate(ACCOUNT_ONBOARDING_PATH, {
+          replace: true,
+          state: {
+            fromGoogleSignin: true,
+            ...(requestedRedirectTo ? { redirectTo: requestedRedirectTo } : {}),
+          },
+        });
+        return;
+      }
 
       navigateAfterSignup({
         navigate,
