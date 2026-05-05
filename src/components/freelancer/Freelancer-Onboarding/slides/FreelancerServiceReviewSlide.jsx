@@ -9,6 +9,7 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import Layers3 from "lucide-react/dist/esm/icons/layers-3";
 import MapPinned from "lucide-react/dist/esm/icons/map-pinned";
+import Play from "lucide-react/dist/esm/icons/play";
 import Smartphone from "lucide-react/dist/esm/icons/smartphone";
 import Wallet from "lucide-react/dist/esm/icons/wallet";
 import Wrench from "lucide-react/dist/esm/icons/wrench";
@@ -109,11 +110,15 @@ const toDisplayName = (value = "") => {
     .join(" ");
 };
 
-const buildObjectPreview = (entry, fileSelector) => {
+const buildObjectPreview = (
+  entry,
+  fileSelector,
+  { acceptFile = (file) => String(file?.type || "").startsWith("image/") } = {},
+) => {
   if (typeof File === "undefined") return null;
   const file = fileSelector(entry);
 
-  if (!(file instanceof File) || !String(file.type || "").startsWith("image/")) {
+  if (!(file instanceof File) || !acceptFile(file)) {
     return null;
   }
 
@@ -124,36 +129,92 @@ const buildObjectPreview = (entry, fileSelector) => {
   };
 };
 
-const resolveServiceImagePreviews = (mediaFiles = []) => {
+const resolveServiceMediaUrl = (entry) => {
+  if (typeof entry === "string") {
+    return entry.trim();
+  }
+
+  return String(
+    entry?.uploadedUrl ||
+      entry?.url ||
+      entry?.previewUrl ||
+      entry?.mediaUrl ||
+      entry?.src ||
+      entry?.value ||
+      "",
+  ).trim();
+};
+
+const resolveServiceMediaKind = (entry, url = "") => {
+  const explicitKind = String(entry?.kind || "").trim().toLowerCase();
+  if (explicitKind === "video" || explicitKind === "image") {
+    return explicitKind;
+  }
+
+  const mimeType = String(
+    entry?.mimeType || entry?.type || entry?.contentType || "",
+  )
+    .trim()
+    .toLowerCase();
+
+  if (mimeType.startsWith("video/")) {
+    return "video";
+  }
+
+  if (mimeType.startsWith("image/")) {
+    return "image";
+  }
+
+  if (typeof File !== "undefined") {
+    const localFile =
+      entry instanceof File
+        ? entry
+        : entry?.file instanceof File
+          ? entry.file
+          : null;
+    const fileType = String(localFile?.type || "").trim().toLowerCase();
+
+    if (fileType.startsWith("video/")) {
+      return "video";
+    }
+
+    if (fileType.startsWith("image/")) {
+      return "image";
+    }
+  }
+
+  if (/\.(mp4|webm|mov|m4v|ogg)(?:[?#]|$)/i.test(String(url || ""))) {
+    return "video";
+  }
+
+  return "image";
+};
+
+const resolveServiceMediaPreviews = (mediaFiles = []) => {
   const entries = Array.isArray(mediaFiles) ? mediaFiles : [];
   const previews = [];
 
   for (const entry of entries) {
-    const kind = String(entry?.kind || "").trim().toLowerCase();
-    const mimeType = String(
-      entry?.mimeType || entry?.type || entry?.contentType || "",
-    )
-      .trim()
-      .toLowerCase();
-
-    if (kind === "video" || mimeType.startsWith("video/")) {
-      continue;
-    }
-
+    const resolvedUrl = resolveServiceMediaUrl(entry);
+    const kind = resolveServiceMediaKind(entry, resolvedUrl);
     const objectPreview = buildObjectPreview(
       entry,
       (value) =>
         (typeof File !== "undefined" && value instanceof File ? value : null) ||
         value?.file,
+      {
+        acceptFile: (file) =>
+          String(file?.type || "").trim().toLowerCase().startsWith("image/") ||
+          String(file?.type || "").trim().toLowerCase().startsWith("video/"),
+      },
     );
     if (objectPreview) {
-      previews.push(objectPreview);
+      previews.push({ ...objectPreview, kind });
       continue;
     }
 
-    const url = String(entry?.uploadedUrl || entry?.url || "").trim();
-    if (url) {
-      previews.push({ url, revoke: null });
+    if (resolvedUrl) {
+      previews.push({ url: resolvedUrl, revoke: null, kind });
     }
   }
 
@@ -534,7 +595,7 @@ const FreelancerServiceReviewSlide = ({
   );
 
   const mediaPreviews = useMemo(
-    () => resolveServiceImagePreviews(serviceVisualsForm?.mediaFiles),
+    () => resolveServiceMediaPreviews(serviceVisualsForm?.mediaFiles),
     [serviceVisualsForm?.mediaFiles],
   );
   const mediaPreview = mediaPreviews[activeMediaPreviewIndex] || null;
@@ -883,61 +944,80 @@ const FreelancerServiceReviewSlide = ({
           />
         </div>
 
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.58fr)_300px] xl:grid-cols-[minmax(0,1.62fr)_332px]">
-          <article className="space-y-7">
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <h2 className={SECTION_TITLE_CLASS}>
-                  {reviewTitle}
-                </h2>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 overflow-hidden rounded-full border border-white/10 bg-white/8 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
-                  {profilePhotoPreview?.url ? (
-                    <img
-                      src={profilePhotoPreview.url}
-                      alt={`${serviceName} profile`}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-white/72">
-                      {avatarFallbackInitial}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-0.5">
-                  <p className="text-sm font-semibold text-white">{freelancerName}</p>
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/38">
-                    {serviceName}
-                  </p>
-                </div>
-              </div>
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <h2 className={SECTION_TITLE_CLASS}>
+                {reviewTitle}
+              </h2>
             </div>
 
-            <div className="space-y-4">
-              <div className="group relative overflow-hidden rounded-[30px] border border-white/8 bg-[#0d0d0d] shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
-                {mediaPreview?.url ? (
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 overflow-hidden rounded-full border border-white/10 bg-white/8 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+                {profilePhotoPreview?.url ? (
                   <img
-                    src={mediaPreview.url}
-                    alt={`${serviceName} preview`}
-                    className="aspect-[16/10] w-full object-cover transition-transform duration-500 group-hover:scale-[1.015]"
+                    src={profilePhotoPreview.url}
+                    alt={`${serviceName} profile`}
+                    className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(255,214,10,0.12),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.06),transparent_22%),linear-gradient(135deg,#090909,#131313_55%,#111111)]">
-                    <div className="absolute inset-y-0 left-[30%] w-px bg-white/10" />
-                    <div className="absolute inset-y-0 right-[30%] w-px bg-white/10" />
-                    <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/35 shadow-[0_0_60px_rgba(250,204,21,0.1)]" />
-                    <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/12" />
-                    <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25" />
-                    <div className="absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.78))]" />
+                  <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-white/72">
+                    {avatarFallbackInitial}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold text-white">{freelancerName}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-white/38">
+                  {serviceName}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.58fr)_300px] xl:grid-cols-[minmax(0,1.62fr)_332px]">
+            <article className="space-y-7">
+              <div className="space-y-4">
+                <div className="group relative overflow-hidden rounded-[30px] border border-white/8 bg-[#0d0d0d] shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
+                {mediaPreview?.url ? (
+                  mediaPreview.kind === "video" ? (
+                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010]">
+                      <video
+                        key={mediaPreview.url}
+                        src={mediaPreview.url}
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.01]"
+                        muted
+                        playsInline
+                        autoPlay
+                        loop
+                        controls
+                        preload="metadata"
+                      />
+                      <div className="pointer-events-none absolute left-4 top-4 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] font-medium text-white/85 backdrop-blur-md">
+                        <Play className="h-3 w-3" />
+                        <span>Video preview</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010]">
+                      <img
+                        key={mediaPreview.url}
+                        src={mediaPreview.url}
+                        alt={`${serviceName} preview`}
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.01]"
+                      />
+                    </div>
+                  )
+                ) : (
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010]">
+                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(255,255,255,0.01)_28%,rgba(0,0,0,0.18)_100%)]" />
                     <div className="absolute inset-x-6 top-6 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 backdrop-blur-sm">
                       <p className="text-xs uppercase tracking-[0.2em] text-white/45">
                         Visual Preview
                       </p>
                       <p className="mt-2 max-w-sm text-sm text-white/65">
-                        Add service images in the media step to replace this placeholder.
+                        Add service images or a video in the media step to replace this placeholder.
                       </p>
                     </div>
                   </div>
@@ -949,7 +1029,7 @@ const FreelancerServiceReviewSlide = ({
                       type="button"
                       onClick={handlePreviousMediaPreview}
                       className="absolute left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70"
-                      aria-label="Show previous image"
+                      aria-label="Show previous media"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
@@ -958,7 +1038,7 @@ const FreelancerServiceReviewSlide = ({
                       type="button"
                       onClick={handleNextMediaPreview}
                       className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70"
-                      aria-label="Show next image"
+                      aria-label="Show next media"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -970,6 +1050,7 @@ const FreelancerServiceReviewSlide = ({
                     </div>
                   </>
                 ) : null}
+              </div>
               </div>
 
               <div className="space-y-1">
@@ -1178,40 +1259,40 @@ const FreelancerServiceReviewSlide = ({
                   </div>
                 )}
               </div>
-            </div>
-          </article>
+            </article>
 
-          <aside className="space-y-4">
-            <div className="relative overflow-hidden rounded-[29px] border border-white/8 bg-card">
-              <div className="absolute inset-0" />
-              <section className="relative p-6">
-                <p className={CARD_LABEL_CLASS}>Starting Price</p>
-                <p className={CARD_VALUE_CLASS}>
-                  {startingPriceDisplay.label}
-                </p>
-              </section>
-            </div>
-
-            <div className="space-y-3">
-              <div className="rounded-[24px] border border-white/8 bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
-                <p className={CARD_LABEL_CLASS}>
-                  Experience Level
-                </p>
-                <p className={CARD_VALUE_CLASS}>
-                  {experienceLabel}
-                </p>
+            <aside className="space-y-4 lg:pt-0">
+              <div className="relative overflow-hidden rounded-[29px] border border-white/8 bg-card">
+                <div className="absolute inset-0" />
+                <section className="relative p-6">
+                  <p className={CARD_LABEL_CLASS}>Starting Price</p>
+                  <p className={CARD_VALUE_CLASS}>
+                    {startingPriceDisplay.label}
+                  </p>
+                </section>
               </div>
 
-              <div className="rounded-[24px] border border-white/8 bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
-                <p className={CARD_LABEL_CLASS}>
-                  Delivery Timeline
-                </p>
-                <p className={CARD_VALUE_CLASS}>
-                  {deliveryLabel}
-                </p>
+              <div className="space-y-3">
+                <div className="rounded-[24px] border border-white/8 bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
+                  <p className={CARD_LABEL_CLASS}>
+                    Experience Level
+                  </p>
+                  <p className={CARD_VALUE_CLASS}>
+                    {experienceLabel}
+                  </p>
+                </div>
+
+                <div className="rounded-[24px] border border-white/8 bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
+                  <p className={CARD_LABEL_CLASS}>
+                    Delivery Timeline
+                  </p>
+                  <p className={CARD_VALUE_CLASS}>
+                    {deliveryLabel}
+                  </p>
+                </div>
               </div>
-            </div>
-          </aside>
+            </aside>
+          </div>
         </div>
       </div>
     </section>

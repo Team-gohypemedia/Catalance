@@ -94,7 +94,6 @@ const FreelancerCaseStudySlide = ({
   const titleError = String(caseStudyValidationErrors.title || "").trim();
   const descriptionError = String(caseStudyValidationErrors.description || "").trim();
   const nicheError = String(caseStudyValidationErrors.niche || "").trim();
-  const projectProofError = String(caseStudyValidationErrors.projectProof || "").trim();
   const roleError = String(caseStudyValidationErrors.role || "").trim();
   const timelineError = String(caseStudyValidationErrors.timeline || "").trim();
   const budgetError = String(caseStudyValidationErrors.budget || "").trim();
@@ -233,12 +232,8 @@ const FreelancerCaseStudySlide = ({
                     }
                     placeholder="https://..."
                     className={cn(
-                      "h-12 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
-                      projectProofError
-                        ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                        : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                      "h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
                     )}
-                    aria-invalid={Boolean(projectProofError)}
                   />
                 </div>
               </div>
@@ -253,7 +248,6 @@ const FreelancerCaseStudySlide = ({
                   onChange={(file) =>
                     onCaseStudyFieldChange("projectFile", file)
                   }
-                  hasError={Boolean(projectProofError)}
                 />
               </div>
 
@@ -274,10 +268,6 @@ const FreelancerCaseStudySlide = ({
                 ) : null}
               </div>
             </div>
-            {projectProofError ? (
-              <p className="mt-1 text-sm text-destructive">{projectProofError}</p>
-            ) : null}
-
             {/* 2-column row: Timeline, Budget */}
             <div className="grid gap-5 sm:grid-cols-2">
               {/* Timeline */}

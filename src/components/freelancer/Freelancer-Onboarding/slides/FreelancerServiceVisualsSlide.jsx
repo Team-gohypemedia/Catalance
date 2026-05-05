@@ -1,7 +1,10 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Plus from "lucide-react/dist/esm/icons/plus";
-import X from "lucide-react/dist/esm/icons/x";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Play from "lucide-react/dist/esm/icons/play";
 import Image from "lucide-react/dist/esm/icons/image";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import { toast } from "sonner";
 
 import { cn } from "@/shared/lib/utils";
 import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
@@ -23,7 +26,15 @@ const getMediaFile = (value) => {
 };
 
 const getMediaUrl = (value) =>
-  String(value?.uploadedUrl || value?.url || "").trim();
+  String(
+    value?.uploadedUrl ||
+      value?.url ||
+      value?.previewUrl ||
+      value?.mediaUrl ||
+      value?.src ||
+      value?.value ||
+      "",
+  ).trim();
 
 const getMediaMimeType = (value) => {
   const file = getMediaFile(value);
@@ -31,25 +42,207 @@ const getMediaMimeType = (value) => {
     return String(file.type).trim().toLowerCase();
   }
 
-  return String(value?.mimeType || value?.type || value?.contentType || "")
+  const mimeType = String(
+    value?.mimeType || value?.type || value?.contentType || "",
+  )
     .trim()
     .toLowerCase();
+
+  if (mimeType) {
+    return mimeType;
+  }
+
+  const remoteUrl = getMediaUrl(value);
+  if (/\.(mp4|webm|mov|m4v|ogg)(?:[?#]|$)/i.test(remoteUrl)) {
+    return "video/mp4";
+  }
+
+  if (/\.(png|jpe?g|gif|webp|avif|bmp|svg)(?:[?#]|$)/i.test(remoteUrl)) {
+    return "image/*";
+  }
+
+  return "";
 };
 
 const isVideoMedia = (value) =>
   String(value?.kind || "").trim().toLowerCase() === "video" ||
   getMediaMimeType(value).startsWith("video/");
 
-const getFileSizeInMb = (value = 0) =>
-  `${(Number(value || 0) / (1024 * 1024)).toFixed(2)}MB`;
-
 /* ──────────────────── Upload Area ──────────────────── */
 
-const UploadArea = ({ files, onChange, hasError = false }) => {
+const getMediaItemId = (entry, index) => {
+  const localFile = getMediaFile(entry);
+  const explicitKey = String(entry?.key || "").trim();
+  if (explicitKey) {
+    return explicitKey;
+  }
+
+  const name = String(entry?.name || localFile?.name || "media").trim() || "media";
+  const sourceStamp = localFile
+    ? `${localFile.lastModified || "local"}-${localFile.size || 0}`
+    : getMediaUrl(entry) || index;
+
+  return `${name}-${sourceStamp}-${index}`;
+};
+
+const MediaPreviewBadge = ({ icon: Icon, label, className = "" }) => (
+  <div
+    className={cn(
+      "inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white/86 backdrop-blur-md",
+      className,
+    )}
+  >
+    <Icon className="h-3 w-3" />
+    <span>{label}</span>
+  </div>
+);
+
+const MediaHeroPreview = ({ item, previewUrl, onUpload }) => {
+  if (!item) {
+    return (
+      <button
+        type="button"
+        onClick={onUpload}
+        className={cn(
+          "group flex aspect-[16/9] w-full items-center justify-center rounded-[28px] border border-dashed border-white/12 bg-[#101010] px-6 text-left transition-colors hover:border-primary/45 hover:bg-primary/5",
+        )}
+      >
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 text-primary">
+            <Plus className="h-6 w-6" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-lg font-semibold text-white">Add Media</p>
+            <p className="text-sm text-white/48">
+              Click to upload or drop files here.
+            </p>
+          </div>
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <div className="group relative aspect-[16/9] w-full overflow-hidden rounded-[28px] border border-white/10 bg-black shadow-[0_20px_80px_rgba(0,0,0,0.42)]">
+      {item.isVideo ? (
+        previewUrl ? (
+          <video
+            key={previewUrl}
+            src={previewUrl}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+            muted
+            playsInline
+            autoPlay
+            loop
+            controls
+            preload="metadata"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(37,99,235,0.18),transparent_34%),linear-gradient(135deg,#090909,#141414_60%,#0f0f0f)] text-white/48">
+            <div className="flex flex-col items-center gap-3">
+              <Play className="h-8 w-8" />
+              <span className="text-sm font-medium">Video preview unavailable</span>
+            </div>
+          </div>
+        )
+      ) : previewUrl ? (
+        <img
+          src={previewUrl}
+          alt={item.name}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(250,204,21,0.12),transparent_32%),linear-gradient(135deg,#090909,#141414_60%,#0f0f0f)] text-white/48">
+          <div className="flex flex-col items-center gap-3">
+            <Image className="h-8 w-8" />
+            <span className="text-sm font-medium">Image preview unavailable</span>
+          </div>
+        </div>
+      )}
+
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.05)_0%,rgba(0,0,0,0.12)_58%,rgba(0,0,0,0.56)_100%)]" />
+      <div className="pointer-events-none absolute bottom-4 right-4">
+        <MediaPreviewBadge
+          icon={item.isVideo ? Play : Image}
+          label={item.isVideo ? "Video" : "Image"}
+        />
+      </div>
+    </div>
+  );
+};
+
+const MediaThumbnail = ({ item, previewUrl, index, isActive, onSelect }) => (
+  <button
+    type="button"
+    onClick={() => onSelect(index)}
+    className={cn(
+      "group relative aspect-[3/4] overflow-hidden rounded-2xl border bg-[#101010] text-left transition-all duration-200",
+      isActive
+        ? "border-primary/80 shadow-[0_0_0_1px_rgba(250,204,21,0.35),0_16px_40px_rgba(0,0,0,0.28)]"
+        : "border-white/10 hover:border-white/25",
+    )}
+  >
+    {previewUrl ? (
+      item.isVideo ? (
+        <video
+          src={previewUrl}
+          className="h-full w-full object-cover"
+          muted
+          playsInline
+          autoPlay
+          loop
+          preload="metadata"
+        />
+      ) : (
+        <img
+          src={previewUrl}
+          alt={item.name}
+          className="h-full w-full object-cover"
+        />
+      )
+    ) : (
+      <div className="flex h-full w-full items-center justify-center bg-white/5 text-white/38">
+        <Image className="h-5 w-5" />
+      </div>
+    )}
+
+    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(0,0,0,0.12)_60%,rgba(0,0,0,0.72)_100%)]" />
+
+    {item.isVideo ? (
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/80 bg-black/30 backdrop-blur-sm">
+          <Play className="h-4 w-4 text-white" />
+        </div>
+      </div>
+    ) : null}
+
+    <div className="absolute left-2 top-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-white/10 bg-black/55 px-2 text-[10px] font-semibold text-white/85 backdrop-blur-md">
+      {index + 1}
+    </div>
+
+    <MediaPreviewBadge
+      icon={item.isVideo ? Play : Image}
+      label={item.isVideo ? "Video" : "Image"}
+      className="absolute bottom-2 left-2"
+    />
+
+    {isActive ? (
+      <div className="absolute inset-0 rounded-2xl ring-2 ring-primary/80" />
+    ) : null}
+  </button>
+);
+
+const UploadArea = ({ files, onChange, onUploadFile, hasError = false }) => {
   const inputRef = useRef(null);
+  const filesRef = useRef(Array.isArray(files) ? files : []);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [uploadQueue, setUploadQueue] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [activePreviewIndex, setActivePreviewIndex] = useState(0);
+
+  useEffect(() => {
+    filesRef.current = Array.isArray(files) ? files : [];
+  }, [files]);
 
   const previewItems = useMemo(
     () =>
@@ -57,39 +250,76 @@ const UploadArea = ({ files, onChange, hasError = false }) => {
         const localFile = getMediaFile(entry);
         const isVideo = isVideoMedia(entry);
         const remoteUrl = getMediaUrl(entry);
-        const previewUrl = localFile ? URL.createObjectURL(localFile) : remoteUrl;
 
         return {
-          id:
-            String(entry?.key || "").trim() ||
-            `${String(entry?.name || localFile?.name || "media")}-${index}`,
+          id: getMediaItemId(entry, index),
           name: String(entry?.name || localFile?.name || "Media").trim(),
           isVideo,
-          previewUrl,
-          revokePreviewUrl: localFile && previewUrl ? () => URL.revokeObjectURL(previewUrl) : null,
+          localFile,
+          remoteUrl,
         };
       }),
     [files],
   );
 
-  useEffect(
-    () => () => {
-      previewItems.forEach((item) => item.revokePreviewUrl?.());
-    },
-    [previewItems],
+  const [previewUrls, setPreviewUrls] = useState({});
+
+  useEffect(() => {
+    if (typeof URL === "undefined") {
+      setPreviewUrls(
+        previewItems.reduce((accumulator, item) => {
+          accumulator[item.id] = item.remoteUrl || "";
+          return accumulator;
+        }, {}),
+      );
+      return undefined;
+    }
+
+    const nextPreviewUrls = {};
+    const objectUrls = [];
+
+    for (const item of previewItems) {
+      if (item.localFile) {
+        const objectUrl = URL.createObjectURL(item.localFile);
+        nextPreviewUrls[item.id] = objectUrl;
+        objectUrls.push(objectUrl);
+        continue;
+      }
+
+      nextPreviewUrls[item.id] = item.remoteUrl || "";
+    }
+
+    setPreviewUrls(nextPreviewUrls);
+
+    return () => {
+      objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+    };
+  }, [previewItems]);
+
+  const resolvedPreviewItems = useMemo(
+    () =>
+      previewItems.map((item) => ({
+        ...item,
+        previewUrl: String(previewUrls[item.id] || "").trim(),
+      })),
+    [previewItems, previewUrls],
   );
 
+  useEffect(() => {
+    setActivePreviewIndex((currentIndex) => {
+      if (resolvedPreviewItems.length === 0) {
+        return 0;
+      }
+
+      return Math.min(currentIndex, resolvedPreviewItems.length - 1);
+    });
+  }, [resolvedPreviewItems.length]);
+
+  const activePreview = resolvedPreviewItems[activePreviewIndex] || null;
   const imageCount = files.filter((file) => !isVideoMedia(file)).length;
   const videoCount = files.filter((file) => isVideoMedia(file)).length;
-  const queuedImageCount = uploadQueue.filter((entry) => !entry.isVideo).length;
-  const queuedVideoCount = uploadQueue.filter((entry) => entry.isVideo).length;
-  const effectiveImageCount = imageCount + queuedImageCount;
-  const effectiveVideoCount = videoCount + queuedVideoCount;
-
-  const hasAnyImage = effectiveImageCount > 0;
-  const hasAnyVideo = effectiveVideoCount > 0;
-  const canAddImage = !hasAnyVideo && effectiveImageCount < MAX_IMAGES;
-  const canAddVideo = !hasAnyImage && effectiveVideoCount < MAX_VIDEOS;
+  const canAddImage = imageCount < MAX_IMAGES;
+  const canAddVideo = videoCount < MAX_VIDEOS;
   const canAdd = canAddImage || canAddVideo;
 
   const acceptTypes = [
@@ -97,52 +327,41 @@ const UploadArea = ({ files, onChange, hasError = false }) => {
     ...(canAddVideo ? ["video/*"] : []),
   ].join(",");
 
-  const uploadSingleFileWithProgress = useCallback((file) => {
-    const queueId = `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 7)}`;
-    const isVideo = String(file?.type || "").toLowerCase().startsWith("video/");
-
-    setUploadQueue((current) => [
-      ...current,
-      {
-        id: queueId,
-        name: file.name,
-        isVideo,
-        size: file.size,
-        progress: 0,
-      },
-    ]);
-
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onprogress = (event) => {
-        if (!event.lengthComputable) {
-          return;
-        }
-        const nextProgress = Math.min(
-          100,
-          Math.round((event.loaded / event.total) * 100),
-        );
-        setUploadQueue((current) =>
-          current.map((entry) =>
-            entry.id === queueId ? { ...entry, progress: nextProgress } : entry,
-          ),
-        );
-      };
-      reader.onload = () => {
-        setUploadQueue((current) => current.filter((entry) => entry.id !== queueId));
-        resolve(file);
-      };
-      reader.onerror = () => {
-        setUploadQueue((current) => current.filter((entry) => entry.id !== queueId));
-        reject(new Error(`Failed to upload ${file.name}`));
-      };
-
-      reader.readAsArrayBuffer(file);
-    });
+  const openFilePicker = useCallback(() => {
+    inputRef.current?.click();
   }, []);
+
+  const uploadSingleFile = useCallback(
+    async (file) => {
+      const toastId = toast.loading(`Uploading ${file.name}...`);
+
+      try {
+        const uploadedEntry =
+          typeof onUploadFile === "function"
+            ? await onUploadFile(file)
+            : file;
+
+        if (!uploadedEntry) {
+          throw new Error(`Upload for ${file.name} did not return a usable file.`);
+        }
+
+        toast.success(`${file.name} uploaded`, { id: toastId });
+        return uploadedEntry;
+      } catch (error) {
+        const message = `Failed to upload ${file.name}`;
+        toast.error(message, { id: toastId });
+        throw error instanceof Error ? error : new Error(message);
+      }
+    },
+    [onUploadFile],
+  );
 
   const processFiles = useCallback(
     async (incoming) => {
+      if (isUploading) {
+        return;
+      }
+
       const incomingFiles = Array.from(incoming || []);
       if (!incomingFiles.length) {
         return;
@@ -150,83 +369,84 @@ const UploadArea = ({ files, onChange, hasError = false }) => {
 
       setUploadError("");
 
-      const selectedImages = incomingFiles.filter((file) =>
-        String(file?.type || "").toLowerCase().startsWith("image/"),
-      );
-      const selectedVideos = incomingFiles.filter((file) =>
-        String(file?.type || "").toLowerCase().startsWith("video/"),
-      );
-      const hasUnsupportedType =
-        selectedImages.length + selectedVideos.length !== incomingFiles.length;
+      const validFiles = [];
+      let nextImageCount = imageCount;
+      let nextVideoCount = videoCount;
+      let hadUnsupportedType = false;
+      let hadOversizedFile = false;
 
-      if (hasUnsupportedType) {
+      for (const file of incomingFiles) {
+        const fileType = String(file?.type || "").trim().toLowerCase();
+        if (!fileType.startsWith("image/") && !fileType.startsWith("video/")) {
+          hadUnsupportedType = true;
+          continue;
+        }
+
+        if (Number(file?.size || 0) > MAX_MEDIA_FILE_SIZE_BYTES) {
+          hadOversizedFile = true;
+          continue;
+        }
+
+        if (fileType.startsWith("image/") && nextImageCount < MAX_IMAGES) {
+          nextImageCount += 1;
+          validFiles.push(file);
+          continue;
+        }
+
+        if (fileType.startsWith("video/") && nextVideoCount < MAX_VIDEOS) {
+          nextVideoCount += 1;
+          validFiles.push(file);
+        }
+      }
+
+      if (hadUnsupportedType) {
         setUploadError("Only image or video files are allowed.");
-      }
-
-      const oversizedFiles = incomingFiles.filter(
-        (file) => Number(file?.size || 0) > MAX_MEDIA_FILE_SIZE_BYTES,
-      );
-      if (oversizedFiles.length > 0) {
+      } else if (hadOversizedFile) {
         setUploadError("Each file must be 5MB or smaller.");
+      } else if (!validFiles.length) {
+        setUploadError("Please add up to 2 images and 1 video.");
       }
-
-      let allowedImages = canAddImage ? selectedImages : [];
-      let allowedVideos = canAddVideo ? selectedVideos : [];
-
-      if (hasAnyVideo || hasAnyImage) {
-        if (hasAnyVideo && selectedImages.length > 0) {
-          setUploadError("You can upload only 1 video OR up to 2 images.");
-        }
-        if (hasAnyImage && selectedVideos.length > 0) {
-          setUploadError("You can upload only 1 video OR up to 2 images.");
-        }
-      } else if (selectedImages.length > 0 && selectedVideos.length > 0) {
-        setUploadError("Please choose either images or a single video.");
-        return;
-      }
-
-      allowedImages = allowedImages.slice(
-        0,
-        Math.max(0, MAX_IMAGES - effectiveImageCount),
-      );
-      allowedVideos = allowedVideos.slice(
-        0,
-        Math.max(0, MAX_VIDEOS - effectiveVideoCount),
-      );
-
-      const validFiles = [...allowedImages, ...allowedVideos].filter(
-        (file) => Number(file?.size || 0) <= MAX_MEDIA_FILE_SIZE_BYTES,
-      );
 
       if (!validFiles.length) {
         return;
       }
 
+      setIsUploading(true);
       try {
-        const uploadedFiles = [];
-        // Keep upload updates deterministic per file.
+        let nextFiles = [...filesRef.current];
+
         for (const file of validFiles) {
-          const uploadedFile = await uploadSingleFileWithProgress(file);
-          uploadedFiles.push(uploadedFile);
-        }
-        if (uploadedFiles.length > 0) {
-          onChange([...files, ...uploadedFiles]);
+          const uploadedEntry = await uploadSingleFile(file);
+          nextFiles = [...nextFiles, uploadedEntry];
+          filesRef.current = nextFiles;
+          onChange(nextFiles);
         }
       } catch {
-        setUploadError("Something went wrong while uploading file(s).");
+        const message = "Something went wrong while uploading file(s).";
+        setUploadError(message);
+        toast.error(message);
+      } finally {
+        setIsUploading(false);
       }
     },
     [
-      canAddImage,
-      canAddVideo,
-      files,
-      hasAnyImage,
-      hasAnyVideo,
+      imageCount,
+      isUploading,
       onChange,
-      effectiveImageCount,
-      effectiveVideoCount,
-      uploadSingleFileWithProgress,
+      uploadSingleFile,
+      videoCount,
     ],
+  );
+
+  const removeFile = useCallback(
+    (id) => {
+      const nextFiles = filesRef.current.filter(
+        (entry, index) => getMediaItemId(entry, index) !== id,
+      );
+      filesRef.current = nextFiles;
+      onChange(nextFiles);
+    },
+    [onChange],
   );
 
   const handleDrop = (e) => {
@@ -240,121 +460,121 @@ const UploadArea = ({ files, onChange, hasError = false }) => {
     setIsDragOver(true);
   };
 
-  const removeFile = (index) => {
-    onChange(files.filter((_, i) => i !== index));
-  };
+  const currentPreviewLabel = resolvedPreviewItems.length
+    ? `${activePreviewIndex + 1} of ${resolvedPreviewItems.length}`
+    : "0 of 0";
 
   return (
-    <div className="space-y-3">
-      {/* Existing file previews */}
-      {previewItems.length > 0 && (
-        <div className="flex flex-wrap gap-3">
-          {previewItems.map((item, idx) => (
-            <div
-              key={item.id}
-              className="group relative h-24 w-24 overflow-hidden rounded-xl border border-white/10 bg-card"
-            >
-              {!item.isVideo && item.previewUrl ? (
-                <img
-                  src={item.previewUrl}
-                  alt={item.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : item.isVideo && item.previewUrl ? (
-                <video
-                  src={item.previewUrl}
-                  className="h-full w-full object-cover"
-                  muted
-                  playsInline
-                  preload="metadata"
-                />
-              ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-white/40">
-                  <Image className="h-5 w-5" />
-                  <span className="text-[10px]">Video</span>
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => removeFile(idx)}
-                className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+    <div
+      className="space-y-4"
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={() => setIsDragOver(false)}
+    >
+      <div className={cn("space-y-5 transition-opacity", isDragOver ? "opacity-95" : "opacity-100")}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <p className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
+              Upload Media
+            </p>
+            <p className={cn("text-sm", hasError ? "text-destructive/80" : "text-white/55")}>
+              Select a media item to set as the primary preview.
+            </p>
+          </div>
 
-      {previewItems.length > 0 ? (
-        <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-          {previewItems.map((item) => (
-            <div
-              key={`uploaded-${item.id}`}
-              className="text-xs text-white/75"
+          {activePreview ? (
+            <button
+              type="button"
+              onClick={() => removeFile(activePreview.id)}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:border-white/20 hover:bg-white/5 hover:text-white"
             >
-              <span className="font-medium text-white">{item.name}</span>
-              <span className="ml-2 text-emerald-400">100% uploaded</span>
-            </div>
-          ))}
+              <Trash2 className="h-4 w-4" />
+              <span>Remove</span>
+            </button>
+          ) : canAdd ? (
+            <button
+              type="button"
+              onClick={openFilePicker}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:border-white/20 hover:bg-white/5 hover:text-white"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Media</span>
+            </button>
+          ) : null}
         </div>
-      ) : null}
 
-      {uploadQueue.length > 0 && (
-        <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
-          {uploadQueue.map((entry) => {
-            return (
-              <div key={entry.id} className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="truncate text-white/80">{entry.name}</span>
-                  <span className="shrink-0 text-primary">
-                    {entry.progress}% uploaded
-                  </span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-primary transition-[width] duration-150"
-                    style={{ width: `${entry.progress}%` }}
-                  />
-                </div>
-                <p className="text-[11px] text-white/45">
-                  Size: {getFileSizeInMb(entry.size)} / Max 5.00MB
+        <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <MediaHeroPreview
+            item={activePreview}
+            previewUrl={activePreview?.previewUrl}
+            onUpload={openFilePicker}
+          />
+
+          <div className="flex h-full min-w-0 flex-col gap-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-2xl font-semibold tracking-[-0.04em] text-white">
+                  {currentPreviewLabel}
+                </p>
+                <p className="text-sm text-white/55">
+                  Images: {imageCount} &bull; Video: {videoCount}
                 </p>
               </div>
-            );
-          })}
+            </div>
+
+            <div className="h-px w-full bg-white/10" />
+
+            <div className="relative">
+              <div className="grid grid-cols-3 gap-3">
+                {resolvedPreviewItems.map((item, index) => (
+                  <MediaThumbnail
+                    key={item.id}
+                    item={item}
+                    previewUrl={item.previewUrl}
+                    index={index}
+                    isActive={index === activePreviewIndex}
+                    onSelect={setActivePreviewIndex}
+                  />
+                ))}
+
+                {canAdd ? (
+                  <button
+                    type="button"
+                    onClick={openFilePicker}
+                    className="group relative aspect-[3/4] overflow-hidden rounded-2xl border border-dashed border-white/12 bg-white/[0.03] transition-colors hover:border-primary/45 hover:bg-primary/5"
+                  >
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-white/60">
+                      {isUploading ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      ) : (
+                        <Plus className="h-5 w-5 text-primary" />
+                      )}
+                      <span className="text-xs font-medium">
+                        {isUploading ? "Uploading" : "Add Media"}
+                      </span>
+                    </div>
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
         </div>
-      )}
 
-      {uploadError ? (
-        <p className="text-xs font-medium text-rose-300">{uploadError}</p>
-      ) : null}
-
-      {/* Drop zone */}
-      {canAdd && (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={() => setIsDragOver(false)}
+        <div
           className={cn(
-            "flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-14 transition-colors",
-            hasError
-              ? "border-destructive/70 bg-destructive/5 hover:border-destructive/80"
-              : isDragOver
-              ? "border-primary/60 bg-primary/5"
-              : "border-primary/30 bg-transparent hover:border-primary/50"
+            "rounded-xl border bg-transparent px-4 py-3",
+            hasError ? "border-destructive/30" : "border-white/10",
           )}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20">
-            <Plus className="h-5 w-5 text-primary" />
-          </div>
-          <span className="text-sm font-medium text-white/70">
-            Upload Image or Video
-          </span>
-        </button>
-      )}
+          <p className={cn("text-xs font-normal leading-relaxed", hasError ? "text-destructive/80" : "text-white/60")}>
+            Upload rule: up to 2 images and 1 video (max 5MB each).
+          </p>
+        </div>
+      </div>
+
+      {uploadError ? (
+        <p className="px-1 text-sm font-medium text-rose-300">{uploadError}</p>
+      ) : null}
 
       <input
         ref={inputRef}
@@ -377,6 +597,7 @@ const FreelancerServiceVisualsSlide = ({
   serviceVisualsForm,
   onServiceVisualsFieldChange,
   onServiceStepChange,
+  onUploadServiceMediaFile,
   serviceVisualsValidationErrors = {},
 }) => {
   const mediaFilesError = String(serviceVisualsValidationErrors.mediaFiles || "").trim();
@@ -411,28 +632,18 @@ const FreelancerServiceVisualsSlide = ({
             </p>
           </div>
 
-          <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
-            {/* Upload Media */}
-            <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                Upload Media
-              </label>
-              <UploadArea
-                files={serviceVisualsForm.mediaFiles}
-                onChange={(next) =>
-                  onServiceVisualsFieldChange("mediaFiles", next)
-                }
-                hasError={Boolean(mediaFilesError)}
-              />
-              {mediaFilesError ? (
-                <p className="mt-1 text-sm text-destructive">{mediaFilesError}</p>
-              ) : null}
-              <div className="rounded-lg border border-white/12 bg-transparent px-3 py-2">
-                <p className="text-xs font-normal leading-relaxed text-white/60">
-                  Upload rule: 1 video OR up to 2 images (max 5MB each).
-                </p>
-              </div>
-            </div>
+          <div className="space-y-4 rounded-2xl border border-white/8 bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)] sm:p-7">
+            <UploadArea
+              files={serviceVisualsForm.mediaFiles}
+              onChange={(next) =>
+                onServiceVisualsFieldChange("mediaFiles", next)
+              }
+              onUploadFile={onUploadServiceMediaFile}
+              hasError={Boolean(mediaFilesError)}
+            />
+            {mediaFilesError ? (
+              <p className="text-sm text-destructive">{mediaFilesError}</p>
+            ) : null}
           </div>
         </div>
       </div>

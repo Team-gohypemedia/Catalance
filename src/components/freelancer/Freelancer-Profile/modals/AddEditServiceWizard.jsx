@@ -886,7 +886,7 @@ const AddEditServiceWizard = ({
                   }
                 />
                 <p className="text-xs leading-relaxed text-white/35">
-                  Upload 1 video or 2 image for service onboarding.
+                  Upload up to 2 images and 1 video for service onboarding.
                 </p>
               </div>
             </div>

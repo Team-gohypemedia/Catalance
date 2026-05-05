@@ -41,6 +41,7 @@ import {
   getServiceStepValidationErrors,
   getServiceStepValidationMessage,
   getServiceCatalogMeta,
+  isServiceVisualsUploadValid,
   normalizeServiceDraft,
   normalizeStringArray as normalizeDraftSkillList,
   resolveServiceCatalogEntry,
@@ -173,23 +174,6 @@ const extractServiceMediaFile = (value) => {
   if (typeof File === "undefined") return null;
   if (value instanceof File) return value;
   return value?.file instanceof File ? value.file : null;
-};
-
-const isServiceMediaVideo = (value) => {
-  const normalizedKind = String(value?.kind || "").trim().toLowerCase();
-  if (normalizedKind === "video") {
-    return true;
-  }
-
-  const file = extractServiceMediaFile(value);
-  if (file?.type) {
-    return String(file.type).trim().toLowerCase().startsWith("video/");
-  }
-
-  return String(value?.mimeType || value?.type || value?.contentType || "")
-    .trim()
-    .toLowerCase()
-    .startsWith("video/");
 };
 
 const buildRemoteServiceMedia = (value, index = 0) => {
@@ -1606,13 +1590,7 @@ const FreelancerOnboardingShell = () => {
     const mediaFiles = Array.isArray(currentServiceVisualsForm?.mediaFiles)
       ? currentServiceVisualsForm.mediaFiles
       : [];
-    const videoCount = mediaFiles.filter((entry) => isServiceMediaVideo(entry)).length;
-    const imageCount = Math.max(0, mediaFiles.length - videoCount);
-    const hasValidUpload =
-      (videoCount === 1 && imageCount === 0) ||
-      (imageCount === 2 && videoCount === 0);
-
-    return !hasValidUpload;
+    return !isServiceVisualsUploadValid(mediaFiles);
   }, [currentServiceVisualsForm?.mediaFiles]);
 
   const isCaseStudyIncomplete = useMemo(() => {
@@ -2264,17 +2242,6 @@ const FreelancerOnboardingShell = () => {
     setCurrentSlideIndex((currentIndex) =>
       Math.min(currentIndex + 1, totalSlides - 1)
     );
-  };
-
-  const handleSkipOnboarding = () => {
-    if (isProfileSaving) {
-      return;
-    }
-
-    submitOnboardingAndNavigate({
-      deliveryPolicyAcceptedOverride: true,
-      communicationPolicyAcceptedOverride: true,
-    });
   };
 
   const handleDeliveryPolicyAgree = () => {
@@ -3007,6 +2974,7 @@ const FreelancerOnboardingShell = () => {
                 suggestedKeywords={suggestedKeywords}
                 isSuggestedKeywordsLoading={isSuggestedKeywordsLoading}
                 onServiceVisualsFieldChange={handleServiceVisualsFieldChange}
+                onUploadServiceMediaFile={uploadServiceMediaFile}
                 serviceVisualsValidationErrors={serviceVisualsValidationErrors}
                 caseStudyForm={currentCaseStudyForm}
                 caseStudies={currentServiceCaseStudies}
