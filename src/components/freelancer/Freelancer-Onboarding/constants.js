@@ -75,7 +75,7 @@ const SERVICE_REVIEW_SLIDE = {
 
 const ACCEPT_IN_PROGRESS_PROJECTS_SLIDE = {
   id: "acceptInProgressProjects",
-  title: "Accept partially completed or ongoing projects?",
+  title: "Do You Accept Ongoing Projects?",
   progressValue: 96,
   continueLabel: "Continue",
   footerMode: "hidden",

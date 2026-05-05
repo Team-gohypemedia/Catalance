@@ -34,13 +34,6 @@ export const AGENCY_CORE_ROLE_OPTIONS = [
   { value: "motion", label: "Motion / Video" },
 ];
 
-export const AGENCY_CAPACITY_OPTIONS = [
-  { value: "1_2_projects", label: "1-2 active projects" },
-  { value: "3_5_projects", label: "3-5 active projects" },
-  { value: "6_10_projects", label: "6-10 active projects" },
-  { value: "dedicated_team", label: "Dedicated team" },
-];
-
 export const AGENCY_RESPONSE_TIME_OPTIONS = [
   { value: "under_2_hours", label: "Under 2 hours" },
   { value: "same_day", label: "Same day" },
@@ -90,7 +83,6 @@ export const createInitialAgencyProfileForm = () => ({
   teamSize: "",
   coreRoles: [],
   timezoneCoverage: "",
-  capacity: "",
   responseTime: "",
   collaborationStyle: "",
   industries: [],
@@ -150,13 +142,8 @@ const buildAgencyTeamValidationErrors = (form) => {
 
 const buildAgencyOperationsValidationErrors = (form) => {
   const errors = {};
-  const capacity = String(form?.capacity || "").trim();
   const responseTime = String(form?.responseTime || "").trim();
   const collaborationStyle = String(form?.collaborationStyle || "").trim();
-
-  if (!capacity) {
-    errors.capacity = "Please select your project capacity.";
-  }
 
   if (!responseTime) {
     errors.responseTime = "Please select your response time.";
@@ -199,7 +186,6 @@ export const sanitizeAgencyProfileFormForDraft = (form = {}) => {
     teamSize: String(sourceForm.teamSize || "").trim(),
     coreRoles: normalizeStringArray(sourceForm.coreRoles),
     timezoneCoverage: String(sourceForm.timezoneCoverage || "").trim(),
-    capacity: String(sourceForm.capacity || "").trim(),
     responseTime: String(sourceForm.responseTime || "").trim(),
     collaborationStyle: String(sourceForm.collaborationStyle || "").trim(),
     industries: normalizeStringArray(sourceForm.industries),

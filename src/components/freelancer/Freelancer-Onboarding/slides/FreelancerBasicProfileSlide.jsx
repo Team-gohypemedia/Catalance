@@ -143,7 +143,7 @@ const FreelancerBasicProfileSlide = ({
   return (
     <section className="mx-auto flex min-h-[68vh] w-full max-w-4xl flex-col items-center justify-center gap-5">
       <div className="w-full max-w-2xl text-center">
-        <h1 className="text-xl md:text-4xl lg:text-5xl font-medium mb-1 md:mb-2 lg:mb-2">
+        <h1 className="text-xl font-medium text-primary md:text-4xl lg:text-5xl mb-1 md:mb-2 lg:mb-2">
           {slideTitle}
         </h1>
         <p className="text-muted-foreground font-regular text-sm md:text-lg lg:text-base">

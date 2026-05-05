@@ -35,7 +35,6 @@ import {
 import { normalizeUsernameInput } from "@/components/features/freelancer/onboarding/utils";
 import {
   FREELANCER_DASHBOARD_PATH,
-  FREELANCER_ONBOARDING_PATH,
 } from "@/shared/lib/dashboard-preference";
 import {
   createEmptyServiceCaseStudy,
@@ -2236,7 +2235,7 @@ const AgencyOnboardingShell = ({
         return;
       }
 
-      navigate(FREELANCER_ONBOARDING_PATH, { replace: true });
+      navigate(FREELANCER_DASHBOARD_PATH, { replace: true });
       return;
     }
 
@@ -3025,23 +3024,23 @@ const AgencyOnboardingShell = ({
                 variant="secondary"
                 className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
               >
-                <Link to={FREELANCER_DASHBOARD_PATH}>
+                <Link to={FREELANCER_DASHBOARD_PATH} replace>
                   <ChevronLeft className="h-4 w-4" />
                   Back to dashboard
                 </Link>
               </Button>
             )
           ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              onClick={handleBack}
-              className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
-              aria-label={`Go back to slide ${currentSlideIndex}`}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                onClick={handleBack}
+                className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                aria-label="Back to dashboard"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
           )}
 
           <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
