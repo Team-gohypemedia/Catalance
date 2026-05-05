@@ -11,6 +11,16 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import Loader from "@/components/common/Loader";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import {
   clearSession,
@@ -81,6 +91,7 @@ export const AuthProvider = ({ children }) => {
   const [isCheckingAuth, setIsCheckingAuth] = useState(
     initialSession.hasStoredSession
   );
+  const [pendingLogoutOptions, setPendingLogoutOptions] = useState(null);
 
   const syncSession = useCallback((nextSession) => {
     if (nextSession?.accessToken && nextSession?.user) {
@@ -118,7 +129,7 @@ export const AuthProvider = ({ children }) => {
     [navigate, syncSession]
   );
 
-  const logout = useCallback(
+  const completeLogout = useCallback(
     (options = {}) => {
       const {
         redirect = true,
@@ -138,6 +149,32 @@ export const AuthProvider = ({ children }) => {
     },
     [navigate, syncSession]
   );
+
+  const logout = useCallback(
+    (options = {}) => {
+      const { confirm = true, ...logoutOptions } = options || {};
+
+      if (!confirm) {
+        completeLogout(logoutOptions);
+        return;
+      }
+
+      setPendingLogoutOptions(logoutOptions);
+    },
+    [completeLogout]
+  );
+
+  const handleLogoutDialogOpenChange = useCallback((open) => {
+    if (!open) {
+      setPendingLogoutOptions(null);
+    }
+  }, []);
+
+  const handleConfirmLogout = useCallback(() => {
+    const logoutOptions = pendingLogoutOptions || {};
+    setPendingLogoutOptions(null);
+    completeLogout(logoutOptions);
+  }, [completeLogout, pendingLogoutOptions]);
 
   const authFetch = useCallback(
     async (target, options = {}) => {
@@ -371,6 +408,32 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={authValue}>
       {shouldShowGlobalLoader ? <Loader /> : children}
+      <AlertDialog
+        open={Boolean(pendingLogoutOptions)}
+        onOpenChange={handleLogoutDialogOpenChange}
+      >
+        <AlertDialogContent className="border border-white/10 bg-[#121212] text-white shadow-[0_28px_84px_-48px_rgba(0,0,0,1)] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-semibold text-white">
+              Log out of Catalance?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-6 text-white/60">
+              You will need to sign in again to access your workspace.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel className="border-white/12 bg-white/[0.03] text-white hover:bg-white/[0.06] hover:text-white">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmLogout}
+              className="border border-red-500/20 bg-red-500/[0.14] text-[#ff6d6d] hover:bg-red-500/[0.20] hover:text-[#ff8585]"
+            >
+              Log out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AuthContext.Provider>
   );
 };

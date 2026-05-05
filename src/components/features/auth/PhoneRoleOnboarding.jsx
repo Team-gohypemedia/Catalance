@@ -16,7 +16,6 @@ import {
   setStoredDashboardPreference,
 } from "@/shared/lib/dashboard-preference";
 import { cn } from "@/shared/lib/utils";
-import logo from "@/assets/logos/logo.svg";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
@@ -34,6 +33,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+import { ChevronLeft } from "lucide-react";
 
 const CLIENT_ROLE = "CLIENT";
 const FREELANCER_ROLE = "FREELANCER";
@@ -67,18 +67,6 @@ const isValidEmail = (value) =>
   !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 const DEFAULT_COUNTRY_CODE = "IN";
-
-const codeToFlagEmoji = (code) => {
-  const normalizedCode = String(code || "").trim().toUpperCase();
-
-  if (!/^[A-Z]{2}$/.test(normalizedCode)) {
-    return "🏳️";
-  }
-
-  return normalizedCode.replace(/[A-Z]/g, (char) =>
-    String.fromCodePoint(127397 + char.charCodeAt(0)),
-  );
-};
 
 const FlagIcon = ({ code, className = "h-5 w-5" }) => {
   const normalizedCode = String(code || "").trim().toUpperCase();
@@ -182,7 +170,6 @@ function PhoneRoleOnboarding() {
   const emailValue = normalizeEmail(email);
   const phoneDigits = normalizePhoneNumber(phoneNumber);
   const selectedCountry = COUNTRY_OPTION_BY_CODE[countryCode] || COUNTRY_OPTION_BY_CODE[DEFAULT_COUNTRY_CODE];
-  const selectedCountryDigits = normalizePhoneNumber(selectedCountry?.dialCode || "");
   const isLastSlide = activeSlide === SLIDES.length - 1;
 
   const validateCurrentSlide = (roleCandidate = selectedRole) => {
@@ -344,17 +331,20 @@ function PhoneRoleOnboarding() {
 
     try {
       const uploadedAvatarUrl = await uploadProfileImage();
-      const updatedUser = await updateProfile({
+      const profileUpdates = {
         onboardingRole: roleOverride,
         fullName: fullName.trim(),
         phoneNumber: `${selectedCountry?.dialCode || ""}${phoneDigits}`,
-        onboardingComplete: roleOverride === CLIENT_ROLE,
         ...(emailValue ? { email: emailValue } : {}),
         ...(uploadedAvatarUrl ? { avatar: uploadedAvatarUrl } : {}),
         ...(roleOverride === FREELANCER_ROLE
-          ? { profileDetailsPatch: { role: "freelancer" } }
+          ? {
+              onboardingComplete: false,
+              profileDetailsPatch: { role: "freelancer" },
+            }
           : {}),
-      });
+      };
+      const updatedUser = await updateProfile(profileUpdates);
       const sessionUser = updatedUser || user;
       const dashboard =
         roleOverride === FREELANCER_ROLE
@@ -542,7 +532,7 @@ function PhoneRoleOnboarding() {
       return (
         <div className="mx-auto flex min-h-[calc(100svh-12rem)] w-full max-w-6xl flex-col items-center justify-center gap-10 px-4 sm:px-6">
           <div className="mx-auto max-w-4xl text-center">
-            <h2 className="text-4xl font-normal text-white sm:text-5xl">
+            <h2 className="text-xl md:text-4xl lg:text-5xl font-medium mb-1 md:mb-2 lg:mb-2">
               Join as a client or freelancer
             </h2>
           </div>
@@ -590,11 +580,16 @@ function PhoneRoleOnboarding() {
                   </span>
 
                   <span className="mt-9 block">
-                    <span className="block max-w-[15ch] text-[22px] font-medium leading-[1.1] tracking-[-0.04em] text-card-foreground sm:text-[24px]">
+                    <span
+                      className={cn(
+                        "block max-w-[15ch] text-xl font-medium lg:text-2xl",
+                        isSelected ? "text-primary" : "text-card-foreground",
+                      )}
+                    >
                       {option.title}
                     </span>
                     {option.description ? (
-                      <span className="mt-2 block text-sm leading-5 text-muted-foreground">
+                      <span className="mt-2 block text-sm font-regular text-muted-foreground md:text-base">
                         {option.description}
                       </span>
                     ) : null}
@@ -616,12 +611,11 @@ function PhoneRoleOnboarding() {
       {activeSlide > 0 ? (
         <Button
           type="button"
-          variant="outline"
           disabled={isSaving}
           onClick={handleBack}
-          className="absolute left-4 top-6 z-10 !h-10 rounded-md border-white/12 bg-white/[0.03] px-3 text-sm text-white hover:bg-white/[0.06] hover:text-white sm:left-6 lg:left-8"
+          className="absolute left-4 top-6 z-10 !h-10 rounded-md border bg-background px-3 text-sm text-white hover:bg-accent/10 hover:text-white sm:left-6 lg:left-8"
         >
-          <ArrowLeft className="size-4" />
+          <ChevronLeft className="size-4" />
           Back
         </Button>
       ) : null}
@@ -634,10 +628,9 @@ function PhoneRoleOnboarding() {
         <div className="w-full space-y-5 relative">
           {activeSlide === 0 && (
             <div className="space-y-2 text-center">
-              <p className="text-xs font-medium uppercase tracking-[0.25em] text-primary">Profile setup</p>
               <div className="space-y-1">
-                <h1 className="text-4xl font-normal text-white sm:text-5xl">Tell us about you</h1>
-                <p className="text-sm text-white/60">Set up your profile so we can personalize your experience.</p>
+                <h1 className="text-xl md:text-4xl lg:text-5xl font-medium mb-1 md:mb-2 lg:mb-2">Tell us about you</h1>
+                <p className="text-muted-foreground font-regular text-sm md:text-lg lg:text-base">Set up your profile so we can personalize your experience.</p>
               </div>
             </div>
           )}

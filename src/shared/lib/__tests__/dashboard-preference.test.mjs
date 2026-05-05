@@ -9,6 +9,7 @@ import {
   getDashboardEntryPath,
   getDashboardPreferenceStorageKey,
   getStoredDashboardPreference,
+  requiresFreelancerOnboarding,
   resolveFreelancerPath,
   resolveWorkspaceHomePath,
   setStoredDashboardPreference,
@@ -88,6 +89,37 @@ test("resolveWorkspaceHomePath sends incomplete freelancer entries to the dashbo
     assert.equal(resolveWorkspaceHomePath(user), "/freelancer");
     assert.equal(getDashboardEntryPath(user, "freelancer"), "/freelancer");
   });
+});
+
+test("client account setup does not count as completed freelancer onboarding", () => {
+  const user = {
+    id: "user-10d",
+    role: "CLIENT",
+    roles: ["CLIENT", "FREELANCER"],
+    onboardingComplete: true,
+    profileDetails: {},
+  };
+
+  assert.equal(requiresFreelancerOnboarding(user), true);
+  assert.equal(getDashboardEntryPath(user, "freelancer"), "/freelancer");
+});
+
+test("mixed-role users with freelancer profile details stay onboarded", () => {
+  const user = {
+    id: "user-10e",
+    role: "CLIENT",
+    roles: ["CLIENT", "FREELANCER"],
+    onboardingComplete: true,
+    profileDetails: {
+      profileDetailsVersion: 3,
+      role: "individual",
+      services: ["web-development"],
+      deliveryPolicyAccepted: true,
+      communicationPolicyAccepted: true,
+    },
+  };
+
+  assert.equal(requiresFreelancerOnboarding(user), false);
 });
 
 test("resolveFreelancerPath only allows dashboard and onboarding before onboarding is complete", () => {

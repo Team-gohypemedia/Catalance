@@ -190,10 +190,50 @@ export const normalizeOnboardingComplete = (value) => {
   return false;
 };
 
-export const hasCompletedFreelancerOnboarding = (user = null) =>
-  normalizeOnboardingComplete(
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const hasText = (value = "") => String(value || "").trim().length > 0;
+
+const hasListItems = (value) => Array.isArray(value) && value.length > 0;
+
+const hasObjectItems = (value) =>
+  isPlainObject(value) && Object.keys(value).length > 0;
+
+const hasFreelancerProfileCompletionSignal = (user = null) => {
+  const profileDetails = isPlainObject(user?.profileDetails)
+    ? user.profileDetails
+    : {};
+  const profileDetailsVersion = Number(profileDetails.profileDetailsVersion);
+
+  return (
+    (Number.isFinite(profileDetailsVersion) && profileDetailsVersion >= 2) ||
+    hasListItems(profileDetails.services) ||
+    hasListItems(user?.services) ||
+    hasObjectItems(profileDetails.serviceDetails) ||
+    typeof profileDetails.acceptInProgressProjects === "boolean" ||
+    profileDetails.deliveryPolicyAccepted === true ||
+    profileDetails.communicationPolicyAccepted === true ||
+    hasText(profileDetails.professionalBio) ||
+    hasText(user?.bio)
+  );
+};
+
+export const hasCompletedFreelancerOnboarding = (user = null) => {
+  const onboardingComplete = normalizeOnboardingComplete(
     user?.onboardingComplete ?? user?.isOnboarded
   );
+
+  if (!onboardingComplete) {
+    return false;
+  }
+
+  if (normalizeRoleToken(user?.role) === "FREELANCER") {
+    return true;
+  }
+
+  return hasFreelancerProfileCompletionSignal(user);
+};
 
 export const requiresFreelancerOnboarding = (user = null) =>
   canAccessDashboard(user, FREELANCER_DASHBOARD) &&
