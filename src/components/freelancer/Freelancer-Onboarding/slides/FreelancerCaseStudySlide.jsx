@@ -5,8 +5,12 @@ import Plus from "lucide-react/dist/esm/icons/plus";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
-import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
+import {
+  ONBOARDING_FIELD_LABEL_CLASS,
+  ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+} from "../typography";
 import {
   ServiceInfoStepper,
   CustomSelect,
@@ -86,6 +90,7 @@ const FreelancerCaseStudySlide = ({
   onCaseStudyFieldChange,
   onAddCaseStudy,
   onServiceStepChange,
+  onSkipServices,
   caseStudyValidationErrors = {},
 }) => {
   const activeCaseStudyLabel =
@@ -121,24 +126,51 @@ const FreelancerCaseStudySlide = ({
 
         {/* Step Content */}
         <div className="w-full space-y-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
-                Project Portfolio
-              </h2>
-              <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-                Provide details to verify your identity securely.
-              </p>
+          <div className="flex items-start justify-between gap-3 sm:items-end">
+            <div className="min-w-0 space-y-3">
+              <div>
+                <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
+                  Project Portfolio
+                </h2>
+                <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
+                  Provide details to verify your identity securely.
+                </p>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={onAddCaseStudy}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14"
-            >
-              <Plus className="h-4 w-4" />
-              Add Case Study
-            </button>
+
+            <div className="flex items-start gap-3 sm:flex-wrap sm:items-center">
+              <button
+                type="button"
+                onClick={onAddCaseStudy}
+                className="hidden h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14 sm:inline-flex"
+              >
+                <Plus className="h-4 w-4" />
+                Add Case Study
+              </button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onSkipServices?.()}
+                className={cn(
+                  ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+                  "self-start px-3 py-2 text-sm sm:px-6 sm:py-0 sm:text-base",
+                )}
+              >
+                Skip
+              </Button>
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={onAddCaseStudy}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14 sm:hidden"
+          >
+            <Plus className="h-4 w-4" />
+            Add Case Study
+          </button>
 
           {/* Project Header */}
           <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>

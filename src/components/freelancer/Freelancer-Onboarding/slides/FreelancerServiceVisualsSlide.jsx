@@ -6,8 +6,12 @@ import Image from "lucide-react/dist/esm/icons/image";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
-import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
+import {
+  ONBOARDING_FIELD_LABEL_CLASS,
+  ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+} from "../typography";
 import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
@@ -598,6 +602,7 @@ const FreelancerServiceVisualsSlide = ({
   onServiceVisualsFieldChange,
   onServiceStepChange,
   onUploadServiceMediaFile,
+  onSkipServices,
   serviceVisualsValidationErrors = {},
 }) => {
   const mediaFilesError = String(serviceVisualsValidationErrors.mediaFiles || "").trim();
@@ -623,13 +628,28 @@ const FreelancerServiceVisualsSlide = ({
 
         {/* Step Content */}
         <div className="w-full space-y-5">
-          <div>
-            <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
-              Enhance Your Service
-            </h2>
-            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-              Add media for better visibility.
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
+                Enhance Your Service
+              </h2>
+              <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
+                Add media for better visibility.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onSkipServices?.()}
+              className={cn(
+                ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+                "self-start px-3 py-2 text-sm sm:px-6 sm:py-0 sm:text-base",
+              )}
+            >
+              Skip
+            </Button>
           </div>
 
           <div className="space-y-4 rounded-2xl border border-white/8 bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)] sm:p-7">

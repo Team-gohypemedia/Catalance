@@ -6,7 +6,10 @@ import X from "lucide-react/dist/esm/icons/x";
 
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { cn } from "@/shared/lib/utils";
-import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
+import {
+  ONBOARDING_FIELD_LABEL_CLASS,
+  ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+} from "../typography";
 import {
   deriveDraftSkillsAndTechnologies,
   getSubcategorySelectionKey,
@@ -685,8 +688,8 @@ const FreelancerServiceInfoSlide = ({
         </div>
 
         <div className="w-full space-y-5">
-          <div className="flex items-start justify-between">
-            <div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
               <h2 className="text-lg sm:text-xl md:text-2xl font-medium text-white">
                 Add service info
               </h2>
@@ -695,18 +698,19 @@ const FreelancerServiceInfoSlide = ({
               </p>
             </div>
 
-            <div className="ml-4 mr-2 mt-0.5 flex items-start sm:mt-0 sm:items-center">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onSkipServices?.()}
-                disabled={false}
-                className="h-auto px-0 py-0 text-sm font-normal text-white/75 hover:text-white hover:!bg-transparent hover:underline sm:h-11 sm:px-6 sm:text-base"
-              >
-                Skip
-              </Button>
-            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onSkipServices?.()}
+              disabled={false}
+              className={cn(
+                ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+                "self-start px-3 py-2 text-sm sm:px-6 sm:py-0 sm:text-base",
+              )}
+            >
+              Skip
+            </Button>
           </div>
 
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">

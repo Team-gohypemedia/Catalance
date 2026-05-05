@@ -14,13 +14,18 @@ import Smartphone from "lucide-react/dist/esm/icons/smartphone";
 import Wallet from "lucide-react/dist/esm/icons/wallet";
 import Wrench from "lucide-react/dist/esm/icons/wrench";
 
+import { Button } from "@/components/ui/button";
 import {
   normalizeProjectLinkValue,
   resolveAvatarUrl,
 } from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
 import { useAuth } from "@/shared/context/AuthContext";
+import { cn } from "@/shared/lib/utils";
 import { getSubcategorySelectionKey } from "../service-details";
-import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
+import {
+  ONBOARDING_FIELD_LABEL_CLASS,
+  ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+} from "../typography";
 import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 
@@ -414,6 +419,7 @@ const FreelancerServiceReviewSlide = ({
   serviceVisualsForm,
   user,
   onServiceStepChange,
+  onSkipServices,
 }) => {
   const { authFetch } = useAuth();
   const [categoryOptions, setCategoryOptions] = useState([]);
@@ -945,35 +951,50 @@ const FreelancerServiceReviewSlide = ({
         </div>
 
         <div className="space-y-6">
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <h2 className={SECTION_TITLE_CLASS}>
-                {reviewTitle}
-              </h2>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 overflow-hidden rounded-full border border-white/10 bg-white/8 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
-                {profilePhotoPreview?.url ? (
-                  <img
-                    src={profilePhotoPreview.url}
-                    alt={`${serviceName} profile`}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-white/72">
-                    {avatarFallbackInitial}
-                  </div>
-                )}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-3">
+              <div className="space-y-2">
+                <h2 className={SECTION_TITLE_CLASS}>
+                  {reviewTitle}
+                </h2>
               </div>
 
-              <div className="space-y-0.5">
-                <p className="text-sm font-semibold text-white">{freelancerName}</p>
-                <p className="text-xs uppercase tracking-[0.18em] text-white/38">
-                  {serviceName}
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 overflow-hidden rounded-full border border-white/10 bg-white/8 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+                  {profilePhotoPreview?.url ? (
+                    <img
+                      src={profilePhotoPreview.url}
+                      alt={`${serviceName} profile`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-white/72">
+                      {avatarFallbackInitial}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-0.5">
+                  <p className="text-sm font-semibold text-white">{freelancerName}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-white/38">
+                    {serviceName}
+                  </p>
+                </div>
               </div>
             </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onSkipServices?.()}
+              className={cn(
+                ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+                "self-start px-3 py-2 text-sm sm:px-6 sm:py-0 sm:text-base",
+              )}
+            >
+              Skip
+            </Button>
           </div>
 
           <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.58fr)_300px] xl:grid-cols-[minmax(0,1.62fr)_332px]">

@@ -25,7 +25,6 @@ import {
 import { useAuth } from "@/shared/context/AuthContext";
 import {
   ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS,
-  ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS,
 } from "./typography";
 import {
   COUNTRY_OPTIONS,
@@ -779,12 +778,6 @@ const FreelancerOnboardingShell = () => {
   const isServiceVisualsSlide = currentSlide.id === "serviceVisuals";
   const isCaseStudySlide = currentSlide.id === "caseStudy";
   const isServiceReviewSlide = currentSlide.id === "serviceReview";
-  const isServiceWizardSlide =
-    isServiceInfoSlide ||
-    isServicePricingSlide ||
-    isServiceVisualsSlide ||
-    isCaseStudySlide ||
-    isServiceReviewSlide;
   const isServiceSectionSlide =
     isServiceInfoSlide ||
     isServicePricingSlide ||
@@ -3015,24 +3008,7 @@ const FreelancerOnboardingShell = () => {
               {footerPrimaryLabel}
             </Button>
 
-            {isProfileActionFooter || !isServiceWizardSlide ? (
-              <div />
-            ) : (
-              <div className="flex justify-end">
-                {isServiceSectionSlide && currentSlide.id !== "serviceSetup" && currentSlide.id !== "serviceInfo" ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="lg"
-                    onClick={handleSkipServicesSection}
-                    disabled={isProfileSaving}
-                    className={ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS}
-                  >
-                    Skip
-                  </Button>
-                ) : null}
-              </div>
-            )}
+            <div />
           </div>
         </footer>
       )}
