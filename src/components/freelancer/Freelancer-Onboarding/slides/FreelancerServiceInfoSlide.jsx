@@ -79,10 +79,9 @@ const CategoryMultiSelect = ({
   isLoading = false,
   closeOnSelect = false,
   hasError = false,
-}) => {
+  }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [openAbove, setOpenAbove] = useState(false);
   const [popupMaxHeight, setPopupMaxHeight] = useState(224);
   const [popupStyle, setPopupStyle] = useState(null);
   const containerRef = useRef(null);
@@ -115,7 +114,11 @@ const CategoryMultiSelect = ({
     }
 
     return options.filter((option) =>
-      String(option?.label || "")
+      String(
+        [option?.label, option?.selectedLabel, option?.categoryLabel]
+          .filter(Boolean)
+          .join(" "),
+      )
         .toLowerCase()
         .includes(normalizedQuery),
     );
@@ -162,7 +165,6 @@ const CategoryMultiSelect = ({
       const spaceAbove = Math.max(0, rect.top - margin - gap);
       const shouldOpenAbove = spaceBelow < 180 && spaceAbove > spaceBelow;
 
-      setOpenAbove(shouldOpenAbove);
       setPopupMaxHeight(Math.max(Math.min(320, shouldOpenAbove ? spaceAbove : spaceBelow), 140));
       setPopupStyle({
         position: "fixed",
@@ -294,6 +296,7 @@ const CategoryMultiSelect = ({
                   ) : (
                     filteredOptions.map((option) => {
                       const isSelected = selectedSet.has(String(option.value));
+                      const categoryLabel = String(option?.categoryLabel || "").trim();
                       return (
                         <button
                           key={option.value}
@@ -301,11 +304,18 @@ const CategoryMultiSelect = ({
                           onClick={() => toggleOption(option.value)}
                           className={`mx-2 my-1 flex w-[calc(100%-1rem)] items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
                             isSelected
-                              ? "border-white/10 bg-accent text-white"
-                              : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
+                            ? "border-white/10 bg-accent text-white"
+                            : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
                           }`}
                         >
-                          <span className="font-medium">{option.label}</span>
+                          <div className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                            <span className="min-w-0 truncate font-medium">{option.label}</span>
+                            {categoryLabel ? (
+                              <span className="shrink-0 text-xs font-normal text-white/40">
+                                {categoryLabel}
+                              </span>
+                            ) : null}
+                          </div>
                           {isSelected ? (
                             <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-accent text-white">
                               <Check className="h-3.5 w-3.5" />
@@ -387,25 +397,6 @@ const FreelancerServiceInfoSlide = ({
   const selectedCatalogCategoryIdsSignature = buildNumberSignature(
     selectedCatalogCategoryIds,
   );
-  const pendingCategoryLabels = useMemo(
-    () =>
-      Array.isArray(serviceDraft?.pendingCategoryLabels)
-        ? normalizeStringArray(serviceDraft.pendingCategoryLabels)
-        : [],
-    [serviceDraft?.pendingCategoryLabels],
-  );
-  const customCategoryOptions = useMemo(
-    () =>
-      normalizedSubcategories
-        .filter((entry) => Boolean(entry?.isCustom) || !toPositiveInteger(entry?.subCategoryId))
-        .map((entry) => ({
-          value: getSubcategorySelectionKey(entry),
-          label: String(entry?.label || entry?.name || entry?.subCategoryLabel || "").trim() || "Custom sub-category",
-          isCustom: true,
-        }))
-        .filter((entry) => entry.value && entry.label),
-    [normalizedSubcategories],
-  );
   const allCategoryOptions = useMemo(() => {
     return [...categoryOptions];
   }, [categoryOptions]);
@@ -416,6 +407,19 @@ const FreelancerServiceInfoSlide = ({
       ),
     [allCategoryOptions],
   );
+  const categoryLabelById = useMemo(() => {
+    const nextMap = new Map();
+
+    for (const [selectionKey, option] of categoryOptionsByValue.entries()) {
+      const matched = String(selectionKey || "").match(/^catalog:(\d+)$/i);
+      const categoryLabel = String(option?.label || "").trim();
+      if (matched && categoryLabel) {
+        nextMap.set(matched[1], categoryLabel);
+      }
+    }
+
+    return nextMap;
+  }, [categoryOptionsByValue]);
   const selectedCategoryOptions = useMemo(
     () =>
       selectedCategoryKeys
@@ -429,6 +433,7 @@ const FreelancerServiceInfoSlide = ({
         const tools = Array.isArray(toolOptionsByCategory[String(subCategoryId)])
           ? toolOptionsByCategory[String(subCategoryId)]
           : [];
+        const categoryLabel = String(categoryLabelById.get(String(subCategoryId)) || "").trim();
 
         return tools
           .map((tool) => {
@@ -443,11 +448,12 @@ const FreelancerServiceInfoSlide = ({
               value,
               label: toolLabel,
               selectedLabel: toolLabel,
+              categoryLabel,
             };
           })
           .filter(Boolean);
       }),
-    [selectedCatalogCategoryIds, toolOptionsByCategory],
+    [categoryLabelById, selectedCatalogCategoryIds, toolOptionsByCategory],
   );
   const selectedSkillValues = useMemo(
     () =>
