@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Check from "lucide-react/dist/esm/icons/check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import X from "lucide-react/dist/esm/icons/x";
@@ -78,7 +79,11 @@ const CategoryMultiSelect = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [openAbove, setOpenAbove] = useState(false);
+  const [popupMaxHeight, setPopupMaxHeight] = useState(224);
+  const [popupStyle, setPopupStyle] = useState(null);
   const containerRef = useRef(null);
+  const popupRef = useRef(null);
   const searchInputRef = useRef(null);
 
   const normalizedSelected = useMemo(
@@ -114,7 +119,11 @@ const CategoryMultiSelect = ({
   }, [options, searchQuery]);
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      const target = event.target;
+      const isInsideTrigger = containerRef.current?.contains(target);
+      const isInsidePopup = popupRef.current?.contains(target);
+
+      if (!isInsideTrigger && !isInsidePopup) {
         setIsOpen(false);
       }
     };
@@ -129,6 +138,47 @@ const CategoryMultiSelect = ({
     if (!isOpen) {
       setSearchQuery("");
     }
+  }, [isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || typeof window === "undefined") {
+      return undefined;
+    }
+
+    const updatePopupPosition = () => {
+      const triggerElement = containerRef.current;
+      if (!triggerElement) {
+        return;
+      }
+
+      const rect = triggerElement.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const margin = 12;
+      const gap = 8;
+      const spaceBelow = Math.max(0, viewportHeight - rect.bottom - margin - gap);
+      const spaceAbove = Math.max(0, rect.top - margin - gap);
+      const shouldOpenAbove = spaceBelow < 180 && spaceAbove > spaceBelow;
+
+      setOpenAbove(shouldOpenAbove);
+      setPopupMaxHeight(Math.max(Math.min(320, shouldOpenAbove ? spaceAbove : spaceBelow), 140));
+      setPopupStyle({
+        position: "fixed",
+        left: `${Math.min(Math.max(rect.left, margin), window.innerWidth - rect.width - margin)}px`,
+        width: `${rect.width}px`,
+        top: shouldOpenAbove ? "auto" : `${Math.min(rect.bottom + gap, viewportHeight - margin)}px`,
+        bottom: shouldOpenAbove ? `${Math.max(viewportHeight - rect.top + gap, margin)}px` : "auto",
+      });
+    };
+
+    updatePopupPosition();
+
+    window.addEventListener("resize", updatePopupPosition);
+    window.addEventListener("scroll", updatePopupPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePopupPosition);
+      window.removeEventListener("scroll", updatePopupPosition, true);
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -221,44 +271,52 @@ const CategoryMultiSelect = ({
           </button>
         )}
 
-        {isOpen && (
-          <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40">
-            <div className="max-h-56 overflow-y-auto">
-              {options.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-white/40">
-                  No sub-categories available
+        {isOpen && typeof document !== "undefined"
+          ? createPortal(
+              <div
+                ref={popupRef}
+                className="z-[70] overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40"
+                style={popupStyle || undefined}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="overflow-y-auto" style={{ maxHeight: `${popupMaxHeight}px` }}>
+                  {options.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-white/40">
+                      No sub-categories available
+                    </div>
+                  ) : filteredOptions.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-white/40">
+                      No matching sub-categories
+                    </div>
+                  ) : (
+                    filteredOptions.map((option) => {
+                      const isSelected = selectedSet.has(String(option.value));
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => toggleOption(option.value)}
+                          className={`mx-2 my-1 flex w-[calc(100%-1rem)] items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                            isSelected
+                              ? "border-white/10 bg-accent text-white"
+                              : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
+                          }`}
+                        >
+                          <span className="font-medium">{option.label}</span>
+                          {isSelected ? (
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-accent text-white">
+                              <Check className="h-3.5 w-3.5" />
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
-              ) : filteredOptions.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-white/40">
-                  No matching sub-categories
-                </div>
-              ) : (
-                filteredOptions.map((option) => {
-                  const isSelected = selectedSet.has(String(option.value));
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => toggleOption(option.value)}
-                      className={`mx-2 my-1 flex w-[calc(100%-1rem)] items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
-                        isSelected
-                          ? "border-white/10 bg-accent text-white"
-                          : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
-                      }`}
-                    >
-                      <span className="font-medium">{option.label}</span>
-                      {isSelected ? (
-                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-accent text-white">
-                          <Check className="h-3.5 w-3.5" />
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
 
       {selectedOptions.length > 0 && (
