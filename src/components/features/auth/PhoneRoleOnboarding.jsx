@@ -16,6 +16,7 @@ import {
   setStoredDashboardPreference,
 } from "@/shared/lib/dashboard-preference";
 import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_FIELD_LABEL_CLASS } from "@/components/freelancer/Freelancer-Onboarding/typography";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
@@ -61,12 +62,15 @@ const SLIDES = [
 
 const normalizePhoneNumber = (value) => String(value || "").replace(/\D/g, "");
 
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
 
 const isValidEmail = (value) =>
   !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 const DEFAULT_COUNTRY_CODE = "IN";
+const fieldLabelClassName = `${ONBOARDING_FIELD_LABEL_CLASS} mb-1 block`;
 
 const FlagIcon = ({ code, className = "h-5 w-5" }) => {
   const normalizedCode = String(code || "").trim().toUpperCase();
@@ -318,7 +322,16 @@ function PhoneRoleOnboarding() {
     setFormErrors({});
 
     if (!isLastSlide) {
-      setActiveSlide((current) => current + 1);
+      const progressToastId = toast.loading("Preparing the next step...");
+
+      try {
+        await delay(350);
+        toast.dismiss(progressToastId);
+        setActiveSlide((current) => current + 1);
+      } catch {
+        toast.dismiss(progressToastId);
+        setActiveSlide((current) => current + 1);
+      }
       return;
     }
 
@@ -414,7 +427,7 @@ function PhoneRoleOnboarding() {
 
           <div className="grid gap-4">
             <label className="block space-y-1 text-left">
-              <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-white">
+              <span className={fieldLabelClassName}>
                 Full name
               </span>
               <div className="relative">
@@ -435,7 +448,7 @@ function PhoneRoleOnboarding() {
             </label>
 
             <label className="block space-y-1 text-left">
-              <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-white">
+              <span className={fieldLabelClassName}>
                 Email address (optional)
               </span>
               <div className="relative">
@@ -456,7 +469,7 @@ function PhoneRoleOnboarding() {
             </label>
 
             <label className="block space-y-1 text-left">
-              <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-white">
+              <span className={fieldLabelClassName}>
                 Phone number
               </span>
               <div className="grid grid-cols-[3rem_minmax(0,1fr)] gap-2 sm:grid-cols-[3.5rem_minmax(0,1fr)]">
