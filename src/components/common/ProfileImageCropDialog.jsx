@@ -392,10 +392,12 @@ export default function ProfileImageCropDialog({
       stageBounds.width / imageMeta.width,
       stageBounds.height / imageMeta.height
     );
-    const width = imageMeta.width * scale;
-    const height = imageMeta.height * scale;
-    const left = (stageBounds.width - width) / 2;
-    const top = (stageBounds.height - height) / 2;
+    const rawWidth = imageMeta.width * scale;
+    const rawHeight = imageMeta.height * scale;
+    const width = Math.ceil(rawWidth);
+    const height = Math.ceil(rawHeight);
+    const left = Math.floor((stageBounds.width - width) / 2);
+    const top = Math.floor((stageBounds.height - height) / 2);
 
     return {
       scale,
@@ -567,17 +569,7 @@ export default function ProfileImageCropDialog({
                     draggable={false}
                     onLoad={handleImageLoad}
                     onError={() => setError("Failed to load image.")}
-                    className={imageLayout ? "pointer-events-none absolute block select-none" : "block h-full w-full select-none object-cover"}
-                    style={
-                      imageLayout
-                        ? {
-                            width: `${imageLayout.width}px`,
-                            height: `${imageLayout.height}px`,
-                            left: `${imageLayout.left}px`,
-                            top: `${imageLayout.top}px`,
-                          }
-                        : undefined
-                    }
+                    className="pointer-events-none absolute inset-0 block w-full h-full select-none object-cover"
                   />
 
                   {!imageLayout ? (

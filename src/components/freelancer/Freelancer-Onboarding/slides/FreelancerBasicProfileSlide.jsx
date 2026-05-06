@@ -177,10 +177,10 @@ const FreelancerBasicProfileSlide = ({
                       aria-label={hasProfilePhoto ? "Change profile photo" : "Add profile photo"}
                       aria-invalid={Boolean(profilePhotoError)}
                       className={cn(
-                        "group relative flex size-32 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-white/20 bg-[#1a1a1a] text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-[#0b0b0c] sm:size-36",
-                        profilePhotoError &&
-                          "border-destructive/80 hover:border-destructive/80 focus:ring-destructive/55",
-                      )}
+                          "group relative flex size-32 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-white/20 bg-[#1a1a1a] text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-[#0b0b0c] sm:size-36",
+                          profilePhotoError &&
+                            "border-destructive/80 hover:border-destructive/80 focus:ring-destructive/55",
+                        )}
                     >
                       {hasProfilePhoto ? (
                         <img
