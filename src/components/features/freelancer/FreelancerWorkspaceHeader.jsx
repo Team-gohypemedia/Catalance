@@ -73,7 +73,7 @@ const HeaderNavItem = ({ active, item, mobile, onSelect, variant = "marketing" }
       )
     : variant === "workspace"
       ? cn(
-          "rounded-full px-3 py-2 text-sm font-medium transition-colors",
+          "rounded-full px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
           active
             ? "border border-border bg-background text-primary"
             : "text-muted-foreground hover:text-foreground",
