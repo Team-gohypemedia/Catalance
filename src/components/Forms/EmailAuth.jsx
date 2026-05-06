@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from "@/components/ui/input-otp";
 import {
   loginWithGoogle,
   requestEmailOtp,
@@ -368,6 +375,7 @@ function EmailAuth() {
     const emailInputId = compact ? "loginEmail" : "loginEmailDesktop";
     const otpInputId = compact ? "emailOtp" : "emailOtpDesktop";
     const isOtpStep = authStep === "otp";
+    const normalizedOtpDigits = otpDigits.replace(/\D/g, "").slice(0, OTP_LENGTH);
     const buttonLabel = isOtpStep ? "Verify code" : "Sign in";
     const loadingLabel = isOtpStep ? "Verifying..." : "Sending code...";
     const formSpacing = compact ? "space-y-3" : "space-y-6";
@@ -378,12 +386,9 @@ function EmailAuth() {
     const inputClass = compact
       ? "!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
       : "!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
-    const otpInputClass = compact
-      ? "!h-10 rounded-md border-white/10 bg-[#171717] px-3 text-center font-mono text-[16px] text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-      : "!h-12 rounded-md border-white/10 bg-[#171717] px-4 text-center font-mono text-lg text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
     const submitButtonClass = compact
       ? "!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
-      : "!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl";
+      : "!h-14 w-full rounded-md bg-primary text-base font-medium text-black shadow-none hover:bg-primary/95 sm:text-[17px]";
 
     return (
       <form className={formSpacing} onSubmit={handleSubmit} noValidate>
@@ -435,25 +440,38 @@ function EmailAuth() {
                 </Button>
               </div>
 
-              <Input
+              <InputOTP
                 id={otpInputId}
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                aria-label="Email verification code"
-                placeholder="123456"
-                value={otpDigits}
                 maxLength={OTP_LENGTH}
-                disabled={isSubmitting}
-                onChange={(event) => {
-                  const digits = event.target.value
-                    .replace(/\D/g, "")
-                    .slice(0, OTP_LENGTH);
-                  setOtpDigits(digits);
+                value={normalizedOtpDigits}
+                onChange={(value) => {
+                  setOtpDigits(value.replace(/\D/g, "").slice(0, OTP_LENGTH));
                   if (formError) setFormError("");
                 }}
-                className={otpInputClass}
-              />
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern={REGEXP_ONLY_DIGITS}
+                pasteTransformer={(pastedText) =>
+                  String(pastedText || "").replace(/\D/g, "").slice(0, OTP_LENGTH)
+                }
+                containerClassName="w-full overflow-hidden px-2"
+                aria-label="Email verification code"
+              >
+                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
+                  <InputOTPSlot index={0} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                  <InputOTPSlot index={1} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                </InputOTPGroup>
+                <InputOTPSeparator className="mx-2 sm:mx-4" />
+                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
+                  <InputOTPSlot index={2} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                  <InputOTPSlot index={3} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                </InputOTPGroup>
+                <InputOTPSeparator className="mx-2 sm:mx-4" />
+                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
+                  <InputOTPSlot index={4} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                  <InputOTPSlot index={5} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                </InputOTPGroup>
+              </InputOTP>
 
               <div className="flex items-center justify-between gap-3 text-xs text-white/50">
                 <span>Code expires in {otpExpiresInMinutes} minutes.</span>

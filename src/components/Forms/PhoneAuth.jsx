@@ -1,12 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
 import * as Flags from "country-flag-icons/react/3x2";
 import { cn } from "@/shared/lib/utils";
 import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from "@/components/ui/input-otp";
 import {
   loginWithGoogle,
   requestWhatsappOtp,
@@ -40,6 +47,13 @@ import Search from "lucide-react/dist/esm/icons/search";
 const DEFAULT_COUNTRY = "IN";
 const MIN_PHONE_DIGITS = 6;
 const OTP_LENGTH = 6;
+const PHONE_AUTH_FIELD_SURFACE_STYLE = {
+  backgroundColor: "#171717",
+  borderColor: "rgb(255 255 255 / 0.1)",
+  boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.03)",
+  colorScheme: "dark",
+  outline: "none",
+};
 
 const normalizeAvatarUrl = (value) => {
   const url = String(value || "").trim();
@@ -236,6 +250,7 @@ function PhoneAuth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const lastDigitsOnlyToastAtRef = useRef(0);
 
   useEffect(() => {
     document.title = "Log in | Catalance";
@@ -299,10 +314,13 @@ function PhoneAuth() {
         ...phonePayload,
         role: requestedRole,
       });
+      const phoneLabel = `${phonePayload.countryCode} ${formatPhoneNumber(
+        phonePayload.phoneNumber,
+      )}`;
       setPendingPhone(phonePayload);
       setOtpExpiresInMinutes(Number(result?.expiresInMinutes) || 15);
       setAuthStep("otp");
-      toast.success(result?.message || "OTP sent on WhatsApp.");
+      toast.success(`6-digit WhatsApp code sent to ${phoneLabel}.`);
     } catch (error) {
       const message = error?.message || "Unable to send WhatsApp OTP.";
       setFormError(message);
@@ -402,6 +420,14 @@ function PhoneAuth() {
     void requestOtp({ resend: true });
   };
 
+  const showDigitsOnlyToast = (message = "Only numbers are acceptable.") => {
+    const now = Date.now();
+    if (now - lastDigitsOnlyToastAtRef.current < 1200) return;
+
+    lastDigitsOnlyToastAtRef.current = now;
+    toast.error(message);
+  };
+
   const handleGoogleSignIn = async () => {
     setFormError("");
     setIsGoogleLoading(true);
@@ -457,25 +483,27 @@ function PhoneAuth() {
     const phoneInputId = compact ? "phoneNumber" : "phoneNumberDesktop";
     const otpInputId = compact ? "whatsappOtp" : "whatsappOtpDesktop";
     const isOtpStep = authStep === "otp";
+    const normalizedOtpDigits = normalizePhoneNumber(otpDigits).slice(0, OTP_LENGTH);
+    const isOtpComplete = normalizedOtpDigits.length === OTP_LENGTH;
     const buttonLabel = isOtpStep ? "Verify OTP" : "Continue";
     const loadingLabel = isOtpStep ? "Verifying..." : "Sending OTP...";
     const formSpacing = compact ? "space-y-3" : "space-y-5";
-    const labelClass = "block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55";
+    const labelClass = "block text-[11px] font-medium uppercase tracking-[0.18em] text-white";
+    const otpLabelClass = "block text-[12px] font-semibold uppercase tracking-[0.2em] text-white";
     const phoneGridClass = compact
       ? "grid w-full grid-cols-[7rem_minmax(0,1fr)] gap-1.5"
       : "grid grid-cols-[7.5rem_minmax(0,1fr)] gap-2 sm:grid-cols-[8rem_minmax(0,1fr)]";
+    const sharedFieldSurfaceClass =
+      "phone-auth-control focus-visible:!ring-0 focus-visible:!ring-offset-0";
     const selectTriggerClass = compact
-      ? "!h-10 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-2.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-      : "!h-12 !w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-2.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+      ? `!h-10 !w-full cursor-pointer rounded-md ${sharedFieldSurfaceClass} px-2.5 text-white`
+      : `!h-12 !w-full cursor-pointer rounded-md ${sharedFieldSurfaceClass} px-2.5 text-white`;
     const phoneInputClass = compact
-      ? "!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-      : "!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
-    const otpInputClass = compact
-      ? "!h-10 rounded-md border-white/10 bg-[#171717] px-3 text-center font-mono text-[16px] text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-      : "!h-12 rounded-md border-white/10 bg-[#171717] px-4 text-center font-mono text-lg text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
+      ? `!h-10 !py-0 rounded-md ${sharedFieldSurfaceClass} px-3 text-[13px] leading-none !text-white/90 placeholder:text-white/35`
+      : `!h-12 !py-0 rounded-md ${sharedFieldSurfaceClass} px-4 text-[15px] leading-none !text-white/90 placeholder:text-white/35`;
     const submitButtonClass = compact
-      ? "!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
-      : "!h-14 w-full rounded-md bg-primary text-lg font-medium text-black shadow-none hover:bg-primary/95 sm:text-xl";
+      ? "!h-11 w-full rounded-md bg-primary text-[14px] font-medium text-black shadow-none hover:bg-primary/95"
+      : "!h-14 w-full rounded-md bg-primary text-sm font-medium text-black shadow-none hover:bg-primary/95 sm:text-[15px]";
     const selectedCountryDialDigits = normalizePhoneNumber(
       selectedCountry?.dialCode || "",
     );
@@ -487,7 +515,7 @@ function PhoneAuth() {
       <form className={`${formSpacing} text-left`} onSubmit={handleSubmit} noValidate>
         <div className="w-full space-y-3">
           {!isOtpStep ? (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label htmlFor={phoneInputId} className={labelClass}>
                 Phone number
               </label>
@@ -505,6 +533,7 @@ function PhoneAuth() {
                     type="button"
                     aria-label="Select country code"
                     className={selectTriggerClass}
+                    style={PHONE_AUTH_FIELD_SURFACE_STYLE}
                   >
                     <div className="pointer-events-none flex shrink-0 items-center gap-2 select-none">
                       <CountryFlag code={selectedCountry.code} className="h-5 w-5" />
@@ -549,14 +578,26 @@ function PhoneAuth() {
                   placeholder="999 999 9999"
                   value={formattedPhone}
                   disabled={isSubmitting || isResending}
+                  onKeyDown={(event) => {
+                    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+                    if (event.key.length === 1 && /[a-z]/i.test(event.key)) {
+                      event.preventDefault();
+                      showDigitsOnlyToast("Phone number can only contain numbers.");
+                    }
+                  }}
                   onChange={(event) => {
-                    const digits = event.target.value
-                      .replace(/\D/g, "")
-                      .slice(0, 15);
+                    const rawValue = event.target.value;
+                    if (/[a-z]/i.test(rawValue)) {
+                      showDigitsOnlyToast("Phone number can only contain numbers.");
+                    }
+
+                    const digits = rawValue.replace(/\D/g, "").slice(0, 15);
                     setPhoneDigits(digits);
                     if (formError) setFormError("");
                   }}
                   className={phoneInputClass}
+                  style={PHONE_AUTH_FIELD_SURFACE_STYLE}
                 />
               </div>
             </div>
@@ -564,11 +605,11 @@ function PhoneAuth() {
             <div className="space-y-2.5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <label htmlFor={otpInputId} className={labelClass}>
+                  <label htmlFor={otpInputId} className={otpLabelClass}>
                     Verification code
                   </label>
                   <p className="mt-1 truncate text-xs text-white/55">
-                    WhatsApp OTP sent to {pendingPhoneLabel}
+                    6-digit code sent to {pendingPhoneLabel}
                   </p>
                 </div>
 
@@ -577,31 +618,61 @@ function PhoneAuth() {
                   variant="ghost"
                   onClick={handleChangePhone}
                   disabled={isSubmitting || isResending}
-                  className="h-8 shrink-0 px-2 text-xs text-primary hover:bg-white/[0.06] hover:text-primary"
+                  className="self-start h-8 shrink-0 items-start px-2 py-1 text-xs leading-none text-primary hover:!bg-transparent hover:text-primary"
                 >
-                  Change
+                  Change number
                 </Button>
               </div>
 
-              <Input
-                id={otpInputId}
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                aria-label="WhatsApp verification code"
-                placeholder="123456"
-                value={otpDigits}
+              <InputOTP
                 maxLength={OTP_LENGTH}
-                disabled={isSubmitting}
-                onChange={(event) => {
-                  const digits = event.target.value
-                    .replace(/\D/g, "")
-                    .slice(0, OTP_LENGTH);
-                  setOtpDigits(digits);
-                  if (formError) setFormError("");
+                value={normalizedOtpDigits}
+                onChange={(value) => {
+                  setOtpDigits(normalizePhoneNumber(value).slice(0, OTP_LENGTH));
                 }}
-                className={otpInputClass}
-              />
+                inputMode="numeric"
+                pattern={REGEXP_ONLY_DIGITS}
+                pasteTransformer={(pastedText) => normalizePhoneNumber(pastedText).slice(0, OTP_LENGTH)}
+                onKeyDown={(event) => {
+                  if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+                  if (event.key.length === 1 && /[a-z]/i.test(event.key)) {
+                    event.preventDefault();
+                    showDigitsOnlyToast();
+                  }
+                }}
+                onBeforeInput={(event) => {
+                  const inputText =
+                    event?.nativeEvent?.data ?? event?.data ?? "";
+
+                  if (inputText && /[a-z]/i.test(inputText)) {
+                    event.preventDefault();
+                    showDigitsOnlyToast();
+                  }
+                }}
+                onPaste={(event) => {
+                  const pastedText = event.clipboardData.getData("text");
+                  if (/[a-z]/i.test(pastedText)) {
+                    showDigitsOnlyToast();
+                  }
+                }}
+                containerClassName="w-full overflow-hidden px-2"
+              >
+                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
+                  <InputOTPSlot index={0} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                  <InputOTPSlot index={1} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                </InputOTPGroup>
+                <InputOTPSeparator className="mx-2 sm:mx-4" />
+                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
+                  <InputOTPSlot index={2} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                  <InputOTPSlot index={3} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                </InputOTPGroup>
+                <InputOTPSeparator className="mx-2 sm:mx-4" />
+                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
+                  <InputOTPSlot index={4} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                  <InputOTPSlot index={5} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                </InputOTPGroup>
+              </InputOTP>
 
               <div className="flex items-center justify-between gap-3 text-xs text-white/50">
                 <span>Code expires in {otpExpiresInMinutes} minutes.</span>
@@ -627,7 +698,7 @@ function PhoneAuth() {
 
         <Button
           type="submit"
-          disabled={isSubmitting || isResending}
+          disabled={isSubmitting || isResending || (authStep === "otp" && !isOtpComplete)}
           className={submitButtonClass}
         >
           {isSubmitting ? loadingLabel : buttonLabel}

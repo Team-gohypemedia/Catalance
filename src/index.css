@@ -243,6 +243,40 @@ body[data-scroll-locked] {
   }
 }
 
+@layer components {
+  .phone-auth-control,
+  .phone-auth-control:hover,
+  .phone-auth-control:focus,
+  .phone-auth-control:focus-visible,
+  .phone-auth-control:active,
+  .phone-auth-control:not(:placeholder-shown),
+  .phone-auth-control[data-state="open"] {
+    background-color: #171717 !important;
+    border-color: rgb(255 255 255 / 0.1) !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03) !important;
+    -webkit-box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03) !important;
+    color-scheme: dark;
+    outline: none !important;
+  }
+
+  .phone-auth-control:-webkit-autofill,
+  .phone-auth-control:-webkit-autofill:hover,
+  .phone-auth-control:-webkit-autofill:focus,
+  .phone-auth-control:-webkit-autofill:active {
+    background-color: #171717 !important;
+    border-color: rgb(255 255 255 / 0.1) !important;
+    box-shadow:
+      inset 0 0 0 1000px #171717,
+      inset 0 1px 0 rgb(255 255 255 / 0.03) !important;
+    -webkit-box-shadow:
+      inset 0 0 0 1000px #171717,
+      inset 0 1px 0 rgb(255 255 255 / 0.03) !important;
+    -webkit-text-fill-color: rgb(255 255 255 / 0.9) !important;
+    caret-color: rgb(255 255 255 / 0.9) !important;
+    transition: background-color 999999s ease-out;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
