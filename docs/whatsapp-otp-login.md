@@ -41,14 +41,14 @@ Template expected for this app:
 - Name: `otp_login`
 - Language: `en`
 - Category: `AUTHENTICATION`
-- Button type: OTP copy-code button
+- Button type: OTP URL button
 
 ## Replacing The Old Template
 
 1. Create a new WhatsApp template in Meta / WhatsApp Manager:
    - Category: `AUTHENTICATION`
    - Type: one-time password / OTP
-   - Button: copy code
+   - Button: URL button
    - Name: `otp_login`
    - Language: keep `en` unless you also update `WHATSAPP_OTP_TEMPLATE_LANGUAGE`
 2. Wait until the new template status is `APPROVED`.
@@ -221,7 +221,7 @@ Authorization: Bearer {WHATSAPP_ACCESS_TOKEN}
 Content-Type: application/json
 ```
 
-Payload for an authentication copy-code template:
+Payload for the current `login_otp` authentication template:
 
 ```json
 {
@@ -422,7 +422,7 @@ Message accepted but user does not receive it:
 
 ## References
 
-- Meta official Postman docs - Create authentication template with OTP copy-code button: https://www.postman.com/meta/workspace/whatsapp-business-platform/documentation/13382743-84d01ff8-4253-4720-b454-af661f36acc2?entity=request-13382743-dc6420b3-92d1-49af-bf81-99504bfacb93
+- Meta official Postman docs - WhatsApp Cloud API templates: https://www.postman.com/meta/workspace/whatsapp-business-platform/documentation/13382743-84d01ff8-4253-4720-b454-af661f36acc2?entity=request-13382743-e5c524ce-78d6-40e5-8fe9-b28b5d986efb
 - Meta official Postman docs - Send message template through Cloud API: https://www.postman.com/meta/workspace/whatsapp-business-platform/documentation/13382743-84d01ff8-4253-4720-b454-af661f36acc2?entity=request-13382743-c1677447-4c26-4962-845c-1a5d5a655dc2
 - Meta WhatsApp Cloud API docs: https://developers.facebook.com/docs/whatsapp/cloud-api/
 - Meta Message Templates docs: https://developers.facebook.com/docs/whatsapp/business-management-api/message-templates/

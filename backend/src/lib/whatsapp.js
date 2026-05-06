@@ -54,12 +54,32 @@ const buildMissingConfigError = () =>
     }
   );
 
-const buildBodyComponent = (otpCode) => ({
+const resolveExpiresInMinutesText = (expiresInMinutes) => {
+  const parsed = Number(expiresInMinutes);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return String(Math.min(Math.round(parsed), 60));
+  }
+
+  const fallback = Number(env.WHATSAPP_OTP_TTL_MINUTES);
+  return String(
+    Math.min(
+      Number.isFinite(fallback) && fallback > 0 ? Math.round(fallback) : 15,
+      60,
+    ),
+  );
+};
+
+// The approved auth template expects the OTP plus the expiry window in the body.
+const buildBodyComponent = (otpCode, expiresInMinutes) => ({
   type: "body",
   parameters: [
     {
       type: "text",
       text: otpCode
+    },
+    {
+      type: "text",
+      text: resolveExpiresInMinutesText(expiresInMinutes)
     }
   ]
 });
@@ -76,28 +96,12 @@ const buildUrlButtonComponent = (otpCode) => ({
   ]
 });
 
-const buildCopyCodeButtonComponent = (otpCode) => ({
-  type: "button",
-  sub_type: "copy_code",
-  index: "0",
-  parameters: [
-    {
-      type: "coupon_code",
-      coupon_code: otpCode
-    }
-  ]
-});
-
-const getOtpTemplateComponents = ({ otpCode, mode }) => {
-  if (mode === "body_and_copy_code_button") {
-    return [buildBodyComponent(otpCode), buildCopyCodeButtonComponent(otpCode)];
-  }
-
+const getOtpTemplateComponents = ({ otpCode, expiresInMinutes, mode }) => {
   if (mode === "url_button_only") {
     return [buildUrlButtonComponent(otpCode)];
   }
 
-  return [buildBodyComponent(otpCode), buildUrlButtonComponent(otpCode)];
+  return [buildBodyComponent(otpCode, expiresInMinutes), buildUrlButtonComponent(otpCode)];
 };
 
 const shouldTryNextPayloadMode = ({ providerError, nextMode }) => {
@@ -108,7 +112,14 @@ const shouldTryNextPayloadMode = ({ providerError, nextMode }) => {
   return Boolean(nextMode);
 };
 
-const buildOtpTemplatePayload = ({ to, otpCode, templateName, templateLanguage, mode }) => {
+const buildOtpTemplatePayload = ({
+  to,
+  otpCode,
+  expiresInMinutes,
+  templateName,
+  templateLanguage,
+  mode
+}) => {
   const payload = {
     messaging_product: "whatsapp",
     recipient_type: "individual",
@@ -119,7 +130,11 @@ const buildOtpTemplatePayload = ({ to, otpCode, templateName, templateLanguage, 
       language: {
         code: templateLanguage
       },
-      components: getOtpTemplateComponents({ otpCode, mode })
+      components: getOtpTemplateComponents({
+        otpCode,
+        expiresInMinutes,
+        mode
+      })
     }
   };
 
@@ -150,7 +165,11 @@ const parseWhatsAppError = (payload) => {
   };
 };
 
-export const sendWhatsappOtp = async ({ to, otpCode }) => {
+export const sendWhatsappOtp = async ({
+  to,
+  otpCode,
+  expiresInMinutes = env.WHATSAPP_OTP_TTL_MINUTES
+}) => {
   const config = getWhatsAppConfig();
 
   if (!config.isConfigured) {
@@ -176,7 +195,7 @@ export const sendWhatsappOtp = async ({ to, otpCode }) => {
 
   const url = `https://graph.facebook.com/${config.graphVersion}/${config.phoneNumberId}/messages`;
   const templateLanguageCandidates = getTemplateLanguageCandidates(config.templateLanguage);
-  const payloadModes = ["body_and_url_button", "url_button_only", "body_and_copy_code_button"];
+  const payloadModes = ["body_and_url_button", "url_button_only"];
   let lastFailure = null;
 
   for (let index = 0; index < templateLanguageCandidates.length; index += 1) {
@@ -193,6 +212,7 @@ export const sendWhatsappOtp = async ({ to, otpCode }) => {
           buildOtpTemplatePayload({
             to,
             otpCode,
+            expiresInMinutes,
             templateName: config.templateName,
             templateLanguage,
             mode: payloadMode

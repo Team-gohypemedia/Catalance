@@ -3024,7 +3024,8 @@ export const requestWhatsappOtp = async ({
 
   const whatsappResult = await sendWhatsappOtp({
     to: normalizedPhone,
-    otpCode
+    otpCode,
+    expiresInMinutes: ttlMinutes
   });
 
   return {

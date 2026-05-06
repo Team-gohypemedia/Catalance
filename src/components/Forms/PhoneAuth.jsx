@@ -47,13 +47,6 @@ import Search from "lucide-react/dist/esm/icons/search";
 const DEFAULT_COUNTRY = "IN";
 const MIN_PHONE_DIGITS = 6;
 const OTP_LENGTH = 6;
-const PHONE_AUTH_FIELD_SURFACE_STYLE = {
-  backgroundColor: "#171717",
-  borderColor: "rgb(255 255 255 / 0.1)",
-  boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.03)",
-  colorScheme: "dark",
-  outline: "none",
-};
 
 const normalizeAvatarUrl = (value) => {
   const url = String(value || "").trim();
@@ -493,14 +486,12 @@ function PhoneAuth() {
     const phoneGridClass = compact
       ? "grid w-full grid-cols-[7rem_minmax(0,1fr)] gap-1.5"
       : "grid grid-cols-[7.5rem_minmax(0,1fr)] gap-2 sm:grid-cols-[8rem_minmax(0,1fr)]";
-    const sharedFieldSurfaceClass =
-      "phone-auth-control focus-visible:!ring-0 focus-visible:!ring-offset-0";
     const selectTriggerClass = compact
-      ? `!h-10 !w-full cursor-pointer rounded-md ${sharedFieldSurfaceClass} px-2.5 text-white`
-      : `!h-12 !w-full cursor-pointer rounded-md ${sharedFieldSurfaceClass} px-2.5 text-white`;
+      ? "!h-10 !w-full"
+      : "!h-12 !w-full";
     const phoneInputClass = compact
-      ? `!h-10 !py-0 rounded-md ${sharedFieldSurfaceClass} px-3 text-[13px] leading-none !text-white/90 placeholder:text-white/35`
-      : `!h-12 !py-0 rounded-md ${sharedFieldSurfaceClass} px-4 text-[15px] leading-none !text-white/90 placeholder:text-white/35`;
+      ? "phone-auth-autofill !h-10 !py-0"
+      : "phone-auth-autofill !h-12 !py-0";
     const submitButtonClass = compact
       ? "!h-11 w-full rounded-md bg-primary text-[14px] font-medium text-black shadow-none hover:bg-primary/95"
       : "!h-14 w-full rounded-md bg-primary text-sm font-medium text-black shadow-none hover:bg-primary/95 sm:text-[15px]";
@@ -533,7 +524,6 @@ function PhoneAuth() {
                     type="button"
                     aria-label="Select country code"
                     className={selectTriggerClass}
-                    style={PHONE_AUTH_FIELD_SURFACE_STYLE}
                   >
                     <div className="pointer-events-none flex shrink-0 items-center gap-2 select-none">
                       <CountryFlag code={selectedCountry.code} className="h-5 w-5" />
@@ -597,7 +587,6 @@ function PhoneAuth() {
                     if (formError) setFormError("");
                   }}
                   className={phoneInputClass}
-                  style={PHONE_AUTH_FIELD_SURFACE_STYLE}
                 />
               </div>
             </div>
