@@ -545,7 +545,7 @@ function PhoneRoleOnboarding() {
       return (
         <div className="mx-auto flex min-h-[calc(100svh-12rem)] w-full max-w-6xl flex-col items-center justify-center gap-10 px-4 sm:px-6">
           <div className="mx-auto max-w-4xl text-center">
-            <h2 className="text-xl md:text-4xl lg:text-5xl font-medium mb-1 md:mb-2 lg:mb-2">
+            <h2 className="text-xl font-medium text-primary md:text-4xl lg:text-5xl mb-1 md:mb-2 lg:mb-2">
               Join as a client or freelancer
             </h2>
           </div>
@@ -642,7 +642,7 @@ function PhoneRoleOnboarding() {
           {activeSlide === 0 && (
             <div className="space-y-2 text-center">
               <div className="space-y-1">
-                <h1 className="text-xl md:text-4xl lg:text-5xl font-medium mb-1 md:mb-2 lg:mb-2">Tell us about you</h1>
+                <h1 className="text-xl font-medium text-primary md:text-4xl lg:text-5xl mb-1 md:mb-2 lg:mb-2">Tell us about you</h1>
                 <p className="text-muted-foreground font-regular text-sm md:text-lg lg:text-base">Set up your profile so we can personalize your experience.</p>
               </div>
             </div>

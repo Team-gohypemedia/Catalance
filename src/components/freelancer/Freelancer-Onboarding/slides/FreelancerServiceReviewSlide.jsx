@@ -471,6 +471,7 @@ const FreelancerServiceReviewSlide = ({
 
   const freelancerName = useMemo(() => {
     const nameCandidates = [
+      basicProfileForm?.fullName,
       user?.profileDetails?.identity?.fullName,
       user?.profileDetails?.fullName,
       user?.displayName,
@@ -487,7 +488,7 @@ const FreelancerServiceReviewSlide = ({
     }
 
     return "Freelancer";
-  }, [basicProfileForm?.username, user]);
+  }, [basicProfileForm?.fullName, basicProfileForm?.username, user]);
 
   const avatarFallbackInitial = freelancerName.charAt(0).toUpperCase() || "F";
 

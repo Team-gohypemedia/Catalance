@@ -64,7 +64,7 @@ const AgencyTrustSlide = ({
   return (
     <section className="mx-auto flex min-h-[68vh] w-full max-w-5xl flex-col items-center justify-center gap-5 px-4 sm:px-6">
       <div className="w-full max-w-3xl text-center">
-        <h1 className="text-xl font-medium md:text-4xl lg:text-5xl">
+        <h1 className="text-xl font-medium text-primary md:text-4xl lg:text-5xl">
           {slide?.title || "Build Trust With Clients"}
         </h1>
         <p className="text-sm font-regular text-muted-foreground md:text-lg lg:text-base">

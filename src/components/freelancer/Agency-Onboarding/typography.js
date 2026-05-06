@@ -1,14 +1,14 @@
 export const ONBOARDING_PAGE_TITLE_CLASS =
-  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] text-primary sm:text-[40px]";
 
 export const ONBOARDING_SERVICE_SETUP_TITLE_CLASS =
-  "text-balance text-[40px] font-semibold leading-[1] tracking-[-0.05em] sm:text-[64px]";
+  "text-balance text-[40px] font-semibold leading-[1] tracking-[-0.05em] text-primary sm:text-[64px]";
 
 export const ONBOARDING_PAGE_SUBTITLE_CLASS =
   "text-[18px] font-medium leading-7";
 
 export const ONBOARDING_SECTION_TITLE_CLASS =
-  "text-2xl font-medium leading-tight tracking-[-0.02em]";
+  "text-2xl font-medium leading-tight tracking-[-0.02em] text-primary";
 
 export const ONBOARDING_SECTION_DESCRIPTION_CLASS =
   "text-base font-normal leading-7";
