@@ -564,6 +564,10 @@ const FreelancerServiceInfoSlide = ({
   }, [normalizedSubcategories, onUpdateServiceDraft]);
 
   useEffect(() => {
+    // Only refetch tools when the actual set of selected catalog IDs changes.
+    // Use the stable `selectedCatalogCategoryIdsSignature` (string) so
+    // transient array identity changes (e.g. from draft normalization)
+    // do not trigger unnecessary network requests while typing.
     if (!selectedCatalogCategoryIds.length) {
       setToolOptionsByCategory({});
       return;
@@ -615,7 +619,7 @@ const FreelancerServiceInfoSlide = ({
     return () => {
       cancelled = true;
     };
-  }, [selectedCatalogCategoryIds, selectedCatalogCategoryIdsSignature]);
+  }, [selectedCatalogCategoryIdsSignature]);
 
   useEffect(() => {
     const currentSkillsSignature = buildStringSignature(
