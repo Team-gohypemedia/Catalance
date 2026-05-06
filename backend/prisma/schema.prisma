@@ -57,6 +57,58 @@ enum BlogPostStatus {
   ARCHIVED
 }
 
+enum EngagementLevel {
+  LEVEL_1
+  LEVEL_2
+  LEVEL_3
+  LEVEL_4
+  GOLD
+}
+
+enum EngagementQuestionType {
+  MCQ
+  TRUE_FALSE
+  SCENARIO_MCQ
+}
+
+enum EngagementQuestionCategory {
+  CLIENT_COMMUNICATION
+  SCOPE_MANAGEMENT
+  DELIVERY
+  QUALITY_CONTROL
+  PLATFORM_RULES
+  BUSINESS_BASICS
+}
+
+enum EngagementDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum EngagementQuestionStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum DailyQuestionSetStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PointsLedgerType {
+  EARN
+  SPEND
+  ADJUSTMENT
+  REVERSAL
+}
+
 model User {
   id                   String              @id @default(cuid())
   email                String              @unique
@@ -82,6 +134,11 @@ model User {
   freelancerProjects   FreelancerProject[]
   marketplace          Marketplace[]
   freelancerSkills     FreelancerSkill[]
+  engagementProfile    EngagementProfile?
+  engagementSessions   EngagementAnswerSession[] @relation("EngagementAnswerUser")
+  engagementLedgers    PointsLedger[]             @relation("EngagementPointsUser")
+  engagementReport     EngagementProcessReport?
+  engagementBadges     EngagementUserBadge[]      @relation("EngagementBadgeUser")
 
   ownedProjects           Project[]          @relation("ProjectOwner")
   managedProjects         Project[]          @relation("ProjectManager")
@@ -98,6 +155,10 @@ model User {
   profileUpdateRequests   ProfileUpdateRequest[]     @relation("ProfileUpdateUser")
   reviewedProfileUpdates  ProfileUpdateRequest[]     @relation("ProfileUpdateReviewer")
   milestoneApprovals      MilestoneApproval[]        @relation("MilestoneApprover")
+  approvedEngagementQuestions EngagementQuestion[]     @relation("EngagementQuestionApprover")
+  approvedDailyQuestionSets   DailyQuestionSet[]       @relation("DailyQuestionSetApprover")
+  engagementAdminAudits       EngagementAdminAuditLog[] @relation("EngagementAuditAdmin")
+  engagementTargetAudits      EngagementAdminAuditLog[] @relation("EngagementAuditTargetUser")
 
   notifications       Notification[]
   availabilitySlots   ManagerAvailability[] @relation("ManagerAvailability")
@@ -793,4 +854,176 @@ model ProfileUpdateRequest {
   updatedAt       DateTime       @updatedAt
 
   @@index([userId])
+}
+
+model EngagementProfile {
+  id                    String          @id @default(cuid())
+  userId                String          @unique
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  engagementLevel       EngagementLevel @default(LEVEL_1)
+  xp                    Int             @default(0)
+  lifetimeXp            Int             @default(0)
+  loyaltyCoins          Int             @default(0)
+  lifetimeCoinsEarned   Int             @default(0)
+  lifetimeCoinsSpent    Int             @default(0)
+  currentStreak         Int             @default(0)
+  longestStreak         Int             @default(0)
+  lastCompletedDayKey   String?
+  timezone              String          @default("UTC")
+  freezeTokens          Int             @default(0)
+  dailyCompletionCount  Int             @default(0)
+  totalQuestionsAnswered Int            @default(0)
+  totalCorrectAnswers   Int             @default(0)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([engagementLevel])
+  @@index([currentStreak])
+  @@index([lastCompletedDayKey])
+}
+
+model EngagementQuestion {
+  id              String                     @id @default(cuid())
+  questionText    String                     @db.Text
+  type            EngagementQuestionType     @default(MCQ)
+  category        EngagementQuestionCategory
+  skillTag        String
+  difficulty      EngagementDifficulty       @default(BEGINNER)
+  options         Json
+  correctOptionId String
+  explanation     String                     @db.Text
+  source          String                     @default("template")
+  status          EngagementQuestionStatus   @default(DRAFT)
+  aiMetadata      Json                       @default("{}")
+  contentHash     String                     @unique
+  usageCount      Int                        @default(0)
+  successRate     Float?
+  rejectedReason  String?                    @db.Text
+  approvedById    String?
+  approvedBy      User?                      @relation("EngagementQuestionApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt      DateTime?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  @@index([status, category, difficulty])
+  @@index([skillTag])
+  @@index([approvedById])
+}
+
+model DailyQuestionSet {
+  id           String                 @id @default(cuid())
+  dayKey       String                 @unique
+  questionIds  String[]               @default([])
+  status       DailyQuestionSetStatus @default(DRAFT)
+  generatedBy  String                 @default("fallback")
+  approvedById String?
+  approvedBy   User?                  @relation("DailyQuestionSetApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  publishedAt  DateTime?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  sessions     EngagementAnswerSession[]
+
+  @@index([status, dayKey])
+  @@index([approvedById])
+}
+
+model EngagementAnswerSession {
+  id                 String           @id @default(cuid())
+  userId             String
+  user               User             @relation("EngagementAnswerUser", fields: [userId], references: [id], onDelete: Cascade)
+  dayKey             String
+  dailyQuestionSetId String?
+  dailyQuestionSet   DailyQuestionSet? @relation(fields: [dailyQuestionSetId], references: [id], onDelete: SetNull)
+  answers            Json
+  questionSnapshots  Json             @default("[]")
+  totalScore         Int              @default(0)
+  correctCount       Int              @default(0)
+  questionCount      Int              @default(0)
+  accuracy           Float            @default(0)
+  xpAwarded          Int              @default(0)
+  coinsAwarded       Int              @default(0)
+  resultSummary      Json             @default("{}")
+  idempotencyKey     String?          @unique
+  streakApplied      Boolean          @default(false)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([dayKey])
+  @@index([dailyQuestionSetId])
+}
+
+model PointsLedger {
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation("EngagementPointsUser", fields: [userId], references: [id], onDelete: Cascade)
+  amount         Int
+  type           PointsLedgerType
+  reason         String
+  referenceType  String?
+  referenceId    String?
+  balanceAfter   Int
+  idempotencyKey String           @unique
+  metadata       Json             @default("{}")
+  createdAt      DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([referenceType, referenceId])
+}
+
+model EngagementBadge {
+  id            String                @id @default(cuid())
+  key           String                @unique
+  title         String
+  description   String                @db.Text
+  milestoneDays Int?
+  icon          String                @default("award")
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  userBadges    EngagementUserBadge[]
+}
+
+model EngagementUserBadge {
+  id       String            @id @default(cuid())
+  userId   String
+  user     User              @relation("EngagementBadgeUser", fields: [userId], references: [id], onDelete: Cascade)
+  badgeId  String
+  badge    EngagementBadge   @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  key      String
+  earnedAt DateTime          @default(now())
+
+  @@unique([userId, key])
+  @@index([badgeId])
+}
+
+model EngagementProcessReport {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rollingAccuracy       Float    @default(0)
+  rolling7DayAccuracy   Float    @default(0)
+  topicStats            Json     @default("{}")
+  weakTopics            String[] @default([])
+  strongTopics          String[] @default([])
+  recommendedNextTopic  String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model EngagementAdminAuditLog {
+  id           String   @id @default(cuid())
+  adminId      String?
+  admin        User?    @relation("EngagementAuditAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+  targetUserId String?
+  targetUser   User?    @relation("EngagementAuditTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  action       String
+  entityType   String
+  entityId     String?
+  oldValue     Json?
+  newValue     Json?
+  reason       String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([entityType, entityId])
 }

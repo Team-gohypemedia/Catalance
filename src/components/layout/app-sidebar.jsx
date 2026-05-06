@@ -14,6 +14,7 @@ import Users from "lucide-react/dist/esm/icons/users";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import History from "lucide-react/dist/esm/icons/history";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 
 import { NavMain } from "@/components/layout/nav-main";
 import { NavUser } from "@/components/layout/nav-user";
@@ -180,6 +181,12 @@ const navConfigs = {
       title: "Service Questions",
       url: "/admin/service-questions",
       icon: MessageSquare,
+      isActive: true,
+    },
+    {
+      title: "Engagement",
+      url: "/admin/engagement",
+      icon: Sparkles,
       isActive: true,
     },
     {

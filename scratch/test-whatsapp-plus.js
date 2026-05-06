@@ -11,14 +11,15 @@ const testWhatsappWithPlus = async () => {
     graphVersion: process.env.WHATSAPP_GRAPH_VERSION || 'v25.0',
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
     accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
-    templateName: process.env.WHATSAPP_OTP_TEMPLATE_NAME || 'login_otp',
-    templateLanguage: process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || 'en_US',
+    templateName: process.env.WHATSAPP_OTP_TEMPLATE_NAME,
+    templateLanguage: process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || 'en',
   };
 
   const to = '+919910762692'; // With PLUS
   const otpCode = '123456';
-  const ttlMinutes = '15';
-
+  if (!config.templateName) {
+    throw new Error('WHATSAPP_OTP_TEMPLATE_NAME is required');
+  }
   const url = `https://graph.facebook.com/${config.graphVersion}/${config.phoneNumberId}/messages`;
   
   const payload = {
@@ -33,8 +34,7 @@ const testWhatsappWithPlus = async () => {
         {
           type: "body",
           parameters: [
-            { type: "text", text: otpCode },
-            { type: "text", text: ttlMinutes }
+            { type: "text", text: otpCode }
           ]
         },
         {

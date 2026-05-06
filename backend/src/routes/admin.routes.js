@@ -3,6 +3,7 @@ import { getDashboardStats, getUsers, updateUserRole, updateUserStatus, updateUs
 import { deleteAdminBlog, getAdminBlogById, getAdminBlogs, upsertAdminBlog } from "../controllers/blog.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
 import { requireAdmin } from "../middleware/admin.middleware.js";
+import { adminEngagementRouter } from "../modules/engagement/routes/adminEngagement.routes.js";
 
 const router = Router();
 
@@ -29,6 +30,8 @@ router.get("/blogs", getAdminBlogs);
 router.get("/blogs/:blogId", getAdminBlogById);
 router.post("/blogs", upsertAdminBlog);
 router.delete("/blogs/:blogId", deleteAdminBlog);
+
+router.use("/engagement", adminEngagementRouter);
 
 export default router;
 

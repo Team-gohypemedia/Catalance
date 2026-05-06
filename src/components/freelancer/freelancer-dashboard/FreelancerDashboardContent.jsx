@@ -2130,11 +2130,13 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     showProfileCompletionSkeleton || profileCompletionPercent < 100;
   const profileCompletionComplete = profileCompletionPercent >= 90;
   const activeWorkspaceKey = useMemo(() => {
-    if (location.pathname.startsWith("/freelancer/proposals")) return "proposals";
-    if (location.pathname.startsWith("/freelancer/project")) return "projects";
-    if (location.pathname.startsWith("/freelancer/messages")) return "messages";
-    if (location.pathname.startsWith("/freelancer/payments")) return "payments";
-    if (location.pathname.startsWith("/freelancer/profile")) return "profile";
+    const p = location.pathname.toLowerCase();
+    if (p.includes("/freelancer/growth-quest")) return "growth-quest";
+    if (p.includes("/freelancer/proposals")) return "proposals";
+    if (p.includes("/freelancer/project")) return "projects";
+    if (p.includes("/freelancer/messages")) return "messages";
+    if (p.includes("/freelancer/payments")) return "payments";
+    if (p.includes("/freelancer/profile")) return "profile";
     return "dashboard";
   }, [location.pathname]);
   const headerProfile = useMemo(() => {
@@ -2174,6 +2176,10 @@ export const DashboardContent = ({ _roleOverride, children }) => {
   ]);
   const handleWorkspaceNav = useCallback(
     (key) => {
+      if (key === "growth-quest") {
+        navigate("/freelancer/growth-quest");
+        return;
+      }
       if (key === "dashboard") {
         navigate("/freelancer");
         return;
@@ -3861,41 +3867,38 @@ export const DashboardContent = ({ _roleOverride, children }) => {
             </section>
           )}
 
-          {shouldShowProfileCompletionPanel ? (
-            showProfileCompletionSkeleton ? (
-              <FreelancerProfileCompletionSkeleton />
-            ) : (
-              <section>
-                <FreelancerDashboardPanel className="p-4 sm:p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <h2 className="min-w-0 text-[1.2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white sm:text-[1.35rem] lg:text-[1.55rem]">
-                      {profileCompletionComplete
-                        ? "Your Catalance profile is ready"
-                        : "Finish setting up your Catalance profile"}
-                    </h2>
-
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:w-auto lg:justify-end lg:gap-4">
-                      <span className="text-sm font-bold text-[#facc15]">
-                        {profileCompletionPercent}% Complete
-                      </span>
-                      <Button
-                        className="h-10 w-full rounded-full bg-[#facc15] px-5 text-xs font-semibold text-black hover:bg-[#ffd54f] sm:w-auto"
-                        onClick={() => navigate("/freelancer/profile")}
-                      >
-                        {profileCompletionComplete ? "Open Profile" : "Finish Setup"}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.08]">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-700"
-                      style={{ width: `${profileCompletionPercent}%` }}
-                    />
-                  </div>
-                </FreelancerDashboardPanel>
-              </section>
-            )
+          {shouldShowProfileCompletionPanel && !showProfileCompletionSkeleton ? (
+            <div className="fixed bottom-6 right-6 z-[60] flex items-center gap-3 rounded-full border border-white/10 bg-[#1e293b] p-2 pr-5 shadow-2xl backdrop-blur-md">
+              <div className="relative flex size-11 items-center justify-center">
+                <svg className="size-full -rotate-90 transform" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="16" fill="none" className="stroke-white/10" strokeWidth="3.5" />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="16"
+                    fill="none"
+                    className="stroke-[#facc15] transition-all duration-1000 ease-out"
+                    strokeWidth="3.5"
+                    strokeDasharray="100"
+                    strokeDashoffset={100 - profileCompletionPercent}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="absolute text-[10px] font-bold text-white">
+                  {profileCompletionPercent}%
+                </span>
+              </div>
+              <div className="flex flex-col justify-center">
+                <span className="text-[13px] font-bold leading-none text-white">Profile Setup</span>
+                <button
+                  type="button"
+                  onClick={() => navigate("/freelancer/profile")}
+                  className="mt-1 text-left text-[11px] font-semibold tracking-wide text-[#facc15] hover:text-[#ffd54f] transition-colors"
+                >
+                  {profileCompletionComplete ? "Open Profile" : "Finish Now →"}
+                </button>
+              </div>
+            </div>
           ) : null}
 
           {metricsLoading ? (

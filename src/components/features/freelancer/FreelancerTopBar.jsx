@@ -109,11 +109,13 @@ export const FreelancerTopBar = () => {
   }, []);
 
   const activeWorkspaceKey = useMemo(() => {
-    if (pathname.startsWith("/freelancer/proposals")) return "proposals";
-    if (pathname.startsWith("/freelancer/project")) return "projects";
-    if (pathname.startsWith("/freelancer/messages")) return "messages";
-    if (pathname.startsWith("/freelancer/payments")) return "payments";
-    if (pathname.startsWith("/freelancer/profile")) return "profile";
+    const p = pathname.toLowerCase();
+    if (p.includes("/freelancer/growth-quest")) return "growth-quest";
+    if (p.includes("/freelancer/proposals")) return "proposals";
+    if (p.includes("/freelancer/project")) return "projects";
+    if (p.includes("/freelancer/messages")) return "messages";
+    if (p.includes("/freelancer/payments")) return "payments";
+    if (p.includes("/freelancer/profile")) return "profile";
     return "dashboard";
   }, [pathname]);
   const profile = useMemo(() => {
@@ -148,6 +150,10 @@ export const FreelancerTopBar = () => {
   ]);
   const handleWorkspaceNav = useCallback(
     (key) => {
+      if (key === "growth-quest") {
+        navigate("/freelancer/growth-quest");
+        return;
+      }
       if (key === "dashboard") {
         navigate("/freelancer");
         return;

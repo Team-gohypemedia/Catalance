@@ -1,6 +1,6 @@
 # WhatsApp Meta OTP Login Integration
 
-Last checked: 2026-05-01
+Last updated: 2026-05-06
 
 This document describes how to connect the existing Catalance phone sign-in form to Meta WhatsApp Cloud API OTP delivery without changing the current email/password, Google, Apple, signup, or dashboard auth flow.
 
@@ -8,7 +8,7 @@ This document describes how to connect the existing Catalance phone sign-in form
 
 Only this page/functionality is in scope:
 
-- Frontend route: `/signin/phone`do
+- Frontend route: `/signin/phone`
 - Frontend file: `src/components/Forms/PhoneAuth.jsx`
 - New backend sidecar endpoints under `/api/auth`
 - Existing session output shape: `{ user, accessToken }`
@@ -34,14 +34,34 @@ Relevant existing pieces:
 
 ## Important Meta Template Status
 
-Your screenshot shows template `login_otp` in status `In review` on 2026-05-01. Live OTP testing should wait until Meta marks it `APPROVED`. If it is still `In review`, the Cloud API send call can fail with a template/status error even if the token and phone number are correct.
+Live OTP testing should wait until Meta marks the new authentication template `APPROVED`. If it is still `In review`, the Cloud API send call can fail with a template/status error even if the token and phone number are correct.
 
-Template expected for this doc:
+Template expected for this app:
 
-- Name: `login_otp`
-- Language: `en_US`
+- Name: `otp_login`
+- Language: `en`
 - Category: `AUTHENTICATION`
 - Button type: OTP copy-code button
+
+## Replacing The Old Template
+
+1. Create a new WhatsApp template in Meta / WhatsApp Manager:
+   - Category: `AUTHENTICATION`
+   - Type: one-time password / OTP
+   - Button: copy code
+   - Name: `otp_login`
+   - Language: keep `en` unless you also update `WHATSAPP_OTP_TEMPLATE_LANGUAGE`
+2. Wait until the new template status is `APPROVED`.
+3. Update local backend env:
+
+```env
+WHATSAPP_OTP_TEMPLATE_NAME=otp_login
+WHATSAPP_OTP_TEMPLATE_LANGUAGE=en
+```
+
+4. Update the same variables in the Vercel backend project for Production and Preview.
+5. Redeploy the backend after changing Vercel environment variables.
+6. After the new template works in production, delete or pause the old template in WhatsApp Manager so it cannot be used accidentally.
 
 ## Meta Prerequisites
 
@@ -51,7 +71,7 @@ Keep these values ready from Meta Business Manager / WhatsApp Manager:
 - WhatsApp Business Account ID.
 - WhatsApp Phone Number ID, not the display phone number.
 - Connected WhatsApp business phone number.
-- Approved authentication template: `login_otp`, `en_US`.
+- Approved authentication template matching `WHATSAPP_OTP_TEMPLATE_NAME` and `WHATSAPP_OTP_TEMPLATE_LANGUAGE`.
 - Token permissions:
   - `whatsapp_business_messaging`
   - `whatsapp_business_management`
@@ -67,12 +87,44 @@ WHATSAPP_GRAPH_VERSION=vXX.X
 WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
 WHATSAPP_WABA_ID=your_waba_id
 WHATSAPP_ACCESS_TOKEN=your_permanent_system_user_token
-WHATSAPP_OTP_TEMPLATE_NAME=login_otp
-WHATSAPP_OTP_TEMPLATE_LANGUAGE=en_US
+WHATSAPP_OTP_TEMPLATE_NAME=otp_login
+WHATSAPP_OTP_TEMPLATE_LANGUAGE=en
 WHATSAPP_OTP_TTL_MINUTES=15
 ```
 
 Use the Graph API version enabled for your Meta app, for example the version shown in the Meta App Dashboard or WhatsApp API setup page. Keep this value consistent across local, staging, and production.
+
+## Vercel Deployment Checklist
+
+This repo is set up as two Vercel projects:
+
+- Frontend project root: repository root, using `package.json` and root `vercel.json`.
+- Backend project root: `backend`, using `backend/package.json` and `backend/vercel.json`.
+
+Deploy backend first:
+
+1. In Vercel, import the same Git repository as a project.
+2. Set Root Directory to `backend`.
+3. Add all backend environment variables, including the new `WHATSAPP_OTP_TEMPLATE_NAME`, in Project Settings > Environment Variables.
+4. Deploy the backend project.
+5. Keep the backend URL in root `vercel.json` aligned with the deployed backend URL:
+
+```json
+{
+  "source": "/api/(.*)",
+  "destination": "https://catalance-backend.vercel.app/api/$1"
+}
+```
+
+Deploy frontend second:
+
+1. Import the same Git repository as a second Vercel project.
+2. Leave Root Directory as the repository root.
+3. Use Build Command `npm run build`.
+4. Use Output Directory `dist`.
+5. Deploy the frontend project.
+
+After changing any Vercel environment variable, redeploy the affected project because old deployments keep the old values.
 
 ## Minimal Architecture
 
@@ -89,7 +141,7 @@ Recommended minimal behavior:
 2. Frontend posts normalized phone data to `/api/auth/whatsapp/request-otp`.
 3. Backend finds an existing user by `phoneNumber` or `phone`.
 4. Backend generates a 6-digit OTP and stores it in existing `otpCode` / `otpExpires`.
-5. Backend sends the OTP through Meta WhatsApp Cloud API using template `login_otp`.
+5. Backend sends the OTP through Meta WhatsApp Cloud API using `WHATSAPP_OTP_TEMPLATE_NAME`.
 6. Frontend shows an OTP input state.
 7. User submits OTP to `/api/auth/whatsapp/verify-otp`.
 8. Backend validates OTP and returns the same `{ user, accessToken }` shape used by existing login.
@@ -178,9 +230,9 @@ Payload for an authentication copy-code template:
   "to": "919999999999",
   "type": "template",
   "template": {
-    "name": "login_otp",
+    "name": "otp_login",
     "language": {
-      "code": "en_US"
+      "code": "en"
     },
     "components": [
       {
@@ -276,8 +328,8 @@ curl -X POST "https://graph.facebook.com/$WHATSAPP_GRAPH_VERSION/$WHATSAPP_PHONE
     "to": "919999999999",
     "type": "template",
     "template": {
-      "name": "login_otp",
-      "language": { "code": "en_US" },
+      "name": "otp_login",
+      "language": { "code": "en" },
       "components": [
         {
           "type": "body",
@@ -317,7 +369,7 @@ Expected successful response shape:
 
 ## App Test Plan
 
-1. Confirm `login_otp` is `APPROVED` in WhatsApp Manager.
+1. Confirm the new template is `APPROVED` in WhatsApp Manager.
 2. Confirm the system user token has the two WhatsApp permissions.
 3. Confirm backend env vars are set.
 4. Start backend: `npm --prefix backend run dev`.
@@ -334,7 +386,7 @@ Expected successful response shape:
 Template still in review:
 
 - Wait for `APPROVED`.
-- Confirm name and language are exactly `login_otp` and `en_US`.
+- Confirm name and language exactly match `WHATSAPP_OTP_TEMPLATE_NAME` and `WHATSAPP_OTP_TEMPLATE_LANGUAGE`.
 
 `(#100) Invalid parameter`:
 

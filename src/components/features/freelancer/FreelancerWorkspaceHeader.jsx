@@ -28,6 +28,7 @@ const marketingNavItems = [
 
 const workspaceNavItems = [
   { label: "Dashboard", key: "dashboard", to: "/freelancer" },
+  { label: "Growth Quest", key: "growth-quest", to: "/freelancer/growth-quest" },
   { label: "Proposals", key: "proposals", to: "/freelancer/proposals" },
   { label: "Projects", key: "projects", to: "/freelancer/project" },
   { label: "Messages", key: "messages", to: "/freelancer/messages" },

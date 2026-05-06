@@ -1,0 +1,1330 @@
+import crypto from "crypto";
+import { Prisma, prisma } from "../../../lib/prisma.js";
+import { AppError } from "../../../utils/app-error.js";
+import {
+  engagementRules,
+  isAdminQuestionApprovalEnabled,
+  isEngagementMvpEnabled
+} from "../config/engagement-rules.config.js";
+import {
+  buildQuestionContentHash,
+  ensureFallbackQuestionBank
+} from "./question-bank.service.js";
+import {
+  getDayKeyAgeInDays,
+  getNextUtcResetAt,
+  getPreviousUtcDayKey,
+  getUtcDayKey
+} from "../utils/day-key.js";
+
+const CATEGORY_LABELS = Object.freeze({
+  CLIENT_COMMUNICATION: "Client communication",
+  SCOPE_MANAGEMENT: "Scope management",
+  DELIVERY: "Delivery",
+  QUALITY_CONTROL: "Quality control",
+  PLATFORM_RULES: "Platform rules",
+  BUSINESS_BASICS: "Business basics"
+});
+
+const LEVEL_LABELS = Object.freeze(
+  Object.fromEntries(engagementRules.levels.map((level) => [level.key, level.label]))
+);
+
+const normalizeText = (value) => String(value || "").trim();
+
+const ensureEnabled = () => {
+  if (!isEngagementMvpEnabled()) {
+    throw new AppError("Daily Growth Quest is not enabled yet.", 404);
+  }
+};
+
+const normalizeQuestionType = (value = "MCQ") => {
+  const normalized = String(value || "MCQ").trim().toUpperCase();
+  if (["MCQ", "TRUE_FALSE", "SCENARIO_MCQ"].includes(normalized)) {
+    return normalized;
+  }
+  return "MCQ";
+};
+
+const normalizeCategory = (value = "") => {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (engagementRules.categories.includes(normalized)) return normalized;
+  return "CLIENT_COMMUNICATION";
+};
+
+const normalizeDifficulty = (value = "BEGINNER") => {
+  const normalized = String(value || "BEGINNER").trim().toUpperCase();
+  if (engagementRules.difficulties.includes(normalized)) return normalized;
+  return "BEGINNER";
+};
+
+const categoryLabel = (category) =>
+  CATEGORY_LABELS[category] || normalizeText(category).replace(/_/g, " ");
+
+const stableHashNumber = (value = "") => {
+  const digest = crypto.createHash("sha256").update(String(value)).digest("hex");
+  return parseInt(digest.slice(0, 8), 16);
+};
+
+const rotateByDay = (items, dayKey) => {
+  if (!items.length) return [];
+  const offset = stableHashNumber(dayKey) % items.length;
+  return [...items.slice(offset), ...items.slice(0, offset)];
+};
+
+const sortOptionsForDay = (options = [], dayKey, questionId) =>
+  [...options].sort((a, b) => {
+    const aScore = stableHashNumber(`${dayKey}:${questionId}:${a?.id || ""}`);
+    const bScore = stableHashNumber(`${dayKey}:${questionId}:${b?.id || ""}`);
+    return aScore - bScore;
+  });
+
+const sanitizeQuestionForClient = (question, dayKey) => ({
+  id: question.id,
+  questionText: question.questionText,
+  type: question.type,
+  category: question.category,
+  categoryLabel: categoryLabel(question.category),
+  skillTag: question.skillTag,
+  difficulty: question.difficulty,
+  options: sortOptionsForDay(question.options || [], dayKey, question.id)
+});
+
+const toSafeQuestionRecord = (question) => ({
+  id: question.id,
+  questionText: question.questionText,
+  type: question.type,
+  category: question.category,
+  categoryLabel: categoryLabel(question.category),
+  skillTag: question.skillTag,
+  difficulty: question.difficulty,
+  options: question.options || [],
+  correctOptionId: question.correctOptionId,
+  explanation: question.explanation,
+  source: question.source,
+  status: question.status,
+  usageCount: question.usageCount,
+  successRate: question.successRate,
+  rejectedReason: question.rejectedReason,
+  approvedAt: question.approvedAt,
+  approvedBy: question.approvedBy
+    ? {
+        id: question.approvedBy.id,
+        fullName: question.approvedBy.fullName,
+        email: question.approvedBy.email
+      }
+    : null,
+  createdAt: question.createdAt,
+  updatedAt: question.updatedAt
+});
+
+const ensureFreelancerUser = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, roles: true, status: true }
+  });
+
+  const roles = new Set([
+    String(user?.role || "").toUpperCase(),
+    ...(Array.isArray(user?.roles)
+      ? user.roles.map((role) => String(role || "").toUpperCase())
+      : [])
+  ]);
+
+  if (!user || !roles.has("FREELANCER")) {
+    throw new AppError("Freelancer access required.", 403);
+  }
+
+  if (user.status === "SUSPENDED") {
+    throw new AppError("Suspended accounts cannot complete Growth Quests.", 403);
+  }
+
+  return user;
+};
+
+export const ensureCoreBadges = async (client = prisma) => {
+  await client.engagementBadge.createMany({
+    data: engagementRules.badges.map((badge) => ({
+      key: badge.key,
+      title: badge.title,
+      description: badge.description,
+      milestoneDays: badge.days,
+      icon: badge.icon
+    })),
+    skipDuplicates: true
+  });
+};
+
+const ensureProfile = (userId, client = prisma) =>
+  client.engagementProfile.upsert({
+    where: { userId },
+    create: { userId },
+    update: {}
+  });
+
+const calculateEngagementLevel = ({
+  lifetimeXp,
+  completedDays,
+  rollingAccuracy,
+  currentStreak,
+  adminSafeProfile = false
+}) => {
+  const eligible = engagementRules.levels
+    .filter((level) => {
+      if (level.requiresAdminSafeProfile && !adminSafeProfile) return false;
+      if (Number(lifetimeXp || 0) < level.minXp) return false;
+      if (Number(completedDays || 0) < level.completedDays) return false;
+      if (Number(rollingAccuracy || 0) < level.rollingAccuracy) return false;
+      if (Number(currentStreak || 0) < level.streak) return false;
+      return true;
+    })
+    .at(-1);
+
+  return eligible?.key || "LEVEL_1";
+};
+
+const buildLevelProgress = (profile, report) => {
+  const currentIndex = Math.max(
+    0,
+    engagementRules.levels.findIndex((level) => level.key === profile.engagementLevel)
+  );
+  const current = engagementRules.levels[currentIndex] || engagementRules.levels[0];
+  const next = engagementRules.levels[currentIndex + 1] || null;
+
+  if (!next) {
+    return {
+      current: { key: current.key, label: current.label },
+      next: null,
+      xpToNext: 0,
+      percent: 100
+    };
+  }
+
+  const previousXp = current.minXp;
+  const nextXp = next.minXp;
+  const span = Math.max(1, nextXp - previousXp);
+  const percent = Math.max(
+    0,
+    Math.min(100, Math.round(((profile.lifetimeXp - previousXp) / span) * 100))
+  );
+
+  return {
+    current: { key: current.key, label: current.label },
+    next: {
+      key: next.key,
+      label: next.label,
+      minXp: next.minXp,
+      completedDays: next.completedDays,
+      rollingAccuracy: next.rollingAccuracy,
+      streak: next.streak
+    },
+    xpToNext: Math.max(0, next.minXp - Number(profile.lifetimeXp || 0)),
+    percent,
+    rollingAccuracy: Math.round(Number(report?.rollingAccuracy || 0))
+  };
+};
+
+const buildNextMilestone = (currentStreak = 0) => {
+  const nextBadge = engagementRules.badges.find(
+    (badge) => Number(currentStreak || 0) < badge.days
+  );
+
+  if (!nextBadge) {
+    return {
+      label: "Monthly consistency unlocked",
+      daysRemaining: 0,
+      targetDays: 30
+    };
+  }
+
+  const daysRemaining = Math.max(0, nextBadge.days - Number(currentStreak || 0));
+  return {
+    key: nextBadge.key,
+    label: `${daysRemaining} day${daysRemaining === 1 ? "" : "s"} to ${nextBadge.title}`,
+    daysRemaining,
+    targetDays: nextBadge.days
+  };
+};
+
+const updateProcessReport = async ({
+  client,
+  userId,
+  answerDetails,
+  profileTotals
+}) => {
+  const existing = await client.engagementProcessReport.findUnique({
+    where: { userId }
+  });
+  const topicStats = { ...(existing?.topicStats || {}) };
+
+  answerDetails.forEach((answer) => {
+    const key = answer.category;
+    const current = topicStats[key] || {
+      attempted: 0,
+      correct: 0,
+      accuracy: 0
+    };
+    const attempted = Number(current.attempted || 0) + 1;
+    const correct = Number(current.correct || 0) + (answer.isCorrect ? 1 : 0);
+    topicStats[key] = {
+      attempted,
+      correct,
+      accuracy: attempted > 0 ? Math.round((correct / attempted) * 100) : 0
+    };
+  });
+
+  const sortedTopics = Object.entries(topicStats)
+    .filter(([, stat]) => Number(stat.attempted || 0) >= 2)
+    .sort((a, b) => Number(a[1].accuracy || 0) - Number(b[1].accuracy || 0));
+  const weakTopics = sortedTopics
+    .filter(([, stat]) => Number(stat.accuracy || 0) < 75)
+    .slice(0, 3)
+    .map(([topic]) => topic);
+  const strongTopics = sortedTopics
+    .filter(([, stat]) => Number(stat.accuracy || 0) >= 80)
+    .slice(-3)
+    .map(([topic]) => topic)
+    .reverse();
+  const rollingAccuracy =
+    profileTotals.totalQuestionsAnswered > 0
+      ? Math.round(
+          (profileTotals.totalCorrectAnswers /
+            profileTotals.totalQuestionsAnswered) *
+            100
+        )
+      : 0;
+  const recentSessions = await client.engagementAnswerSession.findMany({
+    where: { userId },
+    orderBy: { dayKey: "desc" },
+    take: 6,
+    select: { correctCount: true, questionCount: true }
+  });
+  const recentTotals = recentSessions.reduce(
+    (acc, session) => ({
+      correct: acc.correct + Number(session.correctCount || 0),
+      total: acc.total + Number(session.questionCount || 0)
+    }),
+    {
+      correct: answerDetails.filter((answer) => answer.isCorrect).length,
+      total: answerDetails.length
+    }
+  );
+  const rolling7DayAccuracy =
+    recentTotals.total > 0
+      ? Math.round((recentTotals.correct / recentTotals.total) * 100)
+      : rollingAccuracy;
+
+  return client.engagementProcessReport.upsert({
+    where: { userId },
+    create: {
+      userId,
+      rollingAccuracy,
+      rolling7DayAccuracy,
+      topicStats,
+      weakTopics,
+      strongTopics,
+      recommendedNextTopic:
+        weakTopics[0] || strongTopics[0] || "SCOPE_MANAGEMENT"
+    },
+    update: {
+      rollingAccuracy,
+      rolling7DayAccuracy,
+      topicStats,
+      weakTopics,
+      strongTopics,
+      recommendedNextTopic:
+        weakTopics[0] || strongTopics[0] || "SCOPE_MANAGEMENT"
+    }
+  });
+};
+
+const buildProcessSummary = (report) => {
+  const topicStats = report?.topicStats || {};
+  const strong = report?.strongTopics?.[0] || null;
+  const weak = report?.weakTopics?.[0] || report?.recommendedNextTopic || null;
+
+  return {
+    rollingAccuracy: Math.round(Number(report?.rollingAccuracy || 0)),
+    rolling7DayAccuracy: Math.round(Number(report?.rolling7DayAccuracy || 0)),
+    strongArea: strong
+      ? {
+          key: strong,
+          label: categoryLabel(strong),
+          accuracy: Number(topicStats?.[strong]?.accuracy || 0)
+        }
+      : null,
+    weakArea: weak
+      ? {
+          key: weak,
+          label: categoryLabel(weak),
+          accuracy: Number(topicStats?.[weak]?.accuracy || 0)
+        }
+      : null,
+    recommendedNextTopic: report?.recommendedNextTopic
+      ? {
+          key: report.recommendedNextTopic,
+          label: categoryLabel(report.recommendedNextTopic)
+        }
+      : {
+          key: "SCOPE_MANAGEMENT",
+          label: categoryLabel("SCOPE_MANAGEMENT")
+        }
+  };
+};
+
+const buildBadgePayload = async (userId) => {
+  await ensureCoreBadges();
+  const [badges, earned] = await Promise.all([
+    prisma.engagementBadge.findMany({ orderBy: { milestoneDays: "asc" } }),
+    prisma.engagementUserBadge.findMany({
+      where: { userId },
+      select: { key: true, earnedAt: true }
+    })
+  ]);
+  const earnedMap = new Map(earned.map((badge) => [badge.key, badge.earnedAt]));
+
+  return badges.map((badge) => ({
+    key: badge.key,
+    title: badge.title,
+    description: badge.description,
+    milestoneDays: badge.milestoneDays,
+    icon: badge.icon,
+    earned: earnedMap.has(badge.key),
+    earnedAt: earnedMap.get(badge.key) || null
+  }));
+};
+
+const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
+  const [profile, report, todaySessions, badges] = await Promise.all([
+    ensureProfile(userId),
+    prisma.engagementProcessReport.findUnique({ where: { userId } }),
+    prisma.engagementAnswerSession.findMany({
+      where: { userId, dayKey },
+      orderBy: { createdAt: "desc" }
+    }),
+    buildBadgePayload(userId)
+  ]);
+
+  const levelProgress = buildLevelProgress(profile, report);
+  const latestSession = todaySessions[0] || null;
+  const isCompleted = todaySessions.length >= 2 || latestSession?.accuracy === 100;
+
+  return {
+    profile: {
+      engagementLevel: profile.engagementLevel,
+      engagementLevelLabel: LEVEL_LABELS[profile.engagementLevel] || "Starter",
+      xp: profile.xp,
+      lifetimeXp: profile.lifetimeXp,
+      loyaltyCoins: profile.loyaltyCoins,
+      currentStreak: profile.currentStreak,
+      longestStreak: profile.longestStreak,
+      dailyCompletionCount: profile.dailyCompletionCount,
+      totalQuestionsAnswered: profile.totalQuestionsAnswered,
+      totalCorrectAnswers: profile.totalCorrectAnswers
+    },
+    today: {
+      dayKey,
+      status: isCompleted ? "completed" : "not_started",
+      completedAt: latestSession?.createdAt || null,
+      resultSummary: latestSession?.resultSummary || null,
+      nextResetAt: getNextUtcResetAt(dayKey),
+      attemptsUsed: todaySessions.length,
+      maxAttempts: 2
+    },
+    levelProgress,
+    nextMilestone: buildNextMilestone(profile.currentStreak),
+    badges,
+    processSummary: buildProcessSummary(report)
+  };
+};
+
+const selectQuestionsForDay = async (dayKey) => {
+  await ensureFallbackQuestionBank();
+  const approved = await prisma.engagementQuestion.findMany({
+    where: { status: "APPROVED" },
+    orderBy: [{ usageCount: "asc" }, { createdAt: "asc" }],
+    take: 240
+  });
+
+  if (approved.length < engagementRules.dailyChallenge.questionCount) {
+    throw new AppError("Not enough approved Growth Quest questions.", 503);
+  }
+
+  const rotated = rotateByDay(approved, dayKey);
+  const selected = [];
+  const selectedIds = new Set();
+
+  engagementRules.categories.forEach((category) => {
+    const match = rotated.find(
+      (question) => question.category === category && !selectedIds.has(question.id)
+    );
+    if (match && selected.length < engagementRules.dailyChallenge.questionCount) {
+      selected.push(match);
+      selectedIds.add(match.id);
+    }
+  });
+
+  rotated.forEach((question) => {
+    if (selected.length >= engagementRules.dailyChallenge.questionCount) return;
+    if (selectedIds.has(question.id)) return;
+    selected.push(question);
+    selectedIds.add(question.id);
+  });
+
+  return selected.slice(0, engagementRules.dailyChallenge.questionCount);
+};
+
+export const ensurePublishedDailySet = async (dayKey = getUtcDayKey()) => {
+  const existing = await prisma.dailyQuestionSet.findUnique({
+    where: { dayKey }
+  });
+
+  if (
+    existing?.status === "PUBLISHED" &&
+    existing.questionIds.length >= engagementRules.dailyChallenge.questionCount
+  ) {
+    return existing;
+  }
+
+  const questions = await selectQuestionsForDay(dayKey);
+  const questionIds = questions.map((question) => question.id);
+  const dailySet = await prisma.dailyQuestionSet.upsert({
+    where: { dayKey },
+    create: {
+      dayKey,
+      questionIds,
+      status: "PUBLISHED",
+      generatedBy: "fallback",
+      publishedAt: new Date()
+    },
+    update: {
+      questionIds,
+      status: "PUBLISHED",
+      generatedBy: "fallback",
+      publishedAt: new Date()
+    }
+  });
+
+  await prisma.engagementQuestion.updateMany({
+    where: { id: { in: questionIds } },
+    data: { usageCount: { increment: 1 } }
+  });
+
+  return dailySet;
+};
+
+const loadDailyQuestions = async (dailySet) => {
+  const questions = await prisma.engagementQuestion.findMany({
+    where: {
+      id: { in: dailySet.questionIds },
+      status: "APPROVED"
+    }
+  });
+  const byId = new Map(questions.map((question) => [question.id, question]));
+  return dailySet.questionIds.map((id) => byId.get(id)).filter(Boolean);
+};
+
+const calculateStreak = ({ profile, dayKey }) => {
+  if (!profile.lastCompletedDayKey) {
+    return {
+      currentStreak: 1,
+      longestStreak: Math.max(1, profile.longestStreak || 0),
+      freezeTokens: profile.freezeTokens || 0
+    };
+  }
+
+  if (profile.lastCompletedDayKey === dayKey) {
+    return {
+      currentStreak: profile.currentStreak || 1,
+      longestStreak: Math.max(profile.longestStreak || 0, profile.currentStreak || 1),
+      freezeTokens: profile.freezeTokens || 0
+    };
+  }
+
+  const previousDayKey = getPreviousUtcDayKey(dayKey);
+  const nextStreak =
+    profile.lastCompletedDayKey === previousDayKey
+      ? Number(profile.currentStreak || 0) + 1
+      : 1;
+
+  return {
+    currentStreak: nextStreak,
+    longestStreak: Math.max(nextStreak, profile.longestStreak || 0),
+    freezeTokens: profile.freezeTokens || 0
+  };
+};
+
+const calculateRewards = ({ correctCount, questionCount, currentStreak }) => {
+  const perfect = correctCount === questionCount;
+  let xpAwarded =
+    engagementRules.xp.completion +
+    correctCount * engagementRules.xp.correctAnswer +
+    (perfect ? engagementRules.xp.perfectBonus : 0);
+  let coinsAwarded =
+    engagementRules.coins.completion +
+    correctCount * engagementRules.coins.correctAnswer;
+  const bonuses = [];
+
+  if (currentStreak === 7) {
+    xpAwarded += engagementRules.xp.streak7Bonus;
+    coinsAwarded += engagementRules.coins.streak7Bonus;
+    bonuses.push({ type: "streak", days: 7, xp: 30, coins: 25 });
+  }
+
+  if (currentStreak === 15) {
+    xpAwarded += engagementRules.xp.streak15Bonus;
+    bonuses.push({ type: "streak", days: 15, xp: 75, coins: 0 });
+  }
+
+  if (currentStreak === 30) {
+    xpAwarded += engagementRules.xp.streak30Bonus;
+    coinsAwarded += engagementRules.coins.streak30Bonus;
+    bonuses.push({ type: "streak", days: 30, xp: 150, coins: 100 });
+  }
+
+  return { xpAwarded, coinsAwarded, bonuses, perfect };
+};
+
+const buildAnswerDetails = ({ questions, answers, dayKey }) => {
+  const answersByQuestionId = new Map();
+
+  answers.forEach((answer) => {
+    const questionId = normalizeText(answer?.questionId);
+    const selectedOptionId = normalizeText(answer?.selectedOptionId);
+    if (questionId && selectedOptionId) {
+      answersByQuestionId.set(questionId, selectedOptionId);
+    }
+  });
+
+  if (answersByQuestionId.size !== questions.length) {
+    throw new AppError("Please answer every question before submitting.", 400);
+  }
+
+  return questions.map((question) => {
+    const selectedOptionId = answersByQuestionId.get(question.id);
+    if (!selectedOptionId) {
+      throw new AppError("Submitted answers do not match today's quest.", 400);
+    }
+
+    const optionIds = new Set((question.options || []).map((option) => option.id));
+    if (!optionIds.has(selectedOptionId)) {
+      throw new AppError("Submitted answer option is invalid.", 400);
+    }
+
+    const isCorrect = selectedOptionId === question.correctOptionId;
+    return {
+      questionId: question.id,
+      questionText: question.questionText,
+      type: question.type,
+      category: question.category,
+      categoryLabel: categoryLabel(question.category),
+      skillTag: question.skillTag,
+      difficulty: question.difficulty,
+      options: sortOptionsForDay(question.options || [], dayKey, question.id),
+      selectedOptionId,
+      correctOptionId: question.correctOptionId,
+      isCorrect,
+      explanation: question.explanation
+    };
+  });
+};
+
+const unlockBadges = async ({ client, userId, currentStreak }) => {
+  await ensureCoreBadges(client);
+  const badgeKeys = engagementRules.badges
+    .filter((badge) => currentStreak >= badge.days)
+    .map((badge) => badge.key);
+
+  if (!badgeKeys.length) return [];
+
+  const badges = await client.engagementBadge.findMany({
+    where: { key: { in: badgeKeys } }
+  });
+
+  const existing = await client.engagementUserBadge.findMany({
+    where: { userId, key: { in: badgeKeys } },
+    select: { key: true }
+  });
+  const existingKeys = new Set(existing.map((badge) => badge.key));
+  const newBadges = badges.filter((badge) => !existingKeys.has(badge.key));
+
+  if (newBadges.length) {
+    await client.engagementUserBadge.createMany({
+      data: newBadges.map((badge) => ({
+        userId,
+        badgeId: badge.id,
+        key: badge.key
+      })),
+      skipDuplicates: true
+    });
+  }
+
+  return newBadges.map((badge) => ({
+    key: badge.key,
+    title: badge.title,
+    description: badge.description,
+    milestoneDays: badge.milestoneDays,
+    icon: badge.icon
+  }));
+};
+
+const buildResultSummary = ({
+  dayKey,
+  answerDetails,
+  rewards,
+  streak,
+  profile,
+  report,
+  unlockedBadges
+}) => ({
+  dayKey,
+  score: {
+    correctCount: answerDetails.filter((answer) => answer.isCorrect).length,
+    questionCount: answerDetails.length,
+    accuracy:
+      answerDetails.length > 0
+        ? Math.round(
+            (answerDetails.filter((answer) => answer.isCorrect).length /
+              answerDetails.length) *
+              100
+          )
+        : 0
+  },
+  rewards: {
+    xpAwarded: rewards.xpAwarded,
+    coinsAwarded: rewards.coinsAwarded,
+    bonuses: rewards.bonuses,
+    perfect: rewards.perfect
+  },
+  streak: {
+    currentStreak: streak.currentStreak,
+    longestStreak: streak.longestStreak
+  },
+  profile: {
+    engagementLevel: profile.engagementLevel,
+    engagementLevelLabel: LEVEL_LABELS[profile.engagementLevel] || "Starter",
+    xp: profile.xp,
+    lifetimeXp: profile.lifetimeXp,
+    loyaltyCoins: profile.loyaltyCoins
+  },
+  unlockedBadges,
+  nextFocus: buildProcessSummary(report).recommendedNextTopic,
+  answers: answerDetails
+});
+
+export const getEngagementDashboard = async (userId) => {
+  ensureEnabled();
+  await ensureFreelancerUser(userId);
+  await ensureFallbackQuestionBank();
+  await ensureCoreBadges();
+  return buildDashboardPayload({ userId });
+};
+
+export const startDailyChallenge = async (userId) => {
+  ensureEnabled();
+  await ensureFreelancerUser(userId);
+  const dayKey = getUtcDayKey();
+  await ensureProfile(userId);
+  const todaySessions = await prisma.engagementAnswerSession.findMany({
+    where: { userId, dayKey },
+    orderBy: { createdAt: "desc" }
+  });
+
+  const latestSession = todaySessions[0] || null;
+  const isCompleted = todaySessions.length >= 2 || latestSession?.accuracy === 100;
+
+  if (isCompleted) {
+    const dashboard = await buildDashboardPayload({ userId, dayKey });
+    return {
+      status: "completed",
+      dayKey,
+      nextResetAt: getNextUtcResetAt(dayKey),
+      resultSummary: latestSession.resultSummary,
+      dashboard
+    };
+  }
+
+  const dailySet = await ensurePublishedDailySet(dayKey);
+  const questions = await loadDailyQuestions(dailySet);
+
+  return {
+    status: "in_progress",
+    dayKey,
+    nextResetAt: getNextUtcResetAt(dayKey),
+    questionCount: questions.length,
+    questions: questions.map((question) => sanitizeQuestionForClient(question, dayKey))
+  };
+};
+
+export const submitDailyChallenge = async ({
+  userId,
+  answers,
+  idempotencyKey
+}) => {
+  ensureEnabled();
+  await ensureFreelancerUser(userId);
+
+  const dayKey = getUtcDayKey();
+  const resolvedIdempotencyKey =
+    normalizeText(idempotencyKey) || `${userId}:${dayKey}:daily-submit`;
+  const dailySet = await ensurePublishedDailySet(dayKey);
+  const questions = await loadDailyQuestions(dailySet);
+
+  if (questions.length !== engagementRules.dailyChallenge.questionCount) {
+    throw new AppError("Today's Growth Quest is not ready yet.", 503);
+  }
+
+  try {
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const existingByIdempotency = await tx.engagementAnswerSession.findUnique({
+          where: { idempotencyKey: resolvedIdempotencyKey }
+        });
+        if (existingByIdempotency) {
+          return existingByIdempotency.resultSummary;
+        }
+
+        const todaySessions = await tx.engagementAnswerSession.findMany({
+          where: { userId, dayKey },
+          orderBy: { createdAt: "desc" }
+        });
+        const latestSession = todaySessions[0] || null;
+        if (todaySessions.length >= 2 || latestSession?.accuracy === 100) {
+          return latestSession.resultSummary;
+        }
+
+        const profile = await ensureProfile(userId, tx);
+        const answerDetails = buildAnswerDetails({ questions, answers, dayKey });
+        const correctCount = answerDetails.filter((answer) => answer.isCorrect).length;
+        const questionCount = answerDetails.length;
+        const accuracy =
+          questionCount > 0 ? Math.round((correctCount / questionCount) * 100) : 0;
+        const streak = calculateStreak({ profile, dayKey });
+        const rewards = calculateRewards({
+          correctCount,
+          questionCount,
+          currentStreak: streak.currentStreak
+        });
+        const profileTotals = {
+          totalQuestionsAnswered:
+            Number(profile.totalQuestionsAnswered || 0) + questionCount,
+          totalCorrectAnswers:
+            Number(profile.totalCorrectAnswers || 0) + correctCount
+        };
+        const report = await updateProcessReport({
+          client: tx,
+          userId,
+          answerDetails,
+          profileTotals
+        });
+        const nextLifetimeXp = Number(profile.lifetimeXp || 0) + rewards.xpAwarded;
+        const nextDailyCompletionCount =
+          Number(profile.dailyCompletionCount || 0) + 1;
+        const engagementLevel = calculateEngagementLevel({
+          lifetimeXp: nextLifetimeXp,
+          completedDays: nextDailyCompletionCount,
+          rollingAccuracy: report.rollingAccuracy,
+          currentStreak: streak.currentStreak
+        });
+        const nextCoinBalance =
+          Number(profile.loyaltyCoins || 0) + rewards.coinsAwarded;
+
+        const updatedProfile = await tx.engagementProfile.update({
+          where: { userId },
+          data: {
+            engagementLevel,
+            xp: { increment: rewards.xpAwarded },
+            lifetimeXp: { increment: rewards.xpAwarded },
+            loyaltyCoins: { increment: rewards.coinsAwarded },
+            lifetimeCoinsEarned: { increment: rewards.coinsAwarded },
+            currentStreak: streak.currentStreak,
+            longestStreak: streak.longestStreak,
+            lastCompletedDayKey: dayKey,
+            freezeTokens: streak.freezeTokens,
+            dailyCompletionCount: { increment: 1 },
+            totalQuestionsAnswered: { increment: questionCount },
+            totalCorrectAnswers: { increment: correctCount }
+          }
+        });
+
+        const unlockedBadges = await unlockBadges({
+          client: tx,
+          userId,
+          currentStreak: streak.currentStreak
+        });
+        const resultSummary = buildResultSummary({
+          dayKey,
+          answerDetails,
+          rewards,
+          streak,
+          profile: updatedProfile,
+          report,
+          unlockedBadges
+        });
+
+        const session = await tx.engagementAnswerSession.create({
+          data: {
+            userId,
+            dayKey,
+            dailyQuestionSetId: dailySet.id,
+            answers: answerDetails.map((answer) => ({
+              questionId: answer.questionId,
+              selectedOptionId: answer.selectedOptionId,
+              isCorrect: answer.isCorrect
+            })),
+            questionSnapshots: answerDetails,
+            totalScore: correctCount,
+            correctCount,
+            questionCount,
+            accuracy,
+            xpAwarded: rewards.xpAwarded,
+            coinsAwarded: rewards.coinsAwarded,
+            resultSummary,
+            idempotencyKey: resolvedIdempotencyKey,
+            streakApplied: true
+          }
+        });
+
+        await tx.pointsLedger.create({
+          data: {
+            userId,
+            amount: rewards.coinsAwarded,
+            type: "EARN",
+            reason: "daily_growth_quest",
+            referenceType: "EngagementAnswerSession",
+            referenceId: session.id,
+            balanceAfter: nextCoinBalance,
+            idempotencyKey: `${resolvedIdempotencyKey}:coins`,
+            metadata: {
+              dayKey,
+              correctCount,
+              questionCount,
+              bonuses: rewards.bonuses
+            }
+          }
+        });
+
+        return resultSummary;
+      },
+      {
+        isolationLevel:
+          Prisma.TransactionIsolationLevel?.Serializable || undefined
+      }
+    );
+
+    const dashboard = await buildDashboardPayload({ userId, dayKey });
+    return {
+      status: "completed",
+      dayKey,
+      nextResetAt: getNextUtcResetAt(dayKey),
+      resultSummary: result,
+      dashboard
+    };
+  } catch (error) {
+    if (error?.code === "P2002") {
+      const todaySessions = await prisma.engagementAnswerSession.findMany({
+        where: { userId, dayKey },
+        orderBy: { createdAt: "desc" }
+      });
+      const latestSession = todaySessions[0] || null;
+      if (latestSession) {
+        const dashboard = await buildDashboardPayload({ userId, dayKey });
+        return {
+          status: "completed",
+          dayKey,
+          nextResetAt: getNextUtcResetAt(dayKey),
+          resultSummary: latestSession.resultSummary,
+          dashboard
+        };
+      }
+    }
+    throw error;
+  }
+};
+
+export const getProcessReport = async (userId) => {
+  ensureEnabled();
+  await ensureFreelancerUser(userId);
+  const report = await prisma.engagementProcessReport.findUnique({
+    where: { userId }
+  });
+
+  return {
+    report,
+    summary: buildProcessSummary(report)
+  };
+};
+
+export const getBadges = async (userId) => {
+  ensureEnabled();
+  await ensureFreelancerUser(userId);
+  return buildBadgePayload(userId);
+};
+
+const validateQuestionPayload = (payload = {}) => {
+  const questionText = normalizeText(payload.questionText);
+  const explanation = normalizeText(payload.explanation);
+  const correctOptionId = normalizeText(payload.correctOptionId || "A");
+  const options = Array.isArray(payload.options) ? payload.options : [];
+
+  if (questionText.length < 10) {
+    throw new AppError("Question text is required.", 400);
+  }
+
+  if (explanation.length < 10) {
+    throw new AppError("A practical explanation is required.", 400);
+  }
+
+  if (options.length < 2) {
+    throw new AppError("At least two answer options are required.", 400);
+  }
+
+  const normalizedOptions = options.map((option, index) => ({
+    id: normalizeText(option?.id) || String.fromCharCode(65 + index),
+    text: normalizeText(option?.text)
+  }));
+
+  if (normalizedOptions.some((option) => !option.text)) {
+    throw new AppError("Every answer option needs text.", 400);
+  }
+
+  if (!normalizedOptions.some((option) => option.id === correctOptionId)) {
+    throw new AppError("Correct option must match one available option.", 400);
+  }
+
+  const type = normalizeQuestionType(payload.type);
+  if (type === "TRUE_FALSE" && normalizedOptions.length !== 2) {
+    throw new AppError("True/false questions must have exactly two options.", 400);
+  }
+
+  if (type !== "TRUE_FALSE" && normalizedOptions.length !== 4) {
+    throw new AppError("MCQ questions must have exactly four options.", 400);
+  }
+
+  const category = normalizeCategory(payload.category);
+  const difficulty = normalizeDifficulty(payload.difficulty);
+
+  return {
+    questionText,
+    type,
+    category,
+    skillTag: normalizeText(payload.skillTag) || category.toLowerCase(),
+    difficulty,
+    options: normalizedOptions,
+    correctOptionId,
+    explanation,
+    source: normalizeText(payload.source) || "admin_created",
+    contentHash: buildQuestionContentHash({
+      questionText,
+      category,
+      difficulty,
+      correctOptionId
+    })
+  };
+};
+
+const recordAdminAudit = (data, client = prisma) =>
+  client.engagementAdminAuditLog.create({ data }).catch((error) => {
+    console.error("[Engagement] Failed to write admin audit log:", error);
+  });
+
+export const getAdminEngagementOverview = async () => {
+  ensureEnabled();
+  const dayKey = getUtcDayKey();
+  const sevenDaysAgoDate = new Date();
+  sevenDaysAgoDate.setUTCDate(sevenDaysAgoDate.getUTCDate() - 6);
+  const sevenDaysAgo = getUtcDayKey(sevenDaysAgoDate);
+
+  const [
+    totalProfiles,
+    completedToday,
+    activeSevenDays,
+    avgStreak,
+    pendingQuestions,
+    approvedQuestions,
+    topProfiles
+  ] = await Promise.all([
+    prisma.engagementProfile.count(),
+    prisma.engagementAnswerSession.count({ where: { dayKey } }),
+    prisma.engagementAnswerSession.groupBy({
+      by: ["userId"],
+      where: { dayKey: { gte: sevenDaysAgo } }
+    }),
+    prisma.engagementProfile.aggregate({ _avg: { currentStreak: true } }),
+    prisma.engagementQuestion.count({
+      where: { status: { in: ["DRAFT", "PENDING_APPROVAL"] } }
+    }),
+    prisma.engagementQuestion.count({ where: { status: "APPROVED" } }),
+    prisma.engagementProfile.findMany({
+      orderBy: [{ currentStreak: "desc" }, { lifetimeXp: "desc" }],
+      take: 5,
+      include: {
+        user: {
+          select: { id: true, fullName: true, email: true }
+        }
+      }
+    })
+  ]);
+
+  return {
+    dayKey,
+    totalProfiles,
+    completedToday,
+    activeSevenDays: activeSevenDays.length,
+    averageStreak: Math.round(Number(avgStreak._avg.currentStreak || 0)),
+    pendingQuestions,
+    approvedQuestions,
+    topProfiles: topProfiles.map((profile) => ({
+      userId: profile.userId,
+      fullName: profile.user.fullName,
+      email: profile.user.email,
+      currentStreak: profile.currentStreak,
+      lifetimeXp: profile.lifetimeXp,
+      loyaltyCoins: profile.loyaltyCoins,
+      engagementLevel: profile.engagementLevel,
+      engagementLevelLabel: LEVEL_LABELS[profile.engagementLevel] || "Starter"
+    }))
+  };
+};
+
+export const listAdminQuestions = async ({ status, search, take = 100 } = {}) => {
+  ensureEnabled();
+  const normalizedStatus = normalizeText(status).toUpperCase();
+  const normalizedSearch = normalizeText(search);
+
+  const questions = await prisma.engagementQuestion.findMany({
+    where: {
+      ...(normalizedStatus && normalizedStatus !== "ALL"
+        ? { status: normalizedStatus }
+        : {}),
+      ...(normalizedSearch
+        ? {
+            OR: [
+              { questionText: { contains: normalizedSearch, mode: "insensitive" } },
+              { skillTag: { contains: normalizedSearch, mode: "insensitive" } }
+            ]
+          }
+        : {})
+    },
+    orderBy: [{ updatedAt: "desc" }],
+    take: Math.min(200, Math.max(1, Number(take) || 100)),
+    include: {
+      approvedBy: {
+        select: { id: true, fullName: true, email: true }
+      }
+    }
+  });
+
+  return questions.map(toSafeQuestionRecord);
+};
+
+export const createAdminQuestion = async ({ adminId, payload }) => {
+  ensureEnabled();
+  if (!isAdminQuestionApprovalEnabled()) {
+    throw new AppError("Admin question approval is disabled.", 404);
+  }
+
+  const data = validateQuestionPayload(payload);
+  const question = await prisma.engagementQuestion.create({
+    data: {
+      ...data,
+      status: payload.status === "APPROVED" ? "APPROVED" : "PENDING_APPROVAL",
+      approvedById: payload.status === "APPROVED" ? adminId : null,
+      approvedAt: payload.status === "APPROVED" ? new Date() : null
+    },
+    include: {
+      approvedBy: { select: { id: true, fullName: true, email: true } }
+    }
+  });
+
+  await recordAdminAudit({
+    adminId,
+    action: "create_question",
+    entityType: "EngagementQuestion",
+    entityId: question.id,
+    newValue: toSafeQuestionRecord(question)
+  });
+
+  return toSafeQuestionRecord(question);
+};
+
+export const updateAdminQuestion = async ({ adminId, questionId, payload }) => {
+  ensureEnabled();
+  if (!isAdminQuestionApprovalEnabled()) {
+    throw new AppError("Admin question approval is disabled.", 404);
+  }
+
+  const existing = await prisma.engagementQuestion.findUnique({
+    where: { id: questionId }
+  });
+  if (!existing) throw new AppError("Question not found.", 404);
+
+  const merged = validateQuestionPayload({ ...existing, ...payload });
+  const question = await prisma.engagementQuestion.update({
+    where: { id: questionId },
+    data: {
+      ...merged,
+      status:
+        payload.status && ["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(payload.status)
+          ? payload.status
+          : existing.status === "APPROVED"
+            ? "APPROVED"
+            : "PENDING_APPROVAL",
+      rejectedReason: null
+    },
+    include: {
+      approvedBy: { select: { id: true, fullName: true, email: true } }
+    }
+  });
+
+  await recordAdminAudit({
+    adminId,
+    action: "update_question",
+    entityType: "EngagementQuestion",
+    entityId: question.id,
+    oldValue: existing,
+    newValue: toSafeQuestionRecord(question)
+  });
+
+  return toSafeQuestionRecord(question);
+};
+
+export const approveAdminQuestion = async ({ adminId, questionId }) => {
+  ensureEnabled();
+  const existing = await prisma.engagementQuestion.findUnique({
+    where: { id: questionId }
+  });
+  if (!existing) throw new AppError("Question not found.", 404);
+
+  const question = await prisma.engagementQuestion.update({
+    where: { id: questionId },
+    data: {
+      status: "APPROVED",
+      rejectedReason: null,
+      approvedById: adminId,
+      approvedAt: new Date()
+    },
+    include: {
+      approvedBy: { select: { id: true, fullName: true, email: true } }
+    }
+  });
+
+  await recordAdminAudit({
+    adminId,
+    action: "approve_question",
+    entityType: "EngagementQuestion",
+    entityId: question.id,
+    oldValue: existing,
+    newValue: toSafeQuestionRecord(question)
+  });
+
+  return toSafeQuestionRecord(question);
+};
+
+export const rejectAdminQuestion = async ({ adminId, questionId, reason }) => {
+  ensureEnabled();
+  const normalizedReason = normalizeText(reason);
+  if (!normalizedReason) {
+    throw new AppError("Rejecting a question requires a reason.", 400);
+  }
+
+  const existing = await prisma.engagementQuestion.findUnique({
+    where: { id: questionId }
+  });
+  if (!existing) throw new AppError("Question not found.", 404);
+
+  const question = await prisma.engagementQuestion.update({
+    where: { id: questionId },
+    data: {
+      status: "REJECTED",
+      rejectedReason: normalizedReason
+    },
+    include: {
+      approvedBy: { select: { id: true, fullName: true, email: true } }
+    }
+  });
+
+  await recordAdminAudit({
+    adminId,
+    action: "reject_question",
+    entityType: "EngagementQuestion",
+    entityId: question.id,
+    oldValue: existing,
+    newValue: toSafeQuestionRecord(question),
+    reason: normalizedReason
+  });
+
+  return toSafeQuestionRecord(question);
+};
+
+export const seedAdminFallbackQuestions = async ({ adminId }) => {
+  ensureEnabled();
+  const result = await ensureFallbackQuestionBank();
+  await ensureCoreBadges();
+  await recordAdminAudit({
+    adminId,
+    action: "seed_fallback_questions",
+    entityType: "EngagementQuestion",
+    newValue: result
+  });
+  return result;
+};
+
+export const listAdminFreelancerProgress = async ({ search, take = 50 } = {}) => {
+  ensureEnabled();
+  const normalizedSearch = normalizeText(search);
+  let userIds = null;
+
+  if (normalizedSearch) {
+    const users = await prisma.user.findMany({
+      where: {
+        role: "FREELANCER",
+        OR: [
+          { fullName: { contains: normalizedSearch, mode: "insensitive" } },
+          { email: { contains: normalizedSearch, mode: "insensitive" } }
+        ]
+      },
+      select: { id: true },
+      take: 100
+    });
+    userIds = users.map((user) => user.id);
+  }
+
+  const profiles = await prisma.engagementProfile.findMany({
+    where: userIds ? { userId: { in: userIds } } : {},
+    orderBy: [{ currentStreak: "desc" }, { lifetimeXp: "desc" }],
+    take: Math.min(100, Math.max(1, Number(take) || 50)),
+    include: {
+      user: {
+        select: { id: true, fullName: true, email: true, status: true }
+      }
+    }
+  });
+
+  const reports = await prisma.engagementProcessReport.findMany({
+    where: { userId: { in: profiles.map((profile) => profile.userId) } }
+  });
+  const reportByUserId = new Map(reports.map((report) => [report.userId, report]));
+
+  return profiles.map((profile) => {
+    const report = reportByUserId.get(profile.userId);
+    return {
+      userId: profile.userId,
+      fullName: profile.user.fullName,
+      email: profile.user.email,
+      status: profile.user.status,
+      engagementLevel: profile.engagementLevel,
+      engagementLevelLabel: LEVEL_LABELS[profile.engagementLevel] || "Starter",
+      currentStreak: profile.currentStreak,
+      longestStreak: profile.longestStreak,
+      lifetimeXp: profile.lifetimeXp,
+      loyaltyCoins: profile.loyaltyCoins,
+      rollingAccuracy: Math.round(Number(report?.rollingAccuracy || 0)),
+      weakTopic: report?.weakTopics?.[0]
+        ? categoryLabel(report.weakTopics[0])
+        : "Not enough data",
+      lastCompletedDayKey: profile.lastCompletedDayKey,
+      inactiveDays: getDayKeyAgeInDays(profile.lastCompletedDayKey)
+    };
+  });
+};

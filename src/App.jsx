@@ -96,6 +96,9 @@ const PMLogin = lazy(
 const FreelancerDashboard = lazy(
   () => import("@/pages/freelancer/FreelancerDashboard.jsx"),
 );
+const FreelancerGrowthQuest = lazy(
+  () => import("@/components/features/engagement/FreelancerGrowthQuestPage.jsx"),
+);
 const FreelancerProposal = lazy(
   () => import("@/components/features/freelancer/FreelancerProposal"),
 );
@@ -149,6 +152,12 @@ const AdminServiceQuestions = lazy(
 );
 const AdminBlogs = lazy(
   () => import("@/components/features/admin/AdminBlogs"),
+);
+const AdminEngagementOverview = lazy(
+  () => import("@/components/features/engagement/AdminEngagementOverview.jsx"),
+);
+const AdminEngagementQuestions = lazy(
+  () => import("@/components/features/engagement/AdminEngagementQuestions.jsx"),
 );
 const GetStarted = lazy(() => import("@/components/features/auth/GetStarted"));
 const BrowseTalent = lazy(() => import("@/components/pages/BrowseTalent"));
@@ -577,6 +586,14 @@ const App = () => {
               }
             />
             <Route
+              path="/freelancer/growth-quest"
+              element={
+                <ProtectedRoute>
+                  <FreelancerGrowthQuest />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/freelancer/proposals"
               element={
                 <ProtectedRoute requireFreelancerOnboardingComplete>
@@ -709,6 +726,22 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminServiceQuestions />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/engagement"
+              element={
+                <AdminRoute>
+                  <AdminEngagementOverview />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/engagement/questions"
+              element={
+                <AdminRoute>
+                  <AdminEngagementQuestions />
                 </AdminRoute>
               }
             />

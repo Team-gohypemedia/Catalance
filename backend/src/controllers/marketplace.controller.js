@@ -3039,7 +3039,12 @@ export const getFreelancerReceivedReviews = asyncHandler(async (req, res) => {
     throw new AppError("Authentication required", 401);
   }
 
-  if (!userHasFreelancerRole(req.user || {})) {
+  const user = await prisma.user.findUnique({
+    where: { id: freelancerId },
+    select: { role: true, roles: true }
+  });
+
+  if (!user || !userHasFreelancerRole(user)) {
     throw new AppError("Only freelancers can access received reviews.", 403);
   }
 

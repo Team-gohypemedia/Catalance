@@ -12,6 +12,7 @@ import Mail from "lucide-react/dist/esm/icons/mail";
 import Menu from "lucide-react/dist/esm/icons/menu";
 import PhoneCall from "lucide-react/dist/esm/icons/phone-call";
 import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Store from "lucide-react/dist/esm/icons/store";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
 import WalletCards from "lucide-react/dist/esm/icons/wallet-cards";
@@ -34,6 +35,7 @@ import { cn } from "@/shared/lib/utils";
 
 const iconMap = {
   dashboard: LayoutDashboard,
+  "growth-quest": Sparkles,
   projects: BriefcaseBusiness,
   proposals: FileText,
   messages: Mail,

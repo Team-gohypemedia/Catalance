@@ -303,7 +303,11 @@ export const resolveFreelancerPath = (
       : FREELANCER_DASHBOARD_PATH;
   }
 
-  if (requiresOnboarding && !isFreelancerDashboardPath(normalizedPath)) {
+  const isAllowedPath =
+    isFreelancerDashboardPath(normalizedPath) ||
+    normalizedPath.startsWith("/freelancer/growth-quest");
+
+  if (requiresOnboarding && !isAllowedPath) {
     return FREELANCER_DASHBOARD_PATH;
   }
 

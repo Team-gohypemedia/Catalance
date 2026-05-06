@@ -22,6 +22,7 @@ import { matchingRouter } from "./matching.routes.js";
 import pmRouter from "./pm.routes.js";
 import blogRouter from "./blog.routes.js";
 import { whatsappWebhookRouter } from "./whatsapp-webhook.routes.js";
+import { freelancerEngagementRouter } from "../modules/engagement/routes/freelancerEngagement.routes.js";
 
 export const apiRouter = Router();
 
@@ -48,3 +49,4 @@ apiRouter.use("/matching", matchingRouter);
 apiRouter.use("/pm", pmRouter);
 apiRouter.use("/blogs", blogRouter);
 apiRouter.use("/webhooks/whatsapp", whatsappWebhookRouter);
+apiRouter.use("/engagement", freelancerEngagementRouter);

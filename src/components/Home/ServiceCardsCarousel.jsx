@@ -252,7 +252,7 @@ const ServiceRailCard = React.memo(function ServiceRailCard({
               src={service.logoSrc}
               alt={service.title}
               loading={service.isPriority ? "eager" : "lazy"}
-              fetchPriority={service.isPriority ? "high" : "low"}
+              fetchpriority={service.isPriority ? "high" : "low"}
               decoding="async"
               className="relative z-10 h-24 w-24 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.24)] sm:h-40 sm:w-40"
             />
