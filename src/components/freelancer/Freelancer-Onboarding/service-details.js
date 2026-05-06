@@ -199,6 +199,8 @@ export const createEmptyServiceCaseStudy = ({
   niche: "",
 });
 
+export const MAX_ONBOARDING_CASE_STUDIES = 5;
+
 const normalizeServiceCaseStudy = (value = {}, { fallbackId } = {}) => {
   const source = isPlainObject(value) ? value : {};
   const resolvedId =

@@ -37,6 +37,7 @@ import {
   createEmptyServiceCaseStudy,
   createEmptyServiceDraft,
   deriveDraftSkillsAndTechnologies,
+  MAX_ONBOARDING_CASE_STUDIES,
   getServiceStepValidationErrors,
   getServiceStepValidationMessage,
   getServiceCatalogMeta,
@@ -2502,13 +2503,21 @@ const FreelancerOnboardingShell = () => {
 
   const handleAddCaseStudy = useCallback(() => {
     clearServiceStepValidationErrors("caseStudy");
-    const nextCaseStudy = createEmptyServiceCaseStudy();
+    updateCurrentServiceDraft((draft) => {
+      const caseStudies = Array.isArray(draft.caseStudies) ? draft.caseStudies : [];
 
-    updateCurrentServiceDraft((draft) => ({
-      ...draft,
-      caseStudies: [...draft.caseStudies, nextCaseStudy],
-      activeCaseStudyId: nextCaseStudy.id,
-    }));
+      if (caseStudies.length >= MAX_ONBOARDING_CASE_STUDIES) {
+        return draft;
+      }
+
+      const nextCaseStudy = createEmptyServiceCaseStudy();
+
+      return {
+        ...draft,
+        caseStudies: [...caseStudies, nextCaseStudy],
+        activeCaseStudyId: nextCaseStudy.id,
+      };
+    });
   }, [clearServiceStepValidationErrors, updateCurrentServiceDraft]);
 
   const handleRemoveCaseStudy = useCallback(
