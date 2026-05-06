@@ -738,6 +738,7 @@ const FreelancerOnboardingShell = () => {
   const { authFetch, refreshUser, user } = useAuth();
   const usernameCheckRequestRef = useRef(0);
   const onboardingScrollContainerRef = useRef(null);
+  const serviceSkipReturnRef = useRef(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [selectedWorkPreference, setSelectedWorkPreference] = useState("");
   const [showAgencyFlow, setShowAgencyFlow] = useState(false);
@@ -2136,6 +2137,11 @@ const FreelancerOnboardingShell = () => {
       return;
     }
 
+    serviceSkipReturnRef.current = {
+      slideIndex: currentSlideIndex,
+      serviceIndex: currentServiceIndex,
+    };
+
     if (acceptInProgressProjectsSlideIndex >= 0) {
       setCurrentSlideIndex(acceptInProgressProjectsSlideIndex);
       return;
@@ -2154,6 +2160,17 @@ const FreelancerOnboardingShell = () => {
     submitOnboardingAndNavigate();
   };
   const handleBack = () => {
+    if (
+      currentSlide.id === "acceptInProgressProjects" &&
+      serviceSkipReturnRef.current
+    ) {
+      const { slideIndex, serviceIndex } = serviceSkipReturnRef.current;
+      serviceSkipReturnRef.current = null;
+      setCurrentServiceIndex(serviceIndex);
+      setCurrentSlideIndex(slideIndex);
+      return;
+    }
+
     if (currentSlide.id === "serviceSetup" && currentServiceIndex > 0) {
       setCurrentServiceIndex((currentIndex) => Math.max(currentIndex - 1, 0));
       setCurrentSlideIndex(serviceReviewSlideIndex);
