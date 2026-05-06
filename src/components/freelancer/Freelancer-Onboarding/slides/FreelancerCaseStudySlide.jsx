@@ -37,6 +37,13 @@ const TIMELINE_OPTIONS = [
   { value: "12_plus_weeks", label: "12+ Weeks" },
 ];
 
+const toTitleCase = (value) =>
+  String(value || "")
+    .trim()
+    .replace(/\S+/g, (word) =>
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+    );
+
 /* ──────────────────── File Upload Button ──────────────────── */
 
 const FileUploadButton = ({ file, onChange, hasError = false }) => {
@@ -85,17 +92,22 @@ const FileUploadButton = ({ file, onChange, hasError = false }) => {
 
 const FreelancerCaseStudySlide = ({
   caseStudyForm,
+  caseStudies = [],
   activeCaseStudyIndex = 0,
+  activeCaseStudyId = "",
   nicheOptions = [],
   onCaseStudyFieldChange,
   onAddCaseStudy,
+  onRemoveCaseStudy,
+  onActiveCaseStudyChange,
   onServiceStepChange,
   onSkipServices,
   caseStudyValidationErrors = {},
 }) => {
   const activeCaseStudyLabel =
-    String(caseStudyForm?.title || "").trim() ||
-    `Project ${Number.isInteger(activeCaseStudyIndex) ? activeCaseStudyIndex + 1 : 1}`;
+    toTitleCase(caseStudyForm?.title) ||
+    `Case Study ${Number.isInteger(activeCaseStudyIndex) ? activeCaseStudyIndex + 1 : 1}`;
+  const normalizedCaseStudies = Array.isArray(caseStudies) ? caseStudies : [];
   const titleError = String(caseStudyValidationErrors.title || "").trim();
   const descriptionError = String(caseStudyValidationErrors.description || "").trim();
   const nicheError = String(caseStudyValidationErrors.niche || "").trim();
@@ -126,54 +138,91 @@ const FreelancerCaseStudySlide = ({
 
         {/* Step Content */}
         <div className="w-full space-y-5">
-          <div className="flex items-start justify-between gap-3 sm:items-end">
-            <div className="min-w-0 space-y-3">
-              <div>
-                <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
-                  Project Portfolio
-                </h2>
-                <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-                  Provide details to verify your identity securely.
-                </p>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-0 space-y-3">
+                <div>
+                  <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
+                    Case Studies
+                  </h2>
+                  <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
+                    Add multiple case studies and switch between them while filling the details.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 sm:flex-wrap sm:justify-end">
+                <button
+                  type="button"
+                  onClick={onAddCaseStudy}
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold text-black transition-colors hover:bg-primary/90 sm:w-auto"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Case Study
+                </button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onSkipServices?.()}
+                  className={cn(
+                    ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+                    "shrink-0 px-3 py-2 text-sm sm:px-6 sm:py-0 sm:text-base",
+                  )}
+                >
+                  Skip
+                </Button>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 sm:flex-wrap sm:items-center">
-              <button
-                type="button"
-                onClick={onAddCaseStudy}
-                className="hidden h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14 sm:inline-flex"
-              >
-                <Plus className="h-4 w-4" />
-                Add Case Study
-              </button>
+            {normalizedCaseStudies.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {normalizedCaseStudies.map((caseStudy, index) => {
+                  const caseStudyId = String(caseStudy?.id || "").trim();
+                  const isActive = caseStudyId && caseStudyId === activeCaseStudyId;
+                  const caseStudyLabel =
+                    toTitleCase(caseStudy?.title) ||
+                    `Case Study ${index + 1}`;
 
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onSkipServices?.()}
-                className={cn(
-                  ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
-                  "self-start px-3 py-2 text-sm sm:px-6 sm:py-0 sm:text-base",
-                )}
-              >
-                Skip
-              </Button>
-            </div>
+                  return (
+                    <div key={caseStudyId || `case-study-${index}`} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => onActiveCaseStudyChange?.(caseStudyId)}
+                        className={cn(
+                          "inline-flex h-10 items-center rounded-full border py-0 pl-4 pr-14 text-sm font-semibold transition-colors",
+                          isActive
+                            ? "border-primary bg-primary text-black"
+                            : "border-transparent bg-card text-white/65 hover:text-white",
+                        )}
+                      >
+                        <span className="truncate max-w-[11rem]">{caseStudyLabel}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemoveCaseStudy?.(caseStudyId);
+                        }}
+                        className={cn(
+                          "absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-background p-1.5 text-primary transition-colors hover:bg-background/90",
+                        )}
+                        aria-label={`Remove ${caseStudyLabel}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
 
-          <button
-            type="button"
-            onClick={onAddCaseStudy}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14 sm:hidden"
-          >
-            <Plus className="h-4 w-4" />
-            Add Case Study
-          </button>
-
+          <div className="rounded-2xl border border-white/10 bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)] sm:p-6">
           {/* Project Header */}
-          <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
+          <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "mb-4 text-white")}>
             {activeCaseStudyLabel}
           </h3>
 
@@ -348,9 +397,9 @@ const FreelancerCaseStudySlide = ({
                 ) : null}
               </div>
             </div>
-
-          </div>
-        </div>
+      </div>
+      </div>
+      </div>
       </div>
     </section>
   );
