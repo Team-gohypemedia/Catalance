@@ -88,6 +88,65 @@ export const ServiceInfoStepper = ({
 
 /* ──────────────────── Custom Select ──────────────────── */
 
+const calculateAttachedPopupPosition = ({
+  triggerElement,
+  viewportBottomOffset = 0,
+}) => {
+  if (!triggerElement || typeof window === "undefined") {
+    return null;
+  }
+
+  const rect = triggerElement.getBoundingClientRect();
+  const viewportHeight = window.innerHeight;
+  const viewportWidth = window.innerWidth;
+  const margin = 12;
+  const gap = 6;
+  const safeViewportBottom =
+    viewportHeight - Math.max(0, Number(viewportBottomOffset) || 0);
+  const minVisibleHeight = 140;
+  const preferredMaxHeight = 320;
+  const spaceBelow = Math.max(
+    0,
+    safeViewportBottom - rect.bottom - margin - gap,
+  );
+  const spaceAbove = Math.max(0, rect.top - margin - gap);
+  const shouldOpenAbove =
+    spaceBelow < minVisibleHeight && spaceAbove > spaceBelow;
+  const nextMaxHeight = Math.max(
+    Math.min(
+      preferredMaxHeight,
+      shouldOpenAbove ? spaceAbove : spaceBelow,
+    ),
+    120,
+  );
+  const nextWidth = Math.min(rect.width, viewportWidth - margin * 2);
+  const nextLeft = Math.min(
+    Math.max(rect.left, margin),
+    viewportWidth - nextWidth - margin,
+  );
+
+  return {
+    maxHeight: nextMaxHeight,
+    style: shouldOpenAbove
+      ? {
+          position: "fixed",
+          left: `${nextLeft}px`,
+          bottom: `${Math.max(viewportHeight - rect.top + gap, margin)}px`,
+          width: `${nextWidth}px`,
+          visibility: "visible",
+          pointerEvents: "auto",
+        }
+      : {
+          position: "fixed",
+          left: `${nextLeft}px`,
+          top: `${Math.min(rect.bottom + gap, safeViewportBottom - margin)}px`,
+          width: `${nextWidth}px`,
+          visibility: "visible",
+          pointerEvents: "auto",
+        },
+  };
+};
+
 export const CustomSelect = ({
   value,
   onChange,
@@ -129,6 +188,22 @@ export const CustomSelect = ({
     );
   }, [isSearchable, normalizedOptions, searchQuery]);
 
+  const handleTriggerClick = () => {
+    if (!isOpen) {
+      const nextPopup = calculateAttachedPopupPosition({
+        triggerElement: triggerRef.current,
+        viewportBottomOffset,
+      });
+
+      if (nextPopup) {
+        setAttachedPopupStyle(nextPopup.style);
+        setAttachedPopupMaxHeight(nextPopup.maxHeight);
+      }
+    }
+
+    setIsOpen((current) => !current);
+  };
+
   useEffect(() => {
     if (!isOpen) {
       setSearchQuery("");
@@ -155,55 +230,17 @@ export const CustomSelect = ({
     let frameId = 0;
 
     const updatePopupPosition = () => {
-      if (!triggerRef.current || typeof window === "undefined") {
+      const nextPopup = calculateAttachedPopupPosition({
+        triggerElement: triggerRef.current,
+        viewportBottomOffset,
+      });
+
+      if (!nextPopup) {
         return;
       }
 
-      const rect = triggerRef.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const viewportWidth = window.innerWidth;
-      const margin = 12;
-      const gap = 6;
-      const safeViewportBottom =
-        viewportHeight - Math.max(0, Number(viewportBottomOffset) || 0);
-      const minVisibleHeight = 140;
-      const preferredMaxHeight = 320;
-      const spaceBelow = Math.max(
-        0,
-        safeViewportBottom - rect.bottom - margin - gap,
-      );
-      const spaceAbove = Math.max(0, rect.top - margin - gap);
-      const shouldOpenAbove =
-        spaceBelow < minVisibleHeight && spaceAbove > spaceBelow;
-      const nextMaxHeight = Math.max(
-        Math.min(
-          preferredMaxHeight,
-          shouldOpenAbove ? spaceAbove : spaceBelow,
-        ),
-        120,
-      );
-      const nextWidth = Math.min(rect.width, viewportWidth - margin * 2);
-      const nextLeft = Math.min(
-        Math.max(rect.left, margin),
-        viewportWidth - nextWidth - margin,
-      );
-
-      setAttachedPopupStyle(
-        shouldOpenAbove
-          ? {
-              position: "fixed",
-              left: `${nextLeft}px`,
-              bottom: `${Math.max(viewportHeight - rect.top + gap, margin)}px`,
-              width: `${nextWidth}px`,
-            }
-          : {
-              position: "fixed",
-              left: `${nextLeft}px`,
-              top: `${Math.min(rect.bottom + gap, safeViewportBottom - margin)}px`,
-              width: `${nextWidth}px`,
-            },
-      );
-      setAttachedPopupMaxHeight(nextMaxHeight);
+      setAttachedPopupStyle(nextPopup.style);
+      setAttachedPopupMaxHeight(nextPopup.maxHeight);
     };
 
     const requestPositionUpdate = () => {
@@ -292,7 +329,7 @@ export const CustomSelect = ({
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleTriggerClick}
         className={cn(
           "flex h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 transition-colors",
           value ? "text-white" : "text-muted-foreground",
