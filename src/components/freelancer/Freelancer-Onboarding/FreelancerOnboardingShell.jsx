@@ -25,7 +25,6 @@ import {
 import { useAuth } from "@/shared/context/AuthContext";
 import {
   ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS,
-  ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS,
 } from "./typography";
 import {
   COUNTRY_OPTIONS,
@@ -41,6 +40,7 @@ import {
   getServiceStepValidationErrors,
   getServiceStepValidationMessage,
   getServiceCatalogMeta,
+  isServiceVisualsUploadValid,
   normalizeServiceDraft,
   normalizeStringArray as normalizeDraftSkillList,
   resolveServiceCatalogEntry,
@@ -91,6 +91,7 @@ const RESUME_UPLOAD_ALLOWED_MIME_TYPES = new Set([
 ]);
 const RESUME_UPLOAD_ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx"];
 const BASIC_PROFILE_FIELD_ORDER = [
+  "fullName",
   "username",
   "professionalBio",
   "country",
@@ -99,6 +100,7 @@ const BASIC_PROFILE_FIELD_ORDER = [
 ];
 
 const createInitialBasicProfileForm = () => ({
+  fullName: "",
   username: "",
   professionalBio: "",
   country: "India",
@@ -173,23 +175,6 @@ const extractServiceMediaFile = (value) => {
   if (typeof File === "undefined") return null;
   if (value instanceof File) return value;
   return value?.file instanceof File ? value.file : null;
-};
-
-const isServiceMediaVideo = (value) => {
-  const normalizedKind = String(value?.kind || "").trim().toLowerCase();
-  if (normalizedKind === "video") {
-    return true;
-  }
-
-  const file = extractServiceMediaFile(value);
-  if (file?.type) {
-    return String(file.type).trim().toLowerCase().startsWith("video/");
-  }
-
-  return String(value?.mimeType || value?.type || value?.contentType || "")
-    .trim()
-    .toLowerCase()
-    .startsWith("video/");
 };
 
 const buildRemoteServiceMedia = (value, index = 0) => {
@@ -396,6 +381,7 @@ const sanitizeBasicProfileFormForDraft = (form) => {
 
   return {
     ...initialForm,
+    fullName: String(sourceForm.fullName || "").trim(),
     username: normalizeUsernameInput(sourceForm.username || ""),
     professionalBio: String(sourceForm.professionalBio || "").trim(),
     country: String(sourceForm.country || initialForm.country || "India").trim(),
@@ -404,6 +390,25 @@ const sanitizeBasicProfileFormForDraft = (form) => {
     profilePhoto: toPersistableProfilePhoto(sourceForm.profilePhoto),
     resume: toPersistableResumeFile(sourceForm.resume),
   };
+};
+
+const resolveBasicProfileFullName = (user = {}) => {
+  const profileDetails =
+    user?.profileDetails && typeof user.profileDetails === "object"
+      ? user.profileDetails
+      : {};
+  const identity =
+    profileDetails.identity && typeof profileDetails.identity === "object"
+      ? profileDetails.identity
+      : {};
+
+  return String(
+    identity.fullName ||
+      profileDetails.fullName ||
+      user?.fullName ||
+      user?.name ||
+      "",
+  ).trim();
 };
 
 const sanitizeServiceDraftForStorage = (
@@ -676,6 +681,10 @@ const fetchServicePositiveKeywords = async (serviceId) => {
 
 const getBasicProfileFieldError = (field, form) => {
   switch (field) {
+    case "fullName":
+      return String(form.fullName || "").trim()
+        ? ""
+        : "Please enter your full name.";
     case "username": {
       const username = normalizeUsernameInput(form.username);
 
@@ -795,12 +804,6 @@ const FreelancerOnboardingShell = () => {
   const isServiceVisualsSlide = currentSlide.id === "serviceVisuals";
   const isCaseStudySlide = currentSlide.id === "caseStudy";
   const isServiceReviewSlide = currentSlide.id === "serviceReview";
-  const isServiceWizardSlide =
-    isServiceInfoSlide ||
-    isServicePricingSlide ||
-    isServiceVisualsSlide ||
-    isCaseStudySlide ||
-    isServiceReviewSlide;
   const isServiceSectionSlide =
     isServiceInfoSlide ||
     isServicePricingSlide ||
@@ -897,9 +900,13 @@ const FreelancerOnboardingShell = () => {
         clampSlideIndex(storedDraft.currentSlideIndex, storedSlides.length),
       );
       setSelectedWorkPreference(normalizedStoredWorkPreference);
-      setBasicProfileForm(
-        sanitizeBasicProfileFormForDraft(storedDraft.basicProfileForm),
+      const storedBasicProfileForm = sanitizeBasicProfileFormForDraft(
+        storedDraft.basicProfileForm,
       );
+      setBasicProfileForm({
+        ...storedBasicProfileForm,
+        fullName: storedBasicProfileForm.fullName || resolveBasicProfileFullName(user),
+      });
       setSelectedServices(nextServices);
       setServiceDraftsByKey(() =>
         Object.fromEntries(
@@ -992,6 +999,7 @@ const FreelancerOnboardingShell = () => {
 
     setBasicProfileForm((currentForm) => ({
       ...currentForm,
+      fullName: resolveBasicProfileFullName(user) || currentForm.fullName,
       username: normalizeUsernameInput(
         identity.username || user.username || currentForm.username,
       ),
@@ -1606,13 +1614,7 @@ const FreelancerOnboardingShell = () => {
     const mediaFiles = Array.isArray(currentServiceVisualsForm?.mediaFiles)
       ? currentServiceVisualsForm.mediaFiles
       : [];
-    const videoCount = mediaFiles.filter((entry) => isServiceMediaVideo(entry)).length;
-    const imageCount = Math.max(0, mediaFiles.length - videoCount);
-    const hasValidUpload =
-      (videoCount === 1 && imageCount === 0) ||
-      (imageCount === 2 && videoCount === 0);
-
-    return !hasValidUpload;
+    return !isServiceVisualsUploadValid(mediaFiles);
   }, [currentServiceVisualsForm?.mediaFiles]);
 
   const isCaseStudyIncomplete = useMemo(() => {
@@ -1938,6 +1940,7 @@ const FreelancerOnboardingShell = () => {
     const initialAvatarUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
     const localResumeFile = extractResumeFile(basicProfileForm.resume);
     const initialResumeUrl = extractResumeUrl(basicProfileForm.resume);
+    const resolvedFullName = String(basicProfileForm.fullName || "").trim();
     const [resolvedAvatarUrl, resolvedResumeUrl, persistedServices] = await Promise.all([
       localProfilePhotoFile
         ? uploadProfilePhoto(localProfilePhotoFile)
@@ -1994,6 +1997,7 @@ const FreelancerOnboardingShell = () => {
       ...currentProfileDetails,
       profileDetailsVersion: 3,
       role: selectedWorkPreference || "individual",
+      fullName: resolvedFullName,
       professionalBio: basicProfileForm.professionalBio.trim(),
       services: orderedSelectedServices,
       serviceDetails: nextServiceDetails,
@@ -2011,6 +2015,7 @@ const FreelancerOnboardingShell = () => {
           : null,
       identity: {
         ...currentIdentity,
+        fullName: resolvedFullName,
         username: normalizeUsernameInput(basicProfileForm.username),
         country: basicProfileForm.country.trim(),
         city: basicProfileForm.state.trim(),
@@ -2029,6 +2034,7 @@ const FreelancerOnboardingShell = () => {
     delete profileDetails.serviceActiveSkillCategory;
 
     const updatePayload = {
+      fullName: resolvedFullName,
       profileDetails,
       bio: basicProfileForm.professionalBio.trim(),
       professionalBio: basicProfileForm.professionalBio.trim(),
@@ -2264,17 +2270,6 @@ const FreelancerOnboardingShell = () => {
     setCurrentSlideIndex((currentIndex) =>
       Math.min(currentIndex + 1, totalSlides - 1)
     );
-  };
-
-  const handleSkipOnboarding = () => {
-    if (isProfileSaving) {
-      return;
-    }
-
-    submitOnboardingAndNavigate({
-      deliveryPolicyAcceptedOverride: true,
-      communicationPolicyAcceptedOverride: true,
-    });
   };
 
   const handleDeliveryPolicyAgree = () => {
@@ -2872,27 +2867,27 @@ const FreelancerOnboardingShell = () => {
         />
         <div className="relative flex items-center justify-between px-4 py-4 sm:px-6">
           {isFirstSlide ? (
-            <Button
-              asChild
-              variant="secondary"
-              className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
-            >
-              <Link to={FREELANCER_DASHBOARD_PATH}>
-                <ChevronLeft className="h-4 w-4" />
-                Back to dashboard
-              </Link>
-            </Button>
+              <Button
+                asChild
+                variant="secondary"
+                className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
+              >
+                <Link to={FREELANCER_DASHBOARD_PATH} replace>
+                  <ChevronLeft className="h-4 w-4" />
+                  Back to dashboard
+                </Link>
+              </Button>
           ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              onClick={handleBack}
-              className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
-              aria-label={`Go back to slide ${currentSlideIndex}`}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                onClick={handleBack}
+                className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                aria-label="Back to dashboard"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
           )}
 
           <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
@@ -3007,6 +3002,7 @@ const FreelancerOnboardingShell = () => {
                 suggestedKeywords={suggestedKeywords}
                 isSuggestedKeywordsLoading={isSuggestedKeywordsLoading}
                 onServiceVisualsFieldChange={handleServiceVisualsFieldChange}
+                onUploadServiceMediaFile={uploadServiceMediaFile}
                 serviceVisualsValidationErrors={serviceVisualsValidationErrors}
                 caseStudyForm={currentCaseStudyForm}
                 caseStudies={currentServiceCaseStudies}
@@ -3047,24 +3043,7 @@ const FreelancerOnboardingShell = () => {
               {footerPrimaryLabel}
             </Button>
 
-            {isProfileActionFooter || !isServiceWizardSlide ? (
-              <div />
-            ) : (
-              <div className="flex justify-end">
-                {isServiceSectionSlide && currentSlide.id !== "serviceSetup" && currentSlide.id !== "serviceInfo" ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="lg"
-                    onClick={handleSkipServicesSection}
-                    disabled={isProfileSaving}
-                    className={ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS}
-                  >
-                    Skip
-                  </Button>
-                ) : null}
-              </div>
-            )}
+            <div />
           </div>
         </footer>
       )}

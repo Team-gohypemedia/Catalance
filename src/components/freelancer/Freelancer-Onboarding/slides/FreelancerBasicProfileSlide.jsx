@@ -2,12 +2,11 @@ import Check from "lucide-react/dist/esm/icons/check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Plus from "lucide-react/dist/esm/icons/plus";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
 import X from "lucide-react/dist/esm/icons/x";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -115,6 +114,8 @@ const FreelancerBasicProfileSlide = ({
     slide?.description || "Let's establish your professional presence";
   const resumeLabel = resolveFileLabel(resumeFile, "Resume uploaded");
   const hasResume = Boolean(resumeLabel);
+  const fullNameError = basicProfileErrors.fullName;
+  const hasProfilePhoto = Boolean(profilePhotoPreviewUrl);
 
   const getFieldLabelClasses = (hasError) =>
     cn(
@@ -143,7 +144,7 @@ const FreelancerBasicProfileSlide = ({
   return (
     <section className="mx-auto flex min-h-[68vh] w-full max-w-4xl flex-col items-center justify-center gap-5">
       <div className="w-full max-w-2xl text-center">
-        <h1 className="text-xl md:text-4xl lg:text-5xl font-medium mb-1 md:mb-2 lg:mb-2">
+        <h1 className="text-xl font-medium text-primary md:text-4xl lg:text-5xl mb-1 md:mb-2 lg:mb-2">
           {slideTitle}
         </h1>
         <p className="text-muted-foreground font-regular text-sm md:text-lg lg:text-base">
@@ -153,63 +154,35 @@ const FreelancerBasicProfileSlide = ({
 
       <div className="relative w-full overflow-hidden rounded-[32px] border border-white/[0.07] bg-[#0b0b0c] px-5 py-7 shadow-[0_28px_100px_rgba(0,0,0,0.34)] sm:px-10 sm:py-10 lg:px-16 lg:py-12">
         <div className="relative space-y-8">
-        <div className="grid gap-5 md:grid-cols-[max-content_minmax(0,1fr)] md:gap-4 md:items-stretch">
+        <div className="grid gap-5 md:grid-cols-[max-content_minmax(0,1fr)] md:gap-6 md:items-start">
           <div className="flex h-full flex-col items-center text-center">
-            <div className="flex flex-col items-center gap-2 md:pt-3 lg:gap-4 lg:pt-0">
-              <div className="relative">
-                <Avatar
+            <div className="flex flex-col items-center gap-3 md:pt-3 lg:gap-4 lg:pt-0">
+              <div className="relative w-fit">
+                <label
                   className={cn(
-                    "size-28 border-[3px] border-white/15 lg:size-32",
-                    profilePhotoPreviewUrl
-                      ? "bg-white shadow-[0_0_0_8px_rgba(255,255,255,0.02)]"
-                      : "bg-card",
-                    profilePhotoError && "border-destructive/80",
+                    "group relative flex size-32 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-white/20 bg-[#1a1a1a] transition hover:border-primary/60 sm:size-36",
+                    profilePhotoError &&
+                      "border-destructive/80 hover:border-destructive/80",
                   )}
                 >
-                  {profilePhotoPreviewUrl ? (
-                    <>
-                      <AvatarImage
-                        src={profilePhotoPreviewUrl}
-                        alt="Freelancer profile"
-                        className="object-cover"
-                      />
-                      <AvatarFallback className="bg-card text-white/25">
-                        <UserRound className="size-14" />
-                      </AvatarFallback>
-                    </>
+                  {hasProfilePhoto ? (
+                    <img
+                      src={profilePhotoPreviewUrl}
+                      alt="Freelancer profile"
+                      className="size-full object-cover"
+                    />
                   ) : (
-                    <div className="flex size-full items-center justify-center rounded-full bg-card text-white/25">
-                      <UserRound className="size-14" />
-                    </div>
+                    <span className="flex flex-col items-center gap-2 text-primary transition group-hover:scale-[1.02]">
+                      <UserRound className="size-9" />
+                    </span>
                   )}
-                </Avatar>
 
-                {profilePhotoPreviewUrl ? (
-                  <button
-                    type="button"
-                    onClick={onProfilePhotoRemove}
-                    aria-label="Remove profile photo"
-                    className="absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#101010] text-white/70 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition-colors hover:border-white/20 hover:text-white"
-                  >
-                    <X className="size-4" />
-                  </button>
-                ) : null}
-              </div>
+                  {!hasProfilePhoto ? (
+                    <span className="absolute -right-1 bottom-2 flex size-8 items-center justify-center rounded-full bg-primary text-black shadow-lg shadow-primary/25 transition group-hover:scale-105">
+                      <Plus className="size-3.5" />
+                    </span>
+                  ) : null}
 
-            </div>
-
-            <div className="mt-4 flex flex-col items-center gap-3">
-              <div className="flex flex-col items-center gap-1">
-                <Label
-                  className={cn(
-                    getFieldLabelClasses(Boolean(profilePhotoError)),
-                    "mb-0",
-                  )}
-                >
-                  Profile Photo
-                </Label>
-
-                <label className="inline-flex">
                   <input
                     type="file"
                     accept="image/*"
@@ -222,33 +195,57 @@ const FreelancerBasicProfileSlide = ({
                       event.target.value = "";
                     }}
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      "h-11 rounded-[14px] border-primary bg-transparent px-6 text-sm font-semibold text-white shadow-none hover:bg-primary/10 hover:text-white max-sm:!text-sm",
-                      profilePhotoError &&
-                        "border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive",
-                    )}
-                    asChild
-                  >
-                    <span className="max-sm:!text-sm">
-                      <Upload className="size-4 text-white" />
-                      Upload
-                    </span>
-                  </Button>
                 </label>
+
+                {hasProfilePhoto ? (
+                  <button
+                    type="button"
+                    onClick={onProfilePhotoRemove}
+                    aria-label="Remove profile photo"
+                    className="absolute -right-2 -top-2 flex size-8 items-center justify-center rounded-full border border-white/10 bg-[#101010] text-white/75 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition-colors hover:border-white/20 hover:text-white"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                ) : null}
               </div>
 
-              {profilePhotoError ? (
-                <p className="text-center text-sm text-destructive">
-                  {profilePhotoError}
+              <div className="space-y-1">
+                <p className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
+                  Profile Photo
                 </p>
-              ) : null}
+                <p className="text-sm text-white/55">
+                  JPG, PNG or GIF. Max 5MB.
+                </p>
+              </div>
             </div>
+
+            {profilePhotoError ? (
+              <p className="mt-3 text-center text-sm text-destructive">
+                {profilePhotoError}
+              </p>
+            ) : null}
           </div>
 
           <div className="h-full space-y-6">
+            <div className="space-y-3">
+              <Label className={getFieldLabelClasses(Boolean(fullNameError))}>
+                Name
+              </Label>
+              <Input
+                value={basicProfileForm.fullName}
+                onChange={(event) =>
+                  onBasicProfileFieldChange("fullName", event.target.value)
+                }
+                placeholder="Enter your full name"
+                className={getInputClasses(Boolean(fullNameError))}
+                aria-invalid={Boolean(fullNameError)}
+                autoComplete="name"
+              />
+              {fullNameError ? (
+                <p className="text-sm text-destructive">{fullNameError}</p>
+              ) : null}
+            </div>
+
             <div className="space-y-3">
               <Label className={getFieldLabelClasses(Boolean(usernameError))}>
                 Username
@@ -300,24 +297,25 @@ const FreelancerBasicProfileSlide = ({
               ) : null}
             </div>
 
-            <div className="space-y-3">
-              <Label className={getFieldLabelClasses(Boolean(professionalBioError))}>
-                Professional Bio
-              </Label>
-              <Textarea
-                value={basicProfileForm.professionalBio}
-                onChange={(event) =>
-                  onBasicProfileFieldChange("professionalBio", event.target.value)
-                }
-                placeholder="Tell us about your background, expertise, and what makes you unique..."
-                className={getTextAreaClasses(Boolean(professionalBioError))}
-                aria-invalid={Boolean(professionalBioError)}
-              />
-              {professionalBioError ? (
-                <p className="text-sm text-destructive">{professionalBioError}</p>
-              ) : null}
-            </div>
           </div>
+        </div>
+
+        <div className="w-full space-y-3">
+          <Label className={getFieldLabelClasses(Boolean(professionalBioError))}>
+            Professional Bio
+          </Label>
+          <Textarea
+            value={basicProfileForm.professionalBio}
+            onChange={(event) =>
+              onBasicProfileFieldChange("professionalBio", event.target.value)
+            }
+            placeholder="Tell us about your background, expertise, and what makes you unique..."
+            className={getTextAreaClasses(Boolean(professionalBioError))}
+            aria-invalid={Boolean(professionalBioError)}
+          />
+          {professionalBioError ? (
+            <p className="text-sm text-destructive">{professionalBioError}</p>
+          ) : null}
         </div>
 
         <div className="space-y-3">

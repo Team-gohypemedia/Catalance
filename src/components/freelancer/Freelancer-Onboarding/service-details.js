@@ -711,28 +711,84 @@ const buildServicePricingValidationErrors = (normalizedDraft) => {
   return errors;
 };
 
+const resolveServiceVisualKind = (entry) => {
+  const normalizedKind = String(entry?.kind || "").trim().toLowerCase();
+  if (normalizedKind === "image" || normalizedKind === "video") {
+    return normalizedKind;
+  }
+
+  const mimeType = String(
+    entry?.mimeType || entry?.type || entry?.contentType || "",
+  )
+    .trim()
+    .toLowerCase();
+
+  if (mimeType.startsWith("video/")) {
+    return "video";
+  }
+
+  if (mimeType.startsWith("image/")) {
+    return "image";
+  }
+
+  if (typeof File !== "undefined") {
+    const localFile =
+      entry instanceof File
+        ? entry
+        : entry?.file instanceof File
+          ? entry.file
+          : null;
+    const fileType = String(localFile?.type || "").trim().toLowerCase();
+
+    if (fileType.startsWith("video/")) {
+      return "video";
+    }
+
+    if (fileType.startsWith("image/")) {
+      return "image";
+    }
+  }
+
+  return "";
+};
+
+export const isServiceVisualsUploadValid = (mediaFiles = []) => {
+  const entries = Array.isArray(mediaFiles) ? mediaFiles : [];
+  let imageCount = 0;
+  let videoCount = 0;
+
+  for (const entry of entries) {
+    const kind = resolveServiceVisualKind(entry);
+
+    if (kind === "image") {
+      imageCount += 1;
+      continue;
+    }
+
+    if (kind === "video") {
+      videoCount += 1;
+      continue;
+    }
+
+    return false;
+  }
+
+  return (
+    entries.length > 0 &&
+    imageCount <= 2 &&
+    videoCount <= 1
+  );
+};
+
 const buildServiceVisualsValidationErrors = (normalizedDraft) => {
-  const errors = {};
   const mediaFiles = Array.isArray(normalizedDraft.mediaFiles)
     ? normalizedDraft.mediaFiles
     : [];
-  const videoCount = mediaFiles.filter((entry) => {
-    const kind = String(entry?.kind || "").trim().toLowerCase();
-    const mimeType = String(
-      entry?.mimeType || entry?.type || entry?.contentType || "",
-    )
-      .trim()
-      .toLowerCase();
-
-    return kind === "video" || mimeType.startsWith("video/");
-  }).length;
-  const imageCount = Math.max(0, mediaFiles.length - videoCount);
-  const hasValidUpload =
-    (videoCount === 1 && imageCount === 0) ||
-    (imageCount === 2 && videoCount === 0);
+  const errors = {};
+  const hasValidUpload = isServiceVisualsUploadValid(mediaFiles);
 
   if (!hasValidUpload) {
-    errors.mediaFiles = "Please add either 2 images or 1 video before continuing.";
+    errors.mediaFiles = "Please add up to 2 images and 1 video before continuing.";
   }
 
   return errors;
@@ -770,13 +826,6 @@ const buildCaseStudyValidationErrors = (normalizedDraft) => {
   const budget = String(activeCaseStudy.budget || "").trim();
   if (!budget) {
     errors.budget = "Please set a budget.";
-  }
-
-  const hasProjectProof =
-    String(activeCaseStudy.projectLink || "").trim().length > 0 ||
-    Boolean(activeCaseStudy.projectFile);
-  if (!hasProjectProof) {
-    errors.projectProof = "Please add a project link or upload a project file.";
   }
 
   return errors;

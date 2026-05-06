@@ -2,8 +2,12 @@ import {
   ServiceInfoStepper,
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
-import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
+import {
+  ONBOARDING_FIELD_LABEL_CLASS,
+  ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+} from "../typography";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
@@ -30,6 +34,7 @@ const FreelancerServicePricingSlide = ({
   servicePricingForm,
   onServicePricingFieldChange,
   onServiceStepChange,
+  onSkipServices,
   servicePricingValidationErrors = {},
 }) => {
   const serviceName = currentServiceName || "Service";
@@ -61,13 +66,28 @@ const FreelancerServicePricingSlide = ({
 
         {/* Step Content */}
         <div className="w-full space-y-5">
-          <div>
-            <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
-              Set Your Price
-            </h2>
-            <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-              Provide the details of the service you will offer.
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
+                Set Your Price
+              </h2>
+              <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
+                Provide the details of the service you will offer.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onSkipServices?.()}
+              className={cn(
+                ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+                "self-start px-3 py-2 text-sm sm:px-6 sm:py-0 sm:text-base",
+              )}
+            >
+              Skip
+            </Button>
           </div>
 
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">

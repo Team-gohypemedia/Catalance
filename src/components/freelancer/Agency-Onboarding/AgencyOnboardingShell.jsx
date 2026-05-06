@@ -35,7 +35,6 @@ import {
 import { normalizeUsernameInput } from "@/components/features/freelancer/onboarding/utils";
 import {
   FREELANCER_DASHBOARD_PATH,
-  FREELANCER_ONBOARDING_PATH,
 } from "@/shared/lib/dashboard-preference";
 import {
   createEmptyServiceCaseStudy,
@@ -108,6 +107,7 @@ const RESUME_UPLOAD_ALLOWED_MIME_TYPES = new Set([
 ]);
 const RESUME_UPLOAD_ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx"];
 const BASIC_PROFILE_FIELD_ORDER = [
+  "fullName",
   "username",
   "professionalBio",
   "country",
@@ -116,6 +116,7 @@ const BASIC_PROFILE_FIELD_ORDER = [
 ];
 
 const createInitialBasicProfileForm = () => ({
+  fullName: "",
   username: "",
   professionalBio: "",
   country: "India",
@@ -413,6 +414,7 @@ const sanitizeBasicProfileFormForDraft = (form) => {
 
   return {
     ...initialForm,
+    fullName: String(sourceForm.fullName || "").trim(),
     username: normalizeUsernameInput(sourceForm.username || ""),
     professionalBio: String(sourceForm.professionalBio || "").trim(),
     country: String(sourceForm.country || initialForm.country || "India").trim(),
@@ -421,6 +423,25 @@ const sanitizeBasicProfileFormForDraft = (form) => {
     profilePhoto: toPersistableProfilePhoto(sourceForm.profilePhoto),
     resume: toPersistableResumeFile(sourceForm.resume),
   };
+};
+
+const resolveBasicProfileFullName = (user = {}) => {
+  const profileDetails =
+    user?.profileDetails && typeof user.profileDetails === "object"
+      ? user.profileDetails
+      : {};
+  const identity =
+    profileDetails.identity && typeof profileDetails.identity === "object"
+      ? profileDetails.identity
+      : {};
+
+  return String(
+    identity.fullName ||
+      profileDetails.fullName ||
+      user?.fullName ||
+      user?.name ||
+      "",
+  ).trim();
 };
 
 const sanitizeServiceDraftForStorage = (
@@ -695,6 +716,10 @@ const fetchServicePositiveKeywords = async (serviceId) => {
 
 const getBasicProfileFieldError = (field, form) => {
   switch (field) {
+    case "fullName":
+      return String(form.fullName || "").trim()
+        ? ""
+        : "Please enter your full name.";
     case "username": {
       const username = normalizeUsernameInput(form.username);
 
@@ -924,9 +949,13 @@ const AgencyOnboardingShell = ({
         clampSlideIndex(storedDraft.currentSlideIndex, storedSlides.length),
       );
       setSelectedWorkPreference(storedWorkPreference);
-      setBasicProfileForm(
-        sanitizeBasicProfileFormForDraft(storedDraft.basicProfileForm),
+      const storedBasicProfileForm = sanitizeBasicProfileFormForDraft(
+        storedDraft.basicProfileForm,
       );
+      setBasicProfileForm({
+        ...storedBasicProfileForm,
+        fullName: storedBasicProfileForm.fullName || resolveBasicProfileFullName(user),
+      });
       setAgencyProfileForm(
         sanitizeAgencyProfileFormForDraft(storedDraft.agencyProfileForm),
       );
@@ -1026,6 +1055,7 @@ const AgencyOnboardingShell = ({
 
     setBasicProfileForm((currentForm) => ({
       ...currentForm,
+      fullName: resolveBasicProfileFullName(user) || currentForm.fullName,
       username: normalizeUsernameInput(
         identity.username || user.username || currentForm.username,
       ),
@@ -1985,6 +2015,7 @@ const AgencyOnboardingShell = ({
     const initialAvatarUrl = extractProfilePhotoUrl(basicProfileForm.profilePhoto);
     const localResumeFile = extractResumeFile(basicProfileForm.resume);
     const initialResumeUrl = extractResumeUrl(basicProfileForm.resume);
+    const resolvedFullName = String(basicProfileForm.fullName || "").trim();
     const [resolvedAvatarUrl, resolvedResumeUrl, persistedServices] = await Promise.all([
       localProfilePhotoFile
         ? uploadProfilePhoto(localProfilePhotoFile)
@@ -2045,6 +2076,7 @@ const AgencyOnboardingShell = ({
       ...currentProfileDetails,
       profileDetailsVersion: 3,
       role: selectedWorkPreference || "agency",
+      fullName: resolvedFullName,
       professionalBio: basicProfileForm.professionalBio.trim(),
       services: orderedSelectedServices,
       serviceDetails: nextServiceDetails,
@@ -2069,6 +2101,7 @@ const AgencyOnboardingShell = ({
           : null,
       identity: {
         ...currentIdentity,
+        fullName: resolvedFullName,
         username: normalizeUsernameInput(basicProfileForm.username),
         country: basicProfileForm.country.trim(),
         city: basicProfileForm.state.trim(),
@@ -2093,6 +2126,7 @@ const AgencyOnboardingShell = ({
     delete profileDetails.serviceActiveSkillCategory;
 
     const updatePayload = {
+      fullName: resolvedFullName,
       profileDetails,
       bio: basicProfileForm.professionalBio.trim(),
       professionalBio: basicProfileForm.professionalBio.trim(),
@@ -2236,7 +2270,7 @@ const AgencyOnboardingShell = ({
         return;
       }
 
-      navigate(FREELANCER_ONBOARDING_PATH, { replace: true });
+      navigate(FREELANCER_DASHBOARD_PATH, { replace: true });
       return;
     }
 
@@ -3025,23 +3059,23 @@ const AgencyOnboardingShell = ({
                 variant="secondary"
                 className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
               >
-                <Link to={FREELANCER_DASHBOARD_PATH}>
+                <Link to={FREELANCER_DASHBOARD_PATH} replace>
                   <ChevronLeft className="h-4 w-4" />
                   Back to dashboard
                 </Link>
               </Button>
             )
           ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              onClick={handleBack}
-              className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
-              aria-label={`Go back to slide ${currentSlideIndex}`}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                onClick={handleBack}
+                className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                aria-label="Back to dashboard"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
           )}
 
           <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
@@ -3061,7 +3095,7 @@ const AgencyOnboardingShell = ({
               className="w-[92vw] border-white/10 bg-card p-0 text-foreground sm:max-w-sm"
             >
               <SheetHeader className="border-b border-white/10 px-5 py-4 text-left">
-                <SheetTitle className="text-white">Onboarding settings</SheetTitle>
+                <SheetTitle className="text-primary">Onboarding settings</SheetTitle>
                 <SheetDescription className="text-white/60">
                   Manage the current onboarding session.
                 </SheetDescription>

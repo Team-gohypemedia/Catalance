@@ -1,4 +1,5 @@
 import React from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
@@ -36,6 +37,31 @@ const FreelancerDashboard = () => {
   const { user } = useAuth();
   const shouldShowOnboardingWelcome = requiresFreelancerOnboarding(user);
 
+  useEffect(() => {
+    if (!shouldShowOnboardingWelcome || typeof window === "undefined") {
+      return undefined;
+    }
+
+    const { body, documentElement } = document;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyPaddingRight = body.style.paddingRight;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    const scrollbarWidth = window.innerWidth - documentElement.clientWidth;
+
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
+
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      body.style.paddingRight = previousBodyPaddingRight;
+      documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [shouldShowOnboardingWelcome]);
+
   return (
     <FreelancerDashboardContent>
       {(model) => {
@@ -68,6 +94,7 @@ const FreelancerDashboard = () => {
               unreadCount={model.unreadCount}
               markAllAsRead={model.markAllAsRead}
               onNotificationClick={model.handleNotificationClick}
+              workspaceNavHidden={shouldShowOnboardingWelcome}
             />
 
             <main className="relative z-10 flex-1 pb-12 sm:pb-14">

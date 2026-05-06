@@ -31,8 +31,8 @@ import {
 } from "../agency-details";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
-  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
-const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
+  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] text-primary sm:text-[40px]";
+const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em] text-primary";
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
 const EXPERIENCE_LABELS = {
@@ -56,7 +56,7 @@ const DELIVERY_TIMELINE_LABELS = {
 
 
 
-const SECTION_TITLE_CLASS = `${ONBOARDING_SECTION_TITLE_CLASS} text-white`;
+const SECTION_TITLE_CLASS = ONBOARDING_SECTION_TITLE_CLASS;
 const SECTION_SUBTITLE_CLASS =
   `${ONBOARDING_SECTION_DESCRIPTION_CLASS} text-white/48`;
 const CARD_LABEL_CLASS = `${ONBOARDING_FIELD_LABEL_CLASS} mb-1 block`;
@@ -422,6 +422,7 @@ const AgencyServiceReviewSlide = ({
   const freelancerName = useMemo(() => {
     const nameCandidates = [
       isAgencyFlow ? agencyCompanyName : "",
+      basicProfileForm?.fullName,
       user?.profileDetails?.identity?.fullName,
       user?.profileDetails?.fullName,
       user?.displayName,
@@ -438,7 +439,13 @@ const AgencyServiceReviewSlide = ({
     }
 
     return "Freelancer";
-  }, [agencyCompanyName, basicProfileForm?.username, isAgencyFlow, user]);
+  }, [
+    agencyCompanyName,
+    basicProfileForm?.fullName,
+    basicProfileForm?.username,
+    isAgencyFlow,
+    user,
+  ]);
 
   const avatarFallbackInitial = freelancerName.charAt(0).toUpperCase() || "F";
 

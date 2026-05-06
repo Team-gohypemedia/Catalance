@@ -5,8 +5,12 @@ import Plus from "lucide-react/dist/esm/icons/plus";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
-import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
+import {
+  ONBOARDING_FIELD_LABEL_CLASS,
+  ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+} from "../typography";
 import {
   ServiceInfoStepper,
   CustomSelect,
@@ -86,6 +90,7 @@ const FreelancerCaseStudySlide = ({
   onCaseStudyFieldChange,
   onAddCaseStudy,
   onServiceStepChange,
+  onSkipServices,
   caseStudyValidationErrors = {},
 }) => {
   const activeCaseStudyLabel =
@@ -94,7 +99,6 @@ const FreelancerCaseStudySlide = ({
   const titleError = String(caseStudyValidationErrors.title || "").trim();
   const descriptionError = String(caseStudyValidationErrors.description || "").trim();
   const nicheError = String(caseStudyValidationErrors.niche || "").trim();
-  const projectProofError = String(caseStudyValidationErrors.projectProof || "").trim();
   const roleError = String(caseStudyValidationErrors.role || "").trim();
   const timelineError = String(caseStudyValidationErrors.timeline || "").trim();
   const budgetError = String(caseStudyValidationErrors.budget || "").trim();
@@ -122,24 +126,51 @@ const FreelancerCaseStudySlide = ({
 
         {/* Step Content */}
         <div className="w-full space-y-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
-                Project Portfolio
-              </h2>
-              <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-                Provide details to verify your identity securely.
-              </p>
+          <div className="flex items-start justify-between gap-3 sm:items-end">
+            <div className="min-w-0 space-y-3">
+              <div>
+                <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
+                  Project Portfolio
+                </h2>
+                <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
+                  Provide details to verify your identity securely.
+                </p>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={onAddCaseStudy}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14"
-            >
-              <Plus className="h-4 w-4" />
-              Add Case Study
-            </button>
+
+            <div className="flex items-start gap-3 sm:flex-wrap sm:items-center">
+              <button
+                type="button"
+                onClick={onAddCaseStudy}
+                className="hidden h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14 sm:inline-flex"
+              >
+                <Plus className="h-4 w-4" />
+                Add Case Study
+              </button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onSkipServices?.()}
+                className={cn(
+                  ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+                  "self-start px-3 py-2 text-sm sm:px-6 sm:py-0 sm:text-base",
+                )}
+              >
+                Skip
+              </Button>
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={onAddCaseStudy}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14 sm:hidden"
+          >
+            <Plus className="h-4 w-4" />
+            Add Case Study
+          </button>
 
           {/* Project Header */}
           <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
@@ -233,12 +264,8 @@ const FreelancerCaseStudySlide = ({
                     }
                     placeholder="https://..."
                     className={cn(
-                      "h-12 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
-                      projectProofError
-                        ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                        : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                      "h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
                     )}
-                    aria-invalid={Boolean(projectProofError)}
                   />
                 </div>
               </div>
@@ -253,7 +280,6 @@ const FreelancerCaseStudySlide = ({
                   onChange={(file) =>
                     onCaseStudyFieldChange("projectFile", file)
                   }
-                  hasError={Boolean(projectProofError)}
                 />
               </div>
 
@@ -274,10 +300,6 @@ const FreelancerCaseStudySlide = ({
                 ) : null}
               </div>
             </div>
-            {projectProofError ? (
-              <p className="mt-1 text-sm text-destructive">{projectProofError}</p>
-            ) : null}
-
             {/* 2-column row: Timeline, Budget */}
             <div className="grid gap-5 sm:grid-cols-2">
               {/* Timeline */}

@@ -23,36 +23,34 @@ const StepperItem = ({
   step,
   isActive,
   isCompleted,
-  itemRef,
   onStepChange,
 }) => (
   <div
     className={cn(
-      "w-[118px] shrink-0 snap-start sm:w-auto sm:min-w-0 sm:flex-1",
+      "flex min-w-0 items-center transition-[flex] duration-300 ease-out",
+      isActive ? "flex-[2.3]" : "flex-[0.9]",
+      "sm:flex-1",
     )}
   >
     <button
       type="button"
-      ref={itemRef}
       onClick={() => onStepChange?.(step.id)}
       className={cn(
-        "relative flex h-8 w-full min-w-0 items-center rounded-full border text-[13px] transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10 sm:text-[14px]",
-        isActive ? "font-medium" : "font-normal",
+        "relative flex h-9 w-full min-w-0 items-center rounded-full border text-sm transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10",
         isActive
-          ? "justify-center gap-0 border-primary bg-primary px-2 text-primary-foreground ring-2 ring-primary/35 shadow-[0_0_16px_rgba(250,204,21,0.22)] sm:gap-2 sm:px-4"
+          ? "justify-center gap-0 border-primary bg-primary px-2 text-primary-foreground shadow-[0_0_16px_rgba(250,204,21,0.22)] min-[360px]:px-3 sm:gap-2 sm:px-4"
           : isCompleted
-            ? "justify-center gap-0 border-white/10 bg-white/[0.12] px-2 text-white hover:border-white/20 hover:bg-white/[0.16] sm:gap-2 sm:px-4"
-            : "justify-center gap-0 border-white/8 bg-white/[0.04] px-2 text-white/60 hover:border-white/15 hover:bg-white/[0.08] hover:text-white/80 sm:gap-2 sm:px-4",
+            ? "justify-center gap-0 border-white/10 bg-white/10 px-2 text-white hover:border-white/20 hover:bg-white/15 sm:gap-2 sm:px-4"
+            : "justify-center gap-0 border-white/8 bg-white/[0.03] px-2 text-white/55 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/75 sm:gap-2 sm:px-4",
       )}
       aria-current={isActive ? "step" : undefined}
       aria-label={`${step.step}. ${step.label}`}
     >
       <span
         className={cn(
-          "min-w-0 whitespace-nowrap text-center opacity-100 transition-[opacity,color] duration-300 ease-out",
           ONBOARDING_STEP_LABEL_CLASS,
           isActive
-            ? "max-w-none whitespace-nowrap text-sm font-medium text-primary-foreground"
+            ? "max-w-none whitespace-nowrap text-xs font-medium text-primary-foreground min-[360px]:text-sm"
             : "max-w-full truncate text-sm font-normal text-inherit",
         )}
       >
@@ -72,47 +70,15 @@ export const ServiceInfoStepper = ({
   steps = SERVICE_INFO_STEPS,
 }) => {
   const activeIdx = steps.findIndex((step) => step.id === activeStepId);
-  const stepperRef = useRef(null);
-  const activeStepRef = useRef(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const stepperElement = stepperRef.current;
-    const activeElement = activeStepRef.current;
-    if (!stepperElement || !activeElement) {
-      return;
-    }
-
-    const isMobileViewport = window.innerWidth < 640;
-    const hasHorizontalOverflow =
-      stepperElement.scrollWidth > stepperElement.clientWidth + 1;
-
-    if (!isMobileViewport || !hasHorizontalOverflow) {
-      return;
-    }
-
-    activeElement.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
-  }, [activeStepId]);
 
   return (
-    <div
-      ref={stepperRef}
-      className="subtle-scrollbar flex w-full items-center gap-1 overflow-x-auto overflow-y-hidden rounded-full border border-white/10 bg-card p-0.5 snap-x snap-mandatory sm:overflow-x-hidden sm:p-1"
-    >
+    <div className="flex w-full items-center gap-1 overflow-hidden rounded-full border border-white/10 bg-card p-1">
       {steps.map((step, idx) => (
         <StepperItem
           key={step.id}
           step={step}
           isActive={step.id === activeStepId}
           isCompleted={activeIdx >= 0 && idx < activeIdx}
-          itemRef={step.id === activeStepId ? activeStepRef : null}
           onStepChange={onStepChange}
         />
       ))}

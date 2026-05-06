@@ -16,6 +16,7 @@ describe("agency profile helpers", () => {
       industries: [],
       ndaAvailable: false,
     });
+    expect(createInitialAgencyProfileForm()).not.toHaveProperty("capacity");
   });
 
   it("sanitizes agency drafts before storage", () => {
@@ -50,5 +51,12 @@ describe("agency profile helpers", () => {
     expect(getAgencyStepValidationMessage({}, "agencyTrust")).toBe(
       "Please select at least one industry.",
     );
+  });
+
+  it("requires response time and collaboration style on operations", () => {
+    expect(getAgencyStepValidationErrors({}, "agencyOperations")).toMatchObject({
+      responseTime: "Please select your response time.",
+      collaborationStyle: "Please choose a collaboration style.",
+    });
   });
 });

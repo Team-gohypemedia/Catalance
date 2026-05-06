@@ -32,3 +32,6 @@ export const ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS =
 
 export const ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS =
   "h-11 px-6 text-base font-normal";
+
+export const ONBOARDING_SERVICE_SKIP_BUTTON_CLASS =
+  "h-auto w-fit px-0 py-0 text-xs font-normal leading-none text-white/75 hover:text-white hover:!bg-transparent hover:underline sm:h-11 sm:px-6 sm:text-base";

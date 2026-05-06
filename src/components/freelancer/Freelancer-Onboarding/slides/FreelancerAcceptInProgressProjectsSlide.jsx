@@ -3,59 +3,62 @@ import { cn } from "@/shared/lib/utils";
 const IN_PROGRESS_PROJECT_OPTIONS = [
   {
     value: true,
-    label:
-      "Yes, I can take over partially completed projects and continue from the current stage.",
+    label: "Yes, I can continue existing projects.",
   },
   {
     value: false,
-    label:
-      "No, I prefer projects that start from scratch so I can manage the full process.",
+    label: "No, I only take projects from scratch.",
   },
 ];
 
 const FreelancerAcceptInProgressProjectsSlide = ({
+  slide,
   acceptInProgressProjectsValue,
   onAcceptInProgressProjectsChange,
-}) => (
-  <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6">
-    <div className="w-full max-w-4xl space-y-6">
-      <div className="text-center">
-        <h1 className="text-balance text-3xl font-medium tracking-[-0.035em] text-white sm:text-4xl lg:text-[40px] lg:leading-[1.06]">
-          Do You Accept Projects That Are Already In Progress Or Partially Completed?
-        </h1>
-      </div>
+}) => {
+  const title = slide?.title || "Do You Accept Ongoing Projects?";
 
-      <div className="space-y-4">
-        {IN_PROGRESS_PROJECT_OPTIONS.map((option) => {
-          const isSelected = acceptInProgressProjectsValue === option.value;
+  return (
+    <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6">
+      <div className="w-full max-w-4xl space-y-6">
+        <div className="text-center">
+          <h1 className="text-balance text-3xl font-medium tracking-[-0.035em] text-primary sm:text-4xl lg:text-[40px] lg:leading-[1.06]">
+            {title}
+          </h1>
+        </div>
 
-          return (
-            <button
-              key={option.label}
-              type="button"
-              onClick={() => onAcceptInProgressProjectsChange(option.value)}
-              className={cn(
-                "w-full rounded-2xl border bg-card px-5 py-4 text-center transition-all duration-200",
-                isSelected
-                  ? "border-primary ring-1 ring-primary/20"
-                  : "border-white/10 hover:border-white/20",
-              )}
-              aria-pressed={isSelected}
-            >
-              <p
+        <div className="space-y-4">
+          {IN_PROGRESS_PROJECT_OPTIONS.map((option) => {
+            const isSelected = acceptInProgressProjectsValue === option.value;
+
+            return (
+              <button
+                key={option.label}
+                type="button"
+                onClick={() => onAcceptInProgressProjectsChange(option.value)}
                 className={cn(
-                  "text-base font-normal sm:text-base",
-                  isSelected ? "text-primary" : "text-white",
+                  "w-full rounded-2xl border bg-card px-5 py-4 text-center transition-all duration-200",
+                  isSelected
+                    ? "border-primary ring-1 ring-primary/20"
+                    : "border-white/10 hover:border-white/20",
                 )}
+                aria-pressed={isSelected}
               >
-                {option.label}
-              </p>
-            </button>
-          );
-        })}
+                <p
+                  className={cn(
+                    "text-base font-normal sm:text-base",
+                    isSelected ? "text-primary" : "text-white",
+                  )}
+                >
+                  {option.label}
+                </p>
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 export default FreelancerAcceptInProgressProjectsSlide;

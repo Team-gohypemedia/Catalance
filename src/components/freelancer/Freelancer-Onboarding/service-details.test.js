@@ -102,8 +102,34 @@ describe("service step validation", () => {
 
   it("requires media before continuing visuals", () => {
     expect(getServiceStepValidationMessage({}, "serviceVisuals")).toBe(
-      "Please add either 2 images or 1 video before continuing.",
+      "Please add up to 2 images and 1 video before continuing.",
     );
+  });
+
+  it("accepts a single image before continuing visuals", () => {
+    expect(
+      getServiceStepValidationMessage(
+        {
+          mediaFiles: [{ type: "image/png", name: "cover.png" }],
+        },
+        "serviceVisuals",
+      ),
+    ).toBe("");
+  });
+
+  it("accepts mixed media within the upload limits", () => {
+    expect(
+      getServiceStepValidationMessage(
+        {
+          mediaFiles: [
+            { type: "image/png", name: "cover.png" },
+            { type: "image/jpeg", name: "detail.jpg" },
+            { type: "video/mp4", name: "demo.mp4" },
+          ],
+        },
+        "serviceVisuals",
+      ),
+    ).toBe("");
   });
 
   it("returns field-level case study validation errors", () => {
@@ -114,7 +140,6 @@ describe("service step validation", () => {
       role: "Please enter your role.",
       timeline: "Please select a timeline.",
       budget: "Please set a budget.",
-      projectProof: "Please add a project link or upload a project file.",
     });
   });
 
