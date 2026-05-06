@@ -1,4 +1,4 @@
-// v3 - project color tokens only
+// v4 - premium redesign with badge shelf and process summary
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
@@ -13,14 +13,16 @@ import Zap from "lucide-react/dist/esm/icons/zap";
 import Target from "lucide-react/dist/esm/icons/target";
 import Info from "lucide-react/dist/esm/icons/info";
 import X from "lucide-react/dist/esm/icons/x";
+import Clock from "lucide-react/dist/esm/icons/clock";
 import { useNavigate } from "react-router-dom";
 import FreelancerTopBar from "@/components/features/freelancer/FreelancerTopBar";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
+import BadgeShelf from "./BadgeShelf";
+import ProcessSummaryCard from "./ProcessSummaryCard";
 
 const makeKey = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -35,55 +37,72 @@ const formatReset = (resetAt) => {
 
 /* ── Info Modal ───────────────────────────────────────── */
 const HOW_IT_WORKS = [
-  { emoji: "📅", title: "Daily Questions", desc: "Answer 5 client-readiness questions every day. Questions reset at UTC midnight." },
-  { emoji: "🔥", title: "Streaks", desc: "Complete today's quest to keep your streak alive. Miss a day and it resets to 0. Build streaks to unlock milestone badges." },
-  { emoji: "⚡", title: "XP & Level", desc: "Earn XP for every correct answer. Accumulate XP to level up your engagement rank — separate from your project experience level." },
-  { emoji: "🪙", title: "Loyalty Coins", desc: "Coins are awarded on completion. Use them to redeem rewards, freeze streaks, or unlock perks in future updates." },
-  { emoji: "🔁", title: "Retakes", desc: "You get 2 attempts per day. Use a retake to improve your score — your best result is counted." },
-  { emoji: "🏆", title: "Leaderboard", desc: "Top freelancers by total coins are ranked weekly. Climb the board to get priority in hackathons and challenges." },
+  { emoji: "📅", title: "Daily Questions", desc: "Complete 5 client-readiness questions every day to sharpen your professional habits." },
+  { emoji: "🔥", title: "Streaks", desc: "Build consistency to unlock exclusive milestone badges and bonus rewards. Don't miss a day!" },
+  { emoji: "⚡", title: "XP & Level", desc: "Level up your engagement rank as you earn XP. High levels signal reliability to potential clients." },
+  { emoji: "🪙", title: "Loyalty Coins", desc: "Earn coins to redeem perks, freeze streaks, or access premium platform features." },
+  { emoji: "🔁", title: "Smart Retakes", desc: "Improve your score with up to 2 attempts daily. Your highest score is always the one that counts." },
+  { emoji: "🏆", title: "Leaderboard", desc: "Compete with top freelancers. High rankings earn priority access to challenges and events." },
 ];
 
 const InfoModal = ({ open, onClose }) => {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
+      <div className="absolute inset-0 bg-background/40 backdrop-blur-md" />
       <div
-        className="relative z-10 w-full max-w-lg rounded-[28px] border border-border bg-card shadow-2xl"
+        className="relative z-10 w-full max-w-xl overflow-hidden rounded-[32px] border border-border bg-card shadow-2xl animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.05] via-transparent to-transparent pointer-events-none" />
+        
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-primary/10">
-              <Info className="size-4 text-primary" />
-            </div>
-            <h2 className="text-base font-black text-foreground">How Growth Quest Works</h2>
+        <div className="relative flex items-center justify-between border-b border-border/50 px-8 py-6">
+          <div>
+            <h2 className="text-xl font-black tracking-tight text-foreground">Growth Quest Guide</h2>
+            <p className="text-xs font-medium text-muted-foreground mt-1">Master the engagement system</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+            className="flex size-10 items-center justify-center rounded-full border border-border bg-background/50 text-muted-foreground transition-all hover:border-primary/30 hover:text-foreground hover:scale-105 active:scale-95"
           >
-            <X className="size-4" />
+            <X className="size-5" />
           </button>
         </div>
+
         {/* Body */}
-        <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
-          <div className="space-y-4">
+        <div className="relative max-h-[70vh] overflow-y-auto px-8 py-6">
+          <div className="grid gap-4 sm:grid-cols-2">
             {HOW_IT_WORKS.map((item) => (
-              <div key={item.title} className="flex gap-4 rounded-2xl border border-border bg-background p-4">
-                <span className="text-2xl leading-none pt-0.5">{item.emoji}</span>
+              <div key={item.title} className="group flex flex-col gap-3 rounded-[24px] border border-border/50 bg-background/50 p-5 transition-all hover:border-primary/20 hover:bg-background">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-2xl transition-transform group-hover:scale-110">
+                  {item.emoji}
+                </div>
                 <div>
                   <p className="text-sm font-black text-foreground">{item.title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.desc}</p>
+                  <p className="mt-1 text-[0.7rem] leading-relaxed text-muted-foreground">{item.desc}</p>
                 </div>
               </div>
             ))}
           </div>
-          <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/8 px-4 py-3">
-            <p className="text-xs font-semibold text-primary">💡 Tip: Complete your quest every day before midnight UTC to maintain your streak and maximise rewards.</p>
+          
+          <div className="mt-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
+            <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs">💡</div>
+            <p className="text-[0.7rem] font-bold leading-relaxed text-primary">
+              Pro Tip: Questions reset at <span className="font-black underline">00:00 UTC</span>. Set a daily reminder to maintain your streak and maximize your rewards!
+            </p>
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-border/50 px-8 py-5 flex justify-end">
+          <Button 
+            onClick={onClose}
+            className="rounded-full px-8 font-black bg-primary text-primary-foreground"
+          >
+            Got it, thanks!
+          </Button>
         </div>
       </div>
     </div>
@@ -148,33 +167,78 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
     { rank: 12, name: "You", coins, isYou: true },
   ];
 
+  /* Streak milestone next target */
+  const nextMilestone = [3, 7, 15, 30, 60].find((d) => d > streak) || null;
+  const milestoneProgress = nextMilestone ? Math.round((streak / nextMilestone) * 100) : 100;
+
+  /* XP level progress */
+  const levelThresholds = [0, 200, 600, 1500, 3500];
+  const levelNames = ["Starter", "Active Learner", "Skilled Contributor", "Pro Contributor", "Gold Contributor"];
+  const currentLevelIdx = levelThresholds.reduce((acc, t, i) => (xp >= t ? i : acc), 0);
+  const nextThreshold = levelThresholds[currentLevelIdx + 1] ?? null;
+  const prevThreshold = levelThresholds[currentLevelIdx] ?? 0;
+  const xpPct = nextThreshold
+    ? Math.round(((xp - prevThreshold) / (nextThreshold - prevThreshold)) * 100)
+    : 100;
+
   return (
     <div className="flex flex-col gap-6">
       {/* Hero */}
       <div className="relative overflow-hidden rounded-[32px] border border-border bg-card p-8 sm:p-10">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.08] via-transparent to-transparent pointer-events-none" />
-        <div className="relative z-10 max-w-xl">
-          <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary">
-            <Sparkles className="size-3.5" /> Daily Growth Quest
-          </span>
-          <h1 className="mt-5 text-4xl font-black leading-tight text-foreground sm:text-5xl">
-            Play to Gain<br />Knowledge 🚀
-          </h1>
-          <p className="mt-3 text-sm font-medium text-muted-foreground leading-relaxed">
-            5 daily questions · Boost your client readiness · Earn XP &amp; coins
-          </p>
-          {error && <p className="mt-3 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive w-fit">{error}</p>}
-          <button
-            type="button"
-            onClick={onStartQuest}
-            disabled={done}
-            className={cn(
-              "mt-7 inline-flex h-12 items-center gap-2 rounded-full px-8 text-sm font-black tracking-wide shadow-md transition-all duration-200 hover:scale-105 active:scale-95",
-              done ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"
+        <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary">
+              <Sparkles className="size-3.5" /> Daily Growth Quest
+            </span>
+            <h1 className="mt-4 text-4xl font-black leading-tight text-foreground sm:text-5xl">
+              Play to Gain<br />Knowledge 🚀
+            </h1>
+            <p className="mt-3 text-sm font-medium text-muted-foreground leading-relaxed">
+              5 daily questions · Boost your client readiness · Earn XP &amp; coins
+            </p>
+            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <Clock className="size-3.5" />
+              <span>~5 minutes · Resets at UTC midnight</span>
+            </div>
+            {error && <p className="mt-3 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive w-fit">{error}</p>}
+            <button
+              type="button"
+              onClick={onStartQuest}
+              disabled={done}
+              className={cn(
+                "mt-6 inline-flex h-12 items-center gap-2 rounded-full px-8 text-sm font-black tracking-wide shadow-md transition-all duration-200 hover:scale-105 active:scale-95",
+                done ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"
+              )}
+            >
+              {done ? "✓ Completed for Today" : isRetake ? `Retake Quest (${max - used} left)` : "Get Started →"}
+            </button>
+          </div>
+
+          {/* XP Ring */}
+          <div className="flex shrink-0 flex-col items-center gap-2">
+            <div className="relative flex size-28 items-center justify-center">
+              <svg className="absolute inset-0 -rotate-90" width="112" height="112" viewBox="0 0 112 112">
+                <circle cx="56" cy="56" r="48" fill="none" stroke="currentColor" strokeWidth="8" className="text-border" />
+                <circle
+                  cx="56" cy="56" r="48" fill="none" stroke="currentColor" strokeWidth="8"
+                  className="text-primary"
+                  strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 48}`}
+                  strokeDashoffset={`${2 * Math.PI * 48 * (1 - xpPct / 100)}`}
+                  style={{ transition: "stroke-dashoffset 0.6s ease" }}
+                />
+              </svg>
+              <div className="text-center">
+                <p className="text-xl font-black text-foreground">{xp}</p>
+                <p className="text-[0.6rem] font-bold uppercase tracking-wider text-muted-foreground">XP</p>
+              </div>
+            </div>
+            <p className="text-xs font-bold text-foreground">{levelNames[currentLevelIdx]}</p>
+            {nextThreshold && (
+              <p className="text-[0.65rem] text-muted-foreground">{nextThreshold - xp} XP to next level</p>
             )}
-          >
-            {done ? "Completed for Today ✓" : isRetake ? `Retake Quest (${max - used} left)` : "Get Started →"}
-          </button>
+          </div>
         </div>
         <div className="absolute -right-10 -top-10 opacity-[0.06] pointer-events-none">
           <Trophy className="size-72 text-primary" />
@@ -188,6 +252,29 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
         <StatCard icon={Star} label="Coins" value={coins} sub="loyalty coins" />
         <StatCard icon={Trophy} label="Level" value={`Lv. ${level}`} sub="engagement rank" />
       </div>
+
+      {/* Streak Milestone Progress */}
+      {nextMilestone && (
+        <div className="rounded-[24px] border border-primary/20 bg-primary/5 px-6 py-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-black text-foreground">🎯 Next Milestone: {nextMilestone}-Day Streak</p>
+            <span className="text-xs font-bold text-primary">{streak}/{nextMilestone} days</span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-border overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-500"
+              style={{ width: `${milestoneProgress}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">{nextMilestone - streak} more day{nextMilestone - streak !== 1 ? "s" : ""} to unlock the badge + bonus rewards</p>
+        </div>
+      )}
+
+      {/* Badge Shelf */}
+      <BadgeShelf badges={dashboard?.profile?.badges || []} currentStreak={streak} />
+
+      {/* Process Summary */}
+      <ProcessSummaryCard processSummary={dashboard?.processSummary} />
 
       {/* Leaderboard */}
       <div className="rounded-[32px] border border-border bg-card p-6">
@@ -203,6 +290,7 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
         <div className="space-y-1.5">
           {leaderboard.map((u) => <LeaderRow key={u.rank} {...u} />)}
         </div>
+        <p className="mt-4 text-center text-xs text-muted-foreground">Public leaderboard coming soon · Rankings reset weekly</p>
       </div>
     </div>
   );
@@ -221,15 +309,15 @@ const QuizView = ({ questions, activeIndex, setActiveIndex, selectedAnswers, han
   return (
     <div className="mx-auto max-w-2xl">
       {/* Header */}
-      <div className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="text-[0.7rem] font-black uppercase tracking-[0.18em] text-muted-foreground">Daily Growth Quest</p>
-          <h2 className="mt-0.5 text-xl font-black text-foreground">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="flex flex-col">
+          <p className="whitespace-nowrap text-[0.7rem] font-black uppercase tracking-[0.18em] text-muted-foreground">Daily Growth Quest</p>
+          <h2 className="mt-0.5 whitespace-nowrap text-xl font-black text-foreground">
             Question <span className="text-primary">{activeIndex + 1}</span>
             <span className="text-muted-foreground"> of {questions.length}</span>
           </h2>
         </div>
-        <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-bold text-muted-foreground">
+        <span className="shrink-0 rounded-full border border-border bg-card px-3 py-1 text-xs font-bold text-muted-foreground">
           {q.categoryLabel || "Client Readiness"}
         </span>
       </div>
@@ -253,7 +341,7 @@ const QuizView = ({ questions, activeIndex, setActiveIndex, selectedAnswers, han
       <div className="rounded-[28px] border border-border bg-card p-6 sm:p-8">
         <p className="text-lg font-bold leading-relaxed text-foreground">{q.questionText}</p>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 sm:items-stretch">
           {(q.options || []).map((opt, idx) => {
             const selected = selectedAnswers[q.id] === opt.id;
             const label = LABELS[idx] || opt.id.toUpperCase();
@@ -263,7 +351,7 @@ const QuizView = ({ questions, activeIndex, setActiveIndex, selectedAnswers, han
                 type="button"
                 onClick={() => handleSelectAnswer(q.id, opt.id)}
                 className={cn(
-                  "flex min-h-[60px] w-full cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left transition-all duration-150",
+                  "flex h-full w-full cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left transition-all duration-150",
                   selected
                     ? "border-primary bg-primary/10 scale-[1.02]"
                     : "border-border bg-background hover:border-primary/30 hover:bg-primary/5"
@@ -349,69 +437,112 @@ const QuizView = ({ questions, activeIndex, setActiveIndex, selectedAnswers, han
 
 /* ── Result View ───────────────────────────────────────── */
 const ResultView = ({ result, nextResetAt, onBack }) => {
-  const score = result?.score || {};
-  const rewards = result?.rewards || {};
-  const answers = Array.isArray(result?.answers) ? result.answers : [];
+  const score = result?.scoreSummary || {};
+  const rewards = result?.rewardsAwarded || {};
+  const answers = Array.isArray(result?.questionResults) ? result.questionResults : [];
 
   return (
-    <div className="mx-auto max-w-3xl flex flex-col gap-5">
-      {/* Score hero */}
-      <div className="rounded-[32px] border border-border bg-card p-8 text-center">
-        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-[20px] bg-primary/10">
-          <CheckCircle2 className="size-8 text-primary" />
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+      <div className="relative flex flex-col items-center overflow-hidden rounded-[32px] border border-border bg-card p-8 text-center shadow-xl sm:p-12">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.05] via-transparent to-transparent pointer-events-none" />
+        
+        <div className="relative mb-6 flex size-20 items-center justify-center rounded-3xl bg-primary/10 transition-transform hover:scale-110 duration-500">
+          <CheckCircle2 className="size-10 text-primary" />
         </div>
-        <p className="text-[0.7rem] font-black uppercase tracking-[0.2em] text-muted-foreground">Quest Completed!</p>
-        <p className="mt-2 text-6xl font-black text-foreground">
-          {score.correctCount ?? 0}<span className="text-3xl text-muted-foreground"> / {score.questionCount ?? 0}</span>
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">{score.accuracy ?? 0}% accuracy</p>
+        
+        <p className="text-[0.8rem] font-black uppercase tracking-[0.25em] text-muted-foreground">Quest Completed!</p>
+        <h2 className="mt-4 text-7xl font-black tracking-tighter text-foreground sm:text-8xl">
+          {score.correctCount ?? 0}<span className="text-3xl font-bold text-muted-foreground sm:text-4xl">/5</span>
+        </h2>
+        <div className="mt-2 flex items-center gap-2 rounded-full border border-border bg-background/50 px-4 py-1.5">
+          <Sparkles className="size-3.5 text-primary" />
+          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+            {score.accuracy ?? 0}% accuracy
+          </p>
+        </div>
 
-        <div className="mt-6 inline-flex gap-8 rounded-2xl border border-border bg-background px-8 py-4">
-          <div className="text-center">
-            <p className="text-xl font-black text-primary">+{rewards.xpAwarded ?? 0}</p>
-            <p className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">XP</p>
+        {/* Rewards Grid */}
+        <div className="mt-10 grid w-full grid-cols-3 gap-3">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-background/40 py-4 transition-all hover:bg-background/60">
+            <p className="text-2xl font-black text-primary">+{rewards.xpAwarded ?? 0}</p>
+            <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">XP</p>
           </div>
-          <div className="h-auto w-px bg-border" />
-          <div className="text-center">
-            <p className="text-xl font-black text-foreground">+{rewards.coinsAwarded ?? 0}</p>
-            <p className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">Coins</p>
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-background/40 py-4 transition-all hover:bg-background/60">
+            <p className="text-2xl font-black text-foreground">+{rewards.coinsAwarded ?? 0}</p>
+            <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Coins</p>
           </div>
-          <div className="h-auto w-px bg-border" />
-          <div className="text-center">
-            <p className="text-xl font-black text-foreground">{result?.streak?.currentStreak ?? 0} 🔥</p>
-            <p className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">Streak</p>
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-background/40 py-4 transition-all hover:bg-background/60">
+            <p className="text-2xl font-black text-foreground">{result?.streak?.currentStreak ?? 0}</p>
+            <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+               Streak <Flame className="size-3 text-[#facc15]" />
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Badge */}
+      {/* Badge unlocked celebration */}
       {Array.isArray(result?.unlockedBadges) && result.unlockedBadges.length > 0 && (
-        <div className="flex items-center gap-4 rounded-2xl border border-primary/20 bg-primary/8 px-6 py-4">
-          <Trophy className="size-6 text-primary shrink-0" />
-          <div>
-            <p className="text-[0.7rem] font-black uppercase tracking-wider text-muted-foreground">Badge Unlocked!</p>
-            <p className="font-black text-foreground">{result.unlockedBadges.map((b) => b.title).join(", ")}</p>
+        <div className="group flex items-center gap-5 rounded-[28px] border border-primary/30 bg-primary/10 px-8 py-5 shadow-lg shadow-primary/5 transition-all hover:bg-primary/15">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-4xl shadow-inner group-hover:scale-110 transition-transform">🏆</div>
+          <div className="min-w-0">
+            <p className="text-[0.7rem] font-black uppercase tracking-[0.15em] text-primary">Milestone Achieved!</p>
+            <p className="mt-1 truncate text-lg font-black leading-tight text-foreground">
+              {result.unlockedBadges.map((b) => b.title || b.key).join(", ")}
+            </p>
+            <p className="text-xs font-bold text-primary/70">Badge added to your profile.</p>
           </div>
         </div>
       )}
 
       {/* Answer review */}
-      <div className="rounded-[28px] border border-border bg-card p-6">
-        <h3 className="mb-4 text-lg font-black text-foreground">Review Answers</h3>
-        <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+      <div className="rounded-[32px] border border-border bg-card p-6 sm:p-8">
+        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-xl font-black tracking-tight text-foreground">Review Answers</h3>
+            <p className="text-xs font-bold text-muted-foreground">Deepen your professional readiness</p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-1.5 text-xs font-black uppercase tracking-wider text-muted-foreground">
+            {answers.filter((a) => a.isCorrect).length}/{answers.length} correct
+          </div>
+        </div>
+
+        <div className="space-y-4 max-h-[520px] overflow-y-auto subtle-scrollbar pr-2">
           {answers.map((a, i) => (
-            <div key={a.questionId} className={cn("rounded-2xl border p-4", a.isCorrect ? "border-emerald-500/20 bg-emerald-500/5" : "border-destructive/20 bg-destructive/5")}>
-              <div className="flex gap-3">
-                {a.isCorrect
-                  ? <CheckCircle2 className="size-5 shrink-0 text-emerald-500 mt-0.5" />
-                  : <XCircle className="size-5 shrink-0 text-destructive mt-0.5" />}
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground"><span className="text-muted-foreground mr-2">{i + 1}.</span>{a.questionText}</p>
+            <div key={a.questionId} className={cn(
+              "group relative overflow-hidden rounded-[24px] border p-5 transition-all",
+              a.isCorrect 
+                ? "border-emerald-500/20 bg-emerald-500/[0.02] hover:bg-emerald-500/[0.05]" 
+                : "border-destructive/20 bg-destructive/[0.02] hover:bg-destructive/[0.05]"
+            )}>
+              <div className="flex items-start gap-4">
+                <div className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-full text-lg font-black transition-transform group-hover:scale-110",
+                  a.isCorrect ? "bg-emerald-500/10 text-emerald-500" : "bg-destructive/10 text-destructive"
+                )}>
+                  {a.isCorrect ? <CheckCircle2 className="size-5" /> : <XCircle className="size-5" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 text-sm font-black text-muted-foreground">{i + 1}.</span>
+                    <p className="text-sm font-bold leading-relaxed text-foreground">
+                      {a.questionText}
+                    </p>
+                  </div>
                   {!a.isCorrect && (
-                    <p className="mt-1.5 text-xs font-semibold text-destructive">Correct: <span className="font-black">{String(a.correctOptionId).toUpperCase()}</span></p>
+                    <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-1.5 text-[0.7rem] font-black uppercase tracking-wider text-destructive">
+                      Correct: {String(a.correctOptionId).toUpperCase()}
+                    </div>
                   )}
                   {a.explanation && (
-                    <p className="mt-2 rounded-xl border border-border bg-background px-4 py-2.5 text-xs text-muted-foreground leading-relaxed">{a.explanation}</p>
+                    <div className="mt-4 rounded-2xl border border-border/50 bg-background/50 px-5 py-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Info className="size-3 text-muted-foreground" />
+                        <p className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Why this matters</p>
+                      </div>
+                      <p className="text-[0.8rem] font-medium leading-relaxed text-muted-foreground">
+                        {a.explanation}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -420,14 +551,23 @@ const ResultView = ({ result, nextResetAt, onBack }) => {
         </div>
       </div>
 
-      <p className="text-center text-xs text-muted-foreground">Next quest unlocks around <span className="text-foreground">{formatReset(nextResetAt)}</span></p>
-      <button
-        type="button"
-        onClick={onBack}
-        className="mx-auto flex h-12 items-center gap-2 rounded-full bg-primary px-9 text-sm font-black text-primary-foreground shadow-lg transition-all hover:scale-105 hover:bg-primary/90"
-      >
-        Back to Dashboard
-      </button>
+      <div className="flex flex-col gap-5 pt-4">
+        <div className="flex items-center justify-center gap-2 rounded-full border border-border bg-card/50 py-3 px-6 mx-auto">
+          <Clock className="size-3.5 text-muted-foreground" />
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+            Next Quest Unlocks: <span className="font-black text-foreground ml-1">{formatReset(nextResetAt)}</span>
+          </p>
+        </div>
+        
+        <button
+          type="button"
+          onClick={onBack}
+          className="group relative flex h-14 w-full items-center justify-center gap-3 overflow-hidden rounded-full bg-primary px-8 text-base font-black text-primary-foreground shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+          Back to Dashboard <ArrowRight className="size-5 group-hover:translate-x-1 transition-transform" />
+        </button>
+      </div>
     </div>
   );
 };
@@ -506,23 +646,31 @@ const FreelancerGrowthQuestPage = () => {
     <div className="min-h-screen bg-background text-foreground">
       <InfoModal open={infoOpen} onClose={() => setInfoOpen(false)} />
       <FreelancerTopBar />
-      <main className="mx-auto w-full max-w-[1200px] px-4 pb-16 pt-6 sm:px-6 lg:px-10">
-        <div className="mb-7 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => { if (view === "quiz") setView("dashboard"); else navigate("/freelancer"); }}
-            className="flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            {view === "quiz" ? "Back to Dashboard" : "Back to Home"}
-          </button>
+      <main className="mx-auto w-full max-w-[1200px] px-5 pb-16 pt-8 sm:px-8 lg:px-10">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => { if (view === "quiz") setView("dashboard"); else navigate("/freelancer"); }}
+              className="flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-black text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground hover:scale-105 active:scale-95 shadow-sm"
+            >
+              <ArrowLeft className="size-4" />
+              {view === "quiz" ? "Cancel Quest" : "Back Home"}
+            </button>
+            <div className="h-4 w-px bg-border" />
+            <p className="text-[0.65rem] font-black uppercase tracking-[0.15em] text-muted-foreground">
+              {view === "quiz" ? "Growth Quiz" : view === "result" ? "Quest Review" : "Growth Hub"}
+            </p>
+          </div>
+          
           <button
             type="button"
             onClick={() => setInfoOpen(true)}
             title="How does Growth Quest work?"
-            className="flex size-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+            className="flex h-10 items-center gap-2 rounded-full border border-border bg-card px-4 text-xs font-black text-muted-foreground transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary hover:scale-105 active:scale-95 shadow-sm"
           >
             <Info className="size-4" />
+            <span className="hidden sm:inline">How it works</span>
           </button>
         </div>
 

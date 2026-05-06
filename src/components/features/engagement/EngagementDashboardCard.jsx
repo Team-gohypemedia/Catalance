@@ -5,9 +5,10 @@ import Flame from "lucide-react/dist/esm/icons/flame";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Target from "lucide-react/dist/esm/icons/target";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import Trophy from "lucide-react/dist/esm/icons/trophy";
+import Clock from "lucide-react/dist/esm/icons/clock";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import {
   FreelancerDashboardPanel,
   FreelancerDashboardSkeletonBlock,
@@ -18,7 +19,7 @@ import { cn } from "@/shared/lib/utils";
 const formatCountdown = (resetAt) => {
   if (!resetAt) return "Next reset soon";
   const diffMs = new Date(resetAt).getTime() - Date.now();
-  if (!Number.isFinite(diffMs) || diffMs <= 0) return "Next quest is ready";
+  if (!Number.isFinite(diffMs) || diffMs <= 0) return "Ready for today";
 
   const totalMinutes = Math.ceil(diffMs / 60000);
   const hours = Math.floor(totalMinutes / 60);
@@ -28,23 +29,27 @@ const formatCountdown = (resetAt) => {
   return `${hours}h ${minutes}m to reset`;
 };
 
-const StatBlock = ({ icon: Icon, label, value, tone = "default" }) => (
-  <div className="min-w-0 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-3.5 py-3">
-    <div className="flex items-center gap-2 text-muted-foreground">
-      <Icon
-        className={cn(
-          "size-4",
-          tone === "yellow" && "text-[#facc15]",
-          tone === "emerald" && "text-emerald-300",
-        )}
-      />
-      <p className="truncate text-[0.72rem] font-medium uppercase tracking-[0.12em]">
+const StatBlock = ({ icon: Icon, label, value, tone = "default", sub }) => (
+  <div className="group relative min-w-0 rounded-[20px] border border-white/[0.06] bg-white/[0.02] p-4 transition-all duration-200 hover:bg-white/[0.05] hover:shadow-lg">
+    <div className="flex items-center gap-2.5 text-muted-foreground">
+      <div className={cn(
+        "flex size-7 items-center justify-center rounded-lg transition-colors",
+        tone === "yellow" && "bg-[#facc15]/10 text-[#facc15]",
+        tone === "emerald" && "bg-emerald-400/10 text-emerald-400",
+        tone === "default" && "bg-primary/10 text-primary"
+      )}>
+        <Icon className="size-3.5" />
+      </div>
+      <p className="truncate text-[0.65rem] font-black uppercase tracking-[0.15em]">
         {label}
       </p>
     </div>
-    <p className="mt-2 truncate text-[1.35rem] font-semibold leading-none text-white">
-      {value}
-    </p>
+    <div className="mt-3 flex items-baseline gap-1.5">
+      <p className="truncate text-xl font-black text-white">
+        {value}
+      </p>
+      {sub && <p className="text-[0.65rem] font-bold text-muted-foreground">{sub}</p>}
+    </div>
   </div>
 );
 
@@ -59,7 +64,7 @@ const EngagementDashboardCardSkeleton = () => (
         {[0, 1, 2, 3].map((item) => (
           <FreelancerDashboardSkeletonBlock
             key={item}
-            className="h-[78px] rounded-[14px]"
+            className="h-[84px] rounded-[20px]"
           />
         ))}
       </div>
@@ -154,53 +159,78 @@ const EngagementDashboardCard = () => {
   const processSummary = dashboard?.processSummary || {};
   const completed = today.status === "completed";
 
+  const xp = profile.lifetimeXp || 0;
+  const xpPct = levelProgress?.percent || 0;
+
   return (
     <section className="w-full min-w-0">
-      <FreelancerDashboardPanel className="bg-card p-4 sm:p-5">
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex size-9 items-center justify-center rounded-[12px] bg-[#facc15]/12 text-[#facc15]">
-                  <Sparkles className="size-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                    Daily Growth Quest
-                  </p>
-                  <h2 className="mt-1 text-xl font-semibold leading-tight text-white">
-                    Client readiness practice
-                  </h2>
+      <FreelancerDashboardPanel className="relative overflow-hidden bg-card p-5 sm:p-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
+        
+        <div className="relative flex flex-col gap-6">
+          {/* Header Row */}
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 items-start gap-4 min-w-0">
+              <div className="relative flex size-14 shrink-0 items-center justify-center">
+                <svg className="absolute inset-0 -rotate-90" width="56" height="56" viewBox="0 0 56 56">
+                  <circle cx="28" cy="28" r="24" fill="none" stroke="currentColor" strokeWidth="4" className="text-white/[0.06]" />
+                  <circle
+                    cx="28" cy="28" r="24" fill="none" stroke="currentColor" strokeWidth="4"
+                    className="text-primary"
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 24}`}
+                    strokeDashoffset={`${2 * Math.PI * 24 * (1 - xpPct / 100)}`}
+                    style={{ transition: "stroke-dashoffset 0.8s ease" }}
+                  />
+                </svg>
+                <div className="text-center">
+                  <p className="text-[0.6rem] font-black text-white">{xpPct}%</p>
                 </div>
               </div>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Five quick questions to keep your client communication, scope, and delivery habits sharp.
-              </p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wider text-primary">
+                    <Sparkles className="size-3" /> Growth hub
+                  </span>
+                  {completed && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wider text-emerald-400">
+                      <CheckCircle2 className="size-3" /> Done
+                    </span>
+                  )}
+                </div>
+                <h2 className="mt-2 text-xl font-black leading-tight text-white">
+                  Client Readiness Quest
+                </h2>
+                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                  Build consistency and unlock premium opportunities.
+                </p>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
+            <div className="flex flex-col gap-3 sm:flex-row lg:shrink-0">
+              <div className="flex flex-col items-end gap-1 px-1">
+                <p className="text-[0.65rem] font-bold text-muted-foreground flex items-center gap-1">
+                  <Clock className="size-3" /> {completed ? "Returns in" : "Quest is active"}
+                </p>
+                <p className="text-xs font-black text-white">{completed ? countdown : `Attempts: ${today?.attemptsUsed || 0}/${today?.maxAttempts || 2}`}</p>
+              </div>
               <Button
                 type="button"
-                className="h-11 rounded-[10px] bg-[#facc15] px-5 font-semibold text-black hover:bg-[#fde047]"
+                className="h-11 rounded-xl bg-primary px-6 font-black text-primary-foreground transition-all hover:scale-[1.02] active:scale-[0.98]"
                 onClick={() => navigate("/freelancer/growth-quest")}
               >
-                {completed ? (
-                  <span className="flex items-center gap-2">View Growth Hub <ArrowRight className="size-4" /></span>
-                ) : (
-                  <span className="flex items-center gap-2">Go to Growth Quest <ArrowRight className="size-4" /></span>
-                )}
+                {completed ? "View Progress Hub" : "Start Quest →"}
               </Button>
-              <div className="inline-flex h-11 items-center justify-center rounded-[10px] border border-white/[0.08] px-4 text-sm text-muted-foreground">
-                {completed ? countdown : `Attempts: ${today?.attemptsUsed || 0}/${today?.maxAttempts || 2}`}
-              </div>
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {/* Quick Stats Grid */}
+          <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
             <StatBlock
               icon={Flame}
               label="Streak"
-              value={`${profile.currentStreak || 0} day${profile.currentStreak === 1 ? "" : "s"}`}
+              value={profile.currentStreak || 0}
+              sub={profile.currentStreak === 1 ? "day" : "days"}
               tone="yellow"
             />
             <StatBlock
@@ -210,56 +240,52 @@ const EngagementDashboardCard = () => {
             />
             <StatBlock
               icon={Sparkles}
-              label="XP"
-              value={`${profile.lifetimeXp || 0} XP`}
+              label="Total XP"
+              value={xp}
               tone="emerald"
             />
             <StatBlock
               icon={Target}
               label="Coins"
-              value={`${profile.loyaltyCoins || 0}`}
+              value={profile.loyaltyCoins || 0}
             />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] lg:items-center">
-            <div className="min-w-0">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-white">
+          {/* Bottom Insights row */}
+          <div className="flex flex-col gap-3 rounded-[20px] border border-white/[0.06] bg-white/[0.03] p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] text-muted-foreground">
+                <Trophy className="size-4" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-white">
                   {levelProgress?.next?.label
-                    ? `Progress to ${levelProgress.next.label}`
-                    : "Top engagement level"}
+                    ? `Next: ${levelProgress.next.label}`
+                    : "Max Level Reached"}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {levelProgress?.percent ?? 0}%
+                <p className="text-[0.65rem] text-muted-foreground">
+                  {dashboard?.nextMilestone?.label || "Consistency is key."}
                 </p>
               </div>
-              <Progress
-                value={levelProgress?.percent || 0}
-                className="mt-2 h-2 bg-white/[0.08]"
-              />
-              <p className="mt-2 text-xs text-muted-foreground">
-                {dashboard?.nextMilestone?.label || "Keep the daily habit going."}
+            </div>
+            
+            <div className="h-px bg-white/[0.06] lg:h-8 lg:w-px" />
+
+            <div className="flex flex-1 items-center gap-3 lg:px-4">
+              <Target className="size-4 shrink-0 text-primary" />
+              <p className="text-xs font-medium text-white line-clamp-1">
+                {processSummary?.recommendedNextTopic?.label
+                  ? `Focus: ${processSummary.recommendedNextTopic.label}`
+                  : "Keep completing quests to see insights."}
               </p>
             </div>
 
-            <div className="flex min-w-0 items-start gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.03] p-3.5">
-              <CheckCircle2
-                className={cn(
-                  "mt-0.5 size-4 shrink-0",
-                  completed ? "text-emerald-300" : "text-muted-foreground",
-                )}
-              />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-white">
-                  {completed ? "Today's quest completed" : "Today's quest is open"}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {processSummary?.recommendedNextTopic?.label
-                    ? `Next focus: ${processSummary.recommendedNextTopic.label}.`
-                    : "Your focus area will appear after a few completions."}
-                </p>
-              </div>
-            </div>
+            <button 
+              onClick={() => navigate("/freelancer/growth-quest")}
+              className="text-xs font-black text-primary transition-colors hover:text-primary/80"
+            >
+              Analyze Hub →
+            </button>
           </div>
         </div>
       </FreelancerDashboardPanel>
@@ -268,3 +294,4 @@ const EngagementDashboardCard = () => {
 };
 
 export default EngagementDashboardCard;
+
