@@ -108,17 +108,17 @@ const MediaHeroPreview = ({ item, previewUrl, onUpload }) => {
         type="button"
         onClick={onUpload}
         className={cn(
-          "group flex aspect-[16/9] w-full items-center justify-center rounded-[28px] border border-dashed border-white/12 bg-[#101010] px-6 text-left transition-colors hover:border-primary/45 hover:bg-primary/5",
+          "group flex h-[240px] w-full items-center justify-center rounded-[28px] border border-dashed border-white/12 bg-[#101010] px-4 text-left transition-colors hover:border-primary/45 hover:bg-primary/5 sm:h-[280px] lg:h-[320px]",
         )}
       >
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 text-primary">
-            <Plus className="h-6 w-6" />
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-primary">
+            <Plus className="h-5 w-5" />
           </div>
           <div className="space-y-1">
-            <p className="text-lg font-semibold text-white">Add Media</p>
-            <p className="text-sm text-white/48">
-              Click to upload or drop files here.
+            <p className="text-base font-semibold text-white">Upload your first file</p>
+            <p className="text-sm leading-6 text-white/48">
+              Click to choose one image or video, or drag it here.
             </p>
           </div>
         </div>
@@ -320,6 +320,7 @@ const UploadArea = ({ files, onChange, onUploadFile, hasError = false }) => {
   }, [resolvedPreviewItems.length]);
 
   const activePreview = resolvedPreviewItems[activePreviewIndex] || null;
+  const hasMedia = resolvedPreviewItems.length > 0;
   const imageCount = files.filter((file) => !isVideoMedia(file)).length;
   const videoCount = files.filter((file) => isVideoMedia(file)).length;
   const canAddImage = imageCount < MAX_IMAGES;
@@ -464,25 +465,25 @@ const UploadArea = ({ files, onChange, onUploadFile, hasError = false }) => {
     setIsDragOver(true);
   };
 
-  const currentPreviewLabel = resolvedPreviewItems.length
+  const currentPreviewLabel = hasMedia
     ? `${activePreviewIndex + 1} of ${resolvedPreviewItems.length}`
-    : "0 of 0";
+    : "";
 
   return (
     <div
-      className="space-y-4"
+      className="space-y-3"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={() => setIsDragOver(false)}
     >
-      <div className={cn("space-y-5 transition-opacity", isDragOver ? "opacity-95" : "opacity-100")}>
+      <div className={cn("space-y-4 transition-opacity", isDragOver ? "opacity-95" : "opacity-100")}>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <p className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-white")}>
               Upload Media
             </p>
             <p className={cn("text-sm", hasError ? "text-destructive/80" : "text-white/55")}>
-              Select a media item to set as the primary preview.
+              Add one image or video to create the primary preview.
             </p>
           </div>
 
@@ -495,83 +496,95 @@ const UploadArea = ({ files, onChange, onUploadFile, hasError = false }) => {
               <Trash2 className="h-4 w-4" />
               <span>Remove</span>
             </button>
-          ) : canAdd ? (
+          ) : hasMedia && canAdd ? (
             <button
               type="button"
               onClick={openFilePicker}
               className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:border-white/20 hover:bg-white/5 hover:text-white"
             >
               <Plus className="h-4 w-4" />
-              <span>Add Media</span>
+              <span>Add another</span>
             </button>
           ) : null}
         </div>
 
-        <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <MediaHeroPreview
-            item={activePreview}
-            previewUrl={activePreview?.previewUrl}
-            onUpload={openFilePicker}
-          />
+        {!hasMedia ? (
+          <div className="space-y-3">
+            <MediaHeroPreview
+              item={activePreview}
+              previewUrl={activePreview?.previewUrl}
+              onUpload={openFilePicker}
+            />
+          </div>
+        ) : (
+          <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+            <MediaHeroPreview
+              item={activePreview}
+              previewUrl={activePreview?.previewUrl}
+              onUpload={openFilePicker}
+            />
 
-          <div className="flex h-full min-w-0 flex-col gap-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <p className="text-2xl font-semibold tracking-[-0.04em] text-white">
-                  {currentPreviewLabel}
-                </p>
-                <p className="text-sm text-white/55">
-                  Images: {imageCount} &bull; Video: {videoCount}
-                </p>
+            <div className="flex h-full min-w-0 flex-col gap-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-2xl font-semibold tracking-[-0.04em] text-white">
+                    {currentPreviewLabel}
+                  </p>
+                  <p className="text-sm text-white/55">
+                    Images: {imageCount} &bull; Video: {videoCount}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="h-px w-full bg-white/10" />
+              <div className="h-px w-full bg-white/10" />
 
-            <div className="relative">
-              <div className="grid grid-cols-3 gap-3">
-                {resolvedPreviewItems.map((item, index) => (
-                  <MediaThumbnail
-                    key={item.id}
-                    item={item}
-                    previewUrl={item.previewUrl}
-                    index={index}
-                    isActive={index === activePreviewIndex}
-                    onSelect={setActivePreviewIndex}
-                  />
-                ))}
+              <div className="relative">
+                <div className="grid grid-cols-3 gap-3">
+                  {resolvedPreviewItems.map((item, index) => (
+                    <MediaThumbnail
+                      key={item.id}
+                      item={item}
+                      previewUrl={item.previewUrl}
+                      index={index}
+                      isActive={index === activePreviewIndex}
+                      onSelect={setActivePreviewIndex}
+                    />
+                  ))}
 
-                {canAdd ? (
-                  <button
-                    type="button"
-                    onClick={openFilePicker}
-                    className="group relative aspect-[3/4] overflow-hidden rounded-2xl border border-dashed border-white/12 bg-white/[0.03] transition-colors hover:border-primary/45 hover:bg-primary/5"
-                  >
-                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-white/60">
-                      {isUploading ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                      ) : (
-                        <Plus className="h-5 w-5 text-primary" />
-                      )}
-                      <span className="text-xs font-medium">
-                        {isUploading ? "Uploading" : "Add Media"}
-                      </span>
-                    </div>
-                  </button>
-                ) : null}
+                  {canAdd ? (
+                    <button
+                      type="button"
+                      onClick={openFilePicker}
+                      className="group relative aspect-[3/4] overflow-hidden rounded-2xl border border-dashed border-white/12 bg-white/[0.03] transition-colors hover:border-primary/45 hover:bg-primary/5"
+                    >
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-white/60">
+                        {isUploading ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        ) : (
+                          <Plus className="h-5 w-5 text-primary" />
+                        )}
+                        <span className="text-xs font-medium">
+                          {isUploading ? "Uploading" : "Add another"}
+                        </span>
+                      </div>
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div
           className={cn(
-            "rounded-xl border bg-transparent px-4 py-3",
+            "rounded-xl border bg-transparent px-4 py-2.5",
             hasError ? "border-destructive/30" : "border-white/10",
           )}
         >
           <p className={cn("text-xs font-normal leading-relaxed", hasError ? "text-destructive/80" : "text-white/60")}>
-            Upload rule: up to 2 images and 1 video (max 5MB each).
+            {hasMedia
+              ? "Upload rule: up to 2 images and 1 video (max 5MB each)."
+              : "Upload rule: add one file to start, then add up to 2 images and 1 video total."}
           </p>
         </div>
       </div>
@@ -652,7 +665,7 @@ const FreelancerServiceVisualsSlide = ({
             </Button>
           </div>
 
-          <div className="space-y-4 rounded-2xl border border-white/8 bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)] sm:p-7">
+          <div className="space-y-3 rounded-2xl border border-white/8 bg-card p-4 shadow-[0_18px_60px_rgba(0,0,0,0.24)] sm:p-5">
             <UploadArea
               files={serviceVisualsForm.mediaFiles}
               onChange={(next) =>
