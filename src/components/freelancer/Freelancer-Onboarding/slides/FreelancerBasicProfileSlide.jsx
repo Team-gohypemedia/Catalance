@@ -1,10 +1,10 @@
 import Check from "lucide-react/dist/esm/icons/check";
+import { useRef, useState } from "react";
+import Camera from "lucide-react/dist/esm/icons/camera";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import Plus from "lucide-react/dist/esm/icons/plus";
 import Upload from "lucide-react/dist/esm/icons/upload";
-import UserRound from "lucide-react/dist/esm/icons/user-round";
 import X from "lucide-react/dist/esm/icons/x";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import ProfilePhotoCameraDialog from "@/components/common/ProfilePhotoCameraDialog";
 import { cn } from "@/shared/lib/utils";
 import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 
@@ -71,6 +72,9 @@ const FreelancerBasicProfileSlide = ({
   onResumeSelect,
   onResumeRemove,
 }) => {
+  const deviceInputRef = useRef(null);
+  const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const normalizedStateOptions = Array.isArray(stateOptions) ? stateOptions : [];
   const hasStateOptions = normalizedStateOptions.length > 0;
   const stateSelectValue =
@@ -141,6 +145,14 @@ const FreelancerBasicProfileSlide = ({
     onBasicProfileFieldChange("languages", nextLanguages);
   };
 
+  const handleProfilePhotoInputChange = (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onProfilePhotoSelect(file);
+    }
+    event.target.value = "";
+  };
+
   return (
     <section className="mx-auto flex min-h-[68vh] w-full max-w-4xl flex-col items-center justify-center gap-5">
       <div className="w-full max-w-2xl text-center">
@@ -158,55 +170,84 @@ const FreelancerBasicProfileSlide = ({
           <div className="flex h-full flex-col items-center text-center">
             <div className="flex flex-col items-center gap-3 md:pt-3 lg:gap-4 lg:pt-0">
               <div className="relative w-fit">
-                <label
-                  className={cn(
-                    "group relative flex size-32 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-white/20 bg-[#1a1a1a] transition hover:border-primary/60 sm:size-36",
-                    profilePhotoError &&
-                      "border-destructive/80 hover:border-destructive/80",
-                  )}
-                >
-                  {hasProfilePhoto ? (
-                    <img
-                      src={profilePhotoPreviewUrl}
-                      alt="Freelancer profile"
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <span className="flex flex-col items-center gap-2 text-primary transition group-hover:scale-[1.02]">
-                      <UserRound className="size-9" />
-                    </span>
-                  )}
+                <Popover open={isPhotoMenuOpen} onOpenChange={setIsPhotoMenuOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={hasProfilePhoto ? "Change profile photo" : "Add profile photo"}
+                      aria-invalid={Boolean(profilePhotoError)}
+                      className={cn(
+                        "group relative flex size-32 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-white/20 bg-[#1a1a1a] text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-[#0b0b0c] sm:size-36",
+                        profilePhotoError &&
+                          "border-destructive/80 hover:border-destructive/80 focus:ring-destructive/55",
+                      )}
+                    >
+                      {hasProfilePhoto ? (
+                        <img
+                          src={profilePhotoPreviewUrl}
+                          alt="Freelancer profile"
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <Camera className="size-9 transition group-hover:scale-[1.04]" />
+                      )}
+                    </button>
+                  </PopoverTrigger>
 
-                  {!hasProfilePhoto ? (
-                    <span className="absolute -right-1 bottom-2 flex size-8 items-center justify-center rounded-full bg-primary text-black shadow-lg shadow-primary/25 transition group-hover:scale-105">
-                      <Plus className="size-3.5" />
-                    </span>
-                  ) : null}
+                  <PopoverContent
+                    align="center"
+                    sideOffset={10}
+                    className="w-56 rounded-[18px] border border-white/10 bg-[#161616] p-1 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPhotoMenuOpen(false);
+                        setIsCameraOpen(true);
+                      }}
+                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-white transition-colors hover:bg-white/8 focus:bg-white/8 focus:outline-none"
+                    >
+                      <Camera className="size-4 text-primary" />
+                      <span>Take a picture</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPhotoMenuOpen(false);
+                        deviceInputRef.current?.click();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-white transition-colors hover:bg-white/8 focus:bg-white/8 focus:outline-none"
+                    >
+                      <Upload className="size-4 text-primary" />
+                      <span>Choose from device</span>
+                    </button>
+                  </PopoverContent>
+                </Popover>
 
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) {
-                        onProfilePhotoSelect(file);
-                      }
-                      event.target.value = "";
-                    }}
-                  />
-                </label>
+                <input
+                  ref={deviceInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleProfilePhotoInputChange}
+                />
 
                 {hasProfilePhoto ? (
                   <button
                     type="button"
                     onClick={onProfilePhotoRemove}
                     aria-label="Remove profile photo"
-                    className="absolute -right-2 -top-2 flex size-8 items-center justify-center rounded-full border border-white/10 bg-[#101010] text-white/75 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition-colors hover:border-white/20 hover:text-white"
+                    className="absolute right-1 top-1 flex size-8 items-center justify-center rounded-full border border-white/10 bg-[#101010] text-white/75 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition-colors hover:border-white/20 hover:text-white"
                   >
                     <X className="size-3.5" />
                   </button>
                 ) : null}
+
+                <ProfilePhotoCameraDialog
+                  open={isCameraOpen}
+                  onOpenChange={setIsCameraOpen}
+                  onCapture={onProfilePhotoSelect}
+                />
               </div>
 
               <div className="space-y-1">

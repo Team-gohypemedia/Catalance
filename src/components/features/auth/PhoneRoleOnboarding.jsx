@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import * as Flags from "country-flag-icons/react/3x2";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import ProfilePhotoCameraDialog from "@/components/common/ProfilePhotoCameraDialog";
 import { useAuth } from "@/shared/context/AuthContext";
 import { updateProfile } from "@/shared/lib/api-client";
 import { COUNTRY_CODES } from "@/shared/data/countryCodes";
@@ -24,8 +26,8 @@ import Camera from "lucide-react/dist/esm/icons/camera";
 import Laptop from "lucide-react/dist/esm/icons/laptop";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Lock from "lucide-react/dist/esm/icons/lock";
-import Plus from "lucide-react/dist/esm/icons/plus";
 import User from "lucide-react/dist/esm/icons/user";
+import Upload from "lucide-react/dist/esm/icons/upload";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import {
@@ -169,6 +171,9 @@ function PhoneRoleOnboarding() {
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const deviceInputRef = useRef(null);
+  const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   const slide = SLIDES[activeSlide];
   const emailValue = normalizeEmail(email);
@@ -198,16 +203,14 @@ function PhoneRoleOnboarding() {
     return "";
   };
 
-  const handleProfileImageChange = (event) => {
-    const file = event.target.files?.[0];
-
+  const handleProfileImageFile = (file, resetInput = () => {}) => {
     if (!file) {
       return;
     }
 
     if (!file.type.startsWith("image/")) {
       setFormErrors({ details: "Please choose an image file for your profile photo." });
-      event.target.value = "";
+      resetInput();
       return;
     }
 
@@ -218,7 +221,7 @@ function PhoneRoleOnboarding() {
 
     if (!ctx) {
       setFormErrors({ details: "Unable to process this image. Please try another file." });
-      event.target.value = "";
+      resetInput();
       return;
     }
 
@@ -247,7 +250,7 @@ function PhoneRoleOnboarding() {
         (blob) => {
           if (!blob) {
             setFormErrors({ details: "Unable to process this image. Please try another file." });
-            event.target.value = "";
+            resetInput();
             return;
           }
 
@@ -263,7 +266,7 @@ function PhoneRoleOnboarding() {
             setProfileImage(String(reader.result || ""));
             setProfileImageFile(compressedFile);
             setFormErrors({});
-            event.target.value = "";
+            resetInput();
           };
           reader.readAsDataURL(compressedFile);
         },
@@ -277,6 +280,13 @@ function PhoneRoleOnboarding() {
       img.src = String(reader.result || "");
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleProfileImageChange = (event) => {
+    const input = event.currentTarget;
+    handleProfileImageFile(input.files?.[0], () => {
+      input.value = "";
+    });
   };
 
   const uploadProfileImage = async () => {
@@ -396,29 +406,72 @@ function PhoneRoleOnboarding() {
       return (
         <div className="space-y-3">
           <div className="flex flex-col items-center gap-3 py-2">
-            <label className="group relative flex h-32 w-32 shrink-0 cursor-pointer items-center justify-center rounded-full border border-dashed border-white/20 bg-[#1a1a1a] transition hover:border-primary/60 sm:h-36 sm:w-36">
-              {profileImage ? (
-                <img
-                  src={profileImage}
-                  alt="Profile preview"
-                  className="size-full rounded-full object-cover"
-                />
-              ) : (
-                <span className="flex flex-col items-center gap-3 text-primary transition group-hover:scale-[1.02]">
-                  <Camera className="size-9" />
-                </span>
-              )}
-              <span className="absolute -right-1 bottom-2 flex size-8 items-center justify-center rounded-full bg-primary text-black shadow-lg shadow-primary/25 transition group-hover:scale-105">
-                <Plus className="size-3.5" />
-              </span>
+            <div className="relative w-fit">
+              <Popover open={isPhotoMenuOpen} onOpenChange={setIsPhotoMenuOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    aria-label={profileImage ? "Change profile photo" : "Add profile photo"}
+                    className="group relative flex h-32 w-32 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-white/20 bg-[#1a1a1a] text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-[#0b0b0c] disabled:cursor-not-allowed disabled:opacity-60 sm:h-36 sm:w-36"
+                  >
+                    {profileImage ? (
+                      <img
+                        src={profileImage}
+                        alt="Profile preview"
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <Camera className="size-9 transition group-hover:scale-[1.04]" />
+                    )}
+                  </button>
+                </PopoverTrigger>
+
+                <PopoverContent
+                  align="center"
+                  sideOffset={10}
+                  className="w-56 rounded-[18px] border border-white/10 bg-[#161616] p-1 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPhotoMenuOpen(false);
+                      setIsCameraOpen(true);
+                    }}
+                    disabled={isSaving}
+                    className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-white transition-colors hover:bg-white/8 focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Camera className="size-4 text-primary" />
+                    <span>Take a picture</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPhotoMenuOpen(false);
+                      deviceInputRef.current?.click();
+                    }}
+                    disabled={isSaving}
+                    className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-white transition-colors hover:bg-white/8 focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Upload className="size-4 text-primary" />
+                    <span>Choose from device</span>
+                  </button>
+                </PopoverContent>
+              </Popover>
               <input
+                ref={deviceInputRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
                 onChange={handleProfileImageChange}
                 disabled={isSaving}
               />
-            </label>
+              <ProfilePhotoCameraDialog
+                open={isCameraOpen}
+                onOpenChange={setIsCameraOpen}
+                onCapture={handleProfileImageFile}
+              />
+            </div>
             <div className="text-center">
               <p className="text-base font-semibold text-white">Add a profile photo</p>
               <p className="mt-1 text-sm text-white/55">JPG, PNG or GIF. Max 5MB.</p>
