@@ -154,7 +154,7 @@ function EmailAuth() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   useEffect(() => {
-    document.title = "Signin | Catalance";
+    document.title = "Sign in | Catalance";
   }, []);
 
   const redirectParam = searchParams.get("redirect");

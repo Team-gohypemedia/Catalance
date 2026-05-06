@@ -253,7 +253,7 @@ function PhoneAuth() {
   const lastDigitsOnlyToastAtRef = useRef(0);
 
   useEffect(() => {
-    document.title = "Log in | Catalance";
+    document.title = "Sign in | Catalance";
   }, []);
 
   const selectedCountry = useMemo(
