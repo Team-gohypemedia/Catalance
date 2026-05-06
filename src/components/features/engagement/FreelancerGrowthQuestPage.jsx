@@ -167,10 +167,6 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
     { rank: 12, name: "You", coins, isYou: true },
   ];
 
-  /* Streak milestone next target */
-  const nextMilestone = [3, 7, 15, 30, 60].find((d) => d > streak) || null;
-  const milestoneProgress = nextMilestone ? Math.round((streak / nextMilestone) * 100) : 100;
-
   /* XP level progress */
   const levelThresholds = [0, 200, 600, 1500, 3500];
   const levelNames = ["Starter", "Active Learner", "Skilled Contributor", "Pro Contributor", "Gold Contributor"];
@@ -182,115 +178,143 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
     : 100;
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Hero */}
-      <div className="relative overflow-hidden rounded-[32px] border border-border bg-card p-8 sm:p-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.08] via-transparent to-transparent pointer-events-none" />
-        <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="max-w-xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary">
-              <Sparkles className="size-3.5" /> Daily Growth Quest
-            </span>
-            <h1 className="mt-4 text-4xl font-black leading-tight text-foreground sm:text-5xl">
-              Play to Gain<br />Knowledge 🚀
-            </h1>
-            <p className="mt-3 text-sm font-medium text-muted-foreground leading-relaxed">
-              5 daily questions · Boost your client readiness · Earn XP &amp; coins
-            </p>
-            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-              <Clock className="size-3.5" />
-              <span>~5 minutes · Resets at UTC midnight</span>
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
+      {/* Left Column: Progress & Profile (LeetCode side card inspired) */}
+      <div className="lg:col-span-5 space-y-6">
+        <div className="relative overflow-hidden rounded-[32px] border border-border bg-card p-8 shadow-sm">
+          <div className="absolute -right-12 -top-12 opacity-[0.03] pointer-events-none rotate-12">
+            <Trophy className="size-64 text-primary" />
+          </div>
+
+          <div className="relative mb-8 flex flex-col items-center text-center">
+            <div className="mb-4 flex size-20 items-center justify-center rounded-3xl bg-primary/10 text-4xl shadow-inner">
+              {currentLevelIdx >= 4 ? "👑" : currentLevelIdx >= 2 ? "🔥" : "🌱"}
             </div>
-            {error && <p className="mt-3 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive w-fit">{error}</p>}
+            <h2 className="text-3xl font-black tracking-tight text-foreground">Growth Hub</h2>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="rounded-full bg-primary/15 px-3 py-1 text-[0.65rem] font-black uppercase tracking-wider text-primary">
+                Level {level} · {levelNames[currentLevelIdx]}
+              </span>
+            </div>
+            <p className="mt-4 max-w-[240px] text-xs font-medium leading-relaxed text-muted-foreground">
+              Complete quests to unlock higher level projects and platform rewards.
+            </p>
+          </div>
+
+          <div className="mb-10 flex flex-col items-center">
+            <div className="relative flex size-44 items-center justify-center">
+              <svg className="absolute inset-0 -rotate-90" width="176" height="176" viewBox="0 0 176 176">
+                <circle cx="88" cy="88" r="80" fill="none" stroke="currentColor" strokeWidth="12" className="text-border/50" />
+                <circle
+                  cx="88" cy="88" r="80" fill="none" stroke="currentColor" strokeWidth="12"
+                  className="text-primary"
+                  strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 80}`}
+                  strokeDashoffset={`${2 * Math.PI * 80 * (1 - xpPct / 100)}`}
+                  style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)" }}
+                />
+              </svg>
+              <div className="text-center">
+                <p className="text-4xl font-black tracking-tighter text-foreground">{xp}</p>
+                <p className="text-[0.7rem] font-bold uppercase tracking-widest text-muted-foreground">Total XP</p>
+              </div>
+            </div>
+            {nextThreshold && (
+              <p className="mt-4 text-[0.7rem] font-black uppercase tracking-widest text-muted-foreground">
+                <span className="text-foreground">{nextThreshold - xp} XP</span> until next level
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-4 pt-6 border-t border-border/50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-background border border-border">
+                  <Flame className="size-4 text-orange-500" />
+                </div>
+                <div>
+                  <p className="text-[0.65rem] font-black uppercase tracking-wider text-muted-foreground">Streak</p>
+                  <p className="text-sm font-black text-foreground">{streak} Days</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-background border border-border">
+                  <Star className="size-4 text-[#facc15]" />
+                </div>
+                <div>
+                  <p className="text-[0.65rem] font-black uppercase tracking-wider text-muted-foreground">Coins</p>
+                  <p className="text-sm font-black text-foreground">{coins}</p>
+                </div>
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={onStartQuest}
               disabled={done}
               className={cn(
-                "mt-6 inline-flex h-12 items-center gap-2 rounded-full px-8 text-sm font-black tracking-wide shadow-md transition-all duration-200 hover:scale-105 active:scale-95",
-                done ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"
+                "group relative mt-4 flex h-14 w-full items-center justify-center gap-3 overflow-hidden rounded-2xl text-base font-black shadow-lg transition-all active:scale-[0.98]",
+                done 
+                  ? "cursor-not-allowed bg-muted text-muted-foreground" 
+                  : "bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-[1.02]"
               )}
             >
-              {done ? "✓ Completed for Today" : isRetake ? `Retake Quest (${max - used} left)` : "Get Started →"}
+              {!done && <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />}
+              {done ? (
+                <><CheckCircle2 className="size-5" /> Completed</>
+              ) : (
+                <>Get Started <ArrowRight className="size-5 group-hover:translate-x-1 transition-transform" /></>
+              )}
             </button>
+            <p className="text-center text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
+              {isRetake ? `${max - used} retakes remaining` : "~5 mins · Resets at UTC midnight"}
+            </p>
           </div>
+        </div>
 
-          {/* XP Ring */}
-          <div className="flex shrink-0 flex-col items-center gap-2">
-            <div className="relative flex size-28 items-center justify-center">
-              <svg className="absolute inset-0 -rotate-90" width="112" height="112" viewBox="0 0 112 112">
-                <circle cx="56" cy="56" r="48" fill="none" stroke="currentColor" strokeWidth="8" className="text-border" />
-                <circle
-                  cx="56" cy="56" r="48" fill="none" stroke="currentColor" strokeWidth="8"
-                  className="text-primary"
-                  strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 48}`}
-                  strokeDashoffset={`${2 * Math.PI * 48 * (1 - xpPct / 100)}`}
-                  style={{ transition: "stroke-dashoffset 0.6s ease" }}
-                />
-              </svg>
-              <div className="text-center">
-                <p className="text-xl font-black text-foreground">{xp}</p>
-                <p className="text-[0.6rem] font-bold uppercase tracking-wider text-muted-foreground">XP</p>
+        {/* Skill Breakdown (LeetCode "Difficulty" breakdown inspired) */}
+        <div className="rounded-3xl border border-border bg-card/50 p-6">
+          <h3 className="mb-4 text-[0.7rem] font-black uppercase tracking-widest text-muted-foreground text-center">Your Skillset</h3>
+          <div className="space-y-3">
+            {[
+              { label: "Execution", value: 85, color: "text-emerald-500" },
+              { label: "Strategy", value: 65, color: "text-primary" },
+              { label: "Knowledge", value: 40, color: "text-orange-500" },
+            ].map((skill) => (
+              <div key={skill.label} className="flex items-center justify-between gap-4">
+                <span className="text-xs font-bold text-foreground">{skill.label}</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-24 rounded-full bg-border overflow-hidden">
+                    <div className={cn("h-full rounded-full bg-current", skill.color)} style={{ width: `${skill.value}%` }} />
+                  </div>
+                  <span className={cn("text-[0.65rem] font-black w-8 text-right", skill.color)}>{skill.value}%</span>
+                </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column: Achievements & Insights (LeetCode problem list inspired) */}
+      <div className="lg:col-span-7 space-y-6">
+        <BadgeShelf badges={dashboard?.profile?.badges || []} currentStreak={streak} />
+        <ProcessSummaryCard processSummary={dashboard?.processSummary} />
+        
+        {/* Weekly Leaderboard */}
+        <div className="rounded-[32px] border border-border bg-card p-8">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <p className="text-[0.7rem] font-black uppercase tracking-[0.2em] text-muted-foreground">Community</p>
+              <h2 className="text-2xl font-black tracking-tight text-foreground">Weekly Leaderboard</h2>
             </div>
-            <p className="text-xs font-bold text-foreground">{levelNames[currentLevelIdx]}</p>
-            {nextThreshold && (
-              <p className="text-[0.65rem] text-muted-foreground">{nextThreshold - xp} XP to next level</p>
-            )}
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
+              <Trophy className="size-6 text-primary" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            {leaderboard.map((u) => <LeaderRow key={u.rank} {...u} />)}
           </div>
         </div>
-        <div className="absolute -right-10 -top-10 opacity-[0.06] pointer-events-none">
-          <Trophy className="size-72 text-primary" />
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard icon={Flame} label="Streak" value={`${streak} 🔥`} sub="days active" />
-        <StatCard icon={Zap} label="XP Total" value={xp} sub="experience pts" />
-        <StatCard icon={Star} label="Coins" value={coins} sub="loyalty coins" />
-        <StatCard icon={Trophy} label="Level" value={`Lv. ${level}`} sub="engagement rank" />
-      </div>
-
-      {/* Streak Milestone Progress */}
-      {nextMilestone && (
-        <div className="rounded-[24px] border border-primary/20 bg-primary/5 px-6 py-5">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-black text-foreground">🎯 Next Milestone: {nextMilestone}-Day Streak</p>
-            <span className="text-xs font-bold text-primary">{streak}/{nextMilestone} days</span>
-          </div>
-          <div className="h-2 w-full rounded-full bg-border overflow-hidden">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-500"
-              style={{ width: `${milestoneProgress}%` }}
-            />
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">{nextMilestone - streak} more day{nextMilestone - streak !== 1 ? "s" : ""} to unlock the badge + bonus rewards</p>
-        </div>
-      )}
-
-      {/* Badge Shelf */}
-      <BadgeShelf badges={dashboard?.profile?.badges || []} currentStreak={streak} />
-
-      {/* Process Summary */}
-      <ProcessSummaryCard processSummary={dashboard?.processSummary} />
-
-      {/* Leaderboard */}
-      <div className="rounded-[32px] border border-border bg-card p-6">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <p className="text-[0.7rem] font-black uppercase tracking-[0.18em] text-muted-foreground">Top Performers</p>
-            <h2 className="mt-0.5 text-xl font-black text-foreground">Leaderboard</h2>
-          </div>
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
-            <Trophy className="size-5 text-primary" />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          {leaderboard.map((u) => <LeaderRow key={u.rank} {...u} />)}
-        </div>
-        <p className="mt-4 text-center text-xs text-muted-foreground">Public leaderboard coming soon · Rankings reset weekly</p>
       </div>
     </div>
   );
