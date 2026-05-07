@@ -48,7 +48,16 @@ import Search from "lucide-react/dist/esm/icons/search";
 
 const DEFAULT_COUNTRY = "IN";
 const MIN_PHONE_DIGITS = 6;
+const DEFAULT_OTP_EXPIRY_MINUTES = 15;
 const OTP_LENGTH = 6;
+
+const formatCountdown = (totalSeconds) => {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
 
 const normalizeAvatarUrl = (value) => {
   const url = String(value || "").trim();
@@ -240,16 +249,41 @@ function PhoneAuth() {
   const [otpDigits, setOtpDigits] = useState("");
   const [authStep, setAuthStep] = useState("phone");
   const [pendingPhone, setPendingPhone] = useState(null);
-  const [otpExpiresInMinutes, setOtpExpiresInMinutes] = useState(15);
+  const [otpExpiresInMinutes, setOtpExpiresInMinutes] = useState(DEFAULT_OTP_EXPIRY_MINUTES);
+  const [otpExpiresAt, setOtpExpiresAt] = useState(null);
+  const [countdownNow, setCountdownNow] = useState(() => Date.now());
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const lastDigitsOnlyToastAtRef = useRef(0);
+  const otpInputRef = useRef(null);
 
   useEffect(() => {
     document.title = "Sign in | Catalance";
   }, []);
+
+  useEffect(() => {
+    if (authStep !== "otp" || !otpExpiresAt) {
+      setCountdownNow(Date.now());
+      return undefined;
+    }
+
+    const syncCountdown = () => {
+      setCountdownNow(Date.now());
+    };
+
+    syncCountdown();
+    const intervalId = window.setInterval(syncCountdown, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [authStep, otpExpiresAt]);
+
+  useEffect(() => {
+    if (authStep !== "otp") return;
+
+    otpInputRef.current?.focus();
+  }, [authStep]);
 
   const selectedCountry = useMemo(
     () =>
@@ -258,6 +292,10 @@ function PhoneAuth() {
     [countryCode],
   );
   const formattedPhone = formatPhoneNumber(phoneDigits);
+  const otpRemainingSeconds = otpExpiresAt
+    ? Math.max(0, Math.ceil((otpExpiresAt - countdownNow) / 1000))
+    : otpExpiresInMinutes * 60;
+  const isOtpExpired = authStep === "otp" && otpRemainingSeconds === 0;
   const emailSigninPath = searchParams.toString()
     ? `/signin/email?${searchParams.toString()}`
     : "/signin/email";
@@ -313,7 +351,10 @@ function PhoneAuth() {
         phonePayload.phoneNumber,
       )}`;
       setPendingPhone(phonePayload);
-      setOtpExpiresInMinutes(Number(result?.expiresInMinutes) || 15);
+      const expiresInMinutes =
+        Number(result?.expiresInMinutes) || DEFAULT_OTP_EXPIRY_MINUTES;
+      setOtpExpiresInMinutes(expiresInMinutes);
+      setOtpExpiresAt(Date.now() + expiresInMinutes * 60 * 1000);
       setAuthStep("otp");
       toast.success(`6-digit WhatsApp code sent to ${phoneLabel}.`);
     } catch (error) {
@@ -331,6 +372,11 @@ function PhoneAuth() {
 
   const verifyOtpCode = async () => {
     setFormError("");
+
+    if (isOtpExpired) {
+      setFormError("This WhatsApp code has expired. Request a new one.");
+      return;
+    }
 
     const otp = normalizePhoneNumber(otpDigits).slice(0, OTP_LENGTH);
     if (otp.length !== OTP_LENGTH) {
@@ -363,6 +409,7 @@ function PhoneAuth() {
       setPhoneDigits("");
       setOtpDigits("");
       setPendingPhone(null);
+      setOtpExpiresAt(null);
 
       const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
 
@@ -407,11 +454,14 @@ function PhoneAuth() {
     setAuthStep("phone");
     setOtpDigits("");
     setPendingPhone(null);
-    setOtpExpiresInMinutes(15);
+    setOtpExpiresInMinutes(DEFAULT_OTP_EXPIRY_MINUTES);
+    setOtpExpiresAt(null);
     setFormError("");
   };
 
   const handleResendOtp = () => {
+    if (!isOtpExpired || isSubmitting || isResending) return;
+
     void requestOtp({ resend: true });
   };
 
@@ -480,6 +530,11 @@ function PhoneAuth() {
     const isOtpStep = authStep === "otp";
     const normalizedOtpDigits = normalizePhoneNumber(otpDigits).slice(0, OTP_LENGTH);
     const isOtpComplete = normalizedOtpDigits.length === OTP_LENGTH;
+    const countdownText = isOtpExpired
+      ? "Code expired"
+      : `Code expires in ${formatCountdown(otpRemainingSeconds)}`;
+    const canResendOtp = isOtpExpired && !isSubmitting && !isResending;
+    const resendButtonLabel = isResending ? "Resending..." : "Resend code";
     const buttonLabel = isOtpStep ? "Verify OTP" : "Continue";
     const loadingLabel = isOtpStep ? "Verifying..." : "Sending OTP...";
     const formSpacing = compact ? "space-y-3" : "space-y-5";
@@ -619,9 +674,11 @@ function PhoneAuth() {
               </div>
 
               <InputOTP
+                ref={otpInputRef}
                 id={otpInputId}
                 maxLength={OTP_LENGTH}
                 value={normalizedOtpDigits}
+                autoFocus={isOtpStep}
                 onChange={(value) => {
                   setOtpDigits(normalizePhoneNumber(value).slice(0, OTP_LENGTH));
                 }}
@@ -664,15 +721,17 @@ function PhoneAuth() {
               </InputOTP>
 
               <div className="flex items-center justify-between gap-3 text-xs text-white/50">
-                <span>Code expires in {otpExpiresInMinutes} minutes.</span>
+                <span className={isOtpExpired ? "text-red-400" : "text-white/50"}>
+                  {countdownText}
+                </span>
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={handleResendOtp}
-                  disabled={isSubmitting || isResending}
+                  disabled={!canResendOtp}
                   className="h-8 px-2 text-xs text-primary hover:bg-white/[0.06] hover:text-primary"
                 >
-                  {isResending ? "Resending..." : "Resend code"}
+                  {resendButtonLabel}
                 </Button>
               </div>
             </Field>
@@ -687,7 +746,11 @@ function PhoneAuth() {
 
         <Button
           type="submit"
-          disabled={isSubmitting || isResending || (authStep === "otp" && !isOtpComplete)}
+          disabled={
+            isSubmitting ||
+            isResending ||
+            (authStep === "otp" && (!isOtpComplete || isOtpExpired))
+          }
           className={submitButtonClass}
         >
           {isSubmitting ? loadingLabel : buttonLabel}
