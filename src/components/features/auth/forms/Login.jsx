@@ -182,7 +182,7 @@ function Login({ className, ...props }) {
         : authPayload?.user;
 
       setAuthSession(sessionUser, authPayload?.accessToken);
-      toast.success("Logged in successfully.");
+      toast.success("Signed in successfully.");
       setFormData(initialFormState);
       const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
 

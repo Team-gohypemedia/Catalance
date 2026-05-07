@@ -357,7 +357,7 @@ function PhoneAuth() {
         : authPayload.user;
 
       setAuthSession(sessionUser, authPayload.accessToken);
-      toast.success("Logged in successfully.");
+      toast.success("Signed in successfully.");
       setPhoneDigits("");
       setOtpDigits("");
       setPendingPhone(null);

@@ -260,7 +260,7 @@ function EmailAuth() {
         : authPayload?.user;
 
       setAuthSession(sessionUser, authPayload?.accessToken);
-      toast.success("Logged in successfully.");
+      toast.success("Signed in successfully.");
       setEmail("");
       setOtpDigits("");
       setPendingEmail(null);
