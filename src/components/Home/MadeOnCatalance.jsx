@@ -173,7 +173,7 @@ const MadeOnCatalance = () => {
       : "relative grid min-h-0 flex-1 grid-cols-2 gap-4 overflow-hidden py-6";
 
   return (
-    <section className="relative h-screen overflow-hidden bg-background text-foreground">
+    <section className="relative h-screen overflow-hidden bg-background text-foreground lg:h-[115vh] xl:h-[125vh]">
 
       <div className="relative mx-auto flex h-full max-w-7xl flex-col px-4 py-8 sm:px-6 lg:px-10">
         <header className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
