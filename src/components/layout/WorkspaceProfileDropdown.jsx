@@ -80,7 +80,7 @@ const WorkspaceProfileDropdown = ({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1.5 rounded-full border border-border bg-transparent px-2.5 py-1.5 text-[0.83rem] font-semibold text-white shadow-none transition-colors hover:border-border hover:bg-transparent"
+          className="flex h-11 shrink-0 items-center gap-2.5 rounded-full border border-border bg-transparent px-3.5 text-[0.83rem] font-semibold text-white shadow-none transition-colors hover:border-border hover:bg-transparent"
         >
           <Avatar className="size-6.5 border border-border">
             <AvatarImage src={profile?.avatar} alt={displayName} />
@@ -91,7 +91,7 @@ const WorkspaceProfileDropdown = ({
 
           {showVerifiedBadge && profile?.isVerified ? (
             <span className="flex min-w-0 flex-col items-start gap-0.5 leading-none">
-              <span className="max-w-[104px] truncate">{displayName}</span>
+              <span className="max-w-[104px] truncate whitespace-nowrap">{displayName}</span>
               <Badge
                 title="This freelancer has successfully completed at least one project on our platform."
                 className="h-4.5 border-emerald-500/20 bg-emerald-500/10 px-1.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-emerald-300"
@@ -101,12 +101,12 @@ const WorkspaceProfileDropdown = ({
               </Badge>
             </span>
           ) : (
-            <span className="max-w-[104px] truncate">{displayName}</span>
+            <span className="max-w-[104px] truncate whitespace-nowrap">{displayName}</span>
           )}
 
           <ChevronDown
             className={cn(
-              "h-3.5 w-3.5 text-white transition-transform duration-200",
+              "h-3.5 w-3.5 shrink-0 text-white transition-transform duration-200",
               open ? "rotate-180" : ""
             )}
           />

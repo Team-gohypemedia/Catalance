@@ -172,7 +172,7 @@ export const NavBody = ({
         borderRadius: borderRadius,
       }}
       className={cn(
-        "relative z-60 mx-auto hidden w-full flex-row items-center justify-between self-start overflow-hidden border px-3 py-2 lg:flex",
+        "relative z-60 mx-auto hidden w-full flex-row items-center justify-between gap-5 self-start overflow-hidden border px-5 py-2 lg:flex",
         className
       )}
     >
@@ -197,7 +197,7 @@ export const NavItems = ({
   return (
     <div
       className={cn(
-        "hidden min-w-0 flex-1 flex-row items-center justify-center gap-1 px-4 text-sm font-medium transition duration-200 lg:flex",
+        "hidden min-w-0 flex-1 flex-row items-center justify-center gap-5 px-5 text-sm font-medium transition duration-200 lg:flex",
         className
       )}
     >
@@ -212,7 +212,7 @@ export const NavItems = ({
             onClick={onItemClick}
             to={item.link}
             className={cn(
-              "relative inline-flex items-center justify-center rounded-full px-3 py-2 transition-colors duration-200",
+              "relative inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full px-2.5 py-2 transition-colors duration-200",
               isActive
                 ? "bg-primary text-background shadow-[inset_0_0_0_1px_rgba(255,193,7,0.32)]"
                 : "text-foreground/85 hover:bg-white/5 hover:text-foreground dark:hover:bg-neutral-800/70",
@@ -329,7 +329,7 @@ export const MobileNavToggle = ({ isOpen, onClick }) => {
 };
 
 export const NavbarLogo = () => (
-  <div className="flex items-center gap-2">
+  <div className="flex shrink-0 items-center gap-3">
     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
       <img
         src={logo}
