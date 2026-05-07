@@ -38,12 +38,6 @@ const toPositiveInteger = (value) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
-const buildNumberSignature = (values = []) =>
-  values
-    .map((value) => Number(value))
-    .filter((value) => Number.isInteger(value) && value > 0)
-    .join("|");
-
 const buildStringSignature = (values = []) => normalizeStringArray(values).join("|");
 const buildToolSelectionKey = (subCategoryId, toolId) => {
   const normalizedSubCategoryId = toPositiveInteger(subCategoryId);
@@ -77,6 +71,9 @@ const CategoryMultiSelect = ({
   placeholder = "Select sub-categories",
   searchPlaceholder = "Search sub-categories",
   isLoading = false,
+  loadingMessage = "Loading...",
+  emptyMessage = "No options available",
+  noResultsMessage = "No matching options",
   closeOnSelect = false,
   hasError = false,
   }) => {
@@ -220,8 +217,8 @@ const CategoryMultiSelect = ({
   };
 
   const summaryText = useMemo(
-    () => (isLoading ? "Loading..." : placeholder),
-    [isLoading, placeholder],
+    () => (isLoading ? loadingMessage : placeholder),
+    [isLoading, loadingMessage, placeholder],
   );
 
   return (
@@ -285,13 +282,17 @@ const CategoryMultiSelect = ({
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="overflow-y-auto" style={{ maxHeight: `${popupMaxHeight}px` }}>
-                  {options.length === 0 ? (
+                  {isLoading ? (
                     <div className="px-4 py-3 text-sm text-white/40">
-                      No sub-categories available
+                      {loadingMessage}
+                    </div>
+                  ) : options.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-white/40">
+                      {emptyMessage}
                     </div>
                   ) : filteredOptions.length === 0 ? (
                     <div className="px-4 py-3 text-sm text-white/40">
-                      No matching sub-categories
+                      {noResultsMessage}
                     </div>
                   ) : (
                     filteredOptions.map((option) => {
@@ -370,6 +371,9 @@ const FreelancerServiceInfoSlide = ({
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
   const [toolOptionsByCategory, setToolOptionsByCategory] = useState({});
   const [isToolsLoading, setIsToolsLoading] = useState(false);
+  const [toolFetchError, setToolFetchError] = useState("");
+  const toolOptionsCacheRef = useRef(new Map());
+  const toolFetchRequestIdRef = useRef(0);
 
   const resolvedServiceId = toPositiveInteger(currentService?.id);
   const serviceName = currentServiceName || "Service";
@@ -389,14 +393,16 @@ const FreelancerServiceInfoSlide = ({
   );
   const selectedCatalogCategoryIds = useMemo(
     () =>
-      normalizedSubcategories
-        .map((entry) => toPositiveInteger(entry?.subCategoryId))
-        .filter(Boolean),
+      Array.from(
+        new Set(
+          normalizedSubcategories
+            .map((entry) => toPositiveInteger(entry?.subCategoryId))
+            .filter(Boolean),
+        ),
+      ),
     [normalizedSubcategories],
   );
-  const selectedCatalogCategoryIdsSignature = buildNumberSignature(
-    selectedCatalogCategoryIds,
-  );
+  const hasSelectedSubcategories = normalizedSubcategories.length > 0;
   const allCategoryOptions = useMemo(() => {
     return [...categoryOptions];
   }, [categoryOptions]);
@@ -420,13 +426,6 @@ const FreelancerServiceInfoSlide = ({
 
     return nextMap;
   }, [categoryOptionsByValue]);
-  const selectedCategoryOptions = useMemo(
-    () =>
-      selectedCategoryKeys
-        .map((selectionKey) => categoryOptionsByValue.get(String(selectionKey)))
-        .filter(Boolean),
-    [categoryOptionsByValue, selectedCategoryKeys],
-  );
   const skillOptions = useMemo(
     () =>
       selectedCatalogCategoryIds.flatMap((subCategoryId) => {
@@ -484,6 +483,7 @@ const FreelancerServiceInfoSlide = ({
   useEffect(() => {
     if (!resolvedServiceId) {
       setCategoryOptions([]);
+      setIsCategoriesLoading(false);
       return;
     }
 
@@ -564,62 +564,110 @@ const FreelancerServiceInfoSlide = ({
   }, [normalizedSubcategories, onUpdateServiceDraft]);
 
   useEffect(() => {
-    // Only refetch tools when the actual set of selected catalog IDs changes.
-    // Use the stable `selectedCatalogCategoryIdsSignature` (string) so
-    // transient array identity changes (e.g. from draft normalization)
-    // do not trigger unnecessary network requests while typing.
-    if (!selectedCatalogCategoryIds.length) {
+    const selectedIds = selectedCatalogCategoryIds;
+    toolFetchRequestIdRef.current += 1;
+    const requestId = toolFetchRequestIdRef.current;
+    const abortController = new AbortController();
+
+    if (!selectedIds.length) {
       setToolOptionsByCategory({});
-      return;
+      setToolFetchError("");
+      setIsToolsLoading(false);
+      return () => {
+        abortController.abort();
+      };
     }
 
-    let cancelled = false;
+    const cachedToolOptionsByCategory = {};
+    const idsToFetch = [];
+
+    selectedIds.forEach((subCategoryId) => {
+      const cacheKey = String(subCategoryId);
+      if (toolOptionsCacheRef.current.has(cacheKey)) {
+        cachedToolOptionsByCategory[cacheKey] =
+          toolOptionsCacheRef.current.get(cacheKey) || [];
+      } else {
+        idsToFetch.push(subCategoryId);
+      }
+    });
+
+    setToolFetchError("");
+    setToolOptionsByCategory(cachedToolOptionsByCategory);
+    setIsToolsLoading(idsToFetch.length > 0);
+
+    if (!idsToFetch.length) {
+      return () => {
+        abortController.abort();
+      };
+    }
 
     const fetchTools = async () => {
-      try {
-        setIsToolsLoading(true);
-        const toolEntries = await Promise.all(
-          selectedCatalogCategoryIds.map(async (subCategoryId) => {
-            const response = await fetch(
-              `${API_BASE_URL}/marketplace/filters/tools?subCategoryId=${subCategoryId}`,
-            );
-            if (!response.ok) {
-              throw new Error("Failed to fetch tools");
-            }
+      const settledResults = await Promise.allSettled(
+        idsToFetch.map(async (subCategoryId) => {
+          const response = await fetch(
+            `${API_BASE_URL}/marketplace/filters/tools?subCategoryId=${subCategoryId}`,
+            { signal: abortController.signal },
+          );
+          if (!response.ok) {
+            throw new Error("Failed to fetch tools");
+          }
 
-            const payload = await response.json();
-            const options = (Array.isArray(payload?.data) ? payload.data : [])
-              .map((entry) => ({
-                id: toPositiveInteger(entry?.id),
-                subCategoryId,
-                name: String(entry?.name || "").trim(),
-                label: String(entry?.name || "").trim(),
-              }))
-              .filter((entry) => entry.id && entry.label);
+          const payload = await response.json();
+          const options = (Array.isArray(payload?.data) ? payload.data : [])
+            .map((entry) => ({
+              id: toPositiveInteger(entry?.id),
+              subCategoryId,
+              name: String(entry?.name || "").trim(),
+              label: String(entry?.name || "").trim(),
+            }))
+            .filter((entry) => entry.id && entry.label);
 
-            return [String(subCategoryId), options];
-          }),
-        );
+          toolOptionsCacheRef.current.set(String(subCategoryId), options);
+          return [String(subCategoryId), options];
+        }),
+      );
 
-        if (!cancelled) {
-          setToolOptionsByCategory(Object.fromEntries(toolEntries));
-        }
-      } catch {
-        if (!cancelled) {
-          setToolOptionsByCategory({});
-        }
-      } finally {
-        if (!cancelled) {
-          setIsToolsLoading(false);
-        }
+      if (abortController.signal.aborted || requestId !== toolFetchRequestIdRef.current) {
+        return;
       }
+
+      const nextToolOptionsByCategory = { ...cachedToolOptionsByCategory };
+      let hasAnySkills = Object.values(nextToolOptionsByCategory).some(
+        (options) => Array.isArray(options) && options.length > 0,
+      );
+      let hadFailure = false;
+
+      settledResults.forEach((result) => {
+        if (result.status === "fulfilled") {
+          const [subCategoryKey, options] = result.value;
+          nextToolOptionsByCategory[subCategoryKey] = options;
+          if (Array.isArray(options) && options.length > 0) {
+            hasAnySkills = true;
+          }
+          return;
+        }
+
+        if (result.reason?.name !== "AbortError") {
+          hadFailure = true;
+        }
+      });
+
+      setToolOptionsByCategory(nextToolOptionsByCategory);
+      setToolFetchError(
+        hadFailure && !hasAnySkills ? "Unable to load skills right now." : "",
+      );
     };
 
-    void fetchTools();
+    void fetchTools().finally(() => {
+      if (!abortController.signal.aborted && requestId === toolFetchRequestIdRef.current) {
+        setIsToolsLoading(false);
+      }
+    });
+
     return () => {
-      cancelled = true;
+      abortController.abort();
     };
-  }, [selectedCatalogCategoryIdsSignature]);
+  }, [selectedCatalogCategoryIds]);
 
   useEffect(() => {
     const currentSkillsSignature = buildStringSignature(
@@ -777,7 +825,7 @@ const FreelancerServiceInfoSlide = ({
               <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 Skills
               </label>
-              {selectedCategoryOptions.length === 0 ? (
+              {!hasSelectedSubcategories ? (
                 <div className="rounded-xl border border-dashed border-white/12 bg-card px-4 py-3 text-[14px] leading-5 text-white/20">
                   Select at least one sub-category to add skills.
                 </div>
@@ -787,9 +835,12 @@ const FreelancerServiceInfoSlide = ({
                     selected={selectedSkillValues}
                     onChange={handleSelectedSkillsChange}
                     options={skillOptions}
-                    placeholder={isToolsLoading ? "Loading..." : "Search here"}
+                    placeholder="Search here"
                     searchPlaceholder="Search here"
                     isLoading={isToolsLoading}
+                    loadingMessage="Loading skills..."
+                    emptyMessage={toolFetchError || "No skills found"}
+                    noResultsMessage="No matching skills found"
                     hasError={Boolean(skillsError)}
                   />
                 </div>
