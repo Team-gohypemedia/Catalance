@@ -127,14 +127,10 @@ const getInitials = (value) => {
 
 /* ─── AuthButtons ────────────────────────────────────────────────────────── */
 const AuthButtons = ({
-  isHome,
-  isDark,
   showAuthenticatedNav,
   currentDashboard,
   user,
 }) => {
-  const forceWhite = isHome && isDark; // `visible` prop is no longer used here
-
   if (showAuthenticatedNav) {
     const displayName = getDisplayName(user);
 
@@ -159,16 +155,10 @@ const AuthButtons = ({
     <div className="flex items-center gap-2">
       <NavbarButton
         as={Link}
-        to="/login"
-        variant="outline"
-        className={cn(
-          forceWhite ? "text-white border-white/20 hover:bg-white/10" : ""
-        )}
+        to="/signin/phone"
+        className="text-background"
       >
-        Log In
-      </NavbarButton>
-      <NavbarButton as={Link} to="/get-started">
-        Sign Up
+        Sign In
       </NavbarButton>
     </div>
   );
@@ -238,8 +228,6 @@ const Navbar = () => {
         />
         <div className="flex shrink-0 items-center gap-3">
           <AuthButtons
-            isHome={isHome}
-            isDark={isDark}
             showAuthenticatedNav={shouldShowAuthenticatedNav}
             currentDashboard={currentDashboard}
             user={user}
@@ -353,18 +341,10 @@ const PublicMobileSidebar = ({ navItems, currentPath }) => {
               <div className="mt-auto space-y-2 pt-6">
                 <SheetClose asChild>
                   <Link
-                    to="/login"
-                    className="flex min-h-10 w-full items-center justify-center rounded-[15px] border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[0.9rem] font-semibold text-foreground transition-colors hover:bg-white/[0.06]"
+                    to="/signin/phone"
+                    className="flex min-h-10 w-full items-center justify-center rounded-[15px] bg-primary px-3 py-1.5 text-[0.9rem] font-semibold text-background transition-colors hover:bg-primary/90"
                   >
-                    Log In
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link
-                    to="/get-started"
-                    className="flex min-h-10 w-full items-center justify-center rounded-[15px] bg-primary px-3 py-1.5 text-[0.9rem] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                  >
-                    Sign Up
+                    Sign In
                   </Link>
                 </SheetClose>
               </div>

@@ -160,7 +160,14 @@ describe("Navbar service tab visibility", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /open navigation menu/i }));
 
-    expect(await screen.findByRole("link", { name: "Log In" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Sign Up" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Log In" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Sign Up" })).toBeNull();
+
+    const signInLinks = await screen.findAllByRole("link", { name: "Sign In" });
+
+    expect(signInLinks.length).toBeGreaterThan(0);
+    signInLinks.forEach((link) => {
+      expect(link.getAttribute("href")).toBe("/signin/phone");
+    });
   });
 });

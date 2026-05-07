@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 const MIN_CROP_SIZE = 88;
+const INITIAL_CROP_RATIO = 0.88;
 const OUTPUT_SIZES = [1024, 896, 768, 640, 512, 384];
 const OUTPUT_QUALITIES = [0.92, 0.85, 0.78, 0.7, 0.62];
 
@@ -94,7 +95,7 @@ const clampCropToLayout = (crop, layout) => {
 const createInitialCrop = (layout) => {
   const maxSize = getMaxCropSize(layout);
   const minSize = getMinCropSize(layout);
-  const size = clamp(maxSize * 0.62, minSize, maxSize);
+  const size = clamp(maxSize * INITIAL_CROP_RATIO, minSize, maxSize);
 
   return {
     x: layout.left + (layout.width - size) / 2,
@@ -169,10 +170,7 @@ const buildNextCrop = (mode, crop, deltaX, deltaY, layout) => {
       const size = clamp(
         crop.size - deltaY,
         minSize,
-        Math.min(
-          bottom - layout.top,
-          2 * Math.min(centerX - layout.left, layout.right - centerX)
-        )
+        bottom - layout.top
       );
       return clampCropToLayout(
         {
@@ -187,10 +185,7 @@ const buildNextCrop = (mode, crop, deltaX, deltaY, layout) => {
       const size = clamp(
         crop.size + deltaY,
         minSize,
-        Math.min(
-          layout.bottom - crop.y,
-          2 * Math.min(centerX - layout.left, layout.right - centerX)
-        )
+        layout.bottom - crop.y
       );
       return clampCropToLayout(
         {
@@ -205,10 +200,7 @@ const buildNextCrop = (mode, crop, deltaX, deltaY, layout) => {
       const size = clamp(
         crop.size + deltaX,
         minSize,
-        Math.min(
-          layout.right - crop.x,
-          2 * Math.min(centerY - layout.top, layout.bottom - centerY)
-        )
+        layout.right - crop.x
       );
       return clampCropToLayout(
         {
@@ -223,10 +215,7 @@ const buildNextCrop = (mode, crop, deltaX, deltaY, layout) => {
       const size = clamp(
         crop.size - deltaX,
         minSize,
-        Math.min(
-          right - layout.left,
-          2 * Math.min(centerY - layout.top, layout.bottom - centerY)
-        )
+        right - layout.left
       );
       return clampCropToLayout(
         {
@@ -346,9 +335,9 @@ export default function ProfileImageCropDialog({
     if (!open) return undefined;
 
     const measureStage = () => {
-      const rect = stageRef.current?.getBoundingClientRect?.();
-      const nextWidth = Math.round(rect?.width || 0);
-      const nextHeight = Math.round(rect?.height || 0);
+      const stage = stageRef.current;
+      const nextWidth = stage?.clientWidth || 0;
+      const nextHeight = stage?.clientHeight || 0;
 
       if (nextWidth > 0 && nextHeight > 0) {
         setStageBounds((currentBounds) =>
@@ -654,7 +643,7 @@ export default function ProfileImageCropDialog({
                   Saving...
                 </>
               ) : (
-                "Use Cropped Photo"
+                "Save Photo"
               )}
             </Button>
           </div>
