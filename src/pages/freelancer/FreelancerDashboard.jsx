@@ -73,13 +73,7 @@ const FreelancerDashboard = () => {
 
         return (
         <div className="min-h-screen bg-background text-[#f1f5f9]">
-          <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
-            <SuspensionAlert
-              open={model.showSuspensionAlert}
-              onOpenChange={model.setShowSuspensionAlert}
-              suspendedAt={model.sessionUser?.suspendedAt}
-            />
-
+          <div className="mx-auto flex w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
             <FreelancerWorkspaceHeader
               profile={model.headerProfile}
               activeWorkspaceKey={model.activeWorkspaceKey}
@@ -95,6 +89,12 @@ const FreelancerDashboard = () => {
               markAllAsRead={model.markAllAsRead}
               onNotificationClick={model.handleNotificationClick}
               workspaceNavHidden={shouldShowOnboardingWelcome}
+            />
+
+            <SuspensionAlert
+              open={model.showSuspensionAlert}
+              onOpenChange={model.setShowSuspensionAlert}
+              suspendedAt={model.sessionUser?.suspendedAt}
             />
 
             <main className="relative z-10 flex-1 pb-12 sm:pb-14">

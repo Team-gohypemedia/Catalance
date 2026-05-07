@@ -6,13 +6,16 @@ import * as Flags from "country-flag-icons/react/3x2";
 import { cn } from "@/shared/lib/utils";
 import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
-  InputOTPSeparator,
 } from "@/components/ui/input-otp";
 import {
   loginWithGoogle,
@@ -38,7 +41,6 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import logo from "@/assets/logos/logo.svg";
-import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
@@ -46,7 +48,16 @@ import Search from "lucide-react/dist/esm/icons/search";
 
 const DEFAULT_COUNTRY = "IN";
 const MIN_PHONE_DIGITS = 6;
+const DEFAULT_OTP_EXPIRY_MINUTES = 15;
 const OTP_LENGTH = 6;
+
+const formatCountdown = (totalSeconds) => {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
 
 const normalizeAvatarUrl = (value) => {
   const url = String(value || "").trim();
@@ -238,16 +249,77 @@ function PhoneAuth() {
   const [otpDigits, setOtpDigits] = useState("");
   const [authStep, setAuthStep] = useState("phone");
   const [pendingPhone, setPendingPhone] = useState(null);
-  const [otpExpiresInMinutes, setOtpExpiresInMinutes] = useState(15);
+  const [otpExpiresInMinutes, setOtpExpiresInMinutes] = useState(DEFAULT_OTP_EXPIRY_MINUTES);
+  const [otpExpiresAt, setOtpExpiresAt] = useState(null);
+  const [countdownNow, setCountdownNow] = useState(() => Date.now());
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const lastDigitsOnlyToastAtRef = useRef(0);
+  const mobileOtpInputRef = useRef(null);
+  const desktopOtpInputRef = useRef(null);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return false;
+    }
+
+    return window.matchMedia("(min-width: 1280px)").matches;
+  });
 
   useEffect(() => {
     document.title = "Sign in | Catalance";
   }, []);
+
+  useEffect(() => {
+    if (authStep !== "otp" || !otpExpiresAt) {
+      setCountdownNow(Date.now());
+      return undefined;
+    }
+
+    const syncCountdown = () => {
+      setCountdownNow(Date.now());
+    };
+
+    syncCountdown();
+    const intervalId = window.setInterval(syncCountdown, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [authStep, otpExpiresAt]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia("(min-width: 1280px)");
+    const syncViewport = (event) => {
+      setIsDesktopViewport(event.matches);
+    };
+
+    setIsDesktopViewport(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncViewport);
+      return () => mediaQuery.removeEventListener("change", syncViewport);
+    }
+
+    mediaQuery.addListener(syncViewport);
+    return () => mediaQuery.removeListener(syncViewport);
+  }, []);
+
+  useEffect(() => {
+    if (authStep !== "otp") return undefined;
+
+    const activeOtpInputRef = isDesktopViewport
+      ? desktopOtpInputRef
+      : mobileOtpInputRef;
+    const frameId = window.requestAnimationFrame(() => {
+      activeOtpInputRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [authStep, isDesktopViewport]);
 
   const selectedCountry = useMemo(
     () =>
@@ -256,6 +328,10 @@ function PhoneAuth() {
     [countryCode],
   );
   const formattedPhone = formatPhoneNumber(phoneDigits);
+  const otpRemainingSeconds = otpExpiresAt
+    ? Math.max(0, Math.ceil((otpExpiresAt - countdownNow) / 1000))
+    : otpExpiresInMinutes * 60;
+  const isOtpExpired = authStep === "otp" && otpRemainingSeconds === 0;
   const emailSigninPath = searchParams.toString()
     ? `/signin/email?${searchParams.toString()}`
     : "/signin/email";
@@ -311,7 +387,10 @@ function PhoneAuth() {
         phonePayload.phoneNumber,
       )}`;
       setPendingPhone(phonePayload);
-      setOtpExpiresInMinutes(Number(result?.expiresInMinutes) || 15);
+      const expiresInMinutes =
+        Number(result?.expiresInMinutes) || DEFAULT_OTP_EXPIRY_MINUTES;
+      setOtpExpiresInMinutes(expiresInMinutes);
+      setOtpExpiresAt(Date.now() + expiresInMinutes * 60 * 1000);
       setAuthStep("otp");
       toast.success(`6-digit WhatsApp code sent to ${phoneLabel}.`);
     } catch (error) {
@@ -329,6 +408,11 @@ function PhoneAuth() {
 
   const verifyOtpCode = async () => {
     setFormError("");
+
+    if (isOtpExpired) {
+      setFormError("This WhatsApp code has expired. Request a new one.");
+      return;
+    }
 
     const otp = normalizePhoneNumber(otpDigits).slice(0, OTP_LENGTH);
     if (otp.length !== OTP_LENGTH) {
@@ -357,10 +441,11 @@ function PhoneAuth() {
         : authPayload.user;
 
       setAuthSession(sessionUser, authPayload.accessToken);
-      toast.success("Logged in successfully.");
+      toast.success("Signed in successfully.");
       setPhoneDigits("");
       setOtpDigits("");
       setPendingPhone(null);
+      setOtpExpiresAt(null);
 
       const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
 
@@ -405,11 +490,14 @@ function PhoneAuth() {
     setAuthStep("phone");
     setOtpDigits("");
     setPendingPhone(null);
-    setOtpExpiresInMinutes(15);
+    setOtpExpiresInMinutes(DEFAULT_OTP_EXPIRY_MINUTES);
+    setOtpExpiresAt(null);
     setFormError("");
   };
 
   const handleResendOtp = () => {
+    if (!isOtpExpired || isSubmitting || isResending) return;
+
     void requestOtp({ resend: true });
   };
 
@@ -476,13 +564,20 @@ function PhoneAuth() {
     const phoneInputId = compact ? "phoneNumber" : "phoneNumberDesktop";
     const otpInputId = compact ? "whatsappOtp" : "whatsappOtpDesktop";
     const isOtpStep = authStep === "otp";
+    const shouldAutoFocusOtp =
+      isOtpStep && ((compact && !isDesktopViewport) || (!compact && isDesktopViewport));
+    const otpInputRef = compact ? mobileOtpInputRef : desktopOtpInputRef;
     const normalizedOtpDigits = normalizePhoneNumber(otpDigits).slice(0, OTP_LENGTH);
     const isOtpComplete = normalizedOtpDigits.length === OTP_LENGTH;
+    const countdownText = isOtpExpired
+      ? "Code expired"
+      : `Code expires in ${formatCountdown(otpRemainingSeconds)}`;
+    const canResendOtp = isOtpExpired && !isSubmitting && !isResending;
+    const resendButtonLabel = isResending ? "Resending..." : "Resend code";
     const buttonLabel = isOtpStep ? "Verify OTP" : "Continue";
     const loadingLabel = isOtpStep ? "Verifying..." : "Sending OTP...";
     const formSpacing = compact ? "space-y-3" : "space-y-5";
     const labelClass = "block text-[11px] font-medium uppercase tracking-[0.18em] text-white";
-    const otpLabelClass = "block text-[12px] font-semibold uppercase tracking-[0.2em] text-white";
     const phoneGridClass = compact
       ? "grid w-full grid-cols-[7rem_minmax(0,1fr)] gap-1.5"
       : "grid grid-cols-[7.5rem_minmax(0,1fr)] gap-2 sm:grid-cols-[8rem_minmax(0,1fr)]";
@@ -495,6 +590,7 @@ function PhoneAuth() {
     const submitButtonClass = compact
       ? "!h-11 w-full rounded-md bg-primary text-[14px] font-medium text-black shadow-none hover:bg-primary/95"
       : "!h-14 w-full rounded-md bg-primary text-sm font-medium text-black shadow-none hover:bg-primary/95 sm:text-[15px]";
+    const otpSlotClass = "h-10 w-10 sm:h-11 sm:w-11";
     const selectedCountryDialDigits = normalizePhoneNumber(
       selectedCountry?.dialCode || "",
     );
@@ -591,12 +687,15 @@ function PhoneAuth() {
               </div>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <Field className="w-full gap-2.5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <label htmlFor={otpInputId} className={otpLabelClass}>
+                  <FieldLabel
+                    htmlFor={otpInputId}
+                    className="block text-[12px] font-semibold uppercase tracking-[0.2em] text-white"
+                  >
                     Verification code
-                  </label>
+                  </FieldLabel>
                   <p className="mt-1 truncate text-xs text-white/55">
                     6-digit code sent to {pendingPhoneLabel}
                   </p>
@@ -614,8 +713,11 @@ function PhoneAuth() {
               </div>
 
               <InputOTP
+                ref={otpInputRef}
+                id={otpInputId}
                 maxLength={OTP_LENGTH}
                 value={normalizedOtpDigits}
+                autoFocus={shouldAutoFocusOtp}
                 onChange={(value) => {
                   setOtpDigits(normalizePhoneNumber(value).slice(0, OTP_LENGTH));
                 }}
@@ -645,37 +747,33 @@ function PhoneAuth() {
                     showDigitsOnlyToast();
                   }
                 }}
-                containerClassName="w-full overflow-hidden px-2"
+                containerClassName="w-full justify-center overflow-hidden px-2"
               >
-                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
-                  <InputOTPSlot index={0} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
-                  <InputOTPSlot index={1} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
-                </InputOTPGroup>
-                <InputOTPSeparator className="mx-2 sm:mx-4" />
-                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
-                  <InputOTPSlot index={2} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
-                  <InputOTPSlot index={3} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
-                </InputOTPGroup>
-                <InputOTPSeparator className="mx-2 sm:mx-4" />
-                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
-                  <InputOTPSlot index={4} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
-                  <InputOTPSlot index={5} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                <InputOTPGroup className="justify-center">
+                  <InputOTPSlot index={0} className={otpSlotClass} />
+                  <InputOTPSlot index={1} className={otpSlotClass} />
+                  <InputOTPSlot index={2} className={otpSlotClass} />
+                  <InputOTPSlot index={3} className={otpSlotClass} />
+                  <InputOTPSlot index={4} className={otpSlotClass} />
+                  <InputOTPSlot index={5} className={otpSlotClass} />
                 </InputOTPGroup>
               </InputOTP>
 
               <div className="flex items-center justify-between gap-3 text-xs text-white/50">
-                <span>Code expires in {otpExpiresInMinutes} minutes.</span>
+                <span className={isOtpExpired ? "text-red-400" : "text-white/50"}>
+                  {countdownText}
+                </span>
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={handleResendOtp}
-                  disabled={isSubmitting || isResending}
+                  disabled={!canResendOtp}
                   className="h-8 px-2 text-xs text-primary hover:bg-white/[0.06] hover:text-primary"
                 >
-                  {isResending ? "Resending..." : "Resend code"}
+                  {resendButtonLabel}
                 </Button>
               </div>
-            </div>
+            </Field>
           )}
 
           {formError ? (
@@ -687,15 +785,17 @@ function PhoneAuth() {
 
         <Button
           type="submit"
-          disabled={isSubmitting || isResending || (authStep === "otp" && !isOtpComplete)}
+          disabled={
+            isSubmitting ||
+            isResending ||
+            (authStep === "otp" && (!isOtpComplete || isOtpExpired))
+          }
           className={submitButtonClass}
         >
           {isSubmitting ? loadingLabel : buttonLabel}
           {isSubmitting ? (
             <Loader2 className={compact ? "size-[0.95rem] animate-spin" : "size-5 animate-spin"} />
-          ) : (
-            <ArrowRight className={compact ? "size-[0.95rem]" : "size-5"} />
-          )}
+          ) : null}
         </Button>
       </form>
     );

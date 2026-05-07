@@ -30,7 +30,6 @@ import {
   setStoredDashboardPreference,
 } from "@/shared/lib/dashboard-preference";
 import logo from "@/assets/logos/logo.svg";
-import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
@@ -260,7 +259,7 @@ function EmailAuth() {
         : authPayload?.user;
 
       setAuthSession(sessionUser, authPayload?.accessToken);
-      toast.success("Logged in successfully.");
+      toast.success("Signed in successfully.");
       setEmail("");
       setOtpDigits("");
       setPendingEmail(null);
@@ -507,9 +506,7 @@ function EmailAuth() {
                 compact ? "size-[0.95rem] animate-spin" : "size-5 animate-spin"
               }
             />
-          ) : (
-            <ArrowRight className={compact ? "size-[0.95rem]" : "size-5"} />
-          )}
+          ) : null}
         </Button>
       </form>
     );

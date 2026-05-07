@@ -75,7 +75,7 @@ function ResetPassword({ className, ...props }) {
         try {
             await resetPassword({ token, password });
             toast.success("Password reset successfully!");
-            navigate("/login", { replace: true });
+            navigate("/signin/phone", { replace: true });
         } catch (error) {
             const message = error?.message || "Failed to reset password. Please try again.";
             toast.error(message);
@@ -126,7 +126,7 @@ function ResetPassword({ className, ...props }) {
                                         <Button onClick={() => navigate("/forgot-password")}>
                                             Request new link
                                         </Button>
-                                        <Button onClick={() => navigate("/login")} variant="outline">
+                                        <Button onClick={() => navigate("/signin/phone")} variant="outline">
                                             Back to login
                                         </Button>
                                     </div>
@@ -218,7 +218,7 @@ function ResetPassword({ className, ...props }) {
                                     </Field>
                                     <FieldDescription className="text-center">
                                         Remember your password?{" "}
-                                        <a href="/login" className="text-primary hover:underline">
+                                        <a href="/signin/phone" className="text-primary hover:underline">
                                             Back to login
                                         </a>
                                     </FieldDescription>

@@ -283,6 +283,7 @@ const FreelancerWorkspaceHeader = ({
   unreadCount = 0,
   markAllAsRead,
   onNotificationClick,
+  flushContainerPadding = true,
   className,
 }) => {
   const { logout } = useAuth();
@@ -301,7 +302,7 @@ const FreelancerWorkspaceHeader = ({
   );
 
   return (
-    <header className={cn("sticky top-0 z-50 bg-background", className)}>
+    <header className={cn("sticky top-0 z-50 flex-none bg-background", className)}>
       <WorkspaceMobileSidebar
         currentDashboard="freelancer"
         displayName={displayName}
@@ -317,7 +318,7 @@ const FreelancerWorkspaceHeader = ({
         onLogout={() => {
           logout();
         }}
-        flushContainerPadding
+        flushContainerPadding={flushContainerPadding}
         renderNotificationButton={() => (
           <NotificationPopoverButton
             notifications={notifications}

@@ -269,13 +269,16 @@ body[data-scroll-locked] {
     @apply bg-background text-foreground;
     scrollbar-gutter: stable;
     overflow-x: hidden;
+    overflow-x: clip;
   }
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
+    overflow-x: clip;
   }
   #root {
     overflow-x: hidden;
+    overflow-x: clip;
   }
 
   .pm-light-theme {

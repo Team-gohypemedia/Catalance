@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Check from "lucide-react/dist/esm/icons/check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 
 import { cn } from "@/shared/lib/utils";
@@ -305,13 +306,16 @@ export const CustomSelect = ({
                   setIsOpen(false);
                 }}
                 className={cn(
-                  "flex w-full items-center px-4 py-3 text-left text-sm transition-colors hover:bg-white/5",
+                  "flex w-full items-center gap-2 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
                   value === option.value
-                    ? "bg-primary/10 text-primary"
-                    : "text-white/80"
+                    ? "border-primary/60 bg-primary text-black shadow-[0_0_0_1px_rgba(255,199,0,0.25)]"
+                    : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
                 )}
               >
-                {option.label}
+                <span className="min-w-0 truncate font-medium">{option.label}</span>
+                {value === option.value ? (
+                  <Check className="ml-1 h-4 w-4 shrink-0 text-black" />
+                ) : null}
               </button>
             ))
           ) : (

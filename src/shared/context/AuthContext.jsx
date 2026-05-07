@@ -112,7 +112,7 @@ export const AuthProvider = ({ children }) => {
     (options = {}) => {
       const {
         redirect = true,
-        redirectTo = "/login",
+        redirectTo = "/signin/phone",
         showToast = true,
       } = options || {};
 
@@ -133,7 +133,7 @@ export const AuthProvider = ({ children }) => {
     (options = {}) => {
       const {
         redirect = true,
-        redirectTo = "/login",
+        redirectTo = "/signin/phone",
         showToast = true,
       } = options || {};
 

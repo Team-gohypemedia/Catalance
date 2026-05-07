@@ -397,6 +397,7 @@ const ClientWorkspaceHeader = ({
   onOpenNotifications: _onOpenNotifications,
   notificationTo = "/client/messages",
   unreadCount = 0,
+  flushContainerPadding = true,
   className,
 }) => {
   const { logout } = useAuth();
@@ -413,7 +414,7 @@ const ClientWorkspaceHeader = ({
   const notificationButton = notificationNode || <NotificationTriggerButton unreadCount={unreadCount} />;
 
   return (
-    <header className={cn("sticky top-0 z-50 bg-background", className)}>
+    <header className={cn("sticky top-0 z-50 flex-none bg-background", className)}>
       <NotificationSheetController notificationTo={notificationTo} />
       <WorkspaceMobileSidebar
         currentDashboard="client"
@@ -430,7 +431,7 @@ const ClientWorkspaceHeader = ({
         onLogout={() => {
           logout();
         }}
-        flushContainerPadding
+        flushContainerPadding={flushContainerPadding}
         renderNotificationButton={() => notificationNode || <NotificationTriggerButton unreadCount={unreadCount} />}
       />
 

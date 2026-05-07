@@ -440,7 +440,7 @@ const ServiceDetails = () => {
 
   const handleLoginRequired = () => {
     const returnPath = location.pathname;
-    navigate(`/login?redirect=${encodeURIComponent(returnPath)}&openMessage=1`);
+    navigate(`/signin/phone?redirect=${encodeURIComponent(returnPath)}&openMessage=1`);
   };
 
   const handleShare = async () => {

@@ -96,7 +96,7 @@ export function SignupRoleSelect({ onContinue }) {
         </Button>
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/login" className="text-primary underline-offset-4 hover:underline">
+          <Link to="/signin/phone" className="text-primary underline-offset-4 hover:underline">
             Log in
           </Link>
         </p>

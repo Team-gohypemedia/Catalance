@@ -70,7 +70,7 @@ export function NavUser({ user = null }) {
   const initials = getInitials(displayName);
 
   const handleLogout = () => {
-    logout({ redirectTo: "/login" });
+    logout({ redirectTo: "/signin/phone" });
   };
 
   const handleAccountClick = () => {

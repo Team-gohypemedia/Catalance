@@ -5044,12 +5044,14 @@ const GuestAIDemo = () => {
             navigate(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH);
         } else {
             toast.success("Proposal saved! Please create an account to continue.");
-            navigate("/signup?role=client", {
-                state: {
-                    redirectTo: CLIENT_DASHBOARD_SEND_PROPOSAL_PATH,
-                    fromProposal: true,
+            navigate(
+                `/signin/phone?role=client&redirect=${encodeURIComponent(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH)}`,
+                {
+                    state: {
+                        fromProposal: true,
+                    },
                 },
-            });
+            );
         }
     };
 
@@ -6318,7 +6320,7 @@ const GuestAIDemo = () => {
                     ) : (
                         <button
                             type="button"
-                            onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
+                            onClick={() => navigate('/signin/phone', { state: { redirectTo: '/ai-demo' } })}
                             className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-[13px] font-medium transition-colors ${isDark ? 'text-slate-300 hover:bg-white/4' : 'text-slate-600 hover:bg-slate-200/35'}`}
                         >
                             <LogIn className="h-4 w-4 shrink-0" />

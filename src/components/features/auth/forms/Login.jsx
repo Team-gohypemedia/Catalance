@@ -170,13 +170,7 @@ function Login({ className, ...props }) {
       // Handle unverified user - redirect to verification
       if (authPayload?.requiresVerification) {
         toast.info(authPayload.message || "Please verify your email.");
-        navigate("/signup", {
-          state: {
-            verifyEmail: authPayload.email,
-            showVerification: true,
-          },
-          replace: true,
-        });
+        navigate("/signin/phone", { replace: true });
         return;
       }
 
@@ -188,7 +182,7 @@ function Login({ className, ...props }) {
         : authPayload?.user;
 
       setAuthSession(sessionUser, authPayload?.accessToken);
-      toast.success("Logged in successfully.");
+      toast.success("Signed in successfully.");
       setFormData(initialFormState);
       const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
 

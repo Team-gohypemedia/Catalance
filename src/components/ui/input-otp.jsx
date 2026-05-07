@@ -4,19 +4,21 @@ import MinusIcon from "lucide-react/dist/esm/icons/minus";
 
 import { cn } from "@/shared/lib/utils"
 
-function InputOTP({
-  className,
-  containerClassName,
-  ...props
-}) {
+const InputOTP = React.forwardRef(function InputOTP(
+  { className, containerClassName, ...props },
+  ref,
+) {
   return (
     <OTPInput
+      ref={ref}
       data-slot="input-otp"
       containerClassName={cn("flex items-center gap-2 has-disabled:opacity-50", containerClassName)}
       className={cn("disabled:cursor-not-allowed", className)}
       {...props} />
   );
-}
+});
+
+InputOTP.displayName = "InputOTP";
 
 function InputOTPGroup({
   className,

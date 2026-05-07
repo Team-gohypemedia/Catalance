@@ -498,12 +498,14 @@ export function ProposalSidebar({
 
     toast.success("Proposal saved! Please create an account to continue.");
     onClose?.();
-    navigate("/signup?role=client", {
-      state: {
-        redirectTo: CLIENT_DASHBOARD_SEND_PROPOSAL_PATH,
-        fromProposal: true,
+    navigate(
+      `/signin/phone?role=client&redirect=${encodeURIComponent(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH)}`,
+      {
+        state: {
+          fromProposal: true,
+        },
       },
-    });
+    );
   };
 
   const content = (

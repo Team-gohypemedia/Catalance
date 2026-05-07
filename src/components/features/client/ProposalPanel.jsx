@@ -477,7 +477,7 @@ const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
             navigate(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH);
             return;
         }
-        navigate("/login", {
+        navigate("/signin/phone", {
             state: { redirectTo: CLIENT_DASHBOARD_SEND_PROPOSAL_PATH },
         });
     };

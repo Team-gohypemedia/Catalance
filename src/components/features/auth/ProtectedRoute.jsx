@@ -14,7 +14,7 @@ import {
 
 const ProtectedRoute = ({
   children,
-  loginPath = "/login",
+  loginPath = "/signin/phone",
   allowedRoles = null,
   allowFreelancerOnboardingOnly = false,
   requireFreelancerOnboardingComplete = false,
