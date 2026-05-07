@@ -37,6 +37,7 @@ const buildNavItems = ({
   },
   ...(!hideServiceTab ? [{ name: "Service", link: "/service" }] : []),
   { name: "Contact", link: "/contact" },
+  ...(isFreelancer ? [{ name: "Growth Hub", link: "/freelancer/growth-quest" }] : []),
 ];
 
 const buildMobileMarketingNavItems = ({
@@ -53,6 +54,9 @@ const buildMobileMarketingNavItems = ({
     ? [{ label: "Services", key: "service", to: "/service" }]
     : []),
   { label: "Contact", key: "contact", to: "/contact" },
+  ...(isFreelancer
+    ? [{ label: "Growth Hub", key: "growth-quest", to: "/freelancer/growth-quest" }]
+    : []),
 ];
 
 const clientWorkspaceNavItems = [

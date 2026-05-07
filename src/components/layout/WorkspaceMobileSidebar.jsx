@@ -397,9 +397,11 @@ const WorkspaceMobileSidebar = ({
                       Home
                     </p>
                     <div className="mt-1 grid grid-cols-2 gap-1.5">
-                      {marketingNavItems.map((item) => {
+                      {marketingNavItems.map((item, index) => {
                         const shouldSpanFullWidth =
-                          currentDashboard === "freelancer" && item.key === "contact";
+                          currentDashboard === "freelancer" &&
+                          item.key === "contact" &&
+                          index === marketingNavItems.length - 1;
 
                         return (
                           <MobileMenuLink
