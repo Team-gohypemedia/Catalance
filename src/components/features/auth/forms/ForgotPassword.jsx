@@ -86,7 +86,7 @@ function ForgotPassword({ className, ...props }) {
                                         </div>
                                     ) : null}
                                     <Button
-                                        onClick={() => navigate("/login")}
+                                        onClick={() => navigate("/signin/phone")}
                                         variant="outline"
                                         className="mt-4 w-full"
                                     >
@@ -139,7 +139,7 @@ function ForgotPassword({ className, ...props }) {
                                     </Field>
                                     <FieldDescription className="text-center">
                                         Remember your password?{" "}
-                                        <a href="/login" className="text-primary hover:underline">
+                                        <a href="/signin/phone" className="text-primary hover:underline">
                                             Back to login
                                         </a>
                                     </FieldDescription>

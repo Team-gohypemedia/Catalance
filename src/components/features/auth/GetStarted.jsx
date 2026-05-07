@@ -210,7 +210,7 @@ export default function GetStarted() {
                     isDark ? "text-neutral-400" : "text-gray-600"
                 )}>
                     Already have an account?{" "}
-                    <Link to="/login" className="text-primary hover:underline font-medium">
+                    <Link to="/signin/phone" className="text-primary hover:underline font-medium">
                         Log in
                     </Link>
                 </p>

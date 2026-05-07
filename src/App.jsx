@@ -83,7 +83,6 @@ const PhoneAuthPage = lazy(() => import("@/components/Forms/PhoneAuth"));
 const PhoneRoleOnboarding = lazy(
   () => import("@/components/features/auth/PhoneRoleOnboarding"),
 );
-const LoginPage = lazy(() => import("@/components/features/auth/forms/Login"));
 const ForgotPasswordPage = lazy(
   () => import("@/components/features/auth/forms/ForgotPassword"),
 );
@@ -179,6 +178,21 @@ const GuestAIDemo = lazy(() => import("@/components/pages/GuestAIDemo"));
 const ServiceDetails = lazy(() => import("@/components/pages/ServiceDetails"));
 
 const RouteFallback = () => <Loader />;
+
+const LegacyLoginRedirect = () => {
+  const location = useLocation();
+
+  return (
+    <Navigate
+      replace
+      state={location.state}
+      to={{
+        pathname: "/signin/phone",
+        search: location.search,
+      }}
+    />
+  );
+};
 
 const isWorkspacePath = (pathname = "") =>
   pathname.startsWith("/client") || pathname.startsWith("/freelancer");
@@ -372,7 +386,7 @@ const App = () => {
                 </LayoutWithNavbar>
               }
             />
-            <Route path="/login" element={<PublicRoute><LayoutWithNavbar><LoginPage /></LayoutWithNavbar></PublicRoute>} />
+            <Route path="/login" element={<PublicRoute><LegacyLoginRedirect /></PublicRoute>} />
             <Route path="/forgot-password" element={<PublicRoute><LayoutWithNavbar><ForgotPasswordPage /></LayoutWithNavbar></PublicRoute>} />
             <Route path="/reset-password" element={<PublicRoute><LayoutWithNavbar><ResetPasswordPage /></LayoutWithNavbar></PublicRoute>} />
             <Route path="/project-manager/login" element={<PublicRoute><PMLogin /></PublicRoute>} />
@@ -654,7 +668,7 @@ const App = () => {
               element={
                 <ProtectedRoute
                   allowFreelancerOnboardingOnly
-                  loginPath="/signup?role=freelancer"
+                  loginPath="/signin/phone?role=freelancer&redirect=/freelancer/onboarding"
                 >
                   <FreelancerOnboardingPage />
                 </ProtectedRoute>
@@ -665,7 +679,7 @@ const App = () => {
               element={
                 <ProtectedRoute
                   allowFreelancerOnboardingOnly
-                  loginPath="/signup?role=freelancer"
+                  loginPath="/signin/phone?role=freelancer&redirect=/agency/onboarding"
                 >
                   <AgencyOnboardingPage />
                 </ProtectedRoute>

@@ -294,7 +294,7 @@ const ReviewsList = ({ serviceId, initialStats }) => {
                             className="mt-2 rounded-xl h-10 px-6 font-semibold"
                             onClick={() => {
                                 const returnPath = location.pathname;
-                                navigate(`/login?redirect=${encodeURIComponent(returnPath)}&openReview=1`);
+                                navigate(`/signin/phone?redirect=${encodeURIComponent(returnPath)}&openReview=1`);
                             }}
                         >
                             Log in to review

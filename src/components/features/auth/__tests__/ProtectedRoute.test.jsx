@@ -76,7 +76,7 @@ const LocationProbe = () => {
 
 const renderProtectedApp = ({
   initialEntry = "/client",
-  loginPath = "/login",
+  loginPath = "/signin/phone",
   protectedPath = "/client",
   protectedElement = <ProtectedContent />,
   protectedProps = {},
