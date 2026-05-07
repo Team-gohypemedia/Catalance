@@ -1723,18 +1723,15 @@ const CategoryMultiSelect = ({
                       }
                     }}
                     className={cn(
-                      "flex w-full items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
+                      "flex w-full items-center gap-2 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
                       isSelected
-                        ? "border-primary/30 bg-primary/12 text-primary"
+                        ? "border-primary/60 bg-primary text-black shadow-[0_0_0_1px_rgba(255,199,0,0.25)]"
                         : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
                     )}
                   >
-                    <span className="font-medium">{option.label}</span>
+                    <span className="min-w-0 truncate font-medium">{option.label}</span>
                     {isSelected ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
-                        <Check className="h-3.5 w-3.5" />
-                        Selected
-                      </span>
+                      <Check className="ml-1 h-4 w-4 shrink-0 text-black" />
                     ) : null}
                   </button>
                 );

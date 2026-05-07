@@ -298,30 +298,30 @@ const CategoryMultiSelect = ({
                       const isSelected = selectedSet.has(String(option.value));
                       const categoryLabel = String(option?.categoryLabel || "").trim();
                       return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => toggleOption(option.value)}
-                          className={`mx-2 my-1 flex w-[calc(100%-1rem)] items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
-                            isSelected
-                            ? "border-white/10 bg-accent text-white"
-                            : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => toggleOption(option.value)}
+                      className={`mx-2 my-1 flex w-[calc(100%-1rem)] items-center gap-2 rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                        isSelected
+                          ? "border-primary/60 bg-primary text-black shadow-[0_0_0_1px_rgba(255,199,0,0.25)]"
+                          : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="min-w-0 truncate font-medium">{option.label}</span>
+                      {categoryLabel ? (
+                        <span
+                          className={`shrink-0 text-xs font-normal ${
+                            isSelected ? "text-black/60" : "text-white/40"
                           }`}
                         >
-                          <div className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                            <span className="min-w-0 truncate font-medium">{option.label}</span>
-                            {categoryLabel ? (
-                              <span className="shrink-0 text-xs font-normal text-white/40">
-                                {categoryLabel}
-                              </span>
-                            ) : null}
-                          </div>
-                          {isSelected ? (
-                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-accent text-white">
-                              <Check className="h-3.5 w-3.5" />
-                            </span>
-                          ) : null}
-                        </button>
+                          {categoryLabel}
+                        </span>
+                      ) : null}
+                      {isSelected ? (
+                        <Check className="ml-1 h-4 w-4 shrink-0 text-black" />
+                      ) : null}
+                    </button>
                       );
                     })
                   )}
