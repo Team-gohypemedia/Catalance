@@ -153,8 +153,7 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
   const today = dashboard?.today || {};
   const streak = profile.currentStreak || 0;
   const coins = profile.loyaltyCoins || 0;
-  const xp = profile.totalXP || 0;
-  const level = profile.level || 1;
+  const xp = profile.totalXP || profile.lifetimeXp || profile.xp || 0;
   const used = today.attemptsUsed || 0;
   const max = today.maxAttempts || 2;
   const done = used >= max;
@@ -173,6 +172,13 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
   const currentLevelIdx = levelThresholds.reduce((acc, t, i) => (xp >= t ? i : acc), 0);
   const nextThreshold = levelThresholds[currentLevelIdx + 1] ?? null;
   const prevThreshold = levelThresholds[currentLevelIdx] ?? 0;
+  const levelNumber = Number(
+    profile.level ||
+      String(profile.engagementLevel || "").match(/\d+/)?.[0] ||
+      currentLevelIdx + 1
+  );
+  const levelLabel =
+    profile.engagementLevelLabel || levelNames[currentLevelIdx] || "Starter";
   const xpPct = nextThreshold
     ? Math.round(((xp - prevThreshold) / (nextThreshold - prevThreshold)) * 100)
     : 100;
@@ -193,7 +199,7 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
             <h2 className="text-3xl font-black tracking-tight text-foreground">Growth Hub</h2>
             <div className="mt-1 flex items-center gap-2">
               <span className="rounded-full bg-primary/15 px-3 py-1 text-[0.65rem] font-black uppercase tracking-wider text-primary">
-                Level {level} · {levelNames[currentLevelIdx]}
+                Level {levelNumber} - {levelLabel}
               </span>
             </div>
             <p className="mt-4 max-w-[240px] text-xs font-medium leading-relaxed text-muted-foreground">
@@ -461,9 +467,14 @@ const QuizView = ({ questions, activeIndex, setActiveIndex, selectedAnswers, han
 
 /* ── Result View ───────────────────────────────────────── */
 const ResultView = ({ result, nextResetAt, onBack }) => {
-  const score = result?.scoreSummary || {};
-  const rewards = result?.rewardsAwarded || {};
-  const answers = Array.isArray(result?.questionResults) ? result.questionResults : [];
+  const score = result?.scoreSummary || result?.score || {};
+  const rewards = result?.rewardsAwarded || result?.rewards || {};
+  const answers = Array.isArray(result?.questionResults)
+    ? result.questionResults
+    : Array.isArray(result?.answers)
+      ? result.answers
+      : [];
+  const questionCount = score.questionCount || answers.length || 5;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
@@ -476,7 +487,7 @@ const ResultView = ({ result, nextResetAt, onBack }) => {
         
         <p className="text-[0.8rem] font-black uppercase tracking-[0.25em] text-muted-foreground">Quest Completed!</p>
         <h2 className="mt-4 text-7xl font-black tracking-tighter text-foreground sm:text-8xl">
-          {score.correctCount ?? 0}<span className="text-3xl font-bold text-muted-foreground sm:text-4xl">/5</span>
+          {score.correctCount ?? 0}<span className="text-3xl font-bold text-muted-foreground sm:text-4xl">/{questionCount}</span>
         </h2>
         <div className="mt-2 flex items-center gap-2 rounded-full border border-border bg-background/50 px-4 py-1.5">
           <Sparkles className="size-3.5 text-primary" />

@@ -29,6 +29,68 @@ const formatCountdown = (resetAt) => {
   return `${hours}h ${minutes}m to reset`;
 };
 
+const ashParticles = [
+  { left: 4, bottom: -10, size: 2, drift: 38, duration: 9.4, delay: -1.8, opacity: 0.72 },
+  { left: 9, bottom: -14, size: 3, drift: 24, duration: 8.2, delay: -4.8, opacity: 0.65 },
+  { left: 15, bottom: -8, size: 2, drift: -16, duration: 10.5, delay: -2.6, opacity: 0.5 },
+  { left: 22, bottom: -16, size: 2, drift: 28, duration: 7.6, delay: -5.9, opacity: 0.62 },
+  { left: 31, bottom: -12, size: 3, drift: -22, duration: 11.2, delay: -3.1, opacity: 0.52 },
+  { left: 40, bottom: -18, size: 2, drift: 18, duration: 8.8, delay: -6.7, opacity: 0.68 },
+  { left: 49, bottom: -10, size: 2, drift: -34, duration: 10.1, delay: -4.2, opacity: 0.48 },
+  { left: 57, bottom: -15, size: 3, drift: 26, duration: 9.7, delay: -7.5, opacity: 0.58 },
+  { left: 66, bottom: -9, size: 2, drift: -18, duration: 8.4, delay: -2.2, opacity: 0.7 },
+  { left: 74, bottom: -13, size: 2, drift: 32, duration: 10.8, delay: -6.1, opacity: 0.5 },
+  { left: 83, bottom: -17, size: 3, drift: -28, duration: 9.1, delay: -3.8, opacity: 0.6 },
+  { left: 92, bottom: -11, size: 2, drift: 16, duration: 11.6, delay: -8.2, opacity: 0.46 },
+];
+
+const FireAshBackground = () => (
+  <>
+    <style>
+      {`
+        @keyframes growth-hub-ash-rise {
+          0% {
+            transform: translate3d(0, 22px, 0) scale(0.75);
+            opacity: 0;
+          }
+          12% {
+            opacity: var(--ash-opacity);
+          }
+          68% {
+            opacity: var(--ash-opacity);
+          }
+          100% {
+            transform: translate3d(var(--ash-drift), -138px, 0) scale(0.28);
+            opacity: 0;
+          }
+        }
+      `}
+    </style>
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-[linear-gradient(125deg,rgba(255,193,7,0.12),rgba(255,111,0,0.045)_35%,transparent_68%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-[linear-gradient(0deg,rgba(255,136,0,0.13),rgba(255,193,7,0.045)_46%,transparent)]" />
+      {ashParticles.map((particle, index) => (
+        <span
+          key={`growth-hub-ash-${index}`}
+          className="absolute rounded-full bg-[#ffc107] shadow-[0_0_10px_rgba(255,193,7,0.72),0_0_18px_rgba(255,85,0,0.34)] motion-reduce:hidden"
+          style={{
+            left: `${particle.left}%`,
+            bottom: `${particle.bottom}%`,
+            width: `${particle.size}px`,
+            height: `${particle.size}px`,
+            "--ash-drift": `${particle.drift}px`,
+            "--ash-opacity": particle.opacity,
+            animation: `growth-hub-ash-rise ${particle.duration}s linear ${particle.delay}s infinite`,
+          }}
+        />
+      ))}
+    </div>
+  </>
+);
+
 const StatBlock = ({ icon: Icon, label, value, tone = "default", sub }) => (
   <div className="group relative min-w-0 rounded-[20px] border border-white/[0.06] bg-white/[0.02] p-4 transition-all duration-200 hover:bg-white/[0.05] hover:shadow-lg">
     <div className="flex items-center gap-2.5 text-muted-foreground">
@@ -165,7 +227,7 @@ const EngagementDashboardCard = () => {
   return (
     <section className="w-full min-w-0">
       <FreelancerDashboardPanel className="relative overflow-hidden bg-card p-5 sm:p-6">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
+        <FireAshBackground />
         
         <div className="relative flex flex-col gap-6">
           {/* Header Row */}
