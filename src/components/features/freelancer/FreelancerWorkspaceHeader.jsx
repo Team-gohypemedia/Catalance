@@ -24,6 +24,7 @@ const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
   { label: "Opportunity", key: "marketplace", to: "/marketplace" },
   { label: "Contact", key: "contact", to: "/contact" },
+  { label: "Growth Hub", key: "growth-quest", to: "/freelancer/growth-quest" },
 ];
 
 const workspaceNavItems = [

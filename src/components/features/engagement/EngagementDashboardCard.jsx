@@ -199,7 +199,7 @@ const EngagementDashboardCard = () => {
                   )}
                 </div>
                 <h2 className="mt-2 text-xl font-black leading-tight text-white">
-                  Client Readiness Quest
+                  Readiness Quest
                 </h2>
                 <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                   Build consistency and unlock premium opportunities.
@@ -294,4 +294,3 @@ const EngagementDashboardCard = () => {
 };
 
 export default EngagementDashboardCard;
-
