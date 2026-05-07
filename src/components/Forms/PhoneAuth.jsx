@@ -6,13 +6,16 @@ import * as Flags from "country-flag-icons/react/3x2";
 import { cn } from "@/shared/lib/utils";
 import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
-  InputOTPSeparator,
 } from "@/components/ui/input-otp";
 import {
   loginWithGoogle,
@@ -38,7 +41,6 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import logo from "@/assets/logos/logo.svg";
-import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
@@ -482,7 +484,6 @@ function PhoneAuth() {
     const loadingLabel = isOtpStep ? "Verifying..." : "Sending OTP...";
     const formSpacing = compact ? "space-y-3" : "space-y-5";
     const labelClass = "block text-[11px] font-medium uppercase tracking-[0.18em] text-white";
-    const otpLabelClass = "block text-[12px] font-semibold uppercase tracking-[0.2em] text-white";
     const phoneGridClass = compact
       ? "grid w-full grid-cols-[7rem_minmax(0,1fr)] gap-1.5"
       : "grid grid-cols-[7.5rem_minmax(0,1fr)] gap-2 sm:grid-cols-[8rem_minmax(0,1fr)]";
@@ -495,6 +496,7 @@ function PhoneAuth() {
     const submitButtonClass = compact
       ? "!h-11 w-full rounded-md bg-primary text-[14px] font-medium text-black shadow-none hover:bg-primary/95"
       : "!h-14 w-full rounded-md bg-primary text-sm font-medium text-black shadow-none hover:bg-primary/95 sm:text-[15px]";
+    const otpSlotClass = "h-10 w-10 sm:h-11 sm:w-11";
     const selectedCountryDialDigits = normalizePhoneNumber(
       selectedCountry?.dialCode || "",
     );
@@ -591,12 +593,15 @@ function PhoneAuth() {
               </div>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <Field className="w-full gap-2.5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <label htmlFor={otpInputId} className={otpLabelClass}>
+                  <FieldLabel
+                    htmlFor={otpInputId}
+                    className="block text-[12px] font-semibold uppercase tracking-[0.2em] text-white"
+                  >
                     Verification code
-                  </label>
+                  </FieldLabel>
                   <p className="mt-1 truncate text-xs text-white/55">
                     6-digit code sent to {pendingPhoneLabel}
                   </p>
@@ -614,6 +619,7 @@ function PhoneAuth() {
               </div>
 
               <InputOTP
+                id={otpInputId}
                 maxLength={OTP_LENGTH}
                 value={normalizedOtpDigits}
                 onChange={(value) => {
@@ -645,21 +651,15 @@ function PhoneAuth() {
                     showDigitsOnlyToast();
                   }
                 }}
-                containerClassName="w-full overflow-hidden px-2"
+                containerClassName="w-full justify-center overflow-hidden px-2"
               >
-                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
-                  <InputOTPSlot index={0} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
-                  <InputOTPSlot index={1} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
-                </InputOTPGroup>
-                <InputOTPSeparator className="mx-2 sm:mx-4" />
-                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
-                  <InputOTPSlot index={2} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
-                  <InputOTPSlot index={3} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
-                </InputOTPGroup>
-                <InputOTPSeparator className="mx-2 sm:mx-4" />
-                <InputOTPGroup className="flex-1 flex items-center justify-center gap-3 min-w-0">
-                  <InputOTPSlot index={4} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
-                  <InputOTPSlot index={5} className="flex-1 min-w-0 max-w-[3.5rem] sm:max-w-[5rem]" />
+                <InputOTPGroup className="justify-center">
+                  <InputOTPSlot index={0} className={otpSlotClass} />
+                  <InputOTPSlot index={1} className={otpSlotClass} />
+                  <InputOTPSlot index={2} className={otpSlotClass} />
+                  <InputOTPSlot index={3} className={otpSlotClass} />
+                  <InputOTPSlot index={4} className={otpSlotClass} />
+                  <InputOTPSlot index={5} className={otpSlotClass} />
                 </InputOTPGroup>
               </InputOTP>
 
@@ -675,7 +675,7 @@ function PhoneAuth() {
                   {isResending ? "Resending..." : "Resend code"}
                 </Button>
               </div>
-            </div>
+            </Field>
           )}
 
           {formError ? (
@@ -693,9 +693,7 @@ function PhoneAuth() {
           {isSubmitting ? loadingLabel : buttonLabel}
           {isSubmitting ? (
             <Loader2 className={compact ? "size-[0.95rem] animate-spin" : "size-5 animate-spin"} />
-          ) : (
-            <ArrowRight className={compact ? "size-[0.95rem]" : "size-5"} />
-          )}
+          ) : null}
         </Button>
       </form>
     );

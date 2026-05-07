@@ -308,7 +308,7 @@ const WorkspaceMobileSidebar = ({
   return (
     <div
       className={cn(
-        "px-4 py-2 lg:hidden",
+        "sticky top-0 z-50 flex-none bg-background px-4 py-2 lg:hidden",
         flushContainerPadding ? "-mx-4 w-[calc(100%+2rem)]" : "w-full",
       )}
     >
