@@ -54,32 +54,14 @@ const buildMissingConfigError = () =>
     }
   );
 
-const resolveExpiresInMinutesText = (expiresInMinutes) => {
-  const parsed = Number(expiresInMinutes);
-  if (Number.isFinite(parsed) && parsed > 0) {
-    return String(Math.min(Math.round(parsed), 60));
-  }
-
-  const fallback = Number(env.WHATSAPP_OTP_TTL_MINUTES);
-  return String(
-    Math.min(
-      Number.isFinite(fallback) && fallback > 0 ? Math.round(fallback) : 15,
-      60,
-    ),
-  );
-};
-
-// The approved auth template expects the OTP plus the expiry window in the body.
-const buildBodyComponent = (otpCode, expiresInMinutes) => ({
+// The approved auth template expects only the OTP in the body. Expiry is
+// handled by our app state, not a second WhatsApp template variable.
+const buildBodyComponent = (otpCode) => ({
   type: "body",
   parameters: [
     {
       type: "text",
       text: otpCode
-    },
-    {
-      type: "text",
-      text: resolveExpiresInMinutesText(expiresInMinutes)
     }
   ]
 });
@@ -96,12 +78,12 @@ const buildUrlButtonComponent = (otpCode) => ({
   ]
 });
 
-const getOtpTemplateComponents = ({ otpCode, expiresInMinutes, mode }) => {
+const getOtpTemplateComponents = ({ otpCode, mode }) => {
   if (mode === "url_button_only") {
     return [buildUrlButtonComponent(otpCode)];
   }
 
-  return [buildBodyComponent(otpCode, expiresInMinutes), buildUrlButtonComponent(otpCode)];
+  return [buildBodyComponent(otpCode), buildUrlButtonComponent(otpCode)];
 };
 
 const shouldTryNextPayloadMode = ({ providerError, nextMode }) => {
@@ -132,7 +114,6 @@ const buildOtpTemplatePayload = ({
       },
       components: getOtpTemplateComponents({
         otpCode,
-        expiresInMinutes,
         mode
       })
     }
