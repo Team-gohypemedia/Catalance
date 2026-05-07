@@ -257,7 +257,15 @@ function PhoneAuth() {
   const [isResending, setIsResending] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const lastDigitsOnlyToastAtRef = useRef(0);
-  const otpInputRef = useRef(null);
+  const mobileOtpInputRef = useRef(null);
+  const desktopOtpInputRef = useRef(null);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return false;
+    }
+
+    return window.matchMedia("(min-width: 1280px)").matches;
+  });
 
   useEffect(() => {
     document.title = "Sign in | Catalance";
@@ -280,10 +288,38 @@ function PhoneAuth() {
   }, [authStep, otpExpiresAt]);
 
   useEffect(() => {
-    if (authStep !== "otp") return;
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return undefined;
+    }
 
-    otpInputRef.current?.focus();
-  }, [authStep]);
+    const mediaQuery = window.matchMedia("(min-width: 1280px)");
+    const syncViewport = (event) => {
+      setIsDesktopViewport(event.matches);
+    };
+
+    setIsDesktopViewport(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncViewport);
+      return () => mediaQuery.removeEventListener("change", syncViewport);
+    }
+
+    mediaQuery.addListener(syncViewport);
+    return () => mediaQuery.removeListener(syncViewport);
+  }, []);
+
+  useEffect(() => {
+    if (authStep !== "otp") return undefined;
+
+    const activeOtpInputRef = isDesktopViewport
+      ? desktopOtpInputRef
+      : mobileOtpInputRef;
+    const frameId = window.requestAnimationFrame(() => {
+      activeOtpInputRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [authStep, isDesktopViewport]);
 
   const selectedCountry = useMemo(
     () =>
@@ -528,6 +564,9 @@ function PhoneAuth() {
     const phoneInputId = compact ? "phoneNumber" : "phoneNumberDesktop";
     const otpInputId = compact ? "whatsappOtp" : "whatsappOtpDesktop";
     const isOtpStep = authStep === "otp";
+    const shouldAutoFocusOtp =
+      isOtpStep && ((compact && !isDesktopViewport) || (!compact && isDesktopViewport));
+    const otpInputRef = compact ? mobileOtpInputRef : desktopOtpInputRef;
     const normalizedOtpDigits = normalizePhoneNumber(otpDigits).slice(0, OTP_LENGTH);
     const isOtpComplete = normalizedOtpDigits.length === OTP_LENGTH;
     const countdownText = isOtpExpired
@@ -678,7 +717,7 @@ function PhoneAuth() {
                 id={otpInputId}
                 maxLength={OTP_LENGTH}
                 value={normalizedOtpDigits}
-                autoFocus={isOtpStep}
+                autoFocus={shouldAutoFocusOtp}
                 onChange={(value) => {
                   setOtpDigits(normalizePhoneNumber(value).slice(0, OTP_LENGTH));
                 }}
