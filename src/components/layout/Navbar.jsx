@@ -230,7 +230,7 @@ const Navbar = () => {
           isHome={isHome}
           currentPath={currentPath}
         />
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3 pl-2">
           <AuthButtons
             showAuthenticatedNav={shouldShowAuthenticatedNav}
             currentDashboard={currentDashboard}

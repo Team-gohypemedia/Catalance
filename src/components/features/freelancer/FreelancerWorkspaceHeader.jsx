@@ -74,13 +74,13 @@ const HeaderNavItem = ({ active, item, mobile, onSelect, variant = "marketing" }
       )
     : variant === "workspace"
       ? cn(
-          "rounded-full px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+          "shrink-0 rounded-full px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
           active
             ? "border border-border bg-background text-primary"
             : "text-muted-foreground hover:text-foreground",
         )
       : cn(
-          "text-sm font-medium transition-colors",
+          "shrink-0 whitespace-nowrap text-sm font-medium transition-colors",
           active ? "text-[#facc15]" : "text-muted-foreground hover:text-foreground",
         );
 
@@ -111,7 +111,7 @@ const HeaderNav = ({ activeKey, items, mobile = false, onSelect, variant = "mark
         ? "flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden"
         : cn(
             "hidden items-center lg:flex",
-            variant === "workspace" ? "gap-8 xl:gap-10" : "gap-10 xl:gap-12",
+            variant === "workspace" ? "gap-7 xl:gap-8" : "gap-8 xl:gap-9",
           )
     }
   >

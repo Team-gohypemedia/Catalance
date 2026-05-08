@@ -32,6 +32,9 @@ const LEVEL_LABELS = Object.freeze(
 
 const normalizeText = (value) => String(value || "").trim();
 
+const getMaxAttemptsPerDay = () =>
+  Math.max(1, Number(engagementRules.dailyChallenge.maxAttemptsPerDay) || 1);
+
 const ensureEnabled = () => {
   if (!isEngagementMvpEnabled()) {
     throw new AppError("Daily Growth Quest is not enabled yet.", 404);
@@ -407,7 +410,9 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
 
   const levelProgress = buildLevelProgress(profile, report);
   const latestSession = todaySessions[0] || null;
-  const isCompleted = todaySessions.length >= 2 || latestSession?.accuracy === 100;
+  const maxAttempts = getMaxAttemptsPerDay();
+  const isCompleted =
+    todaySessions.length >= maxAttempts || latestSession?.accuracy === 100;
 
   return {
     profile: {
@@ -429,7 +434,7 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
       resultSummary: latestSession?.resultSummary || null,
       nextResetAt: getNextUtcResetAt(dayKey),
       attemptsUsed: todaySessions.length,
-      maxAttempts: 2
+      maxAttempts
     },
     levelProgress,
     nextMilestone: buildNextMilestone(profile.currentStreak),
@@ -731,7 +736,8 @@ export const startDailyChallenge = async (userId) => {
   });
 
   const latestSession = todaySessions[0] || null;
-  const isCompleted = todaySessions.length >= 2 || latestSession?.accuracy === 100;
+  const isCompleted =
+    todaySessions.length >= getMaxAttemptsPerDay() || latestSession?.accuracy === 100;
 
   if (isCompleted) {
     const dashboard = await buildDashboardPayload({ userId, dayKey });
@@ -789,7 +795,10 @@ export const submitDailyChallenge = async ({
           orderBy: { createdAt: "desc" }
         });
         const latestSession = todaySessions[0] || null;
-        if (todaySessions.length >= 2 || latestSession?.accuracy === 100) {
+        if (
+          todaySessions.length >= getMaxAttemptsPerDay() ||
+          latestSession?.accuracy === 100
+        ) {
           return latestSession.resultSummary;
         }
 
