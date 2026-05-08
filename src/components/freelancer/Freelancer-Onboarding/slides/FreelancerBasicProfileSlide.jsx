@@ -139,6 +139,7 @@ const FreelancerBasicProfileSlide = ({
   const hasProfilePhoto = Boolean(profilePhotoPreviewUrl);
   const fullNameValue = String(basicProfileForm.fullName || "").trim();
   const profileInitials = getInitials(fullNameValue);
+  const isUsernameAvailable = usernameStatus === "available" && !usernameError;
 
   const getFieldLabelClasses = (hasError) =>
     cn(
@@ -335,8 +336,8 @@ const FreelancerBasicProfileSlide = ({
                     <Loader2 className="size-4 animate-spin" />
                   </span>
                 ) : null}
-                {usernameStatus === "available" && !usernameError ? (
-                  <span className="pointer-events-none absolute right-4 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                {isUsernameAvailable ? (
+                  <span className="pointer-events-none absolute right-4 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_0_0_1px_rgba(16,185,129,0.28)]">
                     <Check className="size-4" />
                   </span>
                 ) : null}
@@ -352,7 +353,7 @@ const FreelancerBasicProfileSlide = ({
                 <p
                   className={cn(
                     "text-sm",
-                    usernameStatus === "available" && "text-primary",
+                    isUsernameAvailable && "text-emerald-400",
                     usernameStatus === "checking" && "text-white/45",
                     usernameStatus === "unavailable" && "text-destructive",
                     usernameStatus === "error" && "text-amber-400",
