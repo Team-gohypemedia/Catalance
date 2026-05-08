@@ -2,21 +2,46 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Check from "lucide-react/dist/esm/icons/check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import Info from "lucide-react/dist/esm/icons/info";
 
 import { cn } from "@/shared/lib/utils";
 import {
   ONBOARDING_STEP_LABEL_CLASS,
 } from "../../typography";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { SERVICE_INFO_STEPS } from "./serviceInfoConstants";
 
 /* ──────────────────── Service Info Steps ──────────────────── */
 
-export const SERVICE_INFO_STEPS = [
-  { id: "overview", label: "Overview", step: 1 },
-  { id: "pricing", label: "Pricing", step: 2 },
-  { id: "visuals", label: "Add Visuals", step: 3 },
-  { id: "caseStudy", label: "Case-Study", step: 4 },
-  { id: "preview", label: "Preview", step: 5 },
-];
+const SERVICE_TITLE_TOOLTIP_MESSAGE =
+  "Write a clear title that shows what you can build and the result you deliver, like a website with React or Webflow that helps increase sales.";
+
+export const ServiceTitleTooltip = ({
+  ariaLabel = "What should I enter in Service Title?",
+  message = SERVICE_TITLE_TOOLTIP_MESSAGE,
+}) => (
+  <TooltipProvider delayDuration={150}>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          className="inline-flex size-5 items-center justify-center text-white/60 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+        >
+          <Info className="size-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs text-center">
+        {message}
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
 
 /* ──────────────────── Stepper ──────────────────── */
 

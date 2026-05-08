@@ -19,6 +19,7 @@ import {
 import {
   ServiceInfoStepper,
   CustomSelect,
+  ServiceTitleTooltip,
 } from "./shared/ServiceInfoComponents";
 import { Button } from "@/components/ui/button";
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
@@ -773,11 +774,18 @@ const FreelancerServiceInfoSlide = ({
 
           <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
             <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                Service Title
-              </label>
+              <div className="mb-1 flex items-center gap-2">
+                <label
+                  className={ONBOARDING_FIELD_LABEL_CLASS}
+                  htmlFor="service-title-input"
+                >
+                  Service Title
+                </label>
+                <ServiceTitleTooltip />
+              </div>
               <div className="relative">
                 <input
+                  id="service-title-input"
                   type="text"
                   value={serviceInfoForm.title}
                   onChange={(event) => {
