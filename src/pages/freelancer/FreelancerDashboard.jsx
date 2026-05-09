@@ -30,7 +30,6 @@ import {
   ProfileCompletionPanel,
   RecentActivity,
 } from "@/components/freelancer/freelancer-dashboard";
-import EngagementDashboardCard from "@/components/features/engagement/EngagementDashboardCard";
 
 const FreelancerDashboard = () => {
   const navigate = useNavigate();
@@ -109,8 +108,6 @@ const FreelancerDashboard = () => {
                   metrics={model.dashboardMetricCards}
                   isLoading={model.metricsLoading}
                 />
-
-                <EngagementDashboardCard />
 
                 {shouldShowProfileProgressPanel ? (
                   model.showProfileCompletionSkeleton ? (
