@@ -34,6 +34,10 @@ import {
   getTechStackOptions,
 } from "@/components/features/freelancer/onboarding/utils";
 import {
+  getPrimaryImageFromMediaFiles,
+  normalizeServiceDraft,
+} from "@/components/freelancer/Freelancer-Onboarding/service-details";
+import {
   AVERAGE_PROJECT_PRICE_OPTIONS,
   EXPERIENCE_YEARS_OPTIONS,
   PROJECT_TIMELINE_OPTIONS,
@@ -114,12 +118,118 @@ const createInitialSkillForm = () => ({
   level: DEFAULT_SKILL_LEVEL,
 });
 
-const normalizeServiceIdentity = (value = "") =>
+const createInitialServiceCaseStudy = () => ({
+  id: "case-study-1",
+  title: "",
+  description: "",
+  projectLink: "",
+  projectFile: null,
+  role: "",
+  timeline: "",
+  budget: "",
+  niche: "",
+});
+
+const createInitialServiceProfileForm = (serviceKey = "") => {
+  const initialCaseStudy = createInitialServiceCaseStudy();
+
+  return {
+    serviceKey: String(serviceKey || "").trim(),
+    title: "",
+    subcategories: [],
+    skillsAndTechnologies: [],
+    experience: "",
+    description: "",
+    deliveryTimeline: "",
+    priceRange: "",
+    coverImage: "",
+    keywords: [],
+    mediaFiles: [],
+    caseStudy: initialCaseStudy,
+    caseStudies: [initialCaseStudy],
+    activeCaseStudyId: initialCaseStudy.id,
+    niches: [],
+    platformLinks: {},
+    activeSkillCategory: null,
+    pendingCategoryLabels: [],
+    serviceLabel: "",
+    experienceYears: "",
+    serviceDescription: "",
+    averageProjectPrice: "",
+    averagePrice: "",
+    deliveryTime: "",
+  };
+};
+
+const SERVICE_KEY_ALIASES = {
+  website_uiux: "web_development",
+  website_ui_ux: "web_development",
+  website_ui_ux_design_2d_3d: "web_development",
+  website_ui_ux_design: "web_development",
+  "web-development": "web_development",
+};
+
+const normalizeServiceIdentityRaw = (value = "") =>
   String(value || "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+
+const normalizeServiceIdentity = (value = "") => {
+  const normalizedValue = normalizeServiceIdentityRaw(value);
+  return SERVICE_KEY_ALIASES[normalizedValue] || normalizedValue;
+};
+
+const resolveServiceComparisonKey = (value = "") => normalizeServiceIdentity(value);
+
+const resolveServiceStorageKey = (value = "") => {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return "";
+
+  const normalizedValue = normalizeServiceIdentityRaw(rawValue);
+  return SERVICE_KEY_ALIASES[normalizedValue] || rawValue;
+};
+
+const resolveServiceDetailRecord = (serviceKey = "", serviceDetails = {}) => {
+  const detailMap =
+    serviceDetails && typeof serviceDetails === "object" ? serviceDetails : {};
+  const comparisonKey = resolveServiceComparisonKey(serviceKey);
+  const matchedEntry = Object.entries(detailMap).find(([storedKey, detail]) => {
+    if (!detail || typeof detail !== "object") return false;
+    return resolveServiceComparisonKey(storedKey) === comparisonKey;
+  });
+
+  if (!matchedEntry) {
+    return {
+      serviceKey: resolveServiceStorageKey(serviceKey),
+      detail: {},
+    };
+  }
+
+  const [matchedKey, detail] = matchedEntry;
+  return {
+    serviceKey: resolveServiceStorageKey(matchedKey),
+    detail,
+  };
+};
+
+const normalizeServiceStorageKeys = (values = []) => {
+  const candidates = Array.isArray(values) ? values : [values];
+  const seen = new Set();
+
+  return candidates.reduce((acc, value) => {
+    const storageKey = resolveServiceStorageKey(value);
+    const comparisonKey = resolveServiceComparisonKey(storageKey);
+    if (!comparisonKey || seen.has(comparisonKey)) {
+      return acc;
+    }
+
+    seen.add(comparisonKey);
+    acc.push(storageKey);
+    return acc;
+  }, []);
+};
 
 const parseLocationInput = (value = "") => {
   const parts = String(value || "")
@@ -291,31 +401,9 @@ const FreelancerProfile = () => {
   const [newProjectImagePreview, setNewProjectImagePreview] = useState("");
   const [isProjectCoverDragActive, setIsProjectCoverDragActive] = useState(false);
   const [editingProjectIndex, setEditingProjectIndex] = useState(null);
-  const [serviceProfileForm, setServiceProfileForm] = useState({
-    serviceKey: "",
-    serviceLabel: "",
-    experienceYears: "",
-    serviceDescription: "",
-    coverImage: "",
-    averageProjectPrice: "",
-    deliveryTime: "",
-    skillsAndTechnologies: [],
-    keywords: [],
-    mediaFiles: [],
-    caseStudy: {
-      id: "case-study-1",
-      title: "",
-      description: "",
-      projectLink: "",
-      projectFile: null,
-      role: "",
-      timeline: "",
-      budget: "",
-      niche: "",
-    },
-    caseStudies: [],
-    activeCaseStudyId: "case-study-1",
-  });
+  const [serviceProfileForm, setServiceProfileForm] = useState(
+    createInitialServiceProfileForm
+  );
   const [serviceSkillInput, setServiceSkillInput] = useState("");
   const [savingServiceProfile, setSavingServiceProfile] = useState(false);
   const [uploadingServiceCover, setUploadingServiceCover] = useState(false);
@@ -1733,81 +1821,42 @@ const FreelancerProfile = () => {
         typeof profileDetails.serviceDetails === "object"
         ? profileDetails.serviceDetails
         : {};
-    const detail =
-      serviceDetails?.[serviceKey] && typeof serviceDetails[serviceKey] === "object"
-        ? serviceDetails[serviceKey]
-        : {};
-    const existingSkillsAndTechnologies = normalizeServiceSkillTags([
-      ...(Array.isArray(detail?.skillsAndTechnologies)
-        ? detail.skillsAndTechnologies
-        : []),
-      ...collectServiceSpecializations(detail),
-      ...(Array.isArray(detail?.caseStudy?.techStack)
-        ? detail.caseStudy.techStack
-        : []),
-    ]);
-    const existingCaseStudies =
-      Array.isArray(detail?.caseStudies) && detail.caseStudies.length > 0
-        ? detail.caseStudies
-        : detail?.caseStudy && typeof detail.caseStudy === "object"
-          ? [detail.caseStudy]
-          : [];
-    const normalizedCaseStudies =
-      existingCaseStudies.length > 0
-        ? existingCaseStudies.map((caseStudy, index) => ({
-          id: String(caseStudy?.id || "").trim() || `case-study-${index + 1}`,
-          title: String(caseStudy?.title || "").trim(),
-          description: String(caseStudy?.description || "").trim(),
-          projectLink: String(caseStudy?.projectLink || "").trim(),
-          projectFile: caseStudy?.projectFile || null,
-          role: String(caseStudy?.role || "").trim(),
-          timeline: String(caseStudy?.timeline || "").trim(),
-          budget: String(caseStudy?.budget || "").trim(),
-          niche: String(caseStudy?.niche || "").trim(),
-        }))
-        : [
-          {
-            id: "case-study-1",
-            title: "",
-            description: "",
-            projectLink: "",
-            projectFile: null,
-            role: "",
-            timeline: "",
-            budget: "",
-            niche: "",
-          },
-        ];
+    const resolvedService = resolveServiceDetailRecord(serviceKey, serviceDetails);
+    const detail = resolvedService.detail || {};
+    const resolvedServiceKey =
+      resolvedService.serviceKey || String(serviceKey || "").trim();
+    const normalizedDraft = normalizeServiceDraft(detail, {
+      serviceKey: resolvedServiceKey,
+      serviceId: detail?.serviceId || resolvedService?.detail?.serviceId || null,
+    });
 
     setServiceProfileForm({
-      serviceKey,
-      serviceLabel: String(
-        detail?.title || detail?.serviceTitle || getServiceLabel(serviceKey)
-      ).trim(),
-      experienceYears: String(detail?.experienceYears || "").trim(),
-      serviceDescription: String(
-        detail?.serviceDescription || detail?.description || ""
-      ).trim(),
-      coverImage: resolveAvatarUrl(detail?.coverImage, { allowBlob: true }),
-      averageProjectPrice: String(
-        detail?.averageProjectPrice || detail?.averagePrice || ""
-      ).trim(),
-      deliveryTime: String(
-        detail?.deliveryTime || detail?.deliveryDays || detail?.caseStudy?.timeline || ""
-      ).trim(),
-
-      skillsAndTechnologies: existingSkillsAndTechnologies,
-      keywords: normalizeServiceSkillTags(detail?.keywords || []),
-      mediaFiles: Array.isArray(detail?.mediaFiles)
-        ? detail.mediaFiles
-        : Array.isArray(detail?.media)
-          ? detail.media
-          : [],
-      subcategories: detail?.subcategories || [],
-      caseStudy: normalizedCaseStudies[0],
-      caseStudies: normalizedCaseStudies,
-      activeCaseStudyId: normalizedCaseStudies[0]?.id || "case-study-1",
-      niches: detail?.niches || [],
+      ...createInitialServiceProfileForm(resolvedServiceKey),
+      ...normalizedDraft,
+      title: normalizedDraft.title,
+      serviceLabel: normalizedDraft.title,
+      experience: normalizedDraft.experience,
+      experienceYears: normalizedDraft.experience,
+      description: normalizedDraft.description,
+      serviceDescription: normalizedDraft.description,
+      deliveryTimeline: normalizedDraft.deliveryTimeline,
+      deliveryTime: normalizedDraft.deliveryTimeline,
+      priceRange: normalizedDraft.priceRange,
+      averageProjectPrice: normalizedDraft.priceRange,
+      averagePrice: normalizedDraft.priceRange,
+      coverImage: resolveAvatarUrl(normalizedDraft.coverImage, { allowBlob: true }),
+      keywords: normalizeServiceSkillTags(normalizedDraft.keywords || []),
+      mediaFiles: Array.isArray(normalizedDraft.mediaFiles)
+        ? normalizedDraft.mediaFiles
+        : [],
+      subcategories: normalizedDraft.subcategories || [],
+      caseStudy: normalizedDraft.caseStudy,
+      caseStudies: normalizedDraft.caseStudies,
+      activeCaseStudyId: normalizedDraft.activeCaseStudyId,
+      niches: normalizedDraft.niches || [],
+      platformLinks: normalizedDraft.platformLinks || {},
+      activeSkillCategory: normalizedDraft.activeSkillCategory || null,
+      pendingCategoryLabels: normalizedDraft.pendingCategoryLabels || [],
     });
     setServiceSkillInput("");
     setModalType("onboardingService");
@@ -1898,23 +1947,24 @@ const FreelancerProfile = () => {
   };
 
   const saveOnboardingServiceProfile = async () => {
-    const serviceKey = String(serviceProfileForm.serviceKey || "").trim();
+    const serviceKey = resolveServiceStorageKey(serviceProfileForm.serviceKey);
     if (!serviceKey) return;
-    if (!String(serviceProfileForm.deliveryTime || "").trim()) {
-      toast.error("Please select a delivery timeline for this service.");
-      return;
-    }
-
     const existingServiceDetails =
       profileDetails?.serviceDetails &&
         typeof profileDetails.serviceDetails === "object"
         ? profileDetails.serviceDetails
         : {};
     const currentServiceDetail =
-      existingServiceDetails?.[serviceKey] &&
-        typeof existingServiceDetails[serviceKey] === "object"
-        ? existingServiceDetails[serviceKey]
-        : {};
+      resolveServiceDetailRecord(serviceKey, existingServiceDetails).detail || {};
+    const normalizedDraft = normalizeServiceDraft(serviceProfileForm, {
+      serviceKey,
+      serviceId: currentServiceDetail?.serviceId || null,
+    });
+    if (!String(normalizedDraft.deliveryTimeline || "").trim()) {
+      toast.error("Please select a delivery timeline for this service.");
+      return;
+    }
+    const serviceComparisonKey = resolveServiceComparisonKey(serviceKey);
     const serviceAlreadyExists = Array.from(
       new Set([
         ...(Array.isArray(services) ? services : []),
@@ -1923,21 +1973,20 @@ const FreelancerProfile = () => {
       ])
     ).some(
       (existingServiceKey) =>
-        normalizeServiceIdentity(existingServiceKey) ===
-        normalizeServiceIdentity(serviceKey)
+        resolveServiceComparisonKey(existingServiceKey) === serviceComparisonKey
     );
     const nextServiceSkillTags = normalizeServiceSkillTags([
-      ...(Array.isArray(serviceProfileForm.skillsAndTechnologies)
-        ? serviceProfileForm.skillsAndTechnologies
+      ...(Array.isArray(normalizedDraft.skillsAndTechnologies)
+        ? normalizedDraft.skillsAndTechnologies
         : []),
       ...parseDelimitedValues(serviceSkillInput),
     ]);
     const nextServiceKeywords = normalizeServiceSkillTags(
-      Array.isArray(serviceProfileForm.keywords) ? serviceProfileForm.keywords : []
+      Array.isArray(normalizedDraft.keywords) ? normalizedDraft.keywords : []
     ).slice(0, 5);
     const nextServiceMediaFiles = (
-      Array.isArray(serviceProfileForm.mediaFiles)
-        ? serviceProfileForm.mediaFiles
+      Array.isArray(normalizedDraft.mediaFiles)
+        ? normalizedDraft.mediaFiles
         : []
     )
       .map((entry) => {
@@ -1961,12 +2010,12 @@ const FreelancerProfile = () => {
       })
       .filter(Boolean);
     const rawCaseStudies =
-      Array.isArray(serviceProfileForm.caseStudies) &&
-        serviceProfileForm.caseStudies.length > 0
-        ? serviceProfileForm.caseStudies
-        : serviceProfileForm.caseStudy &&
-          typeof serviceProfileForm.caseStudy === "object"
-          ? [serviceProfileForm.caseStudy]
+      Array.isArray(normalizedDraft.caseStudies) &&
+        normalizedDraft.caseStudies.length > 0
+        ? normalizedDraft.caseStudies
+        : normalizedDraft.caseStudy &&
+          typeof normalizedDraft.caseStudy === "object"
+          ? [normalizedDraft.caseStudy]
           : [];
     const nextCaseStudies = rawCaseStudies.map((caseStudy, index) => {
       const projectFile =
@@ -1992,49 +2041,72 @@ const FreelancerProfile = () => {
     });
     const primaryCaseStudy =
       nextCaseStudies.find(
-        (caseStudy) => caseStudy.id === serviceProfileForm.activeCaseStudyId
+        (caseStudy) => caseStudy.id === normalizedDraft.activeCaseStudyId
       ) ||
       nextCaseStudies[0] ||
       null;
+    const primaryImage = getPrimaryImageFromMediaFiles(nextServiceMediaFiles);
+    const nextCoverImage = String(
+      normalizedDraft.coverImage ||
+        primaryImage?.uploadedUrl ||
+        primaryImage?.url ||
+        ""
+    ).trim();
 
-    const nextServiceDetails = {
-      ...existingServiceDetails,
-      [serviceKey]: {
-        ...createServiceDetail(),
-        ...currentServiceDetail,
-        title: String(serviceProfileForm.serviceLabel || "").trim(),
-        experienceYears: String(serviceProfileForm.experienceYears || "").trim(),
-        serviceDescription: String(
-          serviceProfileForm.serviceDescription || ""
-        ).trim(),
-        coverImage: String(serviceProfileForm.coverImage || "").trim(),
-        averageProjectPrice: String(
-          serviceProfileForm.averageProjectPrice || ""
-        ).trim(),
-        averagePrice: String(serviceProfileForm.averageProjectPrice || "").trim(),
-        deliveryTime: String(serviceProfileForm.deliveryTime || "").trim(),
+    const nextServiceDetails = Object.entries(existingServiceDetails).reduce(
+      (acc, [existingServiceKey, existingServiceDetail]) => {
+        if (!existingServiceDetail || typeof existingServiceDetail !== "object") {
+          return acc;
+        }
 
-        skillsAndTechnologies: nextServiceSkillTags,
-        keywords: nextServiceKeywords,
-        mediaFiles: nextServiceMediaFiles,
-        media: nextServiceMediaFiles,
-        subcategories: serviceProfileForm.subcategories || [],
-        caseStudy: primaryCaseStudy,
-        caseStudies: nextCaseStudies,
-        activeCaseStudyId: primaryCaseStudy?.id || "",
-        niches: serviceProfileForm.niches || [],
+        if (
+          resolveServiceComparisonKey(existingServiceKey) === serviceComparisonKey
+        ) {
+          return acc;
+        }
+
+        acc[existingServiceKey] = existingServiceDetail;
+        return acc;
       },
+      {}
+    );
+
+    nextServiceDetails[serviceKey] = {
+      ...createServiceDetail(),
+      ...currentServiceDetail,
+      serviceKey,
+      title: String(normalizedDraft.title || "").trim(),
+      serviceLabel: String(normalizedDraft.title || "").trim(),
+      experience: String(normalizedDraft.experience || "").trim(),
+      experienceYears: String(normalizedDraft.experience || "").trim(),
+      description: String(normalizedDraft.description || "").trim(),
+      serviceDescription: String(normalizedDraft.description || "").trim(),
+      deliveryTimeline: String(normalizedDraft.deliveryTimeline || "").trim(),
+      deliveryTime: String(normalizedDraft.deliveryTimeline || "").trim(),
+      priceRange: String(normalizedDraft.priceRange || "").trim(),
+      averageProjectPrice: String(normalizedDraft.priceRange || "").trim(),
+      averagePrice: String(normalizedDraft.priceRange || "").trim(),
+      coverImage: nextCoverImage,
+      skillsAndTechnologies: nextServiceSkillTags,
+      keywords: nextServiceKeywords,
+      mediaFiles: nextServiceMediaFiles,
+      media: nextServiceMediaFiles,
+      subcategories: normalizedDraft.subcategories || [],
+      caseStudy: primaryCaseStudy,
+      caseStudies: nextCaseStudies,
+      activeCaseStudyId: primaryCaseStudy?.id || "",
+      niches: normalizedDraft.niches || [],
+      platformLinks: normalizedDraft.platformLinks || {},
+      activeSkillCategory: normalizedDraft.activeSkillCategory || null,
+      pendingCategoryLabels: normalizedDraft.pendingCategoryLabels || [],
     };
 
-    const nextServices = Array.from(
-      new Set([
-        ...(Array.isArray(services) ? services : []),
-        ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
-        ...Object.keys(nextServiceDetails),
-      ])
-    )
-      .map((entry) => String(entry || "").trim())
-      .filter(Boolean);
+    const nextServices = normalizeServiceStorageKeys([
+      ...(Array.isArray(services) ? services : []),
+      ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
+      ...Object.keys(nextServiceDetails),
+      serviceKey,
+    ]);
 
     const nextProfileDetails = {
       ...(profileDetails && typeof profileDetails === "object"
@@ -2796,14 +2868,10 @@ const FreelancerProfile = () => {
     profileDetails?.identity && typeof profileDetails.identity === "object"
       ? profileDetails.identity
       : {};
-  const onboardingServices = Array.from(
-    new Set([
-      ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
-      ...(Array.isArray(services) ? services : []),
-    ])
-  )
-    .map((value) => String(value || "").trim())
-    .filter(Boolean);
+  const onboardingServices = normalizeServiceStorageKeys([
+    ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
+    ...(Array.isArray(services) ? services : []),
+  ]);
   const onboardingGlobalIndustry = toUniqueLabels([
     ...(Array.isArray(profileDetails?.globalIndustryFocus)
       ? profileDetails.globalIndustryFocus
@@ -2915,18 +2983,20 @@ const FreelancerProfile = () => {
   const resolvedGithubLink =
     normalizePresenceLink(portfolio.githubUrl) || fallbackGithubLink;
   const resolvedResumeLink = normalizePresenceLink(portfolio.resume);
-  const onboardingServiceEntries = Array.from(
-    new Set([
-      ...onboardingServices,
-      ...Object.keys(onboardingServiceDetailMap),
-    ])
-  )
-    .map((value) => String(value || "").trim())
-    .filter(Boolean)
-    .map((serviceKey) => ({
+  const onboardingServiceEntries = normalizeServiceStorageKeys([
+    ...onboardingServices,
+    ...Object.keys(onboardingServiceDetailMap),
+  ]).map((serviceKey) => {
+    const resolvedService = resolveServiceDetailRecord(
       serviceKey,
-      detail: onboardingServiceDetailMap?.[serviceKey] || {},
-    }));
+      onboardingServiceDetailMap
+    );
+
+    return {
+      serviceKey: resolvedService.serviceKey || serviceKey,
+      detail: resolvedService.detail || {},
+    };
+  });
   const linkableServiceOptions = useMemo(
     () =>
       Array.from(
@@ -3267,8 +3337,19 @@ const FreelancerProfile = () => {
   );
 
   const hasServiceAveragePrice = Boolean(
-    String(serviceProfileForm.averageProjectPrice || "").trim()
+    String(
+      serviceProfileForm.priceRange ||
+      serviceProfileForm.averageProjectPrice ||
+      ""
+    ).trim()
   );
+  const hasServiceCoverAsset =
+    Boolean(String(serviceProfileForm.coverImage || "").trim()) ||
+    (Array.isArray(serviceProfileForm.mediaFiles)
+      ? serviceProfileForm.mediaFiles.some(
+        (entry) => resolveServiceMediaKind(entry) !== "video",
+      )
+      : false);
   const hasServiceSkills =
     (Array.isArray(serviceProfileForm.skillsAndTechnologies)
       ? serviceProfileForm.skillsAndTechnologies
@@ -3282,12 +3363,16 @@ const FreelancerProfile = () => {
         normalizeServiceIdentity(serviceProfileForm.serviceKey)
     )
   );
-  const serviceProfileStatusLabel = !serviceProfileForm.serviceDescription
+  const serviceProfileStatusLabel = !String(
+    serviceProfileForm.description ||
+    serviceProfileForm.serviceDescription ||
+    ""
+  ).trim()
     ? "Add description"
-    : !serviceProfileForm.coverImage
+    : !hasServiceCoverAsset
       ? "Add a cover image"
       : !hasServiceAveragePrice
-        ? "Set average price"
+        ? "Set starting price"
         : !hasServiceSkills
           ? "Add skills & technologies"
           : "Ready to publish";

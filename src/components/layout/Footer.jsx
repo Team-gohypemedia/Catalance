@@ -110,8 +110,8 @@ const Footer = () => {
                 <Link to="/about" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                   About Us
                 </Link>
-                <Link to="/contact-us" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                  Contact Us
+                <Link to="/contact" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                  Contact
                 </Link>
               </nav>
             </div>

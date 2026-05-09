@@ -651,7 +651,7 @@ const HelpCenter = () => {
 
             <div className="mt-6 flex flex-wrap gap-3">
               <Button asChild>
-                <Link to="/contact-us">
+                <Link to="/contact">
                   Need Support
                   <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -702,7 +702,7 @@ const HelpCenter = () => {
             Contact support and we&apos;ll assist you directly.
           </p>
           <Button asChild className="mt-5 rounded-full px-6">
-            <Link to="/contact-us">
+            <Link to="/contact">
               Contact Support
               <ArrowRight className="h-4 w-4" />
             </Link>

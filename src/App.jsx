@@ -173,7 +173,6 @@ const FeesPricing = lazy(() => import("@/components/pages/FeesPricing"));
 const Security = lazy(() => import("@/components/pages/Security"));
 import Loader from "@/components/common/Loader";
 
-const ContactUs = lazy(() => import("@/components/pages/ContactUs"));
 const GuestAIDemo = lazy(() => import("@/components/pages/GuestAIDemo"));
 const ServiceDetails = lazy(() => import("@/components/pages/ServiceDetails"));
 
@@ -359,14 +358,6 @@ const App = () => {
               element={
                 <LayoutWithNavbar>
                   <Security />
-                </LayoutWithNavbar>
-              }
-            />
-            <Route
-              path="/contact-us"
-              element={
-                <LayoutWithNavbar>
-                  <ContactUs />
                 </LayoutWithNavbar>
               }
             />

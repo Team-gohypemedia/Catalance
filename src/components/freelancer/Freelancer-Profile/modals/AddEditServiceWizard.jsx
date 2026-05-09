@@ -14,6 +14,10 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import { API_BASE_URL } from "@/shared/lib/api-client";
+import {
+  MAX_ONBOARDING_CASE_STUDIES,
+  isServiceVisualsUploadValid,
+} from "../../Freelancer-Onboarding/service-details";
 
 import {
   ServiceInfoStepper,
@@ -44,10 +48,11 @@ const DELIVERY_TIMELINE_OPTIONS = [
 ];
 
 const EXPERIENCE_OPTIONS = [
-  { value: "0-1", label: "Beginner (0-1 yrs)" },
-  { value: "1-3", label: "Intermediate (1-3 yrs)" },
-  { value: "3-5", label: "Expert (3-5 yrs)" },
-  { value: "5+", label: "Master (5+ yrs)" },
+  { value: "entry", label: "Entry Level (0–1 years)" },
+  { value: "intermediate", label: "Intermediate (1–3 years)" },
+  { value: "experienced", label: "Experienced (3–5 years)" },
+  { value: "expert", label: "Expert (5–10 years)" },
+  { value: "veteran", label: "Veteran (10+ years)" },
 ];
 
 const SERVICE_TITLE_MAX = 80;
@@ -55,6 +60,7 @@ const WIZARD_DROPDOWN_BOTTOM_OFFSET = 132;
 const MAX_KEYWORDS = 5;
 const MAX_IMAGES = 2;
 const MAX_VIDEOS = 1;
+const MAX_MEDIA_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const PROFILE_SERVICE_INFO_STEPS = SERVICE_INFO_STEPS.filter(
   (step) => step.id !== "preview"
 );
@@ -397,23 +403,94 @@ const AddEditServiceWizard = ({
   const steps = ["overview", "pricing", "visuals", "caseStudy"];
   const currentStepIndex = steps.indexOf(activeStepId);
 
+  const hasServiceInfoSelection = useMemo(() => {
+    const subcategories = Array.isArray(serviceProfileForm.subcategories)
+      ? serviceProfileForm.subcategories
+      : [];
+
+    const hasSubcategorySkillSelection = subcategories.some((entry) => {
+      const hasSelectedTool =
+        Array.isArray(entry?.selectedToolIds) && entry.selectedToolIds.length > 0;
+      const hasCustomSkill =
+        Array.isArray(entry?.customSkillNames) &&
+        entry.customSkillNames.some((value) => String(value || "").trim().length > 0);
+
+      return hasSelectedTool || hasCustomSkill;
+    });
+    const hasLegacySkills =
+      Array.isArray(serviceProfileForm.skillsAndTechnologies) &&
+      serviceProfileForm.skillsAndTechnologies.some(
+        (value) => String(value || "").trim().length > 0,
+      );
+
+    return hasSubcategorySkillSelection || hasLegacySkills;
+  }, [serviceProfileForm.skillsAndTechnologies, serviceProfileForm.subcategories]);
+
   const handleNext = () => {
     if (activeStepId === "overview") {
-      if (!serviceProfileForm.serviceLabel?.trim()) {
+      if (!String(serviceProfileForm.title || "").trim()) {
         toast.error("Please enter a service title.");
         return;
       }
-      if (!serviceProfileForm.skillsAndTechnologies?.length) {
+      if (
+        !Array.isArray(serviceProfileForm.subcategories) ||
+        serviceProfileForm.subcategories.length === 0
+      ) {
+        toast.error("Please select a category.");
+        return;
+      }
+      if (!hasServiceInfoSelection) {
         toast.error("Please add at least one skill or technology.");
         return;
       }
-    } else if (activeStepId === "pricing") {
-      if (!serviceProfileForm.serviceDescription || serviceProfileForm.serviceDescription.length < 50) {
-        toast.error("Description must be at least 50 characters.");
+      if (!String(serviceProfileForm.experience || "").trim()) {
+        toast.error("Please select your experience level.");
         return;
       }
-      if (!serviceProfileForm.deliveryTime) {
+    } else if (activeStepId === "pricing") {
+      if (!String(serviceProfileForm.description || "").trim()) {
+        toast.error("Please add a service description.");
+        return;
+      }
+      if (!String(serviceProfileForm.deliveryTimeline || "").trim()) {
         toast.error("Please select a delivery timeline.");
+        return;
+      }
+      if (!String(serviceProfileForm.priceRange || "").trim()) {
+        toast.error("Please set a service price.");
+        return;
+      }
+    } else if (activeStepId === "visuals") {
+      const mediaFiles = Array.isArray(serviceProfileForm.mediaFiles)
+        ? serviceProfileForm.mediaFiles
+        : [];
+      if (!isServiceVisualsUploadValid(mediaFiles)) {
+        toast.error("Please add up to 2 images and 1 video before continuing.");
+        return;
+      }
+    } else if (activeStepId === "caseStudy") {
+      if (!String(activeCaseStudy.title || "").trim()) {
+        toast.error("Please enter a case study title.");
+        return;
+      }
+      if (!String(activeCaseStudy.description || "").trim()) {
+        toast.error("Please add a case study description.");
+        return;
+      }
+      if (!String(activeCaseStudy.niche || "").trim()) {
+        toast.error("Please select a niche.");
+        return;
+      }
+      if (!String(activeCaseStudy.role || "").trim()) {
+        toast.error("Please enter your role.");
+        return;
+      }
+      if (!String(activeCaseStudy.timeline || "").trim()) {
+        toast.error("Please select a timeline.");
+        return;
+      }
+      if (!String(activeCaseStudy.budget || "").trim()) {
+        toast.error("Please set a budget.");
         return;
       }
     }
@@ -431,7 +508,6 @@ const AddEditServiceWizard = ({
     }
   };
 
-  const serviceLabel = String(serviceProfileForm.serviceLabel || "").trim() || "Service";
   const headerServiceLabel = useMemo(() => {
     const normalizedKey = normalizeServiceLookupToken(serviceProfileForm.serviceKey);
     if (!normalizedKey) return "Service";
@@ -462,7 +538,7 @@ const AddEditServiceWizard = ({
 
     return toServiceHeadingLabel(serviceProfileForm.serviceKey) || "Service";
   }, [serviceProfileForm.serviceKey, marketplaceServices, servicesCatalog]);
-  const serviceTitleLength = String(serviceProfileForm.serviceLabel || "").length;
+  const serviceTitleLength = String(serviceProfileForm.title || "").length;
 
   const handleSelectedCategoriesChange = useCallback(
     (nextKeys) => {
@@ -544,11 +620,14 @@ const AddEditServiceWizard = ({
 
   const handleAddCaseStudy = useCallback(() => {
     setServiceProfileForm((prev) => {
+      const currentCaseStudies = normalizeWizardCaseStudies(prev);
+      if (currentCaseStudies.length >= MAX_ONBOARDING_CASE_STUDIES) {
+        toast.error("You can add up to 5 case studies.");
+        return prev;
+      }
+
       const nextCaseStudy = createWizardCaseStudy();
-      const nextCaseStudies = [
-        ...normalizeWizardCaseStudies(prev),
-        nextCaseStudy,
-      ];
+      const nextCaseStudies = [...currentCaseStudies, nextCaseStudy];
 
       return {
         ...prev,
@@ -561,9 +640,6 @@ const AddEditServiceWizard = ({
 
   const mediaFiles = Array.isArray(serviceProfileForm.mediaFiles)
     ? serviceProfileForm.mediaFiles
-    : [];
-  const keywordTags = Array.isArray(serviceProfileForm.keywords)
-    ? serviceProfileForm.keywords
     : [];
   return (
     <div className="flex h-full min-h-0 flex-col bg-gradient-to-br from-background via-background/95 to-background/90 rounded-2xl overflow-hidden">
@@ -647,11 +723,12 @@ const AddEditServiceWizard = ({
                     <input
                       id="service-title-input"
                       type="text"
-                      value={serviceProfileForm.serviceLabel || ""}
+                      value={serviceProfileForm.title || ""}
                       onChange={(event) => {
                         const nextValue = event.target.value.slice(0, SERVICE_TITLE_MAX);
                         setServiceProfileForm((prev) => ({
                           ...prev,
+                          title: nextValue,
                           serviceLabel: nextValue,
                         }));
                       }}
@@ -733,10 +810,11 @@ const AddEditServiceWizard = ({
                     Experience
                   </label>
                   <CustomSelect
-                    value={serviceProfileForm.experienceYears}
+                    value={serviceProfileForm.experience}
                     onChange={(value) =>
                       setServiceProfileForm((prev) => ({
                         ...prev,
+                        experience: value,
                         experienceYears: value,
                       }))
                     }
@@ -768,10 +846,11 @@ const AddEditServiceWizard = ({
                   Service Description
                 </label>
                 <textarea
-                  value={serviceProfileForm.serviceDescription || ""}
+                  value={serviceProfileForm.description || ""}
                   onChange={(e) =>
                     setServiceProfileForm((prev) => ({
                       ...prev,
+                      description: e.target.value,
                       serviceDescription: e.target.value,
                     }))
                   }
@@ -787,10 +866,11 @@ const AddEditServiceWizard = ({
                   Delivery Timeline
                 </label>
                 <CustomSelect
-                  value={serviceProfileForm.deliveryTime}
+                  value={serviceProfileForm.deliveryTimeline}
                   onChange={(val) =>
                     setServiceProfileForm((prev) => ({
                       ...prev,
+                      deliveryTimeline: val,
                       deliveryTime: val,
                     }))
                   }
@@ -811,12 +891,14 @@ const AddEditServiceWizard = ({
                   <input
                     type="text"
                     inputMode="numeric"
-                    value={serviceProfileForm.averageProjectPrice || ""}
+                    value={serviceProfileForm.priceRange || ""}
                     onChange={(e) => {
                       const digitsOnly = e.target.value.replace(/\D/g, "");
                       setServiceProfileForm((prev) => ({
                         ...prev,
+                        priceRange: digitsOnly,
                         averageProjectPrice: digitsOnly,
+                        averagePrice: digitsOnly,
                       }));
                     }}
                     placeholder="Enter starting price"
@@ -833,42 +915,20 @@ const AddEditServiceWizard = ({
           <div className="space-y-7 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="space-y-2">
               <h2 className="text-2xl font-semibold text-white sm:text-3xl">
-                Enhance Your Service
+                Add Media
               </h2>
               <p className="text-sm text-muted-foreground sm:text-base">
-                Add relevant keywords and media for better visibility.
+                Add media for better visibility.
               </p>
             </div>
 
             <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
               <div className="space-y-2.5">
                 <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                  Positive Keywords
-                </label>
-                <KeywordInput
-                  keywords={keywordTags}
-                  suggestions={serviceTechSuggestionOptions}
-                  serviceName={serviceLabel}
-                  onChange={(nextKeywords) =>
-                    setServiceProfileForm((prev) => ({
-                      ...prev,
-                      keywords: nextKeywords,
-                    }))
-                  }
-                />
-                <p className="text-xs leading-relaxed text-white/35">
-                  Enter up to 5 positive keywords to improve search visibility of
-                  your service, separating each with a comma.
-                </p>
-              </div>
-
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
                   Upload Media
                 </label>
                 <ServiceMediaUploadArea
                   files={mediaFiles}
-                  coverImage={serviceProfileForm.coverImage}
                   uploading={uploadingServiceCover}
                   onChange={(nextFiles) =>
                     setServiceProfileForm((prev) => ({
@@ -876,25 +936,9 @@ const AddEditServiceWizard = ({
                       mediaFiles: nextFiles,
                     }))
                   }
-                  onFilesAdded={(incomingFiles) => {
-                    const firstImage = incomingFiles.find((file) =>
-                      file.type?.startsWith("image/")
-                    );
-                    if (firstImage && typeof onCoverChange === "function") {
-                      void onCoverChange({ target: { files: [firstImage], value: "" } });
-                      return incomingFiles.filter((file) => file !== firstImage);
-                    }
-                    return incomingFiles;
-                  }}
-                  onRemoveCover={() =>
-                    setServiceProfileForm((prev) => ({
-                      ...prev,
-                      coverImage: "",
-                    }))
-                  }
                 />
                 <p className="text-xs leading-relaxed text-white/35">
-                  Upload up to 2 images and 1 video for service onboarding.
+                  Upload up to 2 images and 1 video (max 5MB each).
                 </p>
               </div>
             </div>
@@ -906,10 +950,10 @@ const AddEditServiceWizard = ({
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="space-y-2">
               <h2 className="text-2xl font-semibold text-white sm:text-3xl">
-                Project Portfolio
+                Tell Us About Your Previous Work
               </h2>
               <p className="text-sm text-muted-foreground sm:text-base">
-                Provide details to verify your identity securely.
+                Add multiple case studies and switch between them while filling the details.
               </p>
             </div>
 
@@ -920,14 +964,15 @@ const AddEditServiceWizard = ({
                     Case Studies
                   </p>
                   <p className="text-xs leading-relaxed text-white/40">
-                    Add multiple projects and switch between them while filling the details.
+                    Add multiple case studies and switch between them while filling the details.
                   </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleAddCaseStudy}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14"
+                  disabled={caseStudies.length >= MAX_ONBOARDING_CASE_STUDIES}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-card disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-card"
                 >
                   <Plus className="h-4 w-4" />
                   Add Case Study
@@ -1400,39 +1445,23 @@ const KeywordInput = ({
 
 const ServiceMediaUploadArea = ({
   files = [],
-  coverImage = "",
   uploading = false,
   onChange,
-  onFilesAdded,
-  onRemoveCover,
 }) => {
   const inputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const previewItems = useMemo(() => {
     const items = [];
-    const resolvedCover = String(coverImage || "").trim();
-
-    if (resolvedCover) {
-      items.push({
-        id: "cover-image",
-        name: "Cover image",
-        previewUrl: resolvedCover,
-        isVideo: false,
-        isCover: true,
-      });
-    }
 
     files.forEach((entry, index) => {
       const localFile = getMediaFile(entry);
       const isVideo = isVideoMedia(entry);
       const remoteUrl = getMediaUrl(entry);
       const previewUrl =
-        !isVideo && localFile && typeof URL !== "undefined"
+        localFile && typeof URL !== "undefined"
           ? URL.createObjectURL(localFile)
-          : !isVideo
-            ? remoteUrl
-            : "";
+          : remoteUrl;
 
       items.push({
         id:
@@ -1448,7 +1477,7 @@ const ServiceMediaUploadArea = ({
     });
 
     return items;
-  }, [coverImage, files]);
+  }, [files]);
 
   useEffect(
     () => () => {
@@ -1457,9 +1486,7 @@ const ServiceMediaUploadArea = ({
     [previewItems]
   );
 
-  const imageCount =
-    files.filter((file) => !isVideoMedia(file)).length +
-    (String(coverImage || "").trim() ? 1 : 0);
+  const imageCount = files.filter((file) => !isVideoMedia(file)).length;
   const videoCount = files.filter((file) => isVideoMedia(file)).length;
   const canAddImage = imageCount < MAX_IMAGES;
   const canAddVideo = videoCount < MAX_VIDEOS;
@@ -1473,32 +1500,50 @@ const ServiceMediaUploadArea = ({
     (incoming) => {
       let nextImageCount = imageCount;
       let nextVideoCount = videoCount;
-      const valid = Array.from(incoming || []).filter((file) => {
-        if (file.type.startsWith("image/") && nextImageCount < MAX_IMAGES) {
+      let hadUnsupportedType = false;
+      let hadOversizedFile = false;
+      const valid = [];
+
+      Array.from(incoming || []).forEach((file) => {
+        const fileType = String(file?.type || "").trim().toLowerCase();
+        if (!fileType.startsWith("image/") && !fileType.startsWith("video/")) {
+          hadUnsupportedType = true;
+          return;
+        }
+
+        if (Number(file?.size || 0) > MAX_MEDIA_FILE_SIZE_BYTES) {
+          hadOversizedFile = true;
+          return;
+        }
+
+        if (fileType.startsWith("image/") && nextImageCount < MAX_IMAGES) {
           nextImageCount += 1;
-          return true;
+          valid.push(file);
+          return;
         }
-        if (file.type.startsWith("video/") && nextVideoCount < MAX_VIDEOS) {
+
+        if (fileType.startsWith("video/") && nextVideoCount < MAX_VIDEOS) {
           nextVideoCount += 1;
-          return true;
+          valid.push(file);
         }
-        return false;
       });
+
+      if (hadUnsupportedType) {
+        toast.error("Only image or video files are allowed.");
+      } else if (hadOversizedFile) {
+        toast.error("Each file must be 5MB or smaller.");
+      } else if (!valid.length) {
+        toast.error("Please add up to 2 images and 1 video.");
+      }
 
       if (!valid.length) return;
 
-      const filesToKeep = onFilesAdded?.(valid) || valid;
-      onChange([...files, ...filesToKeep]);
+      onChange([...files, ...valid]);
     },
-    [files, imageCount, onChange, onFilesAdded, videoCount]
+    [files, imageCount, onChange, videoCount]
   );
 
   const removeFile = (item) => {
-    if (item.isCover) {
-      onRemoveCover?.();
-      return;
-    }
-
     onChange(files.filter((_, index) => index !== item.fileIndex));
   };
 
@@ -1511,7 +1556,18 @@ const ServiceMediaUploadArea = ({
               key={item.id}
               className="group relative h-24 w-24 overflow-hidden rounded-xl border border-white/10 bg-card"
             >
-              {!item.isVideo && item.previewUrl ? (
+              {item.isVideo && item.previewUrl ? (
+                <video
+                  src={item.previewUrl}
+                  className="h-full w-full object-cover"
+                  muted
+                  playsInline
+                  autoPlay
+                  loop
+                  controls
+                  preload="metadata"
+                />
+              ) : !item.isVideo && item.previewUrl ? (
                 <img
                   src={item.previewUrl}
                   alt={item.name}
@@ -1520,7 +1576,7 @@ const ServiceMediaUploadArea = ({
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-white/40">
                   <ImageIcon className="h-5 w-5" />
-                  <span className="text-[10px]">Video</span>
+                  <span className="text-[10px]">{item.isVideo ? "Video" : "Image"}</span>
                 </div>
               )}
               <button
@@ -1564,7 +1620,7 @@ const ServiceMediaUploadArea = ({
             )}
           </div>
           <span className="text-sm font-medium text-white/70">
-            Upload Image or Video
+            Upload Media
           </span>
         </button>
       )}
