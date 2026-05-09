@@ -63,8 +63,6 @@ const CategoryMultiSelect = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [skillSearchQuery, setSkillSearchQuery] = useState("");
-  const [popupMaxHeight, setPopupMaxHeight] = useState(224);
   const [popupStyle, setPopupStyle] = useState(null);
   const containerRef = useRef(null);
   const popupRef = useRef(null);
@@ -171,17 +169,6 @@ const CategoryMultiSelect = ({
     );
   }, [options, searchQuery]);
 
-  const filteredActiveToolOptions = useMemo(() => {
-    const normalizedQuery = String(skillSearchQuery || "").trim().toLowerCase();
-    if (!normalizedQuery) {
-      return activeToolOptions;
-    }
-
-    return activeToolOptions.filter((tool) =>
-      String(tool.label || "").toLowerCase().includes(normalizedQuery),
-    );
-  }, [activeToolOptions, skillSearchQuery]);
-
   const activeSelectedToolEntries = useMemo(() => {
     const toolLabelById = new Map(
       activeToolOptions.map((tool) => [tool.id, tool.label]),
@@ -195,7 +182,6 @@ const CategoryMultiSelect = ({
 
   const activeSelectionCount =
     activeSelectedToolEntries.length + activeSelectedCustomSkills.length;
-  const bodyMaxHeight = Math.max(popupMaxHeight - 60, 240);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -217,7 +203,6 @@ const CategoryMultiSelect = ({
   useEffect(() => {
     if (!isOpen) {
       setSearchQuery("");
-      setSkillSearchQuery("");
     }
   }, [isOpen]);
 
@@ -239,10 +224,11 @@ const CategoryMultiSelect = ({
       const gap = 8;
       const spaceBelow = Math.max(0, viewportHeight - rect.bottom - margin - gap);
       const spaceAbove = Math.max(0, rect.top - margin - gap);
-      const shouldOpenAbove = spaceBelow < 220 && spaceAbove > spaceBelow;
-      const nextMaxHeight = Math.max(
-        Math.min(440, shouldOpenAbove ? spaceAbove : spaceBelow),
-        260,
+      const preferredMaxHeight = 440;
+      const shouldOpenAbove = spaceBelow < preferredMaxHeight && spaceAbove > spaceBelow;
+      const nextHeight = Math.max(
+        Math.min(preferredMaxHeight, shouldOpenAbove ? spaceAbove : spaceBelow),
+        0,
       );
       const nextWidth = Math.min(
         Math.max(rect.width, 860),
@@ -253,11 +239,11 @@ const CategoryMultiSelect = ({
         viewportWidth - nextWidth - margin,
       );
 
-      setPopupMaxHeight(nextMaxHeight);
       setPopupStyle({
         position: "fixed",
         left: `${nextLeft}px`,
         width: `${nextWidth}px`,
+        height: `${nextHeight}px`,
         top: shouldOpenAbove
           ? "auto"
           : `${Math.min(rect.bottom + gap, viewportHeight - margin)}px`,
@@ -397,11 +383,32 @@ const CategoryMultiSelect = ({
           />
         </button>
 
+        {selectedOptions.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {selectedOptions.map((option) => (
+              <span
+                key={option.value}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-sm border border-primary/35 bg-primary/10 px-3 py-1.5 text-[12px] font-medium text-primary"
+              >
+                <span className="min-w-0 truncate">{option.label}</span>
+                <button
+                  type="button"
+                  onClick={() => removeOption(option.value)}
+                  className="rounded p-0.5 transition-colors hover:bg-primary/15"
+                  aria-label={`Remove ${option.label}`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+
         {isOpen && typeof document !== "undefined"
           ? createPortal(
               <div
                 ref={popupRef}
-                className="z-[70] overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40"
+                className="z-[70] flex flex-col overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40"
                 style={popupStyle || undefined}
                 onClick={(event) => event.stopPropagation()}
               >
@@ -417,23 +424,21 @@ const CategoryMultiSelect = ({
                 </div>
 
                 <div
-                  className="flex min-h-0 flex-col md:flex-row"
-                  style={{ maxHeight: `${bodyMaxHeight}px` }}
+                  className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row"
                 >
-                  <div className="min-h-0 min-w-0 border-b border-white/8 md:h-full md:flex-1 md:border-b-0 md:border-r md:border-r-white/8">
-                    <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
-                        Categories
-                      </p>
-                      <p className="text-[11px] text-white/35">
-                        {selectedOptions.length} selected
-                      </p>
+                  <div className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-white/8 md:border-b-0 md:border-r md:border-r-white/8">
+                    <div className="shrink-0 border-b border-white/8 px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
+                          Categories
+                        </p>
+                        <p className="text-[11px] text-white/35">
+                          {selectedOptions.length} selected
+                        </p>
+                      </div>
                     </div>
 
-                    <div
-                      className="overflow-y-auto px-4 py-3"
-                      style={{ maxHeight: `${bodyMaxHeight}px` }}
-                    >
+                    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
                       {isLoading ? (
                         <div className="px-3 py-2 text-sm text-white/40">
                           {loadingMessage}
@@ -495,110 +500,105 @@ const CategoryMultiSelect = ({
                     </div>
                   </div>
 
-                  <div className="min-h-0 min-w-0 flex-1 flex flex-col md:flex-[1_1_0%]">
+                  <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                     {activeCategoryValue ? (
-                      <div
-                        className="flex min-h-0 flex-col gap-3 overflow-hidden px-4 py-3"
-                        style={{ maxHeight: `${bodyMaxHeight}px` }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="text"
-                            value={skillSearchQuery}
-                            onChange={(event) =>
-                              setSkillSearchQuery(event.target.value)
-                            }
-                            placeholder="Search skills"
-                            className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-background/60 px-3 text-sm text-white outline-none transition-colors placeholder:text-white/35 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                          />
-                          <div className="shrink-0 whitespace-nowrap text-[11px] font-medium text-white/40">
-                            {activeSelectionCount} selected
+                      <>
+                        <div className="shrink-0 border-b border-white/8 px-4 py-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
+                              Skills
+                            </p>
+                            <p className="text-[11px] text-white/35">
+                              {activeSelectionCount} selected
+                            </p>
                           </div>
                         </div>
 
-                        <div className="min-h-0 flex-1 overflow-y-auto subtle-scrollbar pr-0">
-                          <div className="flex flex-col gap-2">
-                            {isToolsLoading &&
-                            activeToolOptions.length === 0 ? (
-                              <p className="text-sm text-white/35">
-                                Loading skills...
-                              </p>
-                            ) : filteredActiveToolOptions.length > 0 ? (
-                              filteredActiveToolOptions.map((tool) => {
-                                const isSelected = activeSelectedToolIdSet.has(tool.id);
-                                return (
+                        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3">
+                          <div className="min-h-0 flex-1 overflow-y-auto subtle-scrollbar pr-0">
+                            <div className="flex flex-col gap-2">
+                              {isToolsLoading &&
+                              activeToolOptions.length === 0 ? (
+                                <p className="text-sm text-white/35">
+                                  Loading skills...
+                                </p>
+                              ) : activeToolOptions.length > 0 ? (
+                                activeToolOptions.map((tool) => {
+                                  const isSelected = activeSelectedToolIdSet.has(tool.id);
+                                  return (
+                                    <button
+                                      key={tool.id}
+                                      type="button"
+                                      onClick={() => handleToggleTool(tool.id)}
+                                      className={cn(
+                                        "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors",
+                                        isSelected
+                                          ? "border-primary/60 bg-primary/10 text-primary"
+                                          : "border-white/10 bg-white/[0.03] text-white/75 hover:border-white/20 hover:bg-white/[0.06]",
+                                      )}
+                                      aria-pressed={isSelected}
+                                    >
+                                      <span className="min-w-0 flex-1 truncate font-medium">
+                                        {tool.label}
+                                      </span>
+                                      <Check
+                                        className={cn(
+                                          "ml-3 h-4 w-4 shrink-0 transition-colors",
+                                          isSelected ? "text-primary" : "text-white/30",
+                                        )}
+                                      />
+                                    </button>
+                                  );
+                                })
+                              ) : (
+                                <p className="text-sm text-white/35">
+                                  {activeToolOptions.length === 0
+                                    ? toolFetchError ||
+                                      "No preset skills found for this sub-category."
+                                    : "No matching skills found."}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 border-t border-white/5 pt-3">
+                            <div className="flex flex-wrap gap-2">
+                              {activeSelectedToolEntries.map((tool) => (
+                                <span
+                                  key={tool.id}
+                                  className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+                                >
+                                  {tool.label}
                                   <button
-                                    key={tool.id}
                                     type="button"
                                     onClick={() => handleToggleTool(tool.id)}
-                                    className={cn(
-                                      "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors",
-                                      isSelected
-                                        ? "border-primary/60 bg-primary/10 text-primary"
-                                        : "border-white/10 bg-white/[0.03] text-white/75 hover:border-white/20 hover:bg-white/[0.06]",
-                                    )}
-                                    aria-pressed={isSelected}
+                                    className="rounded-full p-0.5 transition-colors hover:bg-primary/15"
                                   >
-                                    <span className="min-w-0 flex-1 truncate font-medium">
-                                      {tool.label}
-                                    </span>
-                                    <Check
-                                      className={cn(
-                                        "ml-3 h-4 w-4 shrink-0 transition-colors",
-                                        isSelected ? "text-primary" : "text-white/30",
-                                      )}
-                                    />
+                                    <X className="h-3 w-3" />
                                   </button>
-                                );
-                              })
-                            ) : (
-                              <p className="text-sm text-white/35">
-                                {activeToolOptions.length === 0
-                                  ? toolFetchError ||
-                                    "No preset skills found for this sub-category."
-                                  : "No matching skills found."}
-                              </p>
-                            )}
+                                </span>
+                              ))}
+                              {activeSelectedCustomSkills.map((skill) => (
+                                <span
+                                  key={skill}
+                                  className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+                                >
+                                  {skill}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveCustomSkill(skill)}
+                                    className="rounded-full p-0.5 transition-colors hover:bg-primary/15"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         </div>
-
-                        <div className="shrink-0 border-t border-white/5 pt-3">
-                          <div className="flex flex-wrap gap-2">
-                            {activeSelectedToolEntries.map((tool) => (
-                              <span
-                                key={tool.id}
-                                className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
-                              >
-                                {tool.label}
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleTool(tool.id)}
-                                  className="rounded-full p-0.5 transition-colors hover:bg-primary/15"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </span>
-                            ))}
-                            {activeSelectedCustomSkills.map((skill) => (
-                              <span
-                                key={skill}
-                                className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
-                              >
-                                {skill}
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveCustomSkill(skill)}
-                                  className="rounded-full p-0.5 transition-colors hover:bg-primary/15"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+                      </>
                     ) : (
-                      <div className="flex h-full items-center justify-center px-4 py-8 text-sm text-white/35">
+                      <div className="flex flex-1 items-center justify-center px-4 py-8 text-sm text-white/35">
                         Select a category to manage its skills.
                       </div>
                     )}
