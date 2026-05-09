@@ -683,7 +683,13 @@ const normalizePortfolioProjects = (projects) => {
     const readme = normalizeProjectLink(
       project.readme || project.readmeUrl || project.readmeLink || ""
     );
-    const image = String(project.image || "").trim() || null;
+    const image = extractAvatarUrl(
+      project.image ||
+      project.coverImage ||
+      project.fileUrl ||
+      project?.file?.url ||
+      ""
+    );
 
     if (!title && !link && !readme) return;
 
@@ -704,6 +710,176 @@ const normalizePortfolioProjects = (projects) => {
   });
 
   return Array.from(projectMap.values()).slice(0, 24);
+};
+
+const normalizePortfolioProjectServiceKeys = (value = []) =>
+  Array.from(
+    new Set(
+      (Array.isArray(value) ? value : [value])
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean)
+    )
+  );
+
+const normalizePortfolioProjectCaseStudy = (
+  project = {},
+  { serviceKey = "", fallbackId = "" } = {}
+) => {
+  const source = isPlainObject(project) ? project : {};
+  const serviceKeys = normalizePortfolioProjectServiceKeys([
+    ...(Array.isArray(source.serviceKeys) ? source.serviceKeys : []),
+    source.serviceKey,
+    serviceKey
+  ]);
+  const projectLink = normalizeProjectLink(
+    source.projectLink || source.link || source.url || ""
+  );
+  const image = extractAvatarUrl(
+    source.image ||
+      source.coverImage ||
+      source.fileUrl ||
+      source?.file?.url ||
+      ""
+  );
+
+  return {
+    ...cloneJsonValue(source),
+    id: String(source.id || source.caseStudyId || fallbackId || "").trim() || null,
+    title: String(source.title || source.projectTitle || "").trim(),
+    description: String(source.description || source.summary || source.goal || "").trim(),
+    projectLink,
+    link: projectLink,
+    projectFile: source.projectFile ?? source.file ?? null,
+    image,
+    role: String(source.role || "").trim(),
+    timeline: String(source.timeline || "").trim(),
+    budget: String(source.budget || "").trim(),
+    niche: String(source.niche || "").trim(),
+    serviceKeys,
+    serviceKey: serviceKeys[0] || String(source.serviceKey || serviceKey || "").trim()
+  };
+};
+
+const mergePortfolioProjectCaseStudies = (
+  existingCaseStudies = [],
+  nextCaseStudies = [],
+  { serviceKey = "" } = {}
+) => {
+  const caseStudyMap = new Map();
+
+  const upsert = (entry, index) => {
+    const normalized = normalizePortfolioProjectCaseStudy(entry, {
+      fallbackId: `case-study-${index + 1}`,
+      serviceKey
+    });
+    const dedupKey = normalized.projectLink
+      ? `link:${normalized.projectLink.toLowerCase()}`
+      : normalized.title
+        ? `title:${normalized.title.toLowerCase()}`
+        : normalized.id
+          ? `id:${normalized.id.toLowerCase()}`
+          : "";
+
+    if (!dedupKey) return;
+
+    const current = caseStudyMap.get(dedupKey);
+    if (!current) {
+      caseStudyMap.set(dedupKey, normalized);
+      return;
+    }
+
+    const mergedServiceKeys = normalizePortfolioProjectServiceKeys([
+      ...(Array.isArray(current.serviceKeys) ? current.serviceKeys : []),
+      ...(Array.isArray(normalized.serviceKeys) ? normalized.serviceKeys : []),
+      current.serviceKey,
+      normalized.serviceKey,
+      serviceKey
+    ]);
+
+    caseStudyMap.set(dedupKey, {
+      ...current,
+      ...normalized,
+      title: normalized.title || current.title || "Project",
+      description: normalized.description || current.description || null,
+      projectLink: normalized.projectLink || current.projectLink || current.link || "",
+      link: normalized.projectLink || current.link || normalized.link || "",
+      projectFile: normalized.projectFile ?? current.projectFile ?? null,
+      image: normalized.image || current.image || "",
+      role: normalized.role || current.role || null,
+      timeline: normalized.timeline || current.timeline || null,
+      budget: normalized.budget || current.budget || null,
+      niche: normalized.niche || current.niche || null,
+      serviceKeys: mergedServiceKeys,
+      serviceKey: mergedServiceKeys[0] || current.serviceKey || normalized.serviceKey || serviceKey || ""
+    });
+  };
+
+  (Array.isArray(existingCaseStudies) ? existingCaseStudies : []).forEach(upsert);
+  (Array.isArray(nextCaseStudies) ? nextCaseStudies : []).forEach((entry, index) =>
+    upsert(entry, (Array.isArray(existingCaseStudies) ? existingCaseStudies.length : 0) + index)
+  );
+
+  return Array.from(caseStudyMap.values());
+};
+
+const mergePortfolioProjectsIntoServiceDetails = ({
+  profileDetails = {},
+  portfolioProjects = []
+} = {}) => {
+  const nextProfileDetails = cloneJsonValue(
+    isPlainObject(profileDetails) ? profileDetails : {}
+  );
+  const rawServiceDetails = isPlainObject(nextProfileDetails.serviceDetails)
+    ? nextProfileDetails.serviceDetails
+    : {};
+  const nextServiceDetails = cloneJsonValue(rawServiceDetails);
+  const serviceKeySet = new Set(
+    normalizeStringList(nextProfileDetails.services, { max: 120 })
+  );
+
+  (Array.isArray(portfolioProjects) ? portfolioProjects : []).forEach((project, index) => {
+    const normalizedProject = normalizePortfolioProjectCaseStudy(project, {
+      fallbackId: `case-study-${index + 1}`
+    });
+    const projectServiceKeys = normalizePortfolioProjectServiceKeys([
+      ...(Array.isArray(normalizedProject.serviceKeys)
+        ? normalizedProject.serviceKeys
+        : []),
+      normalizedProject.serviceKey
+    ]);
+
+    if (!projectServiceKeys.length) {
+      return;
+    }
+
+    projectServiceKeys.forEach((serviceKey) => {
+      if (!serviceKey) return;
+      serviceKeySet.add(serviceKey);
+
+      const currentDetail =
+        nextServiceDetails?.[serviceKey] && isPlainObject(nextServiceDetails[serviceKey])
+          ? nextServiceDetails[serviceKey]
+          : {};
+      const mergedCaseStudies = mergePortfolioProjectCaseStudies(
+        currentDetail.caseStudies,
+        [normalizedProject],
+        { serviceKey }
+      );
+
+      nextServiceDetails[serviceKey] = {
+        ...currentDetail,
+        caseStudies: mergedCaseStudies,
+        caseStudy: mergedCaseStudies[0] || null
+      };
+    });
+  });
+
+  if (serviceKeySet.size) {
+    nextProfileDetails.services = Array.from(serviceKeySet);
+  }
+
+  nextProfileDetails.serviceDetails = nextServiceDetails;
+  return nextProfileDetails;
 };
 
 const normalizeSocialMediaLinks = (links) => {
@@ -1292,7 +1468,9 @@ const normalizeFreelancerProjectEntries = ({
       project.readme || project.readmeUrl || project.readmeLink || ""
     );
     const fileName = String(project?.file?.name || project.fileName || "").trim() || null;
-    const fileUrl = normalizeOptionalProjectUrl(project?.file?.url || project.fileUrl || "");
+    const fileUrl = normalizeOptionalProjectUrl(
+      project?.file?.url || project.fileUrl || project.image || project.coverImage || ""
+    );
     const role = String(project.role || "").trim() || null;
     const timeline = String(project.timeline || "").trim() || null;
     const budget = normalizeBudgetValue(project.budget);
@@ -1356,7 +1534,13 @@ const extractFreelancerProjectsFromProfileDetails = (profileDetails = {}) => {
   let sortOrder = 0;
 
   Object.entries(serviceDetails).forEach(([serviceKey, detail]) => {
-    const entries = Array.isArray(detail?.projects) ? detail.projects : [];
+    const entries = Array.isArray(detail?.caseStudies)
+      ? detail.caseStudies
+      : Array.isArray(detail?.projects)
+        ? detail.projects
+        : detail?.caseStudy && typeof detail.caseStudy === "object"
+          ? [detail.caseStudy]
+          : [];
     if (!entries.length) return;
 
     const normalizedServiceKey = String(serviceKey || "").trim() || null;
@@ -1392,9 +1576,44 @@ const deriveFreelancerProjects = ({
   profileDetails,
   portfolioProjects
 }) => {
-  const fromProfile = extractFreelancerProjectsFromProfileDetails(profileDetails);
-  if (fromProfile.length) return fromProfile;
-  return extractFreelancerProjectsFromPortfolio(portfolioProjects);
+  const projectMap = new Map();
+
+  const addProject = (project, index) => {
+    const normalized =
+      project && typeof project === "object"
+        ? project
+        : { title: String(project || "") };
+    const title = String(normalized.title || "").trim();
+    const link = normalizeOptionalProjectUrl(normalized.link || normalized.url || "");
+    const readme = normalizeOptionalProjectUrl(
+      normalized.readme || normalized.readmeUrl || normalized.readmeLink || ""
+    );
+    const serviceKey = String(normalized.serviceKey || "").trim();
+    const dedupKey = [
+      serviceKey || "general",
+      link ? `link:${link.toLowerCase()}` : readme ? `readme:${readme.toLowerCase()}` : `title:${title.toLowerCase()}:${index}`
+    ].join("|");
+
+    if (!title && !link && !readme && !String(normalized.description || "").trim()) {
+      return;
+    }
+
+    if (projectMap.has(dedupKey)) {
+      return;
+    }
+
+    projectMap.set(dedupKey, {
+      ...normalized,
+      title: title || "Project",
+      link,
+      readme
+    });
+  };
+
+  extractFreelancerProjectsFromProfileDetails(profileDetails).forEach(addProject);
+  extractFreelancerProjectsFromPortfolio(portfolioProjects).forEach(addProject);
+
+  return Array.from(projectMap.values()).slice(0, 80);
 };
 
 const normalizeMarketplaceServiceIdentifier = (value = "") =>
@@ -2497,6 +2716,20 @@ export const updateUserProfile = async (userId, updates) => {
       ? resolvedPortfolioProjectsUpdate
       : normalizePortfolioProjects(resolvedProfileDetails?.portfolioProjects);
 
+    if (hasPortfolioProjectsUpdate && resolvedPortfolioProjects.length) {
+      resolvedProfileDetails = mergePortfolioProjectsIntoServiceDetails({
+        profileDetails: resolvedProfileDetails,
+        portfolioProjects: resolvedPortfolioProjects
+      });
+      nextFreelancerProfileUpdates.profileDetails = resolvedProfileDetails;
+      resolvedServices = Array.isArray(resolvedProfileDetails.services)
+        ? resolvedProfileDetails.services
+        : resolvedServices;
+      if (Array.isArray(resolvedServices) && resolvedServices.length) {
+        nextFreelancerProfileUpdates.services = resolvedServices;
+      }
+    }
+
     if (Object.keys(nextFreelancerProfileUpdates).length) {
       await upsertFreelancerProfile({
         tx,
@@ -3378,9 +3611,14 @@ const createUserRecord = async (payload) => {
     );
 
     if (hasFreelancerProfileData) {
+      const profileDetailsForSync = mergePortfolioProjectsIntoServiceDetails({
+        profileDetails: normalizedFreelancerProfile,
+        portfolioProjects: normalizedPortfolioProjects
+      });
+
       await syncFreelancerProfileDetails({
         userId: user.id,
-        profileDetails: normalizedFreelancerProfile,
+        profileDetails: profileDetailsForSync,
         portfolioProjects: normalizedPortfolioProjects,
         services: normalizedServices
       });
@@ -3393,20 +3631,24 @@ const createUserRecord = async (payload) => {
     );
 
     if (normalizedRole === "FREELANCER") {
-      const normalizedProjects = deriveFreelancerProjects({
+      const mergedProfileDetailsForProjects = mergePortfolioProjectsIntoServiceDetails({
         profileDetails: normalizedFreelancerProfile,
+        portfolioProjects: normalizedPortfolioProjects
+      });
+      const normalizedProjects = deriveFreelancerProjects({
+        profileDetails: mergedProfileDetailsForProjects,
         portfolioProjects: normalizedPortfolioProjects
       });
       await replaceFreelancerProjects(user.id, normalizedProjects);
 
       const marketplaceServices = deriveMarketplaceServices({
-        profileDetails: normalizedFreelancerProfile,
+        profileDetails: mergedProfileDetailsForProjects,
         services: normalizedServices
       });
       await upsertMarketplaceEntry({
         freelancerId: user.id,
         services: marketplaceServices,
-        profileDetails: normalizedFreelancerProfile
+        profileDetails: mergedProfileDetailsForProjects
       });
     }
 

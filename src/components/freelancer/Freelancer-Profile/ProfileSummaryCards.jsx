@@ -8,7 +8,6 @@ const ProfileSummaryCards = ({
   profileCompletionMessage,
   profileCompletionMissingDetails,
 }) => {
-  const completeColor = "#059669"; // Tailwind emerald-600
   const completion = Math.min(
     100,
     Math.max(0, Number(profileCompletionPercent) || 0)
@@ -24,10 +23,8 @@ const ProfileSummaryCards = ({
     0,
     (Array.isArray(profileCompletionMissingDetails)
       ? profileCompletionMissingDetails.length
-      : 0) - visibleMissingDetails.length
+    : 0) - visibleMissingDetails.length
   );
-
-  const isComplete = completion >= 90;
 
   return (
     <Card className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:p-5">
@@ -35,9 +32,7 @@ const ProfileSummaryCards = ({
       <div
         className="pointer-events-none absolute -top-12 left-1/2 h-24 w-3/4 -translate-x-1/2 rounded-full opacity-[0.06] blur-2xl"
         style={{
-          background: isComplete
-            ? `radial-gradient(ellipse, ${completeColor}, transparent)`
-            : "radial-gradient(ellipse, hsl(var(--primary)), transparent)",
+          background: "radial-gradient(ellipse, hsl(var(--primary)), transparent)",
         }}
         aria-hidden="true"
       />
@@ -46,13 +41,8 @@ const ProfileSummaryCards = ({
         <div className="relative">
           <div className="h-2 overflow-hidden rounded-full bg-secondary/80">
             <div
-              className="h-full rounded-full transition-all duration-700 ease-out"
-              style={{
-                width: `${completion}%`,
-                background: isComplete
-                  ? completeColor
-                  : "linear-gradient(90deg, hsl(var(--primary)), #8b5cf6, #6366f1)",
-              }}
+              className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
+              style={{ width: `${completion}%` }}
             />
           </div>
 
@@ -61,24 +51,16 @@ const ProfileSummaryCards = ({
             style={{ left: `${bubbleLeftPercent}%` }}
           >
             <span
-              className="rounded-lg px-2.5 py-1 text-xs font-bold shadow-sm"
+              className="rounded-lg bg-primary px-2.5 py-1 text-xs font-bold text-primary-foreground shadow-sm"
               style={{
-                background: isComplete
-                  ? completeColor
-                  : "linear-gradient(135deg, hsl(var(--primary)), #8b5cf6)",
-                color: "white",
-                boxShadow: isComplete
-                  ? "0 2px 8px rgba(5,150,105,0.3)"
-                  : "0 2px 8px hsl(var(--primary) / 0.3)",
+                boxShadow: "0 2px 8px hsl(var(--primary) / 0.3)",
               }}
             >
               {completion}%
             </span>
             <span
               className="-mt-1.5 h-2.5 w-2.5 rotate-45"
-              style={{
-                background: isComplete ? completeColor : "#8b5cf6",
-              }}
+              style={{ background: "hsl(var(--primary))" }}
               aria-hidden="true"
             />
           </div>
@@ -106,20 +88,30 @@ const ProfileSummaryCards = ({
       </p>
 
       {visibleMissingDetails.length > 0 ? (
-        <div className="mt-4 rounded-xl border border-border/60 bg-background/50 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <div className="mt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/90">
             Missing details
           </p>
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-2 space-y-3">
             {visibleMissingDetails.map((item, index) => (
-              <li key={`${item.label}-${index}`}>
-                <p className="text-xs font-semibold text-foreground">{item.label}</p>
-                <p className="text-xs text-muted-foreground">{item.detail}</p>
+              <li key={`${item.label}-${index}`} className="flex gap-3">
+                <span
+                  className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400 ring-4 ring-amber-500/10"
+                  aria-hidden="true"
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground">
+                    {item.label}
+                  </p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {item.detail}
+                  </p>
+                </div>
               </li>
             ))}
           </ul>
           {hiddenMissingCount > 0 ? (
-            <p className="mt-2 text-[11px] font-medium text-muted-foreground">
+            <p className="mt-2 text-[11px] font-medium text-amber-300/80">
               +{hiddenMissingCount} more detail{hiddenMissingCount === 1 ? "" : "s"} to complete
             </p>
           ) : null}

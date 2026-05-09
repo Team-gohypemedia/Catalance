@@ -44,6 +44,95 @@ const normalizeProjectLink = (value = "") => {
   return `https://${raw}`;
 };
 
+const normalizePortfolioProjectServiceKeys = (value = []) =>
+  Array.from(
+    new Set(
+      (Array.isArray(value) ? value : [value])
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean)
+    )
+  );
+
+const normalizePortfolioProjectResponse = (
+  project = {},
+  { serviceKey = "", fallbackId = "" } = {}
+) => {
+  const source = project && typeof project === "object" ? project : {};
+  const serviceKeys = normalizePortfolioProjectServiceKeys([
+    ...(Array.isArray(source.serviceKeys) ? source.serviceKeys : []),
+    source.serviceKey,
+    serviceKey
+  ]);
+  const projectLink = normalizeProjectLink(
+    source.projectLink || source.link || source.url || ""
+  );
+  const image = extractAvatarUrl(
+    source.image ||
+      source.coverImage ||
+      source.fileUrl ||
+      source?.file?.url ||
+      ""
+  );
+
+  return {
+    ...source,
+    id: String(source.id || source.caseStudyId || fallbackId || "").trim() || null,
+    title: String(source.title || source.projectTitle || "").trim(),
+    description: String(source.description || source.summary || source.goal || "").trim(),
+    link: projectLink,
+    image,
+    niche: String(source.niche || "").trim(),
+    role: String(source.role || "").trim(),
+    timeline: String(source.timeline || "").trim(),
+    budget: String(source.budget || "").trim(),
+    serviceKeys,
+    serviceKey: serviceKeys[0] || String(source.serviceKey || serviceKey || "").trim()
+  };
+};
+
+const mergePortfolioProjectResponses = (...collections) => {
+  const projectMap = new Map();
+
+  const upsert = (project = {}) => {
+    if (!project || typeof project !== "object") return;
+
+    const title = String(project.title || "").trim();
+    const link = normalizeProjectLink(project.link || "");
+    const key = link
+      ? `link:${link.toLowerCase()}`
+      : title
+        ? `title:${title.toLowerCase()}`
+        : "";
+
+    if (!key) return;
+
+    const existing = projectMap.get(key);
+    const serviceKeys = normalizePortfolioProjectServiceKeys([
+      ...(existing?.serviceKeys || []),
+      ...(Array.isArray(project.serviceKeys) ? project.serviceKeys : []),
+      project.serviceKey
+    ]);
+
+    projectMap.set(key, {
+      ...(existing || {}),
+      ...project,
+      link,
+      title: project.title || existing?.title || "Project",
+      description: project.description || existing?.description || "",
+      image: project.image || existing?.image || "",
+      niche: project.niche || existing?.niche || "",
+      role: project.role || existing?.role || "",
+      timeline: project.timeline || existing?.timeline || "",
+      budget: project.budget || existing?.budget || "",
+      serviceKeys,
+      serviceKey: serviceKeys[0] || project.serviceKey || existing?.serviceKey || ""
+    });
+  };
+
+  collections.flat().forEach(upsert);
+  return Array.from(projectMap.values()).slice(0, 24);
+};
+
 const buildLocationFromIdentity = (identity = {}) => {
   if (!identity || typeof identity !== "object") return "";
 
@@ -248,23 +337,54 @@ export const extractPortfolioProjectsFromProfileDetails = (profileDetails = {}) 
 
   const projectMap = new Map();
 
-  Object.values(serviceDetails).forEach((detail) => {
-    const projects = Array.isArray(detail?.projects) ? detail.projects : [];
+  Object.entries(serviceDetails).forEach(([serviceKey, detail]) => {
+    const projects = Array.isArray(detail?.caseStudies)
+      ? detail.caseStudies
+      : Array.isArray(detail?.projects)
+        ? detail.projects
+        : detail?.caseStudy && typeof detail.caseStudy === "object"
+          ? [detail.caseStudy]
+          : [];
+
     projects.forEach((project, index) => {
-      const title = String(project?.title || "").trim();
-      const link = normalizeProjectLink(project?.link || project?.url || "");
-      const description = String(project?.description || "").trim();
+      const normalized = normalizePortfolioProjectResponse(project, {
+        serviceKey,
+        fallbackId: `${serviceKey || "service"}-case-study-${index + 1}`
+      });
+      const title = String(normalized.title || "").trim();
+      const link = String(normalized.link || "").trim();
+      const description = String(normalized.description || "").trim();
 
       if (!title && !link && !description) return;
 
-      const key = link ? link.toLowerCase() : `${title.toLowerCase()}:${index}`;
-      if (projectMap.has(key)) return;
+      const key = link
+        ? `link:${link.toLowerCase()}`
+        : `title:${title.toLowerCase()}`;
+      const existing = projectMap.get(key);
+      if (!existing) {
+        projectMap.set(key, normalized);
+        return;
+      }
+
+      const serviceKeys = normalizePortfolioProjectServiceKeys([
+        ...(Array.isArray(existing.serviceKeys) ? existing.serviceKeys : []),
+        ...(Array.isArray(normalized.serviceKeys) ? normalized.serviceKeys : []),
+        existing.serviceKey,
+        normalized.serviceKey
+      ]);
 
       projectMap.set(key, {
-        title: title || "Project",
-        link,
-        image: null,
-        description
+        ...existing,
+        ...normalized,
+        title: normalized.title || existing.title || "Project",
+        description: normalized.description || existing.description || "",
+        image: normalized.image || existing.image || "",
+        niche: normalized.niche || existing.niche || "",
+        role: normalized.role || existing.role || "",
+        timeline: normalized.timeline || existing.timeline || "",
+        budget: normalized.budget || existing.budget || "",
+        serviceKeys,
+        serviceKey: serviceKeys[0] || existing.serviceKey || normalized.serviceKey || ""
       });
     });
   });
@@ -456,6 +576,24 @@ export const getProfile = asyncHandler(async (req, res) => {
           serviceDetails: true,
         },
       },
+      freelancerProjects: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          serviceKey: true,
+          serviceName: true,
+          title: true,
+          description: true,
+          link: true,
+          fileUrl: true,
+          fileName: true,
+          role: true,
+          timeline: true,
+          budget: true,
+          tags: true,
+          techStack: true,
+          sortOrder: true,
+        }
+      },
       freelancerProfile: {
         select: FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
       }
@@ -522,7 +660,16 @@ export const getProfile = asyncHandler(async (req, res) => {
   if (!userWorkExperience.length && profileWorkExperience.length) {
     userWorkExperience = profileWorkExperience;
   }
-  const mergedPortfolioProjects = extractPortfolioProjectsFromProfileDetails(profileDetails);
+  const mergedPortfolioProjects = mergePortfolioProjectResponses(
+    extractPortfolioProjectsFromProfileDetails(profileDetails),
+    Array.isArray(user.freelancerProjects)
+      ? user.freelancerProjects.map((project) =>
+          normalizePortfolioProjectResponse(project, {
+            fallbackId: project?.id || ""
+          })
+        )
+      : []
+  );
   const profileSkills = Array.isArray(profileDetails?.skills)
     ? profileDetails.skills
     : [];

@@ -3,6 +3,7 @@ import Camera from "lucide-react/dist/esm/icons/camera";
 import Check from "lucide-react/dist/esm/icons/check";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import X from "lucide-react/dist/esm/icons/x";
 import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
@@ -40,7 +41,6 @@ import {
 import {
   AVERAGE_PROJECT_PRICE_OPTIONS,
   EXPERIENCE_YEARS_OPTIONS,
-  PROJECT_TIMELINE_OPTIONS,
   SERVICE_OPTIONS,
 } from "@/components/features/freelancer/onboarding/constants";
 import { useNavigate } from "react-router-dom";
@@ -54,7 +54,6 @@ import {
   FullProfileEditorModalContent,
   PersonalDetailsModalContent,
   ProfileHeroCard,
-  ProfileOnboardingSnapshotCard,
   ProfileSidebarCards,
   ProfileSkillsCard,
   ProfileSummaryCards,
@@ -63,6 +62,7 @@ import {
   WorkExperienceModalContent,
   AddEditServiceWizard,
   normalizeBioValue,
+  formatCaseStudyTimelineLabel,
   formatSkillLabel,
   isNoisySkillTag,
   getSkillDedupKey,
@@ -72,8 +72,6 @@ import {
   buildLocationFromIdentity,
   resolveAvatarUrl,
   normalizeValueLabel,
-  ONBOARDING_ROLE_LABELS,
-  formatHoursPerWeekLabel,
   normalizePresenceLink,
   normalizeProjectLinkValue,
   hasTextValue,
@@ -103,6 +101,7 @@ import {
   formatSkillLevelLabel,
   normalizeSkillLevel,
 } from "@/components/freelancer/Freelancer-Profile";
+import CaseStudyModalContent from "@/components/freelancer/Freelancer-Profile/modals/CaseStudyModalContent";
 
 const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const PROFILE_PHOTO_PICK_MAX_BYTES = 20 * 1024 * 1024;
@@ -396,11 +395,16 @@ const FreelancerProfile = () => {
   const [newProjectUrl, setNewProjectUrl] = useState("");
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
+  const [newProjectNiche, setNewProjectNiche] = useState("");
+  const [newProjectRole, setNewProjectRole] = useState("");
+  const [newProjectTimeline, setNewProjectTimeline] = useState("");
+  const [newProjectBudget, setNewProjectBudget] = useState("");
   const [newProjectServiceKeys, setNewProjectServiceKeys] = useState([]);
   const [newProjectImageFile, setNewProjectImageFile] = useState(null);
   const [newProjectImagePreview, setNewProjectImagePreview] = useState("");
   const [isProjectCoverDragActive, setIsProjectCoverDragActive] = useState(false);
   const [editingProjectIndex, setEditingProjectIndex] = useState(null);
+  const [caseStudyNicheOptions, setCaseStudyNicheOptions] = useState([]);
   const [serviceProfileForm, setServiceProfileForm] = useState(
     createInitialServiceProfileForm
   );
@@ -443,6 +447,34 @@ const FreelancerProfile = () => {
       }
     };
   }, [newProjectImagePreview]);
+
+  useEffect(() => {
+    let active = true;
+
+    authFetch("/marketplace/filters/niches")
+      .then((response) => response.json().then((payload) => ({ response, payload })))
+      .then(({ response, payload }) => {
+        if (!active || !response?.ok) return;
+
+        const niches = Array.isArray(payload?.data)
+          ? payload.data
+              .map((entry) => ({
+                value: String(entry?.name || "").trim(),
+                label: String(entry?.label || entry?.name || "").trim(),
+              }))
+              .filter((entry) => entry.value && entry.label)
+          : [];
+
+        setCaseStudyNicheOptions(niches);
+      })
+      .catch((error) => {
+        console.error("Failed to preload case study niches:", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authFetch]);
 
   // Fetch marketplace services (services table) for Add Service modal options.
   useEffect(() => {
@@ -2149,6 +2181,10 @@ const FreelancerProfile = () => {
     setNewProjectUrl("");
     setNewProjectTitle("");
     setNewProjectDescription("");
+    setNewProjectNiche("");
+    setNewProjectRole("");
+    setNewProjectTimeline("");
+    setNewProjectBudget("");
     setNewProjectServiceKeys([]);
     setNewProjectImageFile(null);
     setIsProjectCoverDragActive(false);
@@ -2173,6 +2209,10 @@ const FreelancerProfile = () => {
     setNewProjectUrl(String(project?.link || "").trim());
     setNewProjectTitle(String(project?.title || "").trim());
     setNewProjectDescription(String(project?.description || "").trim());
+    setNewProjectNiche(String(project?.niche || "").trim());
+    setNewProjectRole(String(project?.role || "").trim());
+    setNewProjectTimeline(String(project?.timeline || "").trim());
+    setNewProjectBudget(String(project?.budget || "").trim());
     setNewProjectServiceKeys(resolveProjectServiceKeys(project));
     setNewProjectImagePreview(resolveAvatarUrl(project?.image, { allowBlob: true }) || "");
     setModalType("addProject");
@@ -2201,17 +2241,17 @@ const FreelancerProfile = () => {
 
   const getProjectTitleFallback = (projectUrl = "") => {
     const normalizedUrl = normalizeProjectLinkValue(projectUrl);
-    if (!normalizedUrl) return "Project";
+    if (!normalizedUrl) return "Case Study";
 
     try {
       const parsed = new URL(normalizedUrl);
-      return parsed.hostname.replace(/^www\./i, "") || "Project";
+      return parsed.hostname.replace(/^www\./i, "") || "Case Study";
     } catch {
       return (
         normalizedUrl
           .replace(/^https?:\/\//i, "")
           .split("/")[0]
-          .trim() || "Project"
+          .trim() || "Case Study"
       );
     }
   };
@@ -2502,32 +2542,47 @@ const FreelancerProfile = () => {
     const isEditingProject = editingProjectIndex !== null;
     const currentProjects = Array.isArray(portfolioProjects) ? portfolioProjects : [];
     const rawUrl = String(newProjectUrl || "").trim();
-    if (!rawUrl) {
-      toast.error("Project URL is required");
-      return;
-    }
-
-    let normalizedUrl = normalizeProjectLinkValue(rawUrl);
-    if (!normalizedUrl) {
-      toast.error("Enter a valid project URL");
-      return;
-    }
-
-    const normalizedUrlKey = normalizedUrl.toLowerCase();
-    const hasDuplicate = currentProjects.some(
-      (project, index) =>
-        index !== editingProjectIndex &&
-        normalizeProjectLinkValue(project?.link).toLowerCase() === normalizedUrlKey
+    const requiredFields = [
+      { value: newProjectTitle, label: "Case study title" },
+      { value: newProjectDescription, label: "Case study description" },
+      { value: newProjectNiche, label: "Case study niche" },
+      { value: newProjectRole, label: "Case study role" },
+      { value: newProjectTimeline, label: "Case study timeline" },
+      { value: newProjectBudget, label: "Case study budget" },
+    ];
+    const missingField = requiredFields.find(
+      ({ value }) => !String(value || "").trim()
     );
-    if (hasDuplicate) {
-      toast.error("Project already added");
+    if (missingField) {
+      toast.error(`${missingField.label} is required`);
       return;
+    }
+
+    let normalizedUrl = rawUrl ? normalizeProjectLinkValue(rawUrl) : "";
+    if (rawUrl && !normalizedUrl) {
+      toast.error("Enter a valid case study link");
+      return;
+    }
+
+    if (normalizedUrl) {
+      const normalizedUrlKey = normalizedUrl.toLowerCase();
+      const hasDuplicate = currentProjects.some(
+        (project, index) =>
+          index !== editingProjectIndex &&
+          normalizeProjectLinkValue(project?.link).toLowerCase() === normalizedUrlKey
+      );
+      if (hasDuplicate) {
+        toast.error("Case study already added");
+        return;
+      }
     }
 
     setNewProjectLoading(true);
     try {
-      const previewData = await fetchProjectPreview(normalizedUrl);
-      normalizedUrl = normalizeProjectLinkValue(previewData?.url || normalizedUrl);
+      const previewData = normalizedUrl ? await fetchProjectPreview(normalizedUrl) : null;
+      normalizedUrl = normalizedUrl
+        ? normalizeProjectLinkValue(previewData?.url || normalizedUrl)
+        : "";
 
       let projectImage = resolveAvatarUrl(newProjectImagePreview, {
         allowBlob: true,
@@ -2558,12 +2613,8 @@ const FreelancerProfile = () => {
         projectImage = resolveAvatarUrl(previewData?.image, { allowBlob: true });
       }
 
-      const finalTitle =
-        String(newProjectTitle || previewData?.title || "").trim() ||
-        getProjectTitleFallback(normalizedUrl);
-      const finalDescription = String(
-        newProjectDescription || previewData?.description || ""
-      ).trim();
+      const finalTitle = String(newProjectTitle || "").trim();
+      const finalDescription = String(newProjectDescription || "").trim();
 
       const normalizedProjectServiceKeys = normalizeProjectServiceKeys(
         newProjectServiceKeys
@@ -2574,6 +2625,10 @@ const FreelancerProfile = () => {
         image: projectImage || null,
         title: finalTitle,
         description: finalDescription,
+        niche: String(newProjectNiche || "").trim(),
+        role: String(newProjectRole || "").trim(),
+        timeline: String(newProjectTimeline || "").trim(),
+        budget: String(newProjectBudget || "").trim(),
         serviceKeys: normalizedProjectServiceKeys,
         serviceKey: normalizedProjectServiceKeys[0] || "",
       };
@@ -2582,7 +2637,7 @@ const FreelancerProfile = () => {
           index === editingProjectIndex ? nextProject : project
         )
         : [...currentProjects, nextProject];
-      const successMessage = isEditingProject ? "Project updated" : "Project added";
+      const successMessage = isEditingProject ? "Case study updated" : "Case study added";
 
       const saved = await saveSectionChanges({
         portfolioProjects: nextProjects,
@@ -2598,8 +2653,8 @@ const FreelancerProfile = () => {
       setPortfolioProjects(nextProjects);
       toast.error(`${successMessage} locally. Click Save changes to persist.`);
     } catch (error) {
-      console.error("Failed to save project:", error);
-      toast.error(error?.message || "Failed to save project");
+      console.error("Failed to save case study:", error);
+      toast.error(error?.message || "Failed to save case study");
     } finally {
       setNewProjectLoading(false);
     }
@@ -2888,18 +2943,6 @@ const FreelancerProfile = () => {
     profileDetails?.availability && typeof profileDetails.availability === "object"
       ? profileDetails.availability
       : {};
-  const onboardingRole = String(profileDetails?.role || "").trim();
-  const onboardingRoleLabel =
-    ONBOARDING_ROLE_LABELS[onboardingRole] ||
-    normalizeValueLabel(onboardingRole) ||
-    "Not set yet";
-  const onboardingHoursLabel =
-    formatHoursPerWeekLabel(onboardingAvailability?.hoursPerWeek) || "Not set yet";
-  const onboardingScheduleLabel =
-    normalizeValueLabel(onboardingAvailability?.workingSchedule) ||
-    "Not set yet";
-  const onboardingStartTimelineLabel =
-    normalizeValueLabel(onboardingAvailability?.startTimeline) || "Not set yet";
   const quickResponseTimeLabel =
     normalizeValueLabel(
       profileDetails?.responseTime ||
@@ -2944,14 +2987,6 @@ const FreelancerProfile = () => {
   const quickLanguagesLabel = onboardingLanguages.length
     ? onboardingLanguages.join(", ")
     : "Not set yet";
-  const deliveryPolicyLabel = profileDetails?.deliveryPolicyAccepted
-    ? "Accepted"
-    : "Not set yet";
-  const communicationPolicyLabel = profileDetails?.communicationPolicyAccepted
-    ? "Accepted"
-    : "Not set yet";
-  const acceptInProgressProjectsLabel =
-    normalizeValueLabel(profileDetails?.acceptInProgressProjects) || "Not set yet";
   const onboardingServiceDetailMap = useMemo(
     () =>
       profileDetails?.serviceDetails &&
@@ -3158,8 +3193,8 @@ const FreelancerProfile = () => {
     profileDetails
   );
   const displayPortfolioProjects = useMemo(
-    () =>
-      (Array.isArray(portfolioProjects) ? portfolioProjects : []).map(
+    () => {
+      const mappedPortfolio = (Array.isArray(portfolioProjects) ? portfolioProjects : []).map(
         (project) => {
           const projectServiceKeys = resolveProjectServiceKeys(project);
           const currentDescription = String(project?.description || "").trim();
@@ -3186,8 +3221,56 @@ const FreelancerProfile = () => {
             description: currentDescription || descriptionFromOnboarding,
           };
         }
-      ),
-    [portfolioProjects, onboardingProjectDescriptionMap]
+      );
+
+      // Collect case studies from onboarding service details
+      const onboardingCaseStudies = Object.entries(onboardingServiceDetailMap || {})
+        .flatMap(([serviceKey, detail]) => {
+          const cases = Array.isArray(detail?.caseStudies) ? detail.caseStudies : [];
+          return cases
+            .filter((cs) => cs && (String(cs.title || "").trim() || String(cs.description || "").trim() || String(cs.projectLink || "").trim()))
+            .map((cs) => ({
+              title: String(cs.title || "").trim(),
+              description: String(cs.description || "").trim(),
+              link: normalizeProjectLinkValue(cs.projectLink || cs.link || cs.url || ""),
+              image:
+                resolveAvatarUrl(
+                  cs.image ||
+                    cs.coverImage ||
+                    cs.fileUrl ||
+                    cs?.file?.url ||
+                    "",
+                  { allowBlob: true }
+                ) || null,
+              niche: String(cs.niche || "").trim(),
+              role: String(cs.role || "").trim(),
+              timeline: String(cs.timeline || "").trim(),
+              budget: String(cs.budget || "").trim(),
+              serviceKeys: [serviceKey],
+              serviceKey: serviceKey,
+            }));
+        });
+
+      // Merge and dedupe by normalized link or title
+      const seen = new Set();
+      const merged = [];
+
+      const addIfNew = (proj) => {
+        const linkKey = proj?.link ? `link:${String(proj.link).toLowerCase()}` : null;
+        const titleKey = proj?.title ? `title:${String(proj.title).trim().toLowerCase()}` : null;
+        if (linkKey && seen.has(linkKey)) return;
+        if (titleKey && seen.has(titleKey)) return;
+        if (linkKey) seen.add(linkKey);
+        if (titleKey) seen.add(titleKey);
+        merged.push(proj);
+      };
+
+      mappedPortfolio.forEach(addIfNew);
+      onboardingCaseStudies.forEach(addIfNew);
+
+      return merged;
+    },
+    [portfolioProjects, onboardingProjectDescriptionMap, onboardingServiceDetailMap]
   );
   const hasProjectChanges = useMemo(() => {
     const currentProjects = Array.isArray(portfolioProjects) ? portfolioProjects : [];
@@ -3741,23 +3824,10 @@ const FreelancerProfile = () => {
                 onEditProject={openEditProject}
                 hasPendingChanges={hasProjectChanges}
                 onAddProject={openAddProjectModal}
-                onViewAllProjects={() => setModalType("viewAllProjects")}
               />
             </div>
 
             <div className="space-y-5 lg:sticky lg:top-40 lg:self-start">
-              <ProfileOnboardingSnapshotCard
-                workModelLabel={onboardingRoleLabel}
-                availabilityLabel={onboardingHoursLabel}
-                scheduleLabel={onboardingScheduleLabel}
-                startTimelineLabel={onboardingStartTimelineLabel}
-                deliveryPolicyLabel={deliveryPolicyLabel}
-                communicationPolicyLabel={communicationPolicyLabel}
-                acceptInProgressProjectsLabel={acceptInProgressProjectsLabel}
-                openFullProfileEditor={openFullProfileEditor}
-                variant="sidebar"
-              />
-
               <ProfileSummaryCards
                 profileCompletionPercent={profileCompletionPercent}
                 completedCompletionSections={completedCompletionSections}
@@ -3976,9 +4046,8 @@ const FreelancerProfile = () => {
                 <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
                   {displayPortfolioProjects.map((project, idx) => {
                     const projectLink = normalizeProjectLinkValue(project?.link);
-                    const projectHost = getProjectTitleFallback(projectLink || "");
                     const projectTitle = String(
-                      project?.title || projectHost || "Project"
+                      project?.title || getProjectTitleFallback(projectLink || "") || "Project"
                     ).trim();
                     const projectDescription = String(
                       project?.description || ""
@@ -3989,118 +4058,158 @@ const FreelancerProfile = () => {
                       0,
                       projectServiceLabels.length - visibleProjectServiceLabels.length
                     );
+                    const projectDetails = [
+                      project?.niche
+                        ? {
+                            label: "Niche",
+                            value: formatSkillLabel(String(project.niche || "").trim()),
+                          }
+                        : null,
+                      project?.role
+                        ? {
+                            label: "Role",
+                            value: formatSkillLabel(String(project.role || "").trim()),
+                          }
+                        : null,
+                      project?.timeline
+                        ? {
+                            label: "Timeline",
+                            value: formatCaseStudyTimelineLabel(project.timeline),
+                          }
+                        : null,
+                      project?.budget
+                        ? {
+                            label: "Budget",
+                            value: /^\s*(₹|\$|€|£)/.test(String(project.budget || "").trim())
+                              ? String(project.budget || "").trim()
+                              : /^\s*\d/.test(String(project.budget || "").trim())
+                                ? `₹ ${String(project.budget || "").trim()}`
+                                : String(project.budget || "").trim(),
+                          }
+                        : null,
+                    ].filter(Boolean);
 
                     return (
                       <article
                         key={`project-modal-${projectLink || projectTitle}-${idx}`}
                         className="group overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]"
                       >
-                        <div className="relative h-40 overflow-hidden lg:h-44">
-                          <ProjectCoverMedia
-                            project={project}
-                            containerClassName="h-full w-full"
-                            imageClassName="h-full w-full object-cover"
-                            fallbackTitleClassName="text-3xl"
-                          />
-                          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.08),rgba(2,6,23,0.52)_72%,rgba(7,7,10,0.86)_100%)]" />
-                          <div className="absolute right-3 top-3 z-10">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/10 bg-background text-foreground opacity-0 shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition-all duration-200 translate-y-1 pointer-events-none group-hover:translate-y-0 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-focus-within:pointer-events-auto focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:pointer-events-auto data-[state=open]:translate-y-0 data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto hover:scale-105 hover:bg-background hover:text-primary"
-                                  title="Project actions"
+                        <div className="px-3 pt-3">
+                          <div className="relative h-40 overflow-hidden rounded-xl lg:h-44">
+                            <ProjectCoverMedia
+                              project={project}
+                              containerClassName="h-full w-full"
+                              imageClassName="h-full w-full object-cover"
+                              fallbackTitleClassName="text-3xl"
+                            />
+                            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.08),rgba(2,6,23,0.52)_72%,rgba(7,7,10,0.86)_100%)]" />
+                            <div className="absolute right-3 top-3 z-10">
+                            <DropdownMenu modal={false}>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/10 bg-card text-foreground opacity-0 shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition-all duration-200 translate-y-1 pointer-events-none group-hover:translate-y-0 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-focus-within:pointer-events-auto focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:pointer-events-auto data-[state=open]:translate-y-0 data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto hover:scale-105 hover:bg-card hover:text-primary"
+                                    title="Project actions"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  sideOffset={10}
+                                  className="w-60 min-w-60 rounded-xl border border-border/60 !bg-card p-1.5 text-foreground !shadow-none"
                                 >
-                                  <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="end"
-                                className="w-44 border-white/10 bg-background text-foreground"
-                              >
-                                {projectLink ? (
-                                  <DropdownMenuItem asChild>
-                                    <a
-                                      href={projectLink}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="cursor-pointer"
-                                    >
-                                      <ExternalLink className="h-3.5 w-3.5 text-primary" />
-                                      Open project
-                                    </a>
+                                  {projectLink ? (
+                                    <DropdownMenuItem asChild className="whitespace-nowrap rounded-lg px-3 py-2">
+                                      <a
+                                        href={projectLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="cursor-pointer"
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5 text-primary" />
+                                        Open project
+                                      </a>
+                                    </DropdownMenuItem>
+                                  ) : null}
+                                  <DropdownMenuItem
+                                    onSelect={() => openEditProject(project, idx)}
+                                    className="whitespace-nowrap rounded-lg px-3 py-2"
+                                  >
+                                    <Edit2 className="h-3.5 w-3.5 text-primary" />
+                                    Edit details
                                   </DropdownMenuItem>
-                                ) : null}
-                                <DropdownMenuItem onSelect={() => openEditProject(project, idx)}>
-                                  <Edit2 className="h-3.5 w-3.5 text-primary" />
-                                  Edit details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onSelect={(event) => {
-                                    event.preventDefault();
-                                    document
-                                      .getElementById(`project-cover-modal-${idx}`)
-                                      ?.click();
-                                  }}
-                                >
-                                  {projectCoverUploadingIndex === idx ? (
-                                    <Loader size="sm" />
-                                  ) : (
-                                    <Camera className="h-3.5 w-3.5 text-primary" />
-                                  )}
-                                  Upload cover
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  variant="destructive"
-                                  onSelect={() => removeProject(idx)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                  Remove project
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                  <DropdownMenuItem
+                                    onSelect={(event) => {
+                                      event.preventDefault();
+                                      document
+                                        .getElementById(`project-cover-modal-${idx}`)
+                                        ?.click();
+                                    }}
+                                    className="whitespace-nowrap rounded-lg px-3 py-2"
+                                  >
+                                    {projectCoverUploadingIndex === idx ? (
+                                      <Loader size="sm" />
+                                    ) : (
+                                      <Camera className="h-3.5 w-3.5 text-primary" />
+                                    )}
+                                    Upload cover
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    variant="destructive"
+                                    onSelect={() => removeProject(idx)}
+                                    className="whitespace-nowrap rounded-lg px-3 py-2"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Remove project
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            <input
+                              id={`project-cover-modal-${idx}`}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(event) =>
+                                handleProjectCoverInputChange(idx, event)
+                              }
+                            />
                           </div>
-                          <input
-                            id={`project-cover-modal-${idx}`}
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(event) =>
-                              handleProjectCoverInputChange(idx, event)
-                            }
-                          />
                         </div>
-                        <div className="space-y-2.5 px-4 pb-4 pt-3">
-                          <div className="min-h-[3.5rem]">
+                        <div className="space-y-1.5 px-4 pb-4 pt-3 sm:space-y-2">
+                          <div className="min-h-[1.75rem]">
                             <h2
                               className="line-clamp-1 text-base font-semibold tracking-tight text-foreground"
                               title={projectTitle}
                             >
                               {projectTitle}
                             </h2>
-                            {projectLink ? (
-                              <a
-                                href={projectLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="mt-1 line-clamp-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/85 hover:underline"
-                                title={projectLink}
-                              >
-                                {projectHost}
-                              </a>
-                            ) : (
-                              <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35">
-                                Link not added
-                              </p>
-                            )}
                           </div>
                           <p
-                            className="min-h-[4rem] line-clamp-3 text-sm leading-6 text-white/68"
+                            className="min-h-[2.75rem] line-clamp-2 text-sm leading-6 text-white/68"
                             title={projectDescription || ""}
                           >
                             {projectDescription ||
                               "Add a short project description so clients can quickly understand the scope and outcome."}
                           </p>
+                          {projectDetails.length ? (
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {projectDetails.map((detail) => (
+                                <div
+                                  key={`${projectTitle}-${detail.label}`}
+                                  className="rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2"
+                                >
+                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
+                                    {detail.label}
+                                  </div>
+                                  <div className="mt-1 line-clamp-1 text-xs font-medium text-foreground">
+                                    {detail.value}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
                           <div className="flex items-start justify-between gap-3 border-t border-white/6 pt-3">
                             <div className="flex flex-wrap gap-2">
                               {visibleProjectServiceLabels.length ? (
@@ -4203,260 +4312,42 @@ const FreelancerProfile = () => {
             onCoverChange={handleServiceCoverImageChange}
           />
         ) : modalType === "addProject" ? (
-          <>
-            <div className="border-b border-border/70 pb-2.5">
-              <span className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-                {isEditingProjectDraft ? "Update featured case study" : "Create featured case study"}
-              </span>
-              <div className="mt-2 max-w-[38rem]">
-                <h1 className="text-[1.55rem] font-semibold tracking-tight text-foreground">
-                  {isEditingProjectDraft ? "Edit Case Study" : "Add Case Study"}
-                </h1>
-                <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
-                  {isEditingProjectDraft
-                    ? "Refresh the link, summary, services, and cover."
-                    : "Add a live URL, short summary, service mapping, and cover image."}
-                </p>
-              </div>
-            </div>
-            <div className="mt-2.5">
-              <section className="rounded-md border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-3">
-                <div className="mb-2">
-                  <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-foreground/90">
-                      Case Study Details
-                    </h2>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block">
-                    <span className="mb-0.5 block text-sm font-medium text-muted-foreground">
-                      Live URL*
-                    </span>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <input
-                        value={newProjectUrl}
-                        onChange={(event) => setNewProjectUrl(event.target.value)}
-                        onBlur={handleUrlBlur}
-                        placeholder="https://yourcasestudy.com"
-                        className="h-9 w-full rounded-md border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-9 shrink-0"
-                        onClick={handleUrlBlur}
-                        disabled={newProjectLoading}
-                      >
-                        {newProjectLoading ? (
-                          <Loader size="sm" />
-                        ) : null}
-                        Fetch details
-                      </Button>
-                    </div>
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-0.5 block text-sm font-medium text-muted-foreground">
-                      Case Study title
-                    </span>
-                    <input
-                      value={newProjectTitle}
-                      onChange={(event) => setNewProjectTitle(event.target.value)}
-                      placeholder="Enter case study title"
-                      className="h-9 w-full rounded-md border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <div className="mb-0.5 flex items-center justify-between gap-3">
-                      <span className="block text-sm font-medium text-muted-foreground">
-                        Description
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {String(newProjectDescription || "").length}/320
-                      </span>
-                    </div>
-                    <textarea
-                      value={newProjectDescription}
-                      onChange={(event) => setNewProjectDescription(event.target.value)}
-                      rows={2}
-                      maxLength={320}
-                      placeholder="What this case study is about and the impact it created."
-                      className="min-h-[68px] w-full rounded-md border border-border/70 bg-card/70 px-3 py-1.5 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    />
-                  </label>
-
-                  <div className="block">
-                    <div className="mb-0.5 flex items-center justify-between gap-3">
-                      <span className="block text-sm font-medium text-muted-foreground">
-                        Link to services
-                      </span>
-                      {newProjectServiceKeys.length > 0 ? (
-                        <button
-                          type="button"
-                          className="text-xs font-medium text-primary transition-colors hover:text-primary/80"
-                          onClick={() => setNewProjectServiceKeys([])}
-                        >
-                          Clear all
-                        </button>
-                      ) : null}
-                    </div>
-                    {linkableServiceOptions.length > 0 ? (
-                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                        {linkableServiceOptions.map((option) => {
-                          const isSelected = newProjectServiceKeys.some(
-                            (entry) =>
-                              normalizeServiceIdentity(entry) ===
-                              normalizeServiceIdentity(option.value)
-                          );
-
-                          return (
-                            <button
-                              key={option.value}
-                              type="button"
-                              aria-pressed={isSelected}
-                              onClick={() =>
-                                toggleProjectServiceSelection(option.value)
-                              }
-                              className={`flex min-h-8 items-center justify-between gap-2 rounded-md border px-2.5 py-1 text-left text-[13px] transition-colors ${isSelected
-                                ? "border-primary/45 bg-primary/10 text-foreground"
-                                : "border-border/70 bg-card/70 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                                }`}
-                            >
-                              <span className="leading-4">{option.label}</span>
-                              <span
-                                className={`inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-colors ${isSelected
-                                  ? "border-primary bg-primary text-primary-foreground"
-                                  : "border-white/12 bg-transparent text-transparent"
-                                  }`}
-                              >
-                                <Check className="h-3 w-3" aria-hidden="true" />
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                        <div className="rounded-md border border-dashed border-border/70 bg-card/40 px-3 py-3 text-sm text-muted-foreground">
-                        Add services first, then you can link this case study to one or more service cards.
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5 pt-0.5">
-                    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <span className="block text-sm font-medium text-muted-foreground">
-                          Case study cover
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {newProjectImagePreview ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-9"
-                            onClick={clearNewProjectImageDraft}
-                          >
-                            Remove
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <input
-                      id="new-project-image-input"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleNewProjectImageChange}
-                    />
-
-                    <label
-                      htmlFor="new-project-image-input"
-                      role="button"
-                      aria-label="Upload case study cover"
-                      tabIndex={0}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          document.getElementById("new-project-image-input")?.click();
-                        }
-                      }}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        if (event.dataTransfer) {
-                          event.dataTransfer.dropEffect = "copy";
-                        }
-                        setIsProjectCoverDragActive(true);
-                      }}
-                      onDragLeave={(event) => {
-                        if (event.currentTarget === event.target) {
-                          setIsProjectCoverDragActive(false);
-                        }
-                      }}
-                      onDrop={handleNewProjectImageDrop}
-                      className={`block cursor-pointer overflow-hidden rounded-md border transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60 ${isProjectCoverDragActive ? "border-primary/60 bg-primary/10" : "border-white/8 bg-background/45"}`}
-                    >
-                      <div className="relative h-24 overflow-hidden bg-background/60 sm:h-28">
-                        {newProjectImagePreview ? (
-                          <>
-                            <img
-                              src={newProjectImagePreview}
-                              alt="Project cover preview"
-                              className="h-full w-full object-cover"
-                            />
-                            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 py-2 text-xs font-medium text-white">
-                              Click or drag and drop to replace
-                            </div>
-                          </>
-                        ) : (
-                          <div className="pointer-events-none flex h-full flex-col items-center justify-center gap-2 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_55%)] px-4 text-center">
-                            <span className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/20 bg-primary/10">
-                              <Camera className="h-4 w-4 text-primary" />
-                            </span>
-                            <div>
-                              <p className="text-sm font-medium text-foreground">
-                                Click or drag and drop a cover image
-                              </p>
-                              <p className="mt-0.5 text-xs text-muted-foreground">
-                                PNG, JPG, or WebP up to 8MB
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              </section>
-            </div>
-            <div className="mt-2.5 flex items-center justify-end gap-2.5 border-t border-border/70 pt-2.5">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  resetProjectDraft();
-                  setModalType(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleAddProject}
-                disabled={newProjectLoading}
-              >
-                {newProjectLoading ? (
-                  <Loader size="sm" />
-                ) : !isEditingProjectDraft ? (
-                  <Plus className="h-3.5 w-3.5" />
-                ) : null}
-                {isEditingProjectDraft ? "Save changes" : "Add case study"}
-              </Button>
-            </div>
-          </>
+          <CaseStudyModalContent
+            caseStudyForm={{
+              title: newProjectTitle,
+              description: newProjectDescription,
+              projectLink: newProjectUrl,
+              projectFile: newProjectImageFile,
+              role: newProjectRole,
+              timeline: newProjectTimeline,
+              budget: newProjectBudget,
+              niche: newProjectNiche,
+              serviceKey: newProjectServiceKeys[0] || "",
+              serviceKeys: newProjectServiceKeys,
+            }}
+            nicheOptions={caseStudyNicheOptions}
+            serviceOptions={linkableServiceOptions}
+            onCaseStudyFieldChange={(field, value) => {
+              if (field === "title") setNewProjectTitle(value);
+              else if (field === "description") setNewProjectDescription(value);
+              else if (field === "niche") setNewProjectNiche(value);
+              else if (field === "projectLink") setNewProjectUrl(value);
+              else if (field === "projectFile") handleNewProjectImageFile(value);
+              else if (field === "role") setNewProjectRole(value);
+              else if (field === "timeline") setNewProjectTimeline(value);
+              else if (field === "budget") setNewProjectBudget(String(value || ""));
+              else if (field === "serviceKeys" || field === "serviceKey") {
+                setNewProjectServiceKeys(normalizeProjectServiceKeys(value));
+              }
+            }}
+            onSave={handleAddProject}
+            onClose={() => {
+              resetProjectDraft();
+              setModalType(null);
+            }}
+            isSaving={newProjectLoading}
+            isEditing={isEditingProjectDraft}
+          />
         ) : modalType === "portfolio" ? (
           <>
             <h1 className="text-lg font-semibold text-foreground">

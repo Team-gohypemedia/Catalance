@@ -95,6 +95,28 @@ export const formatSkillLabel = (value) => {
     .join(" ");
 };
 
+const CASE_STUDY_TIMELINE_LABELS = {
+  under_1_week: "Under 1 Week",
+  "1_2_weeks": "1-2 Weeks",
+  "2_4_weeks": "2-4 Weeks",
+  "4_6_weeks": "4-6 Weeks",
+  "6_8_weeks": "6-8 Weeks",
+  "8_12_weeks": "8-12 Weeks",
+  "12_plus_weeks": "12+ Weeks",
+};
+
+export const formatCaseStudyTimelineLabel = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  const canonical = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return CASE_STUDY_TIMELINE_LABELS[canonical] || formatSkillLabel(raw);
+};
+
 export const getSkillDedupKey = (value) =>
   String(value || "")
     .toLowerCase()

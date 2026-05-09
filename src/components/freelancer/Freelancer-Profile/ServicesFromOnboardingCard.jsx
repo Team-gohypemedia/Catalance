@@ -1318,7 +1318,7 @@ const ServicesFromOnboardingCard = ({
 
   return (
     <Carousel opts={carouselOptions} className="w-full">
-      <Card className="relative overflow-visible rounded-2xl border border-border bg-card p-3 pb-4 sm:p-4">
+      <Card className="relative overflow-visible rounded-2xl border border-border/60 bg-card p-3 pb-4 shadow-none sm:p-4">
         <div
           className="absolute inset-x-0 top-0 h-px"
           style={{
