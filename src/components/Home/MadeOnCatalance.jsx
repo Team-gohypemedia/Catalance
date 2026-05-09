@@ -1,52 +1,76 @@
 import React from "react";
+
 import { Marquee } from "@/components/ui/marquee";
-import project1 from "@/assets/images/projects/project-1.jpg";
-import project2 from "@/assets/images/projects/project-2.jpg";
-import project3 from "@/assets/images/projects/project-3.jpg";
-import project4 from "@/assets/images/projects/project-4.jpg";
-import project5 from "@/assets/images/projects/project-5.jpg";
-import project6 from "@/assets/images/projects/project-6.jpg";
-import project7 from "@/assets/images/projects/project-7.jpg";
-import project8 from "@/assets/images/projects/project-8.jpg";
-import project9 from "@/assets/images/projects/project-9.jpg";
-import project10 from "@/assets/images/projects/project-10.jpg";
-import project11 from "@/assets/images/projects/project-11.jpg";
-import project12 from "@/assets/images/projects/project-12.jpg";
-import project13 from "@/assets/images/projects/project-13.jpg";
-import project14 from "@/assets/images/projects/project-14.jpg";
-import video1 from "@/assets/videos/moc/video1.mp4";
-import video2 from "@/assets/videos/moc/video2.mp4";
-import video3 from "@/assets/videos/moc/video3.mp4";
-import video4 from "@/assets/videos/moc/video4.mp4";
-import video5 from "@/assets/videos/moc/video5.mp4";
-import video6 from "@/assets/videos/moc/video6.mp4";
-import video7 from "@/assets/videos/moc/video7.mp4";
+
+const MADE_ON_CATALANCE_ASSET_BASE_URL =
+  "https://assets.catalance.in/home/made-on-catalance";
+
+const madeOnCatalanceImageUrl = (fileName) =>
+  `${MADE_ON_CATALANCE_ASSET_BASE_URL}/images/${fileName}`;
+
+const madeOnCatalanceVideoUrl = (fileName) =>
+  `${MADE_ON_CATALANCE_ASSET_BASE_URL}/videos/${fileName}`;
 
 const imageSources = [
-  { src: project1, width: 1200, height: 1200 },
-  { src: project2, width: 1200, height: 900 },
-  { src: project3, width: 960, height: 720 },
-  { src: project4, width: 1200, height: 900 },
-  { src: project5, width: 1200, height: 1200 },
-  { src: project6, width: 1200, height: 1200 },
-  { src: project7, width: 1000, height: 1911 },
-  { src: project8, width: 1000, height: 1379 },
-  { src: project9, width: 1000, height: 1164 },
-  { src: project10, width: 1200, height: 900 },
-  { src: project11, width: 1200, height: 1200 },
-  { src: project12, width: 1200, height: 1200 },
-  { src: project13, width: 960, height: 960 },
-  { src: project14, width: 960, height: 960 },
+  { src: madeOnCatalanceImageUrl("project-1.jpg"), width: 1200, height: 1200 },
+  { src: madeOnCatalanceImageUrl("project-2.jpg"), width: 1200, height: 900 },
+  { src: madeOnCatalanceImageUrl("project-3.jpg"), width: 960, height: 720 },
+  { src: madeOnCatalanceImageUrl("project-4.jpg"), width: 1200, height: 900 },
+  { src: madeOnCatalanceImageUrl("project-5.jpg"), width: 1200, height: 1200 },
+  { src: madeOnCatalanceImageUrl("project-6.jpg"), width: 1200, height: 1200 },
+  { src: madeOnCatalanceImageUrl("project-7.jpg"), width: 1000, height: 1911 },
+  { src: madeOnCatalanceImageUrl("project-8.jpg"), width: 1000, height: 1379 },
+  { src: madeOnCatalanceImageUrl("project-9.jpg"), width: 1000, height: 1164 },
+  { src: madeOnCatalanceImageUrl("project-10.jpg"), width: 1200, height: 900 },
+  { src: madeOnCatalanceImageUrl("project-11.jpg"), width: 1200, height: 1200 },
+  { src: madeOnCatalanceImageUrl("project-12.jpg"), width: 1200, height: 1200 },
+  { src: madeOnCatalanceImageUrl("project-13.jpg"), width: 960, height: 960 },
+  { src: madeOnCatalanceImageUrl("project-14.jpg"), width: 960, height: 960 },
 ];
 
 const videoSources = [
-  { src: video1, width: 1920, height: 1080 },
-  { src: video2, width: 1920, height: 1080 },
-  { src: video3, width: 1920, height: 1080 },
-  { src: video4, width: 1920, height: 1080 },
-  { src: video5, width: 1920, height: 1080 },
-  { src: video6, width: 1920, height: 1080 },
-  { src: video7, width: 1920, height: 1080 },
+  {
+    src: madeOnCatalanceVideoUrl("video1.mp4"),
+    poster: imageSources[1].src,
+    width: 1920,
+    height: 1080,
+  },
+  {
+    src: madeOnCatalanceVideoUrl("video2.mp4"),
+    poster: imageSources[3].src,
+    width: 1920,
+    height: 1080,
+  },
+  {
+    src: madeOnCatalanceVideoUrl("video3.mp4"),
+    poster: imageSources[5].src,
+    width: 1920,
+    height: 1080,
+  },
+  {
+    src: madeOnCatalanceVideoUrl("video4.mp4"),
+    poster: imageSources[7].src,
+    width: 1920,
+    height: 1080,
+  },
+  {
+    src: madeOnCatalanceVideoUrl("video5.mp4"),
+    poster: imageSources[9].src,
+    width: 1920,
+    height: 1080,
+  },
+  {
+    src: madeOnCatalanceVideoUrl("video6.mp4"),
+    poster: imageSources[11].src,
+    width: 1920,
+    height: 1080,
+  },
+  {
+    src: madeOnCatalanceVideoUrl("video7.mp4"),
+    poster: imageSources[13].src,
+    width: 1920,
+    height: 1080,
+  },
 ];
 
 const placeCards = imageSources.flatMap((image, index) => {
@@ -67,6 +91,7 @@ const placeCards = imageSources.flatMap((image, index) => {
     cards.push({
       type: "video",
       src: video.src,
+      poster: video.poster,
       width: video.width,
       height: video.height,
       alt: `Catalance project video showcase ${videoIndex + 1}`,
@@ -133,6 +158,7 @@ function PlaceCard({ place }) {
         {place.type === "video" ? (
           <video
             src={place.src}
+            poster={place.poster}
             aria-label={place.alt}
             className="block h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
             autoPlay
