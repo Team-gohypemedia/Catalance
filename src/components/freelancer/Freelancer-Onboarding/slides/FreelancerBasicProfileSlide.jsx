@@ -54,6 +54,23 @@ const resolveFileLabel = (value, fallback = "") => {
   return tail ? decodeURIComponent(tail) : fallback;
 };
 
+const getInitials = (value = "") => {
+  const parts = String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) {
+    return "";
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
 const FreelancerBasicProfileSlide = ({
   slide,
   basicProfileForm,
@@ -120,6 +137,9 @@ const FreelancerBasicProfileSlide = ({
   const hasResume = Boolean(resumeLabel);
   const fullNameError = basicProfileErrors.fullName;
   const hasProfilePhoto = Boolean(profilePhotoPreviewUrl);
+  const fullNameValue = String(basicProfileForm.fullName || "").trim();
+  const profileInitials = getInitials(fullNameValue);
+  const isUsernameAvailable = usernameStatus === "available" && !usernameError;
 
   const getFieldLabelClasses = (hasError) =>
     cn(
@@ -188,6 +208,12 @@ const FreelancerBasicProfileSlide = ({
                           alt="Freelancer profile"
                           className="size-full object-cover"
                         />
+                      ) : fullNameValue ? (
+                        <div className="flex size-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.06),_rgba(255,255,255,0.02)_50%,_rgba(0,0,0,0.05)_100%)]">
+                          <span className="text-2xl font-semibold leading-none tracking-[0.12em] text-primary transition group-hover:scale-[1.04] sm:text-3xl">
+                            {profileInitials}
+                          </span>
+                        </div>
                       ) : (
                         <Camera className="size-9 transition group-hover:scale-[1.04]" />
                       )}
@@ -310,8 +336,8 @@ const FreelancerBasicProfileSlide = ({
                     <Loader2 className="size-4 animate-spin" />
                   </span>
                 ) : null}
-                {usernameStatus === "available" && !usernameError ? (
-                  <span className="pointer-events-none absolute right-4 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                {isUsernameAvailable ? (
+                  <span className="pointer-events-none absolute right-4 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_0_0_1px_rgba(16,185,129,0.28)]">
                     <Check className="size-4" />
                   </span>
                 ) : null}
@@ -327,7 +353,7 @@ const FreelancerBasicProfileSlide = ({
                 <p
                   className={cn(
                     "text-sm",
-                    usernameStatus === "available" && "text-primary",
+                    isUsernameAvailable && "text-emerald-400",
                     usernameStatus === "checking" && "text-white/45",
                     usernameStatus === "unavailable" && "text-destructive",
                     usernameStatus === "error" && "text-amber-400",

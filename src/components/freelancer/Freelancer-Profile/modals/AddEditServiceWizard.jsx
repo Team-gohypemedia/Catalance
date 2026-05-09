@@ -16,10 +16,11 @@ import { cn } from "@/shared/lib/utils";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 
 import {
-  SERVICE_INFO_STEPS,
   ServiceInfoStepper,
   CustomSelect,
+  ServiceTitleTooltip,
 } from "../../Freelancer-Onboarding/slides/shared/ServiceInfoComponents";
+import { SERVICE_INFO_STEPS } from "../../Freelancer-Onboarding/slides/shared/serviceInfoConstants";
 
 const PROJECT_TIMELINE_OPTIONS = [
   { value: "under_1_week", label: "Under 1 Week" },
@@ -633,11 +634,18 @@ const AddEditServiceWizard = ({
             <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
               <div className="space-y-6">
                 <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
-                    Service Title
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <label
+                      className="text-xs font-bold uppercase tracking-[0.16em] text-white"
+                      htmlFor="service-title-input"
+                    >
+                      Service Title
+                    </label>
+                    <ServiceTitleTooltip ariaLabel="What should I enter in Service Title?" />
+                  </div>
                   <div className="group relative">
                     <input
+                      id="service-title-input"
                       type="text"
                       value={serviceProfileForm.serviceLabel || ""}
                       onChange={(event) => {
