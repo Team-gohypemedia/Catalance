@@ -3776,13 +3776,6 @@ const FreelancerProfile = () => {
                 splitExperienceTitle={splitExperienceTitle}
                 profileDetails={profileDetails}
                 openFullProfileEditor={openFullProfileEditor}
-                quickDetails={{
-                  availability: onboardingHoursLabel,
-                  responseTime: quickResponseTimeLabel,
-                  timezone: quickTimeZoneLabel,
-                  languages: quickLanguagesLabel,
-                }}
-                normalizeValueLabel={normalizeValueLabel}
               />
             </div>
 
@@ -4213,11 +4206,11 @@ const FreelancerProfile = () => {
           <>
             <div className="border-b border-border/70 pb-2.5">
               <span className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-                {isEditingProjectDraft ? "Update featured project" : "Create featured project"}
+                {isEditingProjectDraft ? "Update featured case study" : "Create featured case study"}
               </span>
               <div className="mt-2 max-w-[38rem]">
                 <h1 className="text-[1.55rem] font-semibold tracking-tight text-foreground">
-                  {isEditingProjectDraft ? "Edit Project" : "Add Project"}
+                  {isEditingProjectDraft ? "Edit Case Study" : "Add Case Study"}
                 </h1>
                 <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
                   {isEditingProjectDraft
@@ -4230,8 +4223,8 @@ const FreelancerProfile = () => {
               <section className="rounded-md border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-3">
                 <div className="mb-2">
                   <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-foreground/90">
-                    Project Details
-                  </h2>
+                      Case Study Details
+                    </h2>
                 </div>
 
                 <div className="space-y-2">
@@ -4244,7 +4237,7 @@ const FreelancerProfile = () => {
                         value={newProjectUrl}
                         onChange={(event) => setNewProjectUrl(event.target.value)}
                         onBlur={handleUrlBlur}
-                        placeholder="https://yourproject.com"
+                        placeholder="https://yourcasestudy.com"
                         className="h-9 w-full rounded-md border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                       />
                       <Button
@@ -4264,12 +4257,12 @@ const FreelancerProfile = () => {
 
                   <label className="block">
                     <span className="mb-0.5 block text-sm font-medium text-muted-foreground">
-                      Project title
+                      Case Study title
                     </span>
                     <input
                       value={newProjectTitle}
                       onChange={(event) => setNewProjectTitle(event.target.value)}
-                      placeholder="Enter project title"
+                      placeholder="Enter case study title"
                       className="h-9 w-full rounded-md border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                     />
                   </label>
@@ -4288,7 +4281,7 @@ const FreelancerProfile = () => {
                       onChange={(event) => setNewProjectDescription(event.target.value)}
                       rows={2}
                       maxLength={320}
-                      placeholder="What this project does and the impact it created."
+                      placeholder="What this case study is about and the impact it created."
                       className="min-h-[68px] w-full rounded-md border border-border/70 bg-card/70 px-3 py-1.5 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                     />
                   </label>
@@ -4344,8 +4337,8 @@ const FreelancerProfile = () => {
                         })}
                       </div>
                     ) : (
-                      <div className="rounded-md border border-dashed border-border/70 bg-card/40 px-3 py-3 text-sm text-muted-foreground">
-                        Add services first, then you can link this project to one or more service cards.
+                        <div className="rounded-md border border-dashed border-border/70 bg-card/40 px-3 py-3 text-sm text-muted-foreground">
+                        Add services first, then you can link this case study to one or more service cards.
                       </div>
                     )}
                   </div>
@@ -4354,7 +4347,7 @@ const FreelancerProfile = () => {
                     <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <span className="block text-sm font-medium text-muted-foreground">
-                          Project cover
+                          Case study cover
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -4383,7 +4376,7 @@ const FreelancerProfile = () => {
                     <label
                       htmlFor="new-project-image-input"
                       role="button"
-                      aria-label="Upload project cover"
+                      aria-label="Upload case study cover"
                       tabIndex={0}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
@@ -4460,7 +4453,7 @@ const FreelancerProfile = () => {
                 ) : !isEditingProjectDraft ? (
                   <Plus className="h-3.5 w-3.5" />
                 ) : null}
-                {isEditingProjectDraft ? "Save changes" : "Add project"}
+                {isEditingProjectDraft ? "Save changes" : "Add case study"}
               </Button>
             </div>
           </>

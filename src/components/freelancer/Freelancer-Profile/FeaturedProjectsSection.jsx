@@ -103,10 +103,10 @@ const FeaturedProjectsSection = ({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 leading-tight">
               <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-lg md:text-xl">
-                Featured Projects
+                Case Studies
               </h3>
               <span className="inline-flex items-center rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                {projectCount} {projectCount === 1 ? "project" : "projects"}
+                {projectCount} {projectCount === 1 ? "case study" : "case studies"}
               </span>
               {hasPendingChanges ? (
                 <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
@@ -128,7 +128,7 @@ const FeaturedProjectsSection = ({
             onClick={onAddProject}
           >
             <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-            Add Project
+            Add Case Study
           </Button>
           <Button
             variant="ghost"
@@ -180,8 +180,8 @@ const FeaturedProjectsSection = ({
                                 <button
                                   type="button"
                                   className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-background text-foreground opacity-100 shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition-all duration-200 translate-y-0 pointer-events-auto hover:scale-105 hover:bg-background hover:text-primary sm:h-9 sm:w-9 sm:translate-y-1 sm:opacity-0 sm:pointer-events-none sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 sm:group-focus-within:pointer-events-auto sm:focus-visible:translate-y-0 sm:focus-visible:opacity-100 sm:focus-visible:pointer-events-auto sm:data-[state=open]:translate-y-0 sm:data-[state=open]:opacity-100 sm:data-[state=open]:pointer-events-auto"
-                                  title="Project actions"
-                                  aria-label="Project actions"
+                                  title="Case study actions"
+                                  aria-label="Case study actions"
                                 >
                                   <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                                 </button>
@@ -199,7 +199,7 @@ const FeaturedProjectsSection = ({
                                       className="cursor-pointer"
                                     >
                                       <ExternalLink className="h-3.5 w-3.5 text-primary" />
-                                      Open project
+                                      Open case study
                                     </a>
                                   </DropdownMenuItem>
                                 ) : null}
@@ -227,7 +227,7 @@ const FeaturedProjectsSection = ({
                                   onSelect={() => removeProject(idx)}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
-                                  Remove project
+                                  Remove case study
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -248,7 +248,7 @@ const FeaturedProjectsSection = ({
                               className="truncate text-[15px] font-semibold tracking-tight text-foreground sm:text-base"
                               title={project.title || project.link}
                             >
-                              {project.title || "Project"}
+                              {project.title || "Case Study"}
                             </h4>
                             {project.link ? (
                               <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/80">
@@ -271,7 +271,7 @@ const FeaturedProjectsSection = ({
                             title={project.description || ""}
                           >
                             {project.description ||
-                              "Add a concise project summary so clients can understand the scope, outcome, and value of this work."}
+                              "Add a concise case study summary so clients can understand the scope, outcome, and value of this work."}
                           </p>
 
                           <div className="mt-auto flex flex-col items-start gap-2.5 border-t border-white/6 pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
@@ -332,13 +332,13 @@ const FeaturedProjectsSection = ({
           <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
             <Rocket className="h-7 w-7 text-primary/80" aria-hidden="true" />
           </span>
-          <h4 className="text-base font-semibold text-foreground">No featured projects yet</h4>
+          <h4 className="text-base font-semibold text-foreground">No featured case studies yet</h4>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">
-            No projects added yet. Click &quot;Add Project&quot; to get started.
+            No case studies added yet. Click &quot;Add Case Study&quot; to get started.
           </p>
           <Button onClick={onAddProject} className="mt-4">
             <Plus className="mr-1.5 h-4 w-4" />
-            Add Project
+            Add Case Study
           </Button>
         </div>
       )}

@@ -2,7 +2,7 @@ import { FULL_PROFILE_EDITOR_SECTIONS } from "./freelancerProfileUtils";
 
 const getModalPanelClassName = (modalType, fullProfileEditorSection) =>
   `w-full border border-border/70 bg-card/95 backdrop-blur shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${
-    ["addProject", "onboardingService"].includes(modalType) ? "rounded-md p-0" : "rounded-2xl p-6"
+    modalType === "onboardingService" ? "rounded-md p-0" : "rounded-2xl p-6"
   } ${
     modalType === "viewAllProjects"
       ? "max-w-6xl h-[90vh] overflow-hidden flex flex-col"
