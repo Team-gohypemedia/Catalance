@@ -88,6 +88,12 @@ export const ServiceInfoStepper = ({
 
 /* ──────────────────── Custom Select ──────────────────── */
 
+const ATTACHED_POPUP_MARGIN = 12;
+const ATTACHED_POPUP_GAP = 6;
+const ATTACHED_POPUP_PREFERRED_LIST_HEIGHT = 320;
+const ATTACHED_POPUP_MIN_VISIBLE_LIST_HEIGHT = 140;
+const ATTACHED_POPUP_SEARCH_HEADER_HEIGHT = 60;
+
 export const CustomSelect = ({
   value,
   onChange,
@@ -162,25 +168,24 @@ export const CustomSelect = ({
       const rect = triggerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
-      const margin = 12;
-      const gap = 6;
+      const margin = ATTACHED_POPUP_MARGIN;
+      const gap = ATTACHED_POPUP_GAP;
       const safeViewportBottom =
         viewportHeight - Math.max(0, Number(viewportBottomOffset) || 0);
-      const minVisibleHeight = 140;
-      const preferredMaxHeight = 320;
+      const popupChromeHeight = isSearchable ? ATTACHED_POPUP_SEARCH_HEADER_HEIGHT : 0;
       const spaceBelow = Math.max(
         0,
         safeViewportBottom - rect.bottom - margin - gap,
       );
       const spaceAbove = Math.max(0, rect.top - margin - gap);
+      const listSpaceBelow = Math.max(0, spaceBelow - popupChromeHeight);
+      const listSpaceAbove = Math.max(0, spaceAbove - popupChromeHeight);
       const shouldOpenAbove =
-        spaceBelow < minVisibleHeight && spaceAbove > spaceBelow;
-      const nextMaxHeight = Math.max(
-        Math.min(
-          preferredMaxHeight,
-          shouldOpenAbove ? spaceAbove : spaceBelow,
-        ),
-        120,
+        listSpaceBelow < ATTACHED_POPUP_MIN_VISIBLE_LIST_HEIGHT &&
+        listSpaceAbove > listSpaceBelow;
+      const nextMaxHeight = Math.min(
+        ATTACHED_POPUP_PREFERRED_LIST_HEIGHT,
+        Math.max(shouldOpenAbove ? listSpaceAbove : listSpaceBelow, 0),
       );
       const nextWidth = Math.min(rect.width, viewportWidth - margin * 2);
       const nextLeft = Math.min(
@@ -220,7 +225,7 @@ export const CustomSelect = ({
       window.removeEventListener("resize", requestPositionUpdate);
       window.removeEventListener("scroll", requestPositionUpdate, true);
     };
-  }, [isCenteredPopup, isOpen, viewportBottomOffset]);
+  }, [isCenteredPopup, isOpen, isSearchable, viewportBottomOffset]);
 
   const popupContent = isOpen ? (
     <>
