@@ -5183,21 +5183,17 @@ const GuestAIDemo = () => {
 
                             <div className={`${isDark ? 'max-w-[960px]' : 'max-w-[1040px]'}`}>
                                 <h1 className={`font-serif ${briefingHeadingSizeClasses} ${briefingHeadingClasses}`}>
-                                    <span className="block">
-                                        I&apos;m looking for{' '}
-                                        <span className={`inline-flex rounded-[1rem] ${isDark ? 'px-2.5 py-1' : 'px-3 py-1.5'} ${briefingSentence.role ? briefingAccentPillClasses : briefingMutedSentenceClasses}`}>
-                                            {briefingSentence.role || 'the right freelancer'}
-                                        </span>
+                                    <span>I&apos;m looking for </span>
+                                    <span className={briefingSentence.role ? briefingAccentTextClasses : briefingMutedSentenceClasses}>
+                                        {briefingSentence.role || 'the right freelancer'}
                                     </span>
-                                    <span className="mt-2 block">
-                                        <span className={showBriefingGoal ? briefingHeadingClasses : briefingMutedSentenceClasses}>
-                                            to help me with{' '}
-                                        </span>
-                                        <span className={showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses}>
-                                            {showBriefingGoal && briefingSentence.goal ? briefingSentence.goal : 'my project'}
-                                        </span>
-                                        <span className={showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses}>.</span>
+                                    <span className={showBriefingGoal ? briefingHeadingClasses : briefingMutedSentenceClasses}>
+                                        {' '}to help me with{' '}
                                     </span>
+                                    <span className={showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses}>
+                                        {showBriefingGoal && briefingSentence.goal ? briefingSentence.goal : 'my project'}
+                                    </span>
+                                    <span className={showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses}>.</span>
                                 </h1>
                             </div>
                         </div>
