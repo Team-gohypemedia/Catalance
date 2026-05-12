@@ -5110,19 +5110,19 @@ const GuestAIDemo = () => {
     const briefingBackdropClasses = isDark
         ? 'bg-[radial-gradient(circle_at_top,rgba(255,200,0,0.14),transparent_30%),radial-gradient(circle_at_bottom,rgba(255,200,0,0.08),transparent_24%),linear-gradient(180deg,rgba(24,24,27,1)_0%,rgba(15,15,18,1)_100%)]'
         : 'bg-[radial-gradient(circle_at_top,rgba(255,200,0,0.18),transparent_30%),radial-gradient(circle_at_bottom,rgba(255,200,0,0.08),transparent_24%),linear-gradient(180deg,#fffdfa_0%,#f8f6f0_100%)]';
-    const briefingGlowClasses = isDark ? 'bg-[#ffc800]/10' : 'bg-[#ffc800]/12';
+    const briefingGlowClasses = isDark ? 'bg-[#ffc800]/14' : 'bg-[#ffc800]/12';
     const briefingEyebrowClasses = isDark ? 'text-[#d6c4a2]' : 'text-[#8a6d47]';
     const briefingDotClasses = isDark ? 'bg-[#ffc800] shadow-[0_0_0_5px_rgba(255,200,0,0.12)]' : 'bg-[#ffc800] shadow-[0_0_0_5px_rgba(255,200,0,0.16)]';
     const briefingHeadingClasses = isDark ? 'text-white' : 'text-[#17110d]';
     const briefingHeadingSizeClasses = isDark
-        ? 'text-[clamp(1.55rem,2.5vw,2.55rem)] leading-[1.18] tracking-[-0.02em]'
+        ? 'text-[clamp(1.55rem,2.5vw,2.55rem)] leading-[1.16] tracking-[-0.024em] [text-shadow:0_0_28px_rgba(255,255,255,0.04)]'
         : 'text-[clamp(1.85rem,3.5vw,3.1rem)] leading-[1.14] tracking-[-0.024em]';
     const briefingMutedSentenceClasses = isDark ? 'text-white/28' : 'text-[#d2c4b2]';
-    const briefingAccentTextClasses = isDark ? 'text-[#ffd75a]' : 'text-[#ba7a07]';
+    const briefingAccentTextClasses = isDark ? 'text-[#ffd75a] [text-shadow:0_0_24px_rgba(255,200,0,0.16)]' : 'text-[#ba7a07]';
     const briefingAccentPillClasses = isDark ? 'bg-[#ffc800]/12 text-[#ffd75a]' : 'bg-[#fff0bf] text-[#ba7a07]';
     const briefingBodyClasses = isDark ? 'text-muted-foreground' : 'text-[#695847]';
     const briefingCardClasses = isDark
-        ? 'border-[#ffc800]/12 bg-card/90 shadow-[0_0_0_1px_rgba(255,200,0,0.05),0_0_38px_rgba(255,200,0,0.1),0_40px_90px_-55px_rgba(0,0,0,0.72)]'
+        ? 'border-[#ffc800]/14 bg-[linear-gradient(180deg,rgba(24,24,27,0.94)_0%,rgba(16,16,19,0.96)_100%)] shadow-[0_0_0_1px_rgba(255,200,0,0.05),0_0_44px_rgba(255,200,0,0.08),0_40px_90px_-55px_rgba(0,0,0,0.78)]'
         : 'border-[#eadfce] bg-white/92 shadow-[0_40px_90px_-55px_rgba(98,77,36,0.24)]';
     const briefingCardDividerClasses = isDark ? 'border-border/70' : 'border-[#efe2d3]';
     const briefingStepEyebrowClasses = isDark ? 'text-[#f0cc6b]' : 'text-[#c28712]';
@@ -5171,6 +5171,7 @@ const GuestAIDemo = () => {
                     <div className="pointer-events-none absolute inset-0 overflow-hidden">
                         <div className={`absolute inset-0 ${briefingBackdropClasses}`} />
                         <div className={`absolute left-1/2 top-24 h-[24rem] w-[24rem] -translate-x-1/2 rounded-full blur-[110px] ${briefingGlowClasses}`} />
+                        <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:72px_72px] [mask-image:radial-gradient(circle_at_center,black,transparent_78%)]" />
                     </div>
 
                     <div className={`relative z-10 mx-auto w-full px-5 py-8 sm:px-8 lg:px-10 ${isDark ? 'max-w-[1280px]' : 'max-w-[1360px]'}`}>
@@ -5184,13 +5185,13 @@ const GuestAIDemo = () => {
                             <div className={`${isDark ? 'max-w-[960px]' : 'max-w-[1040px]'}`}>
                                 <h1 className={`font-serif ${briefingHeadingSizeClasses} ${briefingHeadingClasses}`}>
                                     <span>I&apos;m looking for </span>
-                                    <span className={briefingSentence.role ? briefingAccentTextClasses : briefingMutedSentenceClasses}>
+                                    <span className={`${briefingSentence.role ? briefingAccentTextClasses : briefingMutedSentenceClasses} italic`}>
                                         {briefingSentence.role || 'the right freelancer'}
                                     </span>
                                     <span className={showBriefingGoal ? briefingHeadingClasses : briefingMutedSentenceClasses}>
                                         {' '}to help me with{' '}
                                     </span>
-                                    <span className={showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses}>
+                                    <span className={`${showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses} italic`}>
                                         {showBriefingGoal && briefingSentence.goal ? briefingSentence.goal : 'my project'}
                                     </span>
                                     <span className={showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses}>.</span>
