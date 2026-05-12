@@ -5121,8 +5121,11 @@ const GuestAIDemo = () => {
     const briefingAccentTextClasses = isDark ? 'text-[#ffd75a] [text-shadow:0_0_24px_rgba(255,200,0,0.16)]' : 'text-[#ba7a07]';
     const briefingAccentPillClasses = isDark ? 'bg-[#ffc800]/12 text-[#ffd75a]' : 'bg-[#fff0bf] text-[#ba7a07]';
     const briefingBodyClasses = isDark ? 'text-muted-foreground' : 'text-[#695847]';
+    const briefingHeroStageClasses = isDark
+        ? 'border-[#ffc800]/14 bg-[linear-gradient(135deg,rgba(255,200,0,0.08)_0%,rgba(255,255,255,0.02)_22%,rgba(16,16,19,0.96)_70%)] shadow-[0_0_0_1px_rgba(255,200,0,0.04),0_45px_120px_-70px_rgba(255,200,0,0.45)]'
+        : 'border-[#eadfce] bg-[linear-gradient(135deg,rgba(255,200,0,0.14)_0%,rgba(255,255,255,0.92)_32%,rgba(255,249,240,0.96)_100%)] shadow-[0_35px_100px_-60px_rgba(98,77,36,0.26)]';
     const briefingCardClasses = isDark
-        ? 'border-[#ffc800]/14 bg-[linear-gradient(180deg,rgba(24,24,27,0.94)_0%,rgba(16,16,19,0.96)_100%)] shadow-[0_0_0_1px_rgba(255,200,0,0.05),0_0_44px_rgba(255,200,0,0.08),0_40px_90px_-55px_rgba(0,0,0,0.78)]'
+        ? 'border-[#ffc800]/16 bg-[linear-gradient(180deg,rgba(23,23,27,0.96)_0%,rgba(14,14,18,0.98)_100%)] shadow-[0_0_0_1px_rgba(255,200,0,0.05),0_0_44px_rgba(255,200,0,0.08),0_55px_120px_-70px_rgba(0,0,0,0.88)]'
         : 'border-[#eadfce] bg-white/92 shadow-[0_40px_90px_-55px_rgba(98,77,36,0.24)]';
     const briefingCardDividerClasses = isDark ? 'border-border/70' : 'border-[#efe2d3]';
     const briefingStepEyebrowClasses = isDark ? 'text-[#f0cc6b]' : 'text-[#c28712]';
@@ -5176,26 +5179,40 @@ const GuestAIDemo = () => {
 
                     <div className={`relative z-10 mx-auto w-full px-5 py-8 sm:px-8 lg:px-10 ${isDark ? 'max-w-[1280px]' : 'max-w-[1360px]'}`}>
                         <div className="mx-auto flex min-h-[calc(100vh-6.5rem)] w-full max-w-[980px] flex-col justify-center sm:min-h-[calc(100vh-7rem)]">
-                        <div className="space-y-5">
-                            <div className={`inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.35em] ${briefingEyebrowClasses}`}>
-                                <span className={`h-2.5 w-2.5 rounded-full ${briefingDotClasses}`} />
-                                Briefing CATA
+                        <div className={`relative overflow-hidden rounded-[2rem] border px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10 ${briefingHeroStageClasses}`}>
+                            <div className="pointer-events-none absolute inset-0">
+                                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#ffc800]/55 to-transparent" />
+                                <div className="absolute left-[-2rem] top-[-2rem] h-32 w-32 rounded-full bg-[#ffc800]/10 blur-3xl" />
+                                <div className="absolute right-[-4rem] top-[-3rem] h-48 w-48 rounded-full border border-[#ffc800]/10 bg-[#ffc800]/[0.03]" />
+                                <div className="absolute bottom-[-5rem] right-[12%] h-36 w-36 rounded-full bg-[#ffc800]/10 blur-3xl" />
+                                <div className="absolute right-4 top-4 text-[clamp(4rem,11vw,9rem)] font-semibold uppercase tracking-[0.22em] text-white/[0.03]">CATA</div>
                             </div>
 
-                            <div className={`${isDark ? 'max-w-[960px]' : 'max-w-[1040px]'}`}>
-                                <h1 className={`font-serif ${briefingHeadingSizeClasses} ${briefingHeadingClasses}`}>
-                                    <span>I&apos;m looking for </span>
-                                    <span className={`${briefingSentence.role ? briefingAccentTextClasses : briefingMutedSentenceClasses} italic`}>
-                                        {briefingSentence.role || 'the right freelancer'}
-                                    </span>
-                                    <span className={showBriefingGoal ? briefingHeadingClasses : briefingMutedSentenceClasses}>
-                                        {' '}to help me with{' '}
-                                    </span>
-                                    <span className={`${showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses} italic`}>
-                                        {showBriefingGoal && briefingSentence.goal ? briefingSentence.goal : 'my project'}
-                                    </span>
-                                    <span className={showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses}>.</span>
-                                </h1>
+                            <div className="relative z-10 space-y-6">
+                                <div className={`inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.35em] ${briefingEyebrowClasses}`}>
+                                    <span className={`h-2.5 w-2.5 rounded-full ${briefingDotClasses}`} />
+                                    Briefing CATA
+                                </div>
+
+                                <div className={`${isDark ? 'max-w-[860px]' : 'max-w-[940px]'}`}>
+                                    <h1 className={`font-serif ${briefingHeadingSizeClasses} ${briefingHeadingClasses}`}>
+                                        <span>I&apos;m looking for </span>
+                                        <span className={`${briefingSentence.role ? briefingAccentTextClasses : briefingMutedSentenceClasses} italic`}>
+                                            {briefingSentence.role || 'the right freelancer'}
+                                        </span>
+                                        <span className={showBriefingGoal ? briefingHeadingClasses : briefingMutedSentenceClasses}>
+                                            {' '}to help me with{' '}
+                                        </span>
+                                        <span className={`${showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses} italic`}>
+                                            {showBriefingGoal && briefingSentence.goal ? briefingSentence.goal : 'my project'}
+                                        </span>
+                                        <span className={showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses}>.</span>
+                                    </h1>
+                                    <p className={`mt-4 max-w-2xl text-sm leading-7 sm:text-[15px] ${briefingBodyClasses}`}>
+                                        Shape the brief fast, keep the message sharp, and move directly toward the right specialist.
+                                    </p>
+                                </div>
+
                             </div>
                         </div>
 
@@ -5213,7 +5230,7 @@ const GuestAIDemo = () => {
                                     goToNextBriefingStep();
                                 }
                             }}
-                            className={`mt-8 overflow-hidden border backdrop-blur ${isDark ? 'rounded-[1.7rem]' : 'rounded-[2rem]'} ${briefingCardClasses}`}
+                            className={`relative z-10 mt-[-0.75rem] overflow-hidden border backdrop-blur sm:mt-[-1rem] ${isDark ? 'rounded-[1.7rem]' : 'rounded-[2rem]'} ${briefingCardClasses}`}
                         >
                             <div className={`border-b ${isDark ? 'px-5 py-4 sm:px-6' : 'px-6 py-5 sm:px-8'} ${briefingCardDividerClasses}`}>
                                 <div className="flex flex-wrap items-center gap-3">
