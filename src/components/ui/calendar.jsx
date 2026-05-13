@@ -8,6 +8,81 @@ import { DayPicker, getDefaultClassNames } from "react-day-picker";
 
 import { cn } from "@/shared/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+function CalendarDropdown({
+  className,
+  classNames = {},
+  options = [],
+  value,
+  onChange,
+  disabled,
+  name,
+  required,
+  defaultValue,
+  style,
+  ...triggerProps
+}) {
+  const selectedValue = value === undefined || value === null ? "" : String(value);
+  const selectedOption = options.find(({ value: optionValue }) => String(optionValue) === selectedValue);
+
+  return (
+    <span
+      data-disabled={disabled}
+      className={cn("relative flex items-center", classNames.dropdown_root)}
+    >
+      <Select
+        value={selectedValue}
+        defaultValue={defaultValue === undefined || defaultValue === null ? undefined : String(defaultValue)}
+        onValueChange={(nextValue) => {
+          onChange?.({
+            target: { value: Number(nextValue) },
+            currentTarget: { value: Number(nextValue) },
+          });
+        }}
+        disabled={disabled}
+        name={name}
+        required={required}
+      >
+        <SelectTrigger
+          style={style}
+          {...triggerProps}
+          className={cn(
+            "h-9 min-w-24 rounded-[14px] border border-white/10 bg-card px-3 text-sm font-medium text-white shadow-none hover:bg-card focus:ring-primary/15",
+            classNames.dropdown,
+            className,
+          )}
+        >
+          <SelectValue placeholder={selectedOption?.label || "Select"} />
+        </SelectTrigger>
+
+        <SelectContent
+          position="popper"
+          align="start"
+          sideOffset={8}
+          className="max-h-72 min-w-28 rounded-[18px] border border-white/10 bg-[#161616] text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+        >
+          {options.map(({ value: optionValue, label, disabled: optionDisabled }) => (
+            <SelectItem
+              key={optionValue}
+              value={String(optionValue)}
+              disabled={optionDisabled}
+              className="cursor-pointer focus:bg-white/10 focus:text-white"
+            >
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </span>
+  );
+}
 
 function Calendar({
   className,
@@ -156,6 +231,7 @@ function Calendar({
           );
         },
         DayButton: CalendarDayButton,
+        Dropdown: CalendarDropdown,
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>

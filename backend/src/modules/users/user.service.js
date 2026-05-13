@@ -294,6 +294,9 @@ const resolveFreelancerProfileRecord = (user = null) => {
       ? normalizeStringList(read("serviceKeywords"), { max: 5 })
       : [],
     serviceMedia: normalizeServiceMedia(read("serviceMedia"), { max: 3 }),
+    dateOfBirth: read("dateOfBirth") ?? null,
+    address: read("address") ?? null,
+    pincode: read("pincode") ?? null,
     profileDetails: resolveFreelancerProfileDetails(user)
   };
 };

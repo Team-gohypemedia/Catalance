@@ -190,6 +190,9 @@ model FreelancerProfile {
   username                    String?
   languages                   String[] @default([])
   profilePhoto                String?
+  dateOfBirth                 DateTime? @db.Date
+  address                     String?
+  pincode                     String?
   coverImage                  String?
   serviceDetails              Json     @default("{}")
   socialMediaLinks            Json?    @default("{}")
