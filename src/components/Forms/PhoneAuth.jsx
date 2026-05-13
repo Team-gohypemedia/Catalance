@@ -41,6 +41,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import logo from "@/assets/logos/logo.svg";
+import whatsappIcon from "@/assets/icons/whatsapp.svg";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
@@ -251,6 +252,7 @@ function PhoneAuth() {
   const [pendingPhone, setPendingPhone] = useState(null);
   const [otpExpiresInMinutes, setOtpExpiresInMinutes] = useState(DEFAULT_OTP_EXPIRY_MINUTES);
   const [otpExpiresAt, setOtpExpiresAt] = useState(null);
+  const [resendCooldownAt, setResendCooldownAt] = useState(null);
   const [countdownNow, setCountdownNow] = useState(() => Date.now());
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -331,6 +333,9 @@ function PhoneAuth() {
   const otpRemainingSeconds = otpExpiresAt
     ? Math.max(0, Math.ceil((otpExpiresAt - countdownNow) / 1000))
     : otpExpiresInMinutes * 60;
+  const resendCooldownSeconds = resendCooldownAt
+    ? Math.max(0, Math.ceil((resendCooldownAt - countdownNow) / 1000))
+    : 0;
   const isOtpExpired = authStep === "otp" && otpRemainingSeconds === 0;
   const emailSigninPath = searchParams.toString()
     ? `/signin/email?${searchParams.toString()}`
@@ -391,6 +396,8 @@ function PhoneAuth() {
         Number(result?.expiresInMinutes) || DEFAULT_OTP_EXPIRY_MINUTES;
       setOtpExpiresInMinutes(expiresInMinutes);
       setOtpExpiresAt(Date.now() + expiresInMinutes * 60 * 1000);
+      setResendCooldownAt(Date.now() + 60 * 1000); // 1 minute cooldown
+      setOtpDigits("");
       setAuthStep("otp");
       toast.success(`6-digit WhatsApp code sent to ${phoneLabel}.`);
     } catch (error) {
@@ -496,7 +503,7 @@ function PhoneAuth() {
   };
 
   const handleResendOtp = () => {
-    if (!isOtpExpired || isSubmitting || isResending) return;
+    if (resendCooldownSeconds > 0 || isSubmitting || isResending) return;
 
     void requestOtp({ resend: true });
   };
@@ -572,10 +579,14 @@ function PhoneAuth() {
     const countdownText = isOtpExpired
       ? "Code expired"
       : `Code expires in ${formatCountdown(otpRemainingSeconds)}`;
-    const canResendOtp = isOtpExpired && !isSubmitting && !isResending;
-    const resendButtonLabel = isResending ? "Resending..." : "Resend code";
-    const buttonLabel = isOtpStep ? "Verify OTP" : "Continue";
-    const loadingLabel = isOtpStep ? "Verifying..." : "Sending OTP...";
+    const canResendOtp = resendCooldownSeconds === 0 && !isSubmitting && !isResending;
+    const resendButtonLabel = isResending
+      ? "Resending..."
+      : resendCooldownSeconds > 0
+        ? `Resend in ${formatCountdown(resendCooldownSeconds)}`
+        : "Resend code";
+    const buttonLabel = isOtpStep ? "Verify OTP" : "Continue with WhatsApp";
+    const loadingLabel = isOtpStep ? "Verifying..." : "Connecting...";
     const formSpacing = compact ? "space-y-3" : "space-y-5";
     const labelClass = "block text-[11px] font-medium uppercase tracking-[0.18em] text-white";
     const phoneGridClass = compact
@@ -588,8 +599,8 @@ function PhoneAuth() {
       ? "phone-auth-autofill !h-10 !py-0"
       : "phone-auth-autofill !h-12 !py-0";
     const submitButtonClass = compact
-      ? "!h-11 w-full rounded-md bg-primary text-[14px] font-medium text-black shadow-none hover:bg-primary/95"
-      : "!h-14 w-full rounded-md bg-primary text-sm font-medium text-black shadow-none hover:bg-primary/95 sm:text-[15px]";
+      ? "!h-10 w-full rounded-md bg-primary text-[12px] font-medium text-black shadow-none hover:bg-primary/95 sm:text-[13px]"
+      : "!h-12 w-full rounded-md bg-primary text-[13px] font-medium text-black shadow-none hover:bg-primary/95 sm:text-[14px]";
     const otpSlotClass = "h-10 w-10 sm:h-11 sm:w-11";
     const selectedCountryDialDigits = normalizePhoneNumber(
       selectedCountry?.dialCode || "",
@@ -792,10 +803,12 @@ function PhoneAuth() {
           }
           className={submitButtonClass}
         >
-          {isSubmitting ? loadingLabel : buttonLabel}
           {isSubmitting ? (
-            <Loader2 className={compact ? "size-[0.95rem] animate-spin" : "size-5 animate-spin"} />
+            <Loader2 className={compact ? "size-[18px] animate-spin" : "size-5 animate-spin"} />
+          ) : !isOtpStep ? (
+            <img src={whatsappIcon} alt="" className={compact ? "size-[18px]" : "size-5"} />
           ) : null}
+          {isSubmitting ? loadingLabel : buttonLabel}
         </Button>
       </form>
     );

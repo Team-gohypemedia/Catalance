@@ -39,6 +39,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { ChevronLeft } from "lucide-react";
+import whatsappIcon from "@/assets/icons/whatsapp.svg";
 
 const CLIENT_ROLE = "CLIENT";
 const FREELANCER_ROLE = "FREELANCER";
@@ -774,12 +775,15 @@ function PhoneRoleOnboarding() {
                     onClick={handleNext}
                     className="!h-10 flex-1 rounded-md bg-primary text-sm font-medium text-black hover:bg-primary/95"
                   >
-                    {isSaving ? "Saving..." : isLastSlide ? "Finish setup" : "Continue"}
                     {isSaving ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <ArrowRight className="size-4" />
+                      <Loader2 className="size-[18px] animate-spin" />
+                    ) : isLastSlide ? null : (
+                      <img src={whatsappIcon} alt="" className="size-[18px]" />
                     )}
+                    {isSaving ? "Saving..." : isLastSlide ? "Finish setup" : "Continue with WhatsApp"}
+                    {!isSaving && isLastSlide ? (
+                      <ArrowRight className="size-4" />
+                    ) : null}
                   </Button>
                 </div>
               )}
