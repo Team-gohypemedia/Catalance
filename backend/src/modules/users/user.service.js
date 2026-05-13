@@ -32,7 +32,7 @@ const OTP_EMAIL_RETRY_ATTEMPTS = 2;
 const PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS = 2;
 const WHATSAPP_OTP_GENERIC_MESSAGE =
   "If this phone number can receive WhatsApp messages, an OTP has been sent.";
-const WHATSAPP_OTP_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const WHATSAPP_OTP_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour window
 const WHATSAPP_OTP_MAX_REQUESTS_PER_WINDOW = 5;
 const WHATSAPP_OTP_MAX_VERIFY_ATTEMPTS_PER_WINDOW = 8;
 const PHONE_ONLY_EMAIL_DOMAIN = "phone.catalance.local";
@@ -461,6 +461,12 @@ const consumeOtpRateLimit = ({ store, key, maxAttempts, message }) => {
 
   if (attempts.length >= maxAttempts) {
     throw new AppError(message, 429);
+  }
+
+  const lastAttempt = attempts[attempts.length - 1];
+  // Use 58 seconds to provide a 2-second grace period for network latency and clock drift
+  if (lastAttempt && now - lastAttempt < 58 * 1000) {
+    throw new AppError("Please wait 1 minute before requesting another OTP.", 429);
   }
 
   attempts.push(now);

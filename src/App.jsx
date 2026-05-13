@@ -590,14 +590,16 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/freelancer/growth-quest"
-              element={
-                <ProtectedRoute>
-                  <FreelancerGrowthQuest />
-                </ProtectedRoute>
-              }
-            />
+             <Route
+               path="/freelancer/growth-quest"
+               element={
+                 <ProtectedRoute>
+                   <LayoutNavbarOnly>
+                     <FreelancerGrowthQuest />
+                   </LayoutNavbarOnly>
+                 </ProtectedRoute>
+               }
+             />
             <Route
               path="/freelancer/proposals"
               element={

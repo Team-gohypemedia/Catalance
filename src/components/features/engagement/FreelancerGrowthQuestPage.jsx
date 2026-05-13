@@ -1,28 +1,67 @@
-// v4 - premium redesign with badge shelf and process summary
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import Clock from "lucide-react/dist/esm/icons/clock";
 import Flame from "lucide-react/dist/esm/icons/flame";
+import Info from "lucide-react/dist/esm/icons/info";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Star from "lucide-react/dist/esm/icons/star";
+import Target from "lucide-react/dist/esm/icons/target";
 import Trophy from "lucide-react/dist/esm/icons/trophy";
+import X from "lucide-react/dist/esm/icons/x";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
 import Zap from "lucide-react/dist/esm/icons/zap";
-import Target from "lucide-react/dist/esm/icons/target";
-import Info from "lucide-react/dist/esm/icons/info";
-import X from "lucide-react/dist/esm/icons/x";
-import Clock from "lucide-react/dist/esm/icons/clock";
-import { useNavigate } from "react-router-dom";
-import FreelancerTopBar from "@/components/features/freelancer/FreelancerTopBar";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 import BadgeShelf from "./BadgeShelf";
 import ProcessSummaryCard from "./ProcessSummaryCard";
+import StreakCalendar from "./StreakCalendar";
+
+const PAGE_CLASS =
+  "min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(255,193,7,0.15),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.08),transparent_40%),linear-gradient(180deg,rgba(10,10,11,0.98),rgba(10,10,11,1))] text-foreground selection:bg-primary/30";
+const CARD_CLASS =
+  "rounded-[16px] border border-white/[0.06] bg-black/40 backdrop-blur-xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.8)] transition-all duration-300";
+const SUBTLE_CARD_CLASS = 
+  "rounded-[12px] border border-white/[0.04] bg-white/[0.02] backdrop-blur-md transition-all duration-300 hover:bg-white/[0.04]";
+const PRIMARY_BUTTON_CLASS =
+  "relative inline-flex items-center justify-center gap-2 rounded-[10px] bg-gradient-to-r from-primary to-amber-500 px-5 py-3 text-sm font-bold text-primary-foreground shadow-[0_0_20px_rgba(255,193,7,0.3)] transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,193,7,0.5)] hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none";
+const SECONDARY_BUTTON_CLASS =
+  "inline-flex items-center justify-center gap-2 rounded-[10px] border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-foreground backdrop-blur-md transition-all duration-300 hover:border-primary/40 hover:bg-white/[0.08] hover:text-primary disabled:opacity-40";
+const EYEBROW_CLASS =
+  "text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
+const LABEL_CLASS =
+  "text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
+const LABELS = ["A", "B", "C", "D", "E"];
+
+const HOW_IT_WORKS = [
+  { title: "1. Start", desc: "Open the daily quest and answer the questions." },
+  { title: "2. Submit", desc: "Finish the set in a few minutes." },
+  { title: "3. Earn", desc: "Get XP, coins, and streak progress." },
+];
+const PROGRESS_SECTIONS = [
+  {
+    title: "Daily goal",
+    desc: "Complete today’s questions and keep your streak moving.",
+  },
+  {
+    title: "Profile growth",
+    desc: "Earn XP and coins that reflect regular activity on the platform.",
+  },
+  {
+    title: "Learning loop",
+    desc: "Use the review section to understand mistakes and improve tomorrow.",
+  },
+];
+const SKILL_BREAKDOWN = [
+  { label: "Execution", value: 85, barClass: "bg-emerald-500" },
+  { label: "Strategy", value: 65, barClass: "bg-primary" },
+  { label: "Knowledge", value: 40, barClass: "bg-amber-500" },
+];
 
 const makeKey = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -32,76 +71,80 @@ const makeKey = () =>
 const formatReset = (resetAt) => {
   if (!resetAt) return "UTC midnight";
   const d = new Date(resetAt);
-  return Number.isNaN(d.getTime()) ? "UTC midnight" : d.toLocaleString(undefined, { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" });
+  return Number.isNaN(d.getTime())
+    ? "UTC midnight"
+    : d.toLocaleString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+        month: "short",
+        day: "numeric",
+      });
 };
-
-/* ── Info Modal ───────────────────────────────────────── */
-const HOW_IT_WORKS = [
-  { emoji: "📅", title: "Daily Questions", desc: "Complete 5 client-readiness questions every day to sharpen your professional habits." },
-  { emoji: "🔥", title: "Streaks", desc: "Build consistency to unlock exclusive milestone badges and bonus rewards. Don't miss a day!" },
-  { emoji: "⚡", title: "XP & Level", desc: "Level up your engagement rank as you earn XP. High levels signal reliability to potential clients." },
-  { emoji: "🪙", title: "Loyalty Coins", desc: "Earn coins to redeem perks, freeze streaks, or access premium platform features." },
-  { emoji: "🔁", title: "Smart Retakes", desc: "Improve your score with up to 2 attempts daily. Your highest score is always the one that counts." },
-  { emoji: "🏆", title: "Leaderboard", desc: "Compete with top freelancers. High rankings earn priority access to challenges and events." },
-];
 
 const InfoModal = ({ open, onClose }) => {
   if (!open) return null;
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
-      <div className="absolute inset-0 bg-background/40 backdrop-blur-md" />
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
       <div
-        className="relative z-10 w-full max-w-xl overflow-hidden rounded-[32px] border border-border bg-card shadow-2xl animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
+        className={cn(CARD_CLASS, "relative z-10 w-full max-w-xl overflow-hidden")}
+        onClick={(event) => event.stopPropagation()}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.05] via-transparent to-transparent pointer-events-none" />
-        
-        {/* Header */}
-        <div className="relative flex items-center justify-between border-b border-border/50 px-8 py-6">
-          <div>
-            <h2 className="text-xl font-black tracking-tight text-foreground">Growth Quest Guide</h2>
-            <p className="text-xs font-medium text-muted-foreground mt-1">Master the engagement system</p>
+        <div className="border-b border-white/[0.08] px-6 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className={EYEBROW_CLASS}>Growth Quest Guide</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
+                Simple daily progress
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                Answer the daily questions, submit once, and track your streak,
+                XP, and coins in one place.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className={cn(SECONDARY_BUTTON_CLASS, "h-10 w-10 px-0 py-0")}
+            >
+              <X className="size-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-10 items-center justify-center rounded-full border border-border bg-background/50 text-muted-foreground transition-all hover:border-primary/30 hover:text-foreground hover:scale-105 active:scale-95"
-          >
-            <X className="size-5" />
-          </button>
         </div>
 
-        {/* Body */}
-        <div className="relative max-h-[70vh] overflow-y-auto px-8 py-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            {HOW_IT_WORKS.map((item) => (
-              <div key={item.title} className="group flex flex-col gap-3 rounded-[24px] border border-border/50 bg-background/50 p-5 transition-all hover:border-primary/20 hover:bg-background">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-2xl transition-transform group-hover:scale-110">
-                  {item.emoji}
-                </div>
-                <div>
-                  <p className="text-sm font-black text-foreground">{item.title}</p>
-                  <p className="mt-1 text-[0.7rem] leading-relaxed text-muted-foreground">{item.desc}</p>
+        <div className="max-h-[70vh] overflow-y-auto px-6 py-6">
+          <div className="grid gap-3">
+            {HOW_IT_WORKS.map((item, index) => (
+              <div key={item.title} className={cn(SUBTLE_CARD_CLASS, "p-4")}>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-primary/12 text-xs font-semibold text-primary">
+                    {String(index + 1).padStart(2, "0")}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {item.desc}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-          
-          <div className="mt-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
-            <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs">💡</div>
-            <p className="text-[0.7rem] font-bold leading-relaxed text-primary">
-              Pro Tip: Questions reset at <span className="font-black underline">00:00 UTC</span>. Set a daily reminder to maintain your streak and maximize your rewards!
+
+          <div className="mt-5 rounded-[6px] border border-primary/20 bg-primary/8 px-4 py-3">
+            <p className="text-sm leading-6 text-primary">
+              Resets at <span className="font-semibold text-foreground">00:00 UTC</span>.
             </p>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-border/50 px-8 py-5 flex justify-end">
-          <Button 
-            onClick={onClose}
-            className="rounded-full px-8 font-black bg-primary text-primary-foreground"
-          >
-            Got it, thanks!
+        <div className="flex justify-end border-t border-white/[0.08] px-6 py-4">
+          <Button onClick={onClose} className={cn(PRIMARY_BUTTON_CLASS, "min-w-36")}>
+            Got it, thanks
           </Button>
         </div>
       </div>
@@ -109,45 +152,72 @@ const InfoModal = ({ open, onClose }) => {
   );
 };
 
-/* ── Stat Card ─────────────────────────────────────────── */
 const StatCard = ({ icon: Icon, label, value, sub }) => (
-  <div className="flex flex-col gap-3 rounded-[24px] border border-border bg-card p-5 transition-transform hover:-translate-y-0.5">
-    <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10">
-      <Icon className="size-4 text-primary" />
-    </div>
-    <div>
-      <p className="text-[0.7rem] font-black uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-2xl font-black tracking-tight text-foreground">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+  <div className={cn(CARD_CLASS, "p-5 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_10px_30px_-10px_rgba(255,193,7,0.15)] group")}>
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className={cn(LABEL_CLASS, "group-hover:text-primary/80 transition-colors")}>{label}</p>
+        <p className="mt-2 text-3xl font-bold tracking-tight text-foreground drop-shadow-sm">
+          {value}
+        </p>
+        {sub ? <p className="mt-1 text-xs font-medium text-muted-foreground">{sub}</p> : null}
+      </div>
+      <div className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-primary/10 transition-transform duration-300 group-hover:scale-110 group-hover:bg-primary/20">
+        <Icon className="size-5 text-primary" />
+      </div>
     </div>
   </div>
 );
 
-/* ── Leaderboard Row ───────────────────────────────────── */
 const LeaderRow = ({ rank, name, coins, isYou }) => {
-  const medals = ["🥇", "🥈", "🥉"];
+  const isTop3 = rank <= 3;
+  const rankColors = {
+    1: "bg-gradient-to-br from-yellow-300 to-yellow-600 text-yellow-950",
+    2: "bg-gradient-to-br from-slate-200 to-slate-400 text-slate-900",
+    3: "bg-gradient-to-br from-amber-600 to-amber-800 text-amber-50"
+  };
+
   return (
-    <div className={cn("flex items-center gap-3 rounded-2xl px-4 py-3 transition-colors", isYou ? "bg-primary/10 ring-1 ring-primary/30" : "bg-background hover:bg-card")}>
-      <span className="w-7 text-center text-lg">{medals[rank - 1] || `#${rank}`}</span>
-      <div className="flex-1 min-w-0">
-        <p className={cn("truncate text-sm font-bold", isYou ? "text-primary" : "text-foreground")}>{name}</p>
-        <p className="text-xs text-muted-foreground">{coins} coins</p>
+    <div
+      className={cn(
+        SUBTLE_CARD_CLASS,
+        "flex items-center gap-3 px-4 py-3 group hover:border-primary/20",
+        isYou && "border-primary/40 bg-primary/10 shadow-[inset_0_0_20px_rgba(255,193,7,0.05)]",
+      )}
+    >
+      <div className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-[8px] text-xs font-bold shadow-sm",
+        isTop3 ? rankColors[rank] : "bg-white/[0.05] text-muted-foreground"
+      )}>
+        {rank}
       </div>
-      {rank <= 3 && <Star className="size-3.5 text-primary" />}
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            "truncate text-sm font-semibold",
+            isYou ? "text-primary" : "text-foreground",
+          )}
+        >
+          {name}
+        </p>
+        <p className="text-[0.7rem] font-medium text-muted-foreground">{coins} coins</p>
+      </div>
+      {isTop3 ? <Star className={cn("size-4", rank === 1 ? "text-yellow-400" : rank === 2 ? "text-slate-300" : "text-amber-600")} /> : null}
     </div>
   );
 };
 
-/* ── Dashboard View ────────────────────────────────────── */
 const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
-  if (loading) return (
-    <div className="flex min-h-[400px] items-center justify-center">
-      <div className="flex flex-col items-center gap-3 text-muted-foreground">
-        <Loader2 className="size-7 animate-spin text-primary" />
-        <p className="text-sm font-medium">Loading your quest…</p>
+  if (loading) {
+    return (
+      <div className="flex min-h-[420px] items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="size-7 animate-spin text-primary" />
+          <p className="text-sm">Loading your Growth Quest.</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   const profile = dashboard?.profile || {};
   const today = dashboard?.today || {};
@@ -158,7 +228,30 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
   const max = today.maxAttempts || 2;
   const done = used >= max;
   const isRetake = used > 0 && !done;
-
+  const levelThresholds = [0, 200, 600, 1500, 3500];
+  const levelNames = [
+    "Starter",
+    "Active Learner",
+    "Skilled Contributor",
+    "Pro Contributor",
+    "Gold Contributor",
+  ];
+  const currentLevelIdx = levelThresholds.reduce(
+    (acc, threshold, index) => (xp >= threshold ? index : acc),
+    0,
+  );
+  const nextThreshold = levelThresholds[currentLevelIdx + 1] ?? null;
+  const prevThreshold = levelThresholds[currentLevelIdx] ?? 0;
+  const levelNumber = Number(
+    profile.level ||
+      String(profile.engagementLevel || "").match(/\d+/)?.[0] ||
+      currentLevelIdx + 1,
+  );
+  const levelLabel =
+    profile.engagementLevelLabel || levelNames[currentLevelIdx] || "Starter";
+  const xpPct = nextThreshold
+    ? Math.round(((xp - prevThreshold) / (nextThreshold - prevThreshold)) * 100)
+    : 100;
   const leaderboard = [
     { rank: 1, name: "Alex R.", coins: 4250 },
     { rank: 2, name: "Sam K.", coins: 3840 },
@@ -166,91 +259,55 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
     { rank: 12, name: "You", coins, isYou: true },
   ];
 
-  /* XP level progress */
-  const levelThresholds = [0, 200, 600, 1500, 3500];
-  const levelNames = ["Starter", "Active Learner", "Skilled Contributor", "Pro Contributor", "Gold Contributor"];
-  const currentLevelIdx = levelThresholds.reduce((acc, t, i) => (xp >= t ? i : acc), 0);
-  const nextThreshold = levelThresholds[currentLevelIdx + 1] ?? null;
-  const prevThreshold = levelThresholds[currentLevelIdx] ?? 0;
-  const levelNumber = Number(
-    profile.level ||
-      String(profile.engagementLevel || "").match(/\d+/)?.[0] ||
-      currentLevelIdx + 1
-  );
-  const levelLabel =
-    profile.engagementLevelLabel || levelNames[currentLevelIdx] || "Starter";
-  const xpPct = nextThreshold
-    ? Math.round(((xp - prevThreshold) / (nextThreshold - prevThreshold)) * 100)
-    : 100;
-
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
-      {/* Left Column: Progress & Profile (LeetCode side card inspired) */}
-      <div className="lg:col-span-5 space-y-6">
-        <div className="relative overflow-hidden rounded-[32px] border border-border bg-card p-8 shadow-sm">
-          <div className="absolute -right-12 -top-12 opacity-[0.03] pointer-events-none rotate-12">
-            <Trophy className="size-64 text-primary" />
-          </div>
-
-          <div className="relative mb-8 flex flex-col items-center text-center">
-            <div className="mb-4 flex size-20 items-center justify-center rounded-3xl bg-primary/10 text-4xl shadow-inner">
-              {currentLevelIdx >= 4 ? "👑" : currentLevelIdx >= 2 ? "🔥" : "🌱"}
-            </div>
-            <h2 className="text-3xl font-black tracking-tight text-foreground">Growth Hub</h2>
-            <div className="mt-1 flex items-center gap-2">
-              <span className="rounded-full bg-primary/15 px-3 py-1 text-[0.65rem] font-black uppercase tracking-wider text-primary">
-                Level {levelNumber} - {levelLabel}
-              </span>
-            </div>
-            <p className="mt-4 max-w-[240px] text-xs font-medium leading-relaxed text-muted-foreground">
-              Complete quests to unlock higher level projects and platform rewards.
+    <div className="space-y-6">
+      <section className={cn(CARD_CLASS, "overflow-hidden")}>
+        <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="border-b border-white/[0.08] p-6 lg:border-b-0 lg:border-r">
+            <p className={EYEBROW_CLASS}>Daily Freelancer Practice</p>
+            <h1 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              One small daily quest to keep your profile active.
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground sm:text-[0.95rem]">
+              Answer a few questions, submit your quest, and earn progress for the day.
             </p>
+
+            <div className="mt-6">
+              <StreakCalendar
+                streakHistory={dashboard?.profile?.streakHistory}
+                currentStreak={streak}
+                completedToday={done}
+              />
+            </div>
           </div>
 
-          <div className="mb-10 flex flex-col items-center">
-            <div className="relative flex size-44 items-center justify-center">
-              <svg className="absolute inset-0 -rotate-90" width="176" height="176" viewBox="0 0 176 176">
-                <circle cx="88" cy="88" r="80" fill="none" stroke="currentColor" strokeWidth="12" className="text-border/50" />
-                <circle
-                  cx="88" cy="88" r="80" fill="none" stroke="currentColor" strokeWidth="12"
-                  className="text-primary"
-                  strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 80}`}
-                  strokeDashoffset={`${2 * Math.PI * 80 * (1 - xpPct / 100)}`}
-                  style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)" }}
-                />
-              </svg>
-              <div className="text-center">
-                <p className="text-4xl font-black tracking-tighter text-foreground">{xp}</p>
-                <p className="text-[0.7rem] font-bold uppercase tracking-widest text-muted-foreground">Total XP</p>
+          <div className="p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className={LABEL_CLASS}>Today</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">
+                  {done ? "Today's quest is complete" : "Ready for today's session"}
+                </p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-primary/10">
+                <Target className="size-4 text-primary" />
               </div>
             </div>
-            {nextThreshold && (
-              <p className="mt-4 text-[0.7rem] font-black uppercase tracking-widest text-muted-foreground">
-                <span className="text-foreground">{nextThreshold - xp} XP</span> until next level
-              </p>
-            )}
-          </div>
 
-          <div className="space-y-4 pt-6 border-t border-border/50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-background border border-border">
-                  <Flame className="size-4 text-orange-500" />
-                </div>
-                <div>
-                  <p className="text-[0.65rem] font-black uppercase tracking-wider text-muted-foreground">Streak</p>
-                  <p className="text-sm font-black text-foreground">{streak} Days</p>
-                </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-3")}>
+                <p className={LABEL_CLASS}>Attempts</p>
+                <p className="mt-1 text-base font-semibold text-foreground">
+                  {used}/{max}
+                </p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-background border border-border">
-                  <Star className="size-4 text-[#facc15]" />
-                </div>
-                <div>
-                  <p className="text-[0.65rem] font-black uppercase tracking-wider text-muted-foreground">Coins</p>
-                  <p className="text-sm font-black text-foreground">{coins}</p>
-                </div>
+              <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-3")}>
+                <p className={LABEL_CLASS}>Reset</p>
+                <p className="mt-1 text-base font-semibold text-foreground">UTC midnight</p>
+              </div>
+              <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-3")}>
+                <p className={LABEL_CLASS}>Time</p>
+                <p className="mt-1 text-base font-semibold text-foreground">About 5 minutes</p>
               </div>
             </div>
 
@@ -258,214 +315,310 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
               type="button"
               onClick={onStartQuest}
               disabled={done}
-              className={cn(
-                "group relative mt-4 flex h-14 w-full items-center justify-center gap-3 overflow-hidden rounded-2xl text-base font-black shadow-lg transition-all active:scale-[0.98]",
-                done 
-                  ? "cursor-not-allowed bg-muted text-muted-foreground" 
-                  : "bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-[1.02]"
-              )}
+              className={cn(PRIMARY_BUTTON_CLASS, "mt-5 w-full justify-center")}
             >
-              {!done && <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />}
               {done ? (
-                <><CheckCircle2 className="size-5" /> Completed</>
+                <>
+                  <CheckCircle2 className="size-4" />
+                  Completed for today
+                </>
               ) : (
-                <>Get Started <ArrowRight className="size-5 group-hover:translate-x-1 transition-transform" /></>
+                <>
+                  Start Growth Quest
+                  <ArrowRight className="size-4" />
+                </>
               )}
             </button>
-            <p className="text-center text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-              {isRetake ? `${max - used} retakes remaining` : "~5 mins · Resets at UTC midnight"}
+
+            <p className="mt-3 text-sm text-muted-foreground">
+              {isRetake
+                ? `${max - used} retake remaining today.`
+                : "Best attempt counts."}
             </p>
+
+            {error ? (
+              <div className="mt-4 rounded-[6px] border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive">
+                {error}
+              </div>
+            ) : null}
           </div>
         </div>
+      </section>
 
-        {/* Skill Breakdown (LeetCode "Difficulty" breakdown inspired) */}
-        <div className="rounded-3xl border border-border bg-card/50 p-6">
-          <h3 className="mb-4 text-[0.7rem] font-black uppercase tracking-widest text-muted-foreground text-center">Your Skillset</h3>
-          <div className="space-y-3">
-            {[
-              { label: "Execution", value: 85, color: "text-emerald-500" },
-              { label: "Strategy", value: 65, color: "text-primary" },
-              { label: "Knowledge", value: 40, color: "text-orange-500" },
-            ].map((skill) => (
-              <div key={skill.label} className="flex items-center justify-between gap-4">
-                <span className="text-xs font-bold text-foreground">{skill.label}</span>
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-24 rounded-full bg-border overflow-hidden">
-                    <div className={cn("h-full rounded-full bg-current", skill.color)} style={{ width: `${skill.value}%` }} />
-                  </div>
-                  <span className={cn("text-[0.65rem] font-black w-8 text-right", skill.color)}>{skill.value}%</span>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={Zap} label="Level" value={`L${levelNumber}`} sub={levelLabel} />
+        <StatCard icon={Flame} label="Streak" value={`${streak} days`} sub="Daily consistency" />
+        <StatCard icon={Star} label="Coins" value={coins} sub="Reward balance" />
+        <StatCard
+          icon={Trophy}
+          label="Progress"
+          value={`${xpPct}%`}
+          sub={nextThreshold ? `${nextThreshold - xp} XP to next level` : "Top tier reached"}
+        />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-6">
+          <div className={cn(CARD_CLASS, "p-6")}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className={EYEBROW_CLASS}>Progress Overview</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  Your progress today
+                </h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                  A simple view of your current level, XP progress, and estimated strengths.
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-[12px] bg-gradient-to-br from-primary/20 to-primary/5 shadow-[0_0_15px_rgba(255,193,7,0.15)]">
+                <Zap className="size-5 text-primary drop-shadow-[0_0_8px_rgba(255,193,7,0.8)]" />
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-5 md:grid-cols-[0.95fr_1.05fr]">
+              <div className={cn(SUBTLE_CARD_CLASS, "p-5")}>
+                <p className={LABEL_CLASS}>Total XP</p>
+                <p className="mt-2 text-4xl font-semibold tracking-tight text-foreground">
+                  {xp}
+                </p>
+                <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-black/40 shadow-inner">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-amber-500 to-primary transition-all duration-1000 ease-out"
+                    style={{ width: `${xpPct}%` }}
+                  />
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {nextThreshold
+                    ? `${nextThreshold - xp} XP until level ${levelNumber + 1}`
+                    : "You have reached the top listed level."}
+                </p>
+              </div>
+
+              <div className={cn(SUBTLE_CARD_CLASS, "p-5")}>
+                <div className="flex items-center justify-between gap-3">
+                  <p className={LABEL_CLASS}>Skill Breakdown</p>
+                  <span className="text-xs text-muted-foreground">Recent estimate</span>
+                </div>
+                <div className="mt-5 space-y-4">
+                  {SKILL_BREAKDOWN.map((skill) => (
+                    <div key={skill.label}>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-medium text-foreground">{skill.label}</span>
+                        <span className="text-sm text-muted-foreground">{skill.value}%</span>
+                      </div>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/40 shadow-inner">
+                        <div
+                          className={cn("h-full rounded-full transition-all duration-1000 ease-out", skill.barClass.replace('bg-', 'bg-gradient-to-r from-transparent to-'))}
+                          style={{ width: `${skill.value}%`, backgroundColor: skill.barClass.includes('emerald') ? '#10b981' : skill.barClass.includes('amber') ? '#f59e0b' : '#ffc107' }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
+            </div>
+          </div>
+
+          <BadgeShelf
+            badges={dashboard?.profile?.badges || []}
+            currentStreak={streak}
+          />
+
+          <ProcessSummaryCard processSummary={dashboard?.processSummary} />
+        </div>
+
+        <div className={cn(CARD_CLASS, "p-6")}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className={EYEBROW_CLASS}>Leaderboard</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                Weekly ranking
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                A quick look at how your consistency compares with other freelancers.
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-primary/10">
+              <Trophy className="size-4 text-primary" />
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {leaderboard.map((entry) => (
+              <LeaderRow key={entry.rank} {...entry} />
             ))}
           </div>
         </div>
-      </div>
-
-      {/* Right Column: Achievements & Insights (LeetCode problem list inspired) */}
-      <div className="lg:col-span-7 space-y-6">
-        <BadgeShelf badges={dashboard?.profile?.badges || []} currentStreak={streak} />
-        <ProcessSummaryCard processSummary={dashboard?.processSummary} />
-        
-        {/* Weekly Leaderboard */}
-        <div className="rounded-[32px] border border-border bg-card p-8">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <p className="text-[0.7rem] font-black uppercase tracking-[0.2em] text-muted-foreground">Community</p>
-              <h2 className="text-2xl font-black tracking-tight text-foreground">Weekly Leaderboard</h2>
-            </div>
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
-              <Trophy className="size-6 text-primary" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            {leaderboard.map((u) => <LeaderRow key={u.rank} {...u} />)}
-          </div>
-        </div>
-      </div>
+      </section>
     </div>
   );
 };
 
-/* ── Option Labels ─────────────────────────────────────── */
-const LABELS = ["A", "B", "C", "D", "E"];
+const QuizView = ({
+  questions,
+  activeIndex,
+  setActiveIndex,
+  selectedAnswers,
+  handleSelectAnswer,
+  onSubmit,
+  submitting,
+  canSubmit,
+  error,
+}) => {
+  const question = questions[activeIndex];
 
-/* ── Quiz View ─────────────────────────────────────────── */
-const QuizView = ({ questions, activeIndex, setActiveIndex, selectedAnswers, handleSelectAnswer, onSubmit, submitting, canSubmit, error }) => {
-  const q = questions[activeIndex];
-  if (!q) return null;
+  if (!question) return null;
+
   const answeredCount = Object.keys(selectedAnswers).length;
-  const progress = Math.round((answeredCount / questions.length) * 100);
 
   return (
-    <div className="mx-auto max-w-2xl">
-      {/* Header */}
-      <div className="mb-5 flex items-center justify-between gap-4">
-        <div className="flex flex-col">
-          <p className="whitespace-nowrap text-[0.7rem] font-black uppercase tracking-[0.18em] text-muted-foreground">Daily Growth Quest</p>
-          <h2 className="mt-0.5 whitespace-nowrap text-xl font-black text-foreground">
-            Question <span className="text-primary">{activeIndex + 1}</span>
-            <span className="text-muted-foreground"> of {questions.length}</span>
-          </h2>
+    <div className="mx-auto max-w-4xl">
+      <div className={cn(CARD_CLASS, "p-6 sm:p-8")}>
+        <div className="flex flex-col gap-4 border-b border-white/[0.08] pb-5 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className={EYEBROW_CLASS}>Daily Growth Quest</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+              Question {activeIndex + 1}
+              <span className="text-muted-foreground"> of {questions.length}</span>
+            </h2>
+          </div>
+          <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-3")}>
+            <p className={LABEL_CLASS}>Category</p>
+            <p className="mt-1 text-sm font-medium text-foreground">
+              {question.categoryLabel || "Client Readiness"}
+            </p>
+          </div>
         </div>
-        <span className="shrink-0 rounded-full border border-border bg-card px-3 py-1 text-xs font-bold text-muted-foreground">
-          {q.categoryLabel || "Client Readiness"}
-        </span>
-      </div>
 
-      {/* Segment progress bar */}
-      <div className="mb-6 flex gap-1.5">
-        {questions.map((qq, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => setActiveIndex(i)}
-            className={cn(
-              "h-1.5 flex-1 rounded-full transition-all",
-              selectedAnswers[qq.id] ? "bg-primary" : i === activeIndex ? "bg-primary/40" : "bg-border"
-            )}
-          />
-        ))}
-      </div>
-
-      {/* Card */}
-      <div className="rounded-[28px] border border-border bg-card p-6 sm:p-8">
-        <p className="text-lg font-bold leading-relaxed text-foreground">{q.questionText}</p>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 sm:items-stretch">
-          {(q.options || []).map((opt, idx) => {
-            const selected = selectedAnswers[q.id] === opt.id;
-            const label = LABELS[idx] || opt.id.toUpperCase();
+        <div className="mt-5 grid gap-2 sm:grid-cols-5">
+          {questions.map((entry, index) => {
+            const answered = Boolean(selectedAnswers[entry.id]);
+            const active = index === activeIndex;
             return (
               <button
-                key={opt.id}
+                key={entry.id}
                 type="button"
-                onClick={() => handleSelectAnswer(q.id, opt.id)}
+                onClick={() => setActiveIndex(index)}
                 className={cn(
-                  "flex h-full w-full cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left transition-all duration-150",
-                  selected
-                    ? "border-primary bg-primary/10 scale-[1.02]"
-                    : "border-border bg-background hover:border-primary/30 hover:bg-primary/5"
+                  "rounded-[6px] border px-3 py-2 text-left text-sm transition-colors",
+                  active
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : answered
+                      ? "border-primary/20 bg-background text-foreground"
+                      : "border-white/[0.08] bg-background/40 text-muted-foreground hover:border-primary/20",
                 )}
               >
-                <span className={cn(
-                  "flex size-8 shrink-0 items-center justify-center rounded-xl text-sm font-black transition-colors",
-                  selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                )}>
-                  {label}
-                </span>
-                <span className={cn("text-sm font-semibold leading-snug", selected ? "text-foreground" : "text-muted-foreground")}>
-                  {opt.text}
-                </span>
+                <span className="font-medium">Question {index + 1}</span>
               </button>
             );
           })}
         </div>
 
-        {error && <p className="mt-4 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
+        <div className="mt-6">
+          <div className={cn(SUBTLE_CARD_CLASS, "p-5 sm:p-6")}>
+            <p className="text-lg font-medium leading-8 text-foreground">
+              {question.questionText}
+            </p>
 
-        <div className="mt-7 flex items-center justify-between border-t border-border pt-5">
-          <button
-            type="button"
-            onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
-            disabled={activeIndex === 0}
-            className="flex h-10 items-center gap-2 rounded-full border border-border bg-background px-5 text-sm font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-30"
-          >
-            <ArrowLeft className="size-4" /> Previous
-          </button>
-          {activeIndex < questions.length - 1 ? (
-            <button
-              type="button"
-              onClick={() => setActiveIndex((i) => Math.min(questions.length - 1, i + 1))}
-              className="flex h-10 items-center gap-2 rounded-full bg-primary px-6 text-sm font-black text-primary-foreground shadow transition-all hover:scale-105 hover:bg-primary/90"
-            >
-              Next <ArrowRight className="size-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onSubmit}
-              disabled={!canSubmit || submitting}
-              className={cn(
-                "flex h-10 items-center gap-2 rounded-full px-6 text-sm font-black shadow transition-all hover:scale-105",
-                canSubmit && !submitting
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "cursor-not-allowed bg-muted text-muted-foreground hover:scale-100"
-              )}
-            >
-              {submitting ? <><Loader2 className="size-4 animate-spin" /> Submitting…</> : "Submit Quest ✓"}
-            </button>
-          )}
+            <div className="mt-6 grid gap-3 md:grid-cols-2">
+              {(question.options || []).map((option, index) => {
+                const selected = selectedAnswers[question.id] === option.id;
+                const label = LABELS[index] || option.id.toUpperCase();
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => handleSelectAnswer(question.id, option.id)}
+                    className={cn(
+                      "flex items-start gap-3 rounded-[6px] border px-4 py-4 text-left transition-colors",
+                      selected
+                        ? "border-primary/40 bg-primary/10"
+                        : "border-white/[0.08] bg-card hover:border-primary/20 hover:bg-white/[0.02]",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] text-xs font-semibold",
+                        selected
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground",
+                      )}
+                    >
+                      {label}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-sm leading-6",
+                        selected ? "text-foreground" : "text-muted-foreground",
+                      )}
+                    >
+                      {option.text}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {error ? (
+            <div className="mt-4 rounded-[6px] border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          ) : null}
         </div>
-      </div>
 
-      {/* Question nav dots */}
-      <div className="mt-4 flex flex-wrap justify-center gap-2">
-        {questions.map((qq, i) => {
-          const answered = !!selectedAnswers[qq.id];
-          const active = i === activeIndex;
-          return (
+        <div className="mt-6 flex flex-col gap-3 border-t border-white/[0.08] pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-muted-foreground">
+            {answeredCount}/{questions.length} answered
+          </div>
+
+          <div className="flex flex-wrap gap-3">
             <button
-              key={qq.id}
               type="button"
-              onClick={() => setActiveIndex(i)}
-              className={cn(
-                "flex size-8 items-center justify-center rounded-xl text-xs font-black transition-all",
-                active && !answered && "border-2 border-primary bg-primary/10 text-primary scale-110",
-                !active && !answered && "bg-card text-muted-foreground border border-border hover:border-primary/30",
-                answered && !active && "bg-primary/15 text-primary border border-primary/30",
-                answered && active && "bg-primary text-primary-foreground scale-110"
-              )}
+              onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
+              disabled={activeIndex === 0}
+              className={SECONDARY_BUTTON_CLASS}
             >
-              {i + 1}
+              <ArrowLeft className="size-4" />
+              Previous
             </button>
-          );
-        })}
+
+            {activeIndex < questions.length - 1 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveIndex((index) => Math.min(questions.length - 1, index + 1))
+                }
+                className={PRIMARY_BUTTON_CLASS}
+              >
+                Next
+                <ArrowRight className="size-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onSubmit}
+                disabled={!canSubmit || submitting}
+                className={PRIMARY_BUTTON_CLASS}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Submitting
+                  </>
+                ) : (
+                  "Submit Quest"
+                )}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-/* ── Result View ───────────────────────────────────────── */
 const ResultView = ({ result, nextResetAt, onBack }) => {
   const score = result?.scoreSummary || result?.score || {};
   const rewards = result?.rewardsAwarded || result?.rewards || {};
@@ -477,137 +630,157 @@ const ResultView = ({ result, nextResetAt, onBack }) => {
   const questionCount = score.questionCount || answers.length || 5;
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-      <div className="relative flex flex-col items-center overflow-hidden rounded-[32px] border border-border bg-card p-8 text-center shadow-xl sm:p-12">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.05] via-transparent to-transparent pointer-events-none" />
-        
-        <div className="relative mb-6 flex size-20 items-center justify-center rounded-3xl bg-primary/10 transition-transform hover:scale-110 duration-500">
-          <CheckCircle2 className="size-10 text-primary" />
-        </div>
-        
-        <p className="text-[0.8rem] font-black uppercase tracking-[0.25em] text-muted-foreground">Quest Completed!</p>
-        <h2 className="mt-4 text-7xl font-black tracking-tighter text-foreground sm:text-8xl">
-          {score.correctCount ?? 0}<span className="text-3xl font-bold text-muted-foreground sm:text-4xl">/{questionCount}</span>
-        </h2>
-        <div className="mt-2 flex items-center gap-2 rounded-full border border-border bg-background/50 px-4 py-1.5">
-          <Sparkles className="size-3.5 text-primary" />
-          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-            {score.accuracy ?? 0}% accuracy
-          </p>
-        </div>
-
-        {/* Rewards Grid */}
-        <div className="mt-10 grid w-full grid-cols-3 gap-3">
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-background/40 py-4 transition-all hover:bg-background/60">
-            <p className="text-2xl font-black text-primary">+{rewards.xpAwarded ?? 0}</p>
-            <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">XP</p>
-          </div>
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-background/40 py-4 transition-all hover:bg-background/60">
-            <p className="text-2xl font-black text-foreground">+{rewards.coinsAwarded ?? 0}</p>
-            <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Coins</p>
-          </div>
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-background/40 py-4 transition-all hover:bg-background/60">
-            <p className="text-2xl font-black text-foreground">{result?.streak?.currentStreak ?? 0}</p>
-            <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-               Streak <Flame className="size-3 text-[#facc15]" />
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Badge unlocked celebration */}
-      {Array.isArray(result?.unlockedBadges) && result.unlockedBadges.length > 0 && (
-        <div className="group flex items-center gap-5 rounded-[28px] border border-primary/30 bg-primary/10 px-8 py-5 shadow-lg shadow-primary/5 transition-all hover:bg-primary/15">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-4xl shadow-inner group-hover:scale-110 transition-transform">🏆</div>
-          <div className="min-w-0">
-            <p className="text-[0.7rem] font-black uppercase tracking-[0.15em] text-primary">Milestone Achieved!</p>
-            <p className="mt-1 truncate text-lg font-black leading-tight text-foreground">
-              {result.unlockedBadges.map((b) => b.title || b.key).join(", ")}
-            </p>
-            <p className="text-xs font-bold text-primary/70">Badge added to your profile.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Answer review */}
-      <div className="rounded-[32px] border border-border bg-card p-6 sm:p-8">
-        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto max-w-4xl space-y-6">
+      <section className={cn(CARD_CLASS, "p-6 sm:p-8")}>
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <h3 className="text-xl font-black tracking-tight text-foreground">Review Answers</h3>
-            <p className="text-xs font-bold text-muted-foreground">Deepen your professional readiness</p>
+            <p className={EYEBROW_CLASS}>Quest Completed</p>
+            <h2 className="mt-2 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+              {score.correctCount ?? 0}
+              <span className="ml-2 text-2xl text-muted-foreground sm:text-3xl">
+                / {questionCount}
+              </span>
+            </h2>
+            <div className="mt-4 inline-flex items-center gap-2 rounded-[6px] border border-white/[0.08] bg-background/60 px-3 py-2 text-sm text-muted-foreground">
+              <Sparkles className="size-4 text-primary" />
+              {score.accuracy ?? 0}% accuracy
+            </div>
+            <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
+              Quick summary of today&apos;s result.
+            </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-1.5 text-xs font-black uppercase tracking-wider text-muted-foreground">
-            {answers.filter((a) => a.isCorrect).length}/{answers.length} correct
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-4")}>
+              <p className={LABEL_CLASS}>XP Earned</p>
+              <p className="mt-2 text-2xl font-semibold text-primary">
+                +{rewards.xpAwarded ?? 0}
+              </p>
+            </div>
+            <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-4")}>
+              <p className={LABEL_CLASS}>Coins Earned</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                +{rewards.coinsAwarded ?? 0}
+              </p>
+            </div>
+            <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-4")}>
+              <p className={LABEL_CLASS}>Current Streak</p>
+              <p className="mt-2 flex items-center gap-2 text-2xl font-semibold text-foreground">
+                {result?.streak?.currentStreak ?? 0}
+                <Flame className="size-4 text-primary" />
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {Array.isArray(result?.unlockedBadges) && result.unlockedBadges.length > 0 ? (
+        <section className="rounded-[6px] border border-primary/20 bg-primary/8 px-5 py-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-primary/15">
+              <Trophy className="size-4 text-primary" />
+            </div>
+            <div>
+              <p className={LABEL_CLASS}>New Milestone</p>
+              <p className="mt-1 text-base font-medium text-foreground">
+                {result.unlockedBadges.map((badge) => badge.title || badge.key).join(", ")}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                The badge has been added to your profile.
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <section className={cn(CARD_CLASS, "p-6 sm:p-8")}>
+        <div className="flex flex-col gap-3 border-b border-white/[0.08] pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className={EYEBROW_CLASS}>Answer Review</p>
+            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+              Review answers
+            </h3>
+          </div>
+          <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-2 text-sm text-muted-foreground")}>
+            {answers.filter((answer) => answer.isCorrect).length}/{answers.length} correct
           </div>
         </div>
 
-        <div className="space-y-4 max-h-[520px] overflow-y-auto subtle-scrollbar pr-2">
-          {answers.map((a, i) => (
-            <div key={a.questionId} className={cn(
-              "group relative overflow-hidden rounded-[24px] border p-5 transition-all",
-              a.isCorrect 
-                ? "border-emerald-500/20 bg-emerald-500/[0.02] hover:bg-emerald-500/[0.05]" 
-                : "border-destructive/20 bg-destructive/[0.02] hover:bg-destructive/[0.05]"
-            )}>
-              <div className="flex items-start gap-4">
-                <div className={cn(
-                  "flex size-10 shrink-0 items-center justify-center rounded-full text-lg font-black transition-transform group-hover:scale-110",
-                  a.isCorrect ? "bg-emerald-500/10 text-emerald-500" : "bg-destructive/10 text-destructive"
-                )}>
-                  {a.isCorrect ? <CheckCircle2 className="size-5" /> : <XCircle className="size-5" />}
+        <div className="mt-5 space-y-4">
+          {answers.map((answer, index) => (
+            <div
+              key={answer.questionId}
+              className={cn(
+                "rounded-[6px] border px-4 py-4",
+                answer.isCorrect
+                  ? "border-emerald-500/20 bg-emerald-500/[0.04]"
+                  : "border-destructive/20 bg-destructive/[0.04]",
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px]",
+                    answer.isCorrect
+                      ? "bg-emerald-500/12 text-emerald-500"
+                      : "bg-destructive/12 text-destructive",
+                  )}
+                >
+                  {answer.isCorrect ? (
+                    <CheckCircle2 className="size-4" />
+                  ) : (
+                    <XCircle className="size-4" />
+                  )}
                 </div>
+
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start gap-2">
-                    <span className="mt-0.5 text-sm font-black text-muted-foreground">{i + 1}.</span>
-                    <p className="text-sm font-bold leading-relaxed text-foreground">
-                      {a.questionText}
+                    <span className="pt-0.5 text-sm text-muted-foreground">{index + 1}.</span>
+                    <p className="text-sm font-medium leading-6 text-foreground">
+                      {answer.questionText}
                     </p>
                   </div>
-                  {!a.isCorrect && (
-                    <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-1.5 text-[0.7rem] font-black uppercase tracking-wider text-destructive">
-                      Correct: {String(a.correctOptionId).toUpperCase()}
+
+                  {!answer.isCorrect ? (
+                    <div className="mt-3 inline-flex rounded-[6px] border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive">
+                      Correct answer: {String(answer.correctOptionId).toUpperCase()}
                     </div>
-                  )}
-                  {a.explanation && (
-                    <div className="mt-4 rounded-2xl border border-border/50 bg-background/50 px-5 py-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Info className="size-3 text-muted-foreground" />
-                        <p className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Why this matters</p>
+                  ) : null}
+
+                  {answer.explanation ? (
+                    <div className={cn(SUBTLE_CARD_CLASS, "mt-4 px-4 py-3")}>
+                      <div className="flex items-center gap-2">
+                        <Info className="size-3.5 text-muted-foreground" />
+                        <p className={LABEL_CLASS}>Why this matters</p>
                       </div>
-                      <p className="text-[0.8rem] font-medium leading-relaxed text-muted-foreground">
-                        {a.explanation}
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {answer.explanation}
                       </p>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div className="flex flex-col gap-5 pt-4">
-        <div className="flex items-center justify-center gap-2 rounded-full border border-border bg-card/50 py-3 px-6 mx-auto">
-          <Clock className="size-3.5 text-muted-foreground" />
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-            Next Quest Unlocks: <span className="font-black text-foreground ml-1">{formatReset(nextResetAt)}</span>
-          </p>
+      <section className="flex flex-col gap-4">
+        <div className="mx-auto flex items-center gap-2 rounded-[6px] border border-white/[0.08] bg-card px-4 py-3 text-sm text-muted-foreground">
+          <Clock className="size-4" />
+          Next quest unlocks at{" "}
+          <span className="font-medium text-foreground">{formatReset(nextResetAt)}</span>
         </div>
-        
-        <button
-          type="button"
-          onClick={onBack}
-          className="group relative flex h-14 w-full items-center justify-center gap-3 overflow-hidden rounded-full bg-primary px-8 text-base font-black text-primary-foreground shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-          Back to Dashboard <ArrowRight className="size-5 group-hover:translate-x-1 transition-transform" />
+
+        <button type="button" onClick={onBack} className={cn(PRIMARY_BUTTON_CLASS, "w-full")}>
+          Back to Growth Hub
+          <ArrowRight className="size-4" />
         </button>
-      </div>
+      </section>
     </div>
   );
 };
 
-/* ── Page ──────────────────────────────────────────────── */
 const FreelancerGrowthQuestPage = () => {
   const { authFetch } = useAuth();
   const navigate = useNavigate();
@@ -623,97 +796,185 @@ const FreelancerGrowthQuestPage = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [idempotencyKey, setIdempotencyKey] = useState(makeKey);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     if (!authFetch) return;
+
     setLoadingDashboard(true);
+
     try {
-      const res = await authFetch("/engagement/dashboard", { suppressToast: true });
-      const payload = await res.json().catch(() => null);
-      if (res.ok) setDashboard(payload?.data || null);
-    } catch { /* silent */ } finally { setLoadingDashboard(false); }
+      const response = await authFetch("/engagement/dashboard", {
+        suppressToast: true,
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (response.ok) {
+        setDashboard(payload?.data || null);
+      }
+    } catch {
+      // Silent by design. The page handles empty state presentation.
+    } finally {
+      setLoadingDashboard(false);
+    }
   }, [authFetch]);
 
-  useEffect(() => { if (view === "dashboard") loadDashboard(); }, [view, loadDashboard]);
+  useEffect(() => {
+    if (view === "dashboard") {
+      loadDashboard();
+    }
+  }, [loadDashboard, view]);
 
   const startQuest = async () => {
     if (!authFetch) return;
+
     setLoadingQuest(true);
     setError("");
+
     try {
-      const res = await authFetch("/engagement/daily/start", { method: "POST", suppressToast: true });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.message || "Failed to start quest.");
+      const response = await authFetch("/engagement/daily/start", {
+        method: "POST",
+        suppressToast: true,
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to start quest.");
+      }
+
       const data = payload?.data || {};
       setQuest(data);
-      if (data.status === "completed") { setResult(data.resultSummary || null); setView("result"); }
-      else { setIdempotencyKey(makeKey()); setSelectedAnswers({}); setActiveIndex(0); setView("quiz"); }
-    } catch (err) { setError(err?.message || "Quest unavailable."); }
-    finally { setLoadingQuest(false); }
+
+      if (data.status === "completed") {
+        setResult(data.resultSummary || null);
+        setView("result");
+      } else {
+        setIdempotencyKey(makeKey());
+        setSelectedAnswers({});
+        setActiveIndex(0);
+        setView("quiz");
+      }
+    } catch (err) {
+      setError(err?.message || "Quest unavailable.");
+    } finally {
+      setLoadingQuest(false);
+    }
   };
 
-  const questions = useMemo(() => Array.isArray(quest?.questions) ? quest.questions : [], [quest?.questions]);
-  const canSubmit = questions.length > 0 && questions.every((q) => selectedAnswers[q.id]);
-  const handleSelectAnswer = (qId, optId) => setSelectedAnswers((prev) => ({ ...prev, [qId]: optId }));
+  const questions = useMemo(
+    () => (Array.isArray(quest?.questions) ? quest.questions : []),
+    [quest?.questions],
+  );
+  const canSubmit =
+    questions.length > 0 && questions.every((question) => selectedAnswers[question.id]);
+
+  const handleSelectAnswer = (questionId, optionId) => {
+    setSelectedAnswers((current) => ({
+      ...current,
+      [questionId]: optionId,
+    }));
+  };
 
   const handleSubmit = async () => {
     if (!authFetch || !canSubmit || submitting) return;
+
     setSubmitting(true);
     setError("");
+
     try {
-      const res = await authFetch("/engagement/daily/submit", {
+      const response = await authFetch("/engagement/daily/submit", {
         method: "POST",
-        body: JSON.stringify({ idempotencyKey, answers: questions.map((q) => ({ questionId: q.id, selectedOptionId: selectedAnswers[q.id] })) }),
+        body: JSON.stringify({
+          idempotencyKey,
+          answers: questions.map((question) => ({
+            questionId: question.id,
+            selectedOptionId: selectedAnswers[question.id],
+          })),
+        }),
       });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.message || "Failed to submit.");
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to submit.");
+      }
+
       const data = payload?.data || {};
-      setQuest(data); setResult(data.resultSummary || null); setView("result");
-      toast.success("Growth Quest completed! 🎉");
+      setQuest(data);
+      setResult(data.resultSummary || null);
+      setView("result");
+      toast.success("Growth Quest completed.");
       window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (err) { setError(err?.message || "Submission failed."); toast.error(err?.message || "Submission failed"); }
-    finally { setSubmitting(false); }
+    } catch (err) {
+      setError(err?.message || "Submission failed.");
+      toast.error(err?.message || "Submission failed.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const [infoOpen, setInfoOpen] = useState(false);
-
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className={PAGE_CLASS}>
       <InfoModal open={infoOpen} onClose={() => setInfoOpen(false)} />
-      <FreelancerTopBar />
-      <main className="mx-auto w-full max-w-[1200px] px-5 pb-16 pt-8 sm:px-8 lg:px-10">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => { if (view === "quiz") setView("dashboard"); else navigate("/freelancer"); }}
-              className="flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-black text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground hover:scale-105 active:scale-95 shadow-sm"
-            >
-              <ArrowLeft className="size-4" />
-              {view === "quiz" ? "Cancel Quest" : "Back Home"}
-            </button>
-            <div className="h-4 w-px bg-border" />
-            <p className="text-[0.65rem] font-black uppercase tracking-[0.15em] text-muted-foreground">
-              {view === "quiz" ? "Growth Quiz" : view === "result" ? "Quest Review" : "Growth Hub"}
+
+      <main className="mx-auto w-full max-w-[1240px] px-5 pb-16 pt-28 sm:px-8 lg:px-10">
+        <div className="mb-8 flex flex-col gap-4 border-b border-white/[0.06] pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (view === "quiz") {
+                    setView("dashboard");
+                    return;
+                  }
+
+                  navigate("/");
+                }}
+                className={SECONDARY_BUTTON_CLASS}
+              >
+                <ArrowLeft className="size-4" />
+                {view === "quiz" ? "Cancel quest" : "Back"}
+              </button>
+              <p className={EYEBROW_CLASS}>
+                {view === "quiz"
+                  ? "Growth Quest Session"
+                  : view === "result"
+                    ? "Quest Review"
+                    : "Freelancer Growth Hub"}
+              </p>
+            </div>
+
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              Growth Quest
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-[0.95rem]">
+              Simple daily questions, quick progress, and one clear action.
             </p>
           </div>
-          
+
           <button
             type="button"
             onClick={() => setInfoOpen(true)}
-            title="How does Growth Quest work?"
-            className="flex h-10 items-center gap-2 rounded-full border border-border bg-card px-4 text-xs font-black text-muted-foreground transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary hover:scale-105 active:scale-95 shadow-sm"
+            className={SECONDARY_BUTTON_CLASS}
+            title="How Growth Quest works"
           >
             <Info className="size-4" />
-            <span className="hidden sm:inline">How it works</span>
+            How it works
           </button>
         </div>
 
-        {view === "dashboard" && <DashboardView dashboard={dashboard} loading={loadingDashboard} error={error} onStartQuest={startQuest} />}
+        {view === "dashboard" ? (
+          <DashboardView
+            dashboard={dashboard}
+            loading={loadingDashboard}
+            error={error}
+            onStartQuest={startQuest}
+          />
+        ) : null}
 
-        {view === "quiz" && (
+        {view === "quiz" ? (
           loadingQuest ? (
-            <div className="flex min-h-[400px] items-center justify-center">
+            <div className="flex min-h-[420px] items-center justify-center">
               <Loader2 className="size-7 animate-spin text-primary" />
             </div>
           ) : (
@@ -729,9 +990,15 @@ const FreelancerGrowthQuestPage = () => {
               error={error}
             />
           )
-        )}
+        ) : null}
 
-        {view === "result" && <ResultView result={result} nextResetAt={quest?.nextResetAt} onBack={() => setView("dashboard")} />}
+        {view === "result" ? (
+          <ResultView
+            result={result}
+            nextResetAt={quest?.nextResetAt}
+            onBack={() => setView("dashboard")}
+          />
+        ) : null}
       </main>
     </div>
   );
