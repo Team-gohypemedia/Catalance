@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../../../middlewares/require-auth.js";
 import { validateResource } from "../../../middlewares/validate-resource.js";
 import {
+  acceptContractHandler,
   getBadgesHandler,
   getDashboard,
   getProcessReportHandler,
@@ -23,3 +24,5 @@ freelancerEngagementRouter.post(
 );
 freelancerEngagementRouter.get("/process-report", getProcessReportHandler);
 freelancerEngagementRouter.get("/badges", getBadgesHandler);
+
+freelancerEngagementRouter.post("/contracts/:id/accept", acceptContractHandler);

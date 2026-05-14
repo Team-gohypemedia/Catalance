@@ -13,6 +13,9 @@ const MODELED_PROFILE_DETAILS_KEYS = new Set([
 ]);
 
 const MODELED_IDENTITY_KEYS = new Set([
+  "dateOfBirth",
+  "address",
+  "pincode",
   "city",
   "country",
   "username",
@@ -51,6 +54,51 @@ const toOptionalBoolean = (value) => {
   if (["true", "1", "yes", "y"].includes(normalized)) return true;
   if (["false", "0", "no", "n"].includes(normalized)) return false;
   return null;
+};
+
+const toOptionalDate = (value) => {
+  if (value === undefined || value === null || value === "") return null;
+
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return new Date(
+      Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate())
+    );
+  }
+
+  const normalized = String(value).trim();
+  if (!normalized) return null;
+
+  const dateParts = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateParts) {
+    const year = Number(dateParts[1]);
+    const month = Number(dateParts[2]);
+    const day = Number(dateParts[3]);
+    const candidate = new Date(Date.UTC(year, month - 1, day));
+    if (
+      candidate.getUTCFullYear() === year &&
+      candidate.getUTCMonth() === month - 1 &&
+      candidate.getUTCDate() === day
+    ) {
+      return candidate;
+    }
+    return null;
+  }
+
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Date(
+    Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate())
+  );
+};
+
+const toOptionalDateString = (value) => {
+  if (value === undefined || value === null || value === "") return null;
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toISOString().slice(0, 10);
 };
 
 const toStringArray = (value) =>
@@ -251,6 +299,11 @@ export const buildFreelancerProfileDetailsRecord = ({
       normalizedProfileDetails.communicationPolicyAccepted
     ),
     acceptInProgressProjects,
+    dateOfBirth: toOptionalDate(
+      identity.dateOfBirth ?? normalizedProfileDetails.dateOfBirth
+    ),
+    address: toOptionalString(identity.address),
+    pincode: toOptionalString(identity.pincode),
     city: toOptionalString(identity.city),
     country: toOptionalString(identity.country),
     username: toOptionalString(identity.username),
@@ -348,6 +401,18 @@ export const buildFreelancerProfileDetailsObject = (record = null) => {
       country: mergeWithFallback(
         toOptionalString(normalizedRecord.country),
         legacyIdentity.country
+      ),
+      dateOfBirth: mergeWithFallback(
+        toOptionalDateString(normalizedRecord.dateOfBirth),
+        legacyIdentity.dateOfBirth
+      ),
+      address: mergeWithFallback(
+        toOptionalString(normalizedRecord.address),
+        legacyIdentity.address
+      ),
+      pincode: mergeWithFallback(
+        toOptionalString(normalizedRecord.pincode),
+        legacyIdentity.pincode
       ),
       username: mergeWithFallback(
         toOptionalString(normalizedRecord.username),

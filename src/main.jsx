@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import "./index.css";
 import App from "./App.jsx";
 import { Toaster } from "@/components/ui/sonner";
@@ -10,16 +10,27 @@ import ScrollToTop from "@/components/common/ScrollToTop";
 
 import "./font.css";
 
+const RootApp = () => (
+  <>
+    <ScrollToTop />
+    <AuthProvider>
+      <NotificationProvider>
+        <App />
+        <Toaster richColors position="top-right" />
+      </NotificationProvider>
+    </AuthProvider>
+  </>
+);
+
+const router = createBrowserRouter([
+  {
+    path: "*",
+    element: <RootApp />,
+  },
+]);
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <BrowserRouter>
-      <ScrollToTop />
-      <AuthProvider>
-        <NotificationProvider>
-          <App />
-          <Toaster richColors position="top-right" />
-        </NotificationProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <RouterProvider router={router} />
   </StrictMode>,
 );

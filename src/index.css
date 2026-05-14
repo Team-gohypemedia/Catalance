@@ -348,3 +348,132 @@ body[data-scroll-locked] {
   }
 
 }
+
+@theme {
+  --color-primary: #ffcc00;
+  --color-primary-container: #4d3d00;
+  --color-on-primary-container: #ffe680;
+  --color-surface: #0a0a0b;
+  --color-surface-container: #121214;
+  --color-on-surface: #ffffff;
+  --color-on-surface-variant: #a1a1aa;
+  --color-error: #ef4444;
+
+  --spacing-gutter: 1.5rem;
+  --spacing-section-gap: 2rem;
+
+  --font-display: 'Hanken Grotesk', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+}
+
+@layer utilities {
+  .cinematic-bg {
+      background-color: #050505;
+      background-image: 
+          radial-gradient(circle at 0% 0%, rgba(82, 3, 213, 0.15) 0%, transparent 50%),
+          radial-gradient(circle at 100% 100%, rgba(255, 204, 0, 0.08) 0%, transparent 50%);
+  }
+
+  .glass-panel {
+      background: rgba(18, 18, 20, 0.65);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .glass-plus {
+      box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+                  0 8px 32px -12px rgba(0, 0, 0, 0.8);
+  }
+
+  .glass-pill {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(12px);
+      border-radius: 9999px;
+  }
+
+  .font-display-lg {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 2.5rem;
+      line-height: 1.1;
+  }
+
+  .font-display {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.75rem;
+      line-height: 1.2;
+  }
+
+  .font-display-sm {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.25rem;
+      line-height: 1.3;
+  }
+
+  .font-body-md {
+      font-family: var(--font-body);
+      font-weight: 400;
+      font-size: 1rem;
+      line-height: 1.6;
+  }
+  
+  .font-body {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 0.875rem;
+      line-height: 1.5;
+  }
+
+  .font-eyebrow {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.875rem;
+      letter-spacing: 0.1em;
+  }
+
+  .font-eyebrow-sm {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+  }
+
+  .shimmer-premium {
+      background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 204, 0, 0.2) 50%,
+          transparent 100%
+      );
+      background-size: 200% 100%;
+      animation: scan 4s ease-in-out infinite;
+  }
+
+  .circuit-bg {
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M54.627 0l.83.83v58.34h-58.34l-.83-.83A29.95 29.95 0 0 0 0 29.83a29.95 29.95 0 0 0 29.83 29.83 29.95 29.95 0 0 0 29.83-29.83A29.95 29.95 0 0 0 54.627 0z' fill-rule='evenodd' fill='%23ffffff' fill-opacity='0.02'/%3E%3C/svg%3E");
+  }
+
+  .streak-day {
+      @apply w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300;
+  }
+  
+  .streak-completed {
+      @apply bg-primary/20 text-primary border border-primary shadow-[0_0_10px_rgba(255,204,0,0.3)];
+  }
+  
+  .streak-future {
+      @apply bg-surface-container text-on-surface-variant border border-white/5;
+  }
+  
+  .streak-missed {
+      @apply bg-error/10 text-error border border-error/30;
+  }
+
+  @keyframes scan {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+  }
+}

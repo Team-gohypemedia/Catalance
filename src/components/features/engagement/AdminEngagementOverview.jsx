@@ -7,6 +7,7 @@ import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Search from "lucide-react/dist/esm/icons/search";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Users from "lucide-react/dist/esm/icons/users";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import AdminLayout from "@/components/features/admin/AdminLayout";
 import { AdminTopBar } from "@/components/features/admin/AdminTopBar";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/shared/context/AuthContext";
+import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
 const MetricCard = ({ icon: Icon, title, value, description, tone = "default" }) => (
@@ -135,13 +137,21 @@ const AdminEngagementOverview = () => {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button
+                        <Button
               type="button"
               variant="outline"
               className="rounded-xl border-white/10 px-6 font-bold"
               onClick={() => navigate("/admin/engagement/questions")}
             >
               Manage Bank
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl border-primary/20 bg-primary/10 px-6 font-bold text-primary hover:bg-primary/20 hover:text-primary"
+              onClick={() => navigate("/admin/engagement/contests")}
+            >
+              Manage Contests
             </Button>
             <Button
               type="button"
@@ -300,3 +310,4 @@ const AdminEngagementOverview = () => {
 };
 
 export default AdminEngagementOverview;
+

@@ -1,5 +1,5 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import Settings from "lucide-react/dist/esm/icons/settings";
@@ -32,7 +32,10 @@ import {
   resolveStateOptionsForCountry,
 } from "@/components/features/freelancer/onboarding/constants";
 import { normalizeUsernameInput } from "@/components/features/freelancer/onboarding/utils";
-import { FREELANCER_DASHBOARD_PATH } from "@/shared/lib/dashboard-preference";
+import {
+  FREELANCER_DASHBOARD_PATH,
+  FREELANCER_ONBOARDING_PATH,
+} from "@/shared/lib/dashboard-preference";
 import {
   createEmptyServiceCaseStudy,
   createEmptyServiceDraft,
@@ -49,6 +52,7 @@ import {
   serializeServiceDraft,
 } from "./service-details";
 import { getOnboardingSlides as getOnboardingSlideSet } from "./constants";
+import useOnboardingHistoryGuard from "@/components/freelancer/onboarding/useOnboardingHistoryGuard";
 import AgencyOnboardingShell from "../Agency-Onboarding/AgencyOnboardingShell";
 import FreelancerWelcomeSlide from "./slides/FreelancerWelcomeSlide";
 import FreelancerWorkPreferenceSlide from "./slides/FreelancerWorkPreferenceSlide";
@@ -103,6 +107,9 @@ const BASIC_PROFILE_FIELD_ORDER = [
 const createInitialBasicProfileForm = () => ({
   fullName: "",
   username: "",
+  dateOfBirth: "",
+  address: "",
+  pincode: "",
   professionalBio: "",
   country: "India",
   state: "",
@@ -384,6 +391,9 @@ const sanitizeBasicProfileFormForDraft = (form) => {
     ...initialForm,
     fullName: String(sourceForm.fullName || "").trim(),
     username: normalizeUsernameInput(sourceForm.username || ""),
+    dateOfBirth: String(sourceForm.dateOfBirth || "").trim(),
+    address: String(sourceForm.address || "").trim(),
+    pincode: String(sourceForm.pincode || "").trim(),
     professionalBio: String(sourceForm.professionalBio || "").trim(),
     country: String(sourceForm.country || initialForm.country || "India").trim(),
     state: String(sourceForm.state || "").trim(),
@@ -1005,6 +1015,11 @@ const FreelancerOnboardingShell = () => {
       username: normalizeUsernameInput(
         identity.username || user.username || currentForm.username,
       ),
+      dateOfBirth: String(
+        identity.dateOfBirth || currentForm.dateOfBirth || "",
+      ).trim(),
+      address: String(identity.address || currentForm.address || "").trim(),
+      pincode: String(identity.pincode || currentForm.pincode || "").trim(),
       professionalBio: String(
         profileDetails.professionalBio || user.professionalBio || user.bio || "",
       ).trim(),
@@ -2019,6 +2034,16 @@ const FreelancerOnboardingShell = () => {
         ...currentIdentity,
         fullName: resolvedFullName,
         username: normalizeUsernameInput(basicProfileForm.username),
+        dateOfBirth:
+          String(
+            basicProfileForm.dateOfBirth || currentIdentity.dateOfBirth || "",
+          ).trim() || null,
+        address: String(
+          basicProfileForm.address || currentIdentity.address || "",
+        ).trim() || null,
+        pincode: String(
+          basicProfileForm.pincode || currentIdentity.pincode || "",
+        ).trim() || null,
         country: basicProfileForm.country.trim(),
         city: basicProfileForm.state.trim(),
         languages: Array.isArray(basicProfileForm.languages)
@@ -2183,6 +2208,12 @@ const FreelancerOnboardingShell = () => {
 
     setCurrentSlideIndex((currentIndex) => Math.max(currentIndex - 1, 0));
   };
+
+  useOnboardingHistoryGuard({
+    routePath: FREELANCER_ONBOARDING_PATH,
+    enabled: !showAgencyFlow,
+    onBlockedBack: handleBack,
+  });
 
   const clearServiceStepValidationErrors = useCallback((stepId) => {
     const normalizedStepId = String(stepId || "").trim();
@@ -2892,29 +2923,17 @@ const FreelancerOnboardingShell = () => {
           style={{ width: `${progressValue}%` }}
         />
         <div className="relative flex items-center justify-between px-4 py-4 sm:px-6">
-          {isFirstSlide ? (
-              <Button
-                asChild
-                variant="secondary"
-                className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
-              >
-                <Link to={FREELANCER_DASHBOARD_PATH} replace>
-                  <ChevronLeft className="h-4 w-4" />
-                  Back to dashboard
-                </Link>
-              </Button>
-          ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                onClick={handleBack}
-                className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
-                aria-label="Back to dashboard"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-          )}
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            onClick={handleBack}
+            disabled={isFirstSlide}
+            className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+            aria-label="Back"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
 
           <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
             <SheetTrigger asChild>

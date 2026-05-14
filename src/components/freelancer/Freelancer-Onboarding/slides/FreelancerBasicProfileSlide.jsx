@@ -1,12 +1,15 @@
 import Check from "lucide-react/dist/esm/icons/check";
+import { format } from "date-fns";
 import { useRef, useState } from "react";
 import Camera from "lucide-react/dist/esm/icons/camera";
+import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 
+import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,6 +74,33 @@ const getInitials = (value = "") => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
+const parseDateOfBirthValue = (value = "") => {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) {
+    return null;
+  }
+
+  const [yearPart, monthPart, dayPart] = normalizedValue.split("-");
+  const year = Number(yearPart);
+  const month = Number(monthPart);
+  const day = Number(dayPart);
+
+  if (![year, month, day].every(Number.isFinite)) {
+    return null;
+  }
+
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+};
+
 const FreelancerBasicProfileSlide = ({
   slide,
   basicProfileForm,
@@ -92,6 +122,7 @@ const FreelancerBasicProfileSlide = ({
   const deviceInputRef = useRef(null);
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isDateOfBirthMenuOpen, setIsDateOfBirthMenuOpen] = useState(false);
   const normalizedStateOptions = Array.isArray(stateOptions) ? stateOptions : [];
   const hasStateOptions = normalizedStateOptions.length > 0;
   const stateSelectValue =
@@ -106,6 +137,7 @@ const FreelancerBasicProfileSlide = ({
   const professionalBioError = basicProfileErrors.professionalBio;
   const countryError = basicProfileErrors.country;
   const stateError = basicProfileErrors.state;
+  const dateOfBirthError = basicProfileErrors.dateOfBirth;
   const languagesError = basicProfileErrors.languages;
   const profilePhotoError = basicProfileErrors.profilePhoto;
   const resumeError = basicProfileErrors.resume;
@@ -126,7 +158,9 @@ const FreelancerBasicProfileSlide = ({
   const usernameHelperText = {
     idle: "",
     checking: "Checking username availability...",
-    available: "Username is available.",
+    available: basicProfileForm.username
+      ? `${basicProfileForm.username} is available.`
+      : "Username is available.",
     unavailable: "That username is already taken.",
     error: "Unable to verify username right now.",
   };
@@ -140,6 +174,7 @@ const FreelancerBasicProfileSlide = ({
   const fullNameValue = String(basicProfileForm.fullName || "").trim();
   const profileInitials = getInitials(fullNameValue);
   const isUsernameAvailable = usernameStatus === "available" && !usernameError;
+  const selectedDateOfBirth = parseDateOfBirthValue(basicProfileForm.dateOfBirth);
 
   const getFieldLabelClasses = (hasError) =>
     cn(
@@ -313,69 +348,134 @@ const FreelancerBasicProfileSlide = ({
               ) : null}
             </div>
 
-            <div className="space-y-3">
-              <Label className={getFieldLabelClasses(Boolean(usernameError))}>
-                Username
-              </Label>
-              <div className="relative">
-                <Input
-                  value={basicProfileForm.username}
-                  onChange={(event) =>
-                    onBasicProfileFieldChange("username", event.target.value)
-                  }
-                  onBlur={onUsernameBlur}
-                  placeholder="Enter username"
-                  className={getInputClasses(Boolean(usernameError), "pr-14")}
-                  aria-invalid={Boolean(usernameError)}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                />
-                {usernameStatus === "checking" ? (
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/45">
-                    <Loader2 className="size-4 animate-spin" />
-                  </span>
-                ) : null}
-                {isUsernameAvailable ? (
-                  <span className="pointer-events-none absolute right-4 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_0_0_1px_rgba(16,185,129,0.28)]">
-                    <Check className="size-4" />
-                  </span>
-                ) : null}
-                {usernameStatus === "unavailable" && !usernameError ? (
-                  <span className="pointer-events-none absolute right-4 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-destructive text-white">
-                    <X className="size-3.5" />
-                  </span>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-3">
+                <Label className={getFieldLabelClasses(Boolean(usernameError))}>
+                  Username
+                </Label>
+                <div className="relative">
+                  <Input
+                    value={basicProfileForm.username}
+                    onChange={(event) =>
+                      onBasicProfileFieldChange("username", event.target.value)
+                    }
+                    onBlur={onUsernameBlur}
+                    placeholder="Enter username"
+                    className={getInputClasses(Boolean(usernameError), "pr-14")}
+                    aria-invalid={Boolean(usernameError)}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+                  {usernameStatus === "checking" ? (
+                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/45">
+                      <Loader2 className="size-4 animate-spin" />
+                    </span>
+                  ) : null}
+                  {isUsernameAvailable ? (
+                    <span className="pointer-events-none absolute right-4 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_0_0_1px_rgba(16,185,129,0.28)]">
+                      <Check className="size-4" />
+                    </span>
+                  ) : null}
+                  {usernameStatus === "unavailable" && !usernameError ? (
+                    <span className="pointer-events-none absolute right-4 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-destructive text-white">
+                      <X className="size-3.5" />
+                    </span>
+                  ) : null}
+                </div>
+                {usernameError ? (
+                  <p className="text-sm text-destructive">{usernameError}</p>
+                ) : usernameStatus !== "idle" && usernameHelperText[usernameStatus] ? (
+                  <p
+                    className={cn(
+                      "text-sm",
+                      isUsernameAvailable && "text-emerald-400",
+                      usernameStatus === "checking" && "text-white/45",
+                      usernameStatus === "unavailable" && "text-destructive",
+                      usernameStatus === "error" && "text-amber-400",
+                    )}
+                  >
+                    {usernameHelperText[usernameStatus]}
+                  </p>
                 ) : null}
               </div>
-              {usernameError ? (
-                <p className="text-sm text-destructive">{usernameError}</p>
-              ) : usernameStatus !== "idle" && usernameHelperText[usernameStatus] ? (
-                <p
-                  className={cn(
-                    "text-sm",
-                    isUsernameAvailable && "text-emerald-400",
-                    usernameStatus === "checking" && "text-white/45",
-                    usernameStatus === "unavailable" && "text-destructive",
-                    usernameStatus === "error" && "text-amber-400",
-                  )}
+
+              <div className="space-y-3">
+                <Label className={getFieldLabelClasses(Boolean(dateOfBirthError))}>
+                  Date of Birth
+                </Label>
+                <Popover
+                  open={isDateOfBirthMenuOpen}
+                  onOpenChange={setIsDateOfBirthMenuOpen}
                 >
-                  {usernameHelperText[usernameStatus]}
-                </p>
-              ) : null}
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        getInputClasses(
+                          Boolean(dateOfBirthError),
+                          "w-full flex items-center justify-between gap-3 text-left",
+                        ),
+                        !selectedDateOfBirth && "text-muted-foreground",
+                      )}
+                      aria-invalid={Boolean(dateOfBirthError)}
+                    >
+                      <span className="truncate">
+                        {selectedDateOfBirth
+                          ? format(selectedDateOfBirth, "PPP")
+                          : "Select date of birth"}
+                      </span>
+                      <CalendarDays className="size-4 shrink-0 text-white/40" />
+                    </button>
+                  </PopoverTrigger>
+
+                  <PopoverContent
+                    align="start"
+                    sideOffset={8}
+                    className="w-auto rounded-[18px] border border-white/10 bg-[#161616] p-0 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                  >
+                    <Calendar
+                      mode="single"
+                      captionLayout="dropdown"
+                      fromYear={1900}
+                      toYear={new Date().getFullYear()}
+                      selected={selectedDateOfBirth || undefined}
+                      onSelect={(date) => {
+                        onBasicProfileFieldChange(
+                          "dateOfBirth",
+                          date ? format(date, "yyyy-MM-dd") : "",
+                        );
+                        setIsDateOfBirthMenuOpen(false);
+                      }}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {dateOfBirthError ? (
+                  <p className="text-sm text-destructive">{dateOfBirthError}</p>
+                ) : null}
+              </div>
             </div>
 
           </div>
         </div>
 
         <div className="w-full space-y-3">
-          <Label className={getFieldLabelClasses(Boolean(professionalBioError))}>
-            Professional Bio
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label className={getFieldLabelClasses(Boolean(professionalBioError))}>
+              Professional Bio
+            </Label>
+            <span className="text-xs text-muted-foreground">
+              {String(basicProfileForm.professionalBio || "").length}/600
+            </span>
+          </div>
           <Textarea
             value={basicProfileForm.professionalBio}
             onChange={(event) =>
               onBasicProfileFieldChange("professionalBio", event.target.value)
             }
+            maxLength={600}
             placeholder="Tell us about your background, expertise, and what makes you unique..."
             className={getTextAreaClasses(Boolean(professionalBioError))}
             aria-invalid={Boolean(professionalBioError)}
@@ -443,47 +543,22 @@ const FreelancerBasicProfileSlide = ({
           ) : null}
         </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-3">
-              <Label className={getFieldLabelClasses(Boolean(countryError))}>
-                Country
-              </Label>
-              <Select
-                value={basicProfileForm.country}
-                onValueChange={(value) =>
-                  onBasicProfileFieldChange("country", value)
-                }
-              >
-                <SelectTrigger
-                  className={getSelectTriggerClasses(Boolean(countryError))}
-                  aria-invalid={Boolean(countryError)}
-                >
-                  <SelectValue
-                    className="!text-[14px] !leading-5"
-                    placeholder="Select country"
-                  />
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  sideOffset={8}
-                  className="max-h-72 rounded-[18px] border-white/10 bg-[#161616] text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
-                >
-                  {countryOptions.map((country) => (
-                    <SelectItem
-                      key={country}
-                      value={country}
-                      className="cursor-pointer focus:bg-white/10 focus:text-white"
-                    >
-                      {country}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {countryError ? (
-                <p className="text-sm text-destructive">{countryError}</p>
-              ) : null}
-            </div>
+        <div className="space-y-3">
+          <Label className={getFieldLabelClasses(false)}>
+            Address
+          </Label>
+          <Input
+            value={basicProfileForm.address}
+            onChange={(event) =>
+              onBasicProfileFieldChange("address", event.target.value)
+            }
+            placeholder="Enter your address"
+            className={getInputClasses(false)}
+            autoComplete="street-address"
+          />
+        </div>
 
+          <div className="grid gap-6 md:grid-cols-3">
             <div className="space-y-3">
               <Label className={getFieldLabelClasses(Boolean(stateError))}>
                 State / Province
@@ -545,6 +620,62 @@ const FreelancerBasicProfileSlide = ({
               )}
               {stateError ? (
                 <p className="text-sm text-destructive">{stateError}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-3">
+              <Label className={getFieldLabelClasses(false)}>
+                Pincode
+              </Label>
+              <Input
+                value={basicProfileForm.pincode}
+                onChange={(event) =>
+                  onBasicProfileFieldChange("pincode", event.target.value)
+                }
+                placeholder="Enter pincode"
+                className={getInputClasses(false)}
+                autoComplete="postal-code"
+                inputMode="numeric"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label className={getFieldLabelClasses(Boolean(countryError))}>
+                Country
+              </Label>
+              <Select
+                value={basicProfileForm.country}
+                onValueChange={(value) =>
+                  onBasicProfileFieldChange("country", value)
+                }
+              >
+                <SelectTrigger
+                  className={getSelectTriggerClasses(Boolean(countryError))}
+                  aria-invalid={Boolean(countryError)}
+                >
+                  <SelectValue
+                    className="!text-[14px] !leading-5"
+                    placeholder="Select country"
+                  />
+                </SelectTrigger>
+                <SelectContent
+                  position="popper"
+                  sideOffset={8}
+                  className="max-h-72 rounded-[18px] border-white/10 bg-[#161616] text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
+                >
+                  {countryOptions.map((country) => (
+                    <SelectItem
+                      key={country}
+                      value={country}
+                      className="cursor-pointer focus:bg-white/10 focus:text-white"
+                    >
+                      {country}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {countryError ? (
+                <p className="text-sm text-destructive">{countryError}</p>
               ) : null}
             </div>
           </div>

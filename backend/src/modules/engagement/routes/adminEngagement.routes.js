@@ -2,13 +2,20 @@ import { Router } from "express";
 import { validateResource } from "../../../middlewares/validate-resource.js";
 import {
   approveQuestion,
+  getContests,
+  createContest,
+  updateContest,
+  deleteContest,
   createQuestion,
   getFreelancerProgress,
   getOverview,
   getQuestions,
   rejectQuestion,
   seedFallbackQuestions,
-  updateQuestion
+  updateQuestion,
+  getDailySet,
+  assignDailySet,
+  deleteQuestion
 } from "../controllers/adminEngagement.controller.js";
 import {
   adminQuestionSchema,
@@ -38,6 +45,7 @@ adminEngagementRouter.patch(
   validateResource(updateAdminQuestionSchema),
   updateQuestion
 );
+adminEngagementRouter.delete("/questions/:id", deleteQuestion);
 adminEngagementRouter.patch(
   "/questions/:id/approve",
   validateResource(questionIdParamsSchema),
@@ -53,3 +61,12 @@ adminEngagementRouter.get(
   validateResource(listAdminFreelancerProgressSchema),
   getFreelancerProgress
 );
+
+adminEngagementRouter.get("/contests", getContests);
+adminEngagementRouter.post("/contests", createContest);
+adminEngagementRouter.patch("/contests/:id", updateContest);
+adminEngagementRouter.delete("/contests/:id", deleteContest);
+
+// Daily question sets
+adminEngagementRouter.get("/daily-sets/:dayKey", getDailySet);
+adminEngagementRouter.post("/daily-sets/:dayKey/assign", assignDailySet);
