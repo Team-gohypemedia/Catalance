@@ -158,9 +158,6 @@ const AdminEngagementOverview = lazy(
 const AdminEngagementQuestions = lazy(
   () => import("@/components/features/engagement/AdminEngagementQuestions.jsx"),
 );
-const AdminEngagementContests = lazy(
-  () => import("@/components/features/engagement/AdminEngagementContests.jsx"),
-);
 const GetStarted = lazy(() => import("@/components/features/auth/GetStarted"));
 const BrowseTalent = lazy(() => import("@/components/pages/BrowseTalent"));
 const EnterpriseSolutions = lazy(
@@ -756,14 +753,6 @@ const App = () => {
               }
             />
             <Route
-              path="/admin/engagement/contests"
-              element={
-                <AdminRoute>
-                  <AdminEngagementContests />
-                </AdminRoute>
-              }
-            />
-            <Route
               path="/admin/blogs"
               element={
                 <AdminRoute>
@@ -876,4 +865,3 @@ const NotFound = () => (
 );
 
 export default App;
-

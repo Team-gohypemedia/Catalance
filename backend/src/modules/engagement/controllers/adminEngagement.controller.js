@@ -2,20 +2,13 @@ import { asyncHandler } from "../../../utils/async-handler.js";
 import { AppError } from "../../../utils/app-error.js";
 import {
   approveAdminQuestion,
-  listAdminContests,
-  createAdminContest,
-  updateAdminContest,
-  deleteAdminContest,
   createAdminQuestion,
   getAdminEngagementOverview,
   listAdminFreelancerProgress,
   listAdminQuestions,
   rejectAdminQuestion,
   seedAdminFallbackQuestions,
-  updateAdminQuestion,
-  getAdminDailySet,
-  assignAdminDailySet,
-  deleteAdminQuestion
+  updateAdminQuestion
 } from "../services/engagement.service.js";
 
 const requireAdminId = (req) => {
@@ -79,48 +72,5 @@ export const seedFallbackQuestions = asyncHandler(async (req, res) => {
 
 export const getFreelancerProgress = asyncHandler(async (req, res) => {
   const data = await listAdminFreelancerProgress(req.query);
-  res.json({ data });
-});
-
-export const getContests = asyncHandler(async (req, res) => {
-  const data = await listAdminContests();
-  res.json({ data });
-});
-
-export const createContest = asyncHandler(async (req, res) => {
-  const data = await createAdminContest(req.body);
-  res.status(201).json({ data });
-});
-
-export const updateContest = asyncHandler(async (req, res) => {
-  const data = await updateAdminContest(req.params.id, req.body);
-  res.json({ data });
-});
-
-export const deleteContest = asyncHandler(async (req, res) => {
-  await deleteAdminContest(req.params.id);
-  res.status(204).send();
-});
-
-export const getDailySet = asyncHandler(async (req, res) => {
-  const data = await getAdminDailySet(req.params.dayKey);
-  res.json({ data });
-});
-
-export const assignDailySet = asyncHandler(async (req, res) => {
-  const adminId = requireAdminId(req);
-  const data = await assignAdminDailySet({
-    adminId,
-    dayKey: req.params.dayKey,
-    questionIds: req.body.questionIds
-  });
-  res.json({ data });
-});
-
-export const deleteQuestion = asyncHandler(async (req, res) => {
-  const data = await deleteAdminQuestion({
-    adminId: requireAdminId(req),
-    questionId: req.params.id
-  });
   res.json({ data });
 });

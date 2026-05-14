@@ -1,7 +1,6 @@
 import { asyncHandler } from "../../../utils/async-handler.js";
 import { AppError } from "../../../utils/app-error.js";
 import {
-  acceptContestContract,
   getBadges,
   getEngagementDashboard,
   getProcessReport,
@@ -44,9 +43,4 @@ export const getProcessReportHandler = asyncHandler(async (req, res) => {
 export const getBadgesHandler = asyncHandler(async (req, res) => {
   const data = await getBadges(requireUserId(req));
   res.json({ data });
-});
-
-export const acceptContractHandler = asyncHandler(async (req, res) => {
-  const data = await acceptContestContract(requireUserId(req), req.params.id);
-  res.status(201).json({ data });
 });

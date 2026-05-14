@@ -139,7 +139,6 @@ model User {
   engagementLedgers    PointsLedger[]             @relation("EngagementPointsUser")
   engagementReport     EngagementProcessReport?
   engagementBadges     EngagementUserBadge[]      @relation("EngagementBadgeUser")
-  engagementContracts  UserEngagementContract[]   @relation("EngagementContractsUser")
 
   ownedProjects           Project[]          @relation("ProjectOwner")
   managedProjects         Project[]          @relation("ProjectManager")
@@ -192,9 +191,6 @@ model FreelancerProfile {
   username                    String?
   languages                   String[] @default([])
   profilePhoto                String?
-  dateOfBirth                 DateTime? @db.Date
-  address                     String?
-  pincode                     String?
   coverImage                  String?
   serviceDetails              Json     @default("{}")
   socialMediaLinks            Json?    @default("{}")
@@ -1030,59 +1026,4 @@ model EngagementAdminAuditLog {
   @@index([adminId, createdAt])
   @@index([targetUserId, createdAt])
   @@index([entityType, entityId])
-}
-
-enum EngagementContestCategory {
-  SKILL_BUILDING
-  LIVE_CONTRACT
-  SPEED_TRIAL
-}
-
-enum EngagementContestStatus {
-  DRAFT
-  ACTIVE
-  COMPLETED
-  CANCELLED
-}
-
-enum EngagementContractStatus {
-  ACCEPTED
-  COMPLETED
-  FAILED
-}
-
-model EngagementContest {
-  id              String                     @id @default(cuid())
-  title           String
-  description     String?                    @db.Text
-  category        EngagementContestCategory  @default(SKILL_BUILDING)
-  difficulty      EngagementDifficulty       @default(BEGINNER)
-  xpReward        Int                        @default(0)
-  coinReward      Int                        @default(0)
-  imageUrl        String?
-  status          EngagementContestStatus    @default(DRAFT)
-  startsAt        DateTime?
-  endsAt          DateTime?
-  createdAt       DateTime                   @default(now())
-  updatedAt       DateTime                   @updatedAt
-
-  userContracts   UserEngagementContract[]
-}
-
-model UserEngagementContract {
-  id              String                     @id @default(cuid())
-  userId          String
-  user            User                       @relation("EngagementContractsUser", fields: [userId], references: [id], onDelete: Cascade)
-  contestId       String
-  contest         EngagementContest          @relation(fields: [contestId], references: [id], onDelete: Cascade)
-  status          EngagementContractStatus   @default(ACCEPTED)
-  progress        Int                        @default(0)
-  completedAt     DateTime?
-  createdAt       DateTime                   @default(now())
-  updatedAt       DateTime                   @updatedAt
-
-  @@unique([userId, contestId])
-  @@index([userId])
-  @@index([contestId])
-  @@index([status])
 }

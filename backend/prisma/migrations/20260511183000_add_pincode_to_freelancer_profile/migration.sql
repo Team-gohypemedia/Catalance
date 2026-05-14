@@ -1,1 +1,0 @@
-ALTER TABLE "FreelancerProfile" ADD COLUMN "pincode" TEXT;

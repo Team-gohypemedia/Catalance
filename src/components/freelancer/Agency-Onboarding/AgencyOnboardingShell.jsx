@@ -34,9 +34,7 @@ import {
 } from "@/components/features/freelancer/onboarding/constants";
 import { normalizeUsernameInput } from "@/components/features/freelancer/onboarding/utils";
 import {
-  AGENCY_ONBOARDING_PATH,
   FREELANCER_DASHBOARD_PATH,
-  FREELANCER_ONBOARDING_PATH,
 } from "@/shared/lib/dashboard-preference";
 import {
   createEmptyServiceCaseStudy,
@@ -60,7 +58,6 @@ import {
   AGENCY_SLIDE_IDS,
 } from "./agency-details";
 import { getOnboardingSlides as getOnboardingSlideSet } from "./constants";
-import useOnboardingHistoryGuard from "@/components/freelancer/onboarding/useOnboardingHistoryGuard";
 import FreelancerWelcomeSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerWelcomeSlide";
 import FreelancerWorkPreferenceSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerWorkPreferenceSlide";
 import FreelancerIndividualProofSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerIndividualProofSlide";
@@ -122,9 +119,6 @@ const BASIC_PROFILE_FIELD_ORDER = [
 const createInitialBasicProfileForm = () => ({
   fullName: "",
   username: "",
-  dateOfBirth: "",
-  address: "",
-  pincode: "",
   professionalBio: "",
   country: "India",
   state: "",
@@ -423,9 +417,6 @@ const sanitizeBasicProfileFormForDraft = (form) => {
     ...initialForm,
     fullName: String(sourceForm.fullName || "").trim(),
     username: normalizeUsernameInput(sourceForm.username || ""),
-    dateOfBirth: String(sourceForm.dateOfBirth || "").trim(),
-    address: String(sourceForm.address || "").trim(),
-    pincode: String(sourceForm.pincode || "").trim(),
     professionalBio: String(sourceForm.professionalBio || "").trim(),
     country: String(sourceForm.country || initialForm.country || "India").trim(),
     state: String(sourceForm.state || "").trim(),
@@ -1069,11 +1060,6 @@ const AgencyOnboardingShell = ({
       username: normalizeUsernameInput(
         identity.username || user.username || currentForm.username,
       ),
-      dateOfBirth: String(
-        identity.dateOfBirth || currentForm.dateOfBirth || "",
-      ).trim(),
-      address: String(identity.address || currentForm.address || "").trim(),
-      pincode: String(identity.pincode || currentForm.pincode || "").trim(),
       professionalBio: String(
         profileDetails.professionalBio || user.professionalBio || user.bio || "",
       ).trim(),
@@ -2118,16 +2104,6 @@ const AgencyOnboardingShell = ({
         ...currentIdentity,
         fullName: resolvedFullName,
         username: normalizeUsernameInput(basicProfileForm.username),
-        dateOfBirth:
-          String(
-            basicProfileForm.dateOfBirth || currentIdentity.dateOfBirth || "",
-          ).trim() || null,
-        address: String(
-          basicProfileForm.address || currentIdentity.address || "",
-        ).trim() || null,
-        pincode: String(
-          basicProfileForm.pincode || currentIdentity.pincode || "",
-        ).trim() || null,
         country: basicProfileForm.country.trim(),
         city: basicProfileForm.state.trim(),
         languages: Array.isArray(basicProfileForm.languages)
@@ -2301,12 +2277,6 @@ const AgencyOnboardingShell = ({
 
     setCurrentSlideIndex((currentIndex) => Math.max(currentIndex - 1, 0));
   };
-
-  useOnboardingHistoryGuard({
-    routePath: embedded ? FREELANCER_ONBOARDING_PATH : AGENCY_ONBOARDING_PATH,
-    enabled: true,
-    onBlockedBack: handleBack,
-  });
 
   const clearServiceStepValidationErrors = useCallback((stepId) => {
     const normalizedStepId = String(stepId || "").trim();

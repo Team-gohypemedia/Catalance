@@ -13,8 +13,6 @@ import User from "lucide-react/dist/esm/icons/user";
 import Users from "lucide-react/dist/esm/icons/users";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 import Newspaper from "lucide-react/dist/esm/icons/newspaper";
-import Zap from "lucide-react/dist/esm/icons/zap";
-import Trophy from "lucide-react/dist/esm/icons/trophy";
 
 import { NavMain } from "@/components/layout/nav-main";
 import { NavUser } from "@/components/layout/nav-user";
@@ -223,17 +221,6 @@ const navConfigs = {
       icon: CheckCircle,
       isActive: true,
     },
-    {
-      title: "Engagement Hub",
-      url: "/admin/engagement",
-      icon: Zap,
-      isActive: true,
-      items: [
-        { title: "Overview",      url: "/admin/engagement" },
-        { title: "Question Bank", url: "/admin/engagement/questions" },
-        { title: "Contests",      url: "/admin/engagement/contests" },
-      ],
-    },
   ],
 };
 
@@ -283,4 +270,3 @@ export function AppSidebar({ ...props }) {
     </Sidebar>
   );
 }
-

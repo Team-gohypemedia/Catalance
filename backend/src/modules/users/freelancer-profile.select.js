@@ -34,9 +34,6 @@ export const FREELANCER_PROFILE_DETAILS_SAFE_SELECT = Object.freeze({
   username: true,
   languages: true,
   profilePhoto: true,
-  dateOfBirth: true,
-  address: true,
-  pincode: true,
   services: true,
   serviceDetails: true,
 });
