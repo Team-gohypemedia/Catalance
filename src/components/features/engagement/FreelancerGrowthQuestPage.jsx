@@ -299,8 +299,24 @@ const DashboardView = ({ dashboard, onStartQuest, onAcceptContract, loading, err
                           <img src={op.imageUrl} alt={op.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         </div>
                       ) : (
-                        <div className={cn("w-full h-16 bg-gradient-to-r from-primary/10 to-transparent flex items-center px-5", cat.color)}>
-                          <span className="material-symbols-outlined text-[24px] opacity-50">{cat.icon}</span>
+                        <div className="w-full aspect-video relative flex items-center justify-center overflow-hidden bg-[#0a0a0c]">
+                          {/* Vibrant Glowing Orbs */}
+                          <div className={cn("absolute -top-10 -left-10 w-40 h-40 rounded-full blur-[50px] opacity-40 transition-colors", cat.color.replace('text-', 'bg-'))}></div>
+                          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary rounded-full blur-[60px] opacity-20"></div>
+                          
+                          {/* Modern Dot Pattern Overlay */}
+                          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xNSkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]"></div>
+
+                          {/* Center Glassmorphic Element */}
+                          <div className="relative z-10 flex flex-col items-center gap-3 transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-1">
+                            <div className="w-20 h-20 rounded-2xl flex items-center justify-center bg-white/5 border border-white/10 backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.05)] overflow-hidden relative">
+                              <div className={cn("absolute inset-0 opacity-20", cat.color.replace('text-', 'bg-'))}></div>
+                              <span className={cn("material-symbols-outlined text-[40px] drop-shadow-lg", cat.color)}>{cat.icon}</span>
+                            </div>
+                            <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-lg">
+                              <span className={cn("text-[10px] font-bold tracking-widest uppercase", cat.color)}>{cat.label}</span>
+                            </div>
+                          </div>
                         </div>
                       )}
                       <div className="p-5">
@@ -352,12 +368,28 @@ const DashboardView = ({ dashboard, onStartQuest, onAcceptContract, loading, err
                   return (
                     <div key={c.id} className="glass-panel rounded-xl overflow-hidden hover:border-primary/30 transition-colors duration-300 group flex flex-col">
                       {c.imageUrl ? (
-                        <div className="w-full aspect-video overflow-hidden">
+                        <div className="w-full aspect-video overflow-hidden border-b border-white/5">
                           <img src={c.imageUrl} alt={c.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         </div>
                       ) : (
-                        <div className={cn("w-full h-16 bg-gradient-to-r from-black/40 to-transparent flex items-center px-5", cat.color)}>
-                          <span className="material-symbols-outlined text-[24px] opacity-40">{cat.icon}</span>
+                        <div className="w-full aspect-video relative flex items-center justify-center overflow-hidden bg-[#0a0a0c] border-b border-white/5">
+                          {/* Vibrant Glowing Orbs */}
+                          <div className={cn("absolute -top-10 -left-10 w-40 h-40 rounded-full blur-[50px] opacity-40 transition-colors", cat.color.replace('text-', 'bg-'))}></div>
+                          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary rounded-full blur-[60px] opacity-20"></div>
+                          
+                          {/* Modern Dot Pattern Overlay */}
+                          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xNSkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]"></div>
+
+                          {/* Center Glassmorphic Element */}
+                          <div className="relative z-10 flex flex-col items-center gap-3 transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-1">
+                            <div className="w-20 h-20 rounded-2xl flex items-center justify-center bg-white/5 border border-white/10 backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.05)] overflow-hidden relative">
+                              <div className={cn("absolute inset-0 opacity-20", cat.color.replace('text-', 'bg-'))}></div>
+                              <span className={cn("material-symbols-outlined text-[40px] drop-shadow-lg", cat.color)}>{cat.icon}</span>
+                            </div>
+                            <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-lg">
+                              <span className={cn("text-[10px] font-bold tracking-widest uppercase", cat.color)}>{cat.label}</span>
+                            </div>
+                          </div>
                         </div>
                       )}
                       <div className="p-5 flex flex-col flex-1">
