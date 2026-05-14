@@ -1,59 +1,32 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
 import Check from "lucide-react/dist/esm/icons/check";
 import Edit from "lucide-react/dist/esm/icons/edit";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Plus from "lucide-react/dist/esm/icons/plus";
-import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
-import Search from "lucide-react/dist/esm/icons/search";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import X from "lucide-react/dist/esm/icons/x";
 import AdminLayout from "@/components/features/admin/AdminLayout";
 import { AdminTopBar } from "@/components/features/admin/AdminTopBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/shared/context/AuthContext";
 import { toast } from "sonner";
 
-const STATUS_OPTIONS = [
-  { value: "ALL", label: "All statuses" },
-  { value: "PENDING_APPROVAL", label: "Pending approval" },
-  { value: "APPROVED", label: "Approved" },
-  { value: "DRAFT", label: "Draft" },
-  { value: "REJECTED", label: "Rejected" },
-];
-
 const CATEGORY_OPTIONS = [
-  { value: "CLIENT_COMMUNICATION", label: "Client communication" },
-  { value: "SCOPE_MANAGEMENT", label: "Scope management" },
+  { value: "CLIENT_COMMUNICATION", label: "Client Communication" },
+  { value: "SCOPE_MANAGEMENT", label: "Scope Management" },
   { value: "DELIVERY", label: "Delivery" },
-  { value: "QUALITY_CONTROL", label: "Quality control" },
-  { value: "PLATFORM_RULES", label: "Platform rules" },
-  { value: "BUSINESS_BASICS", label: "Business basics" },
+  { value: "QUALITY_CONTROL", label: "Quality Control" },
+  { value: "PLATFORM_RULES", label: "Platform Rules" },
+  { value: "BUSINESS_BASICS", label: "Business Basics" },
 ];
 
 const DIFFICULTY_OPTIONS = [
@@ -63,10 +36,24 @@ const DIFFICULTY_OPTIONS = [
 ];
 
 const TYPE_OPTIONS = [
-  { value: "MCQ", label: "MCQ" },
-  { value: "TRUE_FALSE", label: "True / false" },
+  { value: "MCQ", label: "MCQ (4 options)" },
+  { value: "TRUE_FALSE", label: "True / False" },
   { value: "SCENARIO_MCQ", label: "Scenario MCQ" },
 ];
+
+const TRUE_FALSE_OPTIONS = [
+  { id: "A", text: "True" },
+  { id: "B", text: "False" },
+];
+
+const MCQ_OPTIONS = [
+  { id: "A", text: "" },
+  { id: "B", text: "" },
+  { id: "C", text: "" },
+  { id: "D", text: "" },
+];
+
+const todayKey = () => new Date().toISOString().slice(0, 10);
 
 const emptyForm = {
   questionText: "",
@@ -74,216 +61,174 @@ const emptyForm = {
   category: "CLIENT_COMMUNICATION",
   skillTag: "client_readiness",
   difficulty: "BEGINNER",
-  options: [
-    { id: "A", text: "" },
-    { id: "B", text: "" },
-    { id: "C", text: "" },
-    { id: "D", text: "" },
-  ],
+  options: MCQ_OPTIONS,
   correctOptionId: "A",
   explanation: "",
-  status: "PENDING_APPROVAL",
+  status: "APPROVED",
 };
 
-const statusClassName = {
+const getOptionsForType = (type) =>
+  type === "TRUE_FALSE" ? TRUE_FALSE_OPTIONS : MCQ_OPTIONS;
+
+const statusColor = {
   APPROVED: "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
-  PENDING_APPROVAL: "border-[#facc15]/20 bg-[#facc15]/10 text-[#fde68a]",
+  PENDING_APPROVAL: "border-yellow-500/20 bg-yellow-500/10 text-yellow-200",
   DRAFT: "border-white/10 bg-white/[0.04] text-muted-foreground",
   REJECTED: "border-red-500/20 bg-red-500/10 text-red-200",
-  ARCHIVED: "border-white/10 bg-white/[0.04] text-muted-foreground",
 };
-
-const cloneQuestionToForm = (question) => ({
-  questionText: question?.questionText || "",
-  type: question?.type || "MCQ",
-  category: question?.category || "CLIENT_COMMUNICATION",
-  skillTag: question?.skillTag || "client_readiness",
-  difficulty: question?.difficulty || "BEGINNER",
-  options:
-    Array.isArray(question?.options) && question.options.length
-      ? question.options.map((option, index) => ({
-          id: option.id || String.fromCharCode(65 + index),
-          text: option.text || "",
-        }))
-      : emptyForm.options,
-  correctOptionId: question?.correctOptionId || "A",
-  explanation: question?.explanation || "",
-  status:
-    question?.status && ["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(question.status)
-      ? question.status
-      : "PENDING_APPROVAL",
-});
 
 const AdminEngagementQuestions = () => {
   const { authFetch } = useAuth();
-  const [questions, setQuestions] = useState([]);
-  const [status, setStatus] = useState("PENDING_APPROVAL");
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState("");
+
+  // ── Date state ──────────────────────────────────────────
+  const [selectedDate, setSelectedDate] = useState(todayKey());
+
+  // ── Daily set for selected date ─────────────────────────
+  const [dayData, setDayData] = useState(null);
+  const [loadingDay, setLoadingDay] = useState(false);
+  const [savingSet, setSavingSet] = useState(false);
+
+  // ── Question form dialog ────────────────────────────────
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [actionLoading, setActionLoading] = useState("");
 
-  const loadQuestions = useCallback(async () => {
-    if (!authFetch) return;
-    setLoading(true);
+  // ── Selection for assigning to day ─────────────────────
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  const handleDeleteQuestion = async (id) => {
+    if (!window.confirm("Permanently delete this question from the pool?")) return;
+    setActionLoading(`delete-${id}`);
     try {
-      const params = new URLSearchParams();
-      params.set("status", status);
-      if (search.trim()) params.set("search", search.trim());
-      const response = await authFetch(
-        `/admin/engagement/questions?${params.toString()}`,
-      );
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(payload?.message || "Failed to load questions.");
+      const res = await authFetch(`/admin/engagement/questions/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const p = await res.json().catch(() => null);
+        throw new Error(p?.message || "Failed to delete");
       }
-      setQuestions(Array.isArray(payload?.data) ? payload.data : []);
-    } catch (error) {
-      console.error("Failed to load engagement questions", error);
-      toast.error(error?.message || "Failed to load questions");
+      toast.success("Question deleted");
+      // Remove from selectedIds too
+      setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+      await loadDay();
+    } catch (err) {
+      toast.error(err.message);
     } finally {
-      setLoading(false);
+      setActionLoading("");
     }
-  }, [authFetch, search, status]);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(loadQuestions, 250);
-    return () => window.clearTimeout(timeoutId);
-  }, [loadQuestions]);
-
-  const counts = useMemo(
-    () =>
-      questions.reduce(
-        (acc, question) => {
-          acc[question.status] = (acc[question.status] || 0) + 1;
-          return acc;
-        },
-        {},
-      ),
-    [questions],
-  );
-
-  const openNewDialog = () => {
-    setEditingQuestion(null);
-    setForm(emptyForm);
-    setDialogOpen(true);
   };
 
-  const openEditDialog = (question) => {
-    setEditingQuestion(question);
-    setForm(cloneQuestionToForm(question));
-    setDialogOpen(true);
-  };
+  // Load daily set when date changes
+  const loadDay = useCallback(async () => {
+    if (!authFetch || !selectedDate) return;
+    setLoadingDay(true);
+    try {
+      const res = await authFetch(`/admin/engagement/daily-sets/${selectedDate}`);
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.message || "Failed to load day");
+      setDayData(payload.data);
+      setSelectedIds(new Set(payload.data.assignedIds || []));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLoadingDay(false);
+    }
+  }, [authFetch, selectedDate]);
 
-  const setOptionText = (index, text) => {
-    setForm((previous) => ({
-      ...previous,
-      options: previous.options.map((option, optionIndex) =>
-        optionIndex === index ? { ...option, text } : option,
-      ),
+  useEffect(() => { loadDay(); }, [loadDay]);
+
+  // Handle type change — auto-fill True/False options
+  const handleTypeChange = (type) => {
+    setForm((prev) => ({
+      ...prev,
+      type,
+      options: getOptionsForType(type),
+      correctOptionId: "A",
     }));
   };
 
+  const openNew = () => {
+    setEditingQuestion(null);
+    setForm({ ...emptyForm, options: MCQ_OPTIONS });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (q) => {
+    setEditingQuestion(q);
+    setForm({
+      questionText: q.questionText || "",
+      type: q.type || "MCQ",
+      category: q.category || "CLIENT_COMMUNICATION",
+      skillTag: q.skillTag || "client_readiness",
+      difficulty: q.difficulty || "BEGINNER",
+      options: Array.isArray(q.options) && q.options.length
+        ? q.options.map((o, i) => ({ id: o.id || String.fromCharCode(65 + i), text: o.text || "" }))
+        : getOptionsForType(q.type || "MCQ"),
+      correctOptionId: q.correctOptionId || "A",
+      explanation: q.explanation || "",
+      status: "APPROVED",
+    });
+    setDialogOpen(true);
+  };
+
+  const setOptionText = (idx, text) => {
+    if (form.type === "TRUE_FALSE") return; // locked
+    setForm((p) => ({ ...p, options: p.options.map((o, i) => i === idx ? { ...o, text } : o) }));
+  };
+
   const handleSave = async () => {
-    if (!authFetch) return;
+    if (!form.questionText.trim()) return toast.error("Question text is required");
     setActionLoading("save");
     try {
-      const response = await authFetch(
-        editingQuestion
-          ? `/admin/engagement/questions/${editingQuestion.id}`
-          : "/admin/engagement/questions",
-        {
-          method: editingQuestion ? "PATCH" : "POST",
-          body: JSON.stringify(form),
-        },
-      );
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(payload?.message || "Failed to save question.");
-      }
-      toast.success(editingQuestion ? "Question updated" : "Question created");
-      setDialogOpen(false);
-      await loadQuestions();
-    } catch (error) {
-      console.error("Failed to save engagement question", error);
-      toast.error(error?.message || "Failed to save question");
-    } finally {
-      setActionLoading("");
-    }
-  };
-
-  const handleApprove = async (questionId) => {
-    if (!authFetch) return;
-    setActionLoading(`approve-${questionId}`);
-    try {
-      const response = await authFetch(
-        `/admin/engagement/questions/${questionId}/approve`,
-        { method: "PATCH" },
-      );
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(payload?.message || "Failed to approve question.");
-      }
-      toast.success("Question approved");
-      await loadQuestions();
-    } catch (error) {
-      console.error("Failed to approve question", error);
-      toast.error(error?.message || "Failed to approve question");
-    } finally {
-      setActionLoading("");
-    }
-  };
-
-  const handleReject = async (questionId) => {
-    if (!authFetch) return;
-    const reason = window.prompt("Reason for rejecting this question?");
-    if (!reason?.trim()) return;
-
-    setActionLoading(`reject-${questionId}`);
-    try {
-      const response = await authFetch(
-        `/admin/engagement/questions/${questionId}/reject`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ reason: reason.trim() }),
-        },
-      );
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(payload?.message || "Failed to reject question.");
-      }
-      toast.success("Question rejected");
-      await loadQuestions();
-    } catch (error) {
-      console.error("Failed to reject question", error);
-      toast.error(error?.message || "Failed to reject question");
-    } finally {
-      setActionLoading("");
-    }
-  };
-
-  const handleSeed = async () => {
-    if (!authFetch) return;
-    setActionLoading("seed");
-    try {
-      const response = await authFetch("/admin/engagement/questions/seed", {
-        method: "POST",
+      const url = editingQuestion
+        ? `/admin/engagement/questions/${editingQuestion.id}`
+        : "/admin/engagement/questions";
+      const res = await authFetch(url, {
+        method: editingQuestion ? "PATCH" : "POST",
+        body: JSON.stringify({ ...form, status: "APPROVED" }),
       });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(payload?.message || "Failed to seed questions.");
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.message || "Failed to save");
+      const saved = payload.data;
+      toast.success(editingQuestion ? "Question updated" : "Question created & approved");
+      setDialogOpen(false);
+      // Auto-add new question to current day selection
+      if (!editingQuestion && saved?.id) {
+        setSelectedIds((prev) => new Set([...prev, saved.id]));
       }
-      toast.success(`Seeded ${payload?.data?.inserted || 0} fallback questions`);
-      await loadQuestions();
-    } catch (error) {
-      console.error("Failed to seed questions", error);
-      toast.error(error?.message || "Failed to seed questions");
+      await loadDay();
+    } catch (err) {
+      toast.error(err.message);
     } finally {
       setActionLoading("");
     }
   };
+
+  const handleRemoveFromDay = (id) => {
+    setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+  };
+
+  const handlePublish = async () => {
+    if (selectedIds.size === 0) return toast.error("Add at least one question to publish");
+    setSavingSet(true);
+    try {
+      const res = await authFetch(`/admin/engagement/daily-sets/${selectedDate}/assign`, {
+        method: "POST",
+        body: JSON.stringify({ questionIds: [...selectedIds] }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.message || "Failed to publish");
+      toast.success(`Day ${selectedDate} published with ${selectedIds.size} questions!`);
+      await loadDay();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingSet(false);
+    }
+  };
+
+  const allApproved = dayData?.allApproved || [];
+  const assigned = allApproved.filter((q) => selectedIds.has(q.id));
+  const unassigned = allApproved.filter((q) => !selectedIds.has(q.id));
 
   return (
     <AdminLayout>
@@ -292,373 +237,254 @@ const AdminEngagementQuestions = () => {
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Question Review</h1>
-            <p className="mt-2 text-muted-foreground">
-              Approve, edit, reject, and seed reusable Daily Growth Quest questions.
-            </p>
+            <h1 className="text-3xl font-bold">Daily Question Scheduler</h1>
+            <p className="mt-1 text-muted-foreground">Select a date, add questions, then publish to make them live for freelancers.</p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSeed}
-              disabled={actionLoading === "seed"}
-            >
-              {actionLoading === "seed" ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <RefreshCw className="size-4" />
-              )}
-              Seed Fallback
-            </Button>
-            <Button type="button" onClick={openNewDialog}>
-              <Plus className="size-4" />
-              New Question
-            </Button>
-          </div>
+          <Button onClick={openNew}><Plus className="size-4" /> New Question</Button>
         </div>
 
+        {/* Date Picker */}
         <Card className="border-white/10 bg-card">
           <CardHeader>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <CardTitle className="text-xl">Question Bank</CardTitle>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-2 top-2.5 size-4 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search questions..."
-                    className="pl-8"
-                  />
-                </div>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger className="w-full sm:w-56">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Calendar className="size-5 text-primary" /> Select Date
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 flex flex-wrap gap-2">
-              {Object.entries(counts).map(([key, value]) => (
-                <Badge
-                  key={key}
-                  className={statusClassName[key] || statusClassName.DRAFT}
-                >
-                  {key.replace(/_/g, " ")}: {value}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="grid gap-1.5">
+                <Label>Quest Date</Label>
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-48"
+                />
+              </div>
+              {dayData && (
+                <Badge className={dayData.status === "PUBLISHED" ? statusColor.APPROVED : statusColor.DRAFT}>
+                  {dayData.status}
                 </Badge>
-              ))}
-            </div>
-            <div className="rounded-md border border-white/10">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Question</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Difficulty</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
-                        <span className="inline-flex items-center gap-2 text-muted-foreground">
-                          <Loader2 className="size-4 animate-spin" />
-                          Loading questions
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ) : questions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
-                        No questions found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    questions.map((question) => (
-                      <TableRow key={question.id}>
-                        <TableCell className="max-w-[520px]">
-                          <p className="line-clamp-2 font-medium">
-                            {question.questionText}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Correct: {question.correctOptionId}
-                          </p>
-                        </TableCell>
-                        <TableCell>{question.categoryLabel}</TableCell>
-                        <TableCell>{question.difficulty}</TableCell>
-                        <TableCell>
-                          <Badge
-                            className={
-                              statusClassName[question.status] ||
-                              statusClassName.DRAFT
-                            }
-                          >
-                            {question.status.replace(/_/g, " ")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              title="Edit"
-                              onClick={() => openEditDialog(question)}
-                            >
-                              <Edit className="size-4" />
-                            </Button>
-                            {question.status !== "APPROVED" ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-sm"
-                                title="Approve"
-                                disabled={
-                                  actionLoading === `approve-${question.id}`
-                                }
-                                onClick={() => handleApprove(question.id)}
-                              >
-                                <Check className="size-4 text-emerald-300" />
-                              </Button>
-                            ) : null}
-                            {question.status !== "REJECTED" ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-sm"
-                                title="Reject"
-                                disabled={
-                                  actionLoading === `reject-${question.id}`
-                                }
-                                onClick={() => handleReject(question.id)}
-                              >
-                                <X className="size-4 text-red-300" />
-                              </Button>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              )}
+              <Button
+                onClick={handlePublish}
+                disabled={savingSet || selectedIds.size === 0}
+                className="bg-primary text-black hover:bg-primary/90"
+              >
+                {savingSet ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+                Publish {selectedIds.size > 0 ? `(${selectedIds.size} Qs)` : ""}
+              </Button>
             </div>
           </CardContent>
         </Card>
 
+        {loadingDay ? (
+          <div className="flex items-center gap-2 text-muted-foreground py-10 justify-center">
+            <Loader2 className="size-5 animate-spin" /> Loading questions for {selectedDate}...
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Assigned to this day */}
+            <Card className="border-white/10 bg-card">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span>📅 Assigned to {selectedDate}</span>
+                  <Badge className="ml-2 border-emerald-500/20 bg-emerald-500/10 text-emerald-200">{assigned.length} questions</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {assigned.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">No questions assigned yet. Pick from the pool →</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {assigned.map((q, idx) => (
+                      <div key={q.id} className="flex items-start gap-3 rounded-lg border border-white/10 bg-black/30 p-3">
+                        <span className="shrink-0 text-xs font-black text-primary w-5 mt-0.5">{idx + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium line-clamp-2">{q.questionText}</p>
+                          <div className="flex gap-2 mt-1">
+                            <span className="text-[10px] text-muted-foreground">{q.type}</span>
+                            <span className="text-[10px] text-muted-foreground">{q.difficulty}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button variant="ghost" size="icon-sm" onClick={() => openEdit(q)}><Edit className="size-3.5" /></Button>
+                          <Button variant="ghost" size="icon-sm" onClick={() => handleRemoveFromDay(q.id)}>
+                            <X className="size-3.5 text-red-400" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Question Pool */}
+            <Card className="border-white/10 bg-card">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span>🗃 Question Pool (Approved)</span>
+                  <Badge className="ml-2 border-white/10 bg-white/[0.04] text-muted-foreground">{unassigned.length} available</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {unassigned.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">All approved questions are already assigned!</p>
+                ) : (
+                  <div className="flex flex-col gap-2 max-h-[420px] overflow-y-auto pr-1">
+                    {unassigned.map((q) => (
+                      <div key={q.id} className="flex items-start gap-3 rounded-lg border border-white/10 bg-black/30 p-3 hover:border-primary/30 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium line-clamp-2">{q.questionText}</p>
+                          <div className="flex gap-2 mt-1">
+                            <span className="text-[10px] text-muted-foreground">{q.type}</span>
+                            <span className="text-[10px] text-muted-foreground">{q.difficulty}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            title="Add to today"
+                            className="text-emerald-400 hover:bg-emerald-500/10"
+                            onClick={() => setSelectedIds((prev) => new Set([...prev, q.id]))}
+                          >
+                            <Plus className="size-4" />
+                          </Button>
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            title="Delete from pool"
+                            className="text-red-400 hover:bg-red-500/10"
+                            disabled={actionLoading === `delete-${q.id}`}
+                            onClick={() => handleDeleteQuestion(q.id)}
+                          >
+                            {actionLoading === `delete-${q.id}` ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Question Form Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>
-                {editingQuestion ? "Edit Question" : "New Question"}
-              </DialogTitle>
+              <DialogTitle>{editingQuestion ? "Edit Question" : "New Question"}</DialogTitle>
             </DialogHeader>
 
-            <div className="grid gap-5 py-2">
+            <div className="grid gap-4 py-2">
               <div className="grid gap-2">
-                <Label htmlFor="engagement-question-text">Question</Label>
+                <Label>Question Text</Label>
                 <Textarea
-                  id="engagement-question-text"
                   value={form.questionText}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      questionText: event.target.value,
-                    }))
-                  }
+                  onChange={(e) => setForm((p) => ({ ...p, questionText: e.target.value }))}
                   rows={3}
+                  placeholder="Write the question..."
                 />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-2">
+                  <Label>Type</Label>
+                  <Select value={form.type} onValueChange={handleTypeChange}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Category</Label>
+                  <Select value={form.category} onValueChange={(v) => setForm((p) => ({ ...p, category: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Difficulty</Label>
+                  <Select value={form.difficulty} onValueChange={(v) => setForm((p) => ({ ...p, difficulty: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {DIFFICULTY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Options */}
+              <div className="grid gap-3">
+                <Label>Answer Options</Label>
+                {form.type === "TRUE_FALSE" ? (
+                  <div className="flex gap-3">
+                    {TRUE_FALSE_OPTIONS.map((o) => (
+                      <div key={o.id} className="flex-1 flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-4 py-2.5">
+                        <span className="font-black text-primary text-sm">{o.id}</span>
+                        <span className="text-sm font-medium">{o.text}</span>
+                        <span className="ml-auto text-[10px] text-muted-foreground">(default)</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  form.options.map((opt, idx) => (
+                    <div key={opt.id} className="grid gap-2 grid-cols-[44px_1fr]">
+                      <div className="flex h-10 items-center justify-center rounded-md border border-white/10 bg-black/40 text-sm font-black text-primary">
+                        {opt.id}
+                      </div>
+                      <Input
+                        value={opt.text}
+                        onChange={(e) => setOptionText(idx, e.target.value)}
+                        placeholder={`Option ${opt.id} text...`}
+                      />
+                    </div>
+                  ))
+                )}
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label>Type</Label>
-                  <Select
-                    value={form.type}
-                    onValueChange={(value) =>
-                      setForm((previous) => ({ ...previous, type: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Label>Correct Answer</Label>
+                  <Select value={form.correctOptionId} onValueChange={(v) => setForm((p) => ({ ...p, correctOptionId: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {TYPE_OPTIONS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>Category</Label>
-                  <Select
-                    value={form.category}
-                    onValueChange={(value) =>
-                      setForm((previous) => ({ ...previous, category: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORY_OPTIONS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>Difficulty</Label>
-                  <Select
-                    value={form.difficulty}
-                    onValueChange={(value) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        difficulty: value,
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DIFFICULTY_OPTIONS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="engagement-skill-tag">Skill tag</Label>
-                  <Input
-                    id="engagement-skill-tag"
-                    value={form.skillTag}
-                    onChange={(event) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        skillTag: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-3">
-                <Label>Options</Label>
-                {form.options.map((option, index) => (
-                  <div key={option.id} className="grid gap-2 sm:grid-cols-[56px_1fr]">
-                    <Input value={option.id} disabled />
-                    <Input
-                      value={option.text}
-                      onChange={(event) => setOptionText(index, event.target.value)}
-                      placeholder={`Option ${option.id}`}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-[180px_1fr]">
-                <div className="grid gap-2">
-                  <Label>Correct option</Label>
-                  <Select
-                    value={form.correctOptionId}
-                    onValueChange={(value) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        correctOptionId: value,
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {form.options.map((option) => (
-                        <SelectItem key={option.id} value={option.id}>
-                          {option.id}
+                      {form.options.map((o) => (
+                        <SelectItem key={o.id} value={o.id}>
+                          {o.id} — {o.text || "(no text)"}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={form.status}
-                    onValueChange={(value) =>
-                      setForm((previous) => ({ ...previous, status: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUS_OPTIONS.filter((item) => item.value !== "ALL").map(
-                        (item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Label>Skill Tag</Label>
+                  <Input value={form.skillTag} onChange={(e) => setForm((p) => ({ ...p, skillTag: e.target.value }))} />
                 </div>
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="engagement-explanation">Explanation</Label>
+                <Label>Explanation (shown after answer)</Label>
                 <Textarea
-                  id="engagement-explanation"
                   value={form.explanation}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      explanation: event.target.value,
-                    }))
-                  }
-                  rows={3}
+                  onChange={(e) => setForm((p) => ({ ...p, explanation: e.target.value }))}
+                  rows={2}
+                  placeholder="Why is this the correct answer?"
                 />
               </div>
             </div>
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={actionLoading === "save"}
-              >
-                {actionLoading === "save" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : null}
-                Save Question
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSave} disabled={actionLoading === "save" || !form.questionText.trim()}>
+                {actionLoading === "save" ? <Loader2 className="size-4 animate-spin mr-2" /> : <Check className="size-4 mr-2" />}
+                Save & Approve
               </Button>
             </DialogFooter>
           </DialogContent>

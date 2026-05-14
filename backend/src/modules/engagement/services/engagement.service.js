@@ -90,7 +90,9 @@ const sanitizeQuestionForClient = (question, dayKey) => ({
   categoryLabel: categoryLabel(question.category),
   skillTag: question.skillTag,
   difficulty: question.difficulty,
-  options: sortOptionsForDay(question.options || [], dayKey, question.id)
+  options: sortOptionsForDay(question.options || [], dayKey, question.id),
+  correctOptionId: question.correctOptionId,
+  explanation: question.explanation
 });
 
 const toSafeQuestionRecord = (question) => ({
@@ -408,11 +410,89 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
     buildBadgePayload(userId)
   ]);
 
+  const [activeOperations, history, availableContests, dailySessions] = await Promise.all([
+    prisma.userEngagementContract.findMany({
+      where: { userId, status: "ACCEPTED" },
+      include: { contest: true }
+    }),
+    prisma.userEngagementContract.findMany({
+      where: { userId, status: "COMPLETED" },
+      include: { contest: true },
+      orderBy: { completedAt: "desc" },
+      take: 5
+    }),
+    prisma.engagementContest.findMany({
+      where: { 
+        status: "ACTIVE",
+        userContracts: { none: { userId } } 
+      }
+    }),
+    prisma.engagementAnswerSession.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 5
+    })
+  ]);
+
   const levelProgress = buildLevelProgress(profile, report);
   const latestSession = todaySessions[0] || null;
   const maxAttempts = getMaxAttemptsPerDay();
   const isCompleted =
     todaySessions.length >= maxAttempts || latestSession?.accuracy === 100;
+
+  const mappedActiveOperations = activeOperations.map(o => ({
+    id: o.id,
+    contestId: o.contest.id,
+    title: o.contest.title,
+    description: o.contest.description,
+    category: o.contest.category,
+    difficulty: o.contest.difficulty,
+    progress: o.progress,
+    xpReward: o.contest.xpReward,
+    coinReward: o.contest.coinReward,
+    imageUrl: o.contest.imageUrl || null,
+    status: o.status
+  }));
+
+  // Add today's Daily Quest to active operations if they started it (i.e. they have an attempt but haven't succeeded, or they just have it available today)
+  // Or maybe always show today's quest in Active Operations so it's visible there too.
+  if (!isCompleted) {
+    mappedActiveOperations.unshift({
+      id: "daily-" + dayKey,
+      contestId: null,
+      title: "Daily Growth Quest",
+      description: "Complete today's simulation to sustain your momentum bonus.",
+      category: "PRACTICE",
+      difficulty: "BEGINNER",
+      progress: todaySessions.length > 0 ? 50 : 0,
+      xpReward: 50,
+      coinReward: 20,
+      imageUrl: null,
+      status: "ACTIVE"
+    });
+  }
+
+  // Merge completed contracts and daily sessions for Recent History
+  const mergedHistory = [
+    ...history.map(h => ({
+      id: h.id,
+      title: h.contest?.title || "Quest",
+      category: h.contest?.category || "SKILL_BUILDING",
+      xpReward: h.contest?.xpReward || 0,
+      coinReward: h.contest?.coinReward || 0,
+      imageUrl: h.contest?.imageUrl || null,
+      completedAt: h.completedAt || h.updatedAt
+    })),
+    ...dailySessions.map(s => ({
+      id: s.id,
+      title: "Daily Growth Quest",
+      category: "PRACTICE",
+      xpReward: s.xpAwarded || 0,
+      coinReward: s.coinsAwarded || 0,
+      imageUrl: null,
+      completedAt: s.createdAt
+    }))
+  ].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt)).slice(0, 5);
 
   return {
     profile: {
@@ -425,7 +505,9 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
       longestStreak: profile.longestStreak,
       dailyCompletionCount: profile.dailyCompletionCount,
       totalQuestionsAnswered: profile.totalQuestionsAnswered,
-      totalCorrectAnswers: profile.totalCorrectAnswers
+      totalCorrectAnswers: profile.totalCorrectAnswers,
+      weeklyEfficiency: profile.weeklyEfficiency || [0,0,0,0,0,0,0],
+      activeBoosters: profile.activeBoosters || []
     },
     today: {
       dayKey,
@@ -439,11 +521,30 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
     levelProgress,
     nextMilestone: buildNextMilestone(profile.currentStreak),
     badges,
-    processSummary: buildProcessSummary(report)
+    processSummary: buildProcessSummary(report),
+    availableContracts: availableContests.map(c => ({
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      category: c.category,
+      difficulty: c.difficulty,
+      xpReward: c.xpReward,
+      coinReward: c.coinReward,
+      imageUrl: c.imageUrl || null
+    })),
+    activeOperations: mappedActiveOperations,
+    recentHistory: mergedHistory
   };
 };
 
 const selectQuestionsForDay = async (dayKey) => {
+  // 1. Prefer admin-assigned daily set
+  const adminSet = await prisma.dailyQuestionSet.findUnique({ where: { dayKey } });
+  if (adminSet?.status === 'PUBLISHED' && adminSet.questionIds.length > 0) {
+    const qs = await prisma.engagementQuestion.findMany({ where: { id: { in: adminSet.questionIds } } });
+    if (qs.length > 0) return qs;
+  }
+  // 2. Fallback auto-select
   await ensureFallbackQuestionBank();
   const approved = await prisma.engagementQuestion.findMany({
     where: { status: "APPROVED" },
@@ -486,7 +587,7 @@ export const ensurePublishedDailySet = async (dayKey = getUtcDayKey()) => {
 
   if (
     existing?.status === "PUBLISHED" &&
-    existing.questionIds.length >= engagementRules.dailyChallenge.questionCount
+    existing.questionIds.length > 0
   ) {
     return existing;
   }
@@ -753,6 +854,10 @@ export const startDailyChallenge = async (userId) => {
   const dailySet = await ensurePublishedDailySet(dayKey);
   const questions = await loadDailyQuestions(dailySet);
 
+  if (questions.length === 0) {
+    throw new AppError("Today's Growth Quest is not ready yet.", 503);
+  }
+
   return {
     status: "in_progress",
     dayKey,
@@ -776,7 +881,7 @@ export const submitDailyChallenge = async ({
   const dailySet = await ensurePublishedDailySet(dayKey);
   const questions = await loadDailyQuestions(dailySet);
 
-  if (questions.length !== engagementRules.dailyChallenge.questionCount) {
+  if (questions.length === 0) {
     throw new AppError("Today's Growth Quest is not ready yet.", 503);
   }
 
@@ -1266,6 +1371,15 @@ export const rejectAdminQuestion = async ({ adminId, questionId, reason }) => {
   return toSafeQuestionRecord(question);
 };
 
+
+export const deleteAdminQuestion = async ({ adminId, questionId }) => {
+  ensureEnabled();
+  const existing = await prisma.engagementQuestion.findUnique({ where: { id: questionId } });
+  if (!existing) throw new AppError('Question not found.', 404);
+  await recordAdminAudit({ adminId, action: 'delete_question', entityType: 'EngagementQuestion', entityId: questionId, oldValue: toSafeQuestionRecord(existing) });
+  await prisma.engagementQuestion.delete({ where: { id: questionId } });
+  return { deleted: true, id: questionId };
+};
 export const seedAdminFallbackQuestions = async ({ adminId }) => {
   ensureEnabled();
   const result = await ensureFallbackQuestionBank();
@@ -1337,3 +1451,118 @@ export const listAdminFreelancerProgress = async ({ search, take = 50 } = {}) =>
     };
   });
 };
+
+export const listAdminContests = async () => {
+  return prisma.engagementContest.findMany({
+    orderBy: { createdAt: "desc" }
+  });
+};
+
+export const createAdminContest = async (payload) => {
+  return prisma.engagementContest.create({
+    data: {
+      title: payload.title,
+      description: payload.description,
+      category: payload.category || "SKILL_BUILDING",
+      difficulty: payload.difficulty || "BEGINNER",
+      xpReward: Number(payload.xpReward) || 0,
+      coinReward: Number(payload.coinReward) || 0,
+      imageUrl: payload.imageUrl || null,
+      status: payload.status || "DRAFT",
+      startsAt: payload.startsAt ? new Date(payload.startsAt) : null,
+      endsAt: payload.endsAt ? new Date(payload.endsAt) : null
+    }
+  });
+};
+
+export const updateAdminContest = async (id, payload) => {
+  return prisma.engagementContest.update({
+    where: { id },
+    data: {
+      title: payload.title,
+      description: payload.description,
+      category: payload.category,
+      difficulty: payload.difficulty,
+      xpReward: payload.xpReward ? Number(payload.xpReward) : undefined,
+      coinReward: payload.coinReward ? Number(payload.coinReward) : undefined,
+      imageUrl: payload.imageUrl !== undefined ? (payload.imageUrl || null) : undefined,
+      status: payload.status,
+      startsAt: payload.startsAt !== undefined ? (payload.startsAt ? new Date(payload.startsAt) : null) : undefined,
+      endsAt: payload.endsAt !== undefined ? (payload.endsAt ? new Date(payload.endsAt) : null) : undefined
+    }
+  });
+};
+
+export const deleteAdminContest = async (id) => {
+  return prisma.engagementContest.delete({
+    where: { id }
+  });
+};
+
+export const acceptContestContract = async (userId, contestId) => {
+  ensureEnabled();
+  await ensureFreelancerUser(userId);
+  
+  const contest = await prisma.engagementContest.findUnique({
+    where: { id: contestId, status: "ACTIVE" }
+  });
+  
+  if (!contest) {
+    throw new AppError("Contest not found or not active", 404);
+  }
+  
+  const existing = await prisma.userEngagementContract.findUnique({
+    where: { userId_contestId: { userId, contestId } }
+  });
+  
+  if (existing) {
+    throw new AppError("You have already accepted this contract", 400);
+  }
+  
+  return prisma.userEngagementContract.create({
+    data: {
+      userId,
+      contestId,
+      status: "ACCEPTED",
+      progress: 0
+    }
+  });
+};
+
+// ── Admin Daily Set Management ──────────────────────────────────
+export const getAdminDailySet = async (dayKey) => {
+  const set = await prisma.dailyQuestionSet.findUnique({ where: { dayKey } });
+  const questionIds = set?.questionIds || [];
+  const questions = questionIds.length
+    ? await prisma.engagementQuestion.findMany({ where: { id: { in: questionIds } } })
+    : [];
+  // Also get ALL approved questions for this day's pool
+  const approved = await prisma.engagementQuestion.findMany({
+    where: { status: "APPROVED" },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    select: { id: true, questionText: true, type: true, category: true, difficulty: true, options: true, correctOptionId: true, explanation: true, status: true }
+  });
+  return {
+    dayKey,
+    status: set?.status || "DRAFT",
+    assignedIds: questionIds,
+    assignedQuestions: questions.map(toSafeQuestionRecord),
+    allApproved: approved.map(toSafeQuestionRecord)
+  };
+};
+
+export const assignAdminDailySet = async ({ adminId, dayKey, questionIds }) => {
+  if (!Array.isArray(questionIds) || questionIds.length === 0) {
+    throw new AppError("questionIds must be a non-empty array.", 400);
+  }
+  const set = await prisma.dailyQuestionSet.upsert({
+    where: { dayKey },
+    create: { dayKey, questionIds, status: "PUBLISHED", generatedBy: "admin", approvedById: adminId, publishedAt: new Date() },
+    update: { questionIds, status: "PUBLISHED", generatedBy: "admin", approvedById: adminId, publishedAt: new Date() }
+  });
+  return set;
+};
+
+
+
