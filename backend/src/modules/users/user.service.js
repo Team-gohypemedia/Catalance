@@ -395,14 +395,16 @@ const findUserByLoginPhone = async (identifier) => {
     ].filter(Boolean))
   );
 
-  const candidates = await prisma.user.findMany({
-    where: {
-      OR: lookupDigits.flatMap((digits) => [
-        { phoneNumber: { contains: digits } },
-        { phone: { contains: digits } }
-      ])
-    }
-  });
+  const candidates = await prisma.user.findMany(
+    withFreelancerProfileInclude({
+      where: {
+        OR: lookupDigits.flatMap((digits) => [
+          { phoneNumber: { contains: digits } },
+          { phone: { contains: digits } }
+        ])
+      }
+    })
+  );
 
   return (
     candidates.find((candidate) => {
@@ -479,50 +481,56 @@ const maskLoginPhone = (value = "") => {
 const createOrUpdatePhoneOnlyUser = async ({ normalizedPhone, role, otpCode, otpExpires }) => {
   const normalizedRole = normalizeRoleValue(role) || "CLIENT";
   const syntheticEmail = buildPhoneOnlyEmail(normalizedPhone);
-  const existingUser = await prisma.user.findUnique({
-    where: { email: syntheticEmail }
-  });
+  const existingUser = await prisma.user.findUnique(
+    withFreelancerProfileInclude({
+      where: { email: syntheticEmail }
+    })
+  );
 
   if (existingUser) {
-    return prisma.user.update({
-      where: { id: existingUser.id },
-      data: {
-        phoneNumber: normalizedPhone,
-        phone: normalizedPhone,
-        role: normalizeRoleValue(existingUser.role) || normalizedRole,
-        roles: Array.from(
-          new Set([
-            ...(Array.isArray(existingUser.roles)
-              ? existingUser.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
-              : []),
-            normalizedRole
-          ])
-        ),
-        otpCode,
-        otpExpires,
-        isVerified: false
-      }
-    });
+    return prisma.user.update(
+      withFreelancerProfileInclude({
+        where: { id: existingUser.id },
+        data: {
+          phoneNumber: normalizedPhone,
+          phone: normalizedPhone,
+          role: normalizeRoleValue(existingUser.role) || normalizedRole,
+          roles: Array.from(
+            new Set([
+              ...(Array.isArray(existingUser.roles)
+                ? existingUser.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+                : []),
+              normalizedRole
+            ])
+          ),
+          otpCode,
+          otpExpires,
+          isVerified: false
+        }
+      })
+    );
   }
 
   const randomPassword = crypto.randomBytes(24).toString("hex");
 
-  return prisma.user.create({
-    data: {
-      email: syntheticEmail,
-      fullName: "WhatsApp User",
-      passwordHash: await hashUserPassword(randomPassword),
-      phoneNumber: normalizedPhone,
-      phone: normalizedPhone,
-      role: normalizedRole,
-      roles: [normalizedRole],
-      status: normalizedRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE",
-      onboardingComplete: false,
-      isVerified: false,
-      otpCode,
-      otpExpires
-    }
-  });
+  return prisma.user.create(
+    withFreelancerProfileInclude({
+      data: {
+        email: syntheticEmail,
+        fullName: "WhatsApp User",
+        passwordHash: await hashUserPassword(randomPassword),
+        phoneNumber: normalizedPhone,
+        phone: normalizedPhone,
+        role: normalizedRole,
+        roles: [normalizedRole],
+        status: normalizedRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE",
+        onboardingComplete: false,
+        isVerified: false,
+        otpCode,
+        otpExpires
+      }
+    })
+  );
 };
 
 const resolveActiveUserRole = (user, role) => {
@@ -3312,16 +3320,18 @@ export const verifyWhatsappOtp = async ({
     isPhoneOnlyEmail(user.email) &&
     (!userFullName || userFullName === "WhatsApp User");
 
-  let updatedUser = await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      isVerified: true,
-      otpCode: null,
-      otpExpires: null,
-      phoneNumber: user.phoneNumber || normalizedPhone,
-      phone: user.phone || normalizedPhone
-    }
-  });
+  let updatedUser = await prisma.user.update(
+    withFreelancerProfileInclude({
+      where: { id: user.id },
+      data: {
+        isVerified: true,
+        otpCode: null,
+        otpExpires: null,
+        phoneNumber: user.phoneNumber || normalizedPhone,
+        phone: user.phone || normalizedPhone
+      }
+    })
+  );
 
   if (!user.isVerified && !isPhoneOnlyEmail(user.email)) {
     await maybeSendWelcomeEmail(updatedUser);

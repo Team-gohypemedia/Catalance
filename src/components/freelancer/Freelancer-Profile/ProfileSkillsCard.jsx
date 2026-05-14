@@ -665,7 +665,7 @@ const ProfileSkillsCard = ({
         <div className="mt-0 space-y-4">
           <section>
             <div className="mb-4 flex items-center justify-between gap-3">
-              <p className="text-xl font-bold tracking-tight text-foreground">
+              <p className="text-2xl font-semibold tracking-tight text-foreground">
                 Services & Skills
               </p>
               <div className="flex items-center gap-3">

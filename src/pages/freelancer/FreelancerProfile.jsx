@@ -3786,7 +3786,7 @@ const FreelancerProfile = () => {
             }}
             socialMediaLinks={socialMediaLinks}
           />
-          <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
+          <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
 
 
             <div className="min-w-0 space-y-5">
@@ -3827,7 +3827,7 @@ const FreelancerProfile = () => {
               />
             </div>
 
-            <div className="space-y-5 xl:sticky xl:top-40 xl:self-start">
+            <div className="space-y-5 lg:sticky lg:top-40 lg:self-start">
               <ProfileSummaryCards
                 profileCompletionPercent={profileCompletionPercent}
                 completedCompletionSections={completedCompletionSections}

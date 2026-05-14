@@ -111,7 +111,7 @@ const HeaderNav = ({ activeKey, items, mobile = false, onSelect, variant = "mark
         ? "flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden"
         : cn(
             "hidden items-center lg:flex",
-            variant === "workspace" ? "gap-5 xl:gap-7" : "gap-6 xl:gap-8",
+            variant === "workspace" ? "gap-7 xl:gap-8" : "gap-8 xl:gap-9",
           )
     }
   >
@@ -330,7 +330,8 @@ const FreelancerWorkspaceHeader = ({
       />
 
       <div className="hidden space-y-4 pb-3 pt-3 lg:block">
-        <div className="mx-auto flex w-fit items-center justify-between gap-6 rounded-full border border-white/10 bg-background py-1.5 pl-6 pr-2 sm:gap-8 xl:gap-12">
+        <div className="mx-auto w-full rounded-[40px] border border-border bg-background p-3 sm:p-4 xl:w-[70%]">
+          <div className="flex items-center justify-between gap-4">
             <Link to="/">
               <BrandMark />
             </Link>
@@ -349,7 +350,7 @@ const FreelancerWorkspaceHeader = ({
               showVerifiedBadge
             />
           </div>
-
+        </div>
 
         <div className="mt-7 border-b border-border pb-3">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
