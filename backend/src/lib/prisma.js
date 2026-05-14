@@ -221,6 +221,24 @@ const withNeonConnectionTuning = (databaseUrl) => {
   }
 };
 
+const withPgDriverConnectionTuning = (databaseUrl) => {
+  if (!databaseUrl) {
+    return databaseUrl;
+  }
+
+  try {
+    const parsed = new URL(databaseUrl);
+    parsed.searchParams.delete("pgbouncer");
+    parsed.searchParams.delete("connection_limit");
+    parsed.searchParams.delete("pool_timeout");
+    parsed.searchParams.delete("connect_timeout");
+    parsed.searchParams.delete("keepalives_idle");
+    return parsed.toString();
+  } catch {
+    return databaseUrl;
+  }
+};
+
 const databaseUrl = withNeonConnectionTuning(env.DATABASE_URL);
 const configuredDirectDatabaseUrl = withNeonConnectionTuning(env.DIRECT_DATABASE_URL);
 const derivedDirectDatabaseUrl = withNeonConnectionTuning(
@@ -244,9 +262,14 @@ if (useDirectUrlFlag && directDatabaseUrl) {
   );
 }
 
-const prismaDatasourceOptions = runtimeDatabaseUrl
-  ? { db: { url: runtimeDatabaseUrl } }
-  : undefined;
+const pgAdapterPoolConfig = runtimeDatabaseUrl
+  ? {
+    connectionString: withPgDriverConnectionTuning(runtimeDatabaseUrl),
+    connectionTimeoutMillis: Number(DEFAULT_NEON_CONNECT_TIMEOUT_SECONDS) * 1000,
+    idleTimeoutMillis: Number(DEFAULT_NEON_KEEPALIVE_IDLE) * 1000,
+    max: Number(DEFAULT_NEON_CONNECTION_LIMIT)
+  }
+  : null;
 
 const createUserProjectionExtension = () => ({
   query: {
@@ -314,20 +337,40 @@ const createConnectivityRetryExtension = (prismaClient) => ({
 let prismaInitError = null;
 let PrismaClient = null;
 let Prisma = PRISMA_FALLBACK;
+let PrismaPg = null;
 
 try {
-  const prismaModule = await import("@prisma/client");
+  const [prismaModule, adapterModule] = await Promise.all([
+    import("@prisma/client"),
+    import("@prisma/adapter-pg")
+  ]);
   PrismaClient = prismaModule.PrismaClient;
   Prisma = prismaModule.Prisma || PRISMA_FALLBACK;
+  PrismaPg = adapterModule.PrismaPg;
 } catch (error) {
-  console.error("Failed to load @prisma/client:", error);
+  console.error("Failed to load Prisma dependencies:", error);
   prismaInitError = error;
 }
 
 if (!globalForPrisma.__prisma && PrismaClient) {
   try {
+    if (!PrismaPg || !pgAdapterPoolConfig) {
+      throw new Error(
+        "Prisma PostgreSQL adapter is not configured. Check @prisma/adapter-pg and DATABASE_URL."
+      );
+    }
+
+    const adapter = new PrismaPg(pgAdapterPoolConfig, {
+      onPoolError: (error) => {
+        console.warn("[Prisma] PostgreSQL pool error:", error?.message || error);
+      },
+      onConnectionError: (error) => {
+        console.warn("[Prisma] PostgreSQL connection error:", error?.message || error);
+      }
+    });
+
     const prismaClient = new PrismaClient({
-      datasources: prismaDatasourceOptions,
+      adapter,
       log: prismaLogLevels
     });
 
