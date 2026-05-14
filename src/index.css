@@ -11,13 +11,13 @@ body[data-scroll-locked] {
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.1450 0 0);
+  --background: #FFFBF0;
+  --foreground: #1C1B1F;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.1450 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.1450 0 0);
-  --primary: oklch(0.8652 0.1768 90.3800);
+  --primary: #F9D949;
   --primary-foreground: oklch(0.1450 0 0);
   --secondary: oklch(0.9700 0 0);
   --secondary-foreground: oklch(0.2050 0 0);
@@ -29,7 +29,7 @@ body[data-scroll-locked] {
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.9220 0 0);
   --input: oklch(0.9220 0 0);
-  --ring: oklch(0.8652 0.1768 90.3800);
+  --ring: #F9D949;
   --chart-1: oklch(0.8100 0.1000 252);
   --chart-2: oklch(0.6200 0.1900 260);
   --chart-3: oklch(0.5500 0.2200 263);
@@ -74,7 +74,7 @@ body[data-scroll-locked] {
   --card-foreground: oklch(0.9850 0 0);
   --popover: oklch(0.2690 0 0);
   --popover-foreground: oklch(0.9850 0 0);
-  --primary: oklch(0.8652 0.1768 90.3800);
+  --primary: #F9D949;
   --primary-foreground: oklch(0.2050 0 0);
   --secondary: oklch(0.2690 0 0);
   --secondary-foreground: oklch(0.9850 0 0);
@@ -289,7 +289,7 @@ body[data-scroll-locked] {
     --card-foreground: #0f172a;
     --popover: #ffffff;
     --popover-foreground: #0f172a;
-    --primary: oklch(0.8652 0.1768 90.3800);
+    --primary: #F9D949;
     --primary-foreground: #0f172a;
     --secondary: #f1f5f9;
     --secondary-foreground: #334155;
@@ -299,7 +299,7 @@ body[data-scroll-locked] {
     --accent-foreground: #0f172a;
     --border: #dbe3ef;
     --input: #d7e5ff;
-    --ring: oklch(0.8652 0.1768 90.3800);
+    --ring: #F9D949;
     --sidebar: #ffffff;
     --sidebar-foreground: #334155;
     --sidebar-primary: oklch(0.8652 0.1768 90.3800);
@@ -347,4 +347,350 @@ body[data-scroll-locked] {
     background: color-mix(in srgb, var(--foreground) 28%, transparent);
   }
 
+}
+
+/* =============================================================================
+   Professional Momentum — Homepage Light Theme  (Stitch Design System)
+   Scope: html.home-page:not(.dark)  |  Dark mode: untouched
+============================================================================= */
+
+/* ── Design tokens ── */
+html.home-page:not(.dark),
+html.onboarding-page:not(.dark),
+html.marketplace-page:not(.dark) {
+  color-scheme: light;
+  --background:           #FFFBF0; /* Warm Cream background */
+  --foreground:           #1C1B1F; /* Sharp charcoal text */
+  --card:                 #FFFFFF; /* Pure white cards */
+  --card-foreground:      #1C1B1F;
+  --popover:              #FFFFFF;
+  --popover-foreground:   #1C1B1F;
+  --primary:              #F9D949; /* Stitch Yellow */
+  --primary-foreground:   #1C1B1F;
+  --secondary:            #7C778A; /* Muted Taupe from inactive icons */
+  --secondary-foreground: #FFFFFF;
+  --muted:                #F8F6EF; /* Very subtle warm gray */
+  --muted-foreground:     #7C778A;
+  --accent:               #FFF3C4;
+  --accent-foreground:    #1C1B1F;
+  --border:               #E5E1D3; /* Very soft border */
+  --input:                #FFFFFF;
+  --ring:                 #F9D949;
+}
+
+/* ── Root surface ── */
+html.home-page:not(.dark) main,
+html.onboarding-page:not(.dark) main,
+html.marketplace-page:not(.dark) main {
+  background-color: #FFFBF0;
+  color: #1C1B1F;
+}
+
+/* ── Specific Navbar Visibility Fix (Global Stitch Theme) ── */
+html:not(.dark) [class*="fixed"][class*="top-2"] > div,
+html:not(.dark) [class*="resizable-navbar"] {
+  background-color: #FFFFFF !important;
+  border-color: #E5E1D3 !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  box-shadow: 
+    0 4px 20px -2px rgba(0, 0, 0, 0.05),
+    0 2px 10px -4px rgba(249, 217, 73, 0.15) !important;
+}
+
+/* Navbar Logo text */
+html.home-page:not(.dark) [class*="Catalance"] {
+  color: #1C1B1F !important;
+}
+
+/* ── All headings ── */
+html.home-page:not(.dark) main h1,
+html.home-page:not(.dark) main h2,
+html.home-page:not(.dark) main h3,
+html.home-page:not(.dark) main h4,
+html.onboarding-page:not(.dark) main h1,
+html.onboarding-page:not(.dark) main h2,
+html.onboarding-page:not(.dark) main h3,
+html.onboarding-page:not(.dark) main h4,
+html.marketplace-page:not(.dark) main h1,
+html.marketplace-page:not(.dark) main h2,
+html.marketplace-page:not(.dark) main h3,
+html.marketplace-page:not(.dark) main h4 {
+  color: #1C1B1F !important;
+  text-shadow: 0 1px 1px rgba(255,255,255,0.8);
+}
+
+/* ── All body text ── */
+html.home-page:not(.dark) main p,
+html.onboarding-page:not(.dark) main p,
+html.marketplace-page:not(.dark) main p {
+  color: #7C778A !important;
+}
+
+/* ── All spans ── */
+html.home-page:not(.dark) main span:not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]),
+html.onboarding-page:not(.dark) main span:not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]),
+html.marketplace-page:not(.dark) main span:not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]) {
+  color: #1C1B1F !important;
+}
+
+/* ── Catch all hardcoded text-white utility classes ── */
+html.home-page:not(.dark) main [class*="text-white"],
+html.onboarding-page:not(.dark) main [class*="text-white"] {
+  color: #1C1B1F !important;
+}
+
+/* Softer muted variants for text-white/55 etc */
+html.home-page:not(.dark) main [class*="text-white/"],
+html.onboarding-page:not(.dark) main [class*="text-white/"] {
+  color: #7C778A !important;
+}
+
+/* ── Section backgrounds (alternate) ── */
+html.home-page:not(.dark) main section {
+  background-color: #FFFBF0 !important;
+}
+html.home-page:not(.dark) main section:nth-child(even) {
+  background-color: #F8F6EF !important;
+}
+
+/* ── Hero ── */
+html.home-page:not(.dark) main section:first-of-type {
+  background-color: #FFFBF0 !important;
+}
+html.home-page:not(.dark) main canvas[aria-hidden] {
+  opacity: 0.12 !important;
+  mix-blend-mode: multiply;
+}
+html.home-page:not(.dark) main img[class*="drop-shadow"] {
+  filter: 
+    drop-shadow(0 0 60px rgba(249, 217, 73, 0.65)) 
+    drop-shadow(0 0 140px rgba(249, 217, 73, 0.3)) !important;
+}
+html.home-page:not(.dark) main [class*="bg-background/3"] {
+  background-color: rgba(249,217,73,0.15) !important;
+  border-color: rgba(249,217,73,0.4) !important;
+}
+
+/* ── Card/Article Surface Refinement ── */
+html.home-page:not(.dark) main article,
+html.home-page:not(.dark) main [class*="rounded"][class*="border-white/1"],
+html.onboarding-page:not(.dark) main [class*="rounded"][class*="border-white/1"],
+html.onboarding-page:not(.dark) main [class*="Card"],
+html.onboarding-page:not(.dark) main [class*="bg-[#101010]"],
+html.marketplace-page:not(.dark) main [class*="rounded"][class*="border-white/1"],
+html.marketplace-page:not(.dark) main [class*="bg-background/8"],
+html.marketplace-page:not(.dark) main .glass-panel,
+html.marketplace-page:not(.dark) main .glass-card {
+  background-color: #FFFFFF !important;
+  border-color: #E5E1D3 !important;
+  box-shadow: 
+    0 1px 3px rgba(0,0,0,0.02),
+    0 8px 24px -4px rgba(249, 217, 73, 0.08) !important;
+  backdrop-filter: none !important;
+}
+
+/* Card labels & Secondary text */
+html.home-page:not(.dark) main article span[class*="uppercase"],
+html.home-page:not(.dark) main [class*="text-secondary"] {
+  color: #7C778A !important;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* OR divider bubble */
+html.home-page:not(.dark) main [class*="border-primary"][class*="rounded-full"] {
+  border-color: #F9D949 !important;
+  box-shadow: 0 0 36px rgba(249,217,73,0.5) !important;
+}
+html.home-page:not(.dark) main [class*="bg-primary/1"] {
+  background-color: rgba(249,217,73,0.22) !important;
+}
+
+/* ── Carousel nav buttons ── */
+html.home-page:not(.dark) main button[aria-label="Previous services"],
+html.home-page:not(.dark) main button[aria-label="Next services"] {
+  background-color: #FFFFFF !important;
+  border-color: #D9D3C2 !important;
+  color: #1C1B1F !important;
+}
+
+/* ── Stats row divider ── */
+html.home-page:not(.dark) main [class*="border-t"] {
+  border-color: #D9D3C2 !important;
+}
+
+/* ── MadeOnCatalance fade masks ── */
+html.home-page:not(.dark) main [aria-hidden="true"][class*="bg-background"] {
+  background-color: #FFFBF0 !important;
+}
+
+/* ── bg-black/* overrides (testimonials badge, backdrops) ── */
+html.home-page:not(.dark) main [class*="bg-black"] {
+  background-color: rgba(249,217,73,0.10) !important;
+  border-color: rgba(249,217,73,0.3) !important;
+}
+
+/* Testimonial cards specifically */
+html.home-page:not(.dark) main article[class*="bg-black"] {
+  background-color: #FFFFFF !important;
+  border-color: #D9D3C2 !important;
+  box-shadow: 0 4px 20px rgba(249,217,73,0.10), 0 1px 4px rgba(0,0,0,0.06) !important;
+  backdrop-filter: none !important;
+}
+
+/* Testimonial text overrides (already caught by p/span rules above) */
+html.home-page:not(.dark) main article[class*="bg-black"] p {
+  color: #1C1B1F !important;
+}
+
+/* Horizontal fade gradients */
+html.home-page:not(.dark) main [class*="bg-linear-to-r"] {
+  background-image: linear-gradient(to right, #FFFBF0, transparent) !important;
+}
+html.home-page:not(.dark) main [class*="bg-linear-to-l"] {
+  background-image: linear-gradient(to left, #FFFBF0, transparent) !important;
+}
+
+/* ── Hardcoded Onboarding Specifics ── */
+html.onboarding-page:not(.dark) main [class*="bg-[#1a1a1a]"],
+html.onboarding-page:not(.dark) main [class*="bg-[#171717]"],
+html.onboarding-page:not(.dark) main [class*="bg-[#121212]"],
+html.onboarding-page:not(.dark) main [class*="bg-[#161616]"] {
+  background-color: #FFFFFF !important;
+  color: #1C1B1F !important;
+}
+
+html.onboarding-page:not(.dark) main input,
+html.onboarding-page:not(.dark) main select,
+html.onboarding-page:not(.dark) main [class*="SelectTrigger"] {
+  background-color: #FFFFFF !important;
+  color: #1C1B1F !important;
+  border-color: #E5E1D3 !important;
+}
+
+html.onboarding-page:not(.dark) main [class*="placeholder:text-white"] {
+  --placeholder-color: #7C778A;
+}
+
+/* Marketplace specific overrides */
+html.marketplace-page:not(.dark) main [class*="bg-neutral-800/50"],
+html.marketplace-page:not(.dark) main [class*="bg-white/5"],
+html.marketplace-page:not(.dark) main [class*="bg-white/[0.03]"],
+html.marketplace-page:not(.dark) main [class*="bg-white/[0.04]"],
+html.marketplace-page:not(.dark) main [class*="bg-white/[0.05]"] {
+  background-color: #FFFFFF !important;
+  border-color: #E5E1D3 !important;
+}
+
+/* FAQ items */
+html.marketplace-page:not(.dark) main [class*="Asked Questions"] + div [class*="bg-white/5"],
+html.marketplace-page:not(.dark) main [class*="Asked Questions"] + div [class*="bg-neutral-800/50"] {
+  background-color: #F8F6EF !important;
+  border-color: #E5E1D3 !important;
+}
+
+html.marketplace-page:not(.dark) main [class*="bg-[#0b0b0c]"] {
+  background-color: #FFFBF0 !important;
+}
+
+/* Marketplace Hero text shadow for white text on yellow glow */
+html.marketplace-page:not(.dark) main section:first-of-type h1,
+html.marketplace-page:not(.dark) main section:first-of-type h2,
+html.marketplace-page:not(.dark) main section:first-of-type p {
+  text-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
+}
+
+/* Comparison section - keep it dark but readable */
+html.marketplace-page:not(.dark) main [class*="bg-[#06080d]"],
+html.marketplace-page:not(.dark) main [class*="bg-[#070a10]"],
+html.marketplace-page:not(.dark) main [class*="bg-[#0f0f10]"] {
+  background-color: #1C1B1F !important; /* Sharp contrast section */
+}
+
+/* Preserve text in dark comparison section */
+html.marketplace-page:not(.dark) main [class*="bg-[#1C1B1F]"] [class*="text-white"],
+html.marketplace-page:not(.dark) main [class*="bg-[#1C1B1F]"] span,
+html.marketplace-page:not(.dark) main [class*="bg-[#1C1B1F]"] h3 {
+  color: #FFFFFF !important;
+}
+
+/* ── Global border softening ── */
+html.home-page:not(.dark) main [class*="border-white"],
+html.onboarding-page:not(.dark) main [class*="border-white"],
+html.marketplace-page:not(.dark) main [class*="border-white"] {
+  border-color: #E5E1D3 !important;
+}
+html.home-page:not(.dark) main [class*="border-primary"] {
+  border-color: #F9D949 !important;
+}
+
+/* Icons color (from ref image) */
+html.home-page:not(.dark) main svg:not([class*="text-primary"]):not([class*="fill-primary"]),
+html.onboarding-page:not(.dark) main svg:not([class*="text-primary"]):not([class*="fill-primary"]),
+html.marketplace-page:not(.dark) main svg:not([class*="text-primary"]):not([class*="fill-primary"]) {
+  color: #7C778A !important;
+}
+
+/* Newsletter/Stay ahead input */
+html.home-page:not(.dark) main [class*="Stay ahead"] input,
+html.marketplace-page:not(.dark) main [class*="Stay ahead"] input {
+  background-color: #F8F6EF !important;
+  border-color: #E5E1D3 !important;
+  color: #1C1B1F !important;
+}
+
+/* Glow Systems */
+.glow-primary {
+  box-shadow: 
+    0 0 20px rgba(249, 217, 73, 0.25),
+    0 0 40px rgba(249, 217, 73, 0.12),
+    inset 0 0 12px rgba(249, 217, 73, 0.05) !important;
+  border-color: rgba(249, 217, 73, 0.8) !important;
+}
+
+.glow-subtle {
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.03),
+    0 0 20px rgba(249, 217, 73, 0.1) !important;
+}
+
+/* Refined Surfaces */
+html:not(.dark) .themed-card {
+  background: #FFFFFF !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.01),
+    0 12px 24px -12px rgba(0, 0, 0, 0.08) !important;
+}
+
+html:not(.dark) .themed-card h3,
+html:not(.dark) .themed-card span {
+  color: #1C1B1F !important;
+}
+
+html:not(.dark) .themed-card .text-white\/62 {
+  color: #7C778A !important;
+}
+
+/* Mascot Handling */
+html:not(.dark) img[src*="mascot"] {
+  filter: drop-shadow(0 10px 25px rgba(0,0,0,0.1));
+}
+
+/* Carousel Card Image */
+html:not(.dark) .ServiceRailCard img {
+  filter: drop-shadow(0 8px 20px rgba(0,0,0,0.15));
+}
+
+
+/* Footer Social Icons */
+html:not(.dark) footer a[aria-label] {
+  background-color: #FFFFFF !important;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
+}
+
+html:not(.dark) footer a[aria-label]:hover {
+  border-color: #F9D949 !important;
+  color: #F9D949 !important;
+  box-shadow: 0 0 15px rgba(249, 217, 73, 0.15) !important;
 }

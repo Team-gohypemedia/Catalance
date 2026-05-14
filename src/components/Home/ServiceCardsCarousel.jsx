@@ -368,7 +368,7 @@ const ServiceCardsCarousel = () => {
             type="button"
             onClick={handleScrollPrev}
             aria-label="Previous services"
-            className="absolute -left-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:left-2 sm:h-11 sm:w-11 lg:left-4"
+            className="absolute -left-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-lg transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:left-2 sm:h-11 sm:w-11 lg:left-4 glow-subtle"
             disabled={!api}
           >
             <ChevronLeft className="h-5 w-5" />
@@ -378,7 +378,7 @@ const ServiceCardsCarousel = () => {
             type="button"
             onClick={handleScrollNext}
             aria-label="Next services"
-            className="absolute -right-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-[0_12px_28px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:right-2 sm:h-11 sm:w-11 lg:right-4"
+            className="absolute -right-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-lg transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:right-2 sm:h-11 sm:w-11 lg:right-4 glow-subtle"
             disabled={!api}
           >
             <ChevronRight className="h-5 w-5" />

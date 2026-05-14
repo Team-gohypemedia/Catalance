@@ -284,9 +284,9 @@ const FALLBACK_OPEN_PROJECTS = [
   },
 ];
 
-const glassPanelClass = "border border-white/10 bg-white/[0.04] shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl";
-const glassCardClass = "border border-white/10 bg-white/[0.05] shadow-[0_24px_70px_-42px_rgba(2,6,23,0.78)]";
-const controlSurfaceClass = "border-white/10 bg-black/20 text-white placeholder:text-slate-500";
+const glassPanelClass = "glass-panel border border-white/10 bg-white/[0.04] shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl";
+const glassCardClass = "glass-card border border-white/10 bg-white/[0.05] shadow-[0_24px_70px_-42px_rgba(2,6,23,0.78)]";
+const controlSurfaceClass = "themed-input border-white/10 bg-black/20 text-white placeholder:text-slate-500";
 const numberFieldClass = "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 const MARKETPLACE_PAGE_SIZE = 12;
 const deliveryLabels = {
@@ -677,6 +677,18 @@ const Marketplace = () => {
   const initialSearchStateRef = useRef(readMarketplaceSearchState());
   const initialSearchState = initialSearchStateRef.current;
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.classList.add("marketplace-page");
+    return () => document.documentElement.classList.remove("marketplace-page");
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileViewport(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const [favorites, setFavorites] = useState({});
   const [activeMarketplaceView, setActiveMarketplaceView] = useState(() => {
@@ -2061,18 +2073,18 @@ const Marketplace = () => {
                     </div>
                     <div className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/95 text-[15px] font-bold text-black">
-                          fi
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/90 text-[15px] font-bold text-white">
+                          GM
                         </span>
-                        <span className="text-[24px] font-semibold tracking-[-0.02em] text-white sm:text-[28px] lg:text-[31px]">Fiverr</span>
+                        <span className="text-[20px] font-semibold tracking-[-0.02em] text-white sm:text-[24px] lg:text-[26px]">Generic Marketplaces</span>
                       </div>
                     </div>
                     <div className="border-l border-white/10 px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-lime-500/95 text-[15px] font-bold text-black">
-                          up
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-600/90 text-[15px] font-bold text-white">
+                          BP
                         </span>
-                        <span className="text-[24px] font-semibold tracking-[-0.02em] text-white sm:text-[28px] lg:text-[31px]">Upwork</span>
+                        <span className="text-[20px] font-semibold tracking-[-0.02em] text-white sm:text-[24px] lg:text-[26px]">Bidding Platforms</span>
                       </div>
                     </div>
                   </div>

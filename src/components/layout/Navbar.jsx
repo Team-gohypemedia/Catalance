@@ -25,6 +25,8 @@ import WorkspaceProfileDropdown from "@/components/layout/WorkspaceProfileDropdo
 import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
+import { useTheme } from "@/components/providers/theme-provider";
+import ThemeToggle from "@/components/common/ThemeToggle";
 
 const buildNavItems = ({
   isFreelancer = false,
@@ -129,7 +131,7 @@ const getInitials = (value) => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
-/* ─── AuthButtons ────────────────────────────────────────────────────────── */
+/* ΓöÇΓöÇΓöÇ AuthButtons ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 const AuthButtons = ({
   showAuthenticatedNav,
   currentDashboard,
@@ -160,7 +162,7 @@ const AuthButtons = ({
       <NavbarButton
         as={Link}
         to="/signin/phone"
-        className="text-background"
+        className="text-primary-foreground"
       >
         Sign In
       </NavbarButton>
@@ -168,7 +170,7 @@ const AuthButtons = ({
   );
 };
 
-/* ─── Navbar ─────────────────────────────────────────────────────────────── */
+/* ΓöÇΓöÇΓöÇ Navbar ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 const Navbar = () => {
   const location = useLocation();
   const isHome = location.pathname === "/";
@@ -217,7 +219,15 @@ const Navbar = () => {
   );
 
   const closeMobileMenu = () => {};
-  const isDark = true;
+  const { theme } = useTheme();
+  
+  // On homepage, we use the theme state to decide if the glass navbar should look dark or light.
+  // We treat 'system' as dark if the OS preference matches.
+  const isDark = useMemo(() => {
+    if (theme === "dark") return true;
+    if (theme === "light") return false;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }, [theme]);
 
   return (
     <ResizableNavbar isHome={isHome} isDark={isDark}>
@@ -231,6 +241,7 @@ const Navbar = () => {
           currentPath={currentPath}
         />
         <div className="flex shrink-0 items-center gap-3 pl-2">
+          <ThemeToggle />
           <AuthButtons
             showAuthenticatedNav={shouldShowAuthenticatedNav}
             currentDashboard={currentDashboard}
@@ -279,7 +290,9 @@ const PublicMobileSidebar = ({ navItems, currentPath }) => {
           <NavbarLogo />
         </Link>
 
-        <Sheet open={open} onOpenChange={setOpen}>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <button
               type="button"
@@ -331,7 +344,7 @@ const PublicMobileSidebar = ({ navItems, currentPath }) => {
                         className={cn(
                           "flex min-h-10 w-full items-center justify-center rounded-[15px] border px-3 py-1.5 text-[0.9rem] font-medium transition-colors",
                           isActive
-                            ? "border-primary bg-primary text-background"
+                            ? "border-primary bg-primary text-primary-foreground"
                             : "border-white/[0.05] bg-white/[0.03] text-muted-foreground hover:border-white/[0.08] hover:bg-white/[0.05] hover:text-foreground",
                         )}
                       >
@@ -342,11 +355,18 @@ const PublicMobileSidebar = ({ navItems, currentPath }) => {
                 })}
               </nav>
 
+              <div className="mt-4 border-t border-white/[0.05] pt-4">
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-[0.85rem] font-medium text-muted-foreground">Theme</span>
+                  <ThemeToggle />
+                </div>
+              </div>
+
               <div className="mt-auto space-y-2 pt-6">
                 <SheetClose asChild>
                   <Link
                     to="/signin/phone"
-                    className="flex min-h-10 w-full items-center justify-center rounded-[15px] bg-primary px-3 py-1.5 text-[0.9rem] font-semibold text-background transition-colors hover:bg-primary/90"
+                    className="flex min-h-10 w-full items-center justify-center rounded-[15px] bg-primary px-3 py-1.5 text-[0.9rem] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                   >
                     Sign In
                   </Link>
@@ -357,6 +377,7 @@ const PublicMobileSidebar = ({ navItems, currentPath }) => {
         </Sheet>
       </div>
     </div>
+  </div>
   );
 };
 

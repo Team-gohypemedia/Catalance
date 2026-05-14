@@ -231,7 +231,7 @@ const DashboardRouteTransitionLoader = () => {
 const App = () => {
   return (
     <main>
-      <ThemeProvider defaultTheme="dark" storageKey="freelancer-ui-theme-v1">
+      <ThemeProvider defaultTheme="system" storageKey="catalance-theme">
         <Suspense fallback={<RouteFallback />}>
           <DashboardRouteTransitionLoader />
           <Routes>

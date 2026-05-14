@@ -5109,45 +5109,45 @@ const GuestAIDemo = () => {
         : isCurrentBriefingStepValid;
     const briefingBackdropClasses = isDark
         ? 'bg-[radial-gradient(circle_at_top,rgba(255,200,0,0.14),transparent_30%),radial-gradient(circle_at_bottom,rgba(255,200,0,0.08),transparent_24%),linear-gradient(180deg,rgba(24,24,27,1)_0%,rgba(15,15,18,1)_100%)]'
-        : 'bg-[radial-gradient(circle_at_top,rgba(255,200,0,0.18),transparent_30%),radial-gradient(circle_at_bottom,rgba(255,200,0,0.08),transparent_24%),linear-gradient(180deg,#fffdfa_0%,#f8f6f0_100%)]';
-    const briefingGlowClasses = isDark ? 'bg-[#ffc800]/14' : 'bg-[#ffc800]/12';
-    const briefingEyebrowClasses = isDark ? 'text-[#d6c4a2]' : 'text-[#8a6d47]';
-    const briefingDotClasses = isDark ? 'bg-[#ffc800] shadow-[0_0_0_5px_rgba(255,200,0,0.12)]' : 'bg-[#ffc800] shadow-[0_0_0_5px_rgba(255,200,0,0.16)]';
-    const briefingHeadingClasses = isDark ? 'text-white' : 'text-[#17110d]';
+        : 'bg-[radial-gradient(circle_at_top,rgba(255,200,0,0.22),transparent_40%),radial-gradient(circle_at_bottom,rgba(255,200,0,0.12),transparent_30%),linear-gradient(180deg,#ffffff_0%,#fffaf0_100%)]';
+    const briefingGlowClasses = isDark ? 'bg-[#ffc800]/14' : 'bg-[#ffc800]/15';
+    const briefingEyebrowClasses = isDark ? 'text-[#d6c4a2]' : 'text-[#7c6a4d]';
+    const briefingDotClasses = isDark ? 'bg-[#ffc800] shadow-[0_0_0_5px_rgba(255,200,0,0.12)]' : 'bg-[#ffc800] shadow-[0_0_0_5px_rgba(255,200,0,0.10)]';
+    const briefingHeadingClasses = isDark ? 'text-white' : 'text-[#1c1b1f]';
     const briefingHeadingSizeClasses = isDark
         ? 'text-[clamp(1.55rem,2.5vw,2.55rem)] leading-[1.16] tracking-[-0.024em] [text-shadow:0_0_28px_rgba(255,255,255,0.04)]'
         : 'text-[clamp(1.85rem,3.5vw,3.1rem)] leading-[1.14] tracking-[-0.024em]';
-    const briefingMutedSentenceClasses = isDark ? 'text-white/28' : 'text-[#d2c4b2]';
+    const briefingMutedSentenceClasses = isDark ? 'text-white/28' : 'text-[#c6b8a8]';
     const briefingAccentTextClasses = isDark ? 'text-[#ffd75a] [text-shadow:0_0_24px_rgba(255,200,0,0.16)]' : 'text-[#ba7a07]';
     const briefingAccentPillClasses = isDark ? 'bg-[#ffc800]/12 text-[#ffd75a]' : 'bg-[#fff0bf] text-[#ba7a07]';
-    const briefingBodyClasses = isDark ? 'text-muted-foreground' : 'text-[#695847]';
+    const briefingBodyClasses = isDark ? 'text-muted-foreground' : 'text-[#5c544b]';
     const briefingHeroStageClasses = isDark
         ? 'border-[#ffc800]/14 bg-[linear-gradient(135deg,rgba(255,200,0,0.08)_0%,rgba(255,255,255,0.02)_22%,rgba(16,16,19,0.96)_70%)] shadow-[0_0_0_1px_rgba(255,200,0,0.04),0_45px_120px_-70px_rgba(255,200,0,0.45)]'
-        : 'border-[#eadfce] bg-[linear-gradient(135deg,rgba(255,200,0,0.14)_0%,rgba(255,255,255,0.92)_32%,rgba(255,249,240,0.96)_100%)] shadow-[0_35px_100px_-60px_rgba(98,77,36,0.26)]';
+        : 'border-[#eadfce] bg-[linear-gradient(135deg,rgba(255,200,0,0.08)_0%,rgba(255,255,255,0.95)_35%,rgba(255,250,242,0.98)_100%)] shadow-[0_30px_90px_-50px_rgba(98,77,36,0.22)]';
     const briefingCardClasses = isDark
         ? 'border-[#ffc800]/16 bg-[linear-gradient(180deg,rgba(23,23,27,0.96)_0%,rgba(14,14,18,0.98)_100%)] shadow-[0_0_0_1px_rgba(255,200,0,0.05),0_0_44px_rgba(255,200,0,0.08),0_55px_120px_-70px_rgba(0,0,0,0.88)]'
-        : 'border-[#eadfce] bg-white/92 shadow-[0_40px_90px_-55px_rgba(98,77,36,0.24)]';
+        : 'border-[#eadfce] bg-white/95 shadow-[0_35px_80px_-50px_rgba(98,77,36,0.18)]';
     const briefingCardDividerClasses = isDark ? 'border-border/70' : 'border-[#efe2d3]';
-    const briefingStepEyebrowClasses = isDark ? 'text-[#f0cc6b]' : 'text-[#c28712]';
-    const briefingStepTitleClasses = isDark ? 'text-white' : 'text-[#211810]';
+    const briefingStepEyebrowClasses = isDark ? 'text-[#f0cc6b]' : 'text-[#9c6a0f]';
+    const briefingStepTitleClasses = isDark ? 'text-white' : 'text-[#1c1b1f]';
     const briefingInputBorderClasses = isDark ? 'border-border/70' : 'border-[#eadbc9]';
-    const briefingFieldTextClasses = isDark ? 'text-white placeholder:text-white/30' : 'text-[#20150f] placeholder:text-[#c6b9ab]';
-    const briefingMicroLabelClasses = isDark ? 'text-[#c4b38f]' : 'text-[#a28469]';
+    const briefingFieldTextClasses = isDark ? 'text-white placeholder:text-white/30' : 'text-[#1c1b1f] placeholder:text-[#b5a99c]';
+    const briefingMicroLabelClasses = isDark ? 'text-[#c4b38f]' : 'text-[#947b66]';
     const briefingChipClasses = isDark
         ? 'border-border/70 bg-transparent text-zinc-200 hover:border-[#ffc800]/50 hover:bg-[#ffc800]/10 hover:text-white'
-        : 'border-[#e8d7c4] text-[#5f4935] hover:border-[#ffc800]/60 hover:bg-[#fff8e8]';
-    const briefingSelectedChipClasses = isDark ? 'border-[#ffc800] bg-[#ffc800] text-black' : 'border-[#1f1b16] bg-[#1f1b16] text-white';
+        : 'border-[#e8d7c4] text-[#5c544b] hover:border-[#ffc800]/50 hover:bg-[#fff8e8]';
+    const briefingSelectedChipClasses = isDark ? 'border-[#ffc800] bg-[#ffc800] text-black' : 'border-[#1c1b1f] bg-[#1c1b1f] text-white';
     const briefingBudgetFieldClasses = isDark ? 'border-border/70 bg-white/[0.04]' : 'border-[#e9dac7] bg-white/70';
     const briefingUploadClasses = isDark
         ? 'border-border/70 bg-white/[0.03] text-zinc-300 hover:border-[#ffc800]/50 hover:bg-[#ffc800]/10'
-        : 'border-[#e5d1ba] bg-[#fffaf2] text-[#7d6148] hover:border-[#ffc800]/60 hover:bg-[#fff4de]';
+        : 'border-[#e5d1ba] bg-[#fffaf2] text-[#6b523a] hover:border-[#ffc800]/50 hover:bg-[#fff4de]';
     const briefingTagClasses = isDark ? 'border-border/70 bg-white/[0.04]' : 'border-[#eadac8] bg-white/70';
-    const briefingTagTextClasses = isDark ? 'text-zinc-200' : 'text-[#5c4533]';
-    const briefingTagSubtleClasses = isDark ? 'text-zinc-400' : 'text-[#987b61]';
+    const briefingTagTextClasses = isDark ? 'text-zinc-200' : 'text-[#1c1b1f]';
+    const briefingTagSubtleClasses = isDark ? 'text-zinc-400' : 'text-[#8d7d6c]';
     const briefingIconButtonClasses = isDark ? 'text-zinc-400 hover:bg-white/10 hover:text-white' : 'text-[#8b6c50] hover:bg-[#f6e7d2] hover:text-[#39261a]';
     const briefingBackButtonClasses = briefingStepIndex === 0
         ? (isDark ? 'cursor-not-allowed border-border/60 text-zinc-600' : 'cursor-not-allowed border-[#ece2d7] text-[#d2c6b9]')
-        : (isDark ? 'border-border/70 text-zinc-200 hover:border-[#ffc800]/50 hover:bg-[#ffc800]/10' : 'border-[#e8d7c4] text-[#5f4935] hover:border-[#ffc800]/60 hover:bg-[#fff5e4]');
+        : (isDark ? 'border-border/70 text-zinc-200 hover:border-[#ffc800]/50 hover:bg-[#ffc800]/10' : 'border-[#e8d7c4] text-[#5c544b] hover:border-[#ffc800]/50 hover:bg-[#fff5e4]');
     const briefingHintClasses = isDark ? 'text-zinc-400' : 'text-[#8d7257]';
     const briefingLikelyMatchClasses = isDark ? 'text-zinc-300' : 'text-[#7f6249]';
     const briefingPrimaryButtonClasses = canContinueBriefing
@@ -5507,7 +5507,7 @@ const GuestAIDemo = () => {
                                         onClick={() => handleServiceSelect(feature)}
                                         onMouseMove={handleCardGlowMouseMove}
                                         style={{ '--card-glow-x': '50%', '--card-glow-y': '50%' }}
-                                        className="group relative h-full cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-card/85 transition-all duration-500 hover:-translate-y-2 hover:border-[#ffc800]/50"
+                                        className={`group relative h-full cursor-pointer overflow-hidden rounded-3xl border transition-all duration-500 hover:-translate-y-2 ${isDark ? 'border-white/10 bg-card/85 hover:border-[#ffc800]/50' : 'border-[#e8dfcf] bg-white hover:border-[#ffc800]/60 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.08)]'}`}
                                     >
                                         <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                                         <div
@@ -5527,7 +5527,7 @@ const GuestAIDemo = () => {
                                             </div>
 
                                             <div className="flex grow flex-col items-center text-center">
-                                                <h3 className="mb-2 text-lg font-bold leading-tight text-white transition-colors duration-300 group-hover:text-[#ffc800]">
+                                                <h3 className={`mb-2 text-lg font-bold leading-tight transition-colors duration-300 group-hover:text-[#ffc800] ${isDark ? 'text-white' : 'text-[#1c1b1f]'}`}>
                                                     {feature.title || feature.name}
                                                 </h3>
 
@@ -5537,14 +5537,14 @@ const GuestAIDemo = () => {
 
                                                 <div className="mt-auto flex w-full items-end justify-between border-t border-white/5 pt-4 text-left">
                                                     <div>
-                                                        <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                                                        <p className={`mb-1 text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-zinc-500' : 'text-[#9c8a77]'}`}>
                                                             Starting at
                                                         </p>
-                                                        <p className="text-lg font-bold text-white transition-colors duration-300 group-hover:text-[#ffc800]">
+                                                        <p className={`text-lg font-bold transition-colors duration-300 group-hover:text-[#ffc800] ${isDark ? 'text-white' : 'text-[#1c1b1f]'}`}>
                                                             {formatServiceStartingPrice(feature)}
                                                         </p>
                                                     </div>
-                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-white transition-colors duration-300 group-hover:border-[#ffc800] group-hover:bg-[#ffc800]/10 group-hover:text-[#ffc800]">
+                                                    <div className={`flex h-8 w-8 items-center justify-center rounded-full border transition-colors duration-300 ${isDark ? 'border-white/10 text-white group-hover:border-[#ffc800] group-hover:bg-[#ffc800]/10 group-hover:text-[#ffc800]' : 'border-[#e8dfcf] text-[#1c1b1f] group-hover:border-[#ffc800] group-hover:bg-[#ffc800]/10 group-hover:text-[#ba7a07]'}`}>
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                                                     </div>
                                                 </div>

@@ -201,6 +201,11 @@ function PhoneRoleOnboarding() {
   const deviceInputRef = useRef(null);
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  useEffect(() => {
+    document.documentElement.classList.add("onboarding-page");
+    return () => document.documentElement.classList.remove("onboarding-page");
+  }, []);
+
   const hasProfilePhoto = Boolean(profileImage);
 
   const slide = SLIDES[activeSlide];

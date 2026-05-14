@@ -41,6 +41,11 @@ export default function GetStarted() {
     const { theme } = useTheme();
     const isDark = theme === "dark";
 
+    useEffect(() => {
+        document.documentElement.classList.add("onboarding-page");
+        return () => document.documentElement.classList.remove("onboarding-page");
+    }, []);
+
     // Check if coming from "Start Your Career" button
     const forFreelancer = searchParams.get("for") === "freelancer";
 
@@ -59,12 +64,14 @@ export default function GetStarted() {
             isDark ? "bg-black" : "bg-white"
         )}>
             {/* Background Effects */}
-            <MatrixRain
-                color="#FACC15"
-                className="absolute inset-0 z-0"
-                fadeOpacity={0.1}
-                style={{ opacity: isDark ? 0.1 : 0.15 }}
-            />
+            {isDark && (
+                <MatrixRain
+                    color="#FACC15"
+                    className="absolute inset-0 z-0"
+                    fadeOpacity={0.1}
+                    style={{ opacity: 0.1 }}
+                />
+            )}
 
             {/* Grid Background */}
             <div

@@ -72,14 +72,8 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
   );
 
   // Colors based on theme
-  const startTextColor = isHome
-    ? isDark
-      ? "#ffffff"
-      : "#1f2937"
-    : isDark
-      ? "#d4d4d4"
-      : "#525252";
-  const endTextColor = isDark ? "#d4d4d4" : "#525252";
+  const startTextColor = isDark ? "#ffffff" : "#1c1b1f";
+  const endTextColor = isDark ? "#d4d4d4" : "#5c544b";
   const textColor = useTransform(
     smoothScrollY,
     [0, DESKTOP_NAV_SCROLL_RANGE],
@@ -214,16 +208,16 @@ export const NavItems = ({
             className={cn(
               "relative inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full px-2.5 py-2 transition-colors duration-200",
               isActive
-                ? "bg-primary text-background shadow-[inset_0_0_0_1px_rgba(255,193,7,0.32)]"
+                ? "bg-primary text-primary-foreground shadow-[inset_0_0_0_1px_rgba(255,193,7,0.32)]"
                 : "text-foreground/85 hover:bg-white/5 hover:text-foreground dark:hover:bg-neutral-800/70",
             )}
           >
             <span className="relative z-20">
               <motion.span
-                style={{ color: isActive ? "var(--background)" : textColor }}
+                style={{ color: isActive ? "var(--primary-foreground)" : textColor }}
                 className={cn(
                   "transition-colors duration-200",
-                  isActive && "font-semibold text-background",
+                  isActive && "font-semibold text-primary-foreground",
                 )}
               >
                 {item.name}

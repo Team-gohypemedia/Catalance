@@ -39,9 +39,15 @@ const BlackholeParticles = () => {
 
     let particles = [];
 
+    let particleColorRGB = "255, 255, 255";
+
     const resize = () => {
       const bounds = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
+      
+      const fg = getComputedStyle(document.documentElement).getPropertyValue("--foreground").trim();
+      // Simple check to see if we are in light mode (very dark foreground color)
+      particleColorRGB = fg.includes("1C1B1F") || fg.includes("0, 0, 0") || fg.includes("#1C1B1F") ? "0, 0, 0" : "255, 255, 255";
 
       width = bounds.width;
       height = bounds.height;
@@ -77,9 +83,9 @@ const BlackholeParticles = () => {
         const brightness = 0.92 + (particle.radius / maxRadius) * 0.08;
 
         context.beginPath();
-        context.fillStyle = `rgba(255, 255, 255, ${particle.alpha * brightness})`;
+        context.fillStyle = `rgba(${particleColorRGB}, ${particle.alpha * brightness})`;
         context.shadowBlur = 6;
-        context.shadowColor = "rgba(255, 255, 255, 1)";
+        context.shadowColor = `rgba(${particleColorRGB}, 1)`;
         context.arc(x, y, particle.size, 0, Math.PI * 2);
         context.fill();
       }
@@ -140,26 +146,26 @@ const Hero = () => {
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center px-4 text-center sm:px-6">
         <Badge
           variant="outline"
-          className="mb-3 inline-flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 rounded-full bg-background/35 px-4 py-1.5 text-[0.64rem] font-medium leading-none text-white backdrop-blur-md sm:mb-9 sm:max-w-none sm:gap-2 sm:px-5 sm:text-sm"
+          className="mb-3 inline-flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 rounded-full bg-background/35 px-4 py-1.5 text-[0.64rem] font-medium leading-none backdrop-blur-md sm:mb-9 sm:max-w-none sm:gap-2 sm:px-5 sm:text-sm border-black/10 dark:border-white/10"
         >
           <Star className="size-3.5 shrink-0 fill-primary text-primary sm:size-4" />
-          <span className="px-1 font-semibold text-primary">10,000+</span>
-          <span className="text-white/90">Projects delivered on Catalance</span>
+          <span className="px-1 font-bold text-amber-600 dark:text-primary">10,000+</span>
+          <span className="text-foreground/80 dark:text-white/90">Projects delivered on Catalance</span>
         </Badge>
 
-        <h1 className="max-w-4xl text-[2.1rem] font-medium leading-[1.05] tracking-tight text-white sm:text-[2.75rem] md:text-[3.4rem] lg:text-[4.4rem]">
+        <h1 className="max-w-4xl text-[2.1rem] font-medium leading-[1.05] tracking-tight text-foreground dark:text-white sm:text-[2.75rem] md:text-[3.4rem] lg:text-[4.4rem]">
           <span className="block">Find Talent You Can</span>
           <span className="block">Actually Trust</span>
         </h1>
 
-        <p className="mt-6 mb-6 max-w-4xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-7 sm:mb-7 sm:text-base md:text-lg">
+        <p className="mt-6 mb-6 max-w-4xl text-balance text-sm font-normal leading-relaxed text-foreground/80 dark:text-white/90 sm:mt-7 sm:mb-7 sm:text-base md:text-lg">
           Hire trusted experts focused on reliable and timely delivery.
         </p>
 
         <Button
           asChild
           size="lg"
-          className="px-8 text-lg font-semibold shadow-[0_14px_36px_rgba(255,204,0,0.22)]"
+          className="px-8 text-lg font-semibold text-primary-foreground shadow-[0_14px_36px_rgba(255,204,0,0.22)]"
         >
           <Link to="/service">Hire Expert</Link>
         </Button>

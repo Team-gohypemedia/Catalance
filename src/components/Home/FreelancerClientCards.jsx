@@ -60,7 +60,7 @@ const FreelancerClientCards = () => {
               className="pointer-events-none absolute bottom-6 -left-16 z-0 w-44 select-none opacity-0 rotate-[-30deg] transform-gpu transition-transform duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-x-8 group-hover:opacity-100"
             />
 
-            <article className={`${cardClassName} z-10`}>
+            <article className={`${cardClassName} z-10 themed-card`}>
               <div className="relative z-10 flex h-full flex-col">
                 <div className="mb-11 flex items-center justify-between gap-4">
                   <Briefcase className="size-7 text-primary" />
@@ -73,11 +73,15 @@ const FreelancerClientCards = () => {
                   Hire Reliable Talent Faster
                 </h3>
 
-                <div className="mt-10 space-y-5">
+                <div className="mt-10 space-y-6">
                   {businessFeatures.map(({ icon: Icon, text }) => (
-                    <div key={text} className={featureClassName}>
-                      <Icon className="size-[1.1rem] shrink-0 text-primary" />
-                      <span>{text}</span>
+                    <div key={text} className="flex items-center gap-4 group/feature">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 transition-colors group-hover/feature:bg-primary/20">
+                        <Icon className="size-[1.1rem] text-primary" />
+                      </div>
+                      <span className="text-[1.05rem] font-medium leading-tight text-white/80 group-hover/feature:text-white transition-colors">
+                        {text}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -93,12 +97,12 @@ const FreelancerClientCards = () => {
           </div>
 
           <div className="hidden lg:flex items-center justify-center">
-            <div className="relative isolate flex size-[5.5rem] items-center justify-center rounded-full border border-white/15 bg-white/6 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-[28px]">
+            <div className="relative isolate flex size-[5.5rem] items-center justify-center rounded-full border border-white/15 bg-white/6 shadow-xl backdrop-blur-[28px] themed-card">
               <div
                 aria-hidden
-                className="absolute left-1/2 top-1/2 h-[34%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/18 blur-[4px]"
+                className="absolute left-1/2 top-1/2 h-[34%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/18 blur-[8px]"
               />
-              <div className="relative z-10 flex size-full items-center justify-center rounded-full border-[3px] border-primary bg-transparent shadow-[0px_0px_45px_0px_rgba(255,204,0,1)]">
+              <div className="relative z-10 flex size-full items-center justify-center rounded-full border-[3px] border-primary bg-transparent glow-primary">
                 <span className="text-[2rem] font-semibold tracking-tight text-primary">
                   OR
                 </span>
@@ -115,7 +119,7 @@ const FreelancerClientCards = () => {
               className="pointer-events-none absolute bottom-6 -right-16 z-0 w-48 select-none opacity-0 rotate-[30deg] transform-gpu transition-transform duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-6 group-hover:opacity-100"
             />
 
-            <article className={`${cardClassName} z-10`}>
+            <article className={`${cardClassName} z-10 themed-card`}>
               <div className="relative z-10 flex h-full flex-col">
                 <div className="mb-11 flex items-center justify-between gap-4">
                   <UserRoundSearch className="size-7 text-primary" />
@@ -128,11 +132,15 @@ const FreelancerClientCards = () => {
                   Grow Your Career with Trusted Clients
                 </h3>
 
-                <div className="mt-10 space-y-5">
+                <div className="mt-10 space-y-6">
                   {freelancerFeatures.map(({ icon: Icon, text }) => (
-                    <div key={text} className={featureClassName}>
-                      <Icon className="size-[1.1rem] shrink-0 text-primary" />
-                      <span>{text}</span>
+                    <div key={text} className="flex items-center gap-4 group/feature">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 transition-colors group-hover/feature:bg-primary/20">
+                        <Icon className="size-[1.1rem] text-primary" />
+                      </div>
+                      <span className="text-[1.05rem] font-medium leading-tight text-white/80 group-hover/feature:text-white transition-colors">
+                        {text}
+                      </span>
                     </div>
                   ))}
                 </div>

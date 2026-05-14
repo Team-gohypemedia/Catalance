@@ -1,240 +1,48 @@
-import cors from "cors";
 import express from "express";
+import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import { createServer } from "http";
-import { env, envInitError } from "./config/env.js";
+import http from "http";
+import { env } from "./config/env.js";
+import { apiRouter } from "./routes/index.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 import { notFoundHandler } from "./middlewares/not-found.js";
-import { apiRouter } from "./routes/index.js";
-import { prisma, prismaInitError } from "./lib/prisma.js";
-import { startCronJobs } from "./services/cron.service.js";
+import { initSocket } from "./lib/socket.js";
 
-const runningInVercel = process.env.VERCEL === "1";
-const cronEnabledFlag = String(process.env.ENABLE_CRON_JOBS ?? "true")
-  .trim()
-  .toLowerCase();
-const cronJobsEnabled = !["0", "false", "no", "off"].includes(cronEnabledFlag);
-const dbConnectRetryMs = Number(process.env.DB_CONNECT_RETRY_MS || 30000);
-export const createApp = () => {
-  const app = express();
+const app = express();
 
-  const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
-  const splitOrigins = (value = "") =>
-    value
-      .split(",")
-      .map(normalizeOrigin)
-      .filter(Boolean);
+// Middlewares
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 
-  const defaultOrigins = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "https://localhost:5173",
-    "https://freelancer-self.vercel.app",
-    "https://catalance.in",
-    "https://www.catalance.in"
-  ];
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 
-  const configuredOrigins = [
-    ...splitOrigins(env.CORS_ORIGIN || ""),
-    normalizeOrigin(env.LOCAL_CORS_ORIGIN || ""),
-    normalizeOrigin(env.VERCEL_CORS_ORIGIN || ""),
-    ...defaultOrigins
-  ]
-    .filter(Boolean)
-    .filter((value, index, self) => self.indexOf(value) === index);
+app.use(morgan("dev"));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-  const allowAllOrigins =
-    configuredOrigins.length === 0 || configuredOrigins.includes("*");
+// Routes
+app.use("/api", apiRouter);
 
-  const baseCorsOptions = {
-    credentials: true,
-    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    optionsSuccessStatus: 204
-  };
+// Error handlers
+app.use(notFoundHandler);
+app.use(errorHandler);
 
-  const corsOptions = allowAllOrigins
-    ? { ...baseCorsOptions, origin: true }
-    : {
-      ...baseCorsOptions,
-      origin: (origin, callback) => {
-        // In Vercel, fail-safe: if we cannot match, allow the requesting origin
-        // to avoid mismatched Access-Control-Allow-Origin in serverless context.
-        if (!origin) {
-          return callback(null, true);
-        }
+const server = http.createServer(app);
 
-        const normalized = normalizeOrigin(origin);
-        const isAllowed = configuredOrigins.includes(normalized);
+// Sockets
+initSocket(server);
 
-        if (isAllowed) {
-          return callback(null, true);
-        }
+const PORT = env.PORT || 5000;
 
-        // Fallback for misconfigured envs on Vercel: allow the incoming origin.
-        if (runningInVercel) {
-          return callback(null, true);
-        }
-
-        return callback(
-          new Error(`Origin ${origin} is not allowed by CORS policy.`),
-          false
-        );
-      }
-    };
-
-  // Handle CORS preflight (OPTIONS) explicitly so Vercel returns a
-  // 204 with the correct headers instead of a 404.
-  app.use(cors(corsOptions));
-  app.options("*", cors(corsOptions));
-  app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
-  }));
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-  app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
-
-  if (envInitError || prismaInitError) {
-    app.use((_req, res) => {
-      if (envInitError) {
-        res.status(500).json({
-          error: "Server configuration error",
-          message:
-            "Missing or invalid environment variables. Check server logs for details."
-        });
-        return;
-      }
-
-      res.status(500).json({
-        error: "Database configuration error",
-        message:
-          "Prisma Client failed to initialize. Make sure `prisma generate` runs during the build (see https://pris.ly/d/vercel-build)."
-      });
-    });
-
-    return app;
-  }
-
-  // Keep API responses fresh for authenticated dashboard routes and avoid
-  // browser conditional revalidation logs (304) on dynamic endpoints.
-  app.use("/api", (req, res, next) => {
-    if (!req.path.startsWith("/images/")) {
-      delete req.headers["if-none-match"];
-      delete req.headers["if-modified-since"];
-      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-      res.setHeader("Pragma", "no-cache");
-      res.setHeader("Expires", "0");
-    }
-    next();
+if (process.env.NODE_ENV !== "test") {
+  server.listen(PORT, () => {
+    console.log(`API server ready on http://localhost:${PORT}`);
   });
-
-  app.use("/api", apiRouter);
-
-  app.use(notFoundHandler);
-  app.use(errorHandler);
-
-  return app;
-};
-
-const app = createApp();
-
-if (envInitError) {
-  console.error("Environment validation failed:", envInitError);
-
-  if (!runningInVercel) {
-    console.error("Exiting due to invalid environment configuration.");
-    process.exit(1);
-  }
-}
-
-if (prismaInitError) {
-  console.error("Prisma initialization failed:", prismaInitError);
-
-  if (!runningInVercel) {
-    console.error("Exiting due to Prisma client initialization failure.");
-    process.exit(1);
-  }
-}
-
-const startLocalServer = async () => {
-  const { initSocket } = await import("./lib/socket.js");
-  const httpServer = createServer(app);
-  const io = initSocket(httpServer);
-
-  const server = httpServer.listen(env.PORT, () => {
-    console.log(`API server ready on http://localhost:${env.PORT}`);
-
-    let cronStarted = false;
-
-    const connectDatabaseAndInitialize = async () => {
-      try {
-        await prisma.$connect();
-        console.log("Database connected successfully");
-
-        if (cronJobsEnabled && !cronStarted) {
-          startCronJobs();
-          cronStarted = true;
-        }
-
-        if (!cronJobsEnabled) {
-          console.log("Cron jobs are disabled (ENABLE_CRON_JOBS=false).");
-        }
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : String(error);
-        console.error("Database connection failed:", message);
-
-        if (cronJobsEnabled) {
-          console.warn(
-            `[Startup] Retrying database connection in ${Math.round(
-              dbConnectRetryMs / 1000
-            )}s...`
-          );
-          setTimeout(() => {
-            void connectDatabaseAndInitialize();
-          }, dbConnectRetryMs);
-        }
-      }
-    };
-
-    void connectDatabaseAndInitialize();
-  });
-
-  server.on("error", (error) => {
-    if (error && error.code === "EADDRINUSE") {
-      console.error(
-        `Port ${env.PORT} is already in use. Make sure another backend instance is not running or change the PORT in your environment.`
-      );
-    } else {
-      console.error("Server error:", error);
-    }
-    process.exit(1);
-  });
-
-  const gracefulShutdown = async () => {
-    console.log("Shutting down server...");
-    server.close();
-    if (io && typeof io.close === "function") {
-      io.close();
-    }
-    if (prisma && typeof prisma.$disconnect === "function") {
-      try {
-        await prisma.$disconnect();
-      } catch (error) {
-        console.warn("Error disconnecting Prisma client:", error);
-      }
-    }
-    process.exit(0);
-  };
-
-  process.on("SIGINT", gracefulShutdown);
-  process.on("SIGTERM", gracefulShutdown);
-};
-
-if (!runningInVercel) {
-  void startLocalServer();
 }
 
 export default app;
