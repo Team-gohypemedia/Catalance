@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Activity from "lucide-react/dist/esm/icons/activity";
+import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Flame from "lucide-react/dist/esm/icons/flame";
 import HelpCircle from "lucide-react/dist/esm/icons/help-circle";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -22,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/shared/context/AuthContext";
+import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
 const MetricCard = ({ icon: Icon, title, value, description, tone = "default" }) => (
@@ -118,6 +121,7 @@ const AdminEngagementOverview = () => {
       tone: "emerald"
     },
   ];
+  const recentSessions = Array.isArray(overview?.recentSessions) ? overview.recentSessions : [];
 
   return (
     <AdminLayout>
@@ -131,7 +135,7 @@ const AdminEngagementOverview = () => {
             </span>
             <h1 className="mt-3 text-4xl font-black tracking-tight text-white">Engagement Engine</h1>
             <p className="mt-2 text-sm font-medium text-muted-foreground">
-              Monitor Daily Growth Quest activity and manage the question ecosystem.
+              Monitor Daily Growth Quest activity and manage questions, daily schedules, and contests.
             </p>
           </div>
           <div className="flex gap-3">
@@ -141,7 +145,16 @@ const AdminEngagementOverview = () => {
               className="rounded-xl border-white/10 px-6 font-bold"
               onClick={() => navigate("/admin/engagement/questions")}
             >
-              Manage Bank
+              Manage Content
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl border-white/10 px-6 font-bold"
+              onClick={() => navigate("/admin/engagement/questions#contest-feed")}
+            >
+              <CalendarDays className="size-4" />
+              Contest Feed
             </Button>
             <Button
               type="button"
@@ -196,13 +209,14 @@ const AdminEngagementOverview = () => {
                           <TableHead className="py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Streak</TableHead>
                           <TableHead className="py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">XP</TableHead>
                           <TableHead className="py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Coins</TableHead>
+                          <TableHead className="py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Accuracy</TableHead>
                           <TableHead className="px-6 py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Focus Area</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {users.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={6} className="h-32 text-center text-sm font-medium text-muted-foreground">
+                            <TableCell colSpan={7} className="h-32 text-center text-sm font-medium text-muted-foreground">
                               No engagement profiles found matching your search.
                             </TableCell>
                           </TableRow>
@@ -227,6 +241,7 @@ const AdminEngagementOverview = () => {
                               </TableCell>
                               <TableCell className="font-bold text-emerald-400">{user.lifetimeXp.toLocaleString()}</TableCell>
                               <TableCell className="font-bold text-white">{user.loyaltyCoins.toLocaleString()}</TableCell>
+                              <TableCell className="font-bold text-primary">{user.rollingAccuracy}%</TableCell>
                               <TableCell className="px-6">
                                 <span className="inline-flex items-center rounded-lg bg-white/[0.04] px-2.5 py-1 text-[0.7rem] font-bold text-muted-foreground group-hover:text-white">
                                   {user.weakTopic || "N/A"}
@@ -241,7 +256,7 @@ const AdminEngagementOverview = () => {
                 </CardContent>
               </Card>
 
-              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-6">
                 <Card className="relative overflow-hidden border-white/10 bg-card">
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.05] to-transparent pointer-events-none" />
                   <CardHeader className="px-6 py-5">
@@ -279,6 +294,40 @@ const AdminEngagementOverview = () => {
                   </CardContent>
                 </Card>
 
+                <Card className="relative overflow-hidden border-white/10 bg-card">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent pointer-events-none" />
+                  <CardHeader className="px-6 py-5">
+                    <CardTitle className="text-lg font-black text-white">Contest Feed</CardTitle>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Add contest title, description, CTA, and active dates for freelancers.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4 px-6 pb-6">
+                    <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+                      <div>
+                        <p className="text-[0.65rem] font-black uppercase tracking-wider text-muted-foreground">
+                          Admin Managed
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-white">
+                          Open the content manager to create and publish contests.
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <CalendarDays className="size-5" />
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full rounded-xl border-white/10 py-6 font-black"
+                      onClick={() => navigate("/admin/engagement/questions#contest-feed")}
+                    >
+                      Open Contest Feed
+                    </Button>
+                  </CardContent>
+                </Card>
+
                 <div className="rounded-[24px] border border-white/10 bg-card p-6">
                   <div className="flex items-center gap-3">
                     <div className="flex size-8 items-center justify-center rounded-lg bg-white/[0.05] text-muted-foreground">
@@ -291,6 +340,58 @@ const AdminEngagementOverview = () => {
                   </p>
                 </div>
               </div>
+
+              <Card className="overflow-hidden border-white/10 bg-card">
+                <CardHeader className="border-b border-white/[0.05] bg-white/[0.01] px-6 py-5">
+                  <div>
+                    <CardTitle className="text-lg font-black text-white">Recent Quest Activity</CardTitle>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Latest completed Growth Quest sessions
+                    </p>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader className="bg-white/[0.02]">
+                        <TableRow className="hover:bg-transparent border-white/[0.05]">
+                          <TableHead className="px-6 py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Freelancer</TableHead>
+                          <TableHead className="py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Day</TableHead>
+                          <TableHead className="py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Score</TableHead>
+                          <TableHead className="py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">XP</TableHead>
+                          <TableHead className="px-6 py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Coins</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recentSessions.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center text-sm font-medium text-muted-foreground">
+                              No Growth Quest sessions recorded yet.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          recentSessions.map((session) => (
+                            <TableRow key={session.id} className="border-white/[0.05] hover:bg-white/[0.02]">
+                              <TableCell className="px-6 py-4">
+                                <div>
+                                  <p className="font-bold text-white">{session.fullName}</p>
+                                  <p className="text-[0.7rem] text-muted-foreground">{session.email}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium text-white">{session.dayKey}</TableCell>
+                              <TableCell className="font-bold text-primary">
+                                {session.correctCount}/{session.questionCount} · {session.accuracy}%
+                              </TableCell>
+                              <TableCell className="font-bold text-emerald-400">+{session.xpAwarded}</TableCell>
+                              <TableCell className="px-6 font-bold text-white">+{session.coinsAwarded}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         )}

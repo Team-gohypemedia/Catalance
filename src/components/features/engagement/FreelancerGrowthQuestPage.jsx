@@ -8,12 +8,9 @@ import Flame from "lucide-react/dist/esm/icons/flame";
 import Info from "lucide-react/dist/esm/icons/info";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
-import Star from "lucide-react/dist/esm/icons/star";
 import Target from "lucide-react/dist/esm/icons/target";
-import Trophy from "lucide-react/dist/esm/icons/trophy";
 import X from "lucide-react/dist/esm/icons/x";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
-import Zap from "lucide-react/dist/esm/icons/zap";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
@@ -21,21 +18,15 @@ import { toast } from "sonner";
 import BadgeShelf from "./BadgeShelf";
 import ProcessSummaryCard from "./ProcessSummaryCard";
 import StreakCalendar from "./StreakCalendar";
+import "./FreelancerGrowthQuestPage.css";
 
-const PAGE_CLASS =
-  "min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(255,193,7,0.15),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.08),transparent_40%),linear-gradient(180deg,rgba(10,10,11,0.98),rgba(10,10,11,1))] text-foreground selection:bg-primary/30";
-const CARD_CLASS =
-  "rounded-[16px] border border-white/[0.06] bg-black/40 backdrop-blur-xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.8)] transition-all duration-300";
-const SUBTLE_CARD_CLASS = 
-  "rounded-[12px] border border-white/[0.04] bg-white/[0.02] backdrop-blur-md transition-all duration-300 hover:bg-white/[0.04]";
-const PRIMARY_BUTTON_CLASS =
-  "relative inline-flex items-center justify-center gap-2 rounded-[10px] bg-gradient-to-r from-primary to-amber-500 px-5 py-3 text-sm font-bold text-primary-foreground shadow-[0_0_20px_rgba(255,193,7,0.3)] transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,193,7,0.5)] hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none";
-const SECONDARY_BUTTON_CLASS =
-  "inline-flex items-center justify-center gap-2 rounded-[10px] border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-foreground backdrop-blur-md transition-all duration-300 hover:border-primary/40 hover:bg-white/[0.08] hover:text-primary disabled:opacity-40";
-const EYEBROW_CLASS =
-  "text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
-const LABEL_CLASS =
-  "text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
+const PAGE_CLASS = "growth-quest-page";
+const CARD_CLASS = "growth-quest-panel";
+const SUBTLE_CARD_CLASS = "growth-quest-subpanel";
+const PRIMARY_BUTTON_CLASS = "growth-quest-button growth-quest-button--primary";
+const SECONDARY_BUTTON_CLASS = "growth-quest-button growth-quest-button--secondary";
+const EYEBROW_CLASS = "growth-quest-eyebrow";
+const LABEL_CLASS = "growth-quest-label";
 const LABELS = ["A", "B", "C", "D", "E"];
 
 const HOW_IT_WORKS = [
@@ -79,6 +70,34 @@ const formatReset = (resetAt) => {
         month: "short",
         day: "numeric",
       });
+};
+
+const clampPercent = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.min(100, Math.round(numeric)));
+};
+
+const formatCompactDate = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Pending";
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const formatDayKey = (value) => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "Pending";
+  const date = new Date(`${normalized}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return normalized;
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 };
 
 const InfoModal = ({ open, onClose }) => {
@@ -152,61 +171,6 @@ const InfoModal = ({ open, onClose }) => {
   );
 };
 
-const StatCard = ({ icon: Icon, label, value, sub }) => (
-  <div className={cn(CARD_CLASS, "p-5 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_10px_30px_-10px_rgba(255,193,7,0.15)] group")}>
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <p className={cn(LABEL_CLASS, "group-hover:text-primary/80 transition-colors")}>{label}</p>
-        <p className="mt-2 text-3xl font-bold tracking-tight text-foreground drop-shadow-sm">
-          {value}
-        </p>
-        {sub ? <p className="mt-1 text-xs font-medium text-muted-foreground">{sub}</p> : null}
-      </div>
-      <div className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-primary/10 transition-transform duration-300 group-hover:scale-110 group-hover:bg-primary/20">
-        <Icon className="size-5 text-primary" />
-      </div>
-    </div>
-  </div>
-);
-
-const LeaderRow = ({ rank, name, coins, isYou }) => {
-  const isTop3 = rank <= 3;
-  const rankColors = {
-    1: "bg-gradient-to-br from-yellow-300 to-yellow-600 text-yellow-950",
-    2: "bg-gradient-to-br from-slate-200 to-slate-400 text-slate-900",
-    3: "bg-gradient-to-br from-amber-600 to-amber-800 text-amber-50"
-  };
-
-  return (
-    <div
-      className={cn(
-        SUBTLE_CARD_CLASS,
-        "flex items-center gap-3 px-4 py-3 group hover:border-primary/20",
-        isYou && "border-primary/40 bg-primary/10 shadow-[inset_0_0_20px_rgba(255,193,7,0.05)]",
-      )}
-    >
-      <div className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-[8px] text-xs font-bold shadow-sm",
-        isTop3 ? rankColors[rank] : "bg-white/[0.05] text-muted-foreground"
-      )}>
-        {rank}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            "truncate text-sm font-semibold",
-            isYou ? "text-primary" : "text-foreground",
-          )}
-        >
-          {name}
-        </p>
-        <p className="text-[0.7rem] font-medium text-muted-foreground">{coins} coins</p>
-      </div>
-      {isTop3 ? <Star className={cn("size-4", rank === 1 ? "text-yellow-400" : rank === 2 ? "text-slate-300" : "text-amber-600")} /> : null}
-    </div>
-  );
-};
-
 const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
   if (loading) {
     return (
@@ -252,203 +216,904 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
   const xpPct = nextThreshold
     ? Math.round(((xp - prevThreshold) / (nextThreshold - prevThreshold)) * 100)
     : 100;
-  const leaderboard = [
-    { rank: 1, name: "Alex R.", coins: 4250 },
-    { rank: 2, name: "Sam K.", coins: 3840 },
-    { rank: 3, name: "Jordan M.", coins: 3210 },
-    { rank: 12, name: "You", coins, isYou: true },
+  const streakHistory = Array.isArray(profile.streakHistory) ? profile.streakHistory : [];
+  const completedDays = streakHistory.filter((entry) => entry?.completed).length;
+  const weeklyEfficiency = clampPercent((completedDays / 7) * 100 || (streak > 0 ? streak * 12 : 0));
+  const operations = [
+    {
+      id: "daily-quest",
+      difficulty: done ? "Complete" : used > 0 ? "In Progress" : "Live",
+      difficultyTone: done ? "success" : used > 0 ? "warning" : "success",
+      title: "Daily Freelancer Practice",
+      description: done
+        ? "Today’s session is complete. Review your result and return after reset."
+        : "Answer today’s timed set and keep your profile progression moving.",
+      progressLabel: "Quest status",
+      progress: done ? 100 : max > 0 ? Math.round((used / max) * 100) : 0,
+      coinLabel: `${Math.max(50, streak * 25 || 50)} coins`,
+      xpLabel: `+${Math.max(200, Math.round(xpPct * 8))} XP`,
+    },
+    {
+      id: "level-progress",
+      difficulty: "Level Track",
+      difficultyTone: "neutral",
+      title: `${levelLabel} Progression`,
+      description: nextThreshold
+        ? `You need ${Math.max(0, nextThreshold - xp)} XP to unlock level ${levelNumber + 1}.`
+        : "Top tier reached. Maintain your streak to protect position and rewards.",
+      progressLabel: "Level completion",
+      progress: xpPct,
+      coinLabel: `${coins} balance`,
+      xpLabel: nextThreshold ? `${nextThreshold - xp} XP left` : "Max level",
+    },
+  ];
+  const availableContracts = [
+    {
+      id: "review-flow",
+      category: "Skill Building",
+      tier: "Easy",
+      title: "Review Yesterday’s Answers",
+      description:
+        "Use the answer review and explanations to sharpen pattern recognition for tomorrow.",
+      rewardCoins: 150,
+      rewardXp: 500,
+    },
+    {
+      id: "process-check",
+      category: "Live Contract",
+      tier: done ? "Ready" : "Medium",
+      title: "Maintain Delivery Consistency",
+      description:
+        "Sustain your streak, protect momentum, and move toward the next engagement tier.",
+      rewardCoins: 400,
+      rewardXp: 1800,
+    },
+  ];
+  const historyRows = [
+    {
+      id: "today",
+      label: done ? "Daily Freelancer Practice" : "Today's Quest Pending",
+      type: "Daily Protocol",
+      date: done ? "Today" : formatCompactDate(today.resetAt || Date.now()),
+      rewards: done ? `+${Math.max(50, streak * 25 || 50)} / +${Math.max(200, Math.round(xpPct * 8))} XP` : "Locked until completion",
+    },
+    {
+      id: "streak",
+      label: `${streak}-Day Streak Milestone`,
+      type: "Progress Track",
+      date: streak > 0 ? "Current" : "Start today",
+      rewards: `${coins} coins banked`,
+    },
+    {
+      id: "level",
+      label: `${levelLabel} Rank Progress`,
+      type: "Level Track",
+      date: nextThreshold ? `${Math.max(0, nextThreshold - xp)} XP remaining` : "Completed",
+      rewards: `Level ${levelNumber}`,
+    },
+  ];
+  const searchPlaceholder = "Search parameters...";
+  const filters = ["All Categories", "Skill Building", "Live Contracts", "Speed Trials"];
+  const boosterRows = [
+    { label: "Focus", value: done ? "Secured" : "01h 12m", tone: "success" },
+    { label: "XP x1.5", value: nextThreshold ? "22h 45m" : "Active", tone: "violet" },
   ];
 
   return (
-    <div className="space-y-6">
-      <section className={cn(CARD_CLASS, "overflow-hidden")}>
-        <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="border-b border-white/[0.08] p-6 lg:border-b-0 lg:border-r">
-            <p className={EYEBROW_CLASS}>Daily Freelancer Practice</p>
-            <h1 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              One small daily quest to keep your profile active.
-            </h1>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground sm:text-[0.95rem]">
-              Answer a few questions, submit your quest, and earn progress for the day.
-            </p>
+    <div className="growth-quest-dashboard">
+      <section className="growth-quest-hero growth-quest-panel">
+        <div className="growth-quest-hero__content">
+          <div className="growth-quest-hero__meta">
+            <span className={EYEBROW_CLASS}>Daily Protocol</span>
+            <span className="growth-quest-chip growth-quest-chip--ghost">
+              <Clock className="size-3.5" />
+              Resets {formatReset(today.resetAt)}
+            </span>
+          </div>
+          <h2 className="growth-quest-hero__title">Freelancer Practice</h2>
+          <p className="growth-quest-hero__description">
+            Maintain your operational edge. Complete today&apos;s simulation to sustain your
+            momentum bonus.
+          </p>
+        </div>
 
-            <div className="mt-6">
-              <StreakCalendar
-                streakHistory={dashboard?.profile?.streakHistory}
-                currentStreak={streak}
-                completedToday={done}
-              />
+        <div className="growth-quest-hero__sidebar growth-quest-subpanel">
+          <div className="growth-quest-hero__sidebar-head">
+            <div>
+              <p className={LABEL_CLASS}>Current Streak</p>
+              <p className="growth-quest-hero__streak">
+                <Flame className="size-5" />
+                {streak} Days
+              </p>
+            </div>
+            <div className="growth-quest-attempts-ring">
+              <span className={LABEL_CLASS}>Attempts</span>
+              <strong>
+                {used}/{max}
+              </strong>
             </div>
           </div>
 
-          <div className="p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className={LABEL_CLASS}>Today</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">
-                  {done ? "Today's quest is complete" : "Ready for today's session"}
-                </p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-primary/10">
-                <Target className="size-4 text-primary" />
-              </div>
+          <div className="growth-quest-hero__stats">
+            <div className="growth-quest-hero__stat">
+              <span className={LABEL_CLASS}>Completed days</span>
+              <strong>{activity?.completedDays || 0}</strong>
             </div>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-3")}>
-                <p className={LABEL_CLASS}>Attempts</p>
-                <p className="mt-1 text-base font-semibold text-foreground">
-                  {used}/{max}
-                </p>
-              </div>
-              <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-3")}>
-                <p className={LABEL_CLASS}>Reset</p>
-                <p className="mt-1 text-base font-semibold text-foreground">UTC midnight</p>
-              </div>
-              <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-3")}>
-                <p className={LABEL_CLASS}>Time</p>
-                <p className="mt-1 text-base font-semibold text-foreground">About 5 minutes</p>
-              </div>
+            <div className="growth-quest-hero__stat">
+              <span className={LABEL_CLASS}>Questions answered</span>
+              <strong>{activity?.totalQuestionsAnswered || 0}</strong>
             </div>
-
-            <button
-              type="button"
-              onClick={onStartQuest}
-              disabled={done}
-              className={cn(PRIMARY_BUTTON_CLASS, "mt-5 w-full justify-center")}
-            >
-              {done ? (
-                <>
-                  <CheckCircle2 className="size-4" />
-                  Completed for today
-                </>
-              ) : (
-                <>
-                  Start Growth Quest
-                  <ArrowRight className="size-4" />
-                </>
-              )}
-            </button>
-
-            <p className="mt-3 text-sm text-muted-foreground">
-              {isRetake
-                ? `${max - used} retake remaining today.`
-                : "Best attempt counts."}
-            </p>
-
-            {error ? (
-              <div className="mt-4 rounded-[6px] border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive">
-                {error}
-              </div>
-            ) : null}
           </div>
+
+          <button
+            type="button"
+            onClick={onStartQuest}
+            disabled={done}
+            className={cn(PRIMARY_BUTTON_CLASS, "growth-quest-hero__cta")}
+          >
+            {done ? (
+              <>
+                <CheckCircle2 className="size-4" />
+                Completed for today
+              </>
+            ) : (
+              <>
+                Start Today&apos;s Quest
+                <ArrowRight className="size-4" />
+              </>
+            )}
+          </button>
+
+          <p className="growth-quest-helper">
+            {isRetake ? `${max - used} retake remaining today.` : "Best attempt counts."}
+          </p>
+
+          {error ? <div className="growth-quest-error">{error}</div> : null}
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={Zap} label="Level" value={`L${levelNumber}`} sub={levelLabel} />
-        <StatCard icon={Flame} label="Streak" value={`${streak} days`} sub="Daily consistency" />
-        <StatCard icon={Star} label="Coins" value={coins} sub="Reward balance" />
-        <StatCard
-          icon={Trophy}
-          label="Progress"
-          value={`${xpPct}%`}
-          sub={nextThreshold ? `${nextThreshold - xp} XP to next level` : "Top tier reached"}
-        />
+      <section className="growth-quest-toolbar growth-quest-panel">
+        <div className="growth-quest-search">
+          <Search className="size-4" />
+          <input type="text" placeholder={searchPlaceholder} readOnly />
+          <button type="button" aria-label="Open filters">
+            <SlidersHorizontal className="size-4" />
+          </button>
+        </div>
+
+        <div className="growth-quest-filter-row">
+          {filters.map((filter, index) => (
+            <button
+              key={filter}
+              type="button"
+              className={cn("growth-quest-filter", index === 1 && "is-active")}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-6">
-          <div className={cn(CARD_CLASS, "p-6")}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className={EYEBROW_CLASS}>Progress Overview</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                  Your progress today
-                </h2>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-                  A simple view of your current level, XP progress, and estimated strengths.
-                </p>
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-[12px] bg-gradient-to-br from-primary/20 to-primary/5 shadow-[0_0_15px_rgba(255,193,7,0.15)]">
-                <Zap className="size-5 text-primary drop-shadow-[0_0_8px_rgba(255,193,7,0.8)]" />
-              </div>
-            </div>
-
-            <div className="mt-6 grid gap-5 md:grid-cols-[0.95fr_1.05fr]">
-              <div className={cn(SUBTLE_CARD_CLASS, "p-5")}>
-                <p className={LABEL_CLASS}>Total XP</p>
-                <p className="mt-2 text-4xl font-semibold tracking-tight text-foreground">
-                  {xp}
-                </p>
-                <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-black/40 shadow-inner">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-amber-500 to-primary transition-all duration-1000 ease-out"
-                    style={{ width: `${xpPct}%` }}
-                  />
+      <section className="growth-quest-grid">
+        <aside className="growth-quest-side">
+          <div className="growth-quest-panel growth-quest-side__panel">
+            <div>
+              <h3 className="growth-quest-side__title">
+                <Sparkles className="size-4" />
+                Quick Stats
+              </h3>
+              <div className="growth-quest-mini-card">
+                <p className={LABEL_CLASS}>Weekly snapshot</p>
+                <div className="growth-quest-stat-grid">
+                  {quickStats.map((stat) => (
+                    <div key={stat.label} className="growth-quest-stat-tile">
+                      <span>{stat.label}</span>
+                      <strong>{stat.value}</strong>
+                    </div>
+                  ))}
                 </div>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  {nextThreshold
-                    ? `${nextThreshold - xp} XP until level ${levelNumber + 1}`
-                    : "You have reached the top listed level."}
-                </p>
               </div>
-
-              <div className={cn(SUBTLE_CARD_CLASS, "p-5")}>
-                <div className="flex items-center justify-between gap-3">
-                  <p className={LABEL_CLASS}>Skill Breakdown</p>
-                  <span className="text-xs text-muted-foreground">Recent estimate</span>
-                </div>
-                <div className="mt-5 space-y-4">
-                  {SKILL_BREAKDOWN.map((skill) => (
-                    <div key={skill.label}>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-medium text-foreground">{skill.label}</span>
-                        <span className="text-sm text-muted-foreground">{skill.value}%</span>
-                      </div>
-                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/40 shadow-inner">
-                        <div
-                          className={cn("h-full rounded-full transition-all duration-1000 ease-out", skill.barClass.replace('bg-', 'bg-gradient-to-r from-transparent to-'))}
-                          style={{ width: `${skill.value}%`, backgroundColor: skill.barClass.includes('emerald') ? '#10b981' : skill.barClass.includes('amber') ? '#f59e0b' : '#ffc107' }}
-                        />
-                      </div>
+              <div className="growth-quest-mini-card">
+                <p className={LABEL_CLASS}>Active Boosters</p>
+                <div className="growth-quest-boosters">
+                  {boosterRows.map((booster) => (
+                    <div key={booster.label} className="growth-quest-booster-row">
+                      <span className={`tone-${booster.tone}`}>{booster.label}</span>
+                      <span>{booster.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
+
+            <div className="growth-quest-rank-card">
+              <p className={LABEL_CLASS}>Rank Progress</p>
+              <strong>{levelLabel}</strong>
+              <div className="growth-quest-progress">
+                <span style={{ width: `${xpPct}%` }} />
+              </div>
+            </div>
           </div>
+        </aside>
 
-          <BadgeShelf
-            badges={dashboard?.profile?.badges || []}
-            currentStreak={streak}
-          />
+        <div className="growth-quest-main-column">
+          <section>
+            <div className="growth-quest-section-head">
+              <div className="growth-quest-section-title">
+                <span className="growth-quest-pulse-dot" />
+                <h3>Active Operations</h3>
+              </div>
+              <button type="button" className="growth-quest-inline-link">
+                View Dashboard
+                <ArrowRight className="size-4" />
+              </button>
+            </div>
 
-          <ProcessSummaryCard processSummary={dashboard?.processSummary} />
+            <div className="growth-quest-card-grid">
+              {operations.map((operation) => (
+                <article key={operation.id} className="growth-quest-panel growth-quest-card">
+                  <div className="growth-quest-card__head">
+                    <span className={`growth-quest-chip growth-quest-chip--${operation.difficultyTone}`}>
+                      {operation.difficulty}
+                    </span>
+                    <button type="button" className="growth-quest-dots" aria-label="More actions">
+                      <span />
+                      <span />
+                      <span />
+                    </button>
+                  </div>
+
+                  <div>
+                    <h4>{operation.title}</h4>
+                    <p>{operation.description}</p>
+                  </div>
+
+                  <div className="growth-quest-card__progress">
+                    <div className="growth-quest-card__progress-head">
+                      <span>{operation.progressLabel}</span>
+                      <strong>{operation.progress}%</strong>
+                    </div>
+                    <div className="growth-quest-progress">
+                      <span style={{ width: `${operation.progress}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="growth-quest-card__foot">
+                    <span>{operation.coinLabel}</span>
+                    <span>{operation.xpLabel}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <div className="growth-quest-section-head growth-quest-section-head--with-line">
+              <h3>Available Contracts</h3>
+              <div className="growth-quest-nav-pills">
+                <button type="button" aria-label="Previous">
+                  <ArrowLeft className="size-4" />
+                </button>
+                <button type="button" aria-label="Next">
+                  <ArrowRight className="size-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="growth-quest-card-grid">
+              {availableContracts.map((contract) => (
+                <article key={contract.id} className="growth-quest-panel growth-quest-contract">
+                  <div className="growth-quest-contract__head">
+                    <div>
+                      <p className="growth-quest-contract__category">{contract.category}</p>
+                      <h4>{contract.title}</h4>
+                    </div>
+                    <span className="growth-quest-chip growth-quest-chip--ghost">{contract.tier}</span>
+                  </div>
+                  <p className="growth-quest-contract__description">{contract.description}</p>
+                  <div className="growth-quest-contract__rewards">
+                    <span>+{contract.rewardCoins}</span>
+                    <span>+{contract.rewardXp} XP</span>
+                  </div>
+                  <button type="button" className="growth-quest-button growth-quest-button--outline">
+                    Accept Quest
+                    <Target className="size-4" />
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="growth-quest-intel-grid">
+            <BadgeShelf badges={dashboard?.profile?.badges || []} currentStreak={streak} />
+            <ProcessSummaryCard processSummary={dashboard?.processSummary} />
+          </section>
         </div>
 
-        <div className={cn(CARD_CLASS, "p-6")}>
-          <div className="flex items-start justify-between gap-4">
+        <aside className="growth-quest-rewards">
+          <div className="growth-quest-panel growth-quest-rewards__panel">
+            <div className="growth-quest-rewards__section">
+              <h3 className="growth-quest-side__title">
+                <Gem className="size-4" />
+                Premium Rewards
+              </h3>
+              <div className="growth-quest-premium-card">
+                <div className="growth-quest-premium-card__badge">Featured</div>
+                <div className="growth-quest-premium-card__icon">
+                  <Gem className="size-5" />
+                </div>
+                <h4>Go Pro Access</h4>
+                <p>Unrestricted quests, faster support, custom branding, and 2x XP multipliers.</p>
+                <button type="button" className={cn(PRIMARY_BUTTON_CLASS, "growth-quest-button--soft")}>
+                  Upgrade Now
+                </button>
+              </div>
+            </div>
+
+            <div className="growth-quest-epic-card">
+              <p className={LABEL_CLASS}>Partner Ops</p>
+              <div className="growth-quest-epic-card__head">
+                <h4>Project: Growth Core V3</h4>
+                <span className="growth-quest-chip growth-quest-chip--violet">Epic</span>
+              </div>
+              <p>Lead the next-gen engagement loop and keep momentum systems sharp.</p>
+              <div className="growth-quest-contract__rewards">
+                <span>5k+</span>
+                <span>25k XP</span>
+              </div>
+            </div>
+
+            <div className="growth-quest-partner-box">
+              <p>Want to list your quest here?</p>
+              <button type="button" className="growth-quest-inline-link">
+                Apply for Partnership
+              </button>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      {hasRecentHistory ? (
+        <section>
+        <div className="growth-quest-section-title growth-quest-history-title">
+          <Clock className="size-4" />
+          <h3>Recent History</h3>
+        </div>
+        <div className="growth-quest-panel growth-quest-history">
+          <table>
+            <thead>
+              <tr>
+                <th>Quest Name</th>
+                <th>Type</th>
+                <th>Completion Date</th>
+                <th>Rewards</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historyRows.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.label}</td>
+                  <td>{row.type}</td>
+                  <td>{row.date}</td>
+                  <td>{row.rewards}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="growth-quest-history__footer">
+            <button type="button" className="growth-quest-inline-link">
+              View Full History
+            </button>
+          </div>
+        </div>
+        </section>
+      ) : null}
+
+      <section className="growth-quest-streak-shell growth-quest-panel">
+        <div className="growth-quest-section-head">
+          <div>
+            <p className={EYEBROW_CLASS}>Streak Timeline</p>
+            <h3>Weekly completion map</h3>
+          </div>
+        </div>
+        <StreakCalendar
+          streakHistory={dashboard?.profile?.streakHistory}
+          currentStreak={streak}
+          completedToday={done}
+        />
+      </section>
+    </div>
+  );
+};
+
+const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) => {
+  const navigate = useNavigate();
+  if (loading) {
+    return (
+      <div className="flex min-h-[420px] items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="size-7 animate-spin text-primary" />
+          <p className="text-sm">Loading your Growth Quest.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const profile = dashboard?.profile || {};
+  const today = dashboard?.today || {};
+  const levelProgress = dashboard?.levelProgress || {};
+  const nextMilestone = dashboard?.nextMilestone || {};
+  const processSummary = dashboard?.processSummary || {};
+  const activity = dashboard?.activity || {};
+  const topicPerformance = Array.isArray(dashboard?.topicPerformance)
+    ? dashboard.topicPerformance
+    : [];
+  const contests = Array.isArray(dashboard?.contests) ? dashboard.contests : [];
+  const recentSessions = Array.isArray(dashboard?.recentSessions)
+    ? dashboard.recentSessions
+    : [];
+  const streak = profile.currentStreak || 0;
+  const coins = profile.loyaltyCoins || 0;
+  const xp = profile.totalXP || profile.lifetimeXp || profile.xp || 0;
+  const used = today.attemptsUsed || 0;
+  const max = today.maxAttempts || 2;
+  const done = today.status === "completed" || used >= max;
+  const isRetake = used > 0 && !done;
+  const levelNumber = Number(String(profile.engagementLevel || "").match(/\d+/)?.[0] || 1);
+  const levelLabel = profile.engagementLevelLabel || levelProgress?.current?.label || "Starter";
+  const xpPct = clampPercent(levelProgress?.percent || 0);
+  const streakHistory = Array.isArray(profile.streakHistory) ? profile.streakHistory : [];
+  const completedDays = streakHistory.filter((entry) => entry?.completed).length;
+  const focusLabel = processSummary?.recommendedNextTopic?.label || null;
+  const strongAreaLabel = processSummary?.strongArea?.label || null;
+  const weakAreaLabel = processSummary?.weakArea?.label || null;
+  const rollingAccuracy = processSummary?.rollingAccuracy ?? activity?.lifetimeAccuracy ?? 0;
+  const rolling7DayAccuracy = processSummary?.rolling7DayAccuracy ?? rollingAccuracy;
+  const latestRewards = today?.resultSummary?.rewardsAwarded || {};
+  const hasFocusData = Boolean(focusLabel || strongAreaLabel || weakAreaLabel);
+  const hasTopicData = topicPerformance.length > 0;
+  const hasContests = contests.length > 0;
+  const hasRecentHistory = recentSessions.length > 0;
+  const hasMilestone = Boolean(nextMilestone?.targetDays);
+  const focusDescriptionParts = [
+    weakAreaLabel ? `Recommended focus is ${weakAreaLabel}.` : null,
+    strongAreaLabel ? `Strongest area is ${strongAreaLabel}.` : null,
+  ].filter(Boolean);
+  const quickStats = [
+    { label: "Completed days", value: activity?.completedDays || 0 },
+    { label: "Questions answered", value: activity?.totalQuestionsAnswered || 0 },
+    { label: "7-day accuracy", value: `${rolling7DayAccuracy}%` },
+    { label: "Recent sessions", value: recentSessions.length },
+  ];
+
+  const operations = [
+    {
+      id: "daily-quest",
+      difficulty: done ? "Complete" : used > 0 ? "In Progress" : "Live",
+      difficultyTone: done ? "success" : used > 0 ? "warning" : "success",
+      title: "Daily Freelancer Practice",
+      description: done
+        ? "Today’s session is complete. Review your result and return after reset."
+        : "Answer today’s timed set and keep your profile progression moving.",
+      progressLabel: "Quest status",
+      progress: done ? 100 : max > 0 ? Math.round((used / max) * 100) : 0,
+      coinLabel: `${latestRewards?.coinsAwarded ?? 0} latest coins`,
+      xpLabel: `${latestRewards?.xpAwarded ?? 0} latest XP`,
+    },
+    {
+      id: "level-progress",
+      difficulty: "Level Track",
+      difficultyTone: "neutral",
+      title: `${levelLabel} Progression`,
+      description: levelProgress?.next?.label
+        ? `You need ${levelProgress?.xpToNext || 0} XP to unlock ${levelProgress.next.label}.`
+        : "Top tier reached. Maintain your streak to protect position and rewards.",
+      progressLabel: "Level completion",
+      progress: xpPct,
+      coinLabel: `${coins} balance`,
+      xpLabel: levelProgress?.next?.label
+        ? `${levelProgress?.xpToNext || 0} XP left`
+        : "Max level",
+    },
+  ];
+
+  if (hasFocusData) {
+    operations.push({
+      id: "focus-track",
+      difficulty: "Learning Focus",
+      difficultyTone: "violet",
+      title: focusLabel || weakAreaLabel || strongAreaLabel,
+      description:
+        focusDescriptionParts.join(" ") || "Performance insights from your completed Growth Quests.",
+      progressLabel: "7-day accuracy",
+      progress: rolling7DayAccuracy,
+      coinLabel: `${activity?.completedDays || 0} completed days`,
+      xpLabel: `${rollingAccuracy}% lifetime accuracy`,
+    });
+  }
+
+  const statusPills = [
+    `${activity?.completedDays || 0} completed days`,
+    `${activity?.totalQuestionsAnswered || 0} questions answered`,
+    `${rollingAccuracy}% lifetime accuracy`,
+    levelProgress?.next?.label ? `Next: ${levelProgress.next.label}` : "Top tier reached",
+  ];
+
+  const boosterRows = [
+    focusLabel ? { label: "Focus", value: focusLabel, tone: "success" } : null,
+    nextMilestone?.label
+      ? {
+          label: "Next milestone",
+          value: nextMilestone.label,
+          tone: "violet",
+        }
+      : null,
+  ].filter(Boolean);
+
+  const historyRows = recentSessions.map((session) => ({
+    id: session.id,
+    label: "Daily Growth Quest",
+    type: `${session.correctCount}/${session.questionCount} correct`,
+    date: formatCompactDate(session.createdAt || session.dayKey),
+    rewards: `+${session.coinsAwarded} coins / +${session.xpAwarded} XP`,
+    score: `${session.accuracy}% accuracy`,
+  }));
+
+  return (
+    <div className="growth-quest-dashboard">
+      <section className="growth-quest-hero growth-quest-panel">
+        <div className="growth-quest-hero__content">
+          <div className="growth-quest-hero__meta">
+            <span className={EYEBROW_CLASS}>Daily Protocol</span>
+            <span className="growth-quest-chip growth-quest-chip--ghost">
+              <Clock className="size-3.5" />
+              Resets {formatReset(today.nextResetAt)}
+            </span>
+          </div>
+          <h2 className="growth-quest-hero__title">Freelancer Practice</h2>
+          <p className="growth-quest-hero__description">
+            Maintain your operational edge. Complete today&apos;s simulation to sustain your
+            momentum bonus.
+          </p>
+        </div>
+
+        <div className="growth-quest-hero__sidebar growth-quest-subpanel">
+          <div className="growth-quest-hero__sidebar-head">
             <div>
-              <p className={EYEBROW_CLASS}>Leaderboard</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                Weekly ranking
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                A quick look at how your consistency compares with other freelancers.
+              <p className={LABEL_CLASS}>Current Streak</p>
+              <p className="growth-quest-hero__streak">
+                <Flame className="size-5" />
+                {streak} Days
               </p>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-primary/10">
-              <Trophy className="size-4 text-primary" />
+            <div className="growth-quest-attempts-ring">
+              <span className={LABEL_CLASS}>Attempts</span>
+              <strong>
+                {used}/{max}
+              </strong>
             </div>
           </div>
 
-          <div className="mt-5 space-y-3">
-            {leaderboard.map((entry) => (
-              <LeaderRow key={entry.rank} {...entry} />
-            ))}
+          <div className="growth-quest-hero__stats">
+            <div className="growth-quest-hero__stat">
+              <span className={LABEL_CLASS}>Completed days</span>
+              <strong>{activity?.completedDays || 0}</strong>
+            </div>
+            <div className="growth-quest-hero__stat">
+              <span className={LABEL_CLASS}>Questions answered</span>
+              <strong>{activity?.totalQuestionsAnswered || 0}</strong>
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={onStartQuest}
+            disabled={done}
+            className={cn(PRIMARY_BUTTON_CLASS, "growth-quest-hero__cta")}
+          >
+            {done ? (
+              <>
+                <CheckCircle2 className="size-4" />
+                Completed for today
+              </>
+            ) : (
+              <>
+                Start Today&apos;s Quest
+                <ArrowRight className="size-4" />
+              </>
+            )}
+          </button>
+
+          <p className="growth-quest-helper">
+            {isRetake ? `${max - used} retake remaining today.` : "Best attempt counts."}
+          </p>
+
+          {error ? <div className="growth-quest-error">{error}</div> : null}
         </div>
+      </section>
+
+      <section className="growth-quest-toolbar growth-quest-panel">
+        <div className="growth-quest-filter-row">
+          {statusPills.map((pill, index) => (
+            <div key={pill} className={cn("growth-quest-filter", index === 0 && "is-active")}>
+              {pill}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="growth-quest-grid">
+        <aside className="growth-quest-side">
+          <div className="growth-quest-panel growth-quest-side__panel">
+            <div>
+              <h3 className="growth-quest-side__title">
+                <Sparkles className="size-4" />
+                Quick Stats
+              </h3>
+              <div className="growth-quest-mini-card">
+                <p className={LABEL_CLASS}>Weekly snapshot</p>
+                <div className="growth-quest-stat-grid">
+                  {quickStats.map((stat) => (
+                    <div key={stat.label} className="growth-quest-stat-tile">
+                      <span>{stat.label}</span>
+                      <strong>{stat.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="growth-quest-mini-card">
+                <p className={LABEL_CLASS}>Live Metrics</p>
+                <div className="growth-quest-boosters">
+                  {boosterRows.length > 0 ? (
+                    boosterRows.map((booster) => (
+                      <div key={booster.label} className="growth-quest-booster-row">
+                        <span className={`tone-${booster.tone}`}>{booster.label}</span>
+                        <span>{booster.value}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="growth-quest-booster-row">
+                      <span>No live metrics yet</span>
+                      <span>Complete a quest</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="growth-quest-rank-card">
+              <p className={LABEL_CLASS}>Rank Progress</p>
+              <strong>{levelLabel}</strong>
+              <div className="growth-quest-progress">
+                <span style={{ width: `${xpPct}%` }} />
+              </div>
+              <p className="growth-quest-helper">Level {levelNumber} · {xp.toLocaleString()} XP</p>
+            </div>
+          </div>
+        </aside>
+
+        <div className="growth-quest-main-column">
+          <section>
+            <div className="growth-quest-section-head">
+              <div className="growth-quest-section-title">
+                <span className="growth-quest-pulse-dot" />
+                <h3>Active Operations</h3>
+              </div>
+              <span className="growth-quest-inline-link">{rolling7DayAccuracy}% 7-day accuracy</span>
+            </div>
+
+            <div className="growth-quest-card-grid">
+              {operations.map((operation) => (
+                <article key={operation.id} className="growth-quest-panel growth-quest-card">
+                  <div className="growth-quest-card__head">
+                    <span className={`growth-quest-chip growth-quest-chip--${operation.difficultyTone}`}>
+                      {operation.difficulty}
+                    </span>
+                    <span className="growth-quest-inline-link">{operation.progress}%</span>
+                  </div>
+
+                  <div>
+                    <h4>{operation.title}</h4>
+                    <p>{operation.description}</p>
+                  </div>
+
+                  <div className="growth-quest-card__progress">
+                    <div className="growth-quest-card__progress-head">
+                      <span>{operation.progressLabel}</span>
+                      <strong>{operation.progress}%</strong>
+                    </div>
+                    <div className="growth-quest-progress">
+                      <span style={{ width: `${operation.progress}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="growth-quest-card__foot">
+                    <span>{operation.coinLabel}</span>
+                    <span>{operation.xpLabel}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          {hasTopicData ? (
+            <section>
+            <div className="growth-quest-section-head growth-quest-section-head--with-line">
+              <h3>Topic Performance</h3>
+              <span className="growth-quest-inline-link">
+                {topicPerformance.length} tracked categories
+              </span>
+            </div>
+
+            <div className="growth-quest-card-grid">
+              {topicPerformance.slice(0, 4).map((topic) => (
+                  <article key={topic.key} className="growth-quest-panel growth-quest-contract">
+                    <div className="growth-quest-contract__head">
+                      <div>
+                        <p className="growth-quest-contract__category">Performance Area</p>
+                        <h4>{topic.label}</h4>
+                      </div>
+                      <span className="growth-quest-chip growth-quest-chip--ghost">
+                        {topic.accuracy}%
+                      </span>
+                    </div>
+                    <p className="growth-quest-contract__description">
+                      {topic.correct} correct answers from {topic.attempted} attempts in this
+                      category.
+                    </p>
+                    <div className="growth-quest-contract__rewards">
+                      <span>{topic.correct} correct</span>
+                      <span>{topic.attempted - topic.correct} missed</span>
+                    </div>
+                    <div className="growth-quest-progress">
+                      <span style={{ width: `${clampPercent(topic.accuracy)}%` }} />
+                    </div>
+                  </article>
+                ))}
+            </div>
+          </section>
+          ) : null}
+
+          {hasContests ? (
+            <section>
+              <div className="growth-quest-section-head growth-quest-section-head--with-line">
+                <h3>Admin Contests</h3>
+                <span className="growth-quest-inline-link">{contests.length} live contests</span>
+              </div>
+
+                <div className="growth-quest-card-grid">
+                  {contests.map((contest) => (
+                  <article
+                    key={contest.id}
+                    className="growth-quest-panel growth-quest-contract cursor-pointer"
+                    onClick={() => navigate(`/freelancer/growth-quest/contests/${contest.id}`)}
+                  >
+                    <div className="growth-quest-contract__head">
+                      <div>
+                        <p className="growth-quest-contract__category">{contest.category}</p>
+                        <h4>{contest.title}</h4>
+                      </div>
+                      <span className="growth-quest-chip growth-quest-chip--ghost">
+                        {contest.startDayKey}
+                        {contest.endDayKey ? ` to ${contest.endDayKey}` : ""}
+                      </span>
+                    </div>
+                    <p className="growth-quest-contract__description">{contest.description}</p>
+                    <div className="growth-quest-contract__rewards">
+                      <span>{contest.status}</span>
+                      <span>{contest.ctaLabel || "View Contest"}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <section className="growth-quest-intel-grid">
+            <BadgeShelf badges={dashboard?.badges || []} currentStreak={streak} />
+            <ProcessSummaryCard processSummary={processSummary} />
+          </section>
+        </div>
+
+        <aside className="growth-quest-rewards">
+          <div className="growth-quest-panel growth-quest-rewards__panel">
+            {hasMilestone ? (
+              <div className="growth-quest-rewards__section">
+              <h3 className="growth-quest-side__title">
+                <Target className="size-4" />
+                Progress Snapshot
+              </h3>
+              <div className="growth-quest-premium-card">
+                <div className="growth-quest-premium-card__badge">Live</div>
+                <div className="growth-quest-premium-card__icon">
+                  <Flame className="size-5" />
+                </div>
+                <h4>{nextMilestone?.targetDays || 0}-Day Milestone</h4>
+                <p>
+                  {nextMilestone?.label || "Keep the streak alive to unlock your next milestone."}
+                </p>
+                <div className="growth-quest-progress">
+                  <span
+                    style={{
+                      width: `${clampPercent(
+                        nextMilestone?.targetDays ? (streak / nextMilestone.targetDays) * 100 : 100,
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+            ) : null}
+
+            {strongAreaLabel ? (
+              <div className="growth-quest-epic-card">
+              <p className={LABEL_CLASS}>Performance Intel</p>
+              <div className="growth-quest-epic-card__head">
+                <h4>{strongAreaLabel}</h4>
+                <span className="growth-quest-chip growth-quest-chip--violet">Strongest</span>
+              </div>
+              <p>Best performing category based on your recorded Growth Quest answers.</p>
+              <div className="growth-quest-contract__rewards">
+                <span>{rollingAccuracy}% lifetime</span>
+                <span>{rolling7DayAccuracy}% 7-day</span>
+              </div>
+            </div>
+            ) : null}
+
+            {weakAreaLabel ? (
+              <div className="growth-quest-partner-box">
+              <p>{weakAreaLabel}</p>
+              <span className="growth-quest-inline-link">Recommended next focus</span>
+            </div>
+            ) : null}
+          </div>
+        </aside>
+      </section>
+
+      {hasRecentHistory ? (
+      <section>
+        <div className="growth-quest-section-title growth-quest-history-title">
+          <Clock className="size-4" />
+          <h3>Recent History</h3>
+        </div>
+        <div className="growth-quest-panel growth-quest-history">
+          <table>
+            <thead>
+              <tr>
+                <th>Quest Name</th>
+                <th>Type</th>
+                <th>Completion Date</th>
+                <th>Rewards</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historyRows.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.label}</td>
+                    <td>{row.type}</td>
+                    <td>{row.date}</td>
+                    <td>{row.rewards} · {row.score}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      ) : null}
+
+      <section className="growth-quest-streak-shell growth-quest-panel">
+        <div className="growth-quest-section-head">
+          <div>
+            <p className={EYEBROW_CLASS}>Streak Timeline</p>
+            <h3>Weekly completion map</h3>
+          </div>
+          <span className="growth-quest-inline-link">{formatDayKey(today.dayKey)}</span>
+        </div>
+        <StreakCalendar
+          streakHistory={dashboard?.profile?.streakHistory}
+          currentStreak={streak}
+          completedToday={done}
+        />
       </section>
     </div>
   );
@@ -916,10 +1581,10 @@ const FreelancerGrowthQuestPage = () => {
     <div className={PAGE_CLASS}>
       <InfoModal open={infoOpen} onClose={() => setInfoOpen(false)} />
 
-      <main className="mx-auto w-full max-w-[1240px] px-5 pb-16 pt-28 sm:px-8 lg:px-10">
-        <div className="mb-8 flex flex-col gap-4 border-b border-white/[0.06] pb-6 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
+      <main className="growth-quest-shell">
+        {view !== "dashboard" ? (
+          <div className="growth-quest-topbar growth-quest-topbar--compact">
+            <div className="growth-quest-topbar__meta">
               <button
                 type="button"
                 onClick={() => {
@@ -936,35 +1601,24 @@ const FreelancerGrowthQuestPage = () => {
                 {view === "quiz" ? "Cancel quest" : "Back"}
               </button>
               <p className={EYEBROW_CLASS}>
-                {view === "quiz"
-                  ? "Growth Quest Session"
-                  : view === "result"
-                    ? "Quest Review"
-                    : "Freelancer Growth Hub"}
+                {view === "quiz" ? "Growth Quest Session" : "Quest Review"}
               </p>
             </div>
 
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Growth Quest
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-[0.95rem]">
-              Simple daily questions, quick progress, and one clear action.
-            </p>
+            <button
+              type="button"
+              onClick={() => setInfoOpen(true)}
+              className={SECONDARY_BUTTON_CLASS}
+              title="How Growth Quest works"
+            >
+              <Info className="size-4" />
+              How it works
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setInfoOpen(true)}
-            className={SECONDARY_BUTTON_CLASS}
-            title="How Growth Quest works"
-          >
-            <Info className="size-4" />
-            How it works
-          </button>
-        </div>
+        ) : null}
 
         {view === "dashboard" ? (
-          <DashboardView
+          <GrowthQuestLiveDashboard
             dashboard={dashboard}
             loading={loadingDashboard}
             error={error}

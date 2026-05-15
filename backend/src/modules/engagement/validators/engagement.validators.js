@@ -25,9 +25,23 @@ export const listAdminQuestionsSchema = z.object({
   })
 });
 
+const dayKeySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD date");
+
 export const questionIdParamsSchema = z.object({
   params: z.object({
     id: z.string().min(1)
+  })
+});
+
+export const contestIdParamsSchema = z.object({
+  params: z.object({
+    id: z.string().min(1)
+  })
+});
+
+export const dailySetDayKeyParamsSchema = z.object({
+  params: z.object({
+    dayKey: dayKeySchema
   })
 });
 
@@ -73,5 +87,50 @@ export const listAdminFreelancerProgressSchema = z.object({
   query: z.object({
     search: z.string().max(120).optional(),
     take: z.coerce.number().int().min(1).max(100).optional()
+  })
+});
+
+export const listAdminDailySetsSchema = z.object({
+  query: z.object({
+    from: dayKeySchema.optional(),
+    to: dayKeySchema.optional(),
+    take: z.coerce.number().int().min(1).max(120).optional()
+  })
+});
+
+export const listAdminContestsSchema = z.object({
+  query: z.object({
+    status: z.enum(["ALL", "DRAFT", "PUBLISHED", "ARCHIVED"]).optional()
+  })
+});
+
+export const adminContestSchema = z.object({
+  body: z.object({
+    title: z.string().min(3).max(160),
+    description: z.string().min(10).max(2000),
+    detailsContent: z.string().min(10).max(12000).optional(),
+    imageUrl: z.string().url().max(2000).optional(),
+    category: z.string().min(2).max(80),
+    ctaLabel: z.string().min(2).max(80).optional(),
+    startDayKey: dayKeySchema,
+    endDayKey: dayKeySchema.optional(),
+    status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional()
+  })
+});
+
+export const updateAdminContestSchema = z.object({
+  params: z.object({
+    id: z.string().min(1)
+  }),
+  body: adminContestSchema.shape.body.partial()
+});
+
+export const upsertAdminDailySetSchema = z.object({
+  params: z.object({
+    dayKey: dayKeySchema
+  }),
+  body: z.object({
+    questionIds: z.array(z.string().min(1)).min(1).max(20),
+    status: z.enum(["DRAFT", "PUBLISHED"]).optional()
   })
 });

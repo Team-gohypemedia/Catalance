@@ -98,6 +98,9 @@ const FreelancerDashboard = lazy(
 const FreelancerGrowthQuest = lazy(
   () => import("@/components/features/engagement/FreelancerGrowthQuestPage.jsx"),
 );
+const FreelancerGrowthQuestContestDetail = lazy(
+  () => import("@/components/features/engagement/FreelancerGrowthQuestContestDetailPage.jsx"),
+);
 const FreelancerProposal = lazy(
   () => import("@/components/features/freelancer/FreelancerProposal"),
 );
@@ -590,16 +593,26 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-             <Route
-               path="/freelancer/growth-quest"
-               element={
-                 <ProtectedRoute>
-                   <LayoutNavbarOnly>
-                     <FreelancerGrowthQuest />
-                   </LayoutNavbarOnly>
-                 </ProtectedRoute>
-               }
-             />
+            <Route
+              path="/freelancer/growth-quest"
+              element={
+                <ProtectedRoute>
+                  <LayoutNavbarOnly>
+                    <FreelancerGrowthQuest />
+                  </LayoutNavbarOnly>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/freelancer/growth-quest/contests/:contestId"
+              element={
+                <ProtectedRoute>
+                  <LayoutNavbarOnly>
+                    <FreelancerGrowthQuestContestDetail />
+                  </LayoutNavbarOnly>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/freelancer/proposals"
               element={

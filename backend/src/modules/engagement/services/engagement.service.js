@@ -26,11 +26,30 @@ const CATEGORY_LABELS = Object.freeze({
   BUSINESS_BASICS: "Business basics"
 });
 
+const ENGAGEMENT_CONTESTS_CATALOG_KEY = "engagement_contests";
+
 const LEVEL_LABELS = Object.freeze(
   Object.fromEntries(engagementRules.levels.map((level) => [level.key, level.label]))
 );
 
 const normalizeText = (value) => String(value || "").trim();
+
+const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const normalizeDayKey = (value, fallback = null) => {
+  const normalized = normalizeText(value);
+  if (!normalized) return fallback;
+  if (!DAY_KEY_PATTERN.test(normalized)) {
+    throw new AppError("Invalid date. Expected YYYY-MM-DD.", 400);
+  }
+
+  const date = new Date(`${normalized}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || getUtcDayKey(date) !== normalized) {
+    throw new AppError("Invalid calendar date.", 400);
+  }
+
+  return normalized;
+};
 
 const getMaxAttemptsPerDay = () =>
   Math.max(1, Number(engagementRules.dailyChallenge.maxAttemptsPerDay) || 1);
@@ -63,6 +82,9 @@ const normalizeDifficulty = (value = "BEGINNER") => {
 
 const categoryLabel = (category) =>
   CATEGORY_LABELS[category] || normalizeText(category).replace(/_/g, " ");
+
+const normalizeCatalogPayloadArray = (value) =>
+  Array.isArray(value) ? value : [];
 
 const stableHashNumber = (value = "") => {
   const digest = crypto.createHash("sha256").update(String(value)).digest("hex");
@@ -119,6 +141,60 @@ const toSafeQuestionRecord = (question) => ({
     : null,
   createdAt: question.createdAt,
   updatedAt: question.updatedAt
+});
+
+const serializeDailySet = (dailySet, questionBank = new Map()) => ({
+  id: dailySet.id,
+  dayKey: dailySet.dayKey,
+  status: dailySet.status,
+  generatedBy: dailySet.generatedBy,
+  publishedAt: dailySet.publishedAt,
+  createdAt: dailySet.createdAt,
+  updatedAt: dailySet.updatedAt,
+  questionIds: Array.isArray(dailySet.questionIds) ? dailySet.questionIds : [],
+  questionCount: Array.isArray(dailySet.questionIds) ? dailySet.questionIds.length : 0,
+  approvedBy: dailySet.approvedBy
+    ? {
+        id: dailySet.approvedBy.id,
+        fullName: dailySet.approvedBy.fullName,
+        email: dailySet.approvedBy.email
+      }
+    : null,
+  questions: Array.isArray(dailySet.questionIds)
+    ? dailySet.questionIds
+        .map((questionId) => questionBank.get(questionId))
+        .filter(Boolean)
+        .map((question) => ({
+          id: question.id,
+          questionText: question.questionText,
+          category: question.category,
+          categoryLabel: categoryLabel(question.category),
+          difficulty: question.difficulty
+        }))
+    : []
+});
+
+const normalizeContestStatus = (value = "DRAFT") => {
+  const normalized = normalizeText(value).toUpperCase();
+  if (["DRAFT", "PUBLISHED", "ARCHIVED"].includes(normalized)) {
+    return normalized;
+  }
+  return "DRAFT";
+};
+
+const serializeContest = (contest) => ({
+  id: contest.id,
+  title: contest.title,
+  description: contest.description,
+  detailsContent: contest.detailsContent || contest.description,
+  imageUrl: contest.imageUrl || "",
+  category: contest.category,
+  ctaLabel: contest.ctaLabel || "View Contest",
+  startDayKey: contest.startDayKey,
+  endDayKey: contest.endDayKey || null,
+  status: normalizeContestStatus(contest.status),
+  createdAt: contest.createdAt || null,
+  updatedAt: contest.updatedAt || null
 });
 
 const ensureFreelancerUser = async (userId) => {
@@ -327,7 +403,7 @@ const updateProcessReport = async ({
       weakTopics,
       strongTopics,
       recommendedNextTopic:
-        weakTopics[0] || strongTopics[0] || "SCOPE_MANAGEMENT"
+        weakTopics[0] || strongTopics[0] || null
     },
     update: {
       rollingAccuracy,
@@ -336,7 +412,7 @@ const updateProcessReport = async ({
       weakTopics,
       strongTopics,
       recommendedNextTopic:
-        weakTopics[0] || strongTopics[0] || "SCOPE_MANAGEMENT"
+        weakTopics[0] || strongTopics[0] || null
     }
   });
 };
@@ -368,12 +444,48 @@ const buildProcessSummary = (report) => {
           key: report.recommendedNextTopic,
           label: categoryLabel(report.recommendedNextTopic)
         }
-      : {
-          key: "SCOPE_MANAGEMENT",
-          label: categoryLabel("SCOPE_MANAGEMENT")
-        }
+      : null
   };
 };
+
+const buildTopicPerformance = (report) => {
+  const topicStats = report?.topicStats || {};
+
+  return Object.entries(topicStats)
+    .map(([key, stat]) => {
+      const attempted = Number(stat?.attempted || 0);
+      const correct = Number(stat?.correct || 0);
+      const accuracy =
+        attempted > 0
+          ? Math.round((correct / attempted) * 100)
+          : Math.round(Number(stat?.accuracy || 0));
+
+      return {
+        key,
+        label: categoryLabel(key),
+        attempted,
+        correct,
+        accuracy
+      };
+    })
+    .filter((entry) => entry.attempted > 0)
+    .sort((a, b) => {
+      if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+      return b.attempted - a.attempted;
+    });
+};
+
+const serializeRecentSession = (session) => ({
+  id: session.id,
+  dayKey: session.dayKey,
+  createdAt: session.createdAt,
+  accuracy: Math.round(Number(session.accuracy || 0)),
+  correctCount: Number(session.correctCount || 0),
+  questionCount: Number(session.questionCount || 0),
+  xpAwarded: Number(session.xpAwarded || 0),
+  coinsAwarded: Number(session.coinsAwarded || 0),
+  streakApplied: Boolean(session.streakApplied)
+});
 
 const buildBadgePayload = async (userId) => {
   await ensureCoreBadges();
@@ -398,14 +510,20 @@ const buildBadgePayload = async (userId) => {
 };
 
 const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
-  const [profile, report, todaySessions, badges] = await Promise.all([
+  const [profile, report, todaySessions, recentSessions, badges, contests] = await Promise.all([
     ensureProfile(userId),
     prisma.engagementProcessReport.findUnique({ where: { userId } }),
     prisma.engagementAnswerSession.findMany({
       where: { userId, dayKey },
       orderBy: { createdAt: "desc" }
     }),
-    buildBadgePayload(userId)
+    prisma.engagementAnswerSession.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: "desc" }],
+      take: 8
+    }),
+    buildBadgePayload(userId),
+    listVisibleContestsForDay(dayKey)
   ]);
 
   const levelProgress = buildLevelProgress(profile, report);
@@ -413,6 +531,14 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
   const maxAttempts = getMaxAttemptsPerDay();
   const isCompleted =
     todaySessions.length >= maxAttempts || latestSession?.accuracy === 100;
+  const processSummary = buildProcessSummary(report);
+  const topicPerformance = buildTopicPerformance(report);
+  const totalQuestionsAnswered = Number(profile.totalQuestionsAnswered || 0);
+  const totalCorrectAnswers = Number(profile.totalCorrectAnswers || 0);
+  const lifetimeAccuracy =
+    totalQuestionsAnswered > 0
+      ? Math.round((totalCorrectAnswers / totalQuestionsAnswered) * 100)
+      : 0;
 
   return {
     profile: {
@@ -439,7 +565,16 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
     levelProgress,
     nextMilestone: buildNextMilestone(profile.currentStreak),
     badges,
-    processSummary: buildProcessSummary(report)
+    processSummary,
+    topicPerformance,
+    contests,
+    recentSessions: recentSessions.map(serializeRecentSession),
+    activity: {
+      completedDays: Number(profile.dailyCompletionCount || 0),
+      totalQuestionsAnswered,
+      totalCorrectAnswers,
+      lifetimeAccuracy
+    }
   };
 };
 
@@ -484,11 +619,18 @@ export const ensurePublishedDailySet = async (dayKey = getUtcDayKey()) => {
     where: { dayKey }
   });
 
-  if (
-    existing?.status === "PUBLISHED" &&
-    existing.questionIds.length >= engagementRules.dailyChallenge.questionCount
-  ) {
-    return existing;
+  if (existing?.questionIds?.length >= engagementRules.dailyChallenge.questionCount) {
+    if (existing.status === "PUBLISHED") {
+      return existing;
+    }
+
+    return prisma.dailyQuestionSet.update({
+      where: { id: existing.id },
+      data: {
+        status: "PUBLISHED",
+        publishedAt: new Date()
+      }
+    });
   }
 
   const questions = await selectQuestionsForDay(dayKey);
@@ -527,6 +669,97 @@ const loadDailyQuestions = async (dailySet) => {
   });
   const byId = new Map(questions.map((question) => [question.id, question]));
   return dailySet.questionIds.map((id) => byId.get(id)).filter(Boolean);
+};
+
+const getEngagementContestCatalog = async (client = prisma) => {
+  const record = await client.serviceCatalog.findUnique({
+    where: { key: ENGAGEMENT_CONTESTS_CATALOG_KEY }
+  });
+
+  return {
+    record,
+    contests: normalizeCatalogPayloadArray(record?.payload).map(serializeContest)
+  };
+};
+
+const saveEngagementContestCatalog = async (contests, client = prisma) =>
+  client.serviceCatalog.upsert({
+    where: { key: ENGAGEMENT_CONTESTS_CATALOG_KEY },
+    create: {
+      key: ENGAGEMENT_CONTESTS_CATALOG_KEY,
+      schemaVersion: "1",
+      payload: contests,
+      sourceFile: "engagement"
+    },
+    update: {
+      schemaVersion: "1",
+      payload: contests,
+      sourceFile: "engagement"
+    }
+  });
+
+const validateContestPayload = (payload = {}, existing = null) => {
+  const title = normalizeText(payload.title ?? existing?.title);
+  const description = normalizeText(payload.description ?? existing?.description);
+  const detailsContent = normalizeText(payload.detailsContent ?? existing?.detailsContent) || description;
+  const imageUrl = normalizeText(payload.imageUrl ?? existing?.imageUrl);
+  const category = normalizeText(payload.category ?? existing?.category);
+  const ctaLabel = normalizeText(payload.ctaLabel ?? existing?.ctaLabel) || "View Contest";
+  const startDayKey = normalizeDayKey(payload.startDayKey ?? existing?.startDayKey);
+  const endDayKey = normalizeDayKey(payload.endDayKey ?? existing?.endDayKey, null);
+  const status = normalizeContestStatus(payload.status ?? existing?.status);
+
+  if (title.length < 3) {
+    throw new AppError("Contest title is required.", 400);
+  }
+  if (description.length < 10) {
+    throw new AppError("Contest description is required.", 400);
+  }
+  if (detailsContent.length < 10) {
+    throw new AppError("Contest full details are required.", 400);
+  }
+  if (category.length < 2) {
+    throw new AppError("Contest category is required.", 400);
+  }
+  if (endDayKey && endDayKey < startDayKey) {
+    throw new AppError("Contest end date cannot be before the start date.", 400);
+  }
+
+  return {
+    id: existing?.id || crypto.randomUUID(),
+    title,
+    description,
+    detailsContent,
+    imageUrl,
+    category,
+    ctaLabel,
+    startDayKey,
+    endDayKey,
+    status,
+    createdAt: existing?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+};
+
+const listVisibleContestsForDay = async (dayKey = getUtcDayKey()) => {
+  const { contests } = await getEngagementContestCatalog();
+  return contests.filter((contest) => {
+    if (contest.status !== "PUBLISHED") return false;
+    if (contest.startDayKey > dayKey) return false;
+    if (contest.endDayKey && contest.endDayKey < dayKey) return false;
+    return true;
+  });
+};
+
+export const getContestById = async (contestId) => {
+  ensureEnabled();
+  const normalizedContestId = normalizeText(contestId);
+  const { contests } = await getEngagementContestCatalog();
+  const contest = contests.find((entry) => entry.id === normalizedContestId);
+  if (!contest || contest.status !== "PUBLISHED") {
+    throw new AppError("Contest not found.", 404);
+  }
+  return contest;
 };
 
 const calculateStreak = ({ profile, dayKey }) => {
@@ -1051,7 +1284,8 @@ export const getAdminEngagementOverview = async () => {
     avgStreak,
     pendingQuestions,
     approvedQuestions,
-    topProfiles
+    topProfiles,
+    recentSessions
   ] = await Promise.all([
     prisma.engagementProfile.count(),
     prisma.engagementAnswerSession.count({ where: { dayKey } }),
@@ -1067,6 +1301,15 @@ export const getAdminEngagementOverview = async () => {
     prisma.engagementProfile.findMany({
       orderBy: [{ currentStreak: "desc" }, { lifetimeXp: "desc" }],
       take: 5,
+      include: {
+        user: {
+          select: { id: true, fullName: true, email: true }
+        }
+      }
+    }),
+    prisma.engagementAnswerSession.findMany({
+      orderBy: [{ createdAt: "desc" }],
+      take: 8,
       include: {
         user: {
           select: { id: true, fullName: true, email: true }
@@ -1092,6 +1335,12 @@ export const getAdminEngagementOverview = async () => {
       loyaltyCoins: profile.loyaltyCoins,
       engagementLevel: profile.engagementLevel,
       engagementLevelLabel: LEVEL_LABELS[profile.engagementLevel] || "Starter"
+    })),
+    recentSessions: recentSessions.map((session) => ({
+      ...serializeRecentSession(session),
+      userId: session.userId,
+      fullName: session.user?.fullName || "Unknown freelancer",
+      email: session.user?.email || ""
     }))
   };
 };
@@ -1125,6 +1374,185 @@ export const listAdminQuestions = async ({ status, search, take = 100 } = {}) =>
   });
 
   return questions.map(toSafeQuestionRecord);
+};
+
+export const listAdminDailySets = async ({ from, to, take = 45 } = {}) => {
+  ensureEnabled();
+  const todayKey = getUtcDayKey();
+  const fromDayKey = normalizeDayKey(from, todayKey);
+  const toDayKey = normalizeDayKey(to, null);
+
+  const dailySets = await prisma.dailyQuestionSet.findMany({
+    where: {
+      dayKey: {
+        gte: fromDayKey,
+        ...(toDayKey ? { lte: toDayKey } : {})
+      }
+    },
+    orderBy: [{ dayKey: "asc" }],
+    take: Math.min(120, Math.max(1, Number(take) || 45)),
+    include: {
+      approvedBy: {
+        select: { id: true, fullName: true, email: true }
+      }
+    }
+  });
+
+  const questionIds = [...new Set(dailySets.flatMap((set) => set.questionIds || []))];
+  const questions = questionIds.length
+    ? await prisma.engagementQuestion.findMany({
+        where: { id: { in: questionIds } },
+        select: {
+          id: true,
+          questionText: true,
+          category: true,
+          difficulty: true
+        }
+      })
+    : [];
+  const questionBank = new Map(questions.map((question) => [question.id, question]));
+
+  return dailySets.map((dailySet) => serializeDailySet(dailySet, questionBank));
+};
+
+export const listAdminContests = async ({ status } = {}) => {
+  ensureEnabled();
+  const normalizedStatus = normalizeText(status).toUpperCase();
+  const { contests } = await getEngagementContestCatalog();
+
+  return contests.filter((contest) =>
+    normalizedStatus && normalizedStatus !== "ALL"
+      ? contest.status === normalizedStatus
+      : true
+  );
+};
+
+export const createAdminContest = async ({ adminId, payload }) => {
+  ensureEnabled();
+  const { contests } = await getEngagementContestCatalog();
+  const contest = validateContestPayload(payload);
+  const nextContests = [contest, ...contests];
+
+  await saveEngagementContestCatalog(nextContests);
+  await recordAdminAudit({
+    adminId,
+    action: "create_contest",
+    entityType: "EngagementContest",
+    entityId: contest.id,
+    newValue: contest
+  });
+
+  return contest;
+};
+
+export const updateAdminContest = async ({ adminId, contestId, payload }) => {
+  ensureEnabled();
+  const { contests } = await getEngagementContestCatalog();
+  const existing = contests.find((contest) => contest.id === contestId);
+  if (!existing) {
+    throw new AppError("Contest not found.", 404);
+  }
+
+  const updatedContest = validateContestPayload(payload, existing);
+  const nextContests = contests.map((contest) =>
+    contest.id === contestId ? updatedContest : contest
+  );
+
+  await saveEngagementContestCatalog(nextContests);
+  await recordAdminAudit({
+    adminId,
+    action: "update_contest",
+    entityType: "EngagementContest",
+    entityId: updatedContest.id,
+    oldValue: existing,
+    newValue: updatedContest
+  });
+
+  return updatedContest;
+};
+
+export const upsertAdminDailySet = async ({ adminId, dayKey, payload }) => {
+  ensureEnabled();
+  const normalizedDayKey = normalizeDayKey(dayKey);
+  const status = payload?.status === "DRAFT" ? "DRAFT" : "PUBLISHED";
+  const normalizedQuestionIds = [
+    ...new Set(
+      Array.isArray(payload?.questionIds)
+        ? payload.questionIds.map((questionId) => normalizeText(questionId)).filter(Boolean)
+        : []
+    )
+  ];
+
+  if (normalizedQuestionIds.length !== engagementRules.dailyChallenge.questionCount) {
+    throw new AppError(
+      `A daily set must contain exactly ${engagementRules.dailyChallenge.questionCount} questions.`,
+      400
+    );
+  }
+
+  const approvedQuestions = await prisma.engagementQuestion.findMany({
+    where: {
+      id: { in: normalizedQuestionIds },
+      status: "APPROVED"
+    },
+    select: {
+      id: true,
+      questionText: true,
+      category: true,
+      difficulty: true
+    }
+  });
+
+  if (approvedQuestions.length !== normalizedQuestionIds.length) {
+    throw new AppError("Only approved questions can be scheduled to a calendar date.", 400);
+  }
+
+  const existing = await prisma.dailyQuestionSet.findUnique({
+    where: { dayKey: normalizedDayKey },
+    include: {
+      approvedBy: {
+        select: { id: true, fullName: true, email: true }
+      }
+    }
+  });
+
+  const dailySet = await prisma.dailyQuestionSet.upsert({
+    where: { dayKey: normalizedDayKey },
+    create: {
+      dayKey: normalizedDayKey,
+      questionIds: normalizedQuestionIds,
+      status,
+      generatedBy: "admin",
+      approvedById: status === "PUBLISHED" ? adminId : null,
+      publishedAt: status === "PUBLISHED" ? new Date() : null
+    },
+    update: {
+      questionIds: normalizedQuestionIds,
+      status,
+      generatedBy: "admin",
+      approvedById: status === "PUBLISHED" ? adminId : null,
+      publishedAt: status === "PUBLISHED" ? new Date() : null
+    },
+    include: {
+      approvedBy: {
+        select: { id: true, fullName: true, email: true }
+      }
+    }
+  });
+
+  const questionBank = new Map(approvedQuestions.map((question) => [question.id, question]));
+  const serialized = serializeDailySet(dailySet, questionBank);
+
+  await recordAdminAudit({
+    adminId,
+    action: "upsert_daily_set",
+    entityType: "DailyQuestionSet",
+    entityId: dailySet.id,
+    oldValue: existing ? serializeDailySet(existing, questionBank) : null,
+    newValue: serialized
+  });
+
+  return serialized;
 };
 
 export const createAdminQuestion = async ({ adminId, payload }) => {
@@ -1332,6 +1760,11 @@ export const listAdminFreelancerProgress = async ({ search, take = 50 } = {}) =>
       weakTopic: report?.weakTopics?.[0]
         ? categoryLabel(report.weakTopics[0])
         : "Not enough data",
+      strongTopic: report?.strongTopics?.[0]
+        ? categoryLabel(report.strongTopics[0])
+        : "Not enough data",
+      completedDays: Number(profile.dailyCompletionCount || 0),
+      totalQuestionsAnswered: Number(profile.totalQuestionsAnswered || 0),
       lastCompletedDayKey: profile.lastCompletedDayKey,
       inactiveDays: getDayKeyAgeInDays(profile.lastCompletedDayKey)
     };

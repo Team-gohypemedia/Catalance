@@ -2,12 +2,17 @@ import { asyncHandler } from "../../../utils/async-handler.js";
 import { AppError } from "../../../utils/app-error.js";
 import {
   approveAdminQuestion,
+  createAdminContest,
   createAdminQuestion,
   getAdminEngagementOverview,
+  listAdminContests,
+  listAdminDailySets,
   listAdminFreelancerProgress,
   listAdminQuestions,
   rejectAdminQuestion,
   seedAdminFallbackQuestions,
+  upsertAdminDailySet,
+  updateAdminContest,
   updateAdminQuestion
 } from "../services/engagement.service.js";
 
@@ -72,5 +77,41 @@ export const seedFallbackQuestions = asyncHandler(async (req, res) => {
 
 export const getFreelancerProgress = asyncHandler(async (req, res) => {
   const data = await listAdminFreelancerProgress(req.query);
+  res.json({ data });
+});
+
+export const getDailySets = asyncHandler(async (req, res) => {
+  const data = await listAdminDailySets(req.query);
+  res.json({ data });
+});
+
+export const saveDailySet = asyncHandler(async (req, res) => {
+  const data = await upsertAdminDailySet({
+    adminId: requireAdminId(req),
+    dayKey: req.params.dayKey,
+    payload: req.body
+  });
+  res.json({ data });
+});
+
+export const getContests = asyncHandler(async (req, res) => {
+  const data = await listAdminContests(req.query);
+  res.json({ data });
+});
+
+export const createContest = asyncHandler(async (req, res) => {
+  const data = await createAdminContest({
+    adminId: requireAdminId(req),
+    payload: req.body
+  });
+  res.status(201).json({ data });
+});
+
+export const updateContest = asyncHandler(async (req, res) => {
+  const data = await updateAdminContest({
+    adminId: requireAdminId(req),
+    contestId: req.params.id,
+    payload: req.body
+  });
   res.json({ data });
 });
