@@ -372,27 +372,27 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
         </div>
       </section>
 
-      <section className="growth-quest-toolbar growth-quest-panel">
-        <div className="growth-quest-search">
-          <Search className="size-4" />
-          <input type="text" placeholder={searchPlaceholder} readOnly />
-          <button type="button" aria-label="Open filters">
-            <SlidersHorizontal className="size-4" />
-          </button>
-        </div>
-
-        <div className="growth-quest-filter-row">
-          {filters.map((filter, index) => (
-            <button
-              key={filter}
-              type="button"
-              className={cn("growth-quest-filter", index === 1 && "is-active")}
-            >
-              {filter}
-            </button>
-          ))}
+      <section className="growth-quest-toolbar growth-quest-panel py-3">
+        <div className="flex items-center gap-4 px-2">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+            </span>
+            <span className="text-[10px] font-bold tracking-widest uppercase text-primary/80">Live Pulse</span>
+          </div>
+          <div className="h-4 w-px bg-white/10" />
+          <div className="flex flex-wrap gap-6">
+            {filters.slice(1).map((filter) => (
+              <div key={filter} className="flex items-center gap-2 text-xs text-muted-foreground/80 hover:text-foreground transition-colors cursor-default">
+                <Info className="size-3 text-primary/60" />
+                <span>{filter} protocol active</span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
+
 
       <section className="growth-quest-grid">
         <aside className="growth-quest-side">
@@ -524,10 +524,6 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
             </div>
           </section>
 
-          <section className="growth-quest-intel-grid">
-            <BadgeShelf badges={dashboard?.profile?.badges || []} currentStreak={streak} />
-            <ProcessSummaryCard processSummary={dashboard?.processSummary} />
-          </section>
         </div>
 
         <aside className="growth-quest-rewards">
@@ -569,8 +565,21 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
                 Apply for Partnership
               </button>
             </div>
+
+            <div className="mt-2">
+              <StreakCalendar
+                streakHistory={dashboard?.profile?.streakHistory}
+                currentStreak={streak}
+                completedToday={done}
+              />
+            </div>
           </div>
         </aside>
+      </section>
+
+      <section className="growth-quest-intel-grid">
+        <BadgeShelf badges={dashboard?.profile?.badges || []} currentStreak={streak} />
+        <ProcessSummaryCard processSummary={dashboard?.processSummary} />
       </section>
 
       {hasRecentHistory ? (
@@ -608,20 +617,6 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
         </div>
         </section>
       ) : null}
-
-      <section className="growth-quest-streak-shell growth-quest-panel">
-        <div className="growth-quest-section-head">
-          <div>
-            <p className={EYEBROW_CLASS}>Streak Timeline</p>
-            <h3>Weekly completion map</h3>
-          </div>
-        </div>
-        <StreakCalendar
-          streakHistory={dashboard?.profile?.streakHistory}
-          currentStreak={streak}
-          completedToday={done}
-        />
-      </section>
     </div>
   );
 };
@@ -832,15 +827,33 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
         </div>
       </section>
 
-      <section className="growth-quest-toolbar growth-quest-panel">
-        <div className="growth-quest-filter-row">
-          {statusPills.map((pill, index) => (
-            <div key={pill} className={cn("growth-quest-filter", index === 0 && "is-active")}>
-              {pill}
-            </div>
-          ))}
+      <section className="growth-quest-toolbar growth-quest-panel py-3 shadow-lg ring-1 ring-white/5">
+        <div className="flex flex-wrap items-center gap-6 px-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+            </span>
+            <span className="text-[11px] font-extrabold tracking-[0.2em] uppercase text-primary/90">Monitor</span>
+          </div>
+          <div className="h-4 w-px bg-white/15 hidden md:block" />
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+            {statusPills.map((pill, index) => (
+              <div key={pill} className="flex items-center gap-2.5 text-xs group cursor-default">
+                <span className="p-1 rounded-md bg-white/5 group-hover:bg-white/10 transition-colors">
+                  {index === 0 && <CheckCircle2 className="size-3.5 text-emerald-400" />}
+                  {index === 1 && <Sparkles className="size-3.5 text-amber-400" />}
+                  {index === 2 && <Target className="size-3.5 text-indigo-400" />}
+                  {index === 3 && <Flame className="size-3.5 text-rose-400" />}
+                </span>
+                <span className="font-medium text-muted-foreground/90 group-hover:text-foreground transition-colors">{pill}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
+
+
 
       <section className="growth-quest-grid">
         <aside className="growth-quest-side">
@@ -881,13 +894,22 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
               </div>
             </div>
 
-            <div className="growth-quest-rank-card">
-              <p className={LABEL_CLASS}>Rank Progress</p>
-              <strong>{levelLabel}</strong>
-              <div className="growth-quest-progress">
-                <span style={{ width: `${xpPct}%` }} />
+            <div className="growth-quest-rank-card border border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="p-1.5 rounded-full bg-primary/10 ring-1 ring-primary/20">
+                  <Target className="size-3.5 text-primary" />
+                </div>
+                <p className={LABEL_CLASS}>Current Rank</p>
               </div>
-              <p className="growth-quest-helper">Level {levelNumber} · {xp.toLocaleString()} XP</p>
+              <strong className="text-2xl tracking-tight text-foreground">{levelLabel}</strong>
+              <div className="growth-quest-progress mt-4 bg-white/5 h-2">
+                <span className="relative overflow-hidden" style={{ width: `${xpPct}%` }}>
+                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }}></span>
+                </span>
+              </div>
+              <p className="growth-quest-helper text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mt-3">
+                Level {levelNumber} · {xp.toLocaleString()} XP
+              </p>
             </div>
           </div>
         </aside>
@@ -1009,10 +1031,6 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
             </section>
           ) : null}
 
-          <section className="growth-quest-intel-grid">
-            <BadgeShelf badges={dashboard?.badges || []} currentStreak={streak} />
-            <ProcessSummaryCard processSummary={processSummary} />
-          </section>
         </div>
 
         <aside className="growth-quest-rewards">
@@ -1066,8 +1084,21 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
               <span className="growth-quest-inline-link">Recommended next focus</span>
             </div>
             ) : null}
+
+            <div className="mt-2">
+              <StreakCalendar
+                streakHistory={dashboard?.profile?.streakHistory}
+                currentStreak={streak}
+                completedToday={done}
+              />
+            </div>
           </div>
         </aside>
+      </section>
+
+      <section className="growth-quest-intel-grid">
+        <BadgeShelf badges={dashboard?.badges || []} currentStreak={streak} />
+        <ProcessSummaryCard processSummary={processSummary} />
       </section>
 
       {hasRecentHistory ? (
@@ -1100,21 +1131,6 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
         </div>
       </section>
       ) : null}
-
-      <section className="growth-quest-streak-shell growth-quest-panel">
-        <div className="growth-quest-section-head">
-          <div>
-            <p className={EYEBROW_CLASS}>Streak Timeline</p>
-            <h3>Weekly completion map</h3>
-          </div>
-          <span className="growth-quest-inline-link">{formatDayKey(today.dayKey)}</span>
-        </div>
-        <StreakCalendar
-          streakHistory={dashboard?.profile?.streakHistory}
-          currentStreak={streak}
-          completedToday={done}
-        />
-      </section>
     </div>
   );
 };

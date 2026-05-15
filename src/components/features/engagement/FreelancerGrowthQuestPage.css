@@ -22,7 +22,7 @@
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 7rem 1.5rem 4rem;
+  padding: 5.5rem 1.5rem 3rem;
 }
 
 .growth-quest-topbar {
@@ -65,7 +65,7 @@
 
 .growth-quest-dashboard {
   display: grid;
-  gap: 2rem;
+  gap: 1.25rem;
 }
 
 .growth-quest-panel,
@@ -73,14 +73,15 @@
   position: relative;
   overflow: hidden;
   border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.09);
   background:
-    linear-gradient(135deg, rgba(36, 31, 20, 0.92), rgba(18, 14, 5, 0.88)),
-    rgba(24, 19, 9, 0.78);
+    linear-gradient(135deg, rgba(32, 27, 18, 0.95), rgba(15, 12, 4, 0.92)),
+    rgba(20, 16, 7, 0.82);
   box-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.45),
-    inset 1px 1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(14px);
+    0 25px 50px -12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 193, 7, 0.03);
+  backdrop-filter: blur(20px);
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .growth-quest-subpanel {
@@ -139,7 +140,9 @@
 }
 
 .growth-quest-button--primary:hover:not(:disabled) {
-  box-shadow: 0 0 28px rgba(255, 193, 7, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(255, 193, 7, 0.35);
+  background: linear-gradient(135deg, #ffca28, #ffecb3);
 }
 
 .growth-quest-button--secondary {
@@ -210,12 +213,29 @@
 
 .growth-quest-hero {
   display: grid;
+  width: 100%;
   gap: 1.5rem;
-  padding: 1.75rem;
+  padding: 1.5rem 2rem;
+  border-radius: 1.5rem;
   background:
-    radial-gradient(circle at center, rgba(255, 193, 7, 0.06) 0, transparent 60%),
-    radial-gradient(circle at 1px 1px, rgba(255, 193, 7, 0.05) 1px, transparent 0);
-  background-size: auto, 24px 24px;
+    radial-gradient(circle at 0% 0%, rgba(255, 193, 7, 0.08) 0, transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(82, 3, 213, 0.05) 0, transparent 40%),
+    rgba(24, 19, 9, 0.4);
+  border: 1px solid rgba(255, 193, 7, 0.15);
+}
+
+.growth-quest-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255, 193, 7, 0.04) 0, transparent 70%);
+  pointer-events: none;
+  animation: hero-glow 8s infinite alternate ease-in-out;
+}
+
+@keyframes hero-glow {
+  0% { opacity: 0.3; transform: scale(0.95); }
+  100% { opacity: 0.8; transform: scale(1.05); }
 }
 
 .growth-quest-hero__content {
@@ -230,8 +250,8 @@
 }
 
 .growth-quest-hero__title {
-  margin-top: 1.2rem;
-  font-size: clamp(2.25rem, 4vw, 4rem);
+  margin-top: 0.5rem;
+  font-size: clamp(2rem, 3.5vw, 3.25rem);
   line-height: 1.04;
   font-weight: 800;
 }
@@ -245,7 +265,7 @@
 }
 
 .growth-quest-hero__sidebar {
-  padding: 1.35rem;
+  padding: 1.15rem;
 }
 
 .growth-quest-hero__sidebar-head {
@@ -273,12 +293,12 @@
 .growth-quest-attempts-ring strong {
   display: grid;
   place-items: center;
-  width: 4.5rem;
-  height: 4.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 0 0 10px rgba(255, 255, 255, 0.03);
-  font-size: 1.7rem;
+  font-size: 1.35rem;
 }
 
 .growth-quest-hero__stats {
@@ -363,8 +383,8 @@
 .growth-quest-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
 }
 
 .growth-quest-search {
@@ -411,9 +431,16 @@
   white-space: nowrap;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.11);
-  padding: 0.8rem 1.1rem;
+  padding: 0.55rem 0.95rem;
   color: rgba(236, 225, 208, 0.84);
-  font-size: 0.92rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.growth-quest-filter:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .growth-quest-filter.is-active {
@@ -424,7 +451,7 @@
 
 .growth-quest-grid {
   display: grid;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .growth-quest-side__panel,
@@ -439,14 +466,20 @@
 .growth-quest-side__title {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  color: #ffe4af;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+  color: #ffc107;
   font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(255, 193, 7, 0.2);
 }
+
+.growth-quest-side__title svg {
+  filter: drop-shadow(0 0 4px rgba(255, 193, 7, 0.4));
+}
+
 
 .growth-quest-mini-card,
 .growth-quest-rank-card,
@@ -470,21 +503,33 @@
 }
 
 .growth-quest-stat-tile {
-  display: grid;
-  gap: 0.3rem;
-  padding: 0.75rem;
-  border-radius: 0.8rem;
-  background: rgba(255, 255, 255, 0.025);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all 200ms ease;
+}
+
+.growth-quest-stat-tile:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .growth-quest-stat-tile span {
-  color: rgba(236, 225, 208, 0.62);
-  font-size: 0.72rem;
-  line-height: 1.4;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(236, 225, 208, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .growth-quest-stat-tile strong {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
+  color: #ece1d0;
+  font-family: "Manrope", sans-serif;
 }
 
 .growth-quest-boosters {
@@ -582,6 +627,16 @@
   display: grid;
   gap: 1rem;
   padding: 1.35rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.growth-quest-card:hover,
+.growth-quest-contract:hover {
+  transform: translateY(-4px) scale(1.01);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 193, 7, 0.2);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
 }
 
 .growth-quest-card__head,
@@ -796,7 +851,8 @@
   }
 
   .growth-quest-hero {
-    grid-template-columns: minmax(0, 1.8fr) minmax(18rem, 22rem);
+    grid-template-columns: 1.6fr 1fr;
+    gap: 3rem;
     align-items: center;
   }
 
@@ -862,4 +918,13 @@
   .growth-quest-history table {
     min-width: 42rem;
   }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
 }
