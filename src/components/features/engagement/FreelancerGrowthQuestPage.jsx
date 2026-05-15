@@ -9,8 +9,10 @@ import Info from "lucide-react/dist/esm/icons/info";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Target from "lucide-react/dist/esm/icons/target";
+import Trophy from "lucide-react/dist/esm/icons/trophy";
 import X from "lucide-react/dist/esm/icons/x";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
+import Zap from "lucide-react/dist/esm/icons/zap";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
@@ -958,80 +960,8 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
             </div>
           </section>
 
-          {hasTopicData ? (
-            <section>
-            <div className="growth-quest-section-head growth-quest-section-head--with-line">
-              <h3>Topic Performance</h3>
-              <span className="growth-quest-inline-link">
-                {topicPerformance.length} tracked categories
-              </span>
-            </div>
-
-            <div className="growth-quest-card-grid">
-              {topicPerformance.slice(0, 4).map((topic) => (
-                  <article key={topic.key} className="growth-quest-panel growth-quest-contract">
-                    <div className="growth-quest-contract__head">
-                      <div>
-                        <p className="growth-quest-contract__category">Performance Area</p>
-                        <h4>{topic.label}</h4>
-                      </div>
-                      <span className="growth-quest-chip growth-quest-chip--ghost">
-                        {topic.accuracy}%
-                      </span>
-                    </div>
-                    <p className="growth-quest-contract__description">
-                      {topic.correct} correct answers from {topic.attempted} attempts in this
-                      category.
-                    </p>
-                    <div className="growth-quest-contract__rewards">
-                      <span>{topic.correct} correct</span>
-                      <span>{topic.attempted - topic.correct} missed</span>
-                    </div>
-                    <div className="growth-quest-progress">
-                      <span style={{ width: `${clampPercent(topic.accuracy)}%` }} />
-                    </div>
-                  </article>
-                ))}
-            </div>
-          </section>
-          ) : null}
-
-          {hasContests ? (
-            <section>
-              <div className="growth-quest-section-head growth-quest-section-head--with-line">
-                <h3>Admin Contests</h3>
-                <span className="growth-quest-inline-link">{contests.length} live contests</span>
-              </div>
-
-                <div className="growth-quest-card-grid">
-                  {contests.map((contest) => (
-                  <article
-                    key={contest.id}
-                    className="growth-quest-panel growth-quest-contract cursor-pointer"
-                    onClick={() => navigate(`/freelancer/growth-quest/contests/${contest.id}`)}
-                  >
-                    <div className="growth-quest-contract__head">
-                      <div>
-                        <p className="growth-quest-contract__category">{contest.category}</p>
-                        <h4>{contest.title}</h4>
-                      </div>
-                      <span className="growth-quest-chip growth-quest-chip--ghost">
-                        {contest.startDayKey}
-                        {contest.endDayKey ? ` to ${contest.endDayKey}` : ""}
-                      </span>
-                    </div>
-                    <p className="growth-quest-contract__description">{contest.description}</p>
-                    <div className="growth-quest-contract__rewards">
-                      <span>{contest.status}</span>
-                      <span>{contest.ctaLabel || "View Contest"}</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
         </div>
+
 
         <aside className="growth-quest-rewards">
           <div className="growth-quest-panel growth-quest-rewards__panel">
@@ -1101,36 +1031,205 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
         <ProcessSummaryCard processSummary={processSummary} />
       </section>
 
-      {hasRecentHistory ? (
-      <section>
-        <div className="growth-quest-section-title growth-quest-history-title">
-          <Clock className="size-4" />
-          <h3>Recent History</h3>
-        </div>
-        <div className="growth-quest-panel growth-quest-history">
-          <table>
-            <thead>
-              <tr>
-                <th>Quest Name</th>
-                <th>Type</th>
-                <th>Completion Date</th>
-                <th>Rewards</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historyRows.map((row) => (
-                  <tr key={row.id}>
-                    <td>{row.label}</td>
-                    <td>{row.type}</td>
-                    <td>{row.date}</td>
-                    <td>{row.rewards} · {row.score}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {hasTopicData ? (
+        <section className="mt-8">
+          <div className="growth-quest-section-head growth-quest-section-head--with-line mb-4">
+            <h3>Topic Performance</h3>
+            <span className="growth-quest-inline-link">
+              {topicPerformance.length} tracked categories
+            </span>
+          </div>
+
+          <div className="growth-quest-scroll-wrapper">
+            <div className="growth-quest-scroll-row">
+            {topicPerformance.map((topic) => (
+              <article key={topic.key} className="growth-quest-panel growth-quest-contract">
+                <div className="growth-quest-contract__head">
+                  <div>
+                    <p className="growth-quest-contract__category">Performance Area</p>
+                    <h4>{topic.label}</h4>
+                  </div>
+                  <span className="growth-quest-chip growth-quest-chip--ghost">
+                    {topic.accuracy}%
+                  </span>
+                </div>
+                <p className="growth-quest-contract__description">
+                  {topic.correct} correct answers from {topic.attempted} attempts.
+                </p>
+                <div className="growth-quest-contract__rewards">
+                  <span className="text-emerald-400/80">{topic.correct} correct</span>
+                  <span className="text-rose-400/80">{topic.attempted - topic.correct} missed</span>
+                </div>
+                <div className="growth-quest-progress">
+                  <span style={{ width: `${clampPercent(topic.accuracy)}%` }} />
+                </div>
+              </article>
+            ))}
+            </div>
+          </div>
+        </section>
       ) : null}
+
+      {hasContests ? (
+        <section className="mt-8">
+          <div className="growth-quest-section-head growth-quest-section-head--with-line mb-4">
+            <h3>Admin Contests</h3>
+            <span className="growth-quest-inline-link">{contests.length} live contests</span>
+          </div>
+
+          <div className="growth-quest-scroll-wrapper">
+            <div className="growth-quest-scroll-row">
+            {contests.map((contest) => (
+              <article
+                key={contest.id}
+                className="growth-quest-panel growth-quest-contract cursor-pointer group"
+                onClick={() => navigate(`/freelancer/growth-quest/contests/${contest.id}`)}
+              >
+                {(contest.imageUrl) && (
+                  <div className="growth-quest-contract__image">
+                    <img src={contest.imageUrl} alt={contest.title} loading="lazy" />
+                  </div>
+                )}
+                
+                <div className="growth-quest-contract__head">
+                  <div>
+                    <p className="growth-quest-contract__category">{contest.category}</p>
+                    <h4>{contest.title}</h4>
+                  </div>
+                  <span className="growth-quest-chip growth-quest-chip--ghost">
+                    {contest.startDayKey}
+                    {contest.endDayKey ? ` to ${contest.endDayKey}` : ""}
+                  </span>
+                </div>
+                <p className="growth-quest-contract__description line-clamp-2">{contest.description}</p>
+                <div className="growth-quest-contract__rewards">
+                  <span className="text-primary/70">{contest.status}</span>
+                  <span className="font-bold flex items-center gap-1">
+                    {contest.ctaLabel || "View Contest"}
+                    <ArrowRight className="size-3 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </div>
+              </article>
+            ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {hasRecentHistory ? (
+        <section className="mt-12">
+          <div className="growth-quest-section-head mb-6">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                <Clock className="size-5" />
+              </div>
+              <h3>Recent History</h3>
+            </div>
+            <span className="growth-quest-inline-link">Viewing last 10 activities</span>
+          </div>
+          
+          <div className="growth-quest-panel growth-quest-history-list">
+            <div className="overflow-x-auto">
+              <table className="growth-quest-table">
+                <thead>
+                  <tr>
+                    <th>Quest Identity</th>
+                    <th>Outcome</th>
+                    <th>Date Recorded</th>
+                    <th>Yield & Efficiency</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyRows.map((row) => (
+                    <tr key={row.id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div className="size-8 rounded-lg bg-white/5 flex items-center justify-center text-amber-500/60">
+                            <Zap className="size-4" />
+                          </div>
+                          <span className="font-semibold text-white/90 whitespace-nowrap">{row.label}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-2 text-white/60">
+                          <Target className="size-3.5" />
+                          <span>{row.type}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="text-white/40 text-xs">{row.date}</span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <span className="growth-quest-chip growth-quest-chip--warning text-[10px] py-1">
+                            {row.rewards}
+                          </span>
+                          <span className="growth-quest-chip growth-quest-chip--violet text-[10px] py-1">
+                            {row.score}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* ─── Footer ─── */}
+      <footer className="growth-quest-footer">
+        <div className="growth-quest-footer__grid">
+          <div className="growth-quest-footer__brand">
+            <div className="growth-quest-footer__logo">
+              <Flame className="size-5" />
+            </div>
+            <div>
+              <h4>Growth Quest Engine</h4>
+              <p>Daily skill-building protocol designed to keep you sharp, consistent, and client-ready.</p>
+            </div>
+          </div>
+
+          <div className="growth-quest-footer__col">
+            <p className="growth-quest-footer__col-title">Your Progress</p>
+            <ul>
+              <li>Complete 1 quest per day</li>
+              <li>Earn XP &amp; loyalty coins</li>
+              <li>Track category accuracy</li>
+              <li>Maintain your streak</li>
+            </ul>
+          </div>
+
+          <div className="growth-quest-footer__col">
+            <p className="growth-quest-footer__col-title">How It Works</p>
+            <ul>
+              <li>5 questions per session</li>
+              <li>Resets daily at midnight UTC</li>
+              <li>Best attempt score counts</li>
+              <li>Badges unlock at milestones</li>
+            </ul>
+          </div>
+
+          <div className="growth-quest-footer__col">
+            <p className="growth-quest-footer__col-title">Level System</p>
+            <ul>
+              <li>Starter → Apprentice</li>
+              <li>Apprentice → Skilled</li>
+              <li>Skilled → Professional</li>
+              <li>Professional → Expert</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="growth-quest-footer__bottom">
+          <span>© {new Date().getFullYear()} Catalance · Growth Quest System</span>
+          <span className="growth-quest-footer__pulse">
+            <span className="growth-quest-pulse-dot" />
+            Engine Active
+          </span>
+        </div>
+      </footer>
     </div>
   );
 };
