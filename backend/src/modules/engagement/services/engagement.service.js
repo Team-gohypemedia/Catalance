@@ -87,6 +87,49 @@ const categoryLabel = (category) =>
 const normalizeCatalogPayloadArray = (value) =>
   Array.isArray(value) ? value : [];
 
+const slugifyKey = (value = "") =>
+  normalizeText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+
+const normalizeNonNegativeInt = (value, fallback = 0) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return Math.max(0, Number(fallback) || 0);
+  return Math.max(0, Math.round(numeric));
+};
+
+const buildContestBadgeConfig = (payload = {}, existing = null) => {
+  const badgeTitle = normalizeText(payload.badgeTitle ?? existing?.badgeTitle);
+  const badgeDescription = normalizeText(
+    payload.badgeDescription ?? existing?.badgeDescription
+  );
+  const badgeIcon = normalizeText(payload.badgeIcon ?? existing?.badgeIcon) || "award";
+  const badgeKeyInput = normalizeText(payload.badgeKey ?? existing?.badgeKey);
+  const badgeKey =
+    badgeTitle || badgeKeyInput
+      ? slugifyKey(badgeKeyInput || `contest_${badgeTitle}`)
+      : "";
+
+  if (!badgeTitle) {
+    return {
+      badgeKey: "",
+      badgeTitle: "",
+      badgeDescription: "",
+      badgeIcon: "award"
+    };
+  }
+
+  return {
+    badgeKey: badgeKey || `contest_badge_${crypto.randomUUID().slice(0, 8)}`,
+    badgeTitle,
+    badgeDescription:
+      badgeDescription || `Awarded for standout work in ${badgeTitle}.`,
+    badgeIcon
+  };
+};
+
 const stableHashNumber = (value = "") => {
   const digest = crypto.createHash("sha256").update(String(value)).digest("hex");
   return parseInt(digest.slice(0, 8), 16);
@@ -199,6 +242,12 @@ const serializeContest = (contest) => ({
   resourceLinks: normalizeLinkList(contest.resourceLinks),
   acceptedAssetTypes: normalizeStringList(contest.acceptedAssetTypes),
   maxAttachments: Number(contest.maxAttachments || 0) || 0,
+  rewardCoins: normalizeNonNegativeInt(contest.rewardCoins),
+  rewardXp: normalizeNonNegativeInt(contest.rewardXp),
+  badgeKey: normalizeText(contest.badgeKey),
+  badgeTitle: normalizeText(contest.badgeTitle),
+  badgeDescription: normalizeText(contest.badgeDescription),
+  badgeIcon: normalizeText(contest.badgeIcon) || "award",
   startDayKey: contest.startDayKey,
   endDayKey: contest.endDayKey || null,
   status: normalizeContestStatus(contest.status),
@@ -260,6 +309,14 @@ const serializeContestSubmission = (submission, contestById = new Map()) => ({
   attachments: normalizeSubmissionAttachments(submission.attachments),
   status: normalizeSubmissionStatus(submission.status),
   reviewNote: submission.reviewNote || "",
+  rewardCoins: normalizeNonNegativeInt(submission.rewardCoins),
+  rewardXp: normalizeNonNegativeInt(submission.rewardXp),
+  badgeKey: normalizeText(submission.badgeKey),
+  badgeTitle: normalizeText(submission.badgeTitle),
+  badgeDescription: normalizeText(submission.badgeDescription),
+  badgeIcon: normalizeText(submission.badgeIcon) || "award",
+  rewardTransferredAt: submission.rewardTransferredAt || null,
+  rewardTransferredBy: submission.rewardTransferredBy || null,
   reviewedBy: submission.reviewedBy || null,
   reviewedAt: submission.reviewedAt || null,
   createdAt: submission.createdAt || null,
@@ -300,6 +357,32 @@ export const ensureCoreBadges = async (client = prisma) => {
       icon: badge.icon
     })),
     skipDuplicates: true
+  });
+};
+
+const ensureBadgeDefinition = async (badge, client = prisma) => {
+  const badgeKey = normalizeText(badge?.badgeKey || badge?.key);
+  const badgeTitle = normalizeText(badge?.badgeTitle || badge?.title);
+
+  if (!badgeKey || !badgeTitle) return null;
+
+  return client.engagementBadge.upsert({
+    where: { key: badgeKey },
+    create: {
+      key: badgeKey,
+      title: badgeTitle,
+      description:
+        normalizeText(badge?.badgeDescription || badge?.description) ||
+        `Awarded for completing ${badgeTitle}.`,
+      icon: normalizeText(badge?.badgeIcon || badge?.icon) || "award"
+    },
+    update: {
+      title: badgeTitle,
+      description:
+        normalizeText(badge?.badgeDescription || badge?.description) ||
+        `Awarded for completing ${badgeTitle}.`,
+      icon: normalizeText(badge?.badgeIcon || badge?.icon) || "award"
+    }
   });
 };
 
@@ -559,7 +642,9 @@ const serializeRecentSession = (session) => ({
 const buildBadgePayload = async (userId) => {
   await ensureCoreBadges();
   const [badges, earned] = await Promise.all([
-    prisma.engagementBadge.findMany({ orderBy: { milestoneDays: "asc" } }),
+    prisma.engagementBadge.findMany({
+      orderBy: [{ milestoneDays: "asc" }, { createdAt: "asc" }]
+    }),
     prisma.engagementUserBadge.findMany({
       where: { userId },
       select: { key: true, earnedAt: true }
@@ -578,11 +663,128 @@ const buildBadgePayload = async (userId) => {
   }));
 };
 
-const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
-  const [profile, report, todaySessions, recentSessions, badges, contests] = await Promise.all([
-    ensureProfile(userId),
-    prisma.engagementProcessReport.findUnique({ where: { userId } }),
+const buildWeeklyLeaderboardPayload = async (currentUserId) => {
+  const rangeStart = new Date();
+  rangeStart.setUTCDate(rangeStart.getUTCDate() - 6);
+  rangeStart.setUTCHours(0, 0, 0, 0);
+
+  const [sessions, profiles, users, earnedBadges] = await Promise.all([
     prisma.engagementAnswerSession.findMany({
+      where: { createdAt: { gte: rangeStart } },
+      select: {
+        userId: true,
+        xpAwarded: true,
+        coinsAwarded: true
+      }
+    }),
+    prisma.engagementProfile.findMany({
+      select: {
+        userId: true,
+        lifetimeXp: true,
+        loyaltyCoins: true,
+        currentStreak: true,
+        engagementLevel: true
+      }
+    }),
+    prisma.user.findMany({
+      where: { role: "FREELANCER" },
+      select: { id: true, fullName: true, email: true }
+    }),
+    prisma.engagementUserBadge.findMany({
+      where: { earnedAt: { gte: rangeStart } },
+      select: { userId: true, key: true }
+    })
+  ]);
+
+  const weeklyMap = new Map();
+  const upsertWeeklyEntry = (userId) => {
+    if (!weeklyMap.has(userId)) {
+      weeklyMap.set(userId, {
+        userId,
+        weeklyXp: 0,
+        weeklyCoins: 0,
+        contestWins: 0,
+        badgesEarned: 0
+      });
+    }
+    return weeklyMap.get(userId);
+  };
+
+  sessions.forEach((session) => {
+    const entry = upsertWeeklyEntry(session.userId);
+    entry.weeklyXp += normalizeNonNegativeInt(session.xpAwarded);
+    entry.weeklyCoins += normalizeNonNegativeInt(session.coinsAwarded);
+  });
+
+  const { submissions } = await getEngagementContestSubmissionCatalog();
+  submissions.forEach((submission) => {
+    const rewardedAt = submission.rewardTransferredAt
+      ? new Date(submission.rewardTransferredAt)
+      : null;
+    if (!rewardedAt || Number.isNaN(rewardedAt.getTime()) || rewardedAt < rangeStart) {
+      return;
+    }
+
+    const entry = upsertWeeklyEntry(submission.userId);
+    entry.weeklyXp += normalizeNonNegativeInt(submission.rewardXp);
+    entry.weeklyCoins += normalizeNonNegativeInt(submission.rewardCoins);
+    if (normalizeSubmissionStatus(submission.status) === "APPROVED") {
+      entry.contestWins += 1;
+    }
+  });
+
+  earnedBadges.forEach((badge) => {
+    const entry = upsertWeeklyEntry(badge.userId);
+    entry.badgesEarned += 1;
+  });
+
+  upsertWeeklyEntry(currentUserId);
+
+  const profileByUserId = new Map(profiles.map((profile) => [profile.userId, profile]));
+  const userById = new Map(users.map((user) => [user.id, user]));
+
+  const ranked = [...weeklyMap.values()]
+    .map((entry) => {
+      const profile = profileByUserId.get(entry.userId);
+      const user = userById.get(entry.userId);
+      return {
+        ...entry,
+        fullName: user?.fullName || "Unknown freelancer",
+        email: user?.email || "",
+        lifetimeXp: normalizeNonNegativeInt(profile?.lifetimeXp),
+        loyaltyCoins: normalizeNonNegativeInt(profile?.loyaltyCoins),
+        currentStreak: normalizeNonNegativeInt(profile?.currentStreak),
+        engagementLevel: profile?.engagementLevel || "LEVEL_1",
+        engagementLevelLabel:
+          LEVEL_LABELS[profile?.engagementLevel] || "Starter"
+      };
+    })
+    .sort((left, right) => {
+      if (right.weeklyXp !== left.weeklyXp) return right.weeklyXp - left.weeklyXp;
+      if (right.weeklyCoins !== left.weeklyCoins) {
+        return right.weeklyCoins - left.weeklyCoins;
+      }
+      return right.lifetimeXp - left.lifetimeXp;
+    })
+    .map((entry, index) => ({
+      ...entry,
+      rank: index + 1
+    }));
+
+  return {
+    weekStartDayKey: getUtcDayKey(rangeStart),
+    entries: ranked.slice(0, 10),
+    currentUser:
+      ranked.find((entry) => entry.userId === currentUserId) || null
+  };
+};
+
+const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
+  const [profile, report, todaySessions, recentSessions, badges, contests, leaderboard] =
+    await Promise.all([
+      ensureProfile(userId),
+      prisma.engagementProcessReport.findUnique({ where: { userId } }),
+      prisma.engagementAnswerSession.findMany({
       where: { userId, dayKey },
       orderBy: { createdAt: "desc" }
     }),
@@ -590,10 +792,11 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
       where: { userId },
       orderBy: [{ createdAt: "desc" }],
       take: 8
-    }),
-    buildBadgePayload(userId),
-    listVisibleContestsForDay(dayKey)
-  ]);
+      }),
+      buildBadgePayload(userId),
+      listVisibleContestsForDay(dayKey),
+      buildWeeklyLeaderboardPayload(userId)
+    ]);
 
   const levelProgress = buildLevelProgress(profile, report);
   const latestSession = todaySessions[0] || null;
@@ -620,7 +823,11 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
       longestStreak: profile.longestStreak,
       dailyCompletionCount: profile.dailyCompletionCount,
       totalQuestionsAnswered: profile.totalQuestionsAnswered,
-      totalCorrectAnswers: profile.totalCorrectAnswers
+      totalCorrectAnswers: profile.totalCorrectAnswers,
+      badges,
+      currentWeeklyRank: leaderboard?.currentUser?.rank || null,
+      weeklyXp: leaderboard?.currentUser?.weeklyXp || 0,
+      weeklyCoins: leaderboard?.currentUser?.weeklyCoins || 0
     },
     today: {
       dayKey,
@@ -637,6 +844,7 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
     processSummary,
     topicPerformance,
     contests,
+    leaderboard,
     recentSessions: recentSessions.map(serializeRecentSession),
     activity: {
       completedDays: Number(profile.dailyCompletionCount || 0),
@@ -820,6 +1028,12 @@ const validateContestPayload = (payload = {}, existing = null) => {
     0,
     Number(payload.maxAttachments ?? existing?.maxAttachments ?? 0) || 0
   );
+  const rewardCoins = normalizeNonNegativeInt(
+    payload.rewardCoins ?? existing?.rewardCoins,
+    0
+  );
+  const rewardXp = normalizeNonNegativeInt(payload.rewardXp ?? existing?.rewardXp, 0);
+  const badgeConfig = buildContestBadgeConfig(payload, existing);
   const startDayKey = normalizeDayKey(payload.startDayKey ?? existing?.startDayKey);
   const endDayKey = normalizeDayKey(payload.endDayKey ?? existing?.endDayKey, null);
   const status = normalizeContestStatus(payload.status ?? existing?.status);
@@ -865,6 +1079,12 @@ const validateContestPayload = (payload = {}, existing = null) => {
     resourceLinks,
     acceptedAssetTypes,
     maxAttachments,
+    rewardCoins,
+    rewardXp,
+    badgeKey: badgeConfig.badgeKey,
+    badgeTitle: badgeConfig.badgeTitle,
+    badgeDescription: badgeConfig.badgeDescription,
+    badgeIcon: badgeConfig.badgeIcon,
     startDayKey,
     endDayKey,
     status,
@@ -966,6 +1186,14 @@ export const createContestSubmission = async ({ userId, contestId, payload }) =>
     attachments,
     status: "PENDING",
     reviewNote: "",
+    rewardCoins: normalizeNonNegativeInt(contest.rewardCoins),
+    rewardXp: normalizeNonNegativeInt(contest.rewardXp),
+    badgeKey: normalizeText(contest.badgeKey),
+    badgeTitle: normalizeText(contest.badgeTitle),
+    badgeDescription: normalizeText(contest.badgeDescription),
+    badgeIcon: normalizeText(contest.badgeIcon) || "award",
+    rewardTransferredAt: null,
+    rewardTransferredBy: null,
     reviewedBy: null,
     reviewedAt: null,
     createdAt: new Date().toISOString(),
@@ -977,6 +1205,102 @@ export const createContestSubmission = async ({ userId, contestId, payload }) =>
   await saveEngagementContestSubmissionCatalog(nextSubmissions);
 
   return serializeContestSubmission(submission, new Map([[contest.id, contest]]));
+};
+
+const awardContestRewards = async ({ adminId, submission, client }) => {
+  if (submission.rewardTransferredAt) {
+    return submission;
+  }
+
+  const rewardXp = normalizeNonNegativeInt(submission.rewardXp);
+  const rewardCoins = normalizeNonNegativeInt(submission.rewardCoins);
+  const badgeKey = normalizeText(submission.badgeKey);
+  const badgeTitle = normalizeText(submission.badgeTitle);
+  const badgeDescription = normalizeText(submission.badgeDescription);
+  const badgeIcon = normalizeText(submission.badgeIcon) || "award";
+
+  const profile = await ensureProfile(submission.userId, client);
+  const report = await client.engagementProcessReport.findUnique({
+    where: { userId: submission.userId }
+  });
+
+  const nextLifetimeXp = Number(profile.lifetimeXp || 0) + rewardXp;
+  const nextCurrentXp = Number(profile.xp || 0) + rewardXp;
+  const nextCoinBalance = Number(profile.loyaltyCoins || 0) + rewardCoins;
+  const nextLifetimeCoinsEarned =
+    Number(profile.lifetimeCoinsEarned || 0) + rewardCoins;
+  const nextEngagementLevel = calculateEngagementLevel({
+    lifetimeXp: nextLifetimeXp,
+    completedDays: Number(profile.dailyCompletionCount || 0),
+    rollingAccuracy: Math.round(Number(report?.rollingAccuracy || 0)),
+    currentStreak: Number(profile.currentStreak || 0)
+  });
+
+  await client.engagementProfile.update({
+    where: { userId: submission.userId },
+    data: {
+      xp: nextCurrentXp,
+      lifetimeXp: nextLifetimeXp,
+      loyaltyCoins: nextCoinBalance,
+      lifetimeCoinsEarned: nextLifetimeCoinsEarned,
+      engagementLevel: nextEngagementLevel
+    }
+  });
+
+  if (rewardCoins > 0) {
+    await client.pointsLedger.create({
+      data: {
+        userId: submission.userId,
+        amount: rewardCoins,
+        type: "EARN",
+        reason: "contest_reward",
+        referenceType: "EngagementContestSubmission",
+        referenceId: submission.id,
+        balanceAfter: nextCoinBalance,
+        idempotencyKey: `contest-reward:${submission.id}:coins`,
+        metadata: {
+          contestId: submission.contestId,
+          contestTitle: submission.contestTitle,
+          rewardXp,
+          rewardCoins
+        }
+      }
+    });
+  }
+
+  if (badgeKey && badgeTitle) {
+    const badge = await ensureBadgeDefinition(
+      {
+        badgeKey,
+        badgeTitle,
+        badgeDescription,
+        badgeIcon
+      },
+      client
+    );
+    if (badge) {
+      await client.engagementUserBadge.upsert({
+        where: {
+          userId_key: {
+            userId: submission.userId,
+            key: badgeKey
+          }
+        },
+        create: {
+          userId: submission.userId,
+          badgeId: badge.id,
+          key: badgeKey
+        },
+        update: {}
+      });
+    }
+  }
+
+  return {
+    ...submission,
+    rewardTransferredAt: new Date().toISOString(),
+    rewardTransferredBy: adminId
+  };
 };
 
 export const reviewContestSubmission = async ({ adminId, submissionId, payload }) => {
@@ -991,20 +1315,56 @@ export const reviewContestSubmission = async ({ adminId, submissionId, payload }
     throw new AppError("Contest submission not found.", 404);
   }
 
-  const updated = {
+  const transferredAlready = Boolean(existing.rewardTransferredAt);
+  const rewardCoins = transferredAlready
+    ? normalizeNonNegativeInt(existing.rewardCoins)
+    : normalizeNonNegativeInt(payload?.rewardCoins, existing.rewardCoins);
+  const rewardXp = transferredAlready
+    ? normalizeNonNegativeInt(existing.rewardXp)
+    : normalizeNonNegativeInt(payload?.rewardXp, existing.rewardXp);
+  const badgeConfig = transferredAlready
+    ? buildContestBadgeConfig(existing, existing)
+    : buildContestBadgeConfig(payload, existing);
+
+  let updated = {
     ...existing,
     status,
     reviewNote,
+    rewardCoins,
+    rewardXp,
+    badgeKey: badgeConfig.badgeKey,
+    badgeTitle: badgeConfig.badgeTitle,
+    badgeDescription: badgeConfig.badgeDescription,
+    badgeIcon: badgeConfig.badgeIcon,
     reviewedBy: adminId,
     reviewedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+
+  if (status === "APPROVED") {
+    await prisma.$transaction(async (tx) => {
+      updated = await awardContestRewards({
+        adminId,
+        submission: updated,
+        client: tx
+      });
+    });
+  }
 
   const nextSubmissions = submissions.map((submission) =>
     submission.id === normalizedSubmissionId ? updated : submission
   );
 
   await saveEngagementContestSubmissionCatalog(nextSubmissions);
+  await recordAdminAudit({
+    adminId,
+    targetUserId: existing.userId,
+    action: "review_contest_submission",
+    entityType: "EngagementContestSubmission",
+    entityId: existing.id,
+    oldValue: existing,
+    newValue: updated
+  });
 
   return serializeContestSubmission(updated, await getContestSubmissionContestMap());
 };
@@ -1680,6 +2040,9 @@ export const createAdminContest = async ({ adminId, payload }) => {
   const contest = validateContestPayload(payload);
   const nextContests = [contest, ...contests];
 
+  if (contest.badgeKey && contest.badgeTitle) {
+    await ensureBadgeDefinition(contest);
+  }
   await saveEngagementContestCatalog(nextContests);
   await recordAdminAudit({
     adminId,
@@ -1705,6 +2068,9 @@ export const updateAdminContest = async ({ adminId, contestId, payload }) => {
     contest.id === contestId ? updatedContest : contest
   );
 
+  if (updatedContest.badgeKey && updatedContest.badgeTitle) {
+    await ensureBadgeDefinition(updatedContest);
+  }
   await saveEngagementContestCatalog(nextContests);
   await recordAdminAudit({
     adminId,

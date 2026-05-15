@@ -480,16 +480,16 @@
   align-items: center;
   gap: 0.65rem;
   margin-bottom: 1.25rem;
-  color: #ffc107;
+  color: #d2be8b;
   font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  text-shadow: 0 0 10px rgba(255, 193, 7, 0.2);
+  text-shadow: 0 0 8px rgba(210, 190, 139, 0.12);
 }
 
 .growth-quest-side__title svg {
-  filter: drop-shadow(0 0 4px rgba(255, 193, 7, 0.4));
+  filter: drop-shadow(0 0 4px rgba(210, 190, 139, 0.18));
 }
 
 
@@ -505,6 +505,34 @@
 
 .growth-quest-mini-card + .growth-quest-mini-card {
   margin-top: 0.9rem;
+}
+
+.growth-quest-side-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(236, 225, 208, 0.76);
+  font-size: 0.86rem;
+  font-weight: 700;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.growth-quest-side-toggle:hover {
+  border-color: rgba(184, 161, 114, 0.24);
+  background: rgba(184, 161, 114, 0.05);
+  color: #f3ead5;
+}
+
+.growth-quest-side-toggle--active {
+  border-color: rgba(184, 161, 114, 0.26);
+  background: linear-gradient(180deg, rgba(184, 161, 114, 0.08), rgba(184, 161, 114, 0.03));
+  color: #efe4c5;
 }
 
 .growth-quest-stat-grid {
@@ -622,26 +650,30 @@
   width: 0.6rem;
   height: 0.6rem;
   border-radius: 999px;
-  background: #ffc107;
-  box-shadow: 0 0 10px rgba(255, 193, 7, 0.6);
+  background: #d0b06c;
+  box-shadow: 0 0 10px rgba(208, 176, 108, 0.35);
 }
 
 .growth-quest-inline-link {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  color: #ffe4af;
+  color: #d8c39a;
   font-size: 0.95rem;
 }
 
 .growth-quest-inline-link:hover {
-  color: #fff1ce;
+  color: #eadcbb;
 }
 
 .growth-quest-card-grid,
 .growth-quest-intel-grid {
   display: grid;
   gap: 1.25rem;
+}
+
+.growth-quest-intel-grid {
+  scroll-margin-top: 6rem;
 }
 
 .growth-quest-card,

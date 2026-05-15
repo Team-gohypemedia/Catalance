@@ -9,6 +9,7 @@ import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Paperclip from "lucide-react/dist/esm/icons/paperclip";
 import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import Trophy from "lucide-react/dist/esm/icons/trophy";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import Image from "lucide-react/dist/esm/icons/image";
 import Tag from "lucide-react/dist/esm/icons/tag";
@@ -145,6 +146,11 @@ const FreelancerGrowthQuestContestDetailPage = () => {
   const acceptedAssetTypes = Array.isArray(contest?.acceptedAssetTypes)
     ? contest.acceptedAssetTypes
     : [];
+  const contestRewardBadges = [
+    contest?.rewardCoins ? `${contest.rewardCoins} coins` : null,
+    contest?.rewardXp ? `${contest.rewardXp} XP` : null,
+    contest?.badgeTitle ? contest.badgeTitle : null,
+  ].filter(Boolean);
 
   const handleAttachmentUpload = async (fileList) => {
     if (!authFetch || !fileList?.length) return;
@@ -338,6 +344,23 @@ const FreelancerGrowthQuestContestDetailPage = () => {
                       value: contest.status,
                       hint: "Active during the visible date range",
                     },
+                    {
+                      label: "Reward coins",
+                      value: contest.rewardCoins || 0,
+                      hint: "Transferred by admin after approval",
+                    },
+                    {
+                      label: "Reward XP",
+                      value: contest.rewardXp || 0,
+                      hint: "Added to your Growth Quest profile",
+                    },
+                    {
+                      label: "Contest badge",
+                      value: contest.badgeTitle || "Not set",
+                      hint: contest.badgeTitle
+                        ? "Admin can award this badge on approval"
+                        : "No badge reward configured",
+                    },
                   ].map((item) => (
                     <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                       <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-muted-foreground">
@@ -374,6 +397,15 @@ const FreelancerGrowthQuestContestDetailPage = () => {
                     </CardHeader>
                     <CardContent className="text-sm leading-7 text-muted-foreground">
                       {contest.rewardSummary || "The admin will share the review outcome and next steps after checking your submission."}
+                      {contestRewardBadges.length ? (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {contestRewardBadges.map((item) => (
+                            <Badge key={item} className="border-primary/20 bg-primary/10 text-primary">
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
                     </CardContent>
                   </Card>
                 </div>
@@ -619,6 +651,25 @@ const FreelancerGrowthQuestContestDetailPage = () => {
                               <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs leading-6 text-emerald-200">
                                 <span className="font-semibold">Admin feedback:</span> {submission.reviewNote}
                               </p>
+                            ) : null}
+                            {submission.status === "APPROVED" ? (
+                              <div className="rounded-lg border border-primary/20 bg-primary/10 p-3 text-xs leading-6 text-primary">
+                                <div className="flex flex-wrap gap-2">
+                                  <span>+{submission.rewardCoins || 0} coins</span>
+                                  <span>+{submission.rewardXp || 0} XP</span>
+                                  {submission.badgeTitle ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      <Trophy className="size-3.5" />
+                                      {submission.badgeTitle}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <p className="mt-1 text-[11px] text-primary/80">
+                                  {submission.rewardTransferredAt
+                                    ? `Reward transferred ${formatDate(submission.rewardTransferredAt)}`
+                                    : "Reward will reflect after admin transfer."}
+                                </p>
+                              </div>
                             ) : null}
                           </div>
                         </div>

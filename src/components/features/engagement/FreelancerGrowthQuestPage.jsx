@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
@@ -7,6 +7,7 @@ import Clock from "lucide-react/dist/esm/icons/clock";
 import Flame from "lucide-react/dist/esm/icons/flame";
 import Info from "lucide-react/dist/esm/icons/info";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Medal from "lucide-react/dist/esm/icons/medal";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Target from "lucide-react/dist/esm/icons/target";
 import Trophy from "lucide-react/dist/esm/icons/trophy";
@@ -100,6 +101,109 @@ const formatDayKey = (value) => {
     day: "numeric",
     year: "numeric",
   });
+};
+
+const getInitials = (value) =>
+  String(value || "You")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
+
+const WeeklyRankingPanel = ({ leaderboard, currentUserId }) => {
+  const entries = Array.isArray(leaderboard?.entries) ? leaderboard.entries : [];
+  const currentUser = leaderboard?.currentUser || null;
+  const visibleEntries = currentUser
+    ? [
+        ...entries.slice(0, 3),
+        ...entries.filter(
+          (entry, index) =>
+            index >= 3 &&
+            (entry.userId === currentUserId ||
+              Math.abs(Number(entry.rank || 0) - Number(currentUser.rank || 0)) <= 1),
+        ),
+      ].filter((entry, index, array) => array.findIndex((item) => item.userId === entry.userId) === index)
+    : entries;
+
+  return (
+    <div className="rounded-[18px] border border-[#332917] bg-[linear-gradient(180deg,rgba(16,13,8,0.98),rgba(11,9,6,0.98))] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
+      <div className="mb-5 flex items-start gap-3">
+        <div className="flex size-11 items-center justify-center rounded-xl border border-[#4e4127] bg-[#18130b]">
+          <Medal className="size-5 text-[#d3be92]" />
+        </div>
+        <div>
+          <h3 className="text-[1.65rem] font-bold tracking-tight text-[#f3ead5]">Weekly Ranking</h3>
+          <p className="mt-1 text-sm leading-6 text-[#a99c84]">
+            Compete for weekly XP rank. Contest rewards and Growth Quest activity both count here.
+          </p>
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-[18px] border border-[#332917] bg-[#161107]">
+        <div className="grid grid-cols-[92px_minmax(0,1fr)_120px] gap-3 border-b border-[#2d2413] px-5 py-3 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-[#8f846b]">
+          <span>Rank</span>
+          <span>Freelancer</span>
+          <span className="text-right">Coins Earned</span>
+        </div>
+
+        <div className="space-y-2 p-3">
+          {visibleEntries.length ? (
+            visibleEntries.map((entry) => (
+              <div
+                key={entry.userId}
+                className={cn(
+                  "grid grid-cols-[92px_minmax(0,1fr)_120px] items-center gap-3 rounded-[14px] border px-4 py-4 transition-colors",
+                  entry.userId === currentUserId
+                    ? "border-[#b89f68] bg-[linear-gradient(90deg,rgba(184,159,104,0.1),rgba(184,159,104,0.025))] shadow-[inset_3px_0_0_#b89f68]"
+                    : "border-[#342a17] bg-[#20180c]",
+                )}
+              >
+                <div className="text-2xl font-bold text-[#ead7a6]">{entry.rank}</div>
+                <div className="flex min-w-0 items-center gap-3">
+                  <div
+                    className={cn(
+                      "flex size-11 shrink-0 items-center justify-center rounded-full border text-xs font-bold uppercase",
+                      entry.userId === currentUserId
+                        ? "border-[#b89f68] bg-[#262014] text-[#e2d0a4]"
+                        : "border-[#5a4418] bg-[#171107] text-[#d8c7a1]",
+                    )}
+                  >
+                    {getInitials(entry.userId === currentUserId ? "You" : entry.fullName)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold text-[#f0e6cf]">
+                      {entry.userId === currentUserId ? "You" : entry.fullName}
+                    </p>
+                    <p className="mt-1 text-xs text-[#9f9278]">{entry.engagementLevelLabel}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-[#f1d48b]">{entry.weeklyCoins.toLocaleString()}</p>
+                  <p className="mt-1 text-[0.7rem] uppercase tracking-[0.16em] text-[#7d725d]">CO</p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-[12px] border border-dashed border-[#3a2d11] bg-[#1a1409] p-5 text-sm text-[#a99c84]">
+              Weekly rankings will appear after freelancers start earning XP this week.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {currentUser ? (
+        <div className="mt-4 rounded-[14px] border border-[#332917] bg-[#171208] px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.16em] text-[#8f846b]">Your weekly totals</p>
+          <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-[#f0e6cf]">
+            <span>Rank #{currentUser.rank}</span>
+            <span>{currentUser.weeklyXp.toLocaleString()} XP</span>
+            <span>{currentUser.weeklyCoins.toLocaleString()} coins</span>
+            <span>{currentUser.contestWins} contest wins</span>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 };
 
 const InfoModal = ({ open, onClose }) => {
@@ -625,6 +729,15 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
 
 const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) => {
   const navigate = useNavigate();
+  const [sidePanel, setSidePanel] = useState("ranking");
+  const intelSectionRef = useRef(null);
+  const handleSidePanelSelect = useCallback((panel) => {
+    setSidePanel(panel);
+    window.requestAnimationFrame(() => {
+      intelSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
   if (loading) {
     return (
       <div className="flex min-h-[420px] items-center justify-center">
@@ -646,6 +759,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
     ? dashboard.topicPerformance
     : [];
   const contests = Array.isArray(dashboard?.contests) ? dashboard.contests : [];
+  const leaderboard = dashboard?.leaderboard || {};
   const recentSessions = Array.isArray(dashboard?.recentSessions)
     ? dashboard.recentSessions
     : [];
@@ -667,6 +781,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
   const rollingAccuracy = processSummary?.rollingAccuracy ?? activity?.lifetimeAccuracy ?? 0;
   const rolling7DayAccuracy = processSummary?.rolling7DayAccuracy ?? rollingAccuracy;
   const latestRewards = today?.resultSummary?.rewardsAwarded || {};
+  const currentWeeklyRank = profile.currentWeeklyRank || leaderboard?.currentUser?.rank || null;
   const hasFocusData = Boolean(focusLabel || strongAreaLabel || weakAreaLabel);
   const hasTopicData = topicPerformance.length > 0;
   const hasContests = contests.length > 0;
@@ -680,8 +795,11 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
     { label: "Completed days", value: activity?.completedDays || 0 },
     { label: "Questions answered", value: activity?.totalQuestionsAnswered || 0 },
     { label: "7-day accuracy", value: `${rolling7DayAccuracy}%` },
-    { label: "Recent sessions", value: recentSessions.length },
+    { label: "Weekly rank", value: currentWeeklyRank ? `#${currentWeeklyRank}` : "Unranked" },
   ];
+  const unlockedBadgesCount = (Array.isArray(dashboard?.badges) ? dashboard.badges : []).filter(
+    (badge) => badge?.earned,
+  ).length;
 
   const operations = [
     {
@@ -865,6 +983,36 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
                 <Sparkles className="size-4" />
                 Quick Stats
               </h3>
+              <div className="mb-4 grid gap-2">
+                <button
+                  type="button"
+                    onClick={() => handleSidePanelSelect("ranking")}
+                  className={cn(
+                    "growth-quest-side-toggle",
+                    sidePanel === "ranking" && "growth-quest-side-toggle--active",
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Medal className="size-4" />
+                    Ranking
+                  </span>
+                  <span>{currentWeeklyRank ? `#${currentWeeklyRank}` : "--"}</span>
+                </button>
+                <button
+                  type="button"
+                    onClick={() => handleSidePanelSelect("badges")}
+                  className={cn(
+                    "growth-quest-side-toggle",
+                    sidePanel === "badges" && "growth-quest-side-toggle--active",
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Trophy className="size-4" />
+                    Badges
+                  </span>
+                  <span>{unlockedBadgesCount}</span>
+                </button>
+              </div>
               <div className="growth-quest-mini-card">
                 <p className={LABEL_CLASS}>Weekly snapshot</p>
                 <div className="growth-quest-stat-grid">
@@ -904,13 +1052,17 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
                 <p className={LABEL_CLASS}>Current Rank</p>
               </div>
               <strong className="text-2xl tracking-tight text-foreground">{levelLabel}</strong>
-              <div className="growth-quest-progress mt-4 bg-white/5 h-2">
+              <div className="growth-quest-progress mt-4 h-2 bg-white/5">
                 <span className="relative overflow-hidden" style={{ width: `${xpPct}%` }}>
-                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }}></span>
+                  <span
+                    className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                    style={{ backgroundSize: "200% 100%" }}
+                  ></span>
                 </span>
               </div>
-              <p className="growth-quest-helper text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mt-3">
-                Level {levelNumber} · {xp.toLocaleString()} XP
+              <p className="growth-quest-helper mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                {`Level ${levelNumber} · ${xp.toLocaleString()} XP`}
+                {currentWeeklyRank ? ` · Rank #${currentWeeklyRank}` : " · Weekly rank pending"}
               </p>
             </div>
           </div>
@@ -1026,8 +1178,15 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
         </aside>
       </section>
 
-      <section className="growth-quest-intel-grid">
-        <BadgeShelf badges={dashboard?.badges || []} currentStreak={streak} />
+      <section ref={intelSectionRef} className="growth-quest-intel-grid">
+        {sidePanel === "badges" ? (
+          <BadgeShelf badges={dashboard?.badges || []} currentStreak={streak} />
+        ) : (
+          <WeeklyRankingPanel
+            leaderboard={leaderboard}
+            currentUserId={leaderboard?.currentUser?.userId}
+          />
+        )}
         <ProcessSummaryCard processSummary={processSummary} />
       </section>
 
@@ -1103,7 +1262,9 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
                 </div>
                 <p className="growth-quest-contract__description line-clamp-2">{contest.description}</p>
                 <div className="growth-quest-contract__rewards">
-                  <span className="text-primary/70">{contest.status}</span>
+                  <span className="text-primary/70">
+                    {contest.rewardCoins || 0} coins · {contest.rewardXp || 0} XP
+                  </span>
                   <span className="font-bold flex items-center gap-1">
                     {contest.ctaLabel || "View Contest"}
                     <ArrowRight className="size-3 transition-transform group-hover:translate-x-1" />

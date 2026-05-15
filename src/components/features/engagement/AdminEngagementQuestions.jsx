@@ -113,6 +113,12 @@ const emptyContestForm = {
   goalSummary: "",
   submissionInstructions: "",
   rewardSummary: "",
+  rewardCoins: 0,
+  rewardXp: 0,
+  badgeKey: "",
+  badgeTitle: "",
+  badgeDescription: "",
+  badgeIcon: "award",
   deliverables: [""],
   reviewCriteria: [""],
   resourceLinks: [{ label: "", url: "" }],
@@ -121,6 +127,14 @@ const emptyContestForm = {
   startDayKey: createTodayKey(),
   endDayKey: "",
   status: "DRAFT",
+};
+
+const emptyContestReviewForm = {
+  submissionId: "",
+  status: "APPROVED",
+  reviewNote: "",
+  rewardCoins: 0,
+  rewardXp: 0,
 };
 
 const statusClassName = {
@@ -186,6 +200,8 @@ const AdminEngagementQuestions = () => {
   const [contestSubmissionContestId, setContestSubmissionContestId] = useState("ALL");
   const [contestSubmissionStatus, setContestSubmissionStatus] = useState("ALL");
   const [contestSubmissionReviewing, setContestSubmissionReviewing] = useState("");
+  const [contestReviewDialogOpen, setContestReviewDialogOpen] = useState(false);
+  const [contestReviewForm, setContestReviewForm] = useState(emptyContestReviewForm);
 
   const loadQuestions = useCallback(async () => {
     if (!authFetch) return;
@@ -477,6 +493,12 @@ const AdminEngagementQuestions = () => {
       goalSummary: contest?.goalSummary || "",
       submissionInstructions: contest?.submissionInstructions || "",
       rewardSummary: contest?.rewardSummary || "",
+      rewardCoins: Number(contest?.rewardCoins || 0) || 0,
+      rewardXp: Number(contest?.rewardXp || 0) || 0,
+      badgeKey: contest?.badgeKey || "",
+      badgeTitle: contest?.badgeTitle || "",
+      badgeDescription: contest?.badgeDescription || "",
+      badgeIcon: contest?.badgeIcon || "award",
       deliverables: Array.isArray(contest?.deliverables) && contest.deliverables.length ? contest.deliverables : [""],
       reviewCriteria: Array.isArray(contest?.reviewCriteria) && contest.reviewCriteria.length ? contest.reviewCriteria : [""],
       resourceLinks:
@@ -572,6 +594,12 @@ const AdminEngagementQuestions = () => {
               .map((item) => String(item || "").trim())
               .filter(Boolean),
             maxAttachments: Number(contestForm.maxAttachments || 0) || 0,
+            rewardCoins: Number(contestForm.rewardCoins || 0) || 0,
+            rewardXp: Number(contestForm.rewardXp || 0) || 0,
+            badgeKey: contestForm.badgeKey?.trim() || "",
+            badgeTitle: contestForm.badgeTitle?.trim() || "",
+            badgeDescription: contestForm.badgeDescription?.trim() || "",
+            badgeIcon: contestForm.badgeIcon?.trim() || "award",
             endDayKey: contestForm.endDayKey || undefined,
           }),
         },
@@ -622,14 +650,46 @@ const AdminEngagementQuestions = () => {
     }
   };
 
-  const handleReviewContestSubmission = async (submissionId, status) => {
+  const handleOpenContestReviewDialog = (submissionId, status) => {
+    const targetSubmission = contestSubmissions.find((entry) => entry.id === submissionId);
+    if (!targetSubmission) {
+      toast.error("Contest submission not found.");
+      return;
+    }
+
+    setContestReviewForm({
+      submissionId,
+      status,
+      reviewNote: targetSubmission.reviewNote || "",
+      rewardCoins: Number(targetSubmission.rewardCoins ?? 0) || 0,
+      rewardXp: Number(targetSubmission.rewardXp ?? 0) || 0,
+    });
+    setContestReviewDialogOpen(true);
+  };
+
+  const handleReviewContestSubmission = async () => {
     if (!authFetch) return;
-    const needsNote = status !== "APPROVED";
-    const reviewNote = window.prompt(
-      needsNote ? `Add a review note for ${status.replace(/_/g, " ").toLowerCase()}.` : "Optional review note",
-      "",
-    );
-    if (needsNote && !reviewNote?.trim()) return;
+    const submissionId = contestReviewForm.submissionId;
+    const status = contestReviewForm.status;
+    const reviewNote = String(contestReviewForm.reviewNote || "").trim();
+    const rewardCoins = Number(contestReviewForm.rewardCoins ?? 0);
+    const rewardXp = Number(contestReviewForm.rewardXp ?? 0);
+
+    if (!submissionId) return;
+    if (!reviewNote) {
+      toast.error("Review note is required.");
+      return;
+    }
+    if (status === "APPROVED") {
+      if (!Number.isFinite(rewardCoins) || rewardCoins < 0) {
+        toast.error("Coins must be a valid positive number or zero.");
+        return;
+      }
+      if (!Number.isFinite(rewardXp) || rewardXp < 0) {
+        toast.error("XP must be a valid positive number or zero.");
+        return;
+      }
+    }
 
     setContestSubmissionReviewing(submissionId);
     try {
@@ -637,13 +697,21 @@ const AdminEngagementQuestions = () => {
         method: "PATCH",
         body: JSON.stringify({
           status,
-          reviewNote: reviewNote?.trim() || "",
+          reviewNote: reviewNote.trim(),
+          ...(status === "APPROVED"
+            ? {
+                rewardCoins: Math.round(rewardCoins || 0),
+                rewardXp: Math.round(rewardXp || 0),
+              }
+            : {}),
         }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(payload?.message || "Failed to update contest submission.");
       }
+      setContestReviewDialogOpen(false);
+      setContestReviewForm(emptyContestReviewForm);
       toast.success("Contest submission updated");
       await loadContestSubmissions();
     } catch (error) {
@@ -913,6 +981,17 @@ const AdminEngagementQuestions = () => {
                         <Badge className={statusClassName[contest.status] || statusClassName.DRAFT}>
                           {contest.status}
                         </Badge>
+                        <Badge className="border-primary/20 bg-primary/10 text-primary">
+                          {contest.rewardCoins || 0} coins
+                        </Badge>
+                        <Badge className="border-primary/20 bg-primary/10 text-primary">
+                          {contest.rewardXp || 0} XP
+                        </Badge>
+                        {contest.badgeTitle ? (
+                          <Badge className="border-white/10 bg-white/[0.04] text-xs font-semibold text-muted-foreground">
+                            {contest.badgeTitle}
+                          </Badge>
+                        ) : null}
                       </div>
                       <div className="mt-3 text-xs text-muted-foreground">
                         {contest.startDayKey}
@@ -1043,6 +1122,27 @@ const AdminEngagementQuestions = () => {
                             <p className="mt-1 text-sm text-white">{submission.reviewNote}</p>
                           </div>
                         ) : null}
+                        <div className="rounded-lg border border-primary/10 bg-primary/5 p-3">
+                          <p className="text-xs font-semibold text-muted-foreground">Reward package:</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Badge className="border-primary/20 bg-primary/10 text-primary">
+                              {submission.rewardCoins || 0} coins
+                            </Badge>
+                            <Badge className="border-primary/20 bg-primary/10 text-primary">
+                              {submission.rewardXp || 0} XP
+                            </Badge>
+                            {submission.badgeTitle ? (
+                              <Badge className="border-white/10 bg-white/[0.04] text-muted-foreground">
+                                {submission.badgeTitle}
+                              </Badge>
+                            ) : null}
+                          </div>
+                          {submission.rewardTransferredAt ? (
+                            <p className="mt-2 text-xs text-emerald-300">
+                              Reward transferred on {new Date(submission.rewardTransferredAt).toLocaleDateString()}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="flex gap-2 md:flex-col">
                         <Button
@@ -1051,7 +1151,7 @@ const AdminEngagementQuestions = () => {
                           size="icon-sm"
                           disabled={contestSubmissionReviewing === submission.id}
                           title="Approve"
-                          onClick={() => handleReviewContestSubmission(submission.id, "APPROVED")}
+                          onClick={() => handleOpenContestReviewDialog(submission.id, "APPROVED")}
                           className="rounded-lg border-emerald-500/20 hover:bg-emerald-500/10"
                         >
                           <Check className="size-4 text-emerald-400" />
@@ -1062,7 +1162,7 @@ const AdminEngagementQuestions = () => {
                           size="icon-sm"
                           disabled={contestSubmissionReviewing === submission.id}
                           title="Needs changes"
-                          onClick={() => handleReviewContestSubmission(submission.id, "NEEDS_CHANGES")}
+                          onClick={() => handleOpenContestReviewDialog(submission.id, "NEEDS_CHANGES")}
                           className="rounded-lg border-primary/20 hover:bg-primary/10"
                         >
                           <Edit className="size-4 text-primary" />
@@ -1073,7 +1173,7 @@ const AdminEngagementQuestions = () => {
                           size="icon-sm"
                           disabled={contestSubmissionReviewing === submission.id}
                           title="Reject"
-                          onClick={() => handleReviewContestSubmission(submission.id, "REJECTED")}
+                          onClick={() => handleOpenContestReviewDialog(submission.id, "REJECTED")}
                           className="rounded-lg border-red-500/20 hover:bg-red-500/10"
                         >
                           <X className="size-4 text-red-400" />
@@ -1519,6 +1619,99 @@ const AdminEngagementQuestions = () => {
                 </div>
               </div>
 
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="engagement-contest-reward-coins">Reward coins</Label>
+                  <Input
+                    id="engagement-contest-reward-coins"
+                    type="number"
+                    min="0"
+                    value={contestForm.rewardCoins}
+                    onChange={(event) =>
+                      setContestForm((previous) => ({
+                        ...previous,
+                        rewardCoins: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="engagement-contest-reward-xp">Reward XP</Label>
+                  <Input
+                    id="engagement-contest-reward-xp"
+                    type="number"
+                    min="0"
+                    value={contestForm.rewardXp}
+                    onChange={(event) =>
+                      setContestForm((previous) => ({
+                        ...previous,
+                        rewardXp: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="engagement-contest-badge-title">Badge title</Label>
+                  <Input
+                    id="engagement-contest-badge-title"
+                    value={contestForm.badgeTitle}
+                    onChange={(event) =>
+                      setContestForm((previous) => ({
+                        ...previous,
+                        badgeTitle: event.target.value,
+                      }))
+                    }
+                    placeholder="Contest winner badge"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="engagement-contest-badge-icon">Badge icon</Label>
+                  <Input
+                    id="engagement-contest-badge-icon"
+                    value={contestForm.badgeIcon}
+                    onChange={(event) =>
+                      setContestForm((previous) => ({
+                        ...previous,
+                        badgeIcon: event.target.value,
+                      }))
+                    }
+                    placeholder="award"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="engagement-contest-badge-key">Badge key</Label>
+                  <Input
+                    id="engagement-contest-badge-key"
+                    value={contestForm.badgeKey}
+                    onChange={(event) =>
+                      setContestForm((previous) => ({
+                        ...previous,
+                        badgeKey: event.target.value,
+                      }))
+                    }
+                    placeholder="Optional custom badge key"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="engagement-contest-badge-description">Badge description</Label>
+                  <Textarea
+                    id="engagement-contest-badge-description"
+                    value={contestForm.badgeDescription}
+                    onChange={(event) =>
+                      setContestForm((previous) => ({
+                        ...previous,
+                        badgeDescription: event.target.value,
+                      }))
+                    }
+                    rows={3}
+                    placeholder="Describe why this badge is awarded."
+                  />
+                </div>
+              </div>
+
               <div className="grid gap-2">
                 <Label htmlFor="engagement-contest-instructions">Submission instructions</Label>
                 <Textarea
@@ -1759,6 +1952,107 @@ const AdminEngagementQuestions = () => {
               >
                 {contestSaving ? <Loader2 className="size-4 animate-spin" /> : null}
                 Save Contest
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={contestReviewDialogOpen}
+          onOpenChange={(open) => {
+            setContestReviewDialogOpen(open);
+            if (!open && !contestSubmissionReviewing) {
+              setContestReviewForm(emptyContestReviewForm);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>
+                {contestReviewForm.status === "APPROVED"
+                  ? "Approve Contest Submission"
+                  : contestReviewForm.status === "NEEDS_CHANGES"
+                    ? "Request Changes"
+                    : "Reject Contest Submission"}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="grid gap-5 py-2">
+              <div className="grid gap-2">
+                <Label htmlFor="contest-review-note">Admin note</Label>
+                <Textarea
+                  id="contest-review-note"
+                  rows={4}
+                  value={contestReviewForm.reviewNote}
+                  onChange={(event) =>
+                    setContestReviewForm((previous) => ({
+                      ...previous,
+                      reviewNote: event.target.value,
+                    }))
+                  }
+                  placeholder="Explain the approval, change request, or rejection."
+                />
+              </div>
+
+              {contestReviewForm.status === "APPROVED" ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="contest-review-coins">Coins to transfer</Label>
+                    <Input
+                      id="contest-review-coins"
+                      type="number"
+                      min="0"
+                      value={contestReviewForm.rewardCoins}
+                      onChange={(event) =>
+                        setContestReviewForm((previous) => ({
+                          ...previous,
+                          rewardCoins: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="contest-review-xp">XP to award</Label>
+                    <Input
+                      id="contest-review-xp"
+                      type="number"
+                      min="0"
+                      value={contestReviewForm.rewardXp}
+                      onChange={(event) =>
+                        setContestReviewForm((previous) => ({
+                          ...previous,
+                          rewardXp: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={Boolean(contestSubmissionReviewing)}
+                onClick={() => {
+                  setContestReviewDialogOpen(false);
+                  setContestReviewForm(emptyContestReviewForm);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={Boolean(contestSubmissionReviewing)}
+                onClick={handleReviewContestSubmission}
+              >
+                {contestSubmissionReviewing ? <Loader2 className="size-4 animate-spin" /> : null}
+                {contestReviewForm.status === "APPROVED"
+                  ? "Approve and Transfer Rewards"
+                  : contestReviewForm.status === "NEEDS_CHANGES"
+                    ? "Save Change Request"
+                    : "Reject Submission"}
               </Button>
             </DialogFooter>
           </DialogContent>

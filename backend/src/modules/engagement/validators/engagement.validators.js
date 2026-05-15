@@ -79,7 +79,13 @@ export const reviewContestSubmissionSchema = z.object({
   }),
   body: z.object({
     status: z.enum(["PENDING", "APPROVED", "NEEDS_CHANGES", "REJECTED"]),
-    reviewNote: z.string().max(2000).optional().or(z.literal(""))
+    reviewNote: z.string().max(2000).optional().or(z.literal("")),
+    rewardCoins: z.coerce.number().int().min(0).max(100000).optional(),
+    rewardXp: z.coerce.number().int().min(0).max(100000).optional(),
+    badgeKey: z.string().min(1).max(120).optional().or(z.literal("")),
+    badgeTitle: z.string().min(1).max(120).optional().or(z.literal("")),
+    badgeDescription: z.string().max(500).optional().or(z.literal("")),
+    badgeIcon: z.string().max(60).optional().or(z.literal(""))
   })
 });
 
@@ -172,6 +178,12 @@ export const adminContestSchema = z.object({
       .optional(),
     acceptedAssetTypes: z.array(z.string().min(1).max(80)).max(12).optional(),
     maxAttachments: z.coerce.number().int().min(0).max(20).optional(),
+    rewardCoins: z.coerce.number().int().min(0).max(100000).optional(),
+    rewardXp: z.coerce.number().int().min(0).max(100000).optional(),
+    badgeKey: z.string().min(1).max(120).optional().or(z.literal("")),
+    badgeTitle: z.string().min(1).max(120).optional().or(z.literal("")),
+    badgeDescription: z.string().max(500).optional().or(z.literal("")),
+    badgeIcon: z.string().max(60).optional().or(z.literal("")),
     startDayKey: dayKeySchema,
     endDayKey: dayKeySchema.optional(),
     status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional()
