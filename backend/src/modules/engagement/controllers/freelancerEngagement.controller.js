@@ -5,6 +5,8 @@ import {
   getBadges,
   getEngagementDashboard,
   getProcessReport,
+  createContestSubmission,
+  listContestSubmissions,
   startDailyChallenge,
   submitDailyChallenge
 } from "../services/engagement.service.js";
@@ -49,4 +51,21 @@ export const getBadgesHandler = asyncHandler(async (req, res) => {
 export const getContestDetails = asyncHandler(async (req, res) => {
   const data = await getContestById(req.params.id);
   res.json({ data });
+});
+
+export const getContestSubmissions = asyncHandler(async (req, res) => {
+  const data = await listContestSubmissions({
+    contestId: req.params.id,
+    userId: requireUserId(req)
+  });
+  res.json({ data });
+});
+
+export const createContestSubmissionHandler = asyncHandler(async (req, res) => {
+  const data = await createContestSubmission({
+    userId: requireUserId(req),
+    contestId: req.params.id,
+    payload: req.body
+  });
+  res.status(201).json({ data });
 });

@@ -27,6 +27,7 @@ const CATEGORY_LABELS = Object.freeze({
 });
 
 const ENGAGEMENT_CONTESTS_CATALOG_KEY = "engagement_contests";
+const ENGAGEMENT_CONTEST_SUBMISSIONS_CATALOG_KEY = "engagement_contest_submissions";
 
 const LEVEL_LABELS = Object.freeze(
   Object.fromEntries(engagementRules.levels.map((level) => [level.key, level.label]))
@@ -190,11 +191,79 @@ const serializeContest = (contest) => ({
   imageUrl: contest.imageUrl || "",
   category: contest.category,
   ctaLabel: contest.ctaLabel || "View Contest",
+  goalSummary: contest.goalSummary || "",
+  submissionInstructions: contest.submissionInstructions || "",
+  rewardSummary: contest.rewardSummary || "",
+  deliverables: normalizeStringList(contest.deliverables),
+  reviewCriteria: normalizeStringList(contest.reviewCriteria),
+  resourceLinks: normalizeLinkList(contest.resourceLinks),
+  acceptedAssetTypes: normalizeStringList(contest.acceptedAssetTypes),
+  maxAttachments: Number(contest.maxAttachments || 0) || 0,
   startDayKey: contest.startDayKey,
   endDayKey: contest.endDayKey || null,
   status: normalizeContestStatus(contest.status),
   createdAt: contest.createdAt || null,
   updatedAt: contest.updatedAt || null
+});
+
+const normalizeSubmissionStatus = (value = "PENDING") => {
+  const normalized = normalizeText(value).toUpperCase();
+  if (["PENDING", "APPROVED", "NEEDS_CHANGES", "REJECTED"].includes(normalized)) {
+    return normalized;
+  }
+  return "PENDING";
+};
+
+const normalizeSubmissionLinks = (value = []) =>
+  (Array.isArray(value) ? value : [])
+    .map((link) => ({
+      label: normalizeText(link?.label) || "Link",
+      url: normalizeText(link?.url)
+    }))
+    .filter((link) => link.url);
+
+const normalizeSubmissionAttachments = (value = []) =>
+  (Array.isArray(value) ? value : [])
+    .map((attachment) => ({
+      url: normalizeText(attachment?.url),
+      name: normalizeText(attachment?.name) || "Attachment",
+      type: normalizeText(attachment?.type),
+      size: Number(attachment?.size || 0)
+    }))
+    .filter((attachment) => attachment.url);
+
+const normalizeStringList = (value = []) =>
+  (Array.isArray(value) ? value : [])
+    .map((item) => normalizeText(item))
+    .filter(Boolean);
+
+const normalizeLinkList = (value = []) =>
+  (Array.isArray(value) ? value : [])
+    .map((link) => ({
+      label: normalizeText(link?.label) || "Reference",
+      url: normalizeText(link?.url)
+    }))
+    .filter((link) => link.url);
+
+const serializeContestSubmission = (submission, contestById = new Map()) => ({
+  id: submission.id,
+  contestId: submission.contestId,
+  contestTitle: submission.contestTitle || contestById.get(submission.contestId)?.title || "Contest",
+  userId: submission.userId,
+  userName: submission.userName,
+  userEmail: submission.userEmail,
+  title: submission.title,
+  githubUrl: submission.githubUrl || "",
+  portfolioUrl: submission.portfolioUrl || "",
+  otherLinks: normalizeSubmissionLinks(submission.otherLinks),
+  notes: submission.notes || "",
+  attachments: normalizeSubmissionAttachments(submission.attachments),
+  status: normalizeSubmissionStatus(submission.status),
+  reviewNote: submission.reviewNote || "",
+  reviewedBy: submission.reviewedBy || null,
+  reviewedAt: submission.reviewedAt || null,
+  createdAt: submission.createdAt || null,
+  updatedAt: submission.updatedAt || null
 });
 
 const ensureFreelancerUser = async (userId) => {
@@ -682,6 +751,37 @@ const getEngagementContestCatalog = async (client = prisma) => {
   };
 };
 
+const getEngagementContestSubmissionCatalog = async (client = prisma) => {
+  const record = await client.serviceCatalog.findUnique({
+    where: { key: ENGAGEMENT_CONTEST_SUBMISSIONS_CATALOG_KEY }
+  });
+
+  return {
+    record,
+    submissions: normalizeCatalogPayloadArray(record?.payload).map((submission) => ({
+      ...submission,
+      otherLinks: normalizeSubmissionLinks(submission?.otherLinks),
+      attachments: normalizeSubmissionAttachments(submission?.attachments)
+    }))
+  };
+};
+
+const saveEngagementContestSubmissionCatalog = async (submissions, client = prisma) =>
+  client.serviceCatalog.upsert({
+    where: { key: ENGAGEMENT_CONTEST_SUBMISSIONS_CATALOG_KEY },
+    create: {
+      key: ENGAGEMENT_CONTEST_SUBMISSIONS_CATALOG_KEY,
+      schemaVersion: "1",
+      payload: submissions,
+      sourceFile: "engagement"
+    },
+    update: {
+      schemaVersion: "1",
+      payload: submissions,
+      sourceFile: "engagement"
+    }
+  });
+
 const saveEngagementContestCatalog = async (contests, client = prisma) =>
   client.serviceCatalog.upsert({
     where: { key: ENGAGEMENT_CONTESTS_CATALOG_KEY },
@@ -705,6 +805,21 @@ const validateContestPayload = (payload = {}, existing = null) => {
   const imageUrl = normalizeText(payload.imageUrl ?? existing?.imageUrl);
   const category = normalizeText(payload.category ?? existing?.category);
   const ctaLabel = normalizeText(payload.ctaLabel ?? existing?.ctaLabel) || "View Contest";
+  const goalSummary = normalizeText(payload.goalSummary ?? existing?.goalSummary);
+  const submissionInstructions = normalizeText(
+    payload.submissionInstructions ?? existing?.submissionInstructions
+  );
+  const rewardSummary = normalizeText(payload.rewardSummary ?? existing?.rewardSummary);
+  const deliverables = normalizeStringList(payload.deliverables ?? existing?.deliverables);
+  const reviewCriteria = normalizeStringList(payload.reviewCriteria ?? existing?.reviewCriteria);
+  const resourceLinks = normalizeLinkList(payload.resourceLinks ?? existing?.resourceLinks);
+  const acceptedAssetTypes = normalizeStringList(
+    payload.acceptedAssetTypes ?? existing?.acceptedAssetTypes
+  );
+  const maxAttachments = Math.max(
+    0,
+    Number(payload.maxAttachments ?? existing?.maxAttachments ?? 0) || 0
+  );
   const startDayKey = normalizeDayKey(payload.startDayKey ?? existing?.startDayKey);
   const endDayKey = normalizeDayKey(payload.endDayKey ?? existing?.endDayKey, null);
   const status = normalizeContestStatus(payload.status ?? existing?.status);
@@ -721,6 +836,15 @@ const validateContestPayload = (payload = {}, existing = null) => {
   if (category.length < 2) {
     throw new AppError("Contest category is required.", 400);
   }
+  if (goalSummary && goalSummary.length < 10) {
+    throw new AppError("Contest goal summary must be at least 10 characters.", 400);
+  }
+  if (submissionInstructions && submissionInstructions.length < 10) {
+    throw new AppError("Contest submission instructions must be at least 10 characters.", 400);
+  }
+  if (rewardSummary && rewardSummary.length < 5) {
+    throw new AppError("Contest reward summary is too short.", 400);
+  }
   if (endDayKey && endDayKey < startDayKey) {
     throw new AppError("Contest end date cannot be before the start date.", 400);
   }
@@ -733,6 +857,14 @@ const validateContestPayload = (payload = {}, existing = null) => {
     imageUrl,
     category,
     ctaLabel,
+    goalSummary,
+    submissionInstructions,
+    rewardSummary,
+    deliverables,
+    reviewCriteria,
+    resourceLinks,
+    acceptedAssetTypes,
+    maxAttachments,
     startDayKey,
     endDayKey,
     status,
@@ -760,6 +892,121 @@ export const getContestById = async (contestId) => {
     throw new AppError("Contest not found.", 404);
   }
   return contest;
+};
+
+const getContestSubmissionContestMap = async () => {
+  const { contests } = await getEngagementContestCatalog();
+  return new Map(contests.map((contest) => [contest.id, contest]));
+};
+
+export const listContestSubmissions = async ({ contestId, userId, status } = {}) => {
+  ensureEnabled();
+  const normalizedContestId = normalizeText(contestId);
+  const normalizedUserId = normalizeText(userId);
+  const normalizedStatus = normalizeText(status).toUpperCase();
+  const { submissions } = await getEngagementContestSubmissionCatalog();
+  const contestMap = await getContestSubmissionContestMap();
+
+  return submissions
+    .filter((submission) =>
+      normalizedContestId ? submission.contestId === normalizedContestId : true
+    )
+    .filter((submission) => (normalizedUserId ? submission.userId === normalizedUserId : true))
+    .filter((submission) =>
+      normalizedStatus && normalizedStatus !== "ALL"
+        ? normalizeSubmissionStatus(submission.status) === normalizedStatus
+        : true
+    )
+    .sort((left, right) => String(right.createdAt || "").localeCompare(String(left.createdAt || "")))
+    .map((submission) => serializeContestSubmission(submission, contestMap));
+};
+
+export const createContestSubmission = async ({ userId, contestId, payload }) => {
+  ensureEnabled();
+  const normalizedContestId = normalizeText(contestId);
+  const contest = await getContestById(normalizedContestId);
+  const title = normalizeText(payload?.title);
+  const githubUrl = normalizeText(payload?.githubUrl);
+  const portfolioUrl = normalizeText(payload?.portfolioUrl);
+  const notes = normalizeText(payload?.notes);
+  const otherLinks = normalizeSubmissionLinks(payload?.otherLinks);
+  const attachments = normalizeSubmissionAttachments(payload?.attachments);
+
+  if (title.length < 3) {
+    throw new AppError("Submission title is required.", 400);
+  }
+  if (!githubUrl && !portfolioUrl && otherLinks.length === 0 && attachments.length === 0) {
+    throw new AppError("Add at least one link or file to submit a contest entry.", 400);
+  }
+  if (notes && notes.length < 10) {
+    throw new AppError("Submission notes must be at least 10 characters when provided.", 400);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, fullName: true, email: true }
+  });
+
+  if (!user) {
+    throw new AppError("Freelancer account not found.", 404);
+  }
+
+  const submission = {
+    id: crypto.randomUUID(),
+    contestId: contest.id,
+    contestTitle: contest.title,
+    userId: user.id,
+    userName: user.fullName,
+    userEmail: user.email,
+    title,
+    githubUrl,
+    portfolioUrl,
+    otherLinks,
+    notes,
+    attachments,
+    status: "PENDING",
+    reviewNote: "",
+    reviewedBy: null,
+    reviewedAt: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  const { submissions } = await getEngagementContestSubmissionCatalog();
+  const nextSubmissions = [submission, ...submissions];
+  await saveEngagementContestSubmissionCatalog(nextSubmissions);
+
+  return serializeContestSubmission(submission, new Map([[contest.id, contest]]));
+};
+
+export const reviewContestSubmission = async ({ adminId, submissionId, payload }) => {
+  ensureEnabled();
+  const normalizedSubmissionId = normalizeText(submissionId);
+  const status = normalizeSubmissionStatus(payload?.status);
+  const reviewNote = normalizeText(payload?.reviewNote);
+  const { submissions } = await getEngagementContestSubmissionCatalog();
+  const existing = submissions.find((submission) => submission.id === normalizedSubmissionId);
+
+  if (!existing) {
+    throw new AppError("Contest submission not found.", 404);
+  }
+
+  const updated = {
+    ...existing,
+    status,
+    reviewNote,
+    reviewedBy: adminId,
+    reviewedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  const nextSubmissions = submissions.map((submission) =>
+    submission.id === normalizedSubmissionId ? updated : submission
+  );
+
+  await saveEngagementContestSubmissionCatalog(nextSubmissions);
+
+  return serializeContestSubmission(updated, await getContestSubmissionContestMap());
 };
 
 const calculateStreak = ({ profile, dayKey }) => {

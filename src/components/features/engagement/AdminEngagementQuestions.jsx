@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Check from "lucide-react/dist/esm/icons/check";
 import Edit from "lucide-react/dist/esm/icons/edit";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Github from "lucide-react/dist/esm/icons/github";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import Search from "lucide-react/dist/esm/icons/search";
+import Link2 from "lucide-react/dist/esm/icons/link-2";
 import X from "lucide-react/dist/esm/icons/x";
 import AdminLayout from "@/components/features/admin/AdminLayout";
 import { AdminTopBar } from "@/components/features/admin/AdminTopBar";
@@ -87,6 +90,19 @@ const emptyForm = {
 
 const DAILY_SET_SIZE = 5;
 const createTodayKey = () => new Date().toISOString().slice(0, 10);
+const toLineArray = (value) =>
+  String(value || "")
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+const toLinkArray = (value) =>
+  toLineArray(value).map((item) => {
+    const [label, ...urlParts] = item.split("|");
+    return {
+      label: (label || "Reference").trim(),
+      url: urlParts.join("|").trim(),
+    };
+  });
 const emptyContestForm = {
   title: "",
   description: "",
@@ -94,6 +110,14 @@ const emptyContestForm = {
   imageUrl: "",
   category: "Contest",
   ctaLabel: "View Contest",
+  goalSummary: "",
+  submissionInstructions: "",
+  rewardSummary: "",
+  deliverables: [""],
+  reviewCriteria: [""],
+  resourceLinks: [{ label: "", url: "" }],
+  acceptedAssetTypes: ["image", "document", "link"],
+  maxAttachments: 8,
   startDayKey: createTodayKey(),
   endDayKey: "",
   status: "DRAFT",
@@ -103,10 +127,14 @@ const statusClassName = {
   APPROVED: "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
   PUBLISHED: "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
   PENDING_APPROVAL: "border-[#facc15]/20 bg-[#facc15]/10 text-[#fde68a]",
+  PENDING: "border-[#facc15]/20 bg-[#facc15]/10 text-[#fde68a]",
   DRAFT: "border-white/10 bg-white/[0.04] text-muted-foreground",
   REJECTED: "border-red-500/20 bg-red-500/10 text-red-200",
+  NEEDS_CHANGES: "border-primary/20 bg-primary/10 text-primary",
   ARCHIVED: "border-white/10 bg-white/[0.04] text-muted-foreground",
 };
+
+const contestSubmissionStatusOptions = ["ALL", "PENDING", "APPROVED", "NEEDS_CHANGES", "REJECTED"];
 
 const cloneQuestionToForm = (question) => ({
   questionText: question?.questionText || "",
@@ -153,6 +181,11 @@ const AdminEngagementQuestions = () => {
   const [contestLoading, setContestLoading] = useState(true);
   const [contestSaving, setContestSaving] = useState(false);
   const [contestImageUploading, setContestImageUploading] = useState(false);
+  const [contestSubmissions, setContestSubmissions] = useState([]);
+  const [contestSubmissionsLoading, setContestSubmissionsLoading] = useState(true);
+  const [contestSubmissionContestId, setContestSubmissionContestId] = useState("ALL");
+  const [contestSubmissionStatus, setContestSubmissionStatus] = useState("ALL");
+  const [contestSubmissionReviewing, setContestSubmissionReviewing] = useState("");
 
   const loadQuestions = useCallback(async () => {
     if (!authFetch) return;
@@ -236,6 +269,34 @@ const AdminEngagementQuestions = () => {
     loadContests();
   }, [loadContests]);
 
+  const loadContestSubmissions = useCallback(async () => {
+    if (!authFetch) return;
+    setContestSubmissionsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (contestSubmissionContestId !== "ALL") params.set("contestId", contestSubmissionContestId);
+      if (contestSubmissionStatus !== "ALL") params.set("status", contestSubmissionStatus);
+
+      const response = await authFetch(`/admin/engagement/contest-submissions?${params.toString()}`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to load contest submissions.");
+      }
+
+      setContestSubmissions(Array.isArray(payload?.data) ? payload.data : []);
+    } catch (error) {
+      console.error("Failed to load contest submissions", error);
+      toast.error(error?.message || "Failed to load contest submissions");
+    } finally {
+      setContestSubmissionsLoading(false);
+    }
+  }, [authFetch, contestSubmissionContestId, contestSubmissionStatus]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(loadContestSubmissions, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadContestSubmissions]);
+
   useEffect(() => {
     const existingDailySet = dailySets.find((entry) => entry.dayKey === scheduleDayKey);
     if (existingDailySet) {
@@ -263,6 +324,19 @@ const AdminEngagementQuestions = () => {
   const selectedDailySet = useMemo(
     () => dailySets.find((entry) => entry.dayKey === scheduleDayKey) || null,
     [dailySets, scheduleDayKey],
+  );
+
+  const contestSubmissionCounts = useMemo(
+    () =>
+      contestSubmissions.reduce(
+        (acc, submission) => {
+          const key = submission.status || "PENDING";
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        },
+        {},
+      ),
+    [contestSubmissions],
   );
 
   const openNewDialog = () => {
@@ -400,6 +474,23 @@ const AdminEngagementQuestions = () => {
       imageUrl: contest?.imageUrl || "",
       category: contest?.category || "Contest",
       ctaLabel: contest?.ctaLabel || "View Contest",
+      goalSummary: contest?.goalSummary || "",
+      submissionInstructions: contest?.submissionInstructions || "",
+      rewardSummary: contest?.rewardSummary || "",
+      deliverables: Array.isArray(contest?.deliverables) && contest.deliverables.length ? contest.deliverables : [""],
+      reviewCriteria: Array.isArray(contest?.reviewCriteria) && contest.reviewCriteria.length ? contest.reviewCriteria : [""],
+      resourceLinks:
+        Array.isArray(contest?.resourceLinks) && contest.resourceLinks.length
+          ? contest.resourceLinks.map((link) => ({
+              label: link?.label || "Reference",
+              url: link?.url || "",
+            }))
+          : [{ label: "", url: "" }],
+      acceptedAssetTypes:
+        Array.isArray(contest?.acceptedAssetTypes) && contest.acceptedAssetTypes.length
+          ? contest.acceptedAssetTypes
+          : ["image", "document", "link"],
+      maxAttachments: Number(contest?.maxAttachments || 0) || 8,
       startDayKey: contest?.startDayKey || createTodayKey(),
       endDayKey: contest?.endDayKey || "",
       status: contest?.status || "DRAFT",
@@ -462,6 +553,25 @@ const AdminEngagementQuestions = () => {
           method: editingContest ? "PATCH" : "POST",
           body: JSON.stringify({
             ...contestForm,
+            goalSummary: contestForm.goalSummary?.trim() || "",
+            submissionInstructions: contestForm.submissionInstructions?.trim() || "",
+            rewardSummary: contestForm.rewardSummary?.trim() || "",
+            deliverables: (Array.isArray(contestForm.deliverables) ? contestForm.deliverables : [])
+              .map((item) => String(item || "").trim())
+              .filter(Boolean),
+            reviewCriteria: (Array.isArray(contestForm.reviewCriteria) ? contestForm.reviewCriteria : [])
+              .map((item) => String(item || "").trim())
+              .filter(Boolean),
+            resourceLinks: (Array.isArray(contestForm.resourceLinks) ? contestForm.resourceLinks : [])
+              .map((link) => ({
+                label: String(link?.label || "Reference").trim(),
+                url: String(link?.url || "").trim(),
+              }))
+              .filter((link) => link.url),
+            acceptedAssetTypes: (Array.isArray(contestForm.acceptedAssetTypes) ? contestForm.acceptedAssetTypes : [])
+              .map((item) => String(item || "").trim())
+              .filter(Boolean),
+            maxAttachments: Number(contestForm.maxAttachments || 0) || 0,
             endDayKey: contestForm.endDayKey || undefined,
           }),
         },
@@ -509,6 +619,38 @@ const AdminEngagementQuestions = () => {
       toast.error(error?.message || "Failed to upload contest image");
     } finally {
       setContestImageUploading(false);
+    }
+  };
+
+  const handleReviewContestSubmission = async (submissionId, status) => {
+    if (!authFetch) return;
+    const needsNote = status !== "APPROVED";
+    const reviewNote = window.prompt(
+      needsNote ? `Add a review note for ${status.replace(/_/g, " ").toLowerCase()}.` : "Optional review note",
+      "",
+    );
+    if (needsNote && !reviewNote?.trim()) return;
+
+    setContestSubmissionReviewing(submissionId);
+    try {
+      const response = await authFetch(`/admin/engagement/contest-submissions/${submissionId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status,
+          reviewNote: reviewNote?.trim() || "",
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to update contest submission.");
+      }
+      toast.success("Contest submission updated");
+      await loadContestSubmissions();
+    } catch (error) {
+      console.error("Failed to review contest submission", error);
+      toast.error(error?.message || "Failed to update contest submission");
+    } finally {
+      setContestSubmissionReviewing("");
     }
   };
 
@@ -724,85 +866,223 @@ const AdminEngagementQuestions = () => {
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <CardTitle className="text-xl">Contest Feed</CardTitle>
+                <CardTitle className="text-2xl font-black text-white">Active Contests</CardTitle>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Add contest title, description, date range, and publish it to the freelancer
-                  Growth Quest page.
+                  Create and manage contests for freelancers. Published contests appear on their Growth Quest page.
                 </p>
               </div>
-              <Button type="button" onClick={openNewContestDialog}>
+              <Button type="button" onClick={openNewContestDialog} className="rounded-xl bg-primary px-6 font-black">
                 <Plus className="size-4" />
-                New Contest
+                Create Contest
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border border-white/10">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Contest</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Dates</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contestLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
-                        <span className="inline-flex items-center gap-2 text-muted-foreground">
-                          <Loader2 className="size-4 animate-spin" />
-                          Loading contests
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ) : contests.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
-                        No contests created yet.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    contests.map((contest) => (
-                      <TableRow key={contest.id}>
-                        <TableCell className="max-w-[420px]">
-                          <p className="line-clamp-1 font-medium">{contest.title}</p>
-                          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                            {contest.description}
-                          </p>
-                        </TableCell>
-                        <TableCell>{contest.category}</TableCell>
-                        <TableCell>
-                          {contest.startDayKey}
-                          {contest.endDayKey ? ` to ${contest.endDayKey}` : ""}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={
-                              statusClassName[contest.status] || statusClassName.DRAFT
-                            }
-                          >
-                            {contest.status}
+            {contestLoading ? (
+              <div className="flex min-h-[300px] items-center justify-center">
+                <span className="inline-flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="size-5 animate-spin" />
+                  Loading contests
+                </span>
+              </div>
+            ) : contests.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
+                <p className="text-sm font-medium text-muted-foreground">No contests created yet. Start by creating your first contest.</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {contests.map((contest) => (
+                  <div key={contest.id} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition-all hover:border-primary/30 hover:bg-white/[0.05]">
+                    {contest.imageUrl ? (
+                      <img src={contest.imageUrl} alt={contest.title} className="h-40 w-full object-cover" />
+                    ) : (
+                      <div className="h-40 bg-gradient-to-br from-primary/20 to-transparent" />
+                    )}
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">CONTEST</p>
+                          <h3 className="mt-1 line-clamp-2 text-lg font-black text-white">{contest.title}</h3>
+                          <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{contest.description}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <Badge className="border-white/10 bg-white/[0.04] text-xs font-semibold text-muted-foreground">
+                          {contest.category}
+                        </Badge>
+                        <Badge className={statusClassName[contest.status] || statusClassName.DRAFT}>
+                          {contest.status}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 text-xs text-muted-foreground">
+                        {contest.startDayKey}
+                        {contest.endDayKey ? ` → ${contest.endDayKey}` : ""}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-4 w-full rounded-lg border-white/10"
+                        onClick={() => openEditContestDialog(contest)}
+                      >
+                        <Edit className="size-4" />
+                        Edit Contest
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-card">
+          <CardHeader>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <CardTitle className="text-2xl font-black text-white">Freelancer Submissions</CardTitle>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Review and approve contest submissions from freelancers. Filter by contest or status.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Select value={contestSubmissionContestId} onValueChange={setContestSubmissionContestId}>
+                  <SelectTrigger className="w-full sm:w-56 rounded-lg">
+                    <SelectValue placeholder="All contests" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All contests</SelectItem>
+                    {contests.map((contest) => (
+                      <SelectItem key={contest.id} value={contest.id}>
+                        {contest.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={contestSubmissionStatus} onValueChange={setContestSubmissionStatus}>
+                  <SelectTrigger className="w-full sm:w-44 rounded-lg">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contestSubmissionStatusOptions.map((statusOption) => (
+                      <SelectItem key={statusOption} value={statusOption}>
+                        {statusOption.replace(/_/g, " ")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(contestSubmissionCounts).map(([key, value]) => (
+                <Badge key={key} className={statusClassName[key] || statusClassName.PENDING}>
+                  {key.replace(/_/g, " ")}: {value}
+                </Badge>
+              ))}
+            </div>
+
+            <div className="grid gap-4">
+              {contestSubmissionsLoading ? (
+                <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-white/10 bg-white/[0.02]">
+                  <span className="inline-flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="size-5 animate-spin" />
+                    Loading submissions
+                  </span>
+                </div>
+              ) : contestSubmissions.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
+                  <p className="text-sm font-medium text-muted-foreground">No contest submissions yet.</p>
+                </div>
+              ) : (
+                contestSubmissions.map((submission) => (
+                  <div key={submission.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-all hover:border-primary/20 hover:bg-white/[0.05]">
+                    <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+                      <div className="space-y-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex-1">
+                            <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">{submission.contestTitle}</p>
+                            <h3 className="mt-1 text-lg font-black text-white">{submission.title}</h3>
+                          </div>
+                          <Badge className={statusClassName[submission.status] || statusClassName.PENDING}>
+                            {submission.status}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            title="Edit contest"
-                            onClick={() => openEditContestDialog(contest)}
-                          >
-                            <Edit className="size-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-3 text-sm">
+                          <div>
+                            <p className="font-semibold text-white">{submission.userName}</p>
+                            <p className="text-xs text-muted-foreground">{submission.userEmail}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                          {submission.githubUrl ? (
+                            <a href={submission.githubUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.05] px-3 py-1.5 font-medium hover:text-primary hover:bg-white/[0.08]">
+                              <Github className="size-4" /> GitHub
+                            </a>
+                          ) : null}
+                          {submission.portfolioUrl ? (
+                            <a href={submission.portfolioUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.05] px-3 py-1.5 font-medium hover:text-primary hover:bg-white/[0.08]">
+                              <Link2 className="size-4" /> Portfolio
+                            </a>
+                          ) : null}
+                          <div className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.05] px-3 py-1.5">
+                            <FileText className="size-4" />
+                            {submission.attachments?.length || 0} file{submission.attachments?.length !== 1 ? "s" : ""}
+                          </div>
+                        </div>
+                        {submission.notes ? (
+                          <div className="rounded-lg border border-white/10 bg-background/50 p-3">
+                            <p className="text-xs font-semibold text-muted-foreground">Freelancer notes:</p>
+                            <p className="mt-1 text-sm text-white">{submission.notes}</p>
+                          </div>
+                        ) : null}
+                        {submission.reviewNote ? (
+                          <div className="rounded-lg border border-white/10 bg-background/50 p-3">
+                            <p className="text-xs font-semibold text-muted-foreground">Admin review:</p>
+                            <p className="mt-1 text-sm text-white">{submission.reviewNote}</p>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex gap-2 md:flex-col">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon-sm"
+                          disabled={contestSubmissionReviewing === submission.id}
+                          title="Approve"
+                          onClick={() => handleReviewContestSubmission(submission.id, "APPROVED")}
+                          className="rounded-lg border-emerald-500/20 hover:bg-emerald-500/10"
+                        >
+                          <Check className="size-4 text-emerald-400" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon-sm"
+                          disabled={contestSubmissionReviewing === submission.id}
+                          title="Needs changes"
+                          onClick={() => handleReviewContestSubmission(submission.id, "NEEDS_CHANGES")}
+                          className="rounded-lg border-primary/20 hover:bg-primary/10"
+                        >
+                          <Edit className="size-4 text-primary" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon-sm"
+                          disabled={contestSubmissionReviewing === submission.id}
+                          title="Reject"
+                          onClick={() => handleReviewContestSubmission(submission.id, "REJECTED")}
+                          className="rounded-lg border-red-500/20 hover:bg-red-500/10"
+                        >
+                          <X className="size-4 text-red-400" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -1154,7 +1434,7 @@ const AdminEngagementQuestions = () => {
         </Dialog>
 
         <Dialog open={contestDialogOpen} onOpenChange={setContestDialogOpen}>
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle>
                 {editingContest ? "Edit Contest" : "New Contest"}
@@ -1204,6 +1484,141 @@ const AdminEngagementQuestions = () => {
                   }
                   rows={8}
                 />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="engagement-contest-goal">Goal summary</Label>
+                  <Textarea
+                    id="engagement-contest-goal"
+                    value={contestForm.goalSummary}
+                    onChange={(event) =>
+                      setContestForm((previous) => ({
+                        ...previous,
+                        goalSummary: event.target.value,
+                      }))
+                    }
+                    rows={3}
+                    placeholder="What is the contest asking freelancers to produce?"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="engagement-contest-reward">Reward summary</Label>
+                  <Textarea
+                    id="engagement-contest-reward"
+                    value={contestForm.rewardSummary}
+                    onChange={(event) =>
+                      setContestForm((previous) => ({
+                        ...previous,
+                        rewardSummary: event.target.value,
+                      }))
+                    }
+                    rows={3}
+                    placeholder="What should the freelancer expect after review?"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="engagement-contest-instructions">Submission instructions</Label>
+                <Textarea
+                  id="engagement-contest-instructions"
+                  value={contestForm.submissionInstructions}
+                  onChange={(event) =>
+                    setContestForm((previous) => ({
+                      ...previous,
+                      submissionInstructions: event.target.value,
+                    }))
+                  }
+                  rows={4}
+                  placeholder="Tell freelancers what to submit, how to structure files, and what the admin should review."
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="engagement-contest-deliverables">Deliverables</Label>
+                  <Textarea
+                    id="engagement-contest-deliverables"
+                    value={(contestForm.deliverables || []).join("\n")}
+                    onChange={(event) =>
+                      setContestForm((previous) => ({
+                        ...previous,
+                        deliverables: toLineArray(event.target.value),
+                      }))
+                    }
+                    rows={4}
+                    placeholder={"One deliverable per line\nExample: Landing page design\nExample: GitHub repo"}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="engagement-contest-criteria">Review criteria</Label>
+                  <Textarea
+                    id="engagement-contest-criteria"
+                    value={(contestForm.reviewCriteria || []).join("\n")}
+                    onChange={(event) =>
+                      setContestForm((previous) => ({
+                        ...previous,
+                        reviewCriteria: toLineArray(event.target.value),
+                      }))
+                    }
+                    rows={4}
+                    placeholder={"One review criterion per line\nExample: Clarity of execution\nExample: Asset quality"}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="engagement-contest-links">Reference links</Label>
+                  <Textarea
+                    id="engagement-contest-links"
+                    value={(contestForm.resourceLinks || [])
+                      .map((link) => `${link?.label || "Reference"}|${link?.url || ""}`)
+                      .join("\n")}
+                    onChange={(event) =>
+                      setContestForm((previous) => ({
+                        ...previous,
+                        resourceLinks: toLinkArray(event.target.value),
+                      }))
+                    }
+                    rows={4}
+                    placeholder={"Label | https://example.com\nDesign spec | https://figma.com/..."}
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="engagement-contest-assets">Accepted asset types</Label>
+                    <Textarea
+                      id="engagement-contest-assets"
+                      value={(contestForm.acceptedAssetTypes || []).join("\n")}
+                      onChange={(event) =>
+                        setContestForm((previous) => ({
+                          ...previous,
+                          acceptedAssetTypes: toLineArray(event.target.value),
+                        }))
+                      }
+                      rows={4}
+                      placeholder={"image\npdf\ndoc\nzip"}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="engagement-contest-max-attachments">Max attachments</Label>
+                    <Input
+                      id="engagement-contest-max-attachments"
+                      type="number"
+                      min="0"
+                      max="20"
+                      value={contestForm.maxAttachments}
+                      onChange={(event) =>
+                        setContestForm((previous) => ({
+                          ...previous,
+                          maxAttachments: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-3">

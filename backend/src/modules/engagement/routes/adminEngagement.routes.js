@@ -4,6 +4,7 @@ import {
   approveQuestion,
   createContest,
   createQuestion,
+  getContestSubmissions,
   getContests,
   getDailySets,
   getFreelancerProgress,
@@ -12,18 +13,21 @@ import {
   rejectQuestion,
   saveDailySet,
   seedFallbackQuestions,
+  updateContestSubmission,
   updateContest,
   updateQuestion
 } from "../controllers/adminEngagement.controller.js";
 import {
   adminContestSchema,
   adminQuestionSchema,
+  listContestSubmissionsSchema,
   listAdminFreelancerProgressSchema,
   listAdminContestsSchema,
   listAdminDailySetsSchema,
   listAdminQuestionsSchema,
   questionIdParamsSchema,
   rejectQuestionSchema,
+  reviewContestSubmissionSchema,
   upsertAdminDailySetSchema,
   updateAdminContestSchema,
   updateAdminQuestionSchema
@@ -82,6 +86,16 @@ adminEngagementRouter.patch(
   "/contests/:id",
   validateResource(updateAdminContestSchema),
   updateContest
+);
+adminEngagementRouter.get(
+  "/contest-submissions",
+  validateResource(listContestSubmissionsSchema),
+  getContestSubmissions
+);
+adminEngagementRouter.patch(
+  "/contest-submissions/:id",
+  validateResource(reviewContestSubmissionSchema),
+  updateContestSubmission
 );
 adminEngagementRouter.get(
   "/users",

@@ -4,6 +4,7 @@ import {
   approveAdminQuestion,
   createAdminContest,
   createAdminQuestion,
+  listContestSubmissions,
   getAdminEngagementOverview,
   listAdminContests,
   listAdminDailySets,
@@ -11,6 +12,7 @@ import {
   listAdminQuestions,
   rejectAdminQuestion,
   seedAdminFallbackQuestions,
+  reviewContestSubmission,
   upsertAdminDailySet,
   updateAdminContest,
   updateAdminQuestion
@@ -111,6 +113,24 @@ export const updateContest = asyncHandler(async (req, res) => {
   const data = await updateAdminContest({
     adminId: requireAdminId(req),
     contestId: req.params.id,
+    payload: req.body
+  });
+  res.json({ data });
+});
+
+export const getContestSubmissions = asyncHandler(async (req, res) => {
+  const data = await listContestSubmissions({
+    contestId: req.query.contestId,
+    userId: req.query.userId,
+    status: req.query.status
+  });
+  res.json({ data });
+});
+
+export const updateContestSubmission = asyncHandler(async (req, res) => {
+  const data = await reviewContestSubmission({
+    adminId: requireAdminId(req),
+    submissionId: req.params.id,
     payload: req.body
   });
   res.json({ data });

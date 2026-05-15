@@ -39,6 +39,50 @@ export const contestIdParamsSchema = z.object({
   })
 });
 
+const submissionAttachmentSchema = z.object({
+  url: z.string().url(),
+  name: z.string().min(1).max(200).optional(),
+  type: z.string().max(120).optional(),
+  size: z.coerce.number().int().min(0).optional()
+});
+
+const submissionLinkSchema = z.object({
+  label: z.string().min(1).max(80).optional(),
+  url: z.string().url()
+});
+
+export const createContestSubmissionSchema = z.object({
+  params: z.object({
+    id: z.string().min(1)
+  }),
+  body: z.object({
+    title: z.string().min(3).max(160),
+    githubUrl: z.string().url().max(2000).optional().or(z.literal("")),
+    portfolioUrl: z.string().url().max(2000).optional().or(z.literal("")),
+    notes: z.string().max(4000).optional().or(z.literal("")),
+    otherLinks: z.array(submissionLinkSchema).max(10).optional(),
+    attachments: z.array(submissionAttachmentSchema).max(20).optional()
+  })
+});
+
+export const listContestSubmissionsSchema = z.object({
+  query: z.object({
+    contestId: z.string().min(1).optional(),
+    userId: z.string().min(1).optional(),
+    status: z.enum(["ALL", "PENDING", "APPROVED", "NEEDS_CHANGES", "REJECTED"]).optional()
+  })
+});
+
+export const reviewContestSubmissionSchema = z.object({
+  params: z.object({
+    id: z.string().min(1)
+  }),
+  body: z.object({
+    status: z.enum(["PENDING", "APPROVED", "NEEDS_CHANGES", "REJECTED"]),
+    reviewNote: z.string().max(2000).optional().or(z.literal(""))
+  })
+});
+
 export const dailySetDayKeyParamsSchema = z.object({
   params: z.object({
     dayKey: dayKeySchema
@@ -112,6 +156,22 @@ export const adminContestSchema = z.object({
     imageUrl: z.string().url().max(2000).optional(),
     category: z.string().min(2).max(80),
     ctaLabel: z.string().min(2).max(80).optional(),
+    goalSummary: z.string().max(800).optional().or(z.literal("")),
+    submissionInstructions: z.string().max(4000).optional().or(z.literal("")),
+    rewardSummary: z.string().max(500).optional().or(z.literal("")),
+    deliverables: z.array(z.string().min(1).max(160)).max(12).optional(),
+    reviewCriteria: z.array(z.string().min(1).max(160)).max(12).optional(),
+    resourceLinks: z
+      .array(
+        z.object({
+          label: z.string().min(1).max(80).optional(),
+          url: z.string().url()
+        })
+      )
+      .max(12)
+      .optional(),
+    acceptedAssetTypes: z.array(z.string().min(1).max(80)).max(12).optional(),
+    maxAttachments: z.coerce.number().int().min(0).max(20).optional(),
     startDayKey: dayKeySchema,
     endDayKey: dayKeySchema.optional(),
     status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional()
