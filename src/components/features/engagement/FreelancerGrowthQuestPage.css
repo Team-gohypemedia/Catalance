@@ -83,23 +83,21 @@
   position: relative;
   overflow: hidden;
   border-radius: 1rem;
-  background:
-    linear-gradient(135deg, rgba(32, 27, 18, 0.95), rgba(15, 12, 4, 0.92)),
-    rgba(20, 16, 7, 0.82);
+  background: rgba(14, 18, 24, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 0 0 1px rgba(255, 193, 7, 0.03);
-  backdrop-filter: blur(20px);
+    0 18px 40px -18px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
   transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .growth-quest-subpanel {
   border-color: rgba(255, 255, 255, 0.06);
-  background: rgba(23, 18, 11, 0.76);
+  background: rgba(17, 22, 29, 0.92);
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.03),
-    0 12px 32px rgba(0, 0, 0, 0.22);
+    0 10px 24px rgba(0, 0, 0, 0.18);
 }
 
 .growth-quest-eyebrow,
@@ -228,19 +226,18 @@
   padding: 1.5rem 2rem;
   border-radius: 1.5rem;
   background:
-    radial-gradient(circle at 0% 0%, rgba(255, 193, 7, 0.08) 0, transparent 40%),
-    radial-gradient(circle at 100% 100%, rgba(82, 3, 213, 0.05) 0, transparent 40%),
-    rgba(24, 19, 9, 0.4);
-  border: 1px solid rgba(255, 193, 7, 0.15);
+    radial-gradient(circle at top left, rgba(255, 193, 7, 0.05) 0, transparent 32%),
+    linear-gradient(180deg, rgba(18, 23, 31, 0.98), rgba(12, 16, 22, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .growth-quest-hero::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(255, 193, 7, 0.04) 0, transparent 70%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 55%);
   pointer-events: none;
-  animation: hero-glow 8s infinite alternate ease-in-out;
+  animation: hero-glow 12s infinite alternate ease-in-out;
 }
 
 @keyframes hero-glow {
@@ -324,7 +321,7 @@
   padding: 0.9rem 1rem;
   border-radius: 0.9rem;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .growth-quest-hero__stat strong {
@@ -378,6 +375,13 @@
   margin-top: 0.8rem;
   color: rgba(236, 225, 208, 0.68);
   font-size: 0.88rem;
+}
+
+.growth-quest-section-copy {
+  margin: -0.25rem 0 1rem;
+  color: rgba(236, 225, 208, 0.68);
+  font-size: 0.92rem;
+  line-height: 1.65;
 }
 
 .growth-quest-error {
@@ -462,7 +466,7 @@
 .growth-quest-grid {
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 1fr;
   align-items: start;
 }
 
@@ -500,7 +504,7 @@
   padding: 1rem;
   border-radius: 0.9rem;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .growth-quest-mini-card + .growth-quest-mini-card {
@@ -516,7 +520,7 @@
   padding: 0.9rem 1rem;
   border-radius: 0.9rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.02);
   color: rgba(236, 225, 208, 0.76);
   font-size: 0.86rem;
   font-weight: 700;
@@ -524,15 +528,15 @@
 }
 
 .growth-quest-side-toggle:hover {
-  border-color: rgba(184, 161, 114, 0.24);
-  background: rgba(184, 161, 114, 0.05);
-  color: #f3ead5;
+  border-color: rgba(255, 193, 7, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f8f3e8;
 }
 
 .growth-quest-side-toggle--active {
-  border-color: rgba(184, 161, 114, 0.26);
-  background: linear-gradient(180deg, rgba(184, 161, 114, 0.08), rgba(184, 161, 114, 0.03));
-  color: #efe4c5;
+  border-color: rgba(255, 193, 7, 0.28);
+  background: rgba(255, 193, 7, 0.08);
+  color: #fff0cc;
 }
 
 .growth-quest-stat-grid {
@@ -548,14 +552,14 @@
   gap: 0.3rem;
   padding: 0.7rem 0.75rem;
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.018);
   border: 1px solid rgba(255, 255, 255, 0.04);
   transition: all 200ms ease;
   overflow: hidden;
 }
 
 .growth-quest-stat-tile:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.035);
   border-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -867,12 +871,46 @@
   margin: 0.7rem 0 1rem;
 }
 
+.growth-quest-rewards__top {
+  display: grid;
+  gap: 1rem;
+}
+
+.growth-quest-rewards__insights {
+  display: grid;
+  gap: 1rem;
+}
+
 .growth-quest-epic-card p {
   margin-top: 0.8rem;
 }
 
 .growth-quest-partner-box {
   text-align: center;
+}
+
+.growth-quest-focus-card {
+  text-align: left;
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+}
+
+.growth-quest-focus-card h4 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.growth-quest-rewards__calendar {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.growth-quest-rewards__calendar-head h3 {
+  margin-top: 0.35rem;
+  font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .growth-quest-partner-box p {
@@ -948,12 +986,30 @@
   }
 
   .growth-quest-grid {
-    grid-template-columns: minmax(11rem, 0.9fr) minmax(0, 3fr) minmax(15rem, 1.2fr);
+    grid-template-columns: minmax(16rem, 0.95fr) minmax(0, 2.65fr);
   }
 
   .growth-quest-card-grid,
   .growth-quest-intel-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .growth-quest-rewards {
+    grid-column: 1 / -1;
+  }
+
+  .growth-quest-rewards__panel {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .growth-quest-rewards__top {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 1fr);
+    align-items: stretch;
+  }
+
+  .growth-quest-rewards__insights {
+    grid-template-rows: 1fr auto;
   }
 }
 

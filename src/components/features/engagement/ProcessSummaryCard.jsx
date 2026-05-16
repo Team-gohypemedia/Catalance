@@ -29,12 +29,12 @@ const ProcessSummaryCard = ({ processSummary = {} }) => {
             <Target className="size-4 text-primary" />
           </div>
           <div>
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Learning Insights</p>
-            <h3 className="text-lg font-semibold text-foreground">Process Summary</h3>
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Learning Summary</p>
+            <h3 className="text-lg font-semibold text-foreground">Best &amp; Weak Topics</h3>
           </div>
         </div>
         <p className="text-sm text-muted-foreground">
-          Complete a few quests to see your strong and weak areas here.
+          Complete a few practice quizzes to see your strong topics, weak topics, and next focus here.
         </p>
       </div>
     );
@@ -47,8 +47,8 @@ const ProcessSummaryCard = ({ processSummary = {} }) => {
           <Target className="size-5 text-primary" />
         </div>
         <div>
-          <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-muted-foreground/80">Learning Insights</p>
-          <h3 className="mt-0.5 text-xl font-bold tracking-tight text-foreground">Process Summary</h3>
+          <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-muted-foreground/80">Learning Summary</p>
+          <h3 className="mt-0.5 text-xl font-bold tracking-tight text-foreground">Best &amp; Weak Topics</h3>
         </div>
         {accuracy !== null && (
           <span className="ml-auto rounded-full border border-white/[0.1] bg-white/[0.03] px-3 py-1.5 text-xs font-bold text-foreground shadow-sm backdrop-blur-md">

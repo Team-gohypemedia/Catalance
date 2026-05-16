@@ -33,9 +33,9 @@ const LABEL_CLASS = "growth-quest-label";
 const LABELS = ["A", "B", "C", "D", "E"];
 
 const HOW_IT_WORKS = [
-  { title: "1. Start", desc: "Open the daily quest and answer the questions." },
-  { title: "2. Submit", desc: "Finish the set in a few minutes." },
-  { title: "3. Earn", desc: "Get XP, coins, and streak progress." },
+  { title: "1. Start today's practice", desc: "Answer 5 freelancer-skill questions in one short practice quiz." },
+  { title: "2. Best score counts", desc: "If you retry today, only your best score of the day will count." },
+  { title: "3. Track improvement", desc: "Earn XP, coins, improve weak topics, and check your weekly rank." },
 ];
 const PROGRESS_SECTIONS = [
   {
@@ -330,7 +330,7 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
       id: "daily-quest",
       difficulty: done ? "Complete" : used > 0 ? "In Progress" : "Live",
       difficultyTone: done ? "success" : used > 0 ? "warning" : "success",
-      title: "Daily Freelancer Practice",
+      title: "Today's Practice",
       description: done
         ? "Today’s session is complete. Review your result and return after reset."
         : "Answer today’s timed set and keep your profile progression moving.",
@@ -341,9 +341,9 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
     },
     {
       id: "level-progress",
-      difficulty: "Level Track",
+      difficulty: "Your Level",
       difficultyTone: "neutral",
-      title: `${levelLabel} Progression`,
+      title: `${levelLabel} Level Progress`,
       description: nextThreshold
         ? `You need ${Math.max(0, nextThreshold - xp)} XP to unlock level ${levelNumber + 1}.`
         : "Top tier reached. Maintain your streak to protect position and rewards.",
@@ -410,26 +410,25 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
       <section className="growth-quest-hero growth-quest-panel">
         <div className="growth-quest-hero__content">
           <div className="growth-quest-hero__meta">
-            <span className={EYEBROW_CLASS}>Daily Protocol</span>
+            <span className={EYEBROW_CLASS}>Daily Practice Dashboard</span>
             <span className="growth-quest-chip growth-quest-chip--ghost">
               <Clock className="size-3.5" />
               Resets {formatReset(today.resetAt)}
             </span>
           </div>
-          <h2 className="growth-quest-hero__title">Freelancer Practice</h2>
+          <h2 className="growth-quest-hero__title">Daily Growth Quest</h2>
           <p className="growth-quest-hero__description">
-            Maintain your operational edge. Complete today&apos;s simulation to sustain your
-            momentum bonus.
+            Answer 5 freelancer-skill questions daily. Earn XP, coins, improve weak topics,
+            and track your weekly rank.
           </p>
         </div>
 
         <div className="growth-quest-hero__sidebar growth-quest-subpanel">
           <div className="growth-quest-hero__sidebar-head">
             <div>
-              <p className={LABEL_CLASS}>Current Streak</p>
+              <p className={LABEL_CLASS}>Today&apos;s Practice</p>
               <p className="growth-quest-hero__streak">
-                <Flame className="size-5" />
-                {streak} Days
+                {done ? "Completed" : "0/5"}
               </p>
             </div>
             <div className="growth-quest-attempts-ring">
@@ -442,12 +441,12 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
 
           <div className="growth-quest-hero__stats">
             <div className="growth-quest-hero__stat">
-              <span className={LABEL_CLASS}>Completed days</span>
-              <strong>{activity?.completedDays || 0}</strong>
+              <span className={LABEL_CLASS}>XP Today</span>
+              <strong>{latestRewards?.xpAwarded ?? 0}</strong>
             </div>
             <div className="growth-quest-hero__stat">
-              <span className={LABEL_CLASS}>Questions answered</span>
-              <strong>{activity?.totalQuestionsAnswered || 0}</strong>
+              <span className={LABEL_CLASS}>Coins Today</span>
+              <strong>{latestRewards?.coinsAwarded ?? 0}</strong>
             </div>
           </div>
 
@@ -464,14 +463,16 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
               </>
             ) : (
               <>
-                Start Today&apos;s Quest
+                Start Today&apos;s 5 Questions
                 <ArrowRight className="size-4" />
               </>
             )}
           </button>
 
           <p className="growth-quest-helper">
-            {isRetake ? `${max - used} retake remaining today.` : "Best attempt counts."}
+            {isRetake
+              ? `${max - used} retake remaining today. Best score of the day will count.`
+              : "Best score of the day will count. Resets daily."}
           </p>
 
           {error ? <div className="growth-quest-error">{error}</div> : null}
@@ -506,10 +507,10 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
             <div>
               <h3 className="growth-quest-side__title">
                 <Sparkles className="size-4" />
-                Quick Stats
+                Overview
               </h3>
               <div className="growth-quest-mini-card">
-                <p className={LABEL_CLASS}>Weekly snapshot</p>
+                <p className={LABEL_CLASS}>Today&apos;s Progress</p>
                 <div className="growth-quest-stat-grid">
                   {quickStats.map((stat) => (
                     <div key={stat.label} className="growth-quest-stat-tile">
@@ -792,7 +793,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
     strongAreaLabel ? `Strongest area is ${strongAreaLabel}.` : null,
   ].filter(Boolean);
   const quickStats = [
-    { label: "Completed days", value: activity?.completedDays || 0 },
+    { label: "Lifetime practice days", value: activity?.completedDays || 0 },
     { label: "Questions answered", value: activity?.totalQuestionsAnswered || 0 },
     { label: "7-day accuracy", value: `${rolling7DayAccuracy}%` },
     { label: "Weekly rank", value: currentWeeklyRank ? `#${currentWeeklyRank}` : "Unranked" },
@@ -835,23 +836,23 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
   if (hasFocusData) {
     operations.push({
       id: "focus-track",
-      difficulty: "Learning Focus",
+      difficulty: "Recommended Focus",
       difficultyTone: "violet",
       title: focusLabel || weakAreaLabel || strongAreaLabel,
       description:
         focusDescriptionParts.join(" ") || "Performance insights from your completed Growth Quests.",
       progressLabel: "7-day accuracy",
       progress: rolling7DayAccuracy,
-      coinLabel: `${activity?.completedDays || 0} completed days`,
+      coinLabel: `${activity?.completedDays || 0} lifetime practice days`,
       xpLabel: `${rollingAccuracy}% lifetime accuracy`,
     });
   }
 
   const statusPills = [
-    `${activity?.completedDays || 0} completed days`,
+    `${activity?.completedDays || 0} lifetime practice days`,
     `${activity?.totalQuestionsAnswered || 0} questions answered`,
     `${rollingAccuracy}% lifetime accuracy`,
-    levelProgress?.next?.label ? `Next: ${levelProgress.next.label}` : "Top tier reached",
+    levelProgress?.next?.label ? `Next level: ${levelProgress.next.label}` : "Top level reached",
   ];
 
   const boosterRows = [
@@ -911,12 +912,12 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
 
           <div className="growth-quest-hero__stats">
             <div className="growth-quest-hero__stat">
-              <span className={LABEL_CLASS}>Completed days</span>
+              <span className={LABEL_CLASS}>Lifetime practice days</span>
               <strong>{activity?.completedDays || 0}</strong>
             </div>
             <div className="growth-quest-hero__stat">
-              <span className={LABEL_CLASS}>Questions answered</span>
-              <strong>{activity?.totalQuestionsAnswered || 0}</strong>
+              <span className={LABEL_CLASS}>Today status</span>
+              <strong>{done ? "Completed" : "Not completed"}</strong>
             </div>
           </div>
 
@@ -954,7 +955,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
             </span>
-            <span className="text-[11px] font-extrabold tracking-[0.2em] uppercase text-primary/90">Monitor</span>
+            <span className="text-[11px] font-extrabold tracking-[0.2em] uppercase text-primary/90">Overview</span>
           </div>
           <div className="h-4 w-px bg-white/15 hidden md:block" />
           <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
@@ -1025,7 +1026,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
                 </div>
               </div>
               <div className="growth-quest-mini-card">
-                <p className={LABEL_CLASS}>Live Metrics</p>
+                <p className={LABEL_CLASS}>Recommended Focus</p>
                 <div className="growth-quest-boosters">
                   {boosterRows.length > 0 ? (
                     boosterRows.map((booster) => (
@@ -1036,8 +1037,8 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
                     ))
                   ) : (
                     <div className="growth-quest-booster-row">
-                      <span>No live metrics yet</span>
-                      <span>Complete a quest</span>
+                      <span>No focus data yet</span>
+                      <span>Complete today&apos;s practice</span>
                     </div>
                   )}
                 </div>
@@ -1049,7 +1050,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
                 <div className="p-1.5 rounded-full bg-primary/10 ring-1 ring-primary/20">
                   <Target className="size-3.5 text-primary" />
                 </div>
-                <p className={LABEL_CLASS}>Current Rank</p>
+                <p className={LABEL_CLASS}>Your Level Progress</p>
               </div>
               <strong className="text-2xl tracking-tight text-foreground">{levelLabel}</strong>
               <div className="growth-quest-progress mt-4 h-2 bg-white/5">
@@ -1073,7 +1074,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
             <div className="growth-quest-section-head">
               <div className="growth-quest-section-title">
                 <span className="growth-quest-pulse-dot" />
-                <h3>Active Operations</h3>
+                <h3>Today&apos;s Practice</h3>
               </div>
               <span className="growth-quest-inline-link">{rolling7DayAccuracy}% 7-day accuracy</span>
             </div>
@@ -1117,57 +1118,74 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
 
         <aside className="growth-quest-rewards">
           <div className="growth-quest-panel growth-quest-rewards__panel">
-            {hasMilestone ? (
-              <div className="growth-quest-rewards__section">
-              <h3 className="growth-quest-side__title">
-                <Target className="size-4" />
-                Progress Snapshot
-              </h3>
-              <div className="growth-quest-premium-card">
-                <div className="growth-quest-premium-card__badge">Live</div>
-                <div className="growth-quest-premium-card__icon">
-                  <Flame className="size-5" />
+            <div className="growth-quest-rewards__top">
+              {hasMilestone ? (
+                <div className="growth-quest-rewards__section">
+                  <h3 className="growth-quest-side__title">
+                    <Target className="size-4" />
+                    7-Day Milestone
+                  </h3>
+                  <div className="growth-quest-premium-card">
+                    <div className="growth-quest-premium-card__badge">Live</div>
+                    <div className="growth-quest-premium-card__icon">
+                      <Flame className="size-5" />
+                    </div>
+                    <h4>{nextMilestone?.targetDays || 0}-Day Milestone</h4>
+                    <p>
+                      {nextMilestone?.label || "Keep the streak alive to unlock your next milestone."}
+                    </p>
+                    <p className="growth-quest-helper">
+                      Complete practice for {nextMilestone?.targetDays || 0} days to unlock this milestone.
+                    </p>
+                    <div className="growth-quest-progress">
+                      <span
+                        style={{
+                          width: `${clampPercent(
+                            nextMilestone?.targetDays ? (streak / nextMilestone.targetDays) * 100 : 100,
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <h4>{nextMilestone?.targetDays || 0}-Day Milestone</h4>
-                <p>
-                  {nextMilestone?.label || "Keep the streak alive to unlock your next milestone."}
-                </p>
-                <div className="growth-quest-progress">
-                  <span
-                    style={{
-                      width: `${clampPercent(
-                        nextMilestone?.targetDays ? (streak / nextMilestone.targetDays) * 100 : 100,
-                      )}%`,
-                    }}
-                  />
+              ) : null}
+
+              <div className="growth-quest-rewards__insights">
+                {strongAreaLabel ? (
+                  <div className="growth-quest-epic-card">
+                    <p className={LABEL_CLASS}>Best Topic</p>
+                    <div className="growth-quest-epic-card__head">
+                      <h4>{strongAreaLabel}</h4>
+                      <span className="growth-quest-chip growth-quest-chip--violet">Strongest</span>
+                    </div>
+                    <p>This shows your strongest freelancing topic based on your recorded answers.</p>
+                    <div className="growth-quest-contract__rewards">
+                      <span>{rollingAccuracy}% lifetime</span>
+                      <span>{rolling7DayAccuracy}% 7-day</span>
+                    </div>
+                  </div>
+                ) : null}
+
+                {weakAreaLabel ? (
+                  <div className="growth-quest-partner-box growth-quest-focus-card">
+                    <p className={LABEL_CLASS}>Practice Next</p>
+                    <h4>{weakAreaLabel}</h4>
+                    <span className="growth-quest-inline-link">Practice this topic next</span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="growth-quest-rewards__calendar">
+              <div className="growth-quest-rewards__calendar-head">
+                <div>
+                  <p className={LABEL_CLASS}>Activity</p>
+                  <h3>Activity Calendar</h3>
+                  <p className="growth-quest-helper">
+                    Track your recent daily practice and keep your streak moving.
+                  </p>
                 </div>
               </div>
-            </div>
-            ) : null}
-
-            {strongAreaLabel ? (
-              <div className="growth-quest-epic-card">
-              <p className={LABEL_CLASS}>Performance Intel</p>
-              <div className="growth-quest-epic-card__head">
-                <h4>{strongAreaLabel}</h4>
-                <span className="growth-quest-chip growth-quest-chip--violet">Strongest</span>
-              </div>
-              <p>Best performing category based on your recorded Growth Quest answers.</p>
-              <div className="growth-quest-contract__rewards">
-                <span>{rollingAccuracy}% lifetime</span>
-                <span>{rolling7DayAccuracy}% 7-day</span>
-              </div>
-            </div>
-            ) : null}
-
-            {weakAreaLabel ? (
-              <div className="growth-quest-partner-box">
-              <p>{weakAreaLabel}</p>
-              <span className="growth-quest-inline-link">Recommended next focus</span>
-            </div>
-            ) : null}
-
-            <div className="mt-2">
               <StreakCalendar
                 streakHistory={dashboard?.profile?.streakHistory}
                 currentStreak={streak}
@@ -1198,6 +1216,9 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
               {topicPerformance.length} tracked categories
             </span>
           </div>
+          <p className="growth-quest-section-copy">
+            This shows which freelancing topics you are strong or weak in.
+          </p>
 
           <div className="growth-quest-scroll-wrapper">
             <div className="growth-quest-scroll-row">
@@ -1205,7 +1226,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
               <article key={topic.key} className="growth-quest-panel growth-quest-contract">
                 <div className="growth-quest-contract__head">
                   <div>
-                    <p className="growth-quest-contract__category">Performance Area</p>
+                    <p className="growth-quest-contract__category">Topic Performance</p>
                     <h4>{topic.label}</h4>
                   </div>
                   <span className="growth-quest-chip growth-quest-chip--ghost">
@@ -1232,9 +1253,12 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
       {hasContests ? (
         <section className="mt-8">
           <div className="growth-quest-section-head growth-quest-section-head--with-line mb-4">
-            <h3>Admin Contests</h3>
+            <h3>Contests</h3>
             <span className="growth-quest-inline-link">{contests.length} live contests</span>
           </div>
+          <p className="growth-quest-section-copy">
+            Join contests to earn extra XP and coins.
+          </p>
 
           <div className="growth-quest-scroll-wrapper">
             <div className="growth-quest-scroll-row">
@@ -1284,7 +1308,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
               <div className="size-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
                 <Clock className="size-5" />
               </div>
-              <h3>Recent History</h3>
+              <h3>Recent Activity</h3>
             </div>
             <span className="growth-quest-inline-link">Viewing last 10 activities</span>
           </div>
@@ -1294,10 +1318,10 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
               <table className="growth-quest-table">
                 <thead>
                   <tr>
-                    <th>Quest Identity</th>
+                    <th>Activity</th>
                     <th>Outcome</th>
-                    <th>Date Recorded</th>
-                    <th>Yield & Efficiency</th>
+                    <th>Date</th>
+                    <th>Rewards Earned</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1347,15 +1371,15 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
               <Flame className="size-5" />
             </div>
             <div>
-              <h4>Growth Quest Engine</h4>
-              <p>Daily skill-building protocol designed to keep you sharp, consistent, and client-ready.</p>
+              <h4>How Daily Practice Works</h4>
+              <p>Daily practice quiz designed to help you build skills, improve weak topics, and stay consistent.</p>
             </div>
           </div>
 
           <div className="growth-quest-footer__col">
             <p className="growth-quest-footer__col-title">Your Progress</p>
             <ul>
-              <li>Complete 1 quest per day</li>
+              <li>Complete 1 practice quiz per day</li>
               <li>Earn XP &amp; loyalty coins</li>
               <li>Track category accuracy</li>
               <li>Maintain your streak</li>
@@ -1367,7 +1391,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
             <ul>
               <li>5 questions per session</li>
               <li>Resets daily at midnight UTC</li>
-              <li>Best attempt score counts</li>
+              <li>Best score of the day counts</li>
               <li>Badges unlock at milestones</li>
             </ul>
           </div>

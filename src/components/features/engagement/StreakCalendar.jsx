@@ -90,7 +90,7 @@ const StreakCalendar = ({ streakHistory = [], currentStreak = 0, completedToday 
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
         {calendarDays.map((day, idx) => {
           const completed = isDayCompleted(day);
           const isCurrentMonth = isSameMonth(day, today);
@@ -98,26 +98,25 @@ const StreakCalendar = ({ streakHistory = [], currentStreak = 0, completedToday 
           const isFuture = day > today;
           
           return (
-            <div key={idx} className="flex justify-center">
-              <button
-                onClick={() => handleDayClick(day)}
-                className={cn(
-                  "relative flex aspect-square w-full max-w-[30px] sm:max-w-[34px] items-center justify-center rounded-[8px] text-[10px] sm:text-xs font-bold transition-all duration-300",
-                  !isCurrentMonth && "opacity-30",
-                  completed && "bg-gradient-to-br from-primary/30 to-amber-600/10 text-primary border border-primary/40 hover:bg-primary/30 shadow-[0_0_10px_rgba(255,193,7,0.2)] hover:shadow-[0_0_15px_rgba(255,193,7,0.4)] hover:-translate-y-0.5",
-                  !completed && !isFuture && "bg-white/[0.02] text-muted-foreground border border-white/[0.05] hover:bg-white/[0.06]",
-                  !completed && isFuture && "bg-transparent text-muted-foreground/30",
-                  isToday && !completed && "border border-white/20",
-                  isToday && "ring-1 ring-white/20 ring-offset-1 ring-offset-background"
-                )}
-              >
-              {completed ? (
-                 <Flame className="size-4 drop-shadow-[0_0_6px_rgba(255,193,7,0.8)] text-primary" />
-              ) : (
-                 format(day, "d")
+            <button
+              key={idx}
+              onClick={() => handleDayClick(day)}
+              className={cn(
+                "relative flex h-10 w-full items-center justify-center rounded-[10px] text-[11px] sm:h-12 sm:text-xs font-bold transition-all duration-300",
+                !isCurrentMonth && "opacity-30",
+                completed && "bg-gradient-to-br from-primary/30 to-amber-600/10 text-primary border border-primary/40 hover:bg-primary/30 shadow-[0_0_10px_rgba(255,193,7,0.2)] hover:shadow-[0_0_15px_rgba(255,193,7,0.4)] hover:-translate-y-0.5",
+                !completed && !isFuture && "bg-white/[0.02] text-muted-foreground border border-white/[0.05] hover:bg-white/[0.06]",
+                !completed && isFuture && "bg-transparent text-muted-foreground/30",
+                isToday && !completed && "border border-white/20",
+                isToday && "ring-1 ring-white/20 ring-offset-1 ring-offset-background"
               )}
-              </button>
-            </div>
+            >
+            {completed ? (
+               <Flame className="size-4 drop-shadow-[0_0_6px_rgba(255,193,7,0.8)] text-primary" />
+            ) : (
+               format(day, "d")
+            )}
+            </button>
           );
         })}
       </div>
