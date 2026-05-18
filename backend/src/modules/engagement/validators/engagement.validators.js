@@ -148,6 +148,15 @@ export const listAdminDailySetsSchema = z.object({
   })
 });
 
+export const listAdminPersonalizedQuestionHistorySchema = z.object({
+  query: z.object({
+    search: z.string().max(120).optional(),
+    dayKey: dayKeySchema.optional(),
+    userId: z.string().min(1).optional(),
+    take: z.coerce.number().int().min(1).max(100).optional()
+  })
+});
+
 export const listAdminContestsSchema = z.object({
   query: z.object({
     status: z.enum(["ALL", "DRAFT", "PUBLISHED", "ARCHIVED"]).optional()

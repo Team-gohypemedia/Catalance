@@ -9,6 +9,7 @@ import {
   listAdminContests,
   listAdminDailySets,
   listAdminFreelancerProgress,
+  listAdminPersonalizedQuestionHistory,
   listAdminQuestions,
   rejectAdminQuestion,
   seedAdminFallbackQuestions,
@@ -84,6 +85,11 @@ export const getFreelancerProgress = asyncHandler(async (req, res) => {
 
 export const getDailySets = asyncHandler(async (req, res) => {
   const data = await listAdminDailySets(req.query);
+  res.json({ data });
+});
+
+export const getPersonalizedQuestionHistory = asyncHandler(async (req, res) => {
+  const data = await listAdminPersonalizedQuestionHistory(req.query);
   res.json({ data });
 });
 

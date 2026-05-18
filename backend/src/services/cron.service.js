@@ -4,6 +4,7 @@ import { env } from '../config/env.js';
 import { sendEmail } from '../lib/email-service.js';
 import { resend } from '../lib/resend.js';
 import { reconcileFreelancerOpenToWorkStatuses } from '../lib/freelancer-open-to-work.js';
+import { generateAndPublishDailyQuestionSet } from "../modules/engagement/services/engagement.service.js";
 
 const CRON_DB_COOLDOWN_MS = 5 * 60 * 1000;
 let skipCronUntil = 0;
@@ -65,6 +66,18 @@ export const startCronJobs = () => {
         })
         .catch((error) => {
             handleCronError('freelancer availability startup reconciliation', error);
+        });
+
+    void generateAndPublishDailyQuestionSet()
+        .then((dailySet) => {
+            if (dailySet?.dayKey) {
+                console.log(
+                    `[Cron] Engagement daily set ready for ${dailySet.dayKey} via ${dailySet.generatedBy || "unknown"}.`
+                );
+            }
+        })
+        .catch((error) => {
+            handleCronError('engagement daily generation startup', error);
         });
 
     // Run every minute
@@ -178,6 +191,25 @@ export const startCronJobs = () => {
             handleCronError('meeting reminder cron', error);
         }
     }, { noOverlap: true });
+
+    cron.schedule('5 0 * * *', async () => {
+        if (shouldSkipCronRun('engagement daily generation cron')) {
+            return;
+        }
+
+        try {
+            const nextDay = new Date();
+            const dayKey = nextDay.toISOString().slice(0, 10);
+            const dailySet = await generateAndPublishDailyQuestionSet(dayKey, {
+                forceRegenerate: false
+            });
+            console.log(
+                `[Cron] Engagement daily set ensured for ${dayKey} via ${dailySet?.generatedBy || "unknown"}.`
+            );
+        } catch (error) {
+            handleCronError('engagement daily generation cron', error);
+        }
+    }, { noOverlap: true, timezone: 'UTC' });
 
     // ============================================================
     // Proposal Follow-up Guidance: Run every hour to notify clients when a proposal

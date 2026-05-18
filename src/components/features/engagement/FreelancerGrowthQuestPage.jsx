@@ -26,6 +26,10 @@ import { toast } from "sonner";
 import BadgeShelf from "./BadgeShelf";
 import ProcessSummaryCard from "./ProcessSummaryCard";
 import StreakCalendar from "./StreakCalendar";
+import GrowthQuestInfoModal from "./growth-quest/GrowthQuestInfoModal";
+import GrowthQuestQuizView from "./growth-quest/GrowthQuestQuizView";
+import GrowthQuestResultView from "./growth-quest/GrowthQuestResultView";
+import GrowthQuestWeeklyRankingPanel from "./growth-quest/GrowthQuestWeeklyRankingPanel";
 import "./FreelancerGrowthQuestPage.css";
 
 const PAGE_CLASS = "growth-quest-page";
@@ -38,8 +42,8 @@ const LABEL_CLASS = "growth-quest-label";
 const LABELS = ["A", "B", "C", "D", "E"];
 
 const HOW_IT_WORKS = [
-  { title: "1. Start today's practice", desc: "Answer 5 freelancer-skill questions in one short practice quiz." },
-  { title: "2. Best score counts", desc: "If you retry today, only your best score of the day will count." },
+  { title: "1. Start today's practice", desc: "Answer 5 common questions plus 1 personalized question in one short practice quiz." },
+  { title: "2. One scored attempt", desc: "Your daily streak, XP, and coins are locked after one completed quest each day." },
   { title: "3. Track improvement", desc: "Earn XP, coins, improve weak topics, and check your weekly rank." },
 ];
 const PROGRESS_SECTIONS = [
@@ -167,267 +171,8 @@ const getInitials = (value) =>
     .map((part) => part[0]?.toUpperCase() || "")
     .join("");
 
-const WeeklyRankingPanel = ({ leaderboard, currentUserId }) => {
-  const entries = Array.isArray(leaderboard?.entries) ? leaderboard.entries : [];
-  const currentUser = leaderboard?.currentUser || null;
-  let visibleEntries = currentUser
-    ? [
-      ...entries.slice(0, 5),
-      ...entries.filter(
-        (entry, index) =>
-          index >= 5 &&
-          (entry.userId === currentUserId ||
-            Math.abs(Number(entry.rank || 0) - Number(currentUser.rank || 0)) <= 1),
-      ),
-    ].filter((entry, index, array) => array.findIndex((item) => item.userId === entry.userId) === index)
-    : entries.slice(0, 5);
-
-  // Pad with mock data if fewer than 5 items are present to satisfy "shows 5 rank" UI requirement
-  if (visibleEntries.length < 5) {
-    const mockNames = ["Alex Rivera", "Sarah Chen", "Jordan Smith", "Taylor Wong", "Casey Jones"];
-    const existingRanks = new Set(visibleEntries.map(e => Number(e.rank)));
-    let nextRank = 1;
-
-    while (visibleEntries.length < 5) {
-      if (!existingRanks.has(nextRank)) {
-        visibleEntries.push({
-          userId: `mock-${nextRank}`,
-          fullName: mockNames[visibleEntries.length % mockNames.length],
-          rank: nextRank,
-          totalCoins: 0,
-          isMock: true
-        });
-      }
-      nextRank++;
-    }
-    visibleEntries.sort((a, b) => Number(a.rank) - Number(b.rank));
-  }
-
-  return (
-    <div
-      className="weekly-ranking"
-      style={{ borderRadius: "18px", border: "1px solid rgba(80,55,18,0.4)", padding: "1.5rem", boxShadow: "0 12px 48px rgba(0,0,0,0.5)", position: "relative", overflow: "hidden" }}
-    >
-      {/* decorative laurel wreath */}
-      <svg style={{ position: "absolute", top: "1rem", right: "1.25rem", width: "80px", height: "80px", opacity: 0.18, pointerEvents: "none" }} viewBox="0 0 80 80" fill="none">
-        <path d="M10 40 C10 28 15 18 22 12 C20 22 20 32 24 40 C18 38 14 39 10 40Z" fill="#d3be92" />
-        <path d="M10 40 C10 52 15 62 22 68 C20 58 20 48 24 40 C18 42 14 41 10 40Z" fill="#d3be92" opacity="0.7" />
-        <path d="M70 40 C70 28 65 18 58 12 C60 22 60 32 56 40 C62 38 66 39 70 40Z" fill="#d3be92" />
-        <path d="M70 40 C70 52 65 62 58 68 C60 58 60 48 56 40 C62 42 66 41 70 40Z" fill="#d3be92" opacity="0.7" />
-        <circle cx="40" cy="74" r="4" fill="#d3be92" opacity="0.9" />
-        <circle cx="32" cy="72" r="2.5" fill="#d3be92" opacity="0.6" />
-        <circle cx="48" cy="72" r="2.5" fill="#d3be92" opacity="0.6" />
-      </svg>
-
-      {/* header */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem", marginBottom: "1.25rem" }}>
-        {/* large gold trophy badge */}
-        <div style={{ position: "relative", flexShrink: 0 }}>
-          <div style={{ width: "4rem", height: "4rem", borderRadius: "0.85rem", background: "linear-gradient(145deg,rgba(255,193,7,0.25),rgba(180,130,0,0.15))", border: "1px solid rgba(200,160,50,0.5)", display: "grid", placeItems: "center", boxShadow: "0 0 24px rgba(255,193,7,0.15),inset 0 1px 0 rgba(255,255,255,0.08)" }}>
-            <Trophy className="size-7" style={{ color: "#ffc107", filter: "drop-shadow(0 0 8px rgba(255,193,7,0.5))" }} />
-          </div>
-        </div>
-        <div>
-          <h3 style={{ fontSize: "1.5rem", fontWeight: 900, letterSpacing: "0.04em", color: "#f3ead5", lineHeight: 1.1, textTransform: "uppercase" }}>Weekly Ranking</h3>
-          <p style={{ marginTop: "0.4rem", fontSize: "0.82rem", lineHeight: 1.65, color: "#a99c84" }}>
-            Compete for weekly XP rank. Contest rewards and Growth Quest activity both count here.
-          </p>
-        </div>
-      </div>
-
-      {/* table */}
-      <div style={{ borderRadius: "18px", border: "1px solid rgba(51,41,23,0.8)", overflow: "hidden" }}>
-        <div className="weekly-ranking__table-head" style={{ display: "grid", gridTemplateColumns: "72px 1fr 120px", gap: "0.75rem", borderBottom: "1px solid rgba(45,36,19,0.8)", padding: "0.65rem 1.25rem", fontSize: "0.65rem", fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(143,132,107,0.8)" }}>
-          <span>Rank</span>
-          <span>Freelancer</span>
-          <span style={{ textAlign: "right" }}>Coins Earned</span>
-        </div>
-
-        <div style={{ display: "grid", gap: "0.5rem", padding: "0.75rem" }}>
-          {visibleEntries.length ? (
-            visibleEntries.map((entry) => {
-              const isMe = entry.userId === currentUserId;
-              return (
-                <div key={entry.userId} className="weekly-ranking__row group" style={{
-                  display: "grid", gridTemplateColumns: "72px 1fr 120px",
-                  alignItems: "center", gap: "0.75rem",
-                  borderRadius: "14px",
-                  border: `1px solid ${isMe ? "rgba(255,193,7,0.4)" : Number(entry.rank) <= 3 ? "rgba(255,255,255,0.12)" : "rgba(52,42,23,0.8)"}`,
-                  padding: "0.85rem 1rem",
-                  boxShadow: isMe ? "0 4px 20px -5px rgba(255,193,7,0.1)" : "none",
-                  transition: "all 300ms cubic-bezier(0.4, 0, 0.2, 1)",
-                  position: "relative",
-                  overflow: "hidden"
-                }}>
-                  {/* subtle rank indicator background */}
-                  {Number(entry.rank) <= 3 && (
-                    <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", background: Number(entry.rank) === 1 ? "#ffc107" : Number(entry.rank) === 2 ? "#e2e8f0" : "#cd7f32" }} />
-                  )}
-
-                  <div style={{ display: "grid", placeItems: "center" }}>
-                    {Number(entry.rank) === 1 ? (
-                      <div className="relative">
-                        <Crown className="size-6 text-amber-400" style={{ filter: "drop-shadow(0 0 8px rgba(251,191,36,0.6))" }} />
-                        <span className="absolute -bottom-1 -right-1 text-[10px] font-black text-amber-500/50">1</span>
-                      </div>
-                    ) : Number(entry.rank) === 2 ? (
-                      <div className="relative">
-                        <Medal className="size-6 text-slate-300" />
-                        <span className="absolute -bottom-1 -right-1 text-[10px] font-black text-slate-400/50">2</span>
-                      </div>
-                    ) : Number(entry.rank) === 3 ? (
-                      <div className="relative">
-                        <Medal className="size-6 text-amber-700/80" />
-                        <span className="absolute -bottom-1 -right-1 text-[10px] font-black text-amber-800/50">3</span>
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: "1.25rem", fontVariantNumeric: "tabular-nums", fontWeight: 800, color: "rgba(234,215,166,0.5)" }}>{entry.rank}</div>
-                    )}
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: "1rem", minWidth: 0 }}>
-                    <div style={{
-                      width: "2.8rem", height: "2.8rem", borderRadius: "12px", flexShrink: 0,
-                      border: `1px solid ${isMe ? "rgba(255,193,7,0.3)" : "rgba(255,255,255,0.08)"}`,
-                      background: isMe ? "rgba(255,193,7,0.05)" : "rgba(255,255,255,0.02)",
-                      display: "grid", placeItems: "center",
-                      fontSize: "0.85rem", fontWeight: 900, color: isMe ? "#ffc107" : "#d8c7a1",
-                    }}>
-                      {getInitials(isMe ? "You" : entry.fullName)}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: "0.95rem", fontWeight: 700, color: isMe ? "#fff" : "#f0e6cf", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {isMe ? "You" : entry.fullName}
-                      </p>
-                      <div style={{ marginTop: "0.15rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <span style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", color: isMe ? "#ffc107" : "rgba(159,146,120,0.6)" }}>
-                          {entry.engagementLevelLabel || "Starter"}
-                        </span>
-                        {isMe && <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-[8px] font-black text-amber-500 border border-amber-500/20">CURRENTLY AT RANK {entry.rank}</span>}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="weekly-ranking__coins" style={{ textAlign: "right" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "0.35rem" }}>
-                      <span style={{ fontSize: "1.1rem", fontWeight: 900, color: isMe ? "#ffc107" : "#f1d48b", fontVariantNumeric: "tabular-nums" }}>
-                        {(entry.weeklyCoins ?? entry.totalCoins ?? 0).toLocaleString()}
-                      </span>
-                      <Star className={cn("size-3.5", isMe ? "text-amber-400" : "text-amber-500/60")} />
-                    </div>
-                    <p style={{ fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(125,114,93,0.5)", marginTop: "0.1rem" }}>Coins Earned</p>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div style={{ borderRadius: "12px", border: "1px dashed rgba(58,45,17,0.8)", background: "rgba(26,20,9,0.8)", padding: "1.25rem", fontSize: "0.85rem", color: "#a99c84" }}>
-              Weekly rankings will appear after freelancers start earning XP this week.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {currentUser && (
-        <div className="weekly-ranking__totals" style={{ marginTop: "1rem", borderRadius: "14px", border: "1px solid rgba(255,193,7,0.15)", background: "rgba(255,193,7,0.03)", padding: "0.9rem 1.1rem", display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", backdropFilter: "blur(4px)" }}>
-          <div style={{ width: "2.4rem", height: "2.4rem", borderRadius: "0.75rem", background: "rgba(255,193,7,0.1)", border: "1px solid rgba(255,193,7,0.2)", display: "grid", placeItems: "center", flexShrink: 0 }}>
-            <Activity className="size-4.5 text-amber-500" />
-          </div>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "0.65rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Your Weekly Totals</span>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                <Crown className="size-3 text-amber-500" />
-                <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#fff" }}>Rank #{currentUser.rank}</span>
-              </div>
-              <div style={{ width: "1px", height: "12px", background: "rgba(255,255,255,0.1)" }} />
-              <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                <Zap className="size-3 text-amber-500" />
-                <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#fff" }}>{(currentUser.weeklyXp || 0).toLocaleString()} XP</span>
-              </div>
-              <div style={{ width: "1px", height: "12px", background: "rgba(255,255,255,0.1)" }} />
-              <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                <Star className="size-3 text-amber-500" />
-                <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#fff" }}>{(currentUser.weeklyCoins || 0).toLocaleString()} coins</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const InfoModal = ({ open, onClose }) => {
-  if (!open) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
-      <div
-        className={cn(CARD_CLASS, "relative z-10 w-full max-w-xl overflow-hidden")}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="border-b border-white/[0.08] px-6 py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className={EYEBROW_CLASS}>Growth Quest Guide</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
-                Simple daily progress
-              </h2>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-                Answer the daily questions, submit once, and track your streak,
-                XP, and coins in one place.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className={cn(SECONDARY_BUTTON_CLASS, "h-10 w-10 px-0 py-0")}
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="max-h-[70vh] overflow-y-auto px-6 py-6">
-          <div className="grid gap-3">
-            {HOW_IT_WORKS.map((item, index) => (
-              <div key={item.title} className={cn(SUBTLE_CARD_CLASS, "p-4")}>
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-primary/12 text-xs font-semibold text-primary">
-                    {String(index + 1).padStart(2, "0")}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {item.desc}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-5 rounded-[6px] border border-primary/20 bg-primary/8 px-4 py-3">
-            <p className="text-sm leading-6 text-primary">
-              Resets at <span className="font-semibold text-foreground">00:00 UTC</span>.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex justify-end border-t border-white/[0.08] px-6 py-4">
-          <Button onClick={onClose} className={cn(PRIMARY_BUTTON_CLASS, "min-w-36")}>
-            Got it, thanks
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
+const WeeklyRankingPanel = GrowthQuestWeeklyRankingPanel;
+const InfoModal = GrowthQuestInfoModal;
 
 const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
   if (loading) {
@@ -447,9 +192,8 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
   const coins = profile.loyaltyCoins || 0;
   const xp = profile.totalXP || profile.lifetimeXp || profile.xp || 0;
   const used = today.attemptsUsed || 0;
-  const max = today.maxAttempts || 2;
+  const max = today.maxAttempts || 1;
   const done = used >= max;
-  const isRetake = used > 0 && !done;
   const levelThresholds = [0, 200, 600, 1500, 3500];
   const levelNames = [
     "Starter",
@@ -484,7 +228,7 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
       difficultyTone: done ? "success" : used > 0 ? "warning" : "success",
       title: "Today's Practice",
       description: done
-        ? "Today’s session is complete. Review your result and return after reset."
+        ? "Today's session is complete. Review your result and return after reset."
         : "Answer today’s timed set and keep your profile progression moving.",
       progressLabel: "Quest status",
       progress: done ? 100 : max > 0 ? Math.round((used / max) * 100) : 0,
@@ -570,7 +314,7 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
           </div>
           <h2 className="growth-quest-hero__title">Daily Growth Quest</h2>
           <p className="growth-quest-hero__description">
-            Answer 5 freelancer-skill questions daily. Earn XP, coins, improve weak topics,
+            Answer 5 common questions plus 1 personalized question daily. Earn XP, coins, improve weak topics,
             and track your weekly rank.
           </p>
         </div>
@@ -615,16 +359,16 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
               </>
             ) : (
               <>
-                Start Today&apos;s 5 Questions
+                Start Today&apos;s 6 Questions
                 <ArrowRight className="size-4" />
               </>
             )}
           </button>
 
           <p className="growth-quest-helper">
-            {isRetake
-              ? `${max - used} retake remaining today. Best score of the day will count.`
-              : "Best score of the day will count. Resets daily."}
+            {done
+              ? "Today's scored quest is locked. Resets daily."
+              : "One scored quest is available each day. Resets daily."}
           </p>
 
           {error ? <div className="growth-quest-error">{error}</div> : null}
@@ -967,9 +711,8 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
   const coins = profile.loyaltyCoins || 0;
   const xp = profile.totalXP || profile.lifetimeXp || profile.xp || 0;
   const used = today.attemptsUsed || 0;
-  const max = today.maxAttempts || 2;
+  const max = today.maxAttempts || 1;
   const done = today.status === "completed" || used >= max;
-  const isRetake = used > 0 && !done;
   const levelNumber = Number(String(profile.engagementLevel || "").match(/\d+/)?.[0] || 1);
   const levelLabel = profile.engagementLevelLabel || levelProgress?.current?.label || "Starter";
   const xpPct = clampPercent(levelProgress?.percent || 0);
@@ -1010,7 +753,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
       difficultyTone: done ? "success" : used > 0 ? "warning" : "success",
       title: "Daily Freelancer Practice",
       description: done
-        ? "Today’s session is complete. Review your result and return after reset."
+        ? "Today's session is complete. Review your result and return after reset."
         : "Answer today’s timed set and keep your profile progression moving.",
       progressLabel: "Quest status",
       progress: done ? 100 : max > 0 ? Math.round((used / max) * 100) : 0,
@@ -1146,7 +889,7 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
 
           <p className="growth-quest-helper">
             <Info className="size-3.5" style={{ flexShrink: 0 }} />
-            {isRetake ? `${max - used} retake remaining today.` : "Best attempt counts."}
+            {done ? "Return after reset for the next scored quest." : "One scored quest is available each day."}
           </p>
 
           {error ? <div className="growth-quest-error">{error}</div> : null}
@@ -1873,9 +1616,9 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
             </div>
             <ul className="space-y-4">
               {[
-                "5 questions per session",
+                "6 questions per session",
                 "Resets daily at midnight UTC",
-                "Best score of the day counts",
+                "One scored attempt per day",
                 "Badges unlock at milestones"
               ].map((item, i) => (
                 <li key={i} className="flex items-center gap-3 text-sm text-white/50 group cursor-default">
@@ -1928,377 +1671,8 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
   );
 };
 
-const QuizView = ({
-  questions,
-  activeIndex,
-  setActiveIndex,
-  selectedAnswers,
-  handleSelectAnswer,
-  onSubmit,
-  submitting,
-  canSubmit,
-  error,
-  revealedQuestions, // Added
-  handleRevealAnswer, // Added
-}) => {
-  const question = questions[activeIndex];
-
-  if (!question) return null;
-
-  const answeredCount = Object.keys(selectedAnswers).length;
-
-  return (
-    <div className="mx-auto max-w-4xl">
-      <div className={cn(CARD_CLASS, "p-6 sm:p-8")}>
-        <div className="flex flex-col gap-4 border-b border-white/[0.08] pb-5 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className={EYEBROW_CLASS}>Daily Growth Quest</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              Question {activeIndex + 1}
-              <span className="text-muted-foreground"> of {questions.length}</span>
-            </h2>
-          </div>
-          <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-3")}>
-            <p className={LABEL_CLASS}>Category</p>
-            <p className="mt-1 text-sm font-medium text-foreground">
-              {question.categoryLabel || "Client Readiness"}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-8 flex items-center gap-2.5">
-          {questions.map((entry, index) => {
-            const active = index === activeIndex;
-            const answered = Boolean(selectedAnswers[entry.id]);
-            return (
-              <button
-                key={entry.id}
-                type="button"
-                onClick={() => setActiveIndex(index)}
-                className="group relative flex-1"
-              >
-                <div
-                  className={cn(
-                    "h-1.5 w-full rounded-full transition-all duration-500",
-                    active
-                      ? "bg-primary shadow-[0_0_12px_rgba(255,193,7,0.4)]"
-                      : answered
-                        ? "bg-primary/40"
-                        : "bg-white/10 group-hover:bg-white/20"
-                  )}
-                />
-                <span className={cn(
-                  "absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-black tracking-widest uppercase transition-opacity duration-300",
-                  active ? "opacity-100 text-primary" : "opacity-0"
-                )}>
-                  Q{index + 1}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-10">
-          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 sm:p-10 relative overflow-hidden">
-            {/* Subtle background decoration */}
-            <div className="absolute top-0 right-0 p-8 opacity-5">
-              <Sparkles className="size-32" />
-            </div>
-
-            <p className="text-xl font-semibold leading-relaxed text-foreground relative z-10">
-              {question.questionText}
-            </p>
-
-            <div className="mt-10 grid gap-4 relative z-10">
-              {(question.options || []).map((option, index) => {
-                const selected = selectedAnswers[question.id] === option.id;
-                const isRevealed = revealedQuestions[question.id];
-                const isCorrect = option.id === question.correctOptionId;
-                const label = LABELS[index] || option.id.toUpperCase();
-
-                const getStatusStyles = () => {
-                  if (!isRevealed) {
-                    return selected
-                      ? "border-primary/50 bg-primary/10 shadow-[0_0_20px_rgba(255,193,7,0.05)]"
-                      : "border-white/5 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]";
-                  }
-                  if (isCorrect) return "border-emerald-500/40 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.1)]";
-                  if (selected && !isCorrect) return "border-rose-500/40 bg-rose-500/10";
-                  return "border-white/5 bg-white/[0.01] opacity-40";
-                };
-
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => {
-                      if (!isRevealed) {
-                        handleSelectAnswer(question.id, option.id);
-                        handleRevealAnswer(question.id, option.id === question.correctOptionId);
-                      }
-                    }}
-                    className={cn(
-                      "group flex items-center gap-4 rounded-xl border p-5 text-left transition-all duration-300",
-                      getStatusStyles()
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-black transition-all duration-300",
-                        isRevealed
-                          ? (isCorrect ? "bg-emerald-500 text-white" : selected ? "bg-rose-500 text-white" : "bg-white/5 text-white/20")
-                          : (selected ? "bg-primary text-primary-foreground scale-110 shadow-lg shadow-primary/20" : "bg-white/5 text-white/40 group-hover:bg-white/10 group-hover:text-white/60"),
-                      )}
-                    >
-                      {isRevealed && isCorrect ? <CheckCircle2 className="size-5" /> : label}
-                    </span>
-                    <div className="flex-1">
-                      <span
-                        className={cn(
-                          "text-[0.95rem] font-medium leading-relaxed transition-colors block",
-                          isRevealed ? (isCorrect ? "text-white" : "text-white/40") : (selected ? "text-white" : "text-white/60 group-hover:text-white/80"),
-                        )}
-                      >
-                        {option.text}
-                      </span>
-                      {isRevealed && isCorrect && (
-                        <div className="mt-2 flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-500">
-                          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
-                            <Star className="size-3 text-amber-500" />
-                            <span className="text-[10px] font-black text-amber-500">+10 COINS</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20">
-                            <Zap className="size-3 text-violet-400" />
-                            <span className="text-[10px] font-black text-violet-400">+15 XP</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {error ? (
-            <div className="mt-4 rounded-[6px] border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive">
-              {error}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3 border-t border-white/[0.08] pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm text-muted-foreground">
-            {answeredCount}/{questions.length} answered
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
-              disabled={activeIndex === 0}
-              className={SECONDARY_BUTTON_CLASS}
-            >
-              <ArrowLeft className="size-4" />
-              Previous
-            </button>
-
-            {activeIndex < questions.length - 1 ? (
-              <button
-                type="button"
-                onClick={() =>
-                  setActiveIndex((index) => Math.min(questions.length - 1, index + 1))
-                }
-                className={PRIMARY_BUTTON_CLASS}
-              >
-                Next
-                <ArrowRight className="size-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onSubmit}
-                disabled={!canSubmit || submitting}
-                className={PRIMARY_BUTTON_CLASS}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Submitting
-                  </>
-                ) : (
-                  "Submit Quest"
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ResultView = ({ result, nextResetAt, onBack }) => {
-  const score = result?.scoreSummary || result?.score || {};
-  const rewards = result?.rewardsAwarded || result?.rewards || {};
-  const answers = Array.isArray(result?.questionResults)
-    ? result.questionResults
-    : Array.isArray(result?.answers)
-      ? result.answers
-      : [];
-  const questionCount = score.questionCount || answers.length || 5;
-
-  return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <section className={cn(CARD_CLASS, "p-6 sm:p-8")}>
-        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <div>
-            <p className={EYEBROW_CLASS}>Quest Completed</p>
-            <h2 className="mt-2 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-              {score.correctCount ?? 0}
-              <span className="ml-2 text-2xl text-muted-foreground sm:text-3xl">
-                / {questionCount}
-              </span>
-            </h2>
-            <div className="mt-4 inline-flex items-center gap-2 rounded-[6px] border border-white/[0.08] bg-background/60 px-3 py-2 text-sm text-muted-foreground">
-              <Sparkles className="size-4 text-primary" />
-              {score.accuracy ?? 0}% accuracy
-            </div>
-            <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
-              Quick summary of today&apos;s result.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-4")}>
-              <p className={LABEL_CLASS}>XP Earned</p>
-              <p className="mt-2 text-2xl font-semibold text-primary">
-                +{rewards.xpAwarded ?? 0}
-              </p>
-            </div>
-            <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-4")}>
-              <p className={LABEL_CLASS}>Coins Earned</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">
-                +{rewards.coinsAwarded ?? 0}
-              </p>
-            </div>
-            <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-4")}>
-              <p className={LABEL_CLASS}>Current Streak</p>
-              <p className="mt-2 flex items-center gap-2 text-2xl font-semibold text-foreground">
-                {result?.streak?.currentStreak ?? 0}
-                <Flame className="size-4 text-primary" />
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {Array.isArray(result?.unlockedBadges) && result.unlockedBadges.length > 0 ? (
-        <section className="rounded-[6px] border border-primary/20 bg-primary/8 px-5 py-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-primary/15">
-              <Trophy className="size-4 text-primary" />
-            </div>
-            <div>
-              <p className={LABEL_CLASS}>New Milestone</p>
-              <p className="mt-1 text-base font-medium text-foreground">
-                {result.unlockedBadges.map((badge) => badge.title || badge.key).join(", ")}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                The badge has been added to your profile.
-              </p>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      <section className={cn(CARD_CLASS, "p-6 sm:p-8")}>
-        <div className="flex flex-col gap-3 border-b border-white/[0.08] pb-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className={EYEBROW_CLASS}>Answer Review</p>
-            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              Review answers
-            </h3>
-          </div>
-          <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-2 text-sm text-muted-foreground")}>
-            {answers.filter((answer) => answer.isCorrect).length}/{answers.length} correct
-          </div>
-        </div>
-
-        <div className="mt-5 space-y-4">
-          {answers.map((answer, index) => (
-            <div
-              key={answer.questionId}
-              className={cn(
-                "rounded-[6px] border px-4 py-4",
-                answer.isCorrect
-                  ? "border-emerald-500/20 bg-emerald-500/[0.04]"
-                  : "border-destructive/20 bg-destructive/[0.04]",
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px]",
-                    answer.isCorrect
-                      ? "bg-emerald-500/12 text-emerald-500"
-                      : "bg-destructive/12 text-destructive",
-                  )}
-                >
-                  {answer.isCorrect ? (
-                    <CheckCircle2 className="size-4" />
-                  ) : (
-                    <XCircle className="size-4" />
-                  )}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start gap-2">
-                    <span className="pt-0.5 text-sm text-muted-foreground">{index + 1}.</span>
-                    <p className="text-sm font-medium leading-6 text-foreground">
-                      {answer.questionText}
-                    </p>
-                  </div>
-
-                  {!answer.isCorrect ? (
-                    <div className="mt-3 inline-flex rounded-[6px] border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive">
-                      Correct answer: {String(answer.correctOptionId).toUpperCase()}
-                    </div>
-                  ) : null}
-
-                  {answer.explanation ? (
-                    <div className={cn(SUBTLE_CARD_CLASS, "mt-4 px-4 py-3")}>
-                      <div className="flex items-center gap-2">
-                        <Info className="size-3.5 text-muted-foreground" />
-                        <p className={LABEL_CLASS}>Why this matters</p>
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        {answer.explanation}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <div className="mx-auto flex items-center gap-2 rounded-[6px] border border-white/[0.08] bg-card px-4 py-3 text-sm text-muted-foreground">
-          <Clock className="size-4" />
-          Next quest unlocks at{" "}
-          <span className="font-medium text-foreground">{formatReset(nextResetAt)}</span>
-        </div>
-
-        <button type="button" onClick={onBack} className={cn(PRIMARY_BUTTON_CLASS, "w-full")}>
-          Back to Growth Hub
-          <ArrowRight className="size-4" />
-        </button>
-      </section>
-    </div>
-  );
-};
+const QuizView = GrowthQuestQuizView;
+const ResultView = GrowthQuestResultView;
 
 const FreelancerGrowthQuestPage = () => {
   const { authFetch } = useAuth();

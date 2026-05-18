@@ -8,6 +8,7 @@ import { apiRouter } from "./routes/index.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 import { notFoundHandler } from "./middlewares/not-found.js";
 import { initSocket } from "./lib/socket.js";
+import { startCronJobs } from "./services/cron.service.js";
 
 const app = express();
 
@@ -43,6 +44,7 @@ if (process.env.NODE_ENV !== "test") {
   server.listen(PORT, () => {
     console.log(`API server ready on http://localhost:${PORT}`);
   });
+  startCronJobs();
 }
 
 export default app;

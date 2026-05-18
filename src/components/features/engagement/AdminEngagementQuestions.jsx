@@ -41,135 +41,28 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/shared/context/AuthContext";
 import { toast } from "sonner";
-
-const STATUS_OPTIONS = [
-  { value: "ALL", label: "All statuses" },
-  { value: "PENDING_APPROVAL", label: "Pending approval" },
-  { value: "APPROVED", label: "Approved" },
-  { value: "DRAFT", label: "Draft" },
-  { value: "REJECTED", label: "Rejected" },
-];
-
-const CATEGORY_OPTIONS = [
-  { value: "CLIENT_COMMUNICATION", label: "Client communication" },
-  { value: "SCOPE_MANAGEMENT", label: "Scope management" },
-  { value: "DELIVERY", label: "Delivery" },
-  { value: "QUALITY_CONTROL", label: "Quality control" },
-  { value: "PLATFORM_RULES", label: "Platform rules" },
-  { value: "BUSINESS_BASICS", label: "Business basics" },
-];
-
-const DIFFICULTY_OPTIONS = [
-  { value: "BEGINNER", label: "Beginner" },
-  { value: "INTERMEDIATE", label: "Intermediate" },
-  { value: "ADVANCED", label: "Advanced" },
-];
-
-const TYPE_OPTIONS = [
-  { value: "MCQ", label: "MCQ" },
-  { value: "TRUE_FALSE", label: "True / false" },
-  { value: "SCENARIO_MCQ", label: "Scenario MCQ" },
-];
-
-const emptyForm = {
-  questionText: "",
-  type: "MCQ",
-  category: "CLIENT_COMMUNICATION",
-  skillTag: "client_readiness",
-  difficulty: "BEGINNER",
-  options: [
-    { id: "A", text: "" },
-    { id: "B", text: "" },
-    { id: "C", text: "" },
-    { id: "D", text: "" },
-  ],
-  correctOptionId: "A",
-  explanation: "",
-  status: "PENDING_APPROVAL",
-};
-
-const DAILY_SET_SIZE = 5;
-const createTodayKey = () => new Date().toISOString().slice(0, 10);
-const toLineArray = (value) =>
-  String(value || "")
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
-const toLinkArray = (value) =>
-  toLineArray(value).map((item) => {
-    const [label, ...urlParts] = item.split("|");
-    return {
-      label: (label || "Reference").trim(),
-      url: urlParts.join("|").trim(),
-    };
-  });
-const emptyContestForm = {
-  title: "",
-  description: "",
-  detailsContent: "",
-  imageUrl: "",
-  category: "Contest",
-  ctaLabel: "View Contest",
-  goalSummary: "",
-  submissionInstructions: "",
-  rewardSummary: "",
-  rewardCoins: 0,
-  rewardXp: 0,
-  badgeKey: "",
-  badgeTitle: "",
-  badgeDescription: "",
-  badgeIcon: "award",
-  deliverables: [""],
-  reviewCriteria: [""],
-  resourceLinks: [{ label: "", url: "" }],
-  acceptedAssetTypes: ["image", "document", "link"],
-  maxAttachments: 8,
-  startDayKey: createTodayKey(),
-  endDayKey: "",
-  status: "DRAFT",
-};
-
-const emptyContestReviewForm = {
-  submissionId: "",
-  status: "APPROVED",
-  reviewNote: "",
-  rewardCoins: 0,
-  rewardXp: 0,
-};
-
-const statusClassName = {
-  APPROVED: "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
-  PUBLISHED: "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
-  PENDING_APPROVAL: "border-[#facc15]/20 bg-[#facc15]/10 text-[#fde68a]",
-  PENDING: "border-[#facc15]/20 bg-[#facc15]/10 text-[#fde68a]",
-  DRAFT: "border-white/10 bg-white/[0.04] text-muted-foreground",
-  REJECTED: "border-red-500/20 bg-red-500/10 text-red-200",
-  NEEDS_CHANGES: "border-primary/20 bg-primary/10 text-primary",
-  ARCHIVED: "border-white/10 bg-white/[0.04] text-muted-foreground",
-};
-
-const contestSubmissionStatusOptions = ["ALL", "PENDING", "APPROVED", "NEEDS_CHANGES", "REJECTED"];
-
-const cloneQuestionToForm = (question) => ({
-  questionText: question?.questionText || "",
-  type: question?.type || "MCQ",
-  category: question?.category || "CLIENT_COMMUNICATION",
-  skillTag: question?.skillTag || "client_readiness",
-  difficulty: question?.difficulty || "BEGINNER",
-  options:
-    Array.isArray(question?.options) && question.options.length
-      ? question.options.map((option, index) => ({
-          id: option.id || String.fromCharCode(65 + index),
-          text: option.text || "",
-        }))
-      : emptyForm.options,
-  correctOptionId: question?.correctOptionId || "A",
-  explanation: question?.explanation || "",
-  status:
-    question?.status && ["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(question.status)
-      ? question.status
-      : "PENDING_APPROVAL",
-});
+import AdminEngagementScheduleCard from "./admin-engagement/AdminEngagementScheduleCard";
+import AdminEngagementPersonalizedHistoryCard from "./admin-engagement/AdminEngagementPersonalizedHistoryCard";
+import {
+  AdminEngagementContestSubmissionsCard,
+  AdminEngagementContestsCard,
+} from "./admin-engagement/AdminEngagementContestsPanel";
+import AdminEngagementQuestionBank from "./admin-engagement/AdminEngagementQuestionBank";
+import {
+  CATEGORY_OPTIONS,
+  DIFFICULTY_OPTIONS,
+  STATUS_OPTIONS,
+  TYPE_OPTIONS,
+  cloneQuestionToForm,
+  contestSubmissionStatusOptions,
+  createTodayKey,
+  emptyContestForm,
+  emptyContestReviewForm,
+  emptyForm,
+  statusClassName,
+  toLineArray,
+  toLinkArray,
+} from "./admin-engagement/shared";
 
 const AdminEngagementQuestions = () => {
   const { authFetch } = useAuth();
@@ -188,6 +81,10 @@ const AdminEngagementQuestions = () => {
   const [scheduledQuestionIds, setScheduledQuestionIds] = useState([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [personalizedHistory, setPersonalizedHistory] = useState([]);
+  const [personalizedHistoryLoading, setPersonalizedHistoryLoading] = useState(true);
+  const [personalizedHistorySearch, setPersonalizedHistorySearch] = useState("");
+  const [personalizedHistoryDayKey, setPersonalizedHistoryDayKey] = useState(createTodayKey);
   const [contests, setContests] = useState([]);
   const [contestDialogOpen, setContestDialogOpen] = useState(false);
   const [editingContest, setEditingContest] = useState(null);
@@ -262,6 +159,35 @@ const AdminEngagementQuestions = () => {
   useEffect(() => {
     loadScheduleData();
   }, [loadScheduleData]);
+
+  const loadPersonalizedHistory = useCallback(async () => {
+    if (!authFetch) return;
+    setPersonalizedHistoryLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("take", "40");
+      if (personalizedHistorySearch.trim()) params.set("search", personalizedHistorySearch.trim());
+      if (personalizedHistoryDayKey.trim()) params.set("dayKey", personalizedHistoryDayKey.trim());
+
+      const response = await authFetch(`/admin/engagement/personalized-history?${params.toString()}`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to load personalized question history.");
+      }
+
+      setPersonalizedHistory(Array.isArray(payload?.data) ? payload.data : []);
+    } catch (error) {
+      console.error("Failed to load personalized question history", error);
+      toast.error(error?.message || "Failed to load personalized question history");
+    } finally {
+      setPersonalizedHistoryLoading(false);
+    }
+  }, [authFetch, personalizedHistoryDayKey, personalizedHistorySearch]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(loadPersonalizedHistory, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadPersonalizedHistory]);
 
   const loadContests = useCallback(async () => {
     if (!authFetch) return;
@@ -755,194 +681,73 @@ const AdminEngagementQuestions = () => {
           </div>
         </div>
 
-        <Card id="contest-feed" className="border-white/10 bg-card">
-          <CardHeader>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <CardTitle className="text-xl">Calendar Daily Set</CardTitle>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Pick a date and assign the exact approved questions freelancers should see on
-                  that day.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="grid gap-2">
-                  <Label htmlFor="growth-quest-day-key">Date</Label>
-                  <Input
-                    id="growth-quest-day-key"
-                    type="date"
-                    value={scheduleDayKey}
-                    onChange={(event) => setScheduleDayKey(event.target.value)}
-                    className="w-full sm:w-48"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Status</Label>
-                  <Select value={scheduleStatus} onValueChange={setScheduleStatus}>
-                    <SelectTrigger className="w-full sm:w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PUBLISHED">Published</SelectItem>
-                      <SelectItem value="DRAFT">Draft</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              <Badge className="border-primary/20 bg-primary/10 text-primary">
-                Selected {scheduledQuestionIds.length}/{DAILY_SET_SIZE}
-              </Badge>
-              {selectedDailySet ? (
-                <Badge className={statusClassName[selectedDailySet.status] || statusClassName.DRAFT}>
-                  Existing set: {selectedDailySet.status}
-                </Badge>
-              ) : (
-                <Badge className="border-white/10 bg-white/[0.04] text-muted-foreground">
-                  No set saved for this date yet
-                </Badge>
-              )}
-            </div>
+        <AdminEngagementScheduleCard
+          scheduleDayKey={scheduleDayKey}
+          setScheduleDayKey={setScheduleDayKey}
+          scheduleStatus={scheduleStatus}
+          setScheduleStatus={setScheduleStatus}
+          scheduledQuestionIds={scheduledQuestionIds}
+          selectedDailySet={selectedDailySet}
+          scheduleLoading={scheduleLoading}
+          approvedQuestions={approvedQuestions}
+          toggleScheduledQuestion={toggleScheduledQuestion}
+          handleSaveDailySet={handleSaveDailySet}
+          scheduleSaving={scheduleSaving}
+          dailySets={dailySets}
+        />
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-              <div className="rounded-md border border-white/10">
-                <div className="border-b border-white/10 px-4 py-3">
-                  <p className="text-sm font-medium">Approved Questions</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Only approved questions can be scheduled to a calendar date.
-                  </p>
-                </div>
-                <div className="max-h-[420px] overflow-y-auto p-3">
-                  {scheduleLoading ? (
-                    <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                      Loading approved questions
-                    </div>
-                  ) : approvedQuestions.length === 0 ? (
-                    <div className="h-24 content-center text-center text-sm text-muted-foreground">
-                      No approved questions available.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {approvedQuestions.map((question) => {
-                        const checked = scheduledQuestionIds.includes(question.id);
-                        return (
-                          <label
-                            key={question.id}
-                            className="flex cursor-pointer gap-3 rounded-lg border border-white/10 bg-background/40 p-3 transition-colors hover:border-primary/20"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleScheduledQuestion(question.id)}
-                              className="mt-1"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <p className="line-clamp-2 text-sm font-medium">
-                                {question.questionText}
-                              </p>
-                              <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                <span>{question.categoryLabel}</span>
-                                <span>{question.difficulty}</span>
-                                <span>Correct: {question.correctOptionId}</span>
-                              </div>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
+        <AdminEngagementPersonalizedHistoryCard
+          personalizedHistory={personalizedHistory}
+          personalizedHistoryLoading={personalizedHistoryLoading}
+          personalizedHistorySearch={personalizedHistorySearch}
+          setPersonalizedHistorySearch={setPersonalizedHistorySearch}
+          personalizedHistoryDayKey={personalizedHistoryDayKey}
+          setPersonalizedHistoryDayKey={setPersonalizedHistoryDayKey}
+        />
 
-              <div className="space-y-4">
-                <div className="rounded-md border border-white/10 p-4">
-                  <p className="text-sm font-medium">Selected for {scheduleDayKey}</p>
-                  <div className="mt-3 space-y-3">
-                    {scheduledQuestionIds.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        Choose {DAILY_SET_SIZE} approved questions to build this day&apos;s set.
-                      </p>
-                    ) : (
-                      scheduledQuestionIds.map((questionId, index) => {
-                        const question = approvedQuestions.find((entry) => entry.id === questionId);
-                        return (
-                          <div
-                            key={questionId}
-                            className="rounded-lg border border-white/10 bg-background/40 p-3"
-                          >
-                            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                              Slot {index + 1}
-                            </p>
-                            <p className="mt-2 text-sm font-medium">
-                              {question?.questionText || questionId}
-                            </p>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    className="mt-4 w-full"
-                    onClick={handleSaveDailySet}
-                    disabled={scheduleSaving || scheduleLoading}
-                  >
-                    {scheduleSaving ? <Loader2 className="size-4 animate-spin" /> : null}
-                    Save Daily Set
-                  </Button>
-                </div>
-
-                <div className="rounded-md border border-white/10 p-4">
-                  <p className="text-sm font-medium">Upcoming Scheduled Dates</p>
-                  <div className="mt-3 space-y-3">
-                    {dailySets.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No scheduled calendar dates saved yet.
-                      </p>
-                    ) : (
-                      dailySets.slice(0, 8).map((entry) => (
-                        <button
-                          key={entry.id}
-                          type="button"
-                          onClick={() => setScheduleDayKey(entry.dayKey)}
-                          className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-background/40 px-3 py-3 text-left transition-colors hover:border-primary/20"
-                        >
-                          <div>
-                            <p className="text-sm font-medium">{entry.dayKey}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {entry.questionCount} questions • {entry.generatedBy}
-                            </p>
-                          </div>
-                          <Badge className={statusClassName[entry.status] || statusClassName.DRAFT}>
-                            {entry.status}
-                          </Badge>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <AdminEngagementContestsCard
+          contests={contests}
+          contestLoading={contestLoading}
+          openNewContestDialog={openNewContestDialog}
+          openEditContestDialog={openEditContestDialog}
+        />
 
         <Card className="border-white/10 bg-card">
           <CardHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <CardTitle className="text-2xl font-black text-white">Active Contests</CardTitle>
+                <CardTitle className="text-2xl font-black text-white">Freelancer Submissions</CardTitle>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Create and manage contests for freelancers. Published contests appear on their Growth Quest page.
+                  Review and approve contest submissions from freelancers. Filter by contest or status.
                 </p>
               </div>
-              <Button type="button" onClick={openNewContestDialog} className="rounded-xl bg-primary px-6 font-black">
-                <Plus className="size-4" />
-                Create Contest
-              </Button>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Select value={contestSubmissionContestId} onValueChange={setContestSubmissionContestId}>
+                  <SelectTrigger className="w-full sm:w-56 rounded-lg">
+                    <SelectValue placeholder="All contests" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All contests</SelectItem>
+                    {contests.map((contest) => (
+                      <SelectItem key={contest.id} value={contest.id}>
+                        {contest.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={contestSubmissionStatus} onValueChange={setContestSubmissionStatus}>
+                  <SelectTrigger className="w-full sm:w-44 rounded-lg">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contestSubmissionStatusOptions.map((statusOption) => (
+                      <SelectItem key={statusOption} value={statusOption}>
+                        {statusOption.replace(/_/g, " ")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

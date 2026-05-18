@@ -1,7 +1,7 @@
 export const engagementRules = Object.freeze({
   dailyChallenge: {
     questionCount: 5,
-    maxAttemptsPerDay: 2,
+    maxAttemptsPerDay: 1,
     dayBoundary: "UTC"
   },
   xp: {

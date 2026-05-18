@@ -139,6 +139,7 @@ model User {
   engagementLedgers    PointsLedger[]             @relation("EngagementPointsUser")
   engagementReport     EngagementProcessReport?
   engagementBadges     EngagementUserBadge[]      @relation("EngagementBadgeUser")
+  engagementPersonalizedQuestions EngagementPersonalizedQuestion[]
 
   ownedProjects           Project[]          @relation("ProjectOwner")
   managedProjects         Project[]          @relation("ProjectManager")
@@ -1007,6 +1008,28 @@ model EngagementProcessReport {
   recommendedNextTopic  String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+}
+
+model EngagementPersonalizedQuestion {
+  id                   String   @id
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayKey               String
+  questionId           String?
+  questionText         String   @db.Text
+  category             String
+  difficulty           String
+  skillTag             String?
+  focusReason          String?  @db.Text
+  generationSource     String   @default("fallback")
+  sourceReportSnapshot Json     @default("{}")
+  aiMetadata           Json     @default("{}")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([userId, dayKey])
+  @@index([dayKey])
+  @@map("EngagementPersonalizedQuestion")
 }
 
 model EngagementAdminAuditLog {

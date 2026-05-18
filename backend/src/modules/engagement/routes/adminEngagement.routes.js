@@ -9,6 +9,7 @@ import {
   getDailySets,
   getFreelancerProgress,
   getOverview,
+  getPersonalizedQuestionHistory,
   getQuestions,
   rejectQuestion,
   saveDailySet,
@@ -24,6 +25,7 @@ import {
   listAdminFreelancerProgressSchema,
   listAdminContestsSchema,
   listAdminDailySetsSchema,
+  listAdminPersonalizedQuestionHistorySchema,
   listAdminQuestionsSchema,
   questionIdParamsSchema,
   rejectQuestionSchema,
@@ -66,6 +68,11 @@ adminEngagementRouter.get(
   "/daily-sets",
   validateResource(listAdminDailySetsSchema),
   getDailySets
+);
+adminEngagementRouter.get(
+  "/personalized-history",
+  validateResource(listAdminPersonalizedQuestionHistorySchema),
+  getPersonalizedQuestionHistory
 );
 adminEngagementRouter.put(
   "/daily-sets/:dayKey",
