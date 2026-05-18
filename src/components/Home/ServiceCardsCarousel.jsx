@@ -228,11 +228,11 @@ const ServiceCardsCarousel = () => {
 
         {/* Header */}
         <div className="mx-auto flex max-w-6xl flex-col items-center px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="w-full max-w-none text-[2rem] font-medium leading-[1.05] tracking-tight text-white sm:text-[2.7rem] md:whitespace-nowrap md:text-[3.2rem] lg:text-[3.95rem] xl:text-[4.2rem]">
+          <h2 className="w-full max-w-none text-[2rem] font-medium leading-[1.05] tracking-tight text-[#1C1B1F] dark:text-white sm:text-[2.7rem] md:whitespace-nowrap md:text-[3.2rem] lg:text-[3.95rem] xl:text-[4.2rem]">
             Freelancers <span className="text-primary italic font-medium">Who</span> Don&apos;t Ghost You
           </h2>
 
-          <p className="mt-1 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-3 sm:text-base md:text-lg">
+          <p className="mt-1 max-w-5xl text-balance text-sm font-normal leading-relaxed text-[#1C1B1F]/60 dark:text-white/60 sm:mt-3 sm:text-base md:text-lg">
             Trusted freelancers who deliver work on time.
           </p>
 
@@ -272,6 +272,15 @@ const ServiceCardsCarousel = () => {
             ))}
           </div>
         </div>
+
+        <Button
+          type="button"
+          onClick={() => navigate("/service")}
+          variant="outline"
+          className="self-center mt-4 hover:bg-[#D9692A] hover:text-white hover:border-transparent transition-colors duration-300"
+        >
+          View All
+        </Button>
 
       </div>
 

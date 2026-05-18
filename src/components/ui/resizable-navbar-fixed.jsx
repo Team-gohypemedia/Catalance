@@ -14,7 +14,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import logo from "@/assets/logos/logo.svg";
 
-const DESKTOP_NAV_SCROLL_RANGE = 180;
+const DESKTOP_NAV_SCROLL_RANGE = 300;
 const DESKTOP_NAV_EXPANDED_MAX_WIDTH = "80rem";
 const DESKTOP_NAV_COLLAPSED_MAX_WIDTH = "68rem"; // Increased from 56rem to prevent crowding
 
@@ -40,13 +40,10 @@ const isNavItemActive = (currentPath = "", targetPath = "") => {
 
 export const Navbar = ({ children, className, isHome, isDark }) => {
   const { scrollY } = useScroll();
-  const smoothScrollY = useSpring(scrollY, {
-    stiffness: 100,
-    damping: 30,
-    restDelta: 0.001
-  });
+  // Add a spring to smooth out the scroll steps while keeping it responsive
+  const smoothScrollY = useSpring(scrollY, { stiffness: 300, damping: 30 });
 
-  // Map smoothed scroll to values
+  // Map scroll to values using the smoothed scroll value
   const desktopMaxWidth = useTransform(
     smoothScrollY,
     [0, DESKTOP_NAV_SCROLL_RANGE],
@@ -105,7 +102,7 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
   );
 
   const backdropFilter = useTransform(
-    smoothScrollY,
+    scrollY,
     [0, DESKTOP_NAV_SCROLL_RANGE],
     ["blur(8px)", "blur(14px)"]
   );

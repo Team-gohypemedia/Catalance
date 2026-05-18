@@ -46,6 +46,7 @@ import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
 import Search from "lucide-react/dist/esm/icons/search";
+import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 
 const DEFAULT_COUNTRY = "IN";
 const MIN_PHONE_DIGITS = 6;
@@ -817,6 +818,17 @@ function PhoneAuth() {
   return (
     <main className="relative min-h-svh overflow-hidden bg-background text-foreground">
       <div className="relative mx-auto min-h-svh w-full max-w-[88rem] px-4 py-2 sm:px-10 lg:px-12 lg:py-8">
+        <Button
+          asChild
+          variant="outline"
+          className="absolute top-4 left-4 sm:top-8 sm:left-10 lg:left-12 z-50 rounded-full border-black/15 dark:border-white/15 bg-white/80 dark:bg-[#101010]/80 text-sm font-medium text-black dark:text-white hover:bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-sm"
+        >
+          <Link to="/" className="flex items-center gap-2">
+            <ArrowLeft className="size-4" />
+            Back to Home
+          </Link>
+        </Button>
+
         <div className="xl:hidden flex min-h-[calc(100svh-1rem)] w-full items-center">
           <div className="mx-auto flex w-full max-w-[28rem] flex-col items-center text-center">
             <div className="mt-2 flex flex-col items-center text-center">

@@ -1,6 +1,6 @@
-﻿import { useState, useEffect, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import { useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import {
   generateRandomString,
 } from "@/components/ui/evervault-card";
@@ -382,20 +382,25 @@ const ClientOnboading = () => {
             Select multiple services (up to 3)
           </span>
         </div>
-        {multiSelectEnabled && (
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">
-              {selectedServices.length} selected
-            </span>
-            <Button
-              onClick={handleStartMultiChat}
-              disabled={selectedServices.length === 0}
-              className="text-xs"
-            >
-              Start Multi-Service Chat
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {multiSelectEnabled && (
+            <>
+              <span className="text-xs text-muted-foreground">
+                {selectedServices.length} selected
+              </span>
+              <Button
+                onClick={handleStartMultiChat}
+                disabled={selectedServices.length === 0}
+                className="text-xs"
+              >
+                Start Multi-Service Chat
+              </Button>
+            </>
+          )}
+          <Button asChild variant="outline" className="text-xs">
+            <Link to="/service">View All</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 relative z-10">

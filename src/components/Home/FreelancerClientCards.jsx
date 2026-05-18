@@ -36,23 +36,36 @@ const FreelancerClientCards = () => {
     theme === "dark" || 
     (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-  // Light card (For Businesses)
-  const lightCardClassName = isDarkMode
-    ? "relative isolate flex min-h-[31rem] flex-col rounded-[2rem] border border-white/10 bg-white/5 px-10 pb-8 pt-8 text-left shadow-2xl backdrop-blur-xl"
-    : "relative isolate flex min-h-[31rem] flex-col rounded-[2rem] border border-black/8 bg-[#F5F0E8] px-10 pb-8 pt-8 text-left shadow-[0_24px_80px_rgba(0,0,0,0.08)]";
-
-  // Orange card (For Freelancers)
-  const orangeCardClassName = isDarkMode
-    ? "relative isolate flex min-h-[31rem] flex-col rounded-[2rem] border border-white/10 bg-white/5 px-10 pb-8 pt-8 text-left shadow-2xl backdrop-blur-xl"
-    : "relative isolate flex min-h-[31rem] flex-col rounded-[2rem] px-10 pb-8 pt-8 text-left !bg-[#D9692A] shadow-[0_24px_80px_rgba(217,105,42,0.35)]";
-
   const brandColor = isDarkMode ? "#FFC107" : "#D9692A";
-  const textColorLeft = isDarkMode ? "white" : "#1C1B1F";
-  const textColorRight = "white";
-  const buttonBgLeft = isDarkMode ? "#FFC107" : "#D9692A";
-  const buttonTextLeft = isDarkMode ? "#1C1B1F" : "white";
-  const buttonBgRight = isDarkMode ? "#FFC107" : "white";
-  const buttonTextRight = isDarkMode ? "#1C1B1F" : "#D9692A";
+  
+  const cardClassName = isDarkMode
+    ? "relative isolate flex min-h-[26rem] flex-col rounded-[2rem] border border-white/10 bg-white/5 px-6 pb-6 pt-6 text-left shadow-2xl backdrop-blur-xl transition-all duration-500 ease-in-out"
+    : "relative isolate flex min-h-[26rem] flex-col rounded-[2rem] border border-black/5 bg-white px-6 pb-6 pt-6 text-left shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition-all duration-500 ease-in-out group-hover:!bg-[#D9692A] group-hover:border-transparent group-hover:shadow-[0_24px_80px_rgba(217,105,42,0.35)]";
+
+  const textHeadingClass = isDarkMode
+    ? "text-white"
+    : "text-[#1C1B1F] group-hover:!text-white transition-colors duration-500 ease-in-out";
+
+  const textMutedClass = isDarkMode
+    ? "text-white/50"
+    : "text-[#1C1B1F]/50 group-hover:!text-white/70 transition-colors duration-500 ease-in-out";
+
+  const textFeatureClass = isDarkMode
+    ? "text-white/70"
+    : "text-[#1C1B1F] group-hover:!text-white transition-colors duration-500 ease-in-out";
+
+  const iconContainerClass = isDarkMode
+    ? "bg-white/5"
+    : "bg-transparent group-hover:!bg-white/20 transition-colors duration-500 ease-in-out";
+
+  const iconClass = isDarkMode
+    ? "text-[#FFC107]"
+    : "text-[#1C1B1F]/60 group-hover:!text-white transition-colors duration-500 ease-in-out";
+
+  const buttonClass = isDarkMode
+    ? "bg-[#FFC107] text-[#1C1B1F]"
+    : "bg-[#D9692A] !text-white border border-transparent group-hover:!bg-white group-hover:!text-[#D9692A] transition-colors duration-500 ease-in-out shadow-sm group-hover:shadow-lg";
+
   return (
     <section className="relative flex w-full items-center justify-center overflow-hidden bg-[#fafaf9] dark:bg-[#020202] px-4 py-20 sm:py-32 sm:px-6 lg:px-8 transition-colors duration-500">
       <div
@@ -70,53 +83,54 @@ const FreelancerClientCards = () => {
           </p>
         </div>
 
-        <div className="mt-10 grid w-full max-w-6xl items-center gap-8 sm:mt-14 lg:mt-20 lg:grid-cols-[minmax(0,1fr)_120px_minmax(0,1fr)] lg:gap-10">
+        <div className="mt-10 grid w-full max-w-5xl items-center gap-8 sm:mt-14 lg:mt-20 lg:grid-cols-[minmax(0,1fr)_120px_minmax(0,1fr)] lg:gap-10">
+          {/* For Businesses Card */}
           <div className="relative group overflow-visible">
             <img
               src={Mascot1}
               alt=""
               aria-hidden
               draggable="false"
-              className="pointer-events-none absolute bottom-6 -left-16 z-0 w-44 select-none opacity-0 rotate-[-30deg] transform-gpu transition-transform duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-x-8 group-hover:opacity-100"
+              className="pointer-events-none absolute bottom-6 -left-16 z-0 w-44 select-none opacity-0 rotate-[-30deg] transform-gpu transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-x-8 group-hover:opacity-100"
             />
 
-            <article className={`${lightCardClassName} z-10`}>
+            <article className={`${cardClassName} z-10`}>
               <div className="relative z-10 flex h-full flex-col">
                 <div className="mb-11 flex items-center justify-between gap-4">
-                  <Briefcase className="size-7" style={{ color: brandColor }} />
-                  <span className="text-sm font-semibold uppercase tracking-[0.28em]" style={{ color: isDarkMode ? "white" : "#1C1B1F", opacity: 0.5 }}>
+                  <Briefcase className={`size-7 ${iconClass}`} />
+                  <span className={`text-sm font-semibold uppercase tracking-[0.28em] ${textMutedClass}`}>
                     For Businesses
                   </span>
                 </div>
 
-                <h3 className="max-w-xs text-[2.05rem] font-semibold leading-tight" style={{ color: textColorLeft }}>
+                <h3 className={`max-w-xs text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Hire Reliable Talent Faster
                 </h3>
 
-                <div className="mt-10 space-y-6">
+                <div className="mt-6 space-y-4">
                   {businessFeatures.map(({ icon: Icon, text }) => (
                     <div key={text} className="flex items-center gap-4 group/feature">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors" style={{ backgroundColor: `${brandColor}20` }}>
-                        <Icon className="size-[1.1rem]" style={{ color: brandColor }} />
+                      <div className={`flex size-9 shrink-0 items-center justify-center rounded-full ${iconContainerClass}`}>
+                        <Icon className={`size-[1.1rem] ${iconClass}`} />
                       </div>
-                      <span className="text-[1.05rem] font-medium leading-tight transition-colors" style={{ color: isDarkMode ? "rgba(255,255,255,0.7)" : "rgba(28,27,31,0.7)" }}>
+                      <span className={`text-[1.05rem] font-medium leading-tight ${textFeatureClass}`}>
                         {text}
                       </span>
                     </div>
                   ))}
                 </div>
 
-                <Button
-                  asChild
-                  className="mt-12 h-[3.75rem] rounded-2xl text-xl font-bold border-0 shadow-lg transition-transform hover:scale-[1.02]"
-                  style={{ backgroundColor: buttonBgLeft, color: buttonTextLeft }}
+                <Link
+                  to="/service"
+                  className={`mt-8 flex items-center justify-center h-[3.75rem] rounded-2xl text-xl font-bold transition-transform hover:scale-[1.02] ${buttonClass}`}
                 >
-                  <Link to="/service">Hire Now</Link>
-                </Button>
+                  Hire Now
+                </Link>
               </div>
             </article>
           </div>
 
+          {/* OR Divider */}
           <div className="hidden lg:flex items-center justify-center">
             <div className="relative isolate flex size-24 items-center justify-center rounded-full border border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/5 shadow-2xl backdrop-blur-2xl">
               <div
@@ -132,48 +146,48 @@ const FreelancerClientCards = () => {
             </div>
           </div>
 
+          {/* For Freelancers Card */}
           <div className="relative group overflow-visible">
             <img
               src={Mascot1}
               alt=""
               aria-hidden
               draggable="false"
-              className="pointer-events-none absolute bottom-6 -right-16 z-0 w-48 select-none opacity-0 rotate-[30deg] transform-gpu transition-transform duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-6 group-hover:opacity-100"
+              className="pointer-events-none absolute bottom-6 -right-16 z-0 w-48 select-none opacity-0 rotate-[30deg] transform-gpu transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-6 group-hover:opacity-100"
             />
 
-            <article className={`${orangeCardClassName} z-10`}>
+            <article className="relative isolate flex min-h-[26rem] flex-col rounded-[2rem] border border-transparent !bg-[#D9692A] px-6 pb-6 pt-6 text-left shadow-[0_24px_80px_rgba(217,105,42,0.35)] z-10">
               <div className="relative z-10 flex h-full flex-col">
                 <div className="mb-11 flex items-center justify-between gap-4">
-                  <UserRoundSearch className="size-7 !text-white" style={{ color: isDarkMode ? brandColor : "white" }} />
-                  <span className="text-sm font-semibold uppercase tracking-[0.28em] !text-white/70" style={{ color: isDarkMode ? "white" : "white" }}>
+                  <UserRoundSearch className="size-7 !text-white" />
+                  <span className="text-sm font-semibold uppercase tracking-[0.28em] !text-white/70">
                     For Freelancers
                   </span>
                 </div>
 
-                <h3 className="max-w-sm text-[2.05rem] font-semibold leading-tight !text-white">
+                <h3 className="max-sm text-[2.05rem] font-semibold leading-tight !text-white">
                   Grow Your Career with Trusted Clients
                 </h3>
 
-                <div className="mt-10 space-y-6">
+                <div className="mt-6 space-y-4">
                   {freelancerFeatures.map(({ icon: Icon, text }) => (
-                    <div key={text} className="flex items-center gap-4 group/feature">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors" style={{ backgroundColor: isDarkMode ? `${brandColor}20` : "rgba(255,255,255,0.2)" }}>
-                        <Icon className="size-[1.1rem] !text-white" style={{ color: isDarkMode ? brandColor : "white" }} />
+                    <div key={text} className="flex items-center gap-4">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20">
+                        <Icon className="size-[1.1rem] !text-white" />
                       </div>
-                      <span className="text-[1.05rem] font-medium leading-tight transition-colors !text-white/85 group-hover/feature:!text-white">
+                      <span className="text-[1.05rem] font-medium leading-tight !text-white">
                         {text}
                       </span>
                     </div>
                   ))}
                 </div>
 
-                <Button
-                  asChild
-                  className="mt-12 h-[3.75rem] rounded-2xl text-xl font-bold border-0 shadow-lg transition-transform hover:scale-[1.02]"
-                  style={{ backgroundColor: buttonBgRight, color: buttonTextRight }}
+                <Link
+                  to="/signup?role=freelancer"
+                  className="mt-8 flex items-center justify-center h-[3.75rem] rounded-2xl text-xl font-bold transition-transform hover:scale-[1.02] bg-white text-[#D9692A] shadow-lg"
                 >
-                  <Link to="/signup?role=freelancer">Get Hired Now</Link>
-                </Button>
+                  Get Hired Now
+                </Link>
               </div>
             </article>
           </div>
@@ -181,6 +195,6 @@ const FreelancerClientCards = () => {
       </div>
     </section>
   );
-};
+};;
 
 export default FreelancerClientCards;

@@ -40,14 +40,14 @@ const BrandCard = ({ brand, isDark }) => {
       <div
         className={cn(
           "flex items-center justify-center transition-all duration-300",
-          "opacity-100 hover:scale-110",
-          !isDark && brand.isWhite && "brightness-0"
+          "opacity-100 hover:scale-110"
         )}
       >
         <img 
           src={brand.logo} 
           alt={brand.name} 
           className="h-16 w-auto object-contain sm:h-20 md:h-24 lg:h-32"
+          style={!isDark && brand.isWhite ? { filter: "drop-shadow(1px 0 0 black) drop-shadow(-1px 0 0 black) drop-shadow(0 1px 0 black) drop-shadow(0 -1px 0 black)" } : {}}
         />
       </div>
     </div>
