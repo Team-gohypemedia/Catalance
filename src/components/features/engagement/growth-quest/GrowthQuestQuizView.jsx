@@ -48,12 +48,12 @@ const GrowthQuestQuizView = ({
           </div>
           <div className={cn(SUBTLE_CARD_CLASS, "px-4 py-3")}>
             <p className={LABEL_CLASS}>
-              {question.questionVariant === "personalized" ? "Personalized Focus" : "Category"}
+              {question.questionVariant === "personalized" ? "Personalized Focus" : "AI Focus"}
             </p>
             <p className="mt-1 text-sm font-medium text-foreground">
               {question.questionVariant === "personalized"
-                ? question.focusReason || "Tailored to your current Growth Quest level."
-                : question.categoryLabel || "Client Readiness"}
+                ? "Tailored for your current Growth Quest progress."
+                : question.focusReason || question.skillTag || question.categoryLabel || "Skill Focus"}
             </p>
           </div>
         </div>

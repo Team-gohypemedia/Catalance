@@ -10,6 +10,7 @@ import {
   listAdminDailySets,
   listAdminFreelancerProgress,
   listAdminPersonalizedQuestionHistory,
+  listAdminUserDailyQuestionHistory,
   listAdminQuestions,
   rejectAdminQuestion,
   seedAdminFallbackQuestions,
@@ -90,6 +91,11 @@ export const getDailySets = asyncHandler(async (req, res) => {
 
 export const getPersonalizedQuestionHistory = asyncHandler(async (req, res) => {
   const data = await listAdminPersonalizedQuestionHistory(req.query);
+  res.json({ data });
+});
+
+export const getUserDailyQuestionHistory = asyncHandler(async (req, res) => {
+  const data = await listAdminUserDailyQuestionHistory(req.query);
   res.json({ data });
 });
 

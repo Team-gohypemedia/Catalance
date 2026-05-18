@@ -8,12 +8,14 @@ import {
   getBadgesHandler,
   getDashboard,
   getProcessReportHandler,
+  saveGrowthQuestService,
   startDaily,
   submitDaily
 } from "../controllers/freelancerEngagement.controller.js";
 import {
   createContestSubmissionSchema,
   contestIdParamsSchema,
+  saveGrowthQuestServiceSchema,
   submitDailyChallengeSchema
 } from "../validators/engagement.validators.js";
 
@@ -38,6 +40,11 @@ freelancerEngagementRouter.post(
   createContestSubmissionHandler
 );
 freelancerEngagementRouter.post("/daily/start", startDaily);
+freelancerEngagementRouter.post(
+  "/service-selection",
+  validateResource(saveGrowthQuestServiceSchema),
+  saveGrowthQuestService
+);
 freelancerEngagementRouter.post(
   "/daily/submit",
   validateResource(submitDailyChallengeSchema),

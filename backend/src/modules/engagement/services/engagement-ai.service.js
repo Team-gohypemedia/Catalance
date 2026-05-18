@@ -181,32 +181,44 @@ const normalizeQuestionPayload = (question = {}, fallback = {}) => {
 
 export const generateCommonAiQuestionSet = async ({
   dayKey,
+  freelancerContext = {},
   recentQuestionTexts = [],
 }) => {
   const systemPrompt = `
-You generate daily freelancer engagement quiz questions.
+You are an AI upskilling coach for freelancers.
 Return only JSON.
 Every question must be safe, practical, professional, and suitable for freelancers.
 Only create MCQ, TRUE_FALSE, or SCENARIO_MCQ questions.
 Do not use sensitive, private, or offensive content.
-Each question needs a clear correct answer and a short explanation.
+Each question needs a clear correct answer and a short explanation that teaches the concept.
+Do NOT generate generic client communication questions.
+Do NOT focus mainly on freelancing business, negotiation, platform rules, or scope management unless the profile is clearly about those topics.
+Focus on practical skill improvement tied to the freelancer's actual service.
+If the profile is unclear, choose the most likely service area and use beginner-level practical fundamentals.
+Set skillTag to the specific skill area being tested (human-readable).
+Set focusReason to the inferred service area.
+Category is for internal tagging only; do not use it to choose content.
 `;
 
   const userPrompt = `
-Generate exactly 5 common daily questions for all freelancers for UTC day ${dayKey}.
+Generate exactly 5 daily questions for one freelancer for UTC day ${dayKey}.
 
-Allowed categories:
-${buildCategoryReference()}
+Freelancer profile and performance context:
+${JSON.stringify(freelancerContext, null, 2)}
 
 Requirements:
 - Return exactly 5 questions.
-- Use diverse categories with no repeated question text.
-- Prefer scenario-based professionalism, scope, delivery, quality, platform workflow, and business judgment.
+- The question content must match the freelancer's service domain, role, skill keywords, and experience level.
+- Use realistic scenarios from the freelancer's actual work, not generic platform-only prompts.
+- Do NOT generate client communication or freelancing-business questions unless the service area clearly requires it.
+- Add a short focusReason that states the inferred service area (e.g., "Service area: Web Development").
+- Use skillTag to state the specific skill area being tested (e.g., "Responsive layout", "Node performance", "Color grading").
 - Avoid repeating any of these recent question texts:
 ${recentQuestionTexts.slice(0, 18).map((text, index) => `${index + 1}. ${text}`).join("\n") || "None"}
 - Each MCQ or SCENARIO_MCQ should have exactly 4 options.
 - TRUE_FALSE must still return 2 options.
 - correctOptionId must match one option id.
+- Set category to the closest internal tag, but do not let it drive the question content.
 
 JSON shape:
 {
@@ -215,11 +227,12 @@ JSON shape:
       "questionText": "string",
       "type": "MCQ",
       "category": "CLIENT_COMMUNICATION",
-      "skillTag": "short_snake_case",
+      "skillTag": "specific skill area",
       "difficulty": "BEGINNER",
       "options": [{"id":"A","text":"..."},{"id":"B","text":"..."},{"id":"C","text":"..."},{"id":"D","text":"..."}],
       "correctOptionId": "A",
-      "explanation": "string"
+      "explanation": "string",
+      "focusReason": "Service area: ..."
     }
   ]
 }
@@ -237,9 +250,17 @@ JSON shape:
   return questions.map((question, index) =>
     normalizeQuestionPayload(question, {
       type: "MCQ",
-      category: engagementRules.categories[index % engagementRules.categories.length],
-      difficulty: "BEGINNER",
+      category:
+        freelancerContext?.recommendedTopic ||
+        freelancerContext?.weakTopics?.[0] ||
+        "CLIENT_COMMUNICATION",
+      difficulty: freelancerContext?.difficulty || "BEGINNER",
       skillTag: `ai_common_${index + 1}`,
+      focusReason:
+        freelancerContext?.serviceTitle ||
+        freelancerContext?.serviceCategory ||
+        freelancerContext?.services?.[0] ||
+        "Profile-based Growth Quest practice",
     })
   );
 };
@@ -250,12 +271,17 @@ export const generatePersonalizedAiQuestion = async ({
   recentQuestionTexts = [],
 }) => {
   const systemPrompt = `
-You generate one personalized daily freelancer engagement question.
+You are an AI upskilling coach for freelancers.
 Return only JSON.
-The question must be practical, professional, and aligned to the freelancer's current weak area or next focus.
+The question must be practical, professional, and aligned to the freelancer's actual service skill.
 Only create MCQ or SCENARIO_MCQ with exactly 4 options.
 Do not ask private or sensitive questions.
-Include a short focusReason explaining why this topic was chosen.
+Do NOT generate generic client communication questions.
+Do NOT focus mainly on freelancing business, negotiation, platform rules, or scope management unless the profile is clearly about those topics.
+Focus on practical skill improvement tied to the freelancer's actual service.
+Set skillTag to the specific skill area being tested (human-readable).
+Set focusReason to the inferred service area.
+Category is for internal tagging only; do not use it to choose content.
 `;
 
   const userPrompt = `
@@ -267,14 +293,16 @@ ${JSON.stringify(freelancerContext, null, 2)}
 Avoid repeating these recent personalized question texts:
 ${recentQuestionTexts.slice(0, 12).map((text, index) => `${index + 1}. ${text}`).join("\n") || "None"}
 
-Allowed categories:
-${buildCategoryReference()}
-
 Requirements:
 - Match the freelancer's current learning level.
-- Focus on a weak area or recommended next topic.
+- Focus on a weak area or recommended next topic when it relates to actual service skill.
 - Make the question practical and scenario-based when possible.
+- Use the freelancer's own service domain, service title, keywords, and recent weak spots so the scenario feels written for that freelancer only.
 - Keep it answerable with one best option.
+- Do NOT generate client communication or freelancing-business questions unless the service area clearly requires it.
+- Add a short focusReason that states the inferred service area (e.g., "Service area: Web Development").
+- Use skillTag to state the specific skill area being tested (e.g., "React state", "Copywriting tone").
+- Set category to the closest internal tag, but do not let it drive the question content.
 
 JSON shape:
 {
@@ -282,12 +310,12 @@ JSON shape:
     "questionText": "string",
     "type": "SCENARIO_MCQ",
     "category": "SCOPE_MANAGEMENT",
-    "skillTag": "revision_handling",
+    "skillTag": "specific skill area",
     "difficulty": "INTERMEDIATE",
     "options": [{"id":"A","text":"..."},{"id":"B","text":"..."},{"id":"C","text":"..."},{"id":"D","text":"..."}],
     "correctOptionId": "A",
     "explanation": "string",
-    "focusReason": "string"
+    "focusReason": "Service area: ..."
   }
 }
 `;

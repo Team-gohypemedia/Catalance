@@ -43,6 +43,7 @@ import { useAuth } from "@/shared/context/AuthContext";
 import { toast } from "sonner";
 import AdminEngagementScheduleCard from "./admin-engagement/AdminEngagementScheduleCard";
 import AdminEngagementPersonalizedHistoryCard from "./admin-engagement/AdminEngagementPersonalizedHistoryCard";
+import AdminEngagementUserDailyHistoryCard from "./admin-engagement/AdminEngagementUserDailyHistoryCard";
 import {
   AdminEngagementContestSubmissionsCard,
   AdminEngagementContestsCard,
@@ -85,6 +86,10 @@ const AdminEngagementQuestions = () => {
   const [personalizedHistoryLoading, setPersonalizedHistoryLoading] = useState(true);
   const [personalizedHistorySearch, setPersonalizedHistorySearch] = useState("");
   const [personalizedHistoryDayKey, setPersonalizedHistoryDayKey] = useState(createTodayKey);
+  const [userDailyHistory, setUserDailyHistory] = useState([]);
+  const [userDailyHistoryLoading, setUserDailyHistoryLoading] = useState(true);
+  const [userDailyHistorySearch, setUserDailyHistorySearch] = useState("");
+  const [userDailyHistoryDayKey, setUserDailyHistoryDayKey] = useState(createTodayKey);
   const [contests, setContests] = useState([]);
   const [contestDialogOpen, setContestDialogOpen] = useState(false);
   const [editingContest, setEditingContest] = useState(null);
@@ -188,6 +193,35 @@ const AdminEngagementQuestions = () => {
     const timeoutId = window.setTimeout(loadPersonalizedHistory, 250);
     return () => window.clearTimeout(timeoutId);
   }, [loadPersonalizedHistory]);
+
+  const loadUserDailyHistory = useCallback(async () => {
+    if (!authFetch) return;
+    setUserDailyHistoryLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("take", "20");
+      if (userDailyHistorySearch.trim()) params.set("search", userDailyHistorySearch.trim());
+      if (userDailyHistoryDayKey.trim()) params.set("dayKey", userDailyHistoryDayKey.trim());
+
+      const response = await authFetch(`/admin/engagement/user-daily-history?${params.toString()}`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to load profile-based daily AI history.");
+      }
+
+      setUserDailyHistory(Array.isArray(payload?.data) ? payload.data : []);
+    } catch (error) {
+      console.error("Failed to load profile-based daily AI history", error);
+      toast.error(error?.message || "Failed to load profile-based daily AI history");
+    } finally {
+      setUserDailyHistoryLoading(false);
+    }
+  }, [authFetch, userDailyHistoryDayKey, userDailyHistorySearch]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(loadUserDailyHistory, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadUserDailyHistory]);
 
   const loadContests = useCallback(async () => {
     if (!authFetch) return;
@@ -703,6 +737,15 @@ const AdminEngagementQuestions = () => {
           setPersonalizedHistorySearch={setPersonalizedHistorySearch}
           personalizedHistoryDayKey={personalizedHistoryDayKey}
           setPersonalizedHistoryDayKey={setPersonalizedHistoryDayKey}
+        />
+
+        <AdminEngagementUserDailyHistoryCard
+          userDailyHistory={userDailyHistory}
+          userDailyHistoryLoading={userDailyHistoryLoading}
+          userDailyHistorySearch={userDailyHistorySearch}
+          setUserDailyHistorySearch={setUserDailyHistorySearch}
+          userDailyHistoryDayKey={userDailyHistoryDayKey}
+          setUserDailyHistoryDayKey={setUserDailyHistoryDayKey}
         />
 
         <AdminEngagementContestsCard

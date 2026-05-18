@@ -33,6 +33,24 @@ const CATEGORY_LABELS = Object.freeze({
 const ENGAGEMENT_CONTESTS_CATALOG_KEY = "engagement_contests";
 const ENGAGEMENT_CONTEST_SUBMISSIONS_CATALOG_KEY = "engagement_contest_submissions";
 const PERSONALIZED_QUESTION_TABLE = `"EngagementPersonalizedQuestion"`;
+const USER_DAILY_QUESTION_SET_TABLE = `"EngagementUserDailyQuestionSet"`;
+const GROWTH_QUEST_SERVICE_OPTIONS = Object.freeze([
+  "Web Development",
+  "Mobile App Development",
+  "AI Automation",
+  "CRM & ERP Integrated Solutions",
+  "Voice Agent",
+  "Creative & Design",
+  "Branding Kit",
+  "UGC Marketing",
+  "Paid Advertising",
+  "Social Media Marketing (Organic)",
+  "Video Services",
+  "Writing & Content",
+  "3D Animation/CGI Videos",
+  "Influencer Marketing",
+  "SEO / GMB"
+]);
 
 const LEVEL_LABELS = Object.freeze(
   Object.fromEntries(engagementRules.levels.map((level) => [level.key, level.label]))
@@ -105,6 +123,15 @@ const normalizeNonNegativeInt = (value, fallback = 0) => {
   return Math.max(0, Math.round(numeric));
 };
 
+const normalizeGrowthQuestService = (value = "") => {
+  const normalized = normalizeText(value).toLowerCase();
+  return (
+    GROWTH_QUEST_SERVICE_OPTIONS.find(
+      (service) => service.toLowerCase() === normalized
+    ) || null
+  );
+};
+
 const normalizeJsonValue = (value, fallback = null) => {
   if (value === null || value === undefined) return fallback;
   if (typeof value === "string") {
@@ -146,6 +173,31 @@ const ensurePersonalizedQuestionStore = async (client = prisma) => {
   `);
 };
 
+const ensureUserDailyQuestionSetStore = async (client = prisma) => {
+  await client.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS ${USER_DAILY_QUESTION_SET_TABLE} (
+      "id" TEXT PRIMARY KEY,
+      "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+      "dayKey" TEXT NOT NULL,
+      "questionIds" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+      "questionSnapshots" JSONB NOT NULL DEFAULT '[]'::jsonb,
+      "generationSource" TEXT NOT NULL DEFAULT 'fallback',
+      "profileSnapshot" JSONB NOT NULL DEFAULT '{}'::jsonb,
+      "aiMetadata" JSONB NOT NULL DEFAULT '{}'::jsonb,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "EngagementUserDailyQuestionSet_userId_dayKey_key"
+    ON ${USER_DAILY_QUESTION_SET_TABLE} ("userId", "dayKey");
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "EngagementUserDailyQuestionSet_dayKey_idx"
+    ON ${USER_DAILY_QUESTION_SET_TABLE} ("dayKey");
+  `);
+};
+
 const serializePersonalizedQuestionRecord = (row) => ({
   id: row.id,
   userId: row.userId,
@@ -161,6 +213,21 @@ const serializePersonalizedQuestionRecord = (row) => ({
   focusReason: row.focusReason || "",
   generationSource: row.generationSource || "fallback",
   sourceReportSnapshot: normalizeJsonValue(row.sourceReportSnapshot, {}) || {},
+  aiMetadata: normalizeJsonValue(row.aiMetadata, {}) || {},
+  createdAt: row.createdAt,
+  updatedAt: row.updatedAt
+});
+
+const serializeUserDailyQuestionSetRecord = (row) => ({
+  id: row.id,
+  userId: row.userId,
+  userName: row.userName || null,
+  userEmail: row.userEmail || null,
+  dayKey: row.dayKey,
+  questionIds: Array.isArray(row.questionIds) ? row.questionIds : [],
+  questionSnapshots: normalizeJsonValue(row.questionSnapshots, []) || [],
+  generationSource: row.generationSource || "fallback",
+  profileSnapshot: normalizeJsonValue(row.profileSnapshot, {}) || {},
   aiMetadata: normalizeJsonValue(row.aiMetadata, {}) || {},
   createdAt: row.createdAt,
   updatedAt: row.updatedAt
@@ -252,7 +319,7 @@ const sanitizeQuestionForClient = (question, dayKey) => ({
   questionText: question.questionText,
   type: question.type,
   category: question.category,
-  categoryLabel: categoryLabel(question.category),
+  categoryLabel: question.categoryLabel || categoryLabel(question.category),
   skillTag: question.skillTag,
   difficulty: question.difficulty,
   questionVariant: question.questionVariant || "common",
@@ -505,6 +572,34 @@ const getFreelancerPersonalizationContext = async ({
   };
 };
 
+const hasUsableGrowthQuestProfile = (context = {}) => {
+  const services = Array.isArray(context?.services) ? context.services.filter(Boolean) : [];
+  return Boolean(
+    services.length ||
+      normalizeText(context?.serviceTitle) ||
+      normalizeText(context?.serviceCategory)
+  );
+};
+
+const buildProfileQuestionSnapshot = (context = {}) => ({
+  fullName: context.fullName || "Freelancer",
+  engagementLevel: context.engagementLevel || "LEVEL_1",
+  engagementLevelLabel: context.engagementLevelLabel || "Starter",
+  difficulty: context.difficulty || "BEGINNER",
+  recommendedTopic: context.recommendedTopic || "CLIENT_COMMUNICATION",
+  weakTopics: Array.isArray(context.weakTopics) ? context.weakTopics : [],
+  strongTopics: Array.isArray(context.strongTopics) ? context.strongTopics : [],
+  rollingAccuracy: normalizeNonNegativeInt(context.rollingAccuracy),
+  rolling7DayAccuracy: normalizeNonNegativeInt(context.rolling7DayAccuracy),
+  currentStreak: normalizeNonNegativeInt(context.currentStreak),
+  longestStreak: normalizeNonNegativeInt(context.longestStreak),
+  experienceYears: normalizeNonNegativeInt(context.experienceYears),
+  services: Array.isArray(context.services) ? context.services : [],
+  serviceCategory: normalizeText(context.serviceCategory),
+  serviceTitle: normalizeText(context.serviceTitle),
+  serviceKeywords: Array.isArray(context.serviceKeywords) ? context.serviceKeywords : []
+});
+
 const listRecentPersonalizedQuestionTexts = async (userId, client = prisma) => {
   await ensurePersonalizedQuestionStore(client);
   const rows = await client.$queryRaw`
@@ -517,6 +612,23 @@ const listRecentPersonalizedQuestionTexts = async (userId, client = prisma) => {
   return rows.map((row) => normalizeText(row.questionText)).filter(Boolean);
 };
 
+const listRecentUserDailyQuestionTexts = async (userId, client = prisma) => {
+  await ensureUserDailyQuestionSetStore(client);
+  const rows = await client.$queryRaw`
+    SELECT "questionSnapshots"
+    FROM "EngagementUserDailyQuestionSet"
+    WHERE "userId" = ${userId}
+    ORDER BY "createdAt" DESC
+    LIMIT 12
+  `;
+
+  return rows
+    .flatMap((row) => normalizeJsonValue(row.questionSnapshots, []) || [])
+    .map((question) => normalizeText(question?.questionText))
+    .filter(Boolean)
+    .slice(0, 24);
+};
+
 const getStoredPersonalizedQuestionRecord = async ({ userId, dayKey, client = prisma }) => {
   await ensurePersonalizedQuestionStore(client);
   const rows = await client.$queryRaw`
@@ -527,6 +639,22 @@ const getStoredPersonalizedQuestionRecord = async ({ userId, dayKey, client = pr
     LIMIT 1
   `;
   return rows[0] ? serializePersonalizedQuestionRecord(rows[0]) : null;
+};
+
+const getStoredUserDailyQuestionSetRecord = async ({
+  userId,
+  dayKey,
+  client = prisma
+}) => {
+  await ensureUserDailyQuestionSetStore(client);
+  const rows = await client.$queryRaw`
+    SELECT *
+    FROM "EngagementUserDailyQuestionSet"
+    WHERE "userId" = ${userId} AND "dayKey" = ${dayKey}
+    ORDER BY "createdAt" DESC
+    LIMIT 1
+  `;
+  return rows[0] ? serializeUserDailyQuestionSetRecord(rows[0]) : null;
 };
 
 const savePersonalizedQuestionRecord = async ({
@@ -591,6 +719,72 @@ const savePersonalizedQuestionRecord = async ({
   `;
 
   return getStoredPersonalizedQuestionRecord({ userId, dayKey, client });
+};
+
+const saveUserDailyQuestionSetRecord = async ({
+  userId,
+  dayKey,
+  questions,
+  generationSource,
+  profileSnapshot,
+  aiMetadata = {},
+  client = prisma
+}) => {
+  await ensureUserDailyQuestionSetStore(client);
+  const id = `eudqs_${crypto.randomUUID()}`;
+  const questionIds = Array.isArray(questions)
+    ? questions.map((question) => normalizeText(question?.id)).filter(Boolean)
+    : [];
+  const questionSnapshots = (Array.isArray(questions) ? questions : []).map((question) => ({
+    id: question.id,
+    questionText: question.questionText,
+    category: question.category,
+    categoryLabel: categoryLabel(question.category),
+    difficulty: question.difficulty,
+    skillTag: question.skillTag || "",
+    focusReason: question.focusReason || "",
+    questionVariant: "common"
+  }));
+  const profileSnapshotJson = JSON.stringify(profileSnapshot || {});
+  const metadataJson = JSON.stringify(aiMetadata || {});
+  const snapshotsJson = JSON.stringify(questionSnapshots);
+
+  await client.$executeRaw`
+    INSERT INTO "EngagementUserDailyQuestionSet" (
+      "id",
+      "userId",
+      "dayKey",
+      "questionIds",
+      "questionSnapshots",
+      "generationSource",
+      "profileSnapshot",
+      "aiMetadata",
+      "createdAt",
+      "updatedAt"
+    )
+    VALUES (
+      ${id},
+      ${userId},
+      ${dayKey},
+      ${questionIds},
+      ${snapshotsJson}::jsonb,
+      ${generationSource},
+      ${profileSnapshotJson}::jsonb,
+      ${metadataJson}::jsonb,
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT ("userId", "dayKey")
+    DO UPDATE SET
+      "questionIds" = EXCLUDED."questionIds",
+      "questionSnapshots" = EXCLUDED."questionSnapshots",
+      "generationSource" = EXCLUDED."generationSource",
+      "profileSnapshot" = EXCLUDED."profileSnapshot",
+      "aiMetadata" = EXCLUDED."aiMetadata",
+      "updatedAt" = NOW()
+  `;
+
+  return getStoredUserDailyQuestionSetRecord({ userId, dayKey, client });
 };
 
 export const ensureCoreBadges = async (client = prisma) => {
@@ -1043,6 +1237,12 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
       listVisibleContestsForDay(dayKey),
       buildWeeklyLeaderboardPayload(userId)
     ]);
+  const personalizationContext = await getFreelancerPersonalizationContext({
+    userId,
+    profile,
+    report
+  });
+  const serviceProfileReady = hasUsableGrowthQuestProfile(personalizationContext);
 
   const levelProgress = buildLevelProgress(profile, report);
   const latestSession = todaySessions[0] || null;
@@ -1073,7 +1273,13 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
       badges,
       currentWeeklyRank: leaderboard?.currentUser?.rank || null,
       weeklyXp: leaderboard?.currentUser?.weeklyXp || 0,
-      weeklyCoins: leaderboard?.currentUser?.weeklyCoins || 0
+      weeklyCoins: leaderboard?.currentUser?.weeklyCoins || 0,
+      serviceProfileReady,
+      growthQuestServices: Array.isArray(personalizationContext?.services)
+        ? personalizationContext.services
+        : [],
+      growthQuestServiceTitle: normalizeText(personalizationContext?.serviceTitle),
+      growthQuestServiceCategory: normalizeText(personalizationContext?.serviceCategory)
     },
     today: {
       dayKey,
@@ -1089,6 +1295,10 @@ const buildDashboardPayload = async ({ userId, dayKey = getUtcDayKey() }) => {
     badges,
     processSummary,
     topicPerformance,
+    serviceSelection: {
+      required: !serviceProfileReady,
+      options: GROWTH_QUEST_SERVICE_OPTIONS
+    },
     contests,
     leaderboard,
     recentSessions: recentSessions.map(serializeRecentSession),
@@ -1266,6 +1476,115 @@ const loadDailyQuestions = async (dailySet) => {
   return dailySet.questionIds.map((id) => byId.get(id)).filter(Boolean);
 };
 
+const loadUserDailyQuestionsFromRecord = async (record) => {
+  const questionIds = Array.isArray(record?.questionIds) ? record.questionIds : [];
+  if (!questionIds.length) return [];
+
+  const questions = await prisma.engagementQuestion.findMany({
+    where: {
+      id: { in: questionIds },
+      status: "APPROVED"
+    }
+  });
+  const byId = new Map(questions.map((question) => [question.id, question]));
+  const snapshotById = new Map(
+    (Array.isArray(record?.questionSnapshots) ? record.questionSnapshots : [])
+      .filter((question) => question?.id)
+      .map((question) => [question.id, question])
+  );
+
+  return questionIds
+    .map((id) => {
+      const question = byId.get(id);
+      if (!question) return null;
+      const snapshot = snapshotById.get(id);
+      return {
+        ...question,
+        questionVariant: "common",
+        focusReason: snapshot?.focusReason || "",
+        categoryLabel:
+          snapshot?.categoryLabel || categoryLabel(snapshot?.category || question.category)
+      };
+    })
+    .filter(Boolean);
+};
+
+const selectQuestionsForFreelancerFallback = async ({
+  userId,
+  dayKey,
+  profile,
+  report,
+  commonQuestionCount = engagementRules.dailyChallenge.questionCount
+}) => {
+  const approved = await prisma.engagementQuestion.findMany({
+    where: { status: "APPROVED" },
+    orderBy: [{ usageCount: "asc" }, { createdAt: "asc" }],
+    take: 240
+  });
+
+  if (!approved.length) {
+    throw new AppError("No approved Growth Quest fallback questions available.", 503);
+  }
+
+  const preferredDifficulty = derivePersonalizedDifficulty({ profile, report });
+  const preferredCategories = derivePersonalizedCategories({ userId, dayKey, report });
+  const deterministicSeed = `${userId}:${dayKey}:profile-common`;
+  const selected = [];
+  const selectedIds = new Set();
+
+  preferredCategories.forEach((category) => {
+    if (selected.length >= commonQuestionCount) return;
+    const exactDifficulty = sortQuestionsForSeed(
+      approved.filter(
+        (question) =>
+          question.category === category &&
+          question.difficulty === preferredDifficulty &&
+          !selectedIds.has(question.id)
+      ),
+      `${deterministicSeed}:${category}:exact`
+    );
+    if (exactDifficulty[0]) {
+      selected.push(exactDifficulty[0]);
+      selectedIds.add(exactDifficulty[0].id);
+      return;
+    }
+
+    const sameCategory = sortQuestionsForSeed(
+      approved.filter(
+        (question) => question.category === category && !selectedIds.has(question.id)
+      ),
+      `${deterministicSeed}:${category}:fallback`
+    );
+    if (sameCategory[0]) {
+      selected.push(sameCategory[0]);
+      selectedIds.add(sameCategory[0].id);
+    }
+  });
+
+  sortQuestionsForSeed(approved, deterministicSeed).forEach((question) => {
+    if (selected.length >= commonQuestionCount || selectedIds.has(question.id)) return;
+    selected.push(question);
+    selectedIds.add(question.id);
+  });
+
+  const freelancerContext = await getFreelancerPersonalizationContext({
+    userId,
+    profile,
+    report
+  });
+  const focusPrefix =
+    freelancerContext.serviceTitle ||
+    freelancerContext.serviceCategory ||
+    freelancerContext.services[0] ||
+    "your freelancer profile";
+
+  return selected.slice(0, commonQuestionCount).map((question) => ({
+    ...question,
+    questionVariant: "common",
+    focusReason: `Selected for ${focusPrefix} work and your current learning pattern.`
+  }));
+};
+
 const selectPersonalizedQuestion = async ({
   userId,
   dayKey,
@@ -1333,6 +1652,121 @@ const selectPersonalizedQuestion = async ({
       ? `Focused on ${categoryLabel(focusCategory)} based on your recent progress.`
       : "Tailored to your current Growth Quest level."
   };
+};
+
+const getOrCreateUserDailyQuestionSet = async ({
+  userId,
+  dayKey,
+  profile,
+  report
+}) => {
+  const existingRecord = await getStoredUserDailyQuestionSetRecord({ userId, dayKey });
+  if (existingRecord?.questionIds?.length) {
+    const storedQuestions = await loadUserDailyQuestionsFromRecord(existingRecord);
+    if (storedQuestions.length === existingRecord.questionIds.length) {
+      return {
+        dailySet: existingRecord,
+        commonQuestions: storedQuestions
+      };
+    }
+  }
+
+  const freelancerContext = await getFreelancerPersonalizationContext({
+    userId,
+    profile,
+    report
+  });
+  const profileSnapshot = buildProfileQuestionSnapshot(freelancerContext);
+
+  try {
+    const aiQuestions = await generateCommonAiQuestionSet({
+      dayKey,
+      freelancerContext,
+      recentQuestionTexts: await listRecentUserDailyQuestionTexts(userId)
+    });
+    const dedupedAiQuestions = [
+      ...new Map(
+        aiQuestions
+          .map((question) => [
+            buildQuestionContentHash({
+              questionText: question.questionText,
+              category: question.category,
+              difficulty: question.difficulty,
+              correctOptionId: question.correctOptionId
+            }),
+            question
+          ])
+          .filter(([hash]) => hash)
+      ).values()
+    ].slice(0, engagementRules.dailyChallenge.questionCount);
+
+    if (dedupedAiQuestions.length !== engagementRules.dailyChallenge.questionCount) {
+      throw new AppError("AI did not return enough valid profile questions.", 502);
+    }
+
+    const savedQuestions = [];
+    for (const question of dedupedAiQuestions) {
+      const saved = await upsertGeneratedQuestion({
+        payload: question,
+        source: "ai_common_profile",
+        status: "APPROVED"
+      });
+      savedQuestions.push({
+        ...saved,
+        questionVariant: "common",
+        focusReason:
+          question.focusReason ||
+          `Generated for ${profileSnapshot.serviceTitle || profileSnapshot.serviceCategory || "this freelancer profile"}.`
+      });
+    }
+
+    const savedRecord = await saveUserDailyQuestionSetRecord({
+      userId,
+      dayKey,
+      questions: savedQuestions,
+      generationSource: "ai",
+      profileSnapshot,
+      aiMetadata: {
+        strategy: "profile_based_common_questions",
+        services: profileSnapshot.services,
+        serviceCategory: profileSnapshot.serviceCategory,
+        serviceTitle: profileSnapshot.serviceTitle,
+        weakTopics: profileSnapshot.weakTopics,
+        recommendedTopic: profileSnapshot.recommendedTopic
+      }
+    });
+
+    return {
+      dailySet: savedRecord,
+      commonQuestions: savedQuestions
+    };
+  } catch (error) {
+    console.error(
+      `[Engagement] Profile-based common AI generation failed for ${userId} on ${dayKey}:`,
+      error?.message || error
+    );
+    const fallbackQuestions = await selectQuestionsForFreelancerFallback({
+      userId,
+      dayKey,
+      profile,
+      report
+    });
+    const savedRecord = await saveUserDailyQuestionSetRecord({
+      userId,
+      dayKey,
+      questions: fallbackQuestions,
+      generationSource: "fallback",
+      profileSnapshot,
+      aiMetadata: {
+        strategy: "fallback_question_bank",
+        fallbackReason: normalizeText(error?.message || "AI generation failed")
+      }
+    });
+    return {
+      dailySet: savedRecord,
+      commonQuestions: fallbackQuestions
+    };
+  }
 };
 
 const getOrCreatePersonalizedQuestion = async ({
@@ -1436,11 +1870,15 @@ const getOrCreatePersonalizedQuestion = async ({
 };
 
 const loadChallengeQuestions = async ({ userId, dayKey, profile = null, report = null }) => {
-  const dailySet = await ensurePublishedDailySet(dayKey);
-  const commonQuestions = await loadDailyQuestions(dailySet);
   const resolvedProfile = profile || (await ensureProfile(userId));
   const resolvedReport =
     report || (await prisma.engagementProcessReport.findUnique({ where: { userId } }));
+  const { dailySet, commonQuestions } = await getOrCreateUserDailyQuestionSet({
+    userId,
+    dayKey,
+    profile: resolvedProfile,
+    report: resolvedReport
+  });
   const personalizedQuestion = await getOrCreatePersonalizedQuestion({
     userId,
     dayKey,
@@ -1969,7 +2407,7 @@ const buildAnswerDetails = ({ questions, answers, dayKey }) => {
       questionText: question.questionText,
       type: question.type,
       category: question.category,
-      categoryLabel: categoryLabel(question.category),
+      categoryLabel: question.categoryLabel || categoryLabel(question.category),
       skillTag: question.skillTag,
       difficulty: question.difficulty,
       questionVariant: question.questionVariant || "common",
@@ -2072,6 +2510,57 @@ export const getEngagementDashboard = async (userId) => {
   await ensureFallbackQuestionBank();
   await ensureCoreBadges();
   return buildDashboardPayload({ userId });
+};
+
+export const saveGrowthQuestServicePreference = async ({ userId, service }) => {
+  ensureEnabled();
+  await ensureFreelancerUser(userId);
+
+  const normalizedService = normalizeGrowthQuestService(service);
+  if (!normalizedService) {
+    throw new AppError("Select a valid Growth Quest service.", 400);
+  }
+
+  const dayKey = getUtcDayKey();
+  const serviceKeywords = normalizedService
+    .split(/[^a-zA-Z0-9]+/)
+    .map((part) => normalizeText(part).toLowerCase())
+    .filter(Boolean)
+    .slice(0, 10);
+
+  await prisma.freelancerProfile.upsert({
+    where: { userId },
+    create: {
+      userId,
+      services: [normalizedService],
+      serviceTitle: normalizedService,
+      serviceCategory: normalizedService,
+      serviceKeywords
+    },
+    update: {
+      services: [normalizedService],
+      serviceTitle: normalizedService,
+      serviceCategory: normalizedService,
+      serviceKeywords
+    }
+  });
+
+  await ensureUserDailyQuestionSetStore();
+  await ensurePersonalizedQuestionStore();
+  await prisma.$executeRaw`
+    DELETE FROM "EngagementUserDailyQuestionSet"
+    WHERE "userId" = ${userId} AND "dayKey" = ${dayKey}
+  `;
+  await prisma.$executeRaw`
+    DELETE FROM "EngagementPersonalizedQuestion"
+    WHERE "userId" = ${userId} AND "dayKey" = ${dayKey}
+  `;
+
+  return {
+    service: normalizedService,
+    dayKey,
+    dashboard: await buildDashboardPayload({ userId, dayKey })
+  };
 };
 
 export const startDailyChallenge = async (userId) => {
@@ -2235,7 +2724,7 @@ export const submitDailyChallenge = async ({
           data: {
             userId,
             dayKey,
-            dailyQuestionSetId: dailySet.id,
+            dailyQuestionSetId: null,
             answers: answerDetails.map((answer) => ({
               questionId: answer.questionId,
               selectedOptionId: answer.selectedOptionId,
@@ -2578,6 +3067,52 @@ export const listAdminPersonalizedQuestionHistory = async ({
   `;
 
   return rows.map(serializePersonalizedQuestionRecord);
+};
+
+export const listAdminUserDailyQuestionHistory = async ({
+  search,
+  dayKey,
+  userId,
+  take = 30
+} = {}) => {
+  ensureEnabled();
+  await ensureUserDailyQuestionSetStore();
+
+  const normalizedSearch = normalizeText(search);
+  const normalizedUserId = normalizeText(userId);
+  const normalizedDayKey = normalizeDayKey(dayKey, null);
+  const limit = Math.min(60, Math.max(1, Number(take) || 30));
+  const searchPattern = normalizedSearch ? `%${normalizedSearch}%` : null;
+
+  const rows = await prisma.$queryRaw`
+    SELECT
+      eudqs."id",
+      eudqs."userId",
+      u."fullName" AS "userName",
+      u."email" AS "userEmail",
+      eudqs."dayKey",
+      eudqs."questionIds",
+      eudqs."questionSnapshots",
+      eudqs."generationSource",
+      eudqs."profileSnapshot",
+      eudqs."aiMetadata",
+      eudqs."createdAt",
+      eudqs."updatedAt"
+    FROM "EngagementUserDailyQuestionSet" eudqs
+    INNER JOIN "User" u ON u."id" = eudqs."userId"
+    WHERE (${normalizedUserId || null}::text IS NULL OR eudqs."userId" = ${normalizedUserId || null})
+      AND (${normalizedDayKey || null}::text IS NULL OR eudqs."dayKey" = ${normalizedDayKey || null})
+      AND (
+        ${searchPattern || null}::text IS NULL
+        OR u."fullName" ILIKE ${searchPattern || null}
+        OR u."email" ILIKE ${searchPattern || null}
+        OR CAST(eudqs."questionSnapshots" AS TEXT) ILIKE ${searchPattern || null}
+      )
+    ORDER BY eudqs."createdAt" DESC
+    LIMIT ${limit}
+  `;
+
+  return rows.map(serializeUserDailyQuestionSetRecord);
 };
 
 export const listAdminQuestions = async ({ status, search, take = 100 } = {}) => {
