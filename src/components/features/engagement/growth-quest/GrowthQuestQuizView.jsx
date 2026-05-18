@@ -1,6 +1,7 @@
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import XCircle from "lucide-react/dist/esm/icons/x-circle";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Star from "lucide-react/dist/esm/icons/star";
@@ -34,6 +35,18 @@ const GrowthQuestQuizView = ({
   if (!question) return null;
 
   const answeredCount = Object.keys(selectedAnswers).length;
+  const selectedOptionId = selectedAnswers[question.id];
+  const isRevealed = revealedQuestions[question.id];
+  const isCorrect = Boolean(selectedOptionId && selectedOptionId === question.correctOptionId);
+  const correctOptionIndex = (question.options || []).findIndex(
+    (option) => option.id === question.correctOptionId
+  );
+  const correctOption =
+    (question.options || []).find((option) => option.id === question.correctOptionId) || null;
+  const correctLabel =
+    (correctOptionIndex >= 0 ? LABELS[correctOptionIndex] : null) ||
+    (correctOption?.id ? String(correctOption.id).toUpperCase() : null) ||
+    String(question.correctOptionId || "").toUpperCase();
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -128,7 +141,7 @@ const GrowthQuestQuizView = ({
                     onClick={() => {
                       if (!isRevealed) {
                         handleSelectAnswer(question.id, option.id);
-                        handleRevealAnswer(question.id, option.id === question.correctOptionId);
+                        handleRevealAnswer(question, option.id, option.id === question.correctOptionId);
                       }
                     }}
                     className={cn(
@@ -184,6 +197,68 @@ const GrowthQuestQuizView = ({
                 );
               })}
             </div>
+
+            {isRevealed ? (
+              <div
+                className={cn(
+                  "growth-quest-feedback",
+                  isCorrect ? "growth-quest-feedback--correct" : "growth-quest-feedback--wrong"
+                )}
+              >
+                <div className="growth-quest-feedback__head">
+                  <div className="growth-quest-feedback__status">
+                    {isCorrect ? (
+                      <>
+                        <CheckCircle2 className="size-4" />
+                        Correct Answer
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="size-4" />
+                        Wrong Answer
+                      </>
+                    )}
+                  </div>
+                  {isCorrect ? (
+                    <div className="growth-quest-feedback__rewards">
+                      <span>
+                        <Star className="size-3" /> +10 Coins
+                      </span>
+                      <span>
+                        <Zap className="size-3" /> +15 XP
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="growth-quest-feedback__rewards is-muted">
+                      No rewards for this one
+                    </div>
+                  )}
+                </div>
+
+                <p className="growth-quest-feedback__title">
+                  {isCorrect
+                    ? "Nice work. You nailed the concept."
+                    : "Not quite. Do your best on the next question."}
+                </p>
+
+                <div className="growth-quest-feedback__body">
+                  {isCorrect ? (
+                    <p>{question.explanation || "Great job applying the right approach here."}</p>
+                  ) : (
+                    <>
+                      <p>
+                        Correct answer: {correctLabel}. {correctOption?.text || "Review the correct option."}
+                      </p>
+                      <p>
+                        {question.explanation
+                          ? `Why your option is wrong: ${question.explanation}`
+                          : "Why your option is wrong: it misses the key idea tested in this question."}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {error ? (

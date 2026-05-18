@@ -324,7 +324,9 @@ const sanitizeQuestionForClient = (question, dayKey) => ({
   difficulty: question.difficulty,
   questionVariant: question.questionVariant || "common",
   focusReason: question.focusReason || "",
-  options: sortOptionsForDay(question.options || [], dayKey, question.id)
+  options: sortOptionsForDay(question.options || [], dayKey, question.id),
+  correctOptionId: question.correctOptionId,
+  explanation: question.explanation
 });
 
 const toSafeQuestionRecord = (question) => ({
