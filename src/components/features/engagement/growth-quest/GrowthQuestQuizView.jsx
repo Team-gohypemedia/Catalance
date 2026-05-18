@@ -53,7 +53,7 @@ const GrowthQuestQuizView = ({
             <p className="mt-1 text-sm font-medium text-foreground">
               {question.questionVariant === "personalized"
                 ? "Tailored for your current Growth Quest progress."
-                : question.categoryLabel || "Client Readiness"}
+                : question.focusReason || question.skillTag || question.categoryLabel || "Skill Focus"}
             </p>
           </div>
         </div>
