@@ -2051,7 +2051,7 @@ const QuizView = GrowthQuestQuizView;
 const ResultView = GrowthQuestResultView;
 
 const FreelancerGrowthQuestPage = () => {
-  const { authFetch } = useAuth();
+  const { authFetch, user } = useAuth();
   const navigate = useNavigate();
 
   const [view, setView] = useState("dashboard");
@@ -2070,6 +2070,51 @@ const FreelancerGrowthQuestPage = () => {
   const [revealedQuestions, setRevealedQuestions] = useState({});
   const [idempotencyKey, setIdempotencyKey] = useState(makeKey);
   const [infoOpen, setInfoOpen] = useState(false);
+
+  const progressKey = useMemo(() => {
+    const userId = user?.id || "anonymous";
+    const dayKey = quest?.dayKey || previewQuest?.dayKey || "pending";
+    return `growthQuestProgress:${userId}:${dayKey}`;
+  }, [previewQuest?.dayKey, quest?.dayKey, user?.id]);
+
+  const readProgress = useCallback(() => {
+    if (!progressKey) return null;
+    try {
+      const raw = localStorage.getItem(progressKey);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }, [progressKey]);
+
+  const writeProgress = useCallback(
+    (payload) => {
+      if (!progressKey) return;
+      try {
+        localStorage.setItem(
+          progressKey,
+          JSON.stringify({
+            dayKey: quest?.dayKey || previewQuest?.dayKey,
+            updatedAt: Date.now(),
+            ...payload,
+          })
+        );
+      } catch {
+        // Ignore storage errors to avoid blocking the quiz.
+      }
+    },
+    [previewQuest?.dayKey, progressKey, quest?.dayKey]
+  );
+
+  const clearProgress = useCallback(() => {
+    if (!progressKey) return;
+    try {
+      localStorage.removeItem(progressKey);
+    } catch {
+      // Ignore storage errors.
+    }
+  }, [progressKey]);
 
   const loadDashboard = useCallback(async () => {
     if (!authFetch) return;
@@ -2146,6 +2191,7 @@ const FreelancerGrowthQuestPage = () => {
 
       setDashboard(payload?.data?.dashboard || null);
       setPreviewQuest(null);
+      clearProgress();
       toast.success("Service saved. Generating today’s questions.");
     } catch (err) {
       setError(err?.message || "Failed to save service.");
@@ -2153,7 +2199,7 @@ const FreelancerGrowthQuestPage = () => {
     } finally {
       setSavingServiceSelection(false);
     }
-  }, [authFetch, savingServiceSelection]);
+  }, [authFetch, clearProgress, savingServiceSelection]);
 
   const startQuest = async () => {
     if (!authFetch) return;
@@ -2165,6 +2211,7 @@ const FreelancerGrowthQuestPage = () => {
     if (previewQuest?.status === "completed") {
       setQuest(previewQuest);
       setResult(previewQuest.resultSummary || null);
+      clearProgress();
       setView("result");
       return;
     }
@@ -2198,6 +2245,7 @@ const FreelancerGrowthQuestPage = () => {
 
       if (data.status === "completed") {
         setResult(data.resultSummary || null);
+        clearProgress();
         setView("result");
       } else {
         setIdempotencyKey(makeKey());
@@ -2217,8 +2265,45 @@ const FreelancerGrowthQuestPage = () => {
     () => (Array.isArray(quest?.questions) ? quest.questions : []),
     [quest?.questions],
   );
+  const questionIds = useMemo(
+    () => questions.map((question) => question.id),
+    [questions]
+  );
   const canSubmit =
     questions.length > 0 && questions.every((question) => selectedAnswers[question.id]);
+
+  useEffect(() => {
+    if (view !== "quiz" || questions.length === 0) return;
+    const stored = readProgress();
+    if (!stored?.questionIds?.length) return;
+    const storedIds = stored.questionIds.join("|");
+    const currentIds = questionIds.join("|");
+    if (storedIds !== currentIds) return;
+
+    const restoredAnswers = stored.selectedAnswers || {};
+    const restoredReveals = stored.revealedQuestions || {};
+    const firstUnansweredIndex = questionIds.findIndex(
+      (id) => !restoredAnswers[id]
+    );
+    const nextIndex =
+      firstUnansweredIndex >= 0
+        ? firstUnansweredIndex
+        : Math.min(Number(stored.activeIndex || 0), questionIds.length - 1);
+
+    setSelectedAnswers(restoredAnswers);
+    setRevealedQuestions(restoredReveals);
+    setActiveIndex(nextIndex);
+  }, [questionIds, questions.length, readProgress, view]);
+
+  useEffect(() => {
+    if (view !== "quiz" || questions.length === 0) return;
+    writeProgress({
+      selectedAnswers,
+      revealedQuestions,
+      activeIndex,
+      questionIds,
+    });
+  }, [activeIndex, questionIds, questions.length, revealedQuestions, selectedAnswers, view, writeProgress]);
 
   const handleSelectAnswer = (questionId, optionId) => {
     setSelectedAnswers((current) => ({
@@ -2227,10 +2312,11 @@ const FreelancerGrowthQuestPage = () => {
     }));
   };
 
-  const handleRevealAnswer = (questionId, isCorrect) => {
+  const handleRevealAnswer = (question, optionId, isCorrect) => {
+    if (!question?.id) return;
     setRevealedQuestions((current) => ({
       ...current,
-      [questionId]: true,
+      [question.id]: true,
     }));
     if (isCorrect) {
       toast.success("+10 Coins & +15 XP", { icon: "🔥", duration: 2000 });
@@ -2264,6 +2350,7 @@ const FreelancerGrowthQuestPage = () => {
       setQuest(data);
       setResult(data.resultSummary || null);
       setView("result");
+      clearProgress();
       toast.success("Growth Quest completed.");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
