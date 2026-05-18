@@ -40,7 +40,7 @@ export const FreelancerChatsSkeleton = () => (
 const ActiveChats = ({ previewMessages, onOpenMessages }) => (
   <section className="flex h-full w-full min-w-0 flex-col">
     <div className="mb-6">
-      <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+      <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
         Active Chats
       </h2>
     </div>
@@ -56,7 +56,7 @@ const ActiveChats = ({ previewMessages, onOpenMessages }) => (
           <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground sm:size-14">
             <MessageSquare className="size-6" />
           </div>
-          <p className="mt-5 text-sm text-white">No active project chats yet</p>
+          <p className="mt-5 text-sm dark:text-white text-[#1C1B1F]">No active project chats yet</p>
           <p className="mt-2 max-w-[220px] text-xs text-[#8f8f8f]">
             Chat shortcuts appear here once a project becomes active and messaging is
             unlocked.
@@ -103,7 +103,7 @@ const ActiveChats = ({ previewMessages, onOpenMessages }) => (
           <button
             type="button"
             onClick={onOpenMessages}
-            className="mt-8 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-[#8f8f8f] transition-colors hover:text-white"
+            className="mt-8 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-[#8f8f8f] transition-colors hover:dark:text-white text-[#1C1B1F]"
           >
             <span>Open Messages ({previewMessages.length})</span>
             <ChevronRight className="size-[15px] stroke-[1.75]" />

@@ -53,7 +53,7 @@ const ClientReviewsPanel = ({ reviews = [], meta = {}, isLoading = false }) => {
   return (
     <section className="w-full min-w-0">
       <div className="mb-6 flex items-center justify-between gap-3">
-        <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+        <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
           Client Reviews
         </h2>
         {reviewCount > 0 ? (
@@ -75,7 +75,7 @@ const ClientReviewsPanel = ({ reviews = [], meta = {}, isLoading = false }) => {
             <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground">
               <Star className="size-6" />
             </div>
-            <p className="mt-4 text-sm text-white">No client reviews yet</p>
+            <p className="mt-4 text-sm dark:text-white text-[#1C1B1F]">No client reviews yet</p>
             <p className="mt-2 max-w-[240px] text-xs text-[#8f8f8f]">
               Reviews from clients who worked with you will appear here.
             </p>
@@ -108,7 +108,7 @@ const ClientReviewsPanel = ({ reviews = [], meta = {}, isLoading = false }) => {
                         "size-3.5",
                         Number(review.rating) >= ratingIndex
                           ? "fill-[var(--primary)] text-[var(--primary)]"
-                          : "text-white/20",
+                          : "dark:text-white text-[#1C1B1F]/20",
                       )}
                     />
                   ))}

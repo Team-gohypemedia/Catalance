@@ -130,7 +130,7 @@ const FreelancerRunningProjectCard = ({
             <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
               {String(item?.clientLabel || "").toUpperCase()}
             </p>
-            <p className="mt-2 truncate text-[1.15rem] font-semibold tracking-[-0.03em] text-white">
+            <p className="mt-2 truncate text-[1.15rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
               {item?.title}
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">{item?.timeLabel}</p>
@@ -261,7 +261,7 @@ const FreelancerRunningProjectCompactCard = ({ item, isSelected, onSelect }) => 
           </Badge>
         </div>
 
-        <p className="mt-4 text-[1.15rem] font-semibold tracking-[-0.04em] text-white">
+        <p className="mt-4 text-[1.15rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
           {item?.title || "Untitled project"}
         </p>
         <p className="mt-1 text-[11px] leading-5 text-zinc-500">
@@ -335,7 +335,7 @@ const DeliveryPipeline = ({
   return (
     <section className="w-full min-w-0">
       <div className="mb-4 hidden items-center justify-between gap-4 sm:mb-5 sm:flex">
-        <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+        <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
           Delivery Pipeline
         </h2>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
@@ -370,7 +370,7 @@ const DeliveryPipeline = ({
                   }}
                   className={cn(
                     "rounded-lg px-2.5 py-2 text-[12px] font-medium text-zinc-200",
-                    runningProjectsFilter === option.value && "bg-white/[0.08] text-white",
+                    runningProjectsFilter === option.value && "bg-white/[0.08] dark:text-white text-[#1C1B1F]",
                     option.count === 0 && "cursor-not-allowed opacity-50",
                   )}
                 >
@@ -392,7 +392,7 @@ const DeliveryPipeline = ({
           <div className="flex flex-col gap-4 sm:hidden">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <h2 className="text-[1rem] font-semibold tracking-[-0.03em] text-white">
+                <h2 className="text-[1rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                   Delivery Pipeline
                 </h2>
               </div>
@@ -422,7 +422,7 @@ const DeliveryPipeline = ({
             ) : (
               <Card className="rounded-[22px] border border-dashed border-white/[0.12] bg-background/20 shadow-none">
                 <CardContent className="flex min-h-[120px] flex-col items-center justify-center p-5 text-center">
-                  <p className="text-sm font-medium text-white">No active projects</p>
+                  <p className="text-sm font-medium dark:text-white text-[#1C1B1F]">No active projects</p>
                   <p className="mt-2 text-xs text-zinc-400">
                     Switch filters or accept a proposal to start tracking delivery phases.
                   </p>
@@ -437,7 +437,7 @@ const DeliveryPipeline = ({
                     <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                       Project Schedule
                     </p>
-                    <p className="mt-2 truncate text-[0.95rem] font-semibold tracking-[-0.03em] text-white">
+                    <p className="mt-2 truncate text-[0.95rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                       {activeScheduleProjectTitle}
                     </p>
                   </div>
@@ -505,10 +505,10 @@ const DeliveryPipeline = ({
                                 appearance.cardClass,
                               )}
                             >
-                              <p className="text-[9px] font-semibold uppercase tracking-[0.28em] text-white/28">
+                              <p className="text-[9px] font-semibold uppercase tracking-[0.28em] dark:text-white text-[#1C1B1F]/28">
                                 Phase {index + 1}
                               </p>
-                              <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
+                              <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                                 {phase?.label || row?.summary || `Phase ${index + 1}`}
                               </p>
                               <p className="mt-1 text-[11px] text-zinc-500">
@@ -542,7 +542,7 @@ const DeliveryPipeline = ({
                   </div>
                 ) : (
                   <div className="flex min-h-[240px] flex-col items-center justify-center px-3 py-10 text-center">
-                    <p className="text-sm font-semibold text-white">No active project</p>
+                    <p className="text-sm font-semibold dark:text-white text-[#1C1B1F]">No active project</p>
                     <p className="mt-2 text-xs leading-5 text-zinc-400">
                       Select a running project to unlock the schedule timeline and delivery
                       checkpoints.
@@ -585,7 +585,7 @@ const DeliveryPipeline = ({
                   <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                     Time Remaining
                   </p>
-                  <p className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-white">
+                  <p className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
                     {hasActiveProject
                       ? daysRemaining
                         ? `${daysRemaining} Days`
@@ -603,7 +603,7 @@ const DeliveryPipeline = ({
                   <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                     Completed Tasks
                   </p>
-                  <p className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-white">
+                  <p className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
                     {hasActiveProject ? `${completed}/${total}` : "—"}
                   </p>
                   <div className="mt-3 flex items-center gap-1">
@@ -635,7 +635,7 @@ const DeliveryPipeline = ({
                         onClick={() => runningProjectsCarouselApi?.scrollPrev()}
                         disabled={!canGoToPreviousRunningProjects}
                         aria-label="Show previous running project"
-                        className="absolute left-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:text-white/35"
+                        className="absolute left-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 dark:text-white text-[#1C1B1F] transition-colors hover:bg-white/[0.08] hover:dark:text-white text-[#1C1B1F] disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:dark:text-white text-[#1C1B1F]/35"
                       >
                         <ChevronLeft className="size-4" />
                       </button>
@@ -644,7 +644,7 @@ const DeliveryPipeline = ({
                         onClick={() => runningProjectsCarouselApi?.scrollNext()}
                         disabled={!canGoToNextRunningProjects}
                         aria-label="Show next running project"
-                        className="absolute right-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:text-white/35"
+                        className="absolute right-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 dark:text-white text-[#1C1B1F] transition-colors hover:bg-white/[0.08] hover:dark:text-white text-[#1C1B1F] disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:dark:text-white text-[#1C1B1F]/35"
                       >
                         <ChevronRight className="size-4" />
                       </button>
@@ -712,7 +712,7 @@ const DeliveryPipeline = ({
                 {visibleRunningProjects.length === 0 ? (
                   <Card className="rounded-[18px] border border-dashed border-white/[0.12] bg-background/20 shadow-none md:col-span-2 xl:col-span-3">
                     <CardContent className="flex min-h-[140px] flex-col items-center justify-center p-6 text-center">
-                      <p className="text-sm font-medium text-white">No projects in this filter</p>
+                      <p className="text-sm font-medium dark:text-white text-[#1C1B1F]">No projects in this filter</p>
                       <p className="mt-2 text-xs text-zinc-400">
                         Switch to All projects to view every active payout card.
                       </p>
@@ -730,11 +730,11 @@ const DeliveryPipeline = ({
                       <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                         Project Schedule
                       </p>
-                      <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
+                      <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                         Phase timeline for {activeScheduleProjectTitle}
                       </p>
                     </div>
-                    <Badge className="rounded-full border-0 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold text-zinc-300">
+                    <Badge className="rounded-full border-0 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold dark:text-white text-[#1C1B1F]">
                       {(() => {
                         const dateCandidate = activeProposalForSchedule?.project?.deadline
                           ? new Date(activeProposalForSchedule.project.deadline)
@@ -775,7 +775,7 @@ const DeliveryPipeline = ({
                                         <p className="absolute top-[4px] flex h-[24px] items-center text-[10px] font-semibold uppercase tracking-[0.18em] leading-none text-muted-foreground">
                                           {row.title}
                                         </p>
-                                        <p className="absolute top-[30px] flex h-[12px] items-center leading-none text-[10px] text-white/90">
+                                        <p className="absolute top-[30px] flex h-[12px] items-center leading-none text-[10px] dark:text-white text-[#1C1B1F]/90">
                                           {row.summary}
                                         </p>
                                       </div>
@@ -803,7 +803,7 @@ const DeliveryPipeline = ({
                                           "mt-1 text-[10px]",
                                           idx === activeSchedulePhaseSegmentIndex
                                             ? "text-primary"
-                                            : "text-white/90",
+                                            : "dark:text-white text-[#1C1B1F]/90",
                                         )}
                                       >
                                         {segment.rangeLabel}
@@ -957,7 +957,7 @@ const DeliveryPipeline = ({
                       </div>
                     ) : (
                       <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
-                        <p className="text-sm font-semibold text-white">No active project</p>
+                        <p className="text-sm font-semibold dark:text-white text-[#1C1B1F]">No active project</p>
                         <p className="mt-2 text-xs text-zinc-400">
                           Project Schedule will appear when an active project is selected.
                         </p>
@@ -974,7 +974,7 @@ const DeliveryPipeline = ({
                       Current Status
                     </p>
                     <div className="mt-3 flex items-end justify-between gap-3">
-                      <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+                      <p className="text-[1.35rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                         {statusTone}
                       </p>
                       <p className="text-[11px] font-semibold text-[var(--primary)]">
@@ -1000,7 +1000,7 @@ const DeliveryPipeline = ({
                     <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                       Time Remaining
                     </p>
-                    <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
+                    <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                       {hasActiveProject
                         ? daysRemaining
                           ? `${daysRemaining} Days`
@@ -1020,7 +1020,7 @@ const DeliveryPipeline = ({
                     <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                       Completed Tasks
                     </p>
-                    <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
+                    <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                       {hasActiveProject ? `${completed}/${total}` : "No active project"}
                     </p>
                     <div className="mt-3 flex items-center gap-1">

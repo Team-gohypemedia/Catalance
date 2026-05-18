@@ -86,7 +86,7 @@ const FreelancerActivityRow = ({ item, compact = false }) => {
           <Icon className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[1.05rem] font-semibold leading-tight text-white">
+          <p className="truncate text-[1.05rem] font-semibold leading-tight dark:text-white text-[#1C1B1F]">
             {item.title}
           </p>
           <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
@@ -116,7 +116,7 @@ const FreelancerActivityRow = ({ item, compact = false }) => {
           <Icon className="size-4" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-white">{item.title}</p>
+          <p className="truncate text-sm font-semibold dark:text-white text-[#1C1B1F]">{item.title}</p>
           <p className="text-xs leading-5 text-muted-foreground sm:truncate">
             {item.subtitle}
           </p>
@@ -157,7 +157,7 @@ const RecentActivity = ({ recentActivities, onOpenViewAll, className = "" }) => 
   return (
     <section className={cn("flex h-full w-full min-w-0 flex-col", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-        <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+        <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
           Recent Activity
         </h2>
         <button
@@ -196,7 +196,7 @@ const RecentActivity = ({ recentActivities, onOpenViewAll, className = "" }) => 
                 <button
                   type="button"
                   onClick={() => setShowAllRecentActivities((current) => !current)}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#cbd5e1] transition-colors hover:text-white"
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#cbd5e1] transition-colors hover:dark:text-white text-[#1C1B1F]"
                   aria-expanded={showAllRecentActivities}
                 >
                   <span>
@@ -225,7 +225,7 @@ const RecentActivity = ({ recentActivities, onOpenViewAll, className = "" }) => 
             {shouldShowLowActivityFiller ? (
               <div className="flex flex-1 items-center justify-center border-t border-white/[0.06] px-6 py-10 text-center">
                 <div className="max-w-xl">
-                  <p className="text-sm font-semibold text-white/85">
+                  <p className="text-sm font-semibold dark:text-white text-[#1C1B1F]/85">
                     More updates will appear here as your freelancer activity grows.
                   </p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">

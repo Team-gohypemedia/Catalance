@@ -9,7 +9,7 @@ const HeroGreetingBlock = ({ greeting, firstName, dateLabel, className = "" }) =
         {dateLabel}
       </p>
       <div className="order-2 min-w-0 lg:order-1">
-        <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
+        <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] dark:text-white text-[#1C1B1F]">
           {greeting}, {firstName}
         </h1>
       </div>

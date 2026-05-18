@@ -19,6 +19,7 @@ import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import logo from "@/assets/logos/logo.svg";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
+import ThemeToggle from "@/components/common/ThemeToggle";
 
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
@@ -330,7 +331,7 @@ const FreelancerWorkspaceHeader = ({
       />
 
       <div className="hidden space-y-4 pb-3 pt-3 lg:block">
-        <div className="mx-auto w-full rounded-[40px] border border-border bg-background p-3 sm:p-4 xl:w-[70%]">
+        <div className="mx-auto w-full rounded-[40px] border border-border bg-background p-3 sm:p-4 xl:w-[85%]">
           <div className="flex items-center justify-between gap-4">
             <Link to="/">
               <BrandMark />
@@ -342,13 +343,16 @@ const FreelancerWorkspaceHeader = ({
               onSelect={onSiteNav}
             />
 
-            <WorkspaceProfileDropdown
-              profile={profile}
-              displayName={displayName}
-              profileInitial={profileInitial}
-              currentDashboard="freelancer"
-              showVerifiedBadge
-            />
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <WorkspaceProfileDropdown
+                profile={profile}
+                displayName={displayName}
+                profileInitial={profileInitial}
+                currentDashboard="freelancer"
+                showVerifiedBadge
+              />
+            </div>
           </div>
         </div>
 

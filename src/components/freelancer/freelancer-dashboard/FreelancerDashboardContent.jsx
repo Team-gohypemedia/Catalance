@@ -1320,7 +1320,7 @@ const FreelancerActivityRow = ({ item, compact = false }) => {
           <Icon className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[1.05rem] font-semibold leading-tight text-white">
+          <p className="truncate text-[1.05rem] font-semibold leading-tight dark:text-white text-[#1C1B1F]">
             {item.title}
           </p>
           <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
@@ -1343,7 +1343,7 @@ const FreelancerActivityRow = ({ item, compact = false }) => {
           <Icon className="size-4" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-white">{item.title}</p>
+          <p className="truncate text-sm font-semibold dark:text-white text-[#1C1B1F]">{item.title}</p>
           <p className="text-xs leading-5 text-muted-foreground sm:truncate">{item.subtitle}</p>
         </div>
       </div>
@@ -1375,7 +1375,7 @@ const FreelancerRecentActivitySection = ({ recentActivities, onOpenViewAll }) =>
   return (
     <section className="w-full min-w-0">
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-        <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+        <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
           Recent Activity
         </h2>
         <button
@@ -1406,7 +1406,7 @@ const FreelancerRecentActivitySection = ({ recentActivities, onOpenViewAll }) =>
                 <button
                   type="button"
                   onClick={() => setShowAllRecentActivities((current) => !current)}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#cbd5e1] transition-colors hover:text-white"
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#cbd5e1] transition-colors hover:dark:text-white text-[#1C1B1F]"
                   aria-expanded={showAllRecentActivities}
                 >
                   <span>
@@ -1511,7 +1511,7 @@ const FreelancerCompactEarningsSummary = ({
 }) => (
   <section className="w-full min-w-0">
     <div className="mb-4 sm:mb-5">
-      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
         Earnings
       </h2>
     </div>
@@ -1519,10 +1519,10 @@ const FreelancerCompactEarningsSummary = ({
 
       <div className="space-y-3.5 sm:space-y-4">
         <div className={freelancerCompactEarningsSurfaceClassName}>
-          <p className="text-[0.72rem] uppercase tracking-[0.18em] text-white">
+          <p className="text-[0.72rem] uppercase tracking-[0.18em] dark:text-white text-[#1C1B1F]">
             Received
           </p>
-          <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] text-white sm:text-[1.8rem]">
+          <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] dark:text-white text-[#1C1B1F] sm:text-[1.8rem]">
             {receivedAmount}
           </p>
           <p className="mt-2.5 text-sm text-muted-foreground">
@@ -1535,10 +1535,10 @@ const FreelancerCompactEarningsSummary = ({
         </div>
 
         <div className={freelancerCompactEarningsSurfaceClassName}>
-          <p className="text-[0.72rem] uppercase tracking-[0.18em] text-white">
+          <p className="text-[0.72rem] uppercase tracking-[0.18em] dark:text-white text-[#1C1B1F]">
             Pending
           </p>
-          <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] text-white sm:text-[1.8rem]">
+          <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] dark:text-white text-[#1C1B1F] sm:text-[1.8rem]">
             {pendingAmount}
           </p>
           <p className="mt-2.5 text-sm text-muted-foreground">
@@ -1667,7 +1667,7 @@ const FreelancerMetricCard = ({
             <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
           </div>
         )}
-        <p className="mt-4 shrink-0 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-white transition-colors group-hover:text-[var(--primary)] sm:mt-6 sm:text-[3rem]">
+        <p className="mt-4 shrink-0 text-[2rem] font-semibold leading-none tracking-[-0.05em] dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F] transition-colors group-hover:text-[var(--primary)] sm:mt-6 sm:text-[3rem]">
           {value}
         </p>
         <p className="mt-3 text-center text-[8px] font-medium uppercase tracking-[0.14em] text-muted-foreground sm:mt-4 sm:text-[11px] sm:tracking-[0.2em]">
@@ -1690,7 +1690,7 @@ const FreelancerMetricCard = ({
           {renderDesktopControl()}
         </div>
         <div className="mt-auto flex min-w-0 items-end gap-1.5 sm:gap-2">
-          <p className="shrink-0 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-[var(--primary)]">
+          <p className="shrink-0 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F] transition-colors group-hover:text-[var(--primary)]">
             {value}
           </p>
           {detail ? (
@@ -1803,7 +1803,7 @@ const FreelancerRunningProjectCard = ({
               <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
                 {String(item?.clientLabel || "").toUpperCase()}
               </p>
-              <p className="mt-2 truncate text-[1.15rem] font-semibold tracking-[-0.03em] text-white">
+              <p className="mt-2 truncate text-[1.15rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                 {item?.title}
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">{item?.timeLabel}</p>
@@ -1831,7 +1831,7 @@ const FreelancerRunningProjectCard = ({
 const FreelancerPendingProposalRow = ({ item }) => (
   <div className="grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_184px] lg:items-end">
     <div className="min-w-0 w-full">
-      <p className="min-w-0 truncate text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
+      <p className="min-w-0 truncate text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
         {item.title}
       </p>
 
@@ -1840,7 +1840,7 @@ const FreelancerPendingProposalRow = ({ item }) => (
           <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
             Service
           </p>
-          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
             {item.service}
           </p>
         </div>
@@ -1849,7 +1849,7 @@ const FreelancerPendingProposalRow = ({ item }) => (
           <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
             Budget
           </p>
-          <p className="mt-2.5 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+          <p className="mt-2.5 text-[1.1rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
             {item.budget}
           </p>
         </div>
@@ -1858,7 +1858,7 @@ const FreelancerPendingProposalRow = ({ item }) => (
           <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
             Received
           </p>
-          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
             {item.updatedAt || "Just now"}
           </p>
         </div>
@@ -1956,7 +1956,7 @@ const FreelancerPendingProposalsSection = ({
     <section className={cn("w-full min-w-0", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <div className="min-w-0">
-          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
             Pending Proposals
           </h2>
         </div>
@@ -1979,7 +1979,7 @@ const FreelancerPendingProposalsSection = ({
             <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground sm:size-16">
               <ClipboardList className="size-6 sm:size-7" />
             </div>
-            <p className="mt-6 text-base font-medium text-white">No pending proposals</p>
+            <p className="mt-6 text-base font-medium dark:text-white text-[#1C1B1F]">No pending proposals</p>
             <p className="mt-2 max-w-[320px] text-sm text-muted-foreground">
               New proposal requests from clients will appear here.
             </p>
@@ -2038,7 +2038,7 @@ const FreelancerProjectRedirectCard = ({ item, className }) => {
       )}
     >
       <div className="flex flex-1 flex-col items-center text-center">
-        <h3 className="text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
+        <h3 className="text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
           {item.title}
         </h3>
 
@@ -3804,7 +3804,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
               {dashboardDateLabel}
             </p>
             <div className="order-2 min-w-0 lg:order-1">
-              <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-foreground">
+              <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] !dark:text-white text-[#1C1B1F]">
                 {greeting}, {firstName}
               </h1>
             </div>
@@ -3884,12 +3884,12 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                     strokeLinecap="round"
                   />
                 </svg>
-                <span className="absolute text-[10px] font-bold text-white">
+                <span className="absolute text-[10px] font-bold dark:text-white text-[#1C1B1F]">
                   {profileCompletionPercent}%
                 </span>
               </div>
               <div className="flex flex-col justify-center">
-                <span className="text-[13px] font-bold leading-none text-white">Profile Setup</span>
+                <span className="text-[13px] font-bold leading-none dark:text-white text-[#1C1B1F]">Profile Setup</span>
                 <button
                   type="button"
                   onClick={() => navigate("/freelancer/profile")}
@@ -4057,7 +4057,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                 <>
                   <section className="w-full min-w-0">
                     <div className="mb-4 sm:mb-5">
-                      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+                      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
                         Active Chats
                       </h2>
                     </div>
@@ -4067,7 +4067,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                           <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground sm:size-14">
                             <MessageSquare className="size-6" />
                           </div>
-                          <p className="mt-5 text-sm text-white">No active project chats yet</p>
+                          <p className="mt-5 text-sm dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F]">No active project chats yet</p>
                           <p className="mt-2 max-w-[220px] text-xs text-[#8f8f8f]">
                             Chat shortcuts appear here once a project becomes active and messaging is unlocked.
                           </p>
@@ -4088,7 +4088,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                       <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
-                                          <p className="truncate text-sm font-semibold text-zinc-100">
+                                          <p className="truncate text-sm font-semibold dark:text-zinc-100 dark:text-white text-[#1C1B1F]">
                                             {message.senderName}
                                           </p>
                                           {message.projectLabel ? (
@@ -4097,7 +4097,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                             </span>
                                           ) : null}
                                         </div>
-                                        <p className="mt-2 text-sm leading-5 text-zinc-200">
+                                        <p className="mt-2 text-sm leading-5 dark:text-zinc-200 dark:text-white text-[#1C1B1F]">
                                           {message.previewText}
                                         </p>
                                       </div>
@@ -4113,7 +4113,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                           <button
                             type="button"
                             onClick={() => navigate("/freelancer/messages")}
-                            className="mt-8 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-[#8f8f8f] transition-colors hover:text-white"
+                            className="mt-8 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-[#8f8f8f] transition-colors hover:dark:text-white text-[#1C1B1F]"
                           >
                             <span>Open Messages ({previewMessages.length})</span>
                             <ChevronRight className="size-[15px] stroke-[1.75]" />
@@ -4125,7 +4125,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
 
                   <section className="w-full min-w-0">
                     <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
-                      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+                      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
                         Client Reviews
                       </h2>
                       {clientReviewsMeta.reviewCount > 0 ? (
@@ -4146,7 +4146,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                           <div className="flex size-12 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground">
                             <Star className="size-6" />
                           </div>
-                          <p className="mt-4 text-sm text-white">No client reviews yet</p>
+                          <p className="mt-4 text-sm dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F]">No client reviews yet</p>
                           <p className="mt-2 max-w-[240px] text-xs text-[#8f8f8f]">
                             Reviews from clients who worked with you will appear here.
                           </p>
@@ -4160,7 +4160,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                  <p className="truncate text-sm font-semibold text-zinc-100">
+                                  <p className="truncate text-sm font-semibold dark:text-zinc-100 dark:text-white text-[#1C1B1F]">
                                     {review.clientName || "Client"}
                                   </p>
                                   <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-zinc-400">
@@ -4179,12 +4179,12 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                       "size-3.5",
                                       Number(review.rating) >= ratingIndex
                                         ? "fill-[var(--primary)] text-[var(--primary)]"
-                                        : "text-white/20",
+                                        : "dark:text-white text-[#1C1B1F]/20",
                                     )}
                                   />
                                 ))}
                               </div>
-                              <p className="mt-2.5 text-sm leading-5 text-zinc-200">
+                              <p className="mt-2.5 text-sm leading-5 dark:text-zinc-200 dark:text-white text-[#1C1B1F]">
                                 {review.comment}
                               </p>
                             </li>
@@ -4210,7 +4210,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
           ) : (
           <section className="w-full min-w-0">
             <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-              <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+              <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
                 Delivery Pipeline
               </h2>
               <div className="ml-auto flex items-center gap-2 sm:gap-3">
@@ -4245,7 +4245,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                         }}
                         className={cn(
                           "rounded-lg px-2.5 py-2 text-[12px] font-medium text-zinc-200",
-                          runningProjectsFilter === option.value && "bg-white/[0.08] text-white",
+                          runningProjectsFilter === option.value && "bg-white/[0.08] dark:text-white text-[#1C1B1F]",
                           option.count === 0 && "cursor-not-allowed opacity-50",
                         )}
                       >
@@ -4274,7 +4274,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                               onClick={() => runningProjectsCarouselApi?.scrollPrev()}
                               disabled={!canGoToPreviousRunningProjects}
                               aria-label="Show previous running project"
-                              className="absolute left-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:text-white/35"
+                              className="absolute left-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 dark:text-white text-[#1C1B1F] transition-colors hover:bg-white/[0.08] hover:dark:text-white text-[#1C1B1F] disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:dark:text-white text-[#1C1B1F]/35"
                             >
                               <ChevronLeft className="size-4" />
                             </button>
@@ -4283,7 +4283,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                               onClick={() => runningProjectsCarouselApi?.scrollNext()}
                               disabled={!canGoToNextRunningProjects}
                               aria-label="Show next running project"
-                              className="absolute right-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 text-white transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:text-white/35"
+                              className="absolute right-2 top-1/2 z-20 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-card/95 dark:text-white text-[#1C1B1F] transition-colors hover:bg-white/[0.08] hover:dark:text-white text-[#1C1B1F] disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:bg-card/70 disabled:dark:text-white text-[#1C1B1F]/35"
                             >
                               <ChevronRight className="size-4" />
                             </button>
@@ -4351,7 +4351,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                     {visibleRunningProjects.length === 0 ? (
                       <Card className="md:col-span-2 xl:col-span-3 rounded-[18px] border border-dashed border-white/[0.12] bg-background/20 shadow-none">
                         <CardContent className="flex min-h-[140px] flex-col items-center justify-center p-6 text-center">
-                          <p className="text-sm font-medium text-white">No projects in this filter</p>
+                          <p className="text-sm font-medium dark:text-white text-[#1C1B1F]">No projects in this filter</p>
                           <p className="mt-2 text-xs text-zinc-400">
                             Switch to All projects to view every active payout card.
                           </p>
@@ -4369,7 +4369,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                               Project Schedule
                             </p>
-                            <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
+                            <p className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                               Phase timeline for {activeScheduleProjectTitle}
                             </p>
                           </div>
@@ -4414,7 +4414,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                           <p className="absolute top-[4px] flex h-[24px] items-center text-[10px] font-semibold uppercase tracking-[0.18em] leading-none text-muted-foreground">
                                             {row.title}
                                           </p>
-                                          <p className="absolute top-[30px] flex h-[12px] items-center leading-none text-[10px] text-white/90">
+                                          <p className="absolute top-[30px] flex h-[12px] items-center leading-none text-[10px] dark:text-white text-[#1C1B1F]/90">
                                             {row.summary}
                                           </p>
                                         </div>
@@ -4442,7 +4442,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                             "mt-1 text-[10px]",
                                             idx === activeSchedulePhaseSegmentIndex
                                               ? "text-primary"
-                                              : "text-white/90",
+                                              : "dark:text-white text-[#1C1B1F]/90",
                                           )}
                                         >
                                           {segment.rangeLabel}
@@ -4571,7 +4571,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                             </div>
                           ) : (
                             <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
-                              <p className="text-sm font-semibold text-white">No active project</p>
+                              <p className="text-sm font-semibold dark:text-white text-[#1C1B1F]">No active project</p>
                               <p className="mt-2 text-xs text-zinc-400">
                                 Project Schedule will appear when an active project is selected.
                               </p>
@@ -4636,7 +4636,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                                   Time Remaining
                                 </p>
-                                <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
+                                <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                                   {hasActiveProject ? (daysRemaining ? `${daysRemaining} Days` : "—") : "No active project"}
                                 </p>
                                 <p className="mt-2 text-[12px] text-muted-foreground">
@@ -4652,7 +4652,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                                   Completed Tasks
                                 </p>
-                                <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] text-white">
+                                <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                                   {hasActiveProject ? `${completed}/${total}` : "No active project"}
                                 </p>
                                 <div className="mt-3 flex items-center gap-1">

@@ -63,7 +63,7 @@ export const FreelancerPendingProposalsSkeleton = () => (
 const FreelancerPendingProposalRow = ({ item }) => (
   <div className="grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_184px] lg:items-end">
     <div className="min-w-0 w-full">
-      <p className="min-w-0 truncate text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
+      <p className="min-w-0 truncate text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
         {item.title}
       </p>
 
@@ -72,7 +72,7 @@ const FreelancerPendingProposalRow = ({ item }) => (
           <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
             Service
           </p>
-          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
             {item.service}
           </p>
         </div>
@@ -81,7 +81,7 @@ const FreelancerPendingProposalRow = ({ item }) => (
           <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
             Budget
           </p>
-          <p className="mt-2.5 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+          <p className="mt-2.5 text-[1.1rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
             {item.budget}
           </p>
         </div>
@@ -90,7 +90,7 @@ const FreelancerPendingProposalRow = ({ item }) => (
           <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
             Received
           </p>
-          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
             {item.updatedAt || "Just now"}
           </p>
         </div>
@@ -184,7 +184,7 @@ const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "" }) =>
     <section className={cn("w-full min-w-0", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <div className="min-w-0">
-          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
             Pending Proposals
           </h2>
         </div>
@@ -207,7 +207,7 @@ const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "" }) =>
             <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground sm:size-16">
               <ClipboardList className="size-6 sm:size-7" />
             </div>
-            <p className="mt-6 text-base font-medium text-white">No pending proposals</p>
+            <p className="mt-6 text-base font-medium dark:text-white text-[#1C1B1F]">No pending proposals</p>
             <p className="mt-2 max-w-[320px] text-sm text-muted-foreground">
               New proposal requests from clients will appear here.
             </p>

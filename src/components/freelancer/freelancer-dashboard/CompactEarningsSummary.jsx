@@ -40,17 +40,17 @@ const CompactEarningsSummary = ({
 }) => (
   <section className="w-full min-w-0">
     <div className="mb-4 sm:mb-5">
-      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
         Earnings
       </h2>
     </div>
     <FreelancerDashboardPanel className="overflow-hidden bg-card p-3.5 sm:p-4">
       <div className="space-y-3.5 sm:space-y-4">
         <div className={freelancerCompactEarningsSurfaceClassName}>
-          <p className="text-[0.72rem] uppercase tracking-[0.18em] text-white">
+          <p className="text-[0.72rem] uppercase tracking-[0.18em] dark:text-white text-[#1C1B1F]">
             Received
           </p>
-          <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] text-white sm:text-[1.8rem]">
+          <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] dark:text-white text-[#1C1B1F] sm:text-[1.8rem]">
             {receivedAmount}
           </p>
           <p className="mt-2.5 text-sm text-muted-foreground">
@@ -63,10 +63,10 @@ const CompactEarningsSummary = ({
         </div>
 
         <div className={freelancerCompactEarningsSurfaceClassName}>
-          <p className="text-[0.72rem] uppercase tracking-[0.18em] text-white">
+          <p className="text-[0.72rem] uppercase tracking-[0.18em] dark:text-white text-[#1C1B1F]">
             Pending
           </p>
-          <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] text-white sm:text-[1.8rem]">
+          <p className="mt-3.5 text-[1.65rem] font-semibold leading-none tracking-[-0.03em] dark:text-white text-[#1C1B1F] sm:text-[1.8rem]">
             {pendingAmount}
           </p>
           <p className="mt-2.5 text-sm text-muted-foreground">
