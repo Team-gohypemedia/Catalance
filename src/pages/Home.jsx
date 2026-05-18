@@ -7,6 +7,8 @@ import MadeOnCatalance from "@/components/Home/MadeOnCatalance";
 import Testimonidals from "@/components/Home/Testimonidals";
 import ClientCTA from "@/components/Home/ClientCTA";
 
+import BrandMarquee from "@/components/Home/BrandMarquee";
+
 const Home = () => {
   React.useEffect(() => {
     document.documentElement.classList.add("home-page");

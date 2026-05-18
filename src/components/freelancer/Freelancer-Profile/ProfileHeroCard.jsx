@@ -252,7 +252,7 @@ const ProfileHeroCard = ({
                   title="Auto-managed from your active project count."
                   className={`h-6 px-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${isOpenToWorkActive
                     ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                    : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    : "border-primary/20/20 bg-primary/10/10 text-primary dark:text-primary"
                     }`}
                 >
                   {openToWorkLabel}

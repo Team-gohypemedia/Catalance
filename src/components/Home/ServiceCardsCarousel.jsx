@@ -1,13 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
-import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 
 import cataLogo from "@/assets/logos/logo.svg";
 import { Button } from "@/components/ui/button";
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import { cn } from "@/shared/lib/utils";
 
 const SERVICE_LOGO_MODULES = import.meta.glob("../../assets/icons/*.png", {
   eager: true,
@@ -28,11 +24,7 @@ const SERVICE_LOGOS_BY_KEY = Object.entries(SERVICE_LOGO_MODULES).reduce(
     const fileName =
       String(path || "").split("/").pop()?.replace(/\.png$/i, "") || "";
     const key = normalizeServiceLogoKey(fileName);
-
-    if (key) {
-      acc[key] = source;
-    }
-
+    if (key) acc[key] = source;
     return acc;
   },
   {},
@@ -84,14 +76,11 @@ const resolveServiceLogoSrc = (service = {}) => {
   for (const candidate of candidates) {
     const normalized = normalizeServiceLogoKey(candidate);
     if (!normalized) continue;
-
     const mappedKey = SERVICE_LOGO_ALIASES[normalized] || normalized;
     if (SERVICE_LOGOS_BY_KEY[mappedKey]) return SERVICE_LOGOS_BY_KEY[mappedKey];
-
     const fuzzyKey = SERVICE_LOGO_KEYS.find(
       (key) => key.includes(mappedKey) || mappedKey.includes(key),
     );
-
     if (fuzzyKey) return SERVICE_LOGOS_BY_KEY[fuzzyKey];
   }
 
@@ -99,106 +88,26 @@ const resolveServiceLogoSrc = (service = {}) => {
 };
 
 const HOME_SERVICES = [
-  {
-    id: "website-development",
-    title: "Website Development",
-    description: "Custom and platform-based websites built for performance, speed, and growth.",
-  },
-  {
-    id: "app-development",
-    title: "App Development",
-    description: "Mobile apps designed to engage users and scale businesses.",
-  },
-  {
-    id: "software-development",
-    title: "Software Development",
-    description: "Custom software solutions built to solve real business problems.",
-  },
-  {
-    id: "lead-generation",
-    title: "Lead Generation",
-    description: "Targeted campaigns that turn prospects into qualified business leads.",
-  },
-  {
-    id: "video-services",
-    title: "Video Editing",
-    description: "Creative videos that tell stories and boost brand engagement.",
-  },
-  {
-    id: "cgi-videos",
-    title: "CGI Videos",
-    description: "High-impact CGI visuals for products, ads, and storytelling.",
-  },
-  {
-    id: "3d-modeling",
-    title: "3D Modeling",
-    description: "Detailed 3D models for products, visuals, and digital experiences.",
-  },
-  {
-    id: "seo-optimization",
-    title: "SEO Optimization",
-    description: "Improve search rankings and drive consistent organic traffic.",
-  },
-  {
-    id: "social-media-management",
-    title: "Social Media Management",
-    description: "Content and community management to grow your brand online.",
-  },
-  {
-    id: "influencer-marketing",
-    title: "Influencer Marketing",
-    description: "Collaborate with creators to build trust and audience reach.",
-  },
-  {
-    id: "ugc-marketing",
-    title: "UGC Marketing",
-    description: "Authentic creator content that boosts credibility and conversions.",
-  },
-  {
-    id: "performance-marketing",
-    title: "Performance Marketing",
-    description: "Data-driven advertising campaigns focused on measurable results.",
-  },
-  {
-    id: "creative-design",
-    title: "Creative & Design",
-    description: "Visual designs that strengthen branding and communication.",
-  },
-  {
-    id: "branding",
-    title: "Branding Kit",
-    description: "Build strong brand identities that people remember and trust.",
-  },
-  {
-    id: "writing-content",
-    title: "Writing & Content",
-    description: "Compelling content that informs, engages, and converts audiences.",
-  },
-  {
-    id: "customer-support",
-    title: "Customer Support",
-    description: "Reliable support services that improve satisfaction and retention.",
-  },
-  {
-    id: "crm-erp-solutions",
-    title: "CRM & ERP Solutions",
-    description: "Systems that streamline operations and centralize business data.",
-  },
-  {
-    id: "ai-automation",
-    title: "AI Automation",
-    description: "Automate workflows to save time and improve team productivity.",
-  },
-  {
-    id: "voice-agent",
-    title: "Voice Agent",
-    description: "AI voice automation for sales, support, and faster follow-ups.",
-  },
-  {
-    id: "whatsapp-chatbot",
-    title: "WhatsApp Chat Bot",
-    description: "Automated conversations for faster support and conversion flows.",
-  },
+  { id: "website-development", title: "Website Development", description: "Custom and platform-based websites built for performance, speed, and growth." },
+  { id: "app-development", title: "App Development", description: "Mobile apps designed to engage users and scale businesses." },
+  { id: "software-development", title: "Software Development", description: "Custom software solutions built to solve real business problems." },
+  { id: "lead-generation", title: "Lead Generation", description: "Targeted campaigns that turn prospects into qualified business leads." },
+  { id: "video-services", title: "Video Editing", description: "Creative videos that tell stories and boost brand engagement." },
+  { id: "cgi-videos", title: "CGI Videos", description: "High-impact CGI visuals for products, ads, and storytelling." },
+  { id: "3d-modeling", title: "3D Modeling", description: "Detailed 3D models for products, visuals, and digital experiences." },
+  { id: "seo-optimization", title: "SEO Optimization", description: "Improve search rankings and drive consistent organic traffic." },
+  { id: "social-media-management", title: "Social Media Management", description: "Content and community management to grow your brand online." },
+  { id: "influencer-marketing", title: "Influencer Marketing", description: "Collaborate with creators to build trust and audience reach." },
+  { id: "ugc-marketing", title: "UGC Marketing", description: "Authentic creator content that boosts credibility and conversions." },
+  { id: "performance-marketing", title: "Performance Marketing", description: "Data-driven advertising campaigns focused on measurable results." },
+  { id: "creative-design", title: "Creative & Design", description: "Visual designs that strengthen branding and communication." },
+  { id: "branding", title: "Branding Kit", description: "Build strong brand identities that people remember and trust." },
+  { id: "writing-content", title: "Writing & Content", description: "Compelling content that informs, engages, and converts audiences." },
+  { id: "customer-support", title: "Customer Support", description: "Reliable support services that improve satisfaction and retention." },
+  { id: "crm-erp-solutions", title: "CRM & ERP Solutions", description: "Systems that streamline operations and centralize business data." },
+  { id: "ai-automation", title: "AI Automation", description: "Automate workflows to save time and improve team productivity." },
+  { id: "voice-agent", title: "Voice Agent", description: "AI voice automation for sales, support, and faster follow-ups." },
+  { id: "whatsapp-chatbot", title: "WhatsApp Chat Bot", description: "Automated conversations for faster support and conversion flows." },
 ];
 
 const HOME_SERVICE_PRICES = {
@@ -231,16 +140,13 @@ const HOME_SERVICE_CARDS = HOME_SERVICES.map((service, index) => ({
   isPriority: index < 4,
 }));
 
-const ServiceRailCard = React.memo(function ServiceRailCard({
-  service,
-  onSelect,
-}) {
+const ServiceRailCard = React.memo(function ServiceRailCard({ service, onSelect }) {
   return (
     <button
       type="button"
       onClick={() => onSelect(service)}
       aria-label={`Explore ${service.title}`}
-      className="group relative flex h-full min-h-[21.5rem] w-full max-w-full flex-col overflow-hidden rounded-[2rem] border border-border/70 bg-card p-6 text-left text-card-foreground shadow-[0_10px_28px_-26px_rgba(0,0,0,0.58)] transition-colors duration-300 hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-[22rem] sm:rounded-[2.1rem]"
+      className="group relative flex h-full min-h-[21.5rem] w-[16rem] flex-shrink-0 flex-col overflow-hidden rounded-[2rem] border border-border/70 bg-card p-6 text-left text-card-foreground shadow-[0_10px_28px_-26px_rgba(0,0,0,0.58)] transition-colors duration-300 hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-[22rem] sm:w-[18rem] sm:rounded-[2.1rem]"
     >
       <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-white/[0.03] via-transparent to-transparent" />
 
@@ -286,9 +192,7 @@ const ServiceRailCard = React.memo(function ServiceRailCard({
 
 const ServiceCardsCarousel = () => {
   const navigate = useNavigate();
-  const [api, setApi] = React.useState(null);
-  const [selectedIndex, setSelectedIndex] = React.useState(0);
-  const serviceCount = HOME_SERVICE_CARDS.length;
+  const trackRef = React.useRef(null);
 
   const handleGetFreeProposal = React.useCallback(() => {
     navigate("/service");
@@ -307,47 +211,25 @@ const ServiceCardsCarousel = () => {
     [navigate],
   );
 
-  const syncCarouselState = React.useCallback(
-    (emblaApi) => {
-      if (!emblaApi || serviceCount === 0) return;
-      const nextIndex = emblaApi.selectedScrollSnap() % serviceCount;
-      setSelectedIndex((currentIndex) =>
-        currentIndex === nextIndex ? currentIndex : nextIndex,
-      );
-    },
-    [serviceCount],
-  );
+  // Pause on hover
+  const handleMouseEnter = () => {
+    if (trackRef.current) trackRef.current.style.animationPlayState = "paused";
+  };
+  const handleMouseLeave = () => {
+    if (trackRef.current) trackRef.current.style.animationPlayState = "running";
+  };
 
-  React.useEffect(() => {
-    if (!api) return;
-
-    syncCarouselState(api);
-    api.on("select", syncCarouselState);
-    api.on("reInit", syncCarouselState);
-
-    return () => {
-      api.off("select", syncCarouselState);
-      api.off("reInit", syncCarouselState);
-    };
-  }, [api, syncCarouselState]);
-
-  const handleScrollPrev = React.useCallback(() => {
-    if (!api) return;
-    api.scrollPrev();
-  }, [api]);
-
-  const handleScrollNext = React.useCallback(() => {
-    if (!api) return;
-    api.scrollNext();
-  }, [api]);
+  // Duplicate cards for seamless loop
+  const allCards = [...HOME_SERVICE_CARDS, ...HOME_SERVICE_CARDS];
 
   return (
-    <section className="relative flex min-h-screen w-full items-center overflow-hidden bg-background py-12 sm:py-16">
-      <div className="relative mx-auto flex w-full max-w-[100rem] flex-col justify-center gap-8 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center text-center">
+    <section className="relative flex w-full items-center overflow-hidden bg-background py-20 sm:py-32">
+      <div className="relative mx-auto flex w-full max-w-7xl flex-col justify-center gap-10 px-4 sm:px-6 lg:px-8">
+
+        {/* Header */}
+        <div className="mx-auto flex max-w-6xl flex-col items-center px-4 text-center sm:px-6 lg:px-8">
           <h2 className="w-full max-w-none text-[2rem] font-medium leading-[1.05] tracking-tight text-white sm:text-[2.7rem] md:whitespace-nowrap md:text-[3.2rem] lg:text-[3.95rem] xl:text-[4.2rem]">
-            Freelancers <span className="text-primary">Who</span> Don&apos;t
-            Ghost You
+            Freelancers <span className="text-primary italic font-medium">Who</span> Don&apos;t Ghost You
           </h2>
 
           <p className="mt-1 max-w-5xl text-balance text-sm font-normal leading-relaxed text-white sm:mt-3 sm:text-base md:text-lg">
@@ -363,71 +245,43 @@ const ServiceCardsCarousel = () => {
           </Button>
         </div>
 
-        <div className="relative">
-          <button
-            type="button"
-            onClick={handleScrollPrev}
-            aria-label="Previous services"
-            className="absolute -left-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-lg transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:left-2 sm:h-11 sm:w-11 lg:left-4 glow-subtle"
-            disabled={!api}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
+        {/* Auto-scrolling marquee */}
+        <div
+          className="relative w-full overflow-hidden py-10"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          {/* Fade edges */}
+          <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-24 bg-gradient-to-r from-background to-transparent sm:w-40" />
+          <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-24 bg-gradient-to-l from-background to-transparent sm:w-40" />
 
-          <button
-            type="button"
-            onClick={handleScrollNext}
-            aria-label="Next services"
-            className="absolute -right-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card/95 text-card-foreground shadow-lg transition-colors duration-200 hover:border-primary/35 hover:bg-muted disabled:pointer-events-none disabled:opacity-40 sm:right-2 sm:h-11 sm:w-11 lg:right-4 glow-subtle"
-            disabled={!api}
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-
-          <Carousel
-            setApi={setApi}
-            opts={{
-              align: "start",
-              loop: true,
-              slidesToScroll: 1,
-              containScroll: "trimSnaps",
+          <div
+            ref={trackRef}
+            className="flex gap-4 sm:gap-5"
+            style={{
+              width: "max-content",
+              animation: "marquee-scroll 55s linear infinite",
             }}
-            className="w-full overflow-hidden px-8 sm:px-16 lg:px-24"
           >
-            <CarouselContent className="-ml-4 items-stretch sm:-ml-5 lg:-ml-6">
-              {HOME_SERVICE_CARDS.map((service) => (
-                <CarouselItem
-                  key={service.id}
-                  className="min-w-0 basis-full pl-4 sm:basis-1/2 sm:pl-5 lg:basis-1/3 lg:pl-6 xl:basis-1/4 2xl:basis-1/5"
-                >
-                  <ServiceRailCard
-                    service={service}
-                    onSelect={handleSelectService}
-                  />
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-          </Carousel>
-        </div>
-
-        {serviceCount > 1 && (
-          <div className="-mt-5 flex items-center justify-center gap-1.5 sm:mt-0 sm:gap-2">
-            {Array.from({ length: serviceCount }).map((_, index) => (
-              <button
-                key={`service-carousel-dot-${index}`}
-                type="button"
-                aria-label={`Go to service slide ${index + 1}`}
-                onClick={() => api?.scrollTo(index)}
-                disabled={!api}
-                className={cn(
-                  "h-2 rounded-full bg-white/22 transition-all duration-300 hover:bg-white/38 disabled:pointer-events-none disabled:opacity-40 sm:h-2.5",
-                  index === selectedIndex ? "w-5 bg-primary sm:w-7" : "w-2 sm:w-2.5",
-                )}
+            {allCards.map((service, i) => (
+              <ServiceRailCard
+                key={`${service.id}-${i}`}
+                service={service}
+                onSelect={handleSelectService}
               />
             ))}
           </div>
-        )}
+        </div>
+
       </div>
+
+      {/* Keyframe style */}
+      <style>{`
+        @keyframes marquee-scroll {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
     </section>
   );
 };

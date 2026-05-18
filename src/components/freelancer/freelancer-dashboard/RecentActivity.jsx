@@ -10,7 +10,7 @@ import {
 
 const ACTIVITY_TONE_STYLES = {
   amber: {
-    icon: "bg-[#facc15]/10 text-[#facc15] ring-1 ring-[#facc15]/20",
+    icon: "bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]/20",
   },
   blue: {
     icon: "bg-sky-500/10 text-sky-300 ring-1 ring-sky-500/20",
@@ -163,7 +163,7 @@ const RecentActivity = ({ recentActivities, onOpenViewAll, className = "" }) => 
         <button
           type="button"
           onClick={onOpenViewAll}
-          className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[#ffc107] transition-colors hover:text-[#ffd54f]"
+          className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)] transition-colors hover:text-[#ffd54f]"
         >
           View All
         </button>

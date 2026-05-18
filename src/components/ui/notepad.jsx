@@ -88,7 +88,7 @@ export function ProjectNotepad({ projectId }) {
         className="gap-2 border-border/60"
         onClick={() => setIsOpen(true)}
       >
-        <StickyNote className="size-4 text-yellow-500" />
+        <StickyNote className="size-4 text-primary" />
         Notes
       </Button>
 
@@ -96,7 +96,7 @@ export function ProjectNotepad({ projectId }) {
         <DialogContent className="max-w-lg w-[95vw]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <StickyNote className="size-5 text-yellow-500" />
+              <StickyNote className="size-5 text-primary" />
               Project Notes
             </DialogTitle>
           </DialogHeader>

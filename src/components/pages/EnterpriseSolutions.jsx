@@ -172,7 +172,7 @@ const EnterpriseSolutions = () => {
 
       <Spotlight
         className="-top-40 left-0 md:left-60 md:-top-20 opacity-50"
-        fill={isDark ? "#fdc800" : "#f59e0b"}
+        fill={isDark ? "var(--primary)" : "var(--primary)"}
       />
       <Spotlight
         className="top-40 right-0 md:right-40 opacity-30"
@@ -192,7 +192,7 @@ const EnterpriseSolutions = () => {
             </span>{" "}
             <span
               ref={heroGradientRef}
-              className={`inline-block bg-clip-text text-transparent bg-linear-to-r ${isDark ? "from-primary via-yellow-200 to-primary" : "from-primary via-orange-400 to-primary"}`}
+              className={`inline-block bg-clip-text text-transparent bg-linear-to-r ${isDark ? "from-primary via-primary/50 to-primary" : "from-primary via-primary/50 to-primary"}`}
             >
               without limits.
             </span>

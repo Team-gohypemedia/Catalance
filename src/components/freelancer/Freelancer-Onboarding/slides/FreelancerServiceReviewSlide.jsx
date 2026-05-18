@@ -1112,7 +1112,7 @@ const FreelancerServiceReviewSlide = ({
                               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.08)_0%,rgba(5,5,5,0.22)_38%,rgba(5,5,5,0.86)_100%)]" />
                             </>
                           ) : (
-                            <div className="relative aspect-[16/9] w-full overflow-hidden bg-[radial-gradient(circle_at_18%_20%,rgba(250,204,21,0.2),transparent_26%),radial-gradient(circle_at_82%_12%,rgba(255,255,255,0.07),transparent_22%),linear-gradient(135deg,#0d0d0d,#131313_52%,#161616)]">
+                            <div className="relative aspect-[16/9] w-full overflow-hidden bg-[radial-gradient(circle_at_18%_20%,rgba(var(--brand-rgb),0.2),transparent_26%),radial-gradient(circle_at_82%_12%,rgba(255,255,255,0.07),transparent_22%),linear-gradient(135deg,#0d0d0d,#131313_52%,#161616)]">
                               <div className="absolute inset-y-0 left-[26%] w-px bg-white/8" />
                               <div className="absolute inset-y-0 right-[26%] w-px bg-white/8" />
                               <div className="absolute left-6 top-6 flex h-20 w-20 items-center justify-center rounded-[24px] border border-white/10 bg-white/[0.06] shadow-[0_10px_40px_rgba(0,0,0,0.28)] backdrop-blur-sm">

@@ -184,7 +184,7 @@ const ClientProjectDetailMainColumn = ({
     <Card className={panelClassName}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-6 pt-5 px-6">
         <CardTitle className={eyebrowClassName}>Project Progress</CardTitle>
-        <span className="ml-auto text-right text-[1.1rem] font-semibold leading-tight whitespace-nowrap text-yellow-400">
+        <span className="ml-auto text-right text-[1.1rem] font-semibold leading-tight whitespace-nowrap text-primary">
           {Math.round(overallProgress)}% Complete
         </span>
       </CardHeader>
@@ -192,7 +192,7 @@ const ClientProjectDetailMainColumn = ({
         <div className="relative pt-2">
           <div className="h-[6px] w-full overflow-hidden rounded-full bg-white/[0.06]">
             <div
-              className="h-full rounded-full bg-yellow-400 transition-all duration-300"
+              className="h-full rounded-full bg-primary/10 transition-all duration-300"
               style={{ width: `${overallProgress}%` }}
             />
           </div>
@@ -253,7 +253,7 @@ const ClientProjectDetailMainColumn = ({
                     isCompleted
                       ? "text-emerald-500"
                       : isActive
-                        ? "text-[#f59e0b]"
+                        ? "text-[var(--primary)]"
                         : "text-muted-foreground/40"
                   }`}
                 >
@@ -311,10 +311,10 @@ const ClientProjectDetailMainColumn = ({
         ) : null}
 
         {isInitialPaymentDue ? (
-          <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+          <div className="mb-4 rounded-xl border border-primary/20/30 bg-primary/10/10 px-4 py-3">
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-400">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
                   Payment Required Before Phase 1
                 </p>
                 <p className="mt-1 text-sm text-foreground">
@@ -458,7 +458,7 @@ const ClientProjectDetailMainColumn = ({
                             >
                               {task.title}
                               {phaseGroup.isLocked ? (
-                                <span className="ml-2 inline-block text-xs font-medium text-amber-500 no-underline">
+                                <span className="ml-2 inline-block text-xs font-medium text-primary no-underline">
                                   {phaseGroup.isPaymentLocked
                                     ? "(Payment required)"
                                     : phaseGroup.isHistoricalLock

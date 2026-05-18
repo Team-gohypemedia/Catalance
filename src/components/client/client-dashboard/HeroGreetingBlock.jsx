@@ -45,7 +45,7 @@ const HeroGreetingBlock = memo(function HeroGreetingBlock({
         <p className="mb-2 text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground lg:hidden">
           {dateLabel}
         </p>
-        <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
+        <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-foreground">
           {greeting}, {firstName}
         </h1>
         {description ? (

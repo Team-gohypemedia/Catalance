@@ -300,8 +300,8 @@ const getStatusClasses = (statusTone) => {
 
   if (statusTone === "pending") {
     return {
-      dot: "bg-[#facc15]",
-      text: "text-[#facc15]",
+      dot: "bg-[var(--primary)]",
+      text: "text-[var(--primary)]",
     };
   }
 
@@ -341,7 +341,7 @@ const PaymentMetricCard = ({
               tone === "success"
                 ? "text-[#22c55e]"
                 : tone === "warning"
-                  ? "text-[#facc15]"
+                  ? "text-[var(--primary)]"
                   : "text-white",
             )}
           >
@@ -349,7 +349,7 @@ const PaymentMetricCard = ({
           </p>
         )}
       </div>
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-[#242424] text-[#facc15]">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-[#242424] text-[var(--primary)]">
         <Icon className="size-4" />
       </div>
     </div>
@@ -370,7 +370,7 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-[12px] bg-[#facc15] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
+          className="inline-flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-[12px] bg-[var(--primary)] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
         >
           <div className="flex min-w-0 items-center gap-2">
             <FolderOpen className="size-4 shrink-0" />
@@ -442,7 +442,7 @@ const PaymentMethodRow = ({ method, onClick }) => (
       <div className="flex flex-wrap items-center gap-2">
         <p className="truncate text-sm font-semibold text-white">{method.label}</p>
         {method.badge ? (
-          <Badge className="border-0 bg-[#283118] px-2.5 py-0.5 text-[10px] font-medium text-[#facc15]">
+          <Badge className="border-0 bg-[#283118] px-2.5 py-0.5 text-[10px] font-medium text-[var(--primary)]">
             {method.badge}
           </Badge>
         ) : null}
@@ -785,7 +785,7 @@ const FreelancerPayments = () => {
                       !isPayoutConnected ||
                       summary.availableToWithdraw <= 0
                     }
-                    className="h-12 w-full rounded-[14px] bg-[#facc15] px-5 text-sm font-semibold text-black hover:bg-[#f6d64e] sm:w-auto"
+                    className="h-12 w-full rounded-[14px] bg-[var(--primary)] px-5 text-sm font-semibold text-black hover:bg-[#f6d64e] sm:w-auto"
                   >
                     {isWithdrawing ? (
                       <Loader2 className="mr-2 size-4 animate-spin" />
@@ -960,7 +960,7 @@ const FreelancerPayments = () => {
                   onClick={handleConnectPayoutAccount}
                   className="mt-6 h-12 w-full rounded-[16px] border-white/[0.05] bg-transparent text-sm font-medium text-[#a0a6b1] hover:bg-white/[0.02] hover:text-white"
                 >
-                  <Plus className="mr-2 size-4 text-[#facc15]" />
+                  <Plus className="mr-2 size-4 text-[var(--primary)]" />
                   Add Payment Method
                 </Button>
               </div>
@@ -1017,10 +1017,10 @@ const FreelancerPayments = () => {
                         <Line
                           type="monotone"
                           dataKey="earnings"
-                          stroke="#facc15"
+                          stroke="var(--primary)"
                           strokeWidth={3}
-                          dot={{ r: 4, fill: "#facc15", strokeWidth: 0 }}
-                          activeDot={{ r: 6, fill: "#facc15", stroke: "#1f1f1f", strokeWidth: 3 }}
+                          dot={{ r: 4, fill: "var(--primary)", strokeWidth: 0 }}
+                          activeDot={{ r: 6, fill: "var(--primary)", stroke: "#1f1f1f", strokeWidth: 3 }}
                         />
                       </LineChart>
                     </ResponsiveContainer>

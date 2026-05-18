@@ -32,7 +32,7 @@ const ShinyText = ({ text, className = "", disabled = false, speed = 3 }) => {
       )}
       style={{
         backgroundImage:
-          "linear-gradient(120deg, rgba(251,191,36,0.25), #facc15, #fef3c7, #facc15, rgba(251,191,36,0.25))",
+          "linear-gradient(120deg, rgba(251,191,36,0.25), var(--primary), #fef3c7, var(--primary), rgba(251,191,36,0.25))",
         backgroundSize: "250% 100%",
         animation: `shimmer ${duration}s linear infinite`,
       }}>
@@ -70,7 +70,7 @@ const Onboading = () => {
           bg: "#ffffff",
           text: "#000000",
           subtext: "rgba(0,0,0,0.72)",
-          gradientFrom: "#facc15", // Yellow bars visible on white
+          gradientFrom: "var(--primary)", // Yellow bars visible on white
           gradientTo: "#ffffff",
           buttonHover: "hover:bg-black/5",
           buttonBorder: "border-black/20",
@@ -80,7 +80,7 @@ const Onboading = () => {
           bg: "#000000",
           text: "#ffffff",
           subtext: "rgba(255,255,255,0.72)",
-          gradientFrom: "#facc15",
+          gradientFrom: "var(--primary)",
           gradientTo: "#000000",
           buttonHover: "hover:bg-white/10",
           buttonBorder: "border-white/20",
@@ -105,7 +105,7 @@ const Onboading = () => {
               palette.buttonText,
               palette.buttonBorder
             )}>
-            <Sparkles className="text-yellow-400 fill-yellow-400 w-5 h-5" />
+            <Sparkles className="text-primary fill-primary w-5 h-5" />
             <ShinyText
               text="Smarter Way to Connect Freelancers & Clients"
               disabled={false}

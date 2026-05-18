@@ -951,10 +951,10 @@ const ProjectDashboard = () => {
         </div>
 
         {project?.notes && (
-          <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <div className="mt-4 p-4 bg-primary/10 dark:bg-primary/90/30 border border-primary/20 dark:border-primary/20 rounded-lg">
             <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+              <AlertCircle className="w-4 h-4 text-primary dark:text-primary mt-0.5 shrink-0" />
+              <p className="text-sm text-primary dark:text-primary">
                 <span className="font-medium">Note:</span> {project.notes}
               </p>
             </div>

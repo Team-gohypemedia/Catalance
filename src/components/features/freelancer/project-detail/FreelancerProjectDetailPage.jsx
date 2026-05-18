@@ -624,10 +624,10 @@ const FreelancerProjectDetailContent = () => {
         </div>
 
         {project?.notes && (
-          <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <div className="mt-4 p-4 bg-primary/10 dark:bg-primary/90/30 border border-primary/20 dark:border-primary/20 rounded-lg">
             <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+              <AlertCircle className="w-4 h-4 text-primary dark:text-primary mt-0.5 shrink-0" />
+              <p className="text-sm text-primary dark:text-primary">
                 <span className="font-medium">Note:</span> {project.notes}
               </p>
             </div>
@@ -1603,7 +1603,7 @@ const FreelancerProjectDetailContent = () => {
           <div className="absolute inset-0 z-50 backdrop-blur-md bg-background/60">
             <div className="sticky top-0 h-screen w-full flex flex-col items-center justify-center p-6 text-center">
               <div className="max-w-lg space-y-6">
-                <div className="p-6 rounded-full bg-yellow-500/10 mb-4 animate-pulse mx-auto w-fit">
+                <div className="p-6 rounded-full bg-primary/10/10 mb-4 animate-pulse mx-auto w-fit">
                   <span className="text-4xl">⏳</span>
                 </div>
                 <h2 className="text-2xl font-bold tracking-tight">

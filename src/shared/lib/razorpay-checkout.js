@@ -34,7 +34,7 @@ export const openRazorpayCheckout = async ({
   description = "Upfront project payment",
   prefill = {},
   notes = {},
-  theme = { color: "#facc15" },
+  theme = { color: "var(--primary)" },
 }) => {
   const loaded = await loadRazorpayCheckoutScript();
   if (!loaded || !window.Razorpay) {

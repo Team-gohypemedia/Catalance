@@ -35,12 +35,12 @@ const ProfileCompletionPanel = ({
           </h2>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:w-auto lg:justify-end lg:gap-4">
-            <span className="text-sm font-bold text-[#facc15]">
+            <span className="text-sm font-bold text-[var(--primary)]">
               {completionPercent}% Complete
             </span>
             <button
               type="button"
-              className="h-10 w-full rounded-full bg-[#facc15] px-5 text-xs font-semibold text-black transition-colors hover:bg-[#ffd54f] sm:w-auto"
+              className="h-10 w-full rounded-full bg-[var(--primary)] px-5 text-xs font-semibold text-black transition-colors hover:bg-primary/80 sm:w-auto"
               onClick={onOpenProfile}
             >
               {isComplete ? "Open Profile" : "Finish Setup"}

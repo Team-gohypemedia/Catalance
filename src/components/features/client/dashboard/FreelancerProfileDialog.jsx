@@ -688,7 +688,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
         {viewingFreelancer ? (
           <>
             <div className="relative shrink-0 overflow-hidden border-b border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))]">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(110%_130%_at_0%_0%,rgba(250,204,21,0.14)_0%,rgba(250,204,21,0)_56%),radial-gradient(120%_120%_at_100%_0%,rgba(59,130,246,0.14)_0%,rgba(59,130,246,0)_54%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(110%_130%_at_0%_0%,rgba(var(--brand-rgb),0.14)_0%,rgba(var(--brand-rgb),0)_56%),radial-gradient(120%_120%_at_100%_0%,rgba(59,130,246,0.14)_0%,rgba(59,130,246,0)_54%)]" />
 
               <DialogHeader className="relative px-6 pt-6 pb-5 pr-14">
                 <DialogTitle className="sr-only">
@@ -741,7 +741,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <Badge
                         variant="outline"
-                        className="border-amber-400/40 bg-amber-500/10 text-amber-300"
+                        className="border-primary/20/40 bg-primary/10/10 text-primary"
                       >
                         <Star className="mr-1 h-3.5 w-3.5 fill-current" />
                         {ratingLabel}

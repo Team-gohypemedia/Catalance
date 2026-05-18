@@ -3046,7 +3046,7 @@ const AgencyOnboardingShell = ({
       <main className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-transparent h-[100dvh]">
       <header className="relative z-20 shrink-0 border-b border-white/8 bg-card">
         <div
-          className="absolute left-0 top-0 h-1 bg-[#facc15] transition-all duration-300"
+          className="absolute left-0 top-0 h-1 bg-[var(--primary)] transition-all duration-300"
           style={{ width: `${progressValue}%` }}
         />
         <div className="relative flex items-center justify-between px-4 py-4 sm:px-6">

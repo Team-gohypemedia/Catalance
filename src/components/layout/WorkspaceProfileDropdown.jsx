@@ -80,7 +80,7 @@ const WorkspaceProfileDropdown = ({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-11 shrink-0 items-center gap-2.5 rounded-full border border-border bg-transparent px-3.5 text-[0.83rem] font-semibold text-white shadow-none transition-colors hover:border-border hover:bg-transparent"
+          className="flex h-11 shrink-0 items-center gap-2.5 rounded-full border border-border bg-transparent px-3.5 text-[0.83rem] font-semibold text-[#1C1B1F] dark:text-white shadow-none transition-colors hover:border-border hover:bg-transparent"
         >
           <Avatar className="size-6.5 border border-border">
             <AvatarImage src={profile?.avatar} alt={displayName} />
@@ -106,7 +106,7 @@ const WorkspaceProfileDropdown = ({
 
           <ChevronDown
             className={cn(
-              "h-3.5 w-3.5 shrink-0 text-white transition-transform duration-200",
+              "h-3.5 w-3.5 shrink-0 text-[#1C1B1F] dark:text-white transition-transform duration-200",
               open ? "rotate-180" : ""
             )}
           />
@@ -183,7 +183,7 @@ const WorkspaceProfileDropdown = ({
                     checked={isFreelancer}
                     onCheckedChange={handleSwitchDashboard}
                     aria-label={`${switchLabel} dashboard`}
-                    className="h-6 w-[3.55rem] border-0 px-0.5 shadow-none data-[state=checked]:justify-end data-[state=checked]:bg-[#ffc107] data-[state=unchecked]:justify-start data-[state=unchecked]:bg-white/[0.12] [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:!translate-x-0 [&_[data-slot=switch-thumb]]:shadow-none [&_[data-slot=switch-thumb]]:data-[state=checked]:bg-[#111111] [&_[data-slot=switch-thumb]]:data-[state=unchecked]:bg-white"
+                    className="h-6 w-[3.55rem] border-0 px-0.5 shadow-none data-[state=checked]:justify-end data-[state=checked]:bg-[var(--primary)] data-[state=unchecked]:justify-start data-[state=unchecked]:bg-white/[0.12] [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:!translate-x-0 [&_[data-slot=switch-thumb]]:shadow-none [&_[data-slot=switch-thumb]]:data-[state=checked]:bg-[#111111] [&_[data-slot=switch-thumb]]:data-[state=unchecked]:bg-white"
                   />
                 </div>
               </div>

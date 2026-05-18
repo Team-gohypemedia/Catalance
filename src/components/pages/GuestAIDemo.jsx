@@ -12,7 +12,7 @@ function MatrixPattern({ mouseX, mouseY, randomString }) {
         <div className="pointer-events-none">
             <div className="absolute inset-0 mask-[linear-gradient(white,transparent)] opacity-20" />
             <motion.div
-                className="absolute inset-0 bg-linear-to-r from-primary to-orange-700 opacity-100 transition duration-500 backdrop-blur-xl"
+                className="absolute inset-0 bg-linear-to-r from-primary to-primary/20 opacity-100 transition duration-500 backdrop-blur-xl"
                 style={style}
             />
             <motion.div
@@ -1688,8 +1688,8 @@ const AssistantMessageBody = ({
     });
     const hasStructuredQuestion = Boolean(questionText) || options.length > 0;
     const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[0.97rem] leading-7 prose-p:my-3.5 prose-ul:my-3 prose-ol:my-3 prose-li:my-1.5 prose-strong:font-semibold prose-headings:font-semibold ${isDark
-        ? 'prose-invert prose-p:text-slate-100 prose-li:text-slate-100 prose-headings:text-white prose-a:text-amber-300'
-        : 'prose-p:text-slate-700 prose-li:text-slate-700 prose-headings:text-slate-900 prose-a:text-amber-700'
+        ? 'prose-invert prose-p:text-slate-100 prose-li:text-slate-100 prose-headings:text-white prose-a:text-primary'
+        : 'prose-p:text-slate-700 prose-li:text-slate-700 prose-headings:text-slate-900 prose-a:text-primary'
         }`;
 
     if (!hasStructuredQuestion) {
@@ -1703,8 +1703,8 @@ const AssistantMessageBody = ({
             )}
 
             {questionText && (
-                <div className={`rounded-2xl border px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isDark ? 'border-amber-300/35 bg-amber-300/[0.08]' : 'border-amber-400/30 bg-amber-50/80'}`}>
-                    <div className={`prose prose-sm max-w-none text-[0.95rem] font-medium leading-7 prose-p:my-1 ${isDark ? 'prose-invert prose-p:text-amber-50' : 'prose-p:text-slate-800'}`}>
+                <div className={`rounded-2xl border px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isDark ? 'border-primary/20/35 bg-primary/10/[0.08]' : 'border-primary/20/30 bg-primary/10/80'}`}>
+                    <div className={`prose prose-sm max-w-none text-[0.95rem] font-medium leading-7 prose-p:my-1 ${isDark ? 'prose-invert prose-p:text-primary' : 'prose-p:text-slate-800'}`}>
                         <ReactMarkdown>{questionText}</ReactMarkdown>
                     </div>
                 </div>
@@ -3084,6 +3084,11 @@ const GuestAIDemo = () => {
     const isDark = theme === 'dark';
     const navigate = useNavigate();
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+
+    useEffect(() => {
+        document.documentElement.classList.add("marketplace-page");
+        return () => document.documentElement.classList.remove("marketplace-page");
+    }, []);
 
     const [serviceSelectionMode, setServiceSelectionMode] = useState(
         SERVICE_SELECTION_MODES.FREELANCER
@@ -5108,24 +5113,24 @@ const GuestAIDemo = () => {
         ? Boolean(inferredBriefingService) && !briefingSubmitting
         : isCurrentBriefingStepValid;
     const briefingBackdropClasses = isDark
-        ? 'bg-[radial-gradient(circle_at_top,rgba(255,200,0,0.14),transparent_30%),radial-gradient(circle_at_bottom,rgba(255,200,0,0.08),transparent_24%),linear-gradient(180deg,rgba(24,24,27,1)_0%,rgba(15,15,18,1)_100%)]'
-        : 'bg-[radial-gradient(circle_at_top,rgba(255,200,0,0.22),transparent_40%),radial-gradient(circle_at_bottom,rgba(255,200,0,0.12),transparent_30%),linear-gradient(180deg,#ffffff_0%,#fffaf0_100%)]';
-    const briefingGlowClasses = isDark ? 'bg-[#ffc800]/14' : 'bg-[#ffc800]/15';
+        ? 'bg-[radial-gradient(circle_at_top,rgba(var(--brand-rgb),0.14),transparent_30%),radial-gradient(circle_at_bottom,rgba(var(--brand-rgb),0.08),transparent_24%),linear-gradient(180deg,rgba(24,24,27,1)_0%,rgba(15,15,18,1)_100%)]'
+        : 'bg-[radial-gradient(circle_at_top,rgba(var(--brand-rgb),0.22),transparent_40%),radial-gradient(circle_at_bottom,rgba(var(--brand-rgb),0.12),transparent_30%),linear-gradient(180deg,#ffffff_0%,#fffaf0_100%)]';
+    const briefingGlowClasses = isDark ? 'bg-primary/14' : 'bg-primary/15';
     const briefingEyebrowClasses = isDark ? 'text-[#d6c4a2]' : 'text-[#7c6a4d]';
-    const briefingDotClasses = isDark ? 'bg-[#ffc800] shadow-[0_0_0_5px_rgba(255,200,0,0.12)]' : 'bg-[#ffc800] shadow-[0_0_0_5px_rgba(255,200,0,0.10)]';
+    const briefingDotClasses = isDark ? 'bg-primary shadow-[0_0_0_5px_rgba(var(--brand-rgb),0.12)]' : 'bg-primary shadow-[0_0_0_5px_rgba(var(--brand-rgb),0.10)]';
     const briefingHeadingClasses = isDark ? 'text-white' : 'text-[#1c1b1f]';
     const briefingHeadingSizeClasses = isDark
         ? 'text-[clamp(1.55rem,2.5vw,2.55rem)] leading-[1.16] tracking-[-0.024em] [text-shadow:0_0_28px_rgba(255,255,255,0.04)]'
         : 'text-[clamp(1.85rem,3.5vw,3.1rem)] leading-[1.14] tracking-[-0.024em]';
     const briefingMutedSentenceClasses = isDark ? 'text-white/28' : 'text-[#c6b8a8]';
-    const briefingAccentTextClasses = isDark ? 'text-[#ffd75a] [text-shadow:0_0_24px_rgba(255,200,0,0.16)]' : 'text-[#ba7a07]';
-    const briefingAccentPillClasses = isDark ? 'bg-[#ffc800]/12 text-[#ffd75a]' : 'bg-[#fff0bf] text-[#ba7a07]';
+    const briefingAccentTextClasses = isDark ? 'text-[#ffd75a] [text-shadow:0_0_24px_rgba(var(--brand-rgb),0.16)]' : 'text-[#ba7a07]';
+    const briefingAccentPillClasses = isDark ? 'bg-primary/12 text-[#ffd75a]' : 'bg-[#fff0bf] text-[#ba7a07]';
     const briefingBodyClasses = isDark ? 'text-muted-foreground' : 'text-[#5c544b]';
     const briefingHeroStageClasses = isDark
-        ? 'border-[#ffc800]/14 bg-[linear-gradient(135deg,rgba(255,200,0,0.08)_0%,rgba(255,255,255,0.02)_22%,rgba(16,16,19,0.96)_70%)] shadow-[0_0_0_1px_rgba(255,200,0,0.04),0_45px_120px_-70px_rgba(255,200,0,0.45)]'
-        : 'border-[#eadfce] bg-[linear-gradient(135deg,rgba(255,200,0,0.08)_0%,rgba(255,255,255,0.95)_35%,rgba(255,250,242,0.98)_100%)] shadow-[0_30px_90px_-50px_rgba(98,77,36,0.22)]';
+        ? 'border-primary/14 bg-[linear-gradient(135deg,rgba(var(--brand-rgb),0.08)_0%,rgba(255,255,255,0.02)_22%,rgba(16,16,19,0.96)_70%)] shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.04),0_45px_120px_-70px_rgba(var(--brand-rgb),0.45)]'
+        : 'border-[#eadfce] bg-[linear-gradient(135deg,rgba(var(--brand-rgb),0.08)_0%,rgba(255,255,255,0.95)_35%,rgba(255,250,242,0.98)_100%)] shadow-[0_30px_90px_-50px_rgba(98,77,36,0.22)]';
     const briefingCardClasses = isDark
-        ? 'border-[#ffc800]/16 bg-[linear-gradient(180deg,rgba(23,23,27,0.96)_0%,rgba(14,14,18,0.98)_100%)] shadow-[0_0_0_1px_rgba(255,200,0,0.05),0_0_44px_rgba(255,200,0,0.08),0_55px_120px_-70px_rgba(0,0,0,0.88)]'
+        ? 'border-primary/16 bg-[linear-gradient(180deg,rgba(23,23,27,0.96)_0%,rgba(14,14,18,0.98)_100%)] shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.05),0_0_44px_rgba(var(--brand-rgb),0.08),0_55px_120px_-70px_rgba(0,0,0,0.88)]'
         : 'border-[#eadfce] bg-white/95 shadow-[0_35px_80px_-50px_rgba(98,77,36,0.18)]';
     const briefingCardDividerClasses = isDark ? 'border-border/70' : 'border-[#efe2d3]';
     const briefingStepEyebrowClasses = isDark ? 'text-[#f0cc6b]' : 'text-[#9c6a0f]';
@@ -5181,10 +5186,10 @@ const GuestAIDemo = () => {
                         <div className="mx-auto flex min-h-[calc(100vh-6.5rem)] w-full max-w-[980px] flex-col justify-center sm:min-h-[calc(100vh-7rem)]">
                         <div className={`relative overflow-hidden rounded-[2rem] border px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10 ${briefingHeroStageClasses}`}>
                             <div className="pointer-events-none absolute inset-0">
-                                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#ffc800]/55 to-transparent" />
-                                <div className="absolute left-[-2rem] top-[-2rem] h-32 w-32 rounded-full bg-[#ffc800]/10 blur-3xl" />
-                                <div className="absolute right-[-4rem] top-[-3rem] h-48 w-48 rounded-full border border-[#ffc800]/10 bg-[#ffc800]/[0.03]" />
-                                <div className="absolute bottom-[-5rem] right-[12%] h-36 w-36 rounded-full bg-[#ffc800]/10 blur-3xl" />
+                                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/55 to-transparent" />
+                                <div className="absolute left-[-2rem] top-[-2rem] h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
+                                <div className="absolute right-[-4rem] top-[-3rem] h-48 w-48 rounded-full border border-primary/10 bg-primary/[0.03]" />
+                                <div className="absolute bottom-[-5rem] right-[12%] h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
                                 <div className="absolute right-4 top-4 text-[clamp(4rem,11vw,9rem)] font-semibold uppercase tracking-[0.22em] text-white/[0.03]">CATA</div>
                             </div>
 
@@ -5234,7 +5239,7 @@ const GuestAIDemo = () => {
                         >
                             <div className={`border-b ${isDark ? 'px-5 py-4 sm:px-6' : 'px-6 py-5 sm:px-8'} ${briefingCardDividerClasses}`}>
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <span className="inline-flex rounded-full bg-[#ffc800] px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-black">
+                                    <span className="inline-flex rounded-full bg-primary px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-black">
                                         {String(briefingStepIndex + 1).padStart(2, '0')}
                                     </span>
                                     <div>
@@ -5506,15 +5511,15 @@ const GuestAIDemo = () => {
                                         key={feature.id || index}
                                         onClick={() => handleServiceSelect(feature)}
                                         onMouseMove={handleCardGlowMouseMove}
-                                        style={{ '--card-glow-x': '50%', '--card-glow-y': '50%' }}
-                                        className={`group relative h-full cursor-pointer overflow-hidden rounded-3xl border transition-all duration-500 hover:-translate-y-2 ${isDark ? 'border-white/10 bg-card/85 hover:border-[#ffc800]/50' : 'border-[#e8dfcf] bg-white hover:border-[#ffc800]/60 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.08)]'}`}
+                                        style={{ '--card-glow-x': '50%', '--card-glow-y': '50%', '--primary': isDark ? '#F9D949' : '#D9692A' }}
+                                        className={`group relative h-full cursor-pointer overflow-hidden rounded-3xl border transition-all duration-500 hover:-translate-y-2 ${isDark ? 'border-white/10 bg-card/85 hover:border-primary/50' : 'border-[#e8dfcf] bg-white hover:border-primary/60 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.08)]'}`}
                                     >
                                         <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                                         <div
                                             className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                                             style={{
                                                 background:
-                                                    'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(255, 200, 0, 0.18) 0%, rgba(255, 200, 0, 0.08) 30%, transparent 65%)',
+                                                    'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), hsl(var(--primary) / 0.18) 0%, hsl(var(--primary) / 0.08) 30%, transparent 65%)',
                                             }}
                                         />
                                         <div className="relative z-10 flex h-full flex-col p-5">
@@ -5527,7 +5532,7 @@ const GuestAIDemo = () => {
                                             </div>
 
                                             <div className="flex grow flex-col items-center text-center">
-                                                <h3 className={`mb-2 text-lg font-bold leading-tight transition-colors duration-300 group-hover:text-[#ffc800] ${isDark ? 'text-white' : 'text-[#1c1b1f]'}`}>
+                                                <h3 className={`mb-2 text-lg font-bold leading-tight transition-colors duration-300 ${isDark ? 'text-white group-hover:text-primary' : 'text-[#1c1b1f] group-hover:!text-[#D9692A]'}`}>
                                                     {feature.title || feature.name}
                                                 </h3>
 
@@ -5540,11 +5545,11 @@ const GuestAIDemo = () => {
                                                         <p className={`mb-1 text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-zinc-500' : 'text-[#9c8a77]'}`}>
                                                             Starting at
                                                         </p>
-                                                        <p className={`text-lg font-bold transition-colors duration-300 group-hover:text-[#ffc800] ${isDark ? 'text-white' : 'text-[#1c1b1f]'}`}>
+                                                        <p className={`text-lg font-bold transition-colors duration-300 ${isDark ? 'text-white group-hover:text-primary' : 'text-[#1c1b1f] group-hover:!text-[#D9692A]'}`}>
                                                             {formatServiceStartingPrice(feature)}
                                                         </p>
                                                     </div>
-                                                    <div className={`flex h-8 w-8 items-center justify-center rounded-full border transition-colors duration-300 ${isDark ? 'border-white/10 text-white group-hover:border-[#ffc800] group-hover:bg-[#ffc800]/10 group-hover:text-[#ffc800]' : 'border-[#e8dfcf] text-[#1c1b1f] group-hover:border-[#ffc800] group-hover:bg-[#ffc800]/10 group-hover:text-[#ba7a07]'}`}>
+                                                    <div className={`flex h-8 w-8 items-center justify-center rounded-full border transition-colors duration-300 ${isDark ? 'border-white/10 text-white group-hover:border-primary group-hover:bg-primary/10 group-hover:text-primary' : 'border-[#e8dfcf] text-[#1c1b1f] group-hover:border-primary group-hover:bg-primary/10 group-hover:text-primary'}`}>
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                                                     </div>
                                                 </div>
@@ -5620,7 +5625,7 @@ const GuestAIDemo = () => {
                                                 type="button"
                                                 onClick={() => setServiceSelectionMode(modeOption.key)}
                                                 className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors sm:px-5 ${serviceSelectionMode === modeOption.key
-                                                        ? 'bg-[#ffc800] text-black'
+                                                        ? 'bg-primary text-black'
                                                         : 'text-zinc-300 hover:text-white'
                                                     }`}
                                             >
@@ -5648,7 +5653,7 @@ const GuestAIDemo = () => {
                                                     : 'Select services to continue'
                                             }
                                             className={`inline-flex h-9 items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold whitespace-nowrap transition-all ${agencySelectedServices.length > 0
-                                                    ? 'border-[#ffc800]/40 bg-[#ffc800] text-black hover:-translate-y-0.5 hover:bg-[#ffd740]'
+                                                    ? 'border-primary/40 bg-primary text-black hover:-translate-y-0.5 hover:opacity-90'
                                                     : 'cursor-not-allowed border-white/10 bg-background text-zinc-500'
                                                 }`}
                                         >
@@ -5687,10 +5692,10 @@ const GuestAIDemo = () => {
                                                     : handleServiceSelect(feature)
                                             )}
                                             onMouseMove={handleCardGlowMouseMove}
-                                            style={{ '--card-glow-x': '50%', '--card-glow-y': '50%' }}
+                                            style={{ '--card-glow-x': '50%', '--card-glow-y': '50%', '--primary': isDark ? '#F9D949' : '#D9692A' }}
                                             className={`group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full bg-card hover:-translate-y-2 ${isAgencyCardSelected
-                                                    ? 'border-[#ffc800]'
-                                                    : 'border-white/20 hover:border-[#ffc800]/50'
+                                                    ? 'border-primary'
+                                                    : 'border-white/20 hover:border-primary/50'
                                                 }`}
                                         >
                                             <div className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
@@ -5698,13 +5703,13 @@ const GuestAIDemo = () => {
                                                 className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                                                 style={{
                                                     background:
-                                                        'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(255, 200, 0, 0.18) 0%, rgba(255, 200, 0, 0.08) 30%, transparent 65%)',
+                                                        'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(217, 105, 42, 0.18) 0%, rgba(217, 105, 42, 0.08) 30%, transparent 65%)',
                                                 }}
                                             />
                                             {isAgencySelectionMode ? (
                                                 <div className="absolute right-4 top-4 z-20">
                                                     <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isAgencyCardSelected
-                                                            ? 'bg-[#ffc800] text-black'
+                                                            ? 'bg-primary text-black'
                                                             : 'border border-white/10 bg-black/40 text-zinc-400'
                                                         }`}>
                                                         {isAgencyCardSelected ? 'Selected' : 'Select'}
@@ -5721,7 +5726,7 @@ const GuestAIDemo = () => {
                                                 </div>
 
                                                 <div className="flex flex-col grow items-center text-center">
-                                                    <h3 className={`text-lg font-bold mb-2 leading-tight transition-colors duration-300 ${isAgencyCardSelected ? 'text-[#ffc800]' : 'text-white group-hover:text-[#ffc800]'
+                                                    <h3 className={`text-lg font-bold mb-2 leading-tight transition-colors duration-300 ${isAgencyCardSelected ? 'text-primary' : (isDark ? 'text-white group-hover:text-primary' : 'text-[#1c1b1f] group-hover:text-primary')
                                                         }`}>
                                                         {feature.title || feature.name}
                                                     </h3>
@@ -5735,14 +5740,14 @@ const GuestAIDemo = () => {
                                                             <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">
                                                                 Starting at
                                                             </p>
-                                                            <p className={`text-lg font-bold transition-colors duration-300 ${isAgencyCardSelected ? 'text-[#ffc800]' : 'text-white group-hover:text-[#ffc800]'
+                                                            <p className={`text-lg font-bold transition-colors duration-300 ${isAgencyCardSelected ? 'text-primary' : (isDark ? 'text-white group-hover:text-primary' : 'text-[#1c1b1f] group-hover:text-primary')
                                                                 }`}>
                                                                 {formatServiceStartingPrice(feature)}
                                                             </p>
                                                         </div>
                                                         <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors duration-300 ${isAgencyCardSelected
-                                                                ? 'border-[#ffc800] text-[#ffc800] bg-[#ffc800]/10'
-                                                                : 'border-white/10 text-white group-hover:border-[#ffc800] group-hover:text-[#ffc800] group-hover:bg-[#ffc800]/10'
+                                                                ? 'border-primary text-primary bg-primary/10'
+                                                                : 'border-white/10 text-white group-hover:border-primary group-hover:text-primary group-hover:bg-primary/10'
                                                             }`}>
                                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                                                         </div>
@@ -5906,7 +5911,7 @@ const GuestAIDemo = () => {
                 {isAgencyFlowCompleted && (
                     <div className={`mb-3 rounded-2xl border px-3.5 py-3 text-sm ${isDark
                         ? 'border-[#ffc800]/20 bg-[#ffc800]/[0.08] text-zinc-200'
-                        : 'border-amber-200 bg-amber-50 text-slate-700'
+                        : 'border-primary/20 bg-primary/10 text-slate-700'
                         }`}>
                         The combined agency proposal is ready. Keep chatting below to refine it. If you want a service-specific change like budget or timeline, name the service first.
                     </div>
@@ -6057,7 +6062,7 @@ const GuestAIDemo = () => {
     };
 
     return (
-        <div className="mt-16 flex h-[calc(100dvh-4rem)] min-h-[calc(100dvh-4rem)] overflow-hidden bg-background lg:mt-20 lg:h-[calc(100dvh-5rem)] lg:min-h-[calc(100dvh-5rem)]">
+        <div className="mt-16 flex h-[calc(100dvh-4rem)] min-h-[calc(100dvh-4rem)] overflow-hidden bg-card lg:mt-20 lg:h-[calc(100dvh-5rem)] lg:min-h-[calc(100dvh-5rem)]">
             {/* Backdrop — closes sidebar when clicking outside */}
             {!isSidebarCompact && (
                 <div
@@ -6315,7 +6320,7 @@ const GuestAIDemo = () => {
                 <div className={`shrink-0 border-t px-3 py-3 ${isDark ? 'border-white/5' : 'border-slate-200/70'}`}>
                     {isAuthLoading ? (
                         <div className="flex items-center gap-2 px-2">
-                            <span className={`h-2 w-2 animate-pulse rounded-full ${isDark ? 'bg-amber-400/50' : 'bg-amber-500/50'}`} />
+                            <span className={`h-2 w-2 animate-pulse rounded-full ${isDark ? 'bg-primary/10/50' : 'bg-primary/10/50'}`} />
                             <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Checking...</p>
                         </div>
                     ) : isUserLoggedIn ? (
@@ -6642,7 +6647,7 @@ const GuestAIDemo = () => {
                                     Your AI Proposals
                                 </h3>
                                 {generatedProposals.length > 0 && (
-                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-100 text-amber-700'}`}>
+                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'}`}>
                                         {generatedProposals.length}
                                     </span>
                                 )}
@@ -6676,7 +6681,7 @@ const GuestAIDemo = () => {
                                             }}
                                             className={`group flex w-full items-start gap-4 rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 ${isDark ? 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
                                         >
-                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDark ? 'bg-primary/20 text-primary' : 'bg-amber-100 text-amber-600'}`}>
+                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDark ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'}`}>
                                                 <Sparkles className="h-5 w-5" />
                                             </div>
                                             <div className="min-w-0 flex-1">

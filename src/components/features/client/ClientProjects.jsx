@@ -44,7 +44,7 @@ const projectStatusToneMap = {
 };
 
 const projectActionToneMap = {
-  amber: "bg-[#ffc107] text-black hover:bg-[#ffd54f] disabled:bg-[#ffc107]/70",
+  amber: "bg-[var(--primary)] text-black hover:bg-primary/80 disabled:bg-[var(--primary)]/70",
   slate:
     "border border-white/[0.08] bg-card text-white hover:bg-white/[0.04] disabled:bg-card disabled:text-white/70",
 };
@@ -889,9 +889,9 @@ const ProjectPhaseStep = ({ item }) => {
       ? {
           label: "In Progress",
           Icon: Clock3,
-          badgeClassName: "border-[#ffc107]/25 bg-[#3a2800] text-[#ffc107]",
+          badgeClassName: "border-[var(--primary)]/25 bg-[#3a2800] text-[var(--primary)]",
           textClassName: "text-[#f3f4f6]",
-          iconClassName: "text-[#ffc107]",
+          iconClassName: "text-[var(--primary)]",
         }
       : {
           label: "Pending",
@@ -1099,7 +1099,7 @@ export const ProjectProposalCard = ({
 
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
           <span className="text-sm text-muted-foreground">Current Phase Progress</span>
-          <span className="text-sm font-semibold text-[#ffc107]">{progressText}</span>
+          <span className="text-sm font-semibold text-[var(--primary)]">{progressText}</span>
         </div>
 
         <div className="mt-3 h-2 rounded-full bg-white/[0.08]">
@@ -1221,7 +1221,7 @@ const EmptyProjectsState = ({
       {showAction ? (
         <Link
           to="/client/proposal"
-          className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[#ffc107] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+          className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-primary/80"
         >
           Create New Proposal
         </Link>
@@ -1444,7 +1444,7 @@ const ClientProjects = () => {
                       className={cn(
                         "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
                         isActive
-                          ? "border-[#ffc107]/70 bg-[#ffc107] text-[#141414]"
+                          ? "border-[var(--primary)]/70 bg-[var(--primary)] text-[#141414]"
                           : "text-[#a3a6ad] hover:text-white",
                       )}
                     >

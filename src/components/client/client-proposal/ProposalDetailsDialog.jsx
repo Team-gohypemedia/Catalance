@@ -219,7 +219,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("title", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder="Project name"
                       />
                     ) : (
@@ -237,7 +237,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("clientName", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder="Client name"
                       />
                     ) : (
@@ -255,7 +255,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("service", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder="Service"
                       />
                     ) : (
@@ -273,7 +273,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("budget", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder="e.g. 40000"
                       />
                     ) : (
@@ -309,7 +309,7 @@ const ProposalDetailsDialog = ({
                       onChange={(event) =>
                         handleEditableProposalDraftChange("projectOverview", event.target.value)
                       }
-                      className="min-h-[180px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                      className="min-h-[180px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                       placeholder="Summarize the project, business context, and intended outcome."
                     />
                   ) : (
@@ -331,7 +331,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("objectivesText", event.target.value)
                         }
-                        className="min-h-[220px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                        className="min-h-[220px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder={"One objective per line\nExample: Launch MVP for internal testing"}
                       />
                     ) : (
@@ -353,7 +353,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("deliverablesText", event.target.value)
                         }
-                        className="min-h-[220px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                        className="min-h-[220px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder={"One deliverable per line\nExample: Admin dashboard with analytics"}
                       />
                     ) : (
@@ -395,7 +395,7 @@ const ProposalDetailsDialog = ({
                             onChange={(event) =>
                               handleEditableProposalDraftChange("timeline", event.target.value)
                             }
-                            className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                            className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                             placeholder="e.g. 3+ months"
                           />
                         </div>
@@ -443,7 +443,7 @@ const ProposalDetailsDialog = ({
                       onChange={(event) =>
                         handleEditableProposalDraftChange("techStackText", event.target.value)
                       }
-                      className="min-h-[160px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                      className="min-h-[160px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                       placeholder={"One technology per line\nExample: Next.js"}
                     />
                   ) : Array.isArray(activeProposalStructuredData?.techStack) &&
@@ -476,7 +476,7 @@ const ProposalDetailsDialog = ({
                       onChange={(event) =>
                         handleEditableProposalDraftChange("notes", event.target.value)
                       }
-                      className="min-h-[180px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                      className="min-h-[180px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                       placeholder="Add any assumptions, dependencies, or special notes."
                     />
                   ) : (

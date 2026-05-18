@@ -95,7 +95,7 @@ const MessagesSidebar = React.memo(function MessagesSidebar({
             </div>
           ) : conversations.length > 0 ? (
             <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-              <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+              <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
                 <Search className="size-5" />
               </div>
               <p className="mt-4 text-base font-semibold text-white">
@@ -107,7 +107,7 @@ const MessagesSidebar = React.memo(function MessagesSidebar({
             </div>
           ) : (
             <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-              <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+              <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
                 <SendHorizontal className="size-5" />
               </div>
               <p className="mt-4 text-base font-semibold text-white">
@@ -135,7 +135,7 @@ const MessagesSidebar = React.memo(function MessagesSidebar({
           </div>
         ) : pendingRequests.length > 0 ? (
           <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-            <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+            <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
               <Search className="size-5" />
             </div>
             <p className="mt-4 text-base font-semibold text-white">
@@ -147,7 +147,7 @@ const MessagesSidebar = React.memo(function MessagesSidebar({
           </div>
         ) : (
           <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-            <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+            <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
               <X className="size-5" />
             </div>
             <p className="mt-4 text-base font-semibold text-white">

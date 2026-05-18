@@ -117,7 +117,7 @@ const DecorativeIcons = ({ isDark = true }) => {
             <motion.div
               className="absolute inset-0 rounded-2xl"
               style={{
-                background: `radial-gradient(circle, rgba(250, 204, 21, 0.4) 0%, transparent 70%)`,
+                background: `radial-gradient(circle, rgba(var(--brand-rgb), 0.4) 0%, transparent 70%)`,
                 filter: glowBlur,
                 transform: `scale(${glowScale})`,
               }}
@@ -138,14 +138,14 @@ const DecorativeIcons = ({ isDark = true }) => {
             style={{
               padding: iconContainerPadding,
               background: isDark
-                ? "linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, rgba(250, 204, 21, 0.05) 100%)"
-                : "linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(250, 204, 21, 0.08) 100%)",
-              border: `1px solid rgba(250, 204, 21, ${isDark ? 0.3 : 0.4})`,
+                ? "linear-gradient(135deg, rgba(var(--brand-rgb), 0.15) 0%, rgba(var(--brand-rgb), 0.05) 100%)"
+                : "linear-gradient(135deg, rgba(var(--brand-rgb), 0.2) 0%, rgba(var(--brand-rgb), 0.08) 100%)",
+              border: `1px solid rgba(var(--brand-rgb), ${isDark ? 0.3 : 0.4})`,
               boxShadow: glow
-                ? `0 0 30px rgba(250, 204, 21, ${
+                ? `0 0 30px rgba(var(--brand-rgb), ${
                     glowShadowOpacity
-                  }), inset 0 0 20px rgba(250, 204, 21, 0.1)`
-                : `0 0 15px rgba(250, 204, 21, ${isDark ? 0.15 : 0.1})`,
+                  }), inset 0 0 20px rgba(var(--brand-rgb), 0.1)`
+                : `0 0 15px rgba(var(--brand-rgb), ${isDark ? 0.15 : 0.1})`,
             }}
           >
             <Icon
@@ -154,7 +154,7 @@ const DecorativeIcons = ({ isDark = true }) => {
               strokeWidth={1.5}
               style={{
                 filter: glow
-                  ? `drop-shadow(0 0 ${isMobile ? 5 : 8}px rgba(250, 204, 21, 0.6))`
+                  ? `drop-shadow(0 0 ${isMobile ? 5 : 8}px rgba(var(--brand-rgb), 0.6))`
                   : "none",
               }}
             />

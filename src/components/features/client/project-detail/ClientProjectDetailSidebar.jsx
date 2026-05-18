@@ -232,7 +232,7 @@ const ClientProjectDetailSidebar = ({
       </CardContent>
       <div className="space-y-2 border-t border-border/60 p-3">
         {isChatLockedUntilPayment ? (
-          <div className="w-full rounded-md border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          <div className="w-full rounded-md border border-primary/20/30 bg-primary/10/10 px-3 py-2 text-xs text-primary">
             Pending your payment. Messages will start after the initial 20%
             payment.
           </div>
@@ -497,7 +497,7 @@ const ClientProjectDetailSidebar = ({
                       className={cn(
                         "h-4 w-4",
                         filled
-                          ? "fill-amber-400 text-amber-400"
+                          ? "fill-primary text-primary"
                           : "text-muted-foreground",
                       )}
                     />
@@ -534,7 +534,7 @@ const ClientProjectDetailSidebar = ({
                           className={cn(
                             "h-5 w-5",
                             selected
-                              ? "fill-amber-400 text-amber-400"
+                              ? "fill-primary text-primary"
                               : "text-muted-foreground",
                           )}
                         />

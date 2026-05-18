@@ -198,8 +198,8 @@ const statusConfig = {
     label: "Pending",
     icon: Clock,
     className:
-      "bg-yellow-500/15 text-yellow-700 border-yellow-200 dark:text-yellow-400 dark:border-yellow-500/30",
-    dotColor: "bg-yellow-500",
+      "bg-primary/10/15 text-primary border-primary/20 dark:text-primary dark:border-primary/20/30",
+    dotColor: "bg-primary/10",
   },
   received: {
     label: "Received",

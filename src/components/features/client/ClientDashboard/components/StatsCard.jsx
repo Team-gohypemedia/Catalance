@@ -32,7 +32,7 @@ const StatsCard = ({
               trendType === "up"
                 ? "text-green-600"
                 : trendType === "warning"
-                  ? "text-orange-600"
+                  ? "text-primary"
                   : "text-muted-foreground"
             }`}
           >

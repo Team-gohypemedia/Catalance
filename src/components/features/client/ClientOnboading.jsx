@@ -243,7 +243,7 @@ function MatrixPattern({ mouseX, mouseY, randomString }) {
       <div className="absolute inset-0 mask-[linear-gradient(white,transparent)] opacity-20" />{" "}
       {/* Base subtle pattern */}
       <motion.div
-        className="absolute inset-0 bg-linear-to-r from-primary to-orange-700 opacity-100 transition duration-500 backdrop-blur-xl" // Always visible, controlled by mask
+        className="absolute inset-0 bg-linear-to-r from-primary to-primary/20 opacity-100 transition duration-500 backdrop-blur-xl" // Always visible, controlled by mask
         style={style}
       />
       <motion.div

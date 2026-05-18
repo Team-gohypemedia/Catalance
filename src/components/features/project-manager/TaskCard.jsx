@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 
 const priorityColors = {
     high: "bg-red-100 text-red-700",
-    medium: "bg-orange-100 text-orange-700",
+    medium: "bg-primary/10 text-primary",
     low: "bg-blue-100 text-blue-700",
 };
 

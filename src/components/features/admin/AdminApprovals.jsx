@@ -141,7 +141,7 @@ const AdminApprovals = () => {
       return <Badge className="bg-green-100 text-green-700 border-0">Verified</Badge>;
     }
 
-    return <Badge className="bg-yellow-100 text-yellow-700 border-0">Pending Review</Badge>;
+    return <Badge className="bg-primary/10 text-primary border-0">Pending Review</Badge>;
   };
 
   return (
@@ -235,7 +235,7 @@ const AdminApprovals = () => {
                           </TableCell>
                           <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                           <TableCell>
-                            <Badge className={user.status === "PENDING_APPROVAL" ? "bg-yellow-100 text-yellow-700 border-0" : "bg-green-100 text-green-700 border-0"}>
+                            <Badge className={user.status === "PENDING_APPROVAL" ? "bg-primary/10 text-primary border-0" : "bg-green-100 text-green-700 border-0"}>
                               {user.status}
                             </Badge>
                           </TableCell>
@@ -276,7 +276,7 @@ const AdminApprovals = () => {
                                   size="sm"
                                   onClick={() => handleKyc(user.id, false)}
                                   disabled={pending}
-                                  className="h-8 w-8 p-0 text-orange-600 hover:bg-orange-100 hover:text-orange-700"
+                                  className="h-8 w-8 p-0 text-primary hover:bg-primary/10 hover:text-primary"
                                   title="Reject KYC"
                                 >
                                   {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldX className="h-4 w-4" />}

@@ -356,7 +356,7 @@ const FreelancerBasicProfileSlide = ({
                     isUsernameAvailable && "text-emerald-400",
                     usernameStatus === "checking" && "text-white/45",
                     usernameStatus === "unavailable" && "text-destructive",
-                    usernameStatus === "error" && "text-amber-400",
+                    usernameStatus === "error" && "text-primary",
                   )}
                 >
                   {usernameHelperText[usernameStatus]}

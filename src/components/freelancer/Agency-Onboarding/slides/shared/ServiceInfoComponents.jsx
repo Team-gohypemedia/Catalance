@@ -38,7 +38,7 @@ const StepperItem = ({
       className={cn(
         "relative flex h-9 w-full min-w-0 items-center rounded-full border text-sm transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10",
         isActive
-          ? "justify-center gap-0 border-primary bg-primary px-3 text-primary-foreground shadow-[0_0_16px_rgba(250,204,21,0.22)] sm:gap-2 sm:px-4"
+          ? "justify-center gap-0 border-primary bg-primary px-3 text-primary-foreground shadow-[0_0_16px_rgba(var(--brand-rgb),0.22)] sm:gap-2 sm:px-4"
           : isCompleted
             ? "justify-center gap-0 border-white/10 bg-white/10 px-2 text-white hover:border-white/20 hover:bg-white/15 sm:gap-2 sm:px-4"
             : "justify-center gap-0 border-white/8 bg-white/[0.03] px-2 text-white/55 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/75 sm:gap-2 sm:px-4",

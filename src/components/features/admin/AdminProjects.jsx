@@ -55,7 +55,7 @@ const AdminProjects = () => {
     const colors = {
       DRAFT: "bg-gray-500",
       OPEN: "bg-blue-500",
-      IN_PROGRESS: "bg-yellow-500",
+      IN_PROGRESS: "bg-primary/10",
       COMPLETED: "bg-green-500"
     };
     return (
@@ -140,7 +140,7 @@ const AdminProjects = () => {
                       <div className="flex items-center gap-2 text-sm">
                         <Briefcase className={`h-4 w-4 ${
                           project.freelancer ? 'text-emerald-500' : 
-                          (effectiveStatus === 'OPEN' || effectiveStatus === 'IN_PROGRESS') ? 'text-yellow-500' : 
+                          (effectiveStatus === 'OPEN' || effectiveStatus === 'IN_PROGRESS') ? 'text-primary' : 
                           'text-muted-foreground'
                         }`} />
                         <div className="min-w-0">
@@ -156,9 +156,9 @@ const AdminProjects = () => {
                             </>
                           ) : (
                             (project.status === 'OPEN' && (project._count?.proposals || 0) > 0) ? (
-                              <span className="text-yellow-500 font-medium">Pending Proposals</span>
+                              <span className="text-primary font-medium">Pending Proposals</span>
                             ) : project.status === 'OPEN' ? (
-                              <span className="text-yellow-500 font-medium">Pending</span>
+                              <span className="text-primary font-medium">Pending</span>
                             ) : (
                               <span className="text-muted-foreground italic">No proposals</span>
                             )
@@ -179,7 +179,7 @@ const AdminProjects = () => {
                           <span className="font-semibold text-sm">{project._count?.proposals || 0}</span>
                         </div>
                         <div className="flex flex-col items-center p-2 bg-muted/30 rounded-lg">
-                          <Calendar className="h-4 w-4 text-orange-500 mb-1" />
+                          <Calendar className="h-4 w-4 text-primary mb-1" />
                           <span className="text-xs text-muted-foreground">Created</span>
                           <span className="font-semibold text-sm">{formatDate(project.createdAt).split(' ').slice(0, 2).join(' ')}</span>
                         </div>

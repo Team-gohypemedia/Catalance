@@ -22,7 +22,7 @@ export const statusColors = {
   draft: "border-sky-400/30 bg-sky-500/10 text-sky-200",
   accepted: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
   sent: "border-blue-400/30 bg-blue-500/10 text-blue-200",
-  pending: "border-amber-400/30 bg-amber-500/10 text-amber-200",
+  pending: "border-primary/20/30 bg-primary/10/10 text-primary",
   rejected: "border-rose-400/30 bg-rose-500/10 text-rose-200",
 };
 

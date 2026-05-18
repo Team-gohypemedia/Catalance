@@ -281,7 +281,7 @@ const RequestDetailsPanel = ({
     return (
       <div className="flex h-full min-h-0 items-center justify-center bg-card px-6">
         <div className="max-w-md text-center">
-          <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[#ffc107]">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[var(--primary)]">
             <SendHorizontal className="size-6" />
           </div>
           <h2 className="mt-5 text-2xl font-semibold text-white">Select a request</h2>
@@ -335,7 +335,7 @@ const RequestDetailsPanel = ({
                 type="button"
                 onClick={onAccept}
                 disabled={accepting || rejecting}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-[#ffc107] px-6 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd54f] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 items-center justify-center rounded-full bg-[var(--primary)] px-6 text-sm font-semibold text-[#141414] transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {accepting ? "Accepting..." : "Accept"}
               </button>
@@ -810,7 +810,7 @@ const ChatArea = ({
               {conversationTitle}
             </p>
             <p className="truncate text-[13px] text-[#cbd5e1]">{conversationMembers}</p>
-            <p className={cn("text-xs font-medium uppercase tracking-[0.16em]", online ? "text-[#facc15]" : "text-[#8f96a3]")}>
+            <p className={cn("text-xs font-medium uppercase tracking-[0.16em]", online ? "text-[var(--primary)]" : "text-[#8f96a3]")}>
               {online ? `${conversationSubtitle} • Online` : conversationSubtitle}
             </p>
           </div>
@@ -926,7 +926,7 @@ const ChatArea = ({
                       <p
                         className={cn(
                           "mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.16em]",
-                          ownMessage ? "text-right text-[#facc15]" : "text-left text-[#94a3b8]",
+                          ownMessage ? "text-right text-[var(--primary)]" : "text-left text-[#94a3b8]",
                         )}
                       >
                         {roleLabel}
@@ -1066,7 +1066,7 @@ const ChatArea = ({
                 className="size-14 rounded-2xl object-cover"
               />
             ) : (
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/[0.04] text-[#ffc107]">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/[0.04] text-[var(--primary)]">
                 <Paperclip className="size-5" />
               </div>
             )}
@@ -1153,7 +1153,7 @@ const ChatArea = ({
             onClick={() => {
               void handleSend();
             }}
-            className="flex size-12 items-center justify-center rounded-full bg-[#ffc107] text-[#141414] transition hover:bg-[#ffd54f] disabled:cursor-not-allowed disabled:bg-[#ffc107]/60"
+            className="flex size-12 items-center justify-center rounded-full bg-[var(--primary)] text-[#141414] transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:bg-[var(--primary)]/60"
             disabled={(sending || uploading) || (!messageInput.trim() && !selectedFile)}
             aria-label="Send message"
           >
@@ -2052,7 +2052,7 @@ const FreelancerChatContent = () => {
                       className={cn(
                         "rounded-full px-4 py-2.5 text-sm font-semibold transition",
                         activeTab === "messages"
-                          ? "bg-[#ffc107] text-[#141414]"
+                          ? "bg-[var(--primary)] text-[#141414]"
                           : "text-[#9ca3af] hover:text-white",
                       )}
                     >
@@ -2064,7 +2064,7 @@ const FreelancerChatContent = () => {
                       className={cn(
                         "rounded-full px-4 py-2.5 text-sm font-semibold transition",
                         activeTab === "requests"
-                          ? "bg-[#ffc107] text-[#141414]"
+                          ? "bg-[var(--primary)] text-[#141414]"
                           : "text-[#9ca3af] hover:text-white",
                       )}
                     >
@@ -2138,7 +2138,7 @@ const FreelancerChatContent = () => {
                       </div>
                     ) : conversations.length > 0 ? (
                       <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-                        <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+                        <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
                           <Search className="size-5" />
                         </div>
                         <p className="mt-4 text-base font-semibold text-white">
@@ -2150,7 +2150,7 @@ const FreelancerChatContent = () => {
                       </div>
                     ) : (
                       <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-                        <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+                        <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
                           <SendHorizontal className="size-5" />
                         </div>
                         <p className="mt-4 text-base font-semibold text-white">
@@ -2174,7 +2174,7 @@ const FreelancerChatContent = () => {
                     </div>
                   ) : pendingRequests.length > 0 ? (
                     <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-                      <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+                      <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
                         <Search className="size-5" />
                       </div>
                       <p className="mt-4 text-base font-semibold text-white">
@@ -2186,7 +2186,7 @@ const FreelancerChatContent = () => {
                     </div>
                   ) : (
                     <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-                      <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+                      <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
                         <X className="size-5" />
                       </div>
                       <p className="mt-4 text-base font-semibold text-white">
@@ -2228,7 +2228,7 @@ const FreelancerChatContent = () => {
                 ) : (
                   <div className="flex h-full min-h-0 items-center justify-center bg-card px-6">
                     <div className="max-w-md text-center">
-                      <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[#ffc107]">
+                      <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[var(--primary)]">
                         <SendHorizontal className="size-6" />
                       </div>
                       <h2 className="mt-5 text-2xl font-semibold text-white">

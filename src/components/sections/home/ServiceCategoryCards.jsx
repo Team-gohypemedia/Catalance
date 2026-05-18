@@ -36,7 +36,7 @@ const categories = [
     name: "Digital Marketing",
     description: "SEO, social media, and performance marketing.",
     icon: Smartphone,
-    gradient: "from-orange-500 to-red-900",
+    gradient: "from-primary to-red-900",
     image: appDevImg,
   },
   {
@@ -72,7 +72,7 @@ const categories = [
     name: "Business",
     description: "Business planning, strategy, and consulting.",
     icon: Briefcase,
-    gradient: "from-amber-500 to-orange-900",
+    gradient: "from-primary to-primary/20",
   },
   {
     id: 9,

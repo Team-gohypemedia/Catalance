@@ -32,12 +32,12 @@ const PROJECT_PROGRESS_BY_STATUS = Object.freeze({
 
 const projectStatusToneMap = {
   success: "border-[#14532d] bg-[#0c2616] text-[#34d399]",
-  warning: "border-[#5a3b0d] bg-[#2f1e05] text-[#fbbf24]",
+  warning: "border-[#5a3b0d] bg-[#2f1e05] text-[var(--primary)]",
   slate: "border-white/[0.08] bg-white/[0.04] text-[#cbd5e1]",
 };
 
 const projectActionToneMap = {
-  amber: "bg-[#ffc107] text-black hover:bg-[#ffd54f]",
+  amber: "bg-[var(--primary)] text-black hover:bg-primary/80",
   slate: "bg-white/[0.08] text-white hover:bg-white/[0.12]",
 };
 
@@ -702,9 +702,9 @@ const ProjectPhaseStep = ({ item }) => {
       ? {
           label: "In Progress",
           Icon: Clock3,
-          badgeClassName: "border-[#ffc107]/25 bg-[#3a2800] text-[#ffc107]",
+          badgeClassName: "border-[var(--primary)]/25 bg-[#3a2800] text-[var(--primary)]",
           textClassName: "text-[#f3f4f6]",
-          iconClassName: "text-[#ffc107]",
+          iconClassName: "text-[var(--primary)]",
         }
       : {
           label: "Pending",
@@ -844,7 +844,7 @@ const FreelancerProjectCard = ({ project }) => {
 
         <div className="mt-7 flex items-center justify-between gap-3">
           <span className="text-sm text-[#9ca3af]">Current Phase Progress</span>
-          <span className="text-sm font-semibold text-[#ffc107]">{project.phaseProgressValue}%</span>
+          <span className="text-sm font-semibold text-[var(--primary)]">{project.phaseProgressValue}%</span>
         </div>
 
         <div className="mt-3 h-2 rounded-full bg-white/[0.08]">
@@ -918,7 +918,7 @@ const EmptyProjectsState = ({
       <p className="mt-3 text-sm leading-6 text-[#94a3b8]">{description}</p>
       <Link
         to={actionHref}
-        className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[#ffc107] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+        className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-primary/80"
       >
         {actionLabel}
       </Link>
@@ -1099,7 +1099,7 @@ const FreelancerProjectsContent = () => {
                         className={cn(
                           "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
                           isActive
-                            ? "border-[#ffc107]/70 bg-[#ffc107] text-[#141414]"
+                            ? "border-[var(--primary)]/70 bg-[var(--primary)] text-[#141414]"
                             : "text-[#a3a6ad] hover:text-white",
                         )}
                       >

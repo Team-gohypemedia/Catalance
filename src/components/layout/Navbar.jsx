@@ -162,7 +162,7 @@ const AuthButtons = ({
       <NavbarButton
         as={Link}
         to="/signin/phone"
-        className="text-primary-foreground"
+        className="bg-primary text-primary-foreground hover:bg-primary/90"
       >
         Sign In
       </NavbarButton>
@@ -240,7 +240,7 @@ const Navbar = () => {
           isHome={isHome}
           currentPath={currentPath}
         />
-        <div className="flex shrink-0 items-center gap-3 pl-2">
+        <div className="flex shrink-0 items-center justify-end gap-3 pl-2 lg:min-w-[12rem]">
           <ThemeToggle />
           <AuthButtons
             showAuthenticatedNav={shouldShowAuthenticatedNav}
@@ -274,13 +274,13 @@ const Navbar = () => {
           onLogout={logout}
         />
       ) : (
-        <PublicMobileSidebar navItems={navItems} currentPath={currentPath} />
+        <PublicMobileSidebar navItems={navItems} currentPath={currentPath} isHome={isHome} />
       )}
     </ResizableNavbar>
   );
 };
 
-const PublicMobileSidebar = ({ navItems, currentPath }) => {
+const PublicMobileSidebar = ({ navItems, currentPath, isHome }) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -342,10 +342,10 @@ const PublicMobileSidebar = ({ navItems, currentPath }) => {
                         to={item.link}
                         aria-current={isActive ? "page" : undefined}
                         className={cn(
-                          "flex min-h-10 w-full items-center justify-center rounded-[15px] border px-3 py-1.5 text-[0.9rem] font-medium transition-colors",
+                          "flex min-h-10 w-full items-center justify-center rounded-[15px] px-3 py-1.5 text-[0.9rem] font-medium transition-colors",
                           isActive
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-white/[0.05] bg-white/[0.03] text-muted-foreground hover:border-white/[0.08] hover:bg-white/[0.05] hover:text-foreground",
+                            ? "border border-primary bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground",
                         )}
                       >
                         {item.name}

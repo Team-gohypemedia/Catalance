@@ -813,7 +813,7 @@ const getDraftProposalSortTime = (proposal = {}) => {
 };
 
 const generateGradient = (id) => {
-  if (!id) return "bg-[#FFD700]";
+  if (!id) return "bg-[var(--primary)]";
 
   // Simple hash function to generate a consistent seed
   let hash = 0;

@@ -221,7 +221,7 @@ const ActiveProjects = memo(function ActiveProjects({
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+            <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
               Active Projects
             </h2>
             <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">

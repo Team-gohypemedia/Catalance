@@ -4025,7 +4025,7 @@ const FreelancerProfile = () => {
                       {displayPortfolioProjects.length === 1 ? "project" : "projects"}
                     </span>
                     {hasProjectChanges ? (
-                      <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
+                      <span className="inline-flex items-center rounded-full border border-primary/20/40 bg-primary/10/10 px-2.5 py-1 text-[11px] font-medium text-primary">
                         Unsaved changes
                       </span>
                     ) : null}

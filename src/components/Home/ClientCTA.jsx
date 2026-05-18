@@ -25,22 +25,22 @@ const ClientCTA = () => {
   }, [])
 
   return (
-    <section className="bg-background px-4 py-4 sm:px-6 lg:px-8">
+    <section className="bg-background px-4 py-20 sm:px-6 sm:py-32 lg:px-8">
       <div className="mx-auto max-w-[1240px]">
         <div className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-background px-6 py-12 sm:px-10 sm:py-14 lg:min-h-[460px] lg:px-16">
           <div className="absolute inset-0 bg-background" />
 
           <div
-            className="absolute inset-x-0 top-0 z-[1] h-[70%]"
+            className="absolute inset-x-0 top-0 z-[1] h-full"
             style={{
               background:
-                'linear-gradient(180deg, var(--primary) 0%, var(--background) 100%)',
+                'linear-gradient(180deg, var(--primary) 0%, var(--background) 65%, var(--background) 100%)',
               opacity: 1,
             }}
           />
 
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex justify-center"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(var(--brand-rgb), 0.03),rgba(0,0,0,0)_14%)]"
             style={{
               WebkitMaskImage:
                 'linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.96) 34%, rgba(0,0,0,0.76) 58%, rgba(0,0,0,0.34) 82%, rgba(0,0,0,0) 100%)',
@@ -75,7 +75,7 @@ const ClientCTA = () => {
                 asChild
                 size="lg"
                 aria-label={CTA_WORDS.join(', ')}
-                className="mt-10 h-12 rounded-xl px-8 text-lg font-semibold shadow-[0_14px_36px_rgba(255,204,0,0.22)]"
+                className="mt-10 h-12 rounded-xl px-8 text-lg font-semibold shadow-[0_14px_36px_rgba(var(--brand-rgb), 0.22)]"
               >
                 <Link to="/service">
                   <span

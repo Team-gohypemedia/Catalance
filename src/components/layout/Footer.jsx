@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { subscribeNewsletter } from "@/shared/lib/api-client";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/shared/lib/utils";
 import logo from "@/assets/logos/logo.svg";
 
 const Footer = () => {
@@ -55,34 +56,61 @@ const Footer = () => {
                 {
                   href: "https://www.facebook.com/profile.php?id=61586800500990",
                   label: "Facebook",
+                  color: "border-[#1877F2]/20 hover:bg-[#1877F2]/5",
                   icon: (props) => (
-                    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                    <svg viewBox="0 0 24 24" {...props}>
+                      <circle cx="12" cy="12" r="12" fill="#1877F2" />
+                      <path
+                        d="M15.12 12.32H13.12V21H9.58V12.32H8.11V9.29H9.58V7.33C9.58 4.76 11.04 3 13.8 3C14.73 3 15.65 3.07 15.65 3.07V6.04H14.13C12.87 6.04 12.35 6.82 12.35 7.62V9.29H15.42L15.12 12.32Z"
+                        fill="white"
+                      />
                     </svg>
                   ),
                 },
                 {
                   href: "https://www.linkedin.com/company/catalance/?viewAsMember=true",
                   label: "LinkedIn",
+                  color: "border-[#0A66C2]/20 hover:bg-[#0A66C2]/5",
                   icon: (props) => (
-                    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-                      <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z" />
+                    <svg viewBox="0 0 24 24" {...props}>
+                      <rect width="24" height="24" rx="4" fill="#0A66C2" />
+                      <path
+                        d="M6.12 19.5H3.18V10.14H6.12V19.5ZM4.65 8.86C3.71 8.86 2.95 8.1 2.95 7.16C2.95 6.22 3.71 5.46 4.65 5.46C5.59 5.46 6.35 6.22 6.35 7.16C6.35 8.1 5.59 8.86 4.65 8.86ZM21.05 19.5H18.11V14.89C18.11 13.79 18.09 12.38 16.58 12.38C15.05 12.38 14.81 13.58 14.81 14.81V19.5H11.87V10.14H14.7V11.42H14.74C15.13 10.67 16.1 9.88 17.54 9.88C20.55 9.88 21.11 11.86 21.11 14.44V19.5H21.05Z"
+                        fill="white"
+                      />
                     </svg>
                   ),
                 },
                 {
                   href: "https://www.instagram.com/catalance_official/",
                   label: "Instagram",
+                  color: "border-[#E4405F]/20 hover:bg-[#E4405F]/5",
                   icon: (props) => (
-                    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                    <svg viewBox="0 0 24 24" {...props}>
+                      <defs>
+                        <linearGradient id="instagram-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#feda75" />
+                          <stop offset="25%" stopColor="#fa7e1e" />
+                          <stop offset="50%" stopColor="#d62976" />
+                          <stop offset="75%" stopColor="#962fbf" />
+                          <stop offset="100%" stopColor="#4f5bd5" />
+                        </linearGradient>
+                      </defs>
+                      <rect width="24" height="24" rx="5" fill="url(#instagram-grad)" />
+                      <path
+                        d="M12 6.81C9.14 6.81 6.81 9.14 6.81 12C6.81 14.86 9.14 17.19 12 17.19C14.86 17.19 17.19 14.86 17.19 12C17.19 9.14 14.86 6.81 12 6.81ZM12 15.38C10.13 15.38 8.62 13.87 8.62 12C8.62 10.13 10.13 8.62 12 8.62C13.87 8.62 15.38 10.13 15.38 12C15.38 13.87 13.87 15.38 12 15.38ZM18.59 6.66C18.59 7.33 18.05 7.87 17.38 7.87C16.71 7.87 16.17 7.33 16.17 6.66C16.17 5.99 16.71 5.45 17.38 5.45C18.05 5.45 18.59 5.99 18.59 6.66Z"
+                        fill="white"
+                      />
                     </svg>
                   ),
                 },
               ].map((social) => (
                 <a
                   key={social.label}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-background transition-all duration-300",
+                    social.color
+                  )}
                   href={social.href}
                   aria-label={social.label}
                   target="_blank"
@@ -199,6 +227,12 @@ const Footer = () => {
             </div>
           </div>
         </div>
+      </div>
+      {/* Large Background Text */}
+      <div className="pointer-events-none absolute bottom-0 left-1/2 -z-10 -translate-x-1/2 translate-y-[20%] select-none overflow-hidden pb-4">
+        <span className="whitespace-nowrap text-[15vw] font-black leading-none tracking-tighter text-foreground/[0.03] sm:text-[18vw] lg:text-[22vw]">
+          CATALANCE
+        </span>
       </div>
     </footer>
   );

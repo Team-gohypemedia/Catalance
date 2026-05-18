@@ -128,8 +128,8 @@ export const FreelancerReassignStepper = ({
 
                 <div className="py-4">
                     {requestContext?.reason && (
-                        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-400">
+                        <div className="mb-4 rounded-lg border border-primary/20/30 bg-primary/10/10 p-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
                                 Client Request
                             </p>
                             <p className="mt-1 text-sm text-foreground">
@@ -145,7 +145,7 @@ export const FreelancerReassignStepper = ({
                     {step === 1 && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                             <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg border border-border/50">
-                                <Pause className="h-8 w-8 text-orange-500" />
+                                <Pause className="h-8 w-8 text-primary" />
                                 <div>
                                     <h4 className="font-semibold text-sm">Step 1: Pause Project</h4>
                                     <p className="text-xs text-muted-foreground">

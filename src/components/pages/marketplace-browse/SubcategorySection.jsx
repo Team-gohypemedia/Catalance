@@ -19,13 +19,13 @@ const SubcategorySection = ({
     <div
       className={
         hideHeadings
-          ? "space-y-3 rounded-[28px] border border-white/12 bg-gradient-to-br from-slate-950/92 via-slate-950/84 to-slate-900/70 p-4 shadow-[0_24px_72px_-44px_rgba(2,6,23,0.92)] backdrop-blur-xl sm:p-5"
-          : "space-y-6 rounded-[28px] border border-white/12 bg-gradient-to-br from-slate-950/92 via-slate-950/84 to-slate-900/70 p-5 shadow-[0_24px_72px_-44px_rgba(2,6,23,0.92)] backdrop-blur-xl sm:p-6"
+          ? "space-y-3 rounded-[32px] border border-border bg-card/70 p-5 shadow-sm backdrop-blur-2xl transition-all sm:p-6 dark:border-white/12 dark:bg-slate-950/92"
+          : "space-y-6 rounded-[32px] border border-border bg-card/70 p-6 shadow-sm backdrop-blur-2xl transition-all sm:p-7 dark:border-white/12 dark:bg-slate-950/92"
       }
     >
       <div className={hideHeadings ? "space-y-2" : "space-y-3"}>
         {!hideHeadings ? (
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Sub-categories
           </p>
         ) : null}
@@ -64,7 +64,7 @@ const SubcategorySection = ({
         }
       >
         {!hideHeadings ? (
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Tools
           </p>
         ) : null}

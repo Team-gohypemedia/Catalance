@@ -75,7 +75,7 @@ const FireAshBackground = () => (
       {ashParticles.map((particle, index) => (
         <span
           key={`growth-hub-ash-${index}`}
-          className="absolute rounded-full bg-[#ffc107] shadow-[0_0_10px_rgba(255,193,7,0.72),0_0_18px_rgba(255,85,0,0.34)] motion-reduce:hidden"
+          className="absolute rounded-full bg-[var(--primary)] shadow-[0_0_10px_rgba(255,193,7,0.72),0_0_18px_rgba(255,85,0,0.34)] motion-reduce:hidden"
           style={{
             left: `${particle.left}%`,
             bottom: `${particle.bottom}%`,
@@ -96,7 +96,7 @@ const StatBlock = ({ icon: Icon, label, value, tone = "default", sub }) => (
     <div className="flex items-center gap-2.5 text-muted-foreground">
       <div className={cn(
         "flex size-7 items-center justify-center rounded-lg transition-colors",
-        tone === "yellow" && "bg-[#facc15]/10 text-[#facc15]",
+        tone === "yellow" && "bg-[var(--primary)]/10 text-[var(--primary)]",
         tone === "emerald" && "bg-emerald-400/10 text-emerald-400",
         tone === "default" && "bg-primary/10 text-primary"
       )}>

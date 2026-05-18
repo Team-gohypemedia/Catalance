@@ -60,17 +60,17 @@ export default function ThemeToggle({ className }) {
           className={cn(
             "inline-flex size-9 shrink-0 items-center justify-center rounded-full transition-all duration-200",
             // Light Mode Appearance
-            "border border-black/[0.08] bg-white/10 text-foreground/70 shadow-sm",
-            "hover:border-black/[0.14] hover:bg-black/[0.04] hover:text-foreground",
+            "border border-black/[0.08] bg-primary/10 text-primary shadow-sm",
+            "hover:border-primary/20 hover:bg-primary/20 hover:text-primary",
             // Dark Mode Appearance
-            "dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-white/70",
-            "dark:hover:border-white/[0.14] dark:hover:bg-white/[0.10] dark:hover:text-white",
+            "dark:border-white/[0.08] dark:bg-white/[0.06] dark:text-primary",
+            "dark:hover:border-primary/20 dark:hover:bg-primary/15 dark:hover:text-primary",
             // Open/Active state
-            open && "ring-2 ring-primary/20 border-primary/40 text-primary dark:text-white",
+            open && "ring-2 ring-primary/20 border-primary/40 text-primary",
             className,
           )}
         >
-          <ActiveIcon className="size-[1.05rem] stroke-[1.7]" />
+          <ActiveIcon className="size-[1.05rem] stroke-[2.2] fill-primary/10" />
         </button>
       </PopoverTrigger>
 

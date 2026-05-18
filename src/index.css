@@ -11,14 +11,15 @@ body[data-scroll-locked] {
 }
 
 :root {
-  --background: #FFFBF0;
+  --background: #FAF6F0;
   --foreground: #1C1B1F;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.1450 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.1450 0 0);
-  --primary: #F9D949;
-  --primary-foreground: oklch(0.1450 0 0);
+  --primary: #D9692A;
+  --primary-foreground: #FAF6F0;
+  --brand-rgb: 217, 105, 42;
   --secondary: oklch(0.9700 0 0);
   --secondary-foreground: oklch(0.2050 0 0);
   --muted: oklch(0.9700 0 0);
@@ -29,7 +30,7 @@ body[data-scroll-locked] {
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.9220 0 0);
   --input: oklch(0.9220 0 0);
-  --ring: #F9D949;
+  --ring: #D9692A;
   --chart-1: oklch(0.8100 0.1000 252);
   --chart-2: oklch(0.6200 0.1900 260);
   --chart-3: oklch(0.5500 0.2200 263);
@@ -75,6 +76,7 @@ body[data-scroll-locked] {
   --popover: oklch(0.2690 0 0);
   --popover-foreground: oklch(0.9850 0 0);
   --primary: #F9D949;
+  --brand-rgb: 249, 217, 73;
   --primary-foreground: oklch(0.2050 0 0);
   --secondary: oklch(0.2690 0 0);
   --secondary-foreground: oklch(0.9850 0 0);
@@ -289,8 +291,8 @@ body[data-scroll-locked] {
     --card-foreground: #0f172a;
     --popover: #ffffff;
     --popover-foreground: #0f172a;
-    --primary: #F9D949;
-    --primary-foreground: #0f172a;
+    --primary: #D9692A;
+    --primary-foreground: #FAF6F0;
     --secondary: #f1f5f9;
     --secondary-foreground: #334155;
     --muted: #f8fafc;
@@ -299,7 +301,7 @@ body[data-scroll-locked] {
     --accent-foreground: #0f172a;
     --border: #dbe3ef;
     --input: #d7e5ff;
-    --ring: #F9D949;
+    --ring: #D9692A;
     --sidebar: #ffffff;
     --sidebar-foreground: #334155;
     --sidebar-primary: oklch(0.8652 0.1768 90.3800);
@@ -359,30 +361,30 @@ html.home-page:not(.dark),
 html.onboarding-page:not(.dark),
 html.marketplace-page:not(.dark) {
   color-scheme: light;
-  --background:           #FFFBF0; /* Warm Cream background */
-  --foreground:           #1C1B1F; /* Sharp charcoal text */
+  --background:           #FAF6F0; /* Warm Cream background */
+  --foreground:           #000000; /* Pure black text */
   --card:                 #FFFFFF; /* Pure white cards */
-  --card-foreground:      #1C1B1F;
+  --card-foreground:      #000000;
   --popover:              #FFFFFF;
-  --popover-foreground:   #1C1B1F;
-  --primary:              #F9D949; /* Stitch Yellow */
-  --primary-foreground:   #1C1B1F;
+  --popover-foreground:   #000000;
+  --primary:              #D9692A; /* New Primary Color */
+  --primary-foreground:   #FAF6F0;
   --secondary:            #7C778A; /* Muted Taupe from inactive icons */
   --secondary-foreground: #FFFFFF;
   --muted:                #F8F6EF; /* Very subtle warm gray */
-  --muted-foreground:     #7C778A;
+  --muted-foreground:     #444444;
   --accent:               #FFF3C4;
   --accent-foreground:    #1C1B1F;
   --border:               #E5E1D3; /* Very soft border */
   --input:                #FFFFFF;
-  --ring:                 #F9D949;
+  --ring:                 #D9692A;
 }
 
 /* ── Root surface ── */
 html.home-page:not(.dark) main,
 html.onboarding-page:not(.dark) main,
 html.marketplace-page:not(.dark) main {
-  background-color: #FFFBF0;
+  background-color: #FAF6F0;
   color: #1C1B1F;
 }
 
@@ -394,7 +396,7 @@ html:not(.dark) [class*="resizable-navbar"] {
   backdrop-filter: blur(16px) saturate(180%) !important;
   box-shadow: 
     0 4px 20px -2px rgba(0, 0, 0, 0.05),
-    0 2px 10px -4px rgba(249, 217, 73, 0.15) !important;
+    0 2px 10px -4px rgba(217, 105, 42, 0.15) !important;
 }
 
 /* Navbar Logo text */
@@ -447,7 +449,7 @@ html.onboarding-page:not(.dark) main [class*="text-white/"] {
 
 /* ── Section backgrounds (alternate) ── */
 html.home-page:not(.dark) main section {
-  background-color: #FFFBF0 !important;
+  background-color: #FAF6F0 !important;
 }
 html.home-page:not(.dark) main section:nth-child(even) {
   background-color: #F8F6EF !important;
@@ -455,7 +457,7 @@ html.home-page:not(.dark) main section:nth-child(even) {
 
 /* ── Hero ── */
 html.home-page:not(.dark) main section:first-of-type {
-  background-color: #FFFBF0 !important;
+  background-color: #FAF6F0 !important;
 }
 html.home-page:not(.dark) main canvas[aria-hidden] {
   opacity: 0.12 !important;
@@ -463,12 +465,12 @@ html.home-page:not(.dark) main canvas[aria-hidden] {
 }
 html.home-page:not(.dark) main img[class*="drop-shadow"] {
   filter: 
-    drop-shadow(0 0 60px rgba(249, 217, 73, 0.65)) 
-    drop-shadow(0 0 140px rgba(249, 217, 73, 0.3)) !important;
+    drop-shadow(0 0 60px rgba(217, 105, 42, 0.65)) 
+    drop-shadow(0 0 140px rgba(217, 105, 42, 0.3)) !important;
 }
 html.home-page:not(.dark) main [class*="bg-background/3"] {
-  background-color: rgba(249,217,73,0.15) !important;
-  border-color: rgba(249,217,73,0.4) !important;
+  background-color: rgba(217, 105, 42, 0.15) !important;
+  border-color: rgba(217, 105, 42, 0.4) !important;
 }
 
 /* ── Card/Article Surface Refinement ── */
@@ -485,7 +487,7 @@ html.marketplace-page:not(.dark) main .glass-card {
   border-color: #E5E1D3 !important;
   box-shadow: 
     0 1px 3px rgba(0,0,0,0.02),
-    0 8px 24px -4px rgba(249, 217, 73, 0.08) !important;
+    0 8px 24px -4px rgba(217, 105, 42, 0.08) !important;
   backdrop-filter: none !important;
 }
 
@@ -499,11 +501,11 @@ html.home-page:not(.dark) main [class*="text-secondary"] {
 
 /* OR divider bubble */
 html.home-page:not(.dark) main [class*="border-primary"][class*="rounded-full"] {
-  border-color: #F9D949 !important;
-  box-shadow: 0 0 36px rgba(249,217,73,0.5) !important;
+  border-color: #D9692A !important;
+  box-shadow: 0 0 36px rgba(217, 105, 42, 0.5) !important;
 }
 html.home-page:not(.dark) main [class*="bg-primary/1"] {
-  background-color: rgba(249,217,73,0.22) !important;
+  background-color: rgba(217, 105, 42, 0.22) !important;
 }
 
 /* ── Carousel nav buttons ── */
@@ -521,20 +523,20 @@ html.home-page:not(.dark) main [class*="border-t"] {
 
 /* ── MadeOnCatalance fade masks ── */
 html.home-page:not(.dark) main [aria-hidden="true"][class*="bg-background"] {
-  background-color: #FFFBF0 !important;
+  background-color: #FAF6F0 !important;
 }
 
 /* ── bg-black/* overrides (testimonials badge, backdrops) ── */
 html.home-page:not(.dark) main [class*="bg-black"] {
-  background-color: rgba(249,217,73,0.10) !important;
-  border-color: rgba(249,217,73,0.3) !important;
+  background-color: rgba(217, 105, 42, 0.10) !important;
+  border-color: rgba(217, 105, 42, 0.3) !important;
 }
 
 /* Testimonial cards specifically */
 html.home-page:not(.dark) main article[class*="bg-black"] {
   background-color: #FFFFFF !important;
   border-color: #D9D3C2 !important;
-  box-shadow: 0 4px 20px rgba(249,217,73,0.10), 0 1px 4px rgba(0,0,0,0.06) !important;
+  box-shadow: 0 4px 20px rgba(217, 105, 42, 0.10), 0 1px 4px rgba(0,0,0,0.06) !important;
   backdrop-filter: none !important;
 }
 
@@ -545,10 +547,10 @@ html.home-page:not(.dark) main article[class*="bg-black"] p {
 
 /* Horizontal fade gradients */
 html.home-page:not(.dark) main [class*="bg-linear-to-r"] {
-  background-image: linear-gradient(to right, #FFFBF0, transparent) !important;
+  background-image: linear-gradient(to right, #FAF6F0, transparent) !important;
 }
 html.home-page:not(.dark) main [class*="bg-linear-to-l"] {
-  background-image: linear-gradient(to left, #FFFBF0, transparent) !important;
+  background-image: linear-gradient(to left, #FAF6F0, transparent) !important;
 }
 
 /* ── Hardcoded Onboarding Specifics ── */
@@ -590,7 +592,7 @@ html.marketplace-page:not(.dark) main [class*="Asked Questions"] + div [class*="
 }
 
 html.marketplace-page:not(.dark) main [class*="bg-[#0b0b0c]"] {
-  background-color: #FFFBF0 !important;
+  background-color: #FAF6F0 !important;
 }
 
 /* Marketplace Hero text shadow for white text on yellow glow */
@@ -621,7 +623,7 @@ html.marketplace-page:not(.dark) main [class*="border-white"] {
   border-color: #E5E1D3 !important;
 }
 html.home-page:not(.dark) main [class*="border-primary"] {
-  border-color: #F9D949 !important;
+  border-color: #D9692A !important;
 }
 
 /* Icons color (from ref image) */
@@ -642,16 +644,16 @@ html.marketplace-page:not(.dark) main [class*="Stay ahead"] input {
 /* Glow Systems */
 .glow-primary {
   box-shadow: 
-    0 0 20px rgba(249, 217, 73, 0.25),
-    0 0 40px rgba(249, 217, 73, 0.12),
-    inset 0 0 12px rgba(249, 217, 73, 0.05) !important;
-  border-color: rgba(249, 217, 73, 0.8) !important;
+    0 0 20px rgba(var(--brand-rgb), 0.25),
+    0 0 40px rgba(var(--brand-rgb), 0.12),
+    inset 0 0 12px rgba(var(--brand-rgb), 0.05) !important;
+  border-color: rgba(var(--brand-rgb), 0.8) !important;
 }
 
 .glow-subtle {
   box-shadow: 
     0 4px 12px rgba(0, 0, 0, 0.03),
-    0 0 20px rgba(249, 217, 73, 0.1) !important;
+    0 0 20px rgba(var(--brand-rgb), 0.1) !important;
 }
 
 /* Refined Surfaces */
@@ -690,7 +692,17 @@ html:not(.dark) footer a[aria-label] {
 }
 
 html:not(.dark) footer a[aria-label]:hover {
-  border-color: #F9D949 !important;
-  color: #F9D949 !important;
-  box-shadow: 0 0 15px rgba(249, 217, 73, 0.15) !important;
+  box-shadow: 0 0 15px rgba(var(--brand-rgb), 0.15) !important;
+}
+@keyframes shine {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-shine {
+  animation: shine 2s linear infinite;
 }

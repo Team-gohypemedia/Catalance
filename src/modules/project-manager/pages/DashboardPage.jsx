@@ -22,7 +22,7 @@ const STAT_COLOR_CLASS = {
   blue: { bg: "bg-blue-50", text: "text-blue-600" },
   rose: { bg: "bg-rose-50", text: "text-rose-600" },
   indigo: { bg: "bg-indigo-50", text: "text-indigo-600" },
-  amber: { bg: "bg-amber-50", text: "text-amber-600" },
+  amber: { bg: "bg-primary/10", text: "text-primary" },
 };
 
 const DashboardPage = () => {

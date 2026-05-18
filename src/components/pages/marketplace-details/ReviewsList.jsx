@@ -21,7 +21,7 @@ const StarSelector = ({ value, onChange }) => (
                 <Star
                     className={cn(
                         "w-6 h-6 transition-colors",
-                        value >= star ? "fill-yellow-400 text-yellow-400" : "fill-transparent text-border"
+                        value >= star ? "fill-primary text-primary" : "fill-transparent text-border"
                     )}
                 />
             </button>
@@ -53,7 +53,7 @@ const ReviewCard = ({ review }) => {
                             key={star}
                             className={cn(
                                 "w-3.5 h-3.5",
-                                review.rating >= star ? "fill-yellow-400 text-yellow-400" : "fill-transparent text-border"
+                                review.rating >= star ? "fill-primary text-primary" : "fill-transparent text-border"
                             )}
                         />
                     ))}
@@ -218,15 +218,15 @@ const ReviewsList = ({ serviceId, initialStats }) => {
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-border/40">
                 <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-yellow-400/10 flex items-center justify-center shrink-0">
-                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-400" />
+                    <div className="w-8 h-8 rounded-lg bg-primary/10/10 flex items-center justify-center shrink-0">
+                        <Star className="w-4 h-4 text-primary fill-primary" />
                     </div>
                     <h2 className="text-lg font-bold tracking-tight text-foreground">
                         Client Reviews
                     </h2>
                 </div>
                 {stats.reviewCount > 0 && (
-                    <div className="flex items-center gap-1.5 text-sm font-semibold text-yellow-600 dark:text-yellow-400 bg-yellow-400/10 px-3 py-1 rounded-full">
+                    <div className="flex items-center gap-1.5 text-sm font-semibold text-primary dark:text-primary bg-primary/10/10 px-3 py-1 rounded-full">
                         <Star className="w-3.5 h-3.5 fill-current" />
                         {stats.averageRating}
                         <span className="text-muted-foreground font-normal">({stats.reviewCount})</span>
@@ -236,13 +236,13 @@ const ReviewsList = ({ serviceId, initialStats }) => {
 
             {/* Aggregate Rating Summary bar — only when reviews exist */}
             {stats.reviewCount > 0 && (
-                <div className="flex flex-col sm:flex-row items-center gap-6 p-5 rounded-2xl bg-yellow-400/5 border border-yellow-400/15">
+                <div className="flex flex-col sm:flex-row items-center gap-6 p-5 rounded-2xl bg-primary/10/5 border border-primary/20/15">
                     {/* Big score */}
                     <div className="flex flex-col items-center gap-1 shrink-0">
                         <span className="text-5xl font-extrabold text-foreground tracking-tight">{stats.averageRating}</span>
                         <div className="flex gap-0.5" aria-label={`Average rating: ${stats.averageRating} out of 5`}>
                             {[1, 2, 3, 4, 5].map(s => (
-                                <Star key={s} className={cn("w-4 h-4", stats.averageRating >= s ? "fill-yellow-400 text-yellow-400" : "fill-transparent text-border")} />
+                                <Star key={s} className={cn("w-4 h-4", stats.averageRating >= s ? "fill-primary text-primary" : "fill-transparent text-border")} />
                             ))}
                         </div>
                         <span className="text-xs text-muted-foreground">{stats.reviewCount} {stats.reviewCount === 1 ? "review" : "reviews"}</span>
@@ -255,9 +255,9 @@ const ReviewsList = ({ serviceId, initialStats }) => {
                             return (
                                 <div key={star} className="flex items-center gap-2 text-xs">
                                     <span className="w-4 text-right text-muted-foreground font-medium shrink-0">{star}</span>
-                                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 shrink-0" aria-hidden="true" />
+                                    <Star className="w-3 h-3 fill-primary text-primary shrink-0" aria-hidden="true" />
                                     <div className="flex-1 h-1.5 bg-muted/50 rounded-full overflow-hidden">
-                                        <div className="h-full bg-yellow-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                                        <div className="h-full bg-primary/10 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                                     </div>
                                     <span className="w-8 text-muted-foreground shrink-0">{pct}%</span>
                                 </div>
@@ -389,8 +389,8 @@ const ReviewsList = ({ serviceId, initialStats }) => {
                     </div>
                 ) : reviews.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 rounded-2xl border border-dashed border-border/40 bg-muted/10 text-center gap-3">
-                        <div className="w-14 h-14 rounded-2xl bg-yellow-400/10 flex items-center justify-center">
-                            <Star className="w-7 h-7 text-yellow-400/60" />
+                        <div className="w-14 h-14 rounded-2xl bg-primary/10/10 flex items-center justify-center">
+                            <Star className="w-7 h-7 text-primary/60" />
                         </div>
                         <div>
                             <p className="font-semibold text-sm text-foreground">No reviews yet</p>

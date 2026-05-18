@@ -1,41 +1,26 @@
 import { useRef, useEffect, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import MapPin from "lucide-react/dist/esm/icons/map-pin";
-import Phone from "lucide-react/dist/esm/icons/phone";
-import LifeBuoy from "lucide-react/dist/esm/icons/life-buoy";
-import Briefcase from "lucide-react/dist/esm/icons/briefcase";
-import Send from "lucide-react/dist/esm/icons/send";
-import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
+import Facebook from "lucide-react/dist/esm/icons/facebook";
+import Twitter from "lucide-react/dist/esm/icons/twitter";
+import Linkedin from "lucide-react/dist/esm/icons/linkedin";
+import Check from "lucide-react/dist/esm/icons/check";
 import { toast } from "sonner";
 import { submitContactInquiry } from "@/shared/lib/api-client";
-
-const SUBJECT_OPTIONS = [
-  "General Inquiry",
-  "Project Manager Not Responding",
-  "Freelancer Not Responding",
-  "Client Not Responding",
-  "Payment & Billing Issue",
-  "Account Access Issue",
-  "Technical Support",
-];
 
 const Contact = () => {
   const [resolvedTheme, setResolvedTheme] = useState("dark");
   const containerRef = useRef(null);
   const formRef = useRef(null);
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
-    subject: "General Inquiry",
+    phone: "",
     message: "",
   });
+  const [agreed, setAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Detect actual theme
@@ -57,27 +42,32 @@ const Contact = () => {
   const borderColor = isDark ? "border-white/10" : "border-black/5";
   const inputBg = isDark ? "bg-white/5" : "bg-white";
   const mutedText = isDark ? "text-gray-400" : "text-gray-600";
+  
+  // Theme-aware brand colors
+  const brandTextClass = isDark ? 'text-[#f2cc0d]' : 'text-[#D9692A]';
+  const brandBgClass = isDark ? 'bg-[#f2cc0d]' : 'bg-[#D9692A]';
+  const brandTextOnBgClass = isDark ? 'text-black' : 'text-white';
+  
   useGSAP(
     () => {
-      // Hero Fade In
+      // Elements Fade In
       gsap.set(".hero-content", { y: 30, opacity: 0 });
       gsap.to(".hero-content", {
         y: 0,
         opacity: 1,
         duration: 1,
-        stagger: 0.2,
+        stagger: 0.1,
         ease: "power3.out",
       });
 
-      // Cards Stagger
-      gsap.set(".contact-card", { y: 40, opacity: 0 });
+      gsap.set(".contact-card", { y: 20, opacity: 0 });
       gsap.to(".contact-card", {
         y: 0,
         opacity: 1,
         duration: 0.8,
         stagger: 0.1,
         ease: "power3.out",
-        delay: 0.4,
+        delay: 0.3,
       });
     },
     { scope: containerRef },
@@ -94,24 +84,30 @@ const Contact = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (isSubmitting) return;
+    if (!agreed) {
+      toast.error("Please agree to the Terms of Use and Privacy Policy.");
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
       await submitContactInquiry({
-        name: formData.name.trim(),
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email.trim().toLowerCase(),
-        subject: formData.subject.trim(),
-        message: formData.message.trim(),
+        subject: "Contact Inquiry",
+        message: `${formData.message.trim()}\n\nPhone: ${formData.phone}`,
       });
 
       toast.success("Message sent successfully.");
       setFormData({
-        name: "",
+        firstName: "",
+        lastName: "",
         email: "",
-        subject: "General Inquiry",
+        phone: "",
         message: "",
       });
+      setAgreed(false);
     } catch (error) {
       const message =
         error?.message ||
@@ -125,294 +121,224 @@ const Contact = () => {
   return (
     <main
       ref={containerRef}
-      className={`relative min-h-screen w-full ${bgColor} ${textColor} font-sans selection:bg-[#f2cc0d]/30 overflow-x-hidden transition-colors duration-300`}
+      className={`relative min-h-screen w-full pt-32 pb-16 px-4 md:px-10 lg:px-20 xl:px-40 ${bgColor} ${textColor} font-sans overflow-x-hidden transition-colors duration-300 selection:bg-[#f2cc0d]/30`}
     >
       {/* Background Orbs */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div
-          className={`absolute top-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full blur-[120px] opacity-40 ${isDark ? "bg-[#f2cc0d]/5" : "bg-[#f2cc0d]/20"}`}
+          className={`absolute top-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full blur-[120px] opacity-40 ${isDark ? "bg-[#f2cc0d]/5" : "bg-[#D9692A]/5"}`}
         ></div>
         <div
-          className={`absolute bottom-[10%] right-[-10%] w-[500px] h-[500px] rounded-full blur-[100px] opacity-30 ${isDark ? "bg-[#f2cc0d]/5" : "bg-[#f2cc0d]/20"}`}
+          className={`absolute bottom-[10%] right-[-10%] w-[500px] h-[500px] rounded-full blur-[100px] opacity-30 ${isDark ? "bg-[#f2cc0d]/5" : "bg-[#D9692A]/5"}`}
         ></div>
       </div>
 
-      <div className="relative z-10 flex min-h-screen flex-col">
-        {/* Hero Section */}
-        <div className="w-full px-4 md:px-10 lg:px-40 pt-28 pb-10 md:pt-32 flex flex-col items-center">
-          <div
-            className={`w-full max-w-[1200px] relative rounded-3xl overflow-hidden min-h-[480px] flex flex-col items-center justify-center text-center p-8 border ${borderColor}`}
-          >
-            <div
-              className="absolute inset-0 z-0 bg-cover bg-center"
-              style={{
-                backgroundImage: `linear-gradient(to bottom, rgba(26, 24, 14, 0.7), rgba(26, 24, 14, 0.9)), url('https://lh3.googleusercontent.com/aida-public/AB6AXuBj_wsjaznNLc-pWIItacXdt5nPujuVWndii9xH5clS6QL9L_DBOofFYQiTbTAasZzfen1BIOgzwytosZiZZrGJEwFjq9ux5pf1tniSQl8ZhyjuRac5e3GOoY03afdQiCWmnA9Q362enQN7z5blHVk6NBDVf2p41GN2PfxhCN8Im0-GiGsgYFAmD72WCfm528nmMsY7-LAgLWnDv48rAL3LZ3Wd-HPxnR_GD433z74IQWx9ZiZGqHc91dPICuUoPeixM2YCl_RMsko6')`,
-              }}
-            ></div>
-
-            <div className="relative z-10 flex flex-col gap-6 max-w-3xl mx-auto hero-content">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 w-fit mx-auto backdrop-blur-md">
-                <span className="w-2 h-2 rounded-full bg-[#f2cc0d] animate-pulse"></span>
-                <span className="text-xs font-medium tracking-wide text-[#f2cc0d] uppercase">
-                  24/7 Support Available
-                </span>
-              </div>
-              <h1 className="text-white text-5xl md:text-6xl lg:text-7xl font-black leading-tight tracking-[-0.03em] drop-shadow-lg">
-                Let&apos;s build something{" "}
-                <span className="bg-linear-to-br from-white via-[#f2cc0d] to-[#f2cc0d] bg-clip-text text-transparent">
-                  extraordinary.
-                </span>
-              </h1>
-              <p className="text-gray-300 text-lg md:text-xl font-normal leading-relaxed max-w-2xl mx-auto">
-                Have a question or support issue? Our team is ready to help
-                you quickly.
-              </p>
+      <div className="relative z-10 max-w-[1200px] mx-auto flex flex-col gap-6 md:gap-10">
+        
+        {/* 1. Hero Section */}
+        <div className={`hero-content relative w-full p-8 md:p-12 lg:p-16 rounded-2xl border ${borderColor} ${cardBg} backdrop-blur-md flex flex-col md:flex-row gap-10 justify-between items-center`}>
+          {/* Decorative Quote Icon */}
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={`absolute -top-4 left-4 md:-top-8 md:left-8 w-20 h-20 md:w-28 md:h-28 opacity-80 ${isDark ? 'text-[#f2cc0d]' : 'text-[#D9692A]'}`}>
+            <path d="M20 80 L 20 60 C 20 45 35 45 35 30 L 35 10" stroke="currentColor" strokeWidth="16" strokeLinecap="round" opacity="0.25" />
+            <path d="M45 80 L 45 60 C 45 45 60 45 60 30 L 60 10" stroke="currentColor" strokeWidth="16" strokeLinecap="round" opacity="0.5" />
+            <path d="M70 80 L 70 60 C 70 45 85 45 85 30 L 85 10" stroke="currentColor" strokeWidth="16" strokeLinecap="round" opacity="0.85" />
+          </svg>
+          <div className="md:w-1/2 flex flex-col items-start gap-4 relative z-10">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-[1.2] tracking-tight">
+              We Would Love to Hear <br />
+              <span className={`inline-block px-4 py-1 mt-2 rounded-xl italic font-semibold ${brandBgClass} ${brandTextOnBgClass}`}>
+                from You
+              </span>
+            </h1>
+          </div>
+          <div className="md:w-1/2 flex flex-col items-start md:items-end gap-6 text-left md:text-right">
+            <p className={`text-sm md:text-base max-w-md leading-relaxed ${mutedText}`}>
+              Thank you for your interest in Catalance. We value your thoughts, questions, and feedback. Please don't hesitate to reach out to us. Our dedicated team is here to assist you.
+            </p>
+            <div className="flex gap-3">
+              {[Facebook, Twitter, Linkedin].map((Icon, idx) => (
+                <a key={idx} href="#" className={`w-10 h-10 rounded-full flex items-center justify-center ${brandBgClass} ${brandTextOnBgClass} hover:-translate-y-1 transition-transform shadow-md`}>
+                   <Icon className="w-5 h-5 fill-current" />
+                </a>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Contact Grid */}
-        <div className="w-full px-4 md:px-10 lg:px-40 py-8">
-          <div className="max-w-[1200px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              {
-                icon: Briefcase,
-                title: "Sales Inquiry",
-                value: "catalanceofficial@gmail.com",
-                link: "mailto:catalanceofficial@gmail.com",
-              },
-              {
-                icon: LifeBuoy,
-                title: "General Support",
-                value: "support@catalance.com",
-                link: "mailto:support@catalance.com",
-              },
-              {
-                icon: MapPin,
-                title: "Global HQ",
-                value:
-                  "D-6/1, Pocket D, Okhla Phase II, Okhla Industrial Estate, New Delhi, Delhi 110020",
-                link: null,
-              },
-              {
-                icon: Phone,
-                title: "Phone",
-                value: "+91 8882855425",
-                link: "tel:+918882855425",
-              },
-            ].map((item, idx) => (
-              <div
-                key={idx}
-                className={`contact-card ${cardBg} backdrop-blur-md rounded-2xl p-6 flex flex-col gap-4 group cursor-pointer border ${borderColor} hover:border-[#f2cc0d] hover:shadow-[0_0_25px_rgba(242,204,13,0.15)] transition-all duration-300 hover:-translate-y-1`}
-              >
-                <div className="w-12 h-12 rounded-full bg-linear-to-br from-[#f2cc0d]/20 to-transparent flex items-center justify-center border border-[#f2cc0d]/20 group-hover:border-[#f2cc0d] transition-colors">
-                  <item.icon className="text-[#f2cc0d] w-6 h-6" />
-                </div>
-                <div>
-                  <h3
-                    className={`${mutedText} text-sm font-medium uppercase tracking-wider mb-1`}
-                  >
-                    {item.title}
-                  </h3>
-                  {item.link ? (
-                    <a
-                      href={item.link}
-                      className={`text-lg font-bold leading-tight hover:text-[#f2cc0d] transition-colors block ${isDark ? "text-white" : "text-black"}`}
-                    >
-                      {item.value}
-                    </a>
-                  ) : (
-                    <p
-                      className={`text-base font-bold leading-snug ${isDark ? "text-white" : "text-black"}`}
-                    >
-                      {item.value}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* 2. Contact Grid (4 horizontal cards) */}
+        <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { title: "Address", value: "New Delhi, India", link: null },
+            { title: "You Can Email Here", value: "support@catalance.com", link: "mailto:support@catalance.com" },
+            { title: "Call us on", value: "+91 8882855425", link: "tel:+918882855425" },
+            { title: "Working Hours", value: "10:00 am - 6:00 pm", link: null },
+          ].map((item, idx) => (
+            <div key={idx} className={`contact-card flex items-center justify-between p-5 rounded-xl border ${borderColor} ${cardBg} backdrop-blur-md group hover:-translate-y-1 transition-transform cursor-pointer`}>
+               <div className="flex flex-col gap-1 overflow-hidden pr-2">
+                 <span className={`text-[11px] md:text-xs uppercase tracking-wider font-semibold ${mutedText}`}>{item.title}</span>
+                 {item.link ? (
+                   <a href={item.link} className={`text-sm md:text-base font-bold truncate transition-colors ${brandTextClass} hover:opacity-80`}>{item.value}</a>
+                 ) : (
+                   <span className={`text-sm md:text-base font-bold truncate`}>{item.value}</span>
+                 )}
+               </div>
+               <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center bg-neutral-900 text-white dark:bg-white dark:text-black transition-transform group-hover:scale-110`}>
+                 <ArrowUpRight className="w-4 h-4" />
+               </div>
+            </div>
+          ))}
         </div>
 
-        {/* Form & Connect Section */}
-        <div className="w-full px-4 md:px-10 lg:px-40 py-16 flex justify-center">
-          <div className="max-w-[1200px] w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
-            {/* Contact Form */}
-            <div className="lg:col-span-7 flex flex-col gap-8">
-              <div>
-                <h2 className="text-3xl font-bold mb-2">Send us a message</h2>
-                <p className={mutedText}>
-                  Fill out the form below and our team will get back to you
-                  within 24 hours.
-                </p>
-              </div>
-              <form ref={formRef} className="flex flex-col gap-6" onSubmit={handleSubmit}>
+        {/* (Map Section Moved Below Form) */}
+
+        {/* 3. Main Form & Image Section */}
+        <div className={`hero-content w-full rounded-2xl border ${borderColor} ${cardBg} backdrop-blur-md overflow-hidden flex flex-col lg:flex-row p-4 md:p-8 gap-8 lg:gap-12`}>
+          {/* Left Image Side */}
+          <div className="lg:w-2/5 relative rounded-2xl overflow-hidden min-h-[300px] lg:min-h-full bg-neutral-100 dark:bg-neutral-800">
+             <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 hover:scale-105" style={{backgroundImage: "url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2070&auto=format&fit=crop')"}}></div>
+             <div className={`absolute inset-0 ${brandBgClass} mix-blend-multiply opacity-50`}></div>
+             
+             {/* Floating Card */}
+             <div className={`absolute bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-6 p-4 md:p-5 rounded-xl border ${borderColor} ${isDark ? 'bg-black/80' : 'bg-white/90'} backdrop-blur-lg flex justify-between items-center group cursor-pointer shadow-lg`}>
+                <div className="flex flex-col gap-1">
+                   <span className={`text-[10px] md:text-xs uppercase tracking-wider font-semibold ${mutedText}`}>Partnerships and Collaborations</span>
+                   <a href="mailto:partners@catalance.com" className={`text-sm md:text-base font-bold transition-colors ${brandTextClass} hover:opacity-80`}>partners@catalance.com</a>
+                </div>
+                <div className={`w-8 h-8 rounded-full flex shrink-0 items-center justify-center bg-neutral-900 text-white dark:bg-white dark:text-black transition-transform group-hover:scale-110`}>
+                   <ArrowUpRight className="w-4 h-4" />
+                </div>
+             </div>
+          </div>
+          
+          {/* Right Form Side */}
+          <div className="lg:w-3/5 p-2 md:p-4">
+             <form ref={formRef} className="flex flex-col gap-6" onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <label className="flex flex-col gap-2">
-                    <span className={`text-sm font-semibold ml-1 ${mutedText}`}>
-                      Name
-                    </span>
-                    <input
-                      name="name"
-                      className={`w-full ${inputBg} border ${borderColor} rounded-xl px-4 h-14 ${isDark ? "text-white placeholder-gray-500" : "text-black placeholder-gray-400"} focus:outline-none focus:ring-1 focus:ring-[#f2cc0d] focus:border-[#f2cc0d] transition-all`}
-                      placeholder="John Doe"
-                      type="text"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2">
-                    <span className={`text-sm font-semibold ml-1 ${mutedText}`}>
-                      Work Email
-                    </span>
-                    <input
-                      name="email"
-                      className={`w-full ${inputBg} border ${borderColor} rounded-xl px-4 h-14 ${isDark ? "text-white placeholder-gray-500" : "text-black placeholder-gray-400"} focus:outline-none focus:ring-1 focus:ring-[#f2cc0d] focus:border-[#f2cc0d] transition-all`}
-                      placeholder="john@company.com"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </label>
+                   <label className="flex flex-col gap-2">
+                     <span className={`text-sm font-semibold ml-1 ${textColor}`}>First Name</span>
+                     <input name="firstName" className={`w-full ${inputBg} border ${borderColor} rounded-xl px-4 h-14 focus:outline-none focus:ring-1 focus:ring-[${isDark ? '#f2cc0d' : '#D9692A'}] focus:border-[${isDark ? '#f2cc0d' : '#D9692A'}] transition-all`} placeholder="Enter First Name" value={formData.firstName} onChange={handleInputChange} required />
+                   </label>
+                   <label className="flex flex-col gap-2">
+                     <span className={`text-sm font-semibold ml-1 ${textColor}`}>Last Name</span>
+                     <input name="lastName" className={`w-full ${inputBg} border ${borderColor} rounded-xl px-4 h-14 focus:outline-none focus:ring-1 focus:ring-[${isDark ? '#f2cc0d' : '#D9692A'}] focus:border-[${isDark ? '#f2cc0d' : '#D9692A'}] transition-all`} placeholder="Enter Last Name" value={formData.lastName} onChange={handleInputChange} required />
+                   </label>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                   <label className="flex flex-col gap-2">
+                     <span className={`text-sm font-semibold ml-1 ${textColor}`}>Email</span>
+                     <input name="email" type="email" className={`w-full ${inputBg} border ${borderColor} rounded-xl px-4 h-14 focus:outline-none focus:ring-1 focus:ring-[${isDark ? '#f2cc0d' : '#D9692A'}] focus:border-[${isDark ? '#f2cc0d' : '#D9692A'}] transition-all`} placeholder="Enter your Email" value={formData.email} onChange={handleInputChange} required />
+                   </label>
+                   <label className="flex flex-col gap-2">
+                     <span className={`text-sm font-semibold ml-1 ${textColor}`}>Phone</span>
+                     <input name="phone" type="tel" className={`w-full ${inputBg} border ${borderColor} rounded-xl px-4 h-14 focus:outline-none focus:ring-1 focus:ring-[${isDark ? '#f2cc0d' : '#D9692A'}] focus:border-[${isDark ? '#f2cc0d' : '#D9692A'}] transition-all`} placeholder="Enter Phone Number" value={formData.phone} onChange={handleInputChange} />
+                   </label>
                 </div>
                 <label className="flex flex-col gap-2">
-                  <span className={`text-sm font-semibold ml-1 ${mutedText}`}>
-                    Subject
-                  </span>
-                  <div className="relative">
-                    <select
-                      name="subject"
-                      className={`w-full ${inputBg} border ${borderColor} rounded-xl px-4 h-14 ${isDark ? "text-white" : "text-black"} appearance-none focus:outline-none focus:ring-1 focus:ring-[#f2cc0d] focus:border-[#f2cc0d] transition-all cursor-pointer`}
-                      value={formData.subject}
-                      onChange={handleInputChange}
-                    >
-                      {SUBJECT_OPTIONS.map((subjectOption) => (
-                        <option
-                          key={subjectOption}
-                          className={isDark ? "bg-[#221f10]" : "bg-white"}
-                        >
-                          {subjectOption}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none w-5 h-5" />
-                  </div>
+                     <span className={`text-sm font-semibold ml-1 ${textColor}`}>Message</span>
+                     <textarea name="message" className={`w-full ${inputBg} border ${borderColor} rounded-xl p-4 min-h-[140px] resize-y focus:outline-none focus:ring-1 focus:ring-[${isDark ? '#f2cc0d' : '#D9692A'}] focus:border-[${isDark ? '#f2cc0d' : '#D9692A'}] transition-all`} placeholder="Enter your Message" value={formData.message} onChange={handleInputChange} required></textarea>
                 </label>
-                <label className="flex flex-col gap-2">
-                  <span className={`text-sm font-semibold ml-1 ${mutedText}`}>
-                    Message
-                  </span>
-                  <textarea
-                    name="message"
-                    className={`w-full ${inputBg} border ${borderColor} rounded-xl p-4 min-h-[160px] ${isDark ? "text-white placeholder-gray-500" : "text-black placeholder-gray-400"} resize-y focus:outline-none focus:ring-1 focus:ring-[#f2cc0d] focus:border-[#f2cc0d] transition-all`}
-                    placeholder="How can we help you?"
-                    value={formData.message}
-                    onChange={handleInputChange}
-                    required
-                  ></textarea>
-                </label>
-                <button
-                  className="mt-2 w-fit flex items-center justify-center rounded-full h-12 px-8 bg-[#f2cc0d] text-[#232010] text-base font-bold shadow-[0_4px_20px_rgba(242,204,13,0.3)] hover:shadow-[0_6px_25px_rgba(242,204,13,0.5)] hover:-translate-y-0.5 transition-all"
-                  type="submit"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Sending..." : "Send Message"}{" "}
-                  <Send className="w-4 h-4 ml-2" />
-                </button>
-              </form>
-            </div>
-
-            {/* Connect & FAQ */}
-            <div className="lg:col-span-5 flex flex-col gap-10">
-              <div
-                className={`${cardBg} backdrop-blur-md rounded-3xl p-8 border ${borderColor}`}
-              >
-                <h3 className="text-xl font-bold mb-6">Connect with us</h3>
-                <div className="flex gap-4">
-                  {[
-                    {
-                      icon: (props) => (
-                        <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                        </svg>
-                      ),
-                      color: "hover:text-[#1877F2] hover:border-[#1877F2]",
-                    },
-                    {
-                      icon: (props) => (
-                        <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-                          <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z" />
-                        </svg>
-                      ),
-                      color: "hover:text-[#0A66C2] hover:border-[#0A66C2]",
-                    },
-                    {
-                      icon: (props) => (
-                        <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
-                        </svg>
-                      ),
-                      color: "hover:text-[#E4405F] hover:border-[#E4405F]",
-                    },
-                    {
-                      icon: (props) => (
-                        <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                        </svg>
-                      ),
-                      color: "hover:text-[#FF0000] hover:border-[#FF0000]",
-                    },
-                  ].map((Social, i) => (
-                    <a
-                      key={i}
-                      href="#"
-                      className={`w-12 h-12 rounded-full ${inputBg} border ${borderColor} flex items-center justify-center ${isDark ? "text-white" : "text-black"} transition-all duration-300 hover:bg-neutral-800/80 hover:shadow-lg ${Social.color}`}
-                    >
-                      <Social.icon className="w-5 h-5 fill-current" />
-                    </a>
-                  ))}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mt-2">
+                   <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className={`w-5 h-5 rounded border ${borderColor} ${inputBg} flex items-center justify-center transition-colors relative ${agreed ? `border-[${isDark ? '#f2cc0d' : '#D9692A'}] ${brandBgClass}` : `group-hover:border-[${isDark ? '#f2cc0d' : '#D9692A'}]`}`}>
+                         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required className="w-full h-full opacity-0 cursor-pointer absolute z-10" />
+                         {agreed && <Check className={`w-3.5 h-3.5 ${brandTextOnBgClass}`} />}
+                      </div>
+                      <span className={`text-sm ${mutedText} group-hover:text-current transition-colors`}>I agree with Terms of Use and Privacy Policy</span>
+                   </label>
+                   <button type="submit" disabled={isSubmitting} className={`px-6 py-3 rounded-full text-sm md:text-base font-semibold transition-all shadow-md bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 w-full sm:w-auto whitespace-nowrap shrink-0`}>
+                      {isSubmitting ? "Sending..." : "Send your Message"}
+                   </button>
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-4">
-                <h3 className="text-lg font-bold">Common Questions</h3>
-                <Accordion type="single" collapsible className="space-y-3">
-                  {[
-                    {
-                      q: "What is your response time?",
-                      a: "For enterprise inquiries, we typically respond within 4 hours. General support requests are answered within 24 hours.",
-                    },
-                    {
-                      q: "Do you offer custom demos?",
-                      a: "Yes! Contact our sales team using the form to schedule a personalized walkthrough of the Catalance platform.",
-                    },
-                    {
-                      q: "Where are your data centers?",
-                      a: "We have primary data hubs in New York, London, and Singapore to ensure low-latency global coverage.",
-                    },
-                  ].map((faq, i) => (
-                    <AccordionItem
-                      key={i}
-                      value={`item-${i}`}
-                      className={`${inputBg} border ${borderColor} rounded-xl overflow-hidden px-1`}
-                    >
-                      <AccordionTrigger
-                        className={`px-4 py-4 text-base font-medium hover:text-[#f2cc0d] hover:no-underline ${isDark ? "text-gray-200" : "text-gray-800"}`}
-                      >
-                        {faq.q}
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4 text-sm text-gray-400">
-                        {faq.a}
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </div>
-            </div>
+             </form>
           </div>
         </div>
+
+        {/* 3.5 Global Map Section */}
+        <div className={`hero-content w-full rounded-2xl border ${borderColor} ${cardBg} backdrop-blur-md overflow-hidden relative min-h-[350px] md:min-h-[450px] flex flex-col p-8 md:p-12 mb-2 md:mb-4`}>
+            {/* Header Text */}
+            <div className="relative z-10 max-w-md mb-8">
+                <h2 className={`text-2xl md:text-3xl lg:text-4xl font-semibold leading-tight tracking-tight ${textColor}`}>
+                    We're here to help<br />
+                    <span className={`font-normal ${mutedText}`}>you with any questions</span>
+                </h2>
+            </div>
+
+            {/* Map & Beacons Container */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-80">
+                <div className="relative w-[140%] sm:w-full max-w-[850px] aspect-square mx-auto transform translate-y-12">
+                    {/* Dotted Map Image */}
+                    <img 
+                        src="/india-map.png" 
+                        alt="India Map" 
+                        className={`absolute inset-0 w-full h-full object-contain transition-all duration-300 ${isDark ? 'brightness-0 invert opacity-15' : 'brightness-0 opacity-15'}`}
+                        style={{
+                            maskImage: 'radial-gradient(circle, black 1.5px, transparent 1.5px)',
+                            maskSize: '8px 8px',
+                            WebkitMaskImage: 'radial-gradient(circle, black 1.5px, transparent 1.5px)',
+                            WebkitMaskSize: '8px 8px'
+                        }}
+                    />
+
+                    {/* Pulsing Beacons */}
+                    {[
+                        { top: '28%', left: '40%', isHQ: true, label: "HQ (New Delhi)" },
+                        { top: '58%', left: '26%' }, // Mumbai
+                        { top: '75%', left: '38%' }, // Bangalore
+                        { top: '60%', left: '42%' }, // Hyderabad
+                        { top: '48%', left: '68%' }  // Kolkata
+                    ].map((pos, i) => (
+                        <div key={i} className={`absolute flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 ${pos.isHQ ? 'z-20' : 'z-10'}`} style={{ top: pos.top, left: pos.left }}>
+                            {pos.isHQ && (
+                                <span className={`absolute -top-8 whitespace-nowrap text-[10px] md:text-xs font-bold px-2 md:px-3 py-1 rounded-full bg-white dark:bg-black border ${borderColor} shadow-lg ${brandTextClass} animate-bounce`}>
+                                    {pos.label}
+                                </span>
+                            )}
+                            <div className={`absolute rounded-full ${brandBgClass} ${pos.isHQ ? 'w-8 h-8 md:w-12 md:h-12 opacity-80' : 'w-4 h-4 md:w-6 md:h-6 opacity-60'} animate-ping`}></div>
+                            <div className={`relative rounded-full ${brandBgClass} ${pos.isHQ ? 'w-3 h-3 md:w-4 md:h-4 shadow-[0_0_15px_rgba(0,0,0,0.5)]' : 'w-1.5 h-1.5 md:w-2 md:h-2'}`}></div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+
+        {/* 4. Two Info Cards */}
+        <div className="hero-content w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+           {[
+             { title: "Freelancer Opportunities", desc: "Interested in becoming a top-tier freelancer and making a hands-on difference? Please visit our Freelancer page for more information and to apply.", btn: "Visit Page" },
+             { title: "Enterprise Solutions", desc: "To empower your business with elite talent or learn more about our enterprise options, visit our Enterprise page.", btn: "Enterprise Page" }
+           ].map((info, idx) => (
+              <div key={idx} className={`p-8 md:p-10 rounded-2xl border ${borderColor} ${cardBg} backdrop-blur-md flex flex-col items-start gap-4 hover:-translate-y-1 transition-transform`}>
+                 <h3 className="text-lg md:text-xl font-bold">{info.title}</h3>
+                 <p className={`text-xs md:text-sm leading-relaxed ${mutedText} mb-2`}>{info.desc}</p>
+                 <button className={`mt-auto px-6 py-3 rounded-full flex items-center gap-2 bg-neutral-900 text-white dark:bg-white dark:text-black text-sm font-semibold hover:shadow-lg transition-all`}>
+                    {info.btn} <ArrowUpRight className="w-4 h-4"/>
+                 </button>
+              </div>
+           ))}
+        </div>
+
+        {/* 5. Bottom Banner */}
+        <div className={`hero-content w-full p-8 md:p-16 rounded-2xl ${brandBgClass} flex flex-col items-center text-center gap-6 relative overflow-hidden`}>
+            {/* Background Pattern SVG */}
+            <div className="absolute inset-0 opacity-20" style={{backgroundImage: "url('data:image/svg+xml,%3Csvg width=\\'60\\' height=\\'60\\' viewBox=\\'0 0 60 60\\' xmlns=\\'http://www.w3.org/2000/svg\\'%3E%3Cg fill=\\'none\\' fill-rule=\\'evenodd\\'%3E%3Cg fill=\\'%23ffffff\\' fill-opacity=\\'1\\'%3E%3Cpath d=\\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"}}></div>
+            
+            <h2 className={`text-2xl md:text-3xl lg:text-4xl font-bold max-w-3xl leading-tight ${brandTextOnBgClass} relative z-10`}>
+               Join Catalance and Help Level Up Your Business Operations
+            </h2>
+            <p className={`max-w-3xl text-sm md:text-base ${isDark ? 'text-black/80' : 'text-white/90'} relative z-10`}>
+               Our platform will help provide essential talent for your business needs, such as web development, design, marketing, and strategic growth.
+            </p>
+            
+            <div className={`mt-4 p-2 pl-4 md:pl-6 rounded-full flex flex-col sm:flex-row items-center justify-between gap-4 ${isDark ? 'bg-black/10' : 'bg-white/20'} backdrop-blur-md max-w-2xl w-full relative z-10`}>
+               <span className={`text-sm font-medium text-center sm:text-left ${brandTextOnBgClass}`}>
+                 Click here to get started and level up your business operations.
+               </span>
+               <button className={`px-6 py-3 w-full sm:w-auto rounded-full flex shrink-0 justify-center items-center gap-2 ${brandBgClass} border ${isDark ? 'border-black/20 text-black' : 'border-white/20 text-white'} font-bold shadow-lg hover:-translate-y-1 transition-all`}>
+                  Get Started <ArrowUpRight className="w-4 h-4"/>
+               </button>
+            </div>
+        </div>
+
       </div>
     </main>
   );

@@ -121,7 +121,7 @@ const FreelancerRunningProjectCard = ({
         "relative cursor-pointer overflow-hidden rounded-[18px] bg-card shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition-colors hover:bg-card",
         canShowSelection &&
           isSelected &&
-          "border-transparent bg-card shadow-[inset_0_0_0_2px_rgba(250,204,21,1)]",
+          "border-transparent bg-card shadow-[inset_0_0_0_2px_rgba(var(--brand-rgb),1)]",
       )}
     >
       <CardContent className={cn("p-4 pb-6", canShowSelection && isSelected && "pb-7")}>
@@ -136,7 +136,7 @@ const FreelancerRunningProjectCard = ({
             <p className="mt-1 text-[11px] text-muted-foreground">{item?.timeLabel}</p>
           </div>
 
-          <Badge className="rounded-[10px] border-0 bg-[#2f1e05] px-3 py-1 text-[11px] font-semibold text-[#fbbf24]">
+          <Badge className="rounded-[10px] border-0 bg-[#2f1e05] px-3 py-1 text-[11px] font-semibold text-[var(--primary)]">
             {badgeLabel}
           </Badge>
         </div>
@@ -174,16 +174,16 @@ const resolveMobilePipelineTone = (hasActiveProject, statusTone) => {
 
   if (statusTone === "Steady") {
     return {
-      textClass: "text-[#facc15]",
-      dotClass: "bg-[#facc15]",
-      barClass: "bg-[#facc15]",
+      textClass: "text-[var(--primary)]",
+      dotClass: "bg-[var(--primary)]",
+      barClass: "bg-[var(--primary)]",
     };
   }
 
   return {
-    textClass: "text-orange-300",
-    dotClass: "bg-orange-400",
-    barClass: "bg-orange-400",
+    textClass: "text-primary",
+    dotClass: "bg-primary/10",
+    barClass: "bg-primary/10",
   };
 };
 
@@ -200,21 +200,21 @@ const resolveMobilePipelinePhaseAppearance = (row) => {
 
   if (row?.isActive) {
     return {
-      dotClass: "border-[#facc15] bg-[#facc15] shadow-[0_0_0_4px_rgba(250,204,21,0.12)]",
-      cardClass: "border-[#facc15]/16 bg-[#171717]",
-      chipClass: "border-[#facc15]/20 bg-[#facc15]/12 text-[#facc15]",
-      barClass: "bg-[#facc15]",
-      lineClass: "bg-[#facc15]/55",
+      dotClass: "border-[var(--primary)] bg-[var(--primary)] shadow-[0_0_0_4px_rgba(var(--brand-rgb),0.12)]",
+      cardClass: "border-[var(--primary)]/16 bg-[#171717]",
+      chipClass: "border-[var(--primary)]/20 bg-[var(--primary)]/12 text-[var(--primary)]",
+      barClass: "bg-[var(--primary)]",
+      lineClass: "bg-[var(--primary)]/55",
     };
   }
 
   if (row?.isPending) {
     return {
-      dotClass: "border-orange-400 bg-orange-400 shadow-[0_0_0_4px_rgba(251,146,60,0.12)]",
-      cardClass: "border-orange-400/16 bg-[#171717]",
-      chipClass: "border-orange-400/20 bg-orange-500/12 text-orange-300",
-      barClass: "bg-orange-400",
-      lineClass: "bg-orange-400/55",
+      dotClass: "border-primary/20 bg-primary/10 shadow-[0_0_0_4px_rgba(251,146,60,0.12)]",
+      cardClass: "border-primary/20/16 bg-[#171717]",
+      chipClass: "border-primary/20/20 bg-primary/10/12 text-primary",
+      barClass: "bg-primary/10",
+      lineClass: "bg-primary/10/55",
     };
   }
 
@@ -248,7 +248,7 @@ const FreelancerRunningProjectCompactCard = ({ item, isSelected, onSelect }) => 
       className={cn(
         "w-[84vw] min-w-[15rem] max-w-[18rem] shrink-0 snap-start overflow-hidden rounded-[22px] border-0 bg-[#151515] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]",
         isSelected &&
-          "shadow-[inset_0_0_0_1.5px_rgba(250,204,21,0.95),0_18px_40px_rgba(0,0,0,0.3)]",
+          "shadow-[inset_0_0_0_1.5px_rgba(var(--brand-rgb),0.95),0_18px_40px_rgba(0,0,0,0.3)]",
       )}
     >
       <CardContent className="p-4">
@@ -274,7 +274,7 @@ const FreelancerRunningProjectCompactCard = ({ item, isSelected, onSelect }) => 
         </div>
 
         <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.08]">
-          <div className="h-full rounded-full bg-[#facc15]" style={{ width: `${progress}%` }} />
+          <div className="h-full rounded-full bg-[var(--primary)]" style={{ width: `${progress}%` }} />
         </div>
       </CardContent>
     </Card>
@@ -400,7 +400,7 @@ const DeliveryPipeline = ({
               <button
                 type="button"
                 onClick={() => setRunningProjectsFilter("all")}
-                className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#facc15]"
+                className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--primary)]"
               >
                 View all
               </button>
@@ -443,10 +443,10 @@ const DeliveryPipeline = ({
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <span className="inline-flex rounded-full bg-[#facc15] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-black">
+                    <span className="inline-flex rounded-full bg-[var(--primary)] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-black">
                       Today
                     </span>
-                    <p className="mt-1 text-[10px] font-medium text-[#facc15]">
+                    <p className="mt-1 text-[10px] font-medium text-[var(--primary)]">
                       {scheduleTodayDateLabel}
                     </p>
                   </div>
@@ -613,7 +613,7 @@ const DeliveryPipeline = ({
                         className={cn(
                           "h-1.5 w-1.5 rounded-full",
                           hasActiveProject && index < dotsOn
-                            ? "bg-[#facc15]"
+                            ? "bg-[var(--primary)]"
                             : "bg-white/[0.18]",
                         )}
                       />
@@ -822,7 +822,7 @@ const DeliveryPipeline = ({
                                     />
                                   ))}
                                   <div
-                                    className="absolute bottom-0 top-[-6px] w-px border-l-2 border-dotted border-[#facc15]/60"
+                                    className="absolute bottom-0 top-[-6px] w-px border-l-2 border-dotted border-[var(--primary)]/60"
                                     style={{ left: `${scheduleMarkerLeftPct}%` }}
                                   />
 
@@ -860,7 +860,7 @@ const DeliveryPipeline = ({
                                             row.isCompleted
                                               ? "bg-emerald-500/10"
                                               : row.isActive
-                                                ? "bg-[#facc15]/35"
+                                                ? "bg-[var(--primary)]/35"
                                                 : "bg-white/[0.06]",
                                           )}
                                           style={{
@@ -874,7 +874,7 @@ const DeliveryPipeline = ({
                                             row.isCompleted
                                               ? "bg-emerald-500/20 text-emerald-300"
                                               : row.isActive
-                                                ? "bg-[#facc15] text-black"
+                                                ? "bg-[var(--primary)] text-black"
                                                 : "bg-white/[0.06] text-zinc-400",
                                           )}
                                           style={{ left: `${rowLabelCenterPct}%` }}
@@ -918,7 +918,7 @@ const DeliveryPipeline = ({
                                               className={cn(
                                                 "size-1.5 rounded-full",
                                                 row.isActive
-                                                  ? "bg-[#facc15]"
+                                                  ? "bg-[var(--primary)]"
                                                   : "bg-zinc-500/70",
                                               )}
                                             />
@@ -926,7 +926,7 @@ const DeliveryPipeline = ({
                                               className={cn(
                                                 "text-[9px] font-semibold uppercase tracking-[0.16em]",
                                                 row.isActive
-                                                  ? "text-[#facc15]"
+                                                  ? "text-[var(--primary)]"
                                                   : "text-zinc-300",
                                               )}
                                             >
@@ -937,7 +937,7 @@ const DeliveryPipeline = ({
                                                 className={cn(
                                                   "rounded-[10px] border px-2 py-0.5 text-[9px] font-semibold",
                                                   isOnTrackNote
-                                                    ? "border-[#facc15]/40 bg-[#facc15]/14 text-[#facc15]"
+                                                    ? "border-[var(--primary)]/40 bg-[var(--primary)]/14 text-[var(--primary)]"
                                                     : "border-rose-500/30 bg-rose-500/10 text-rose-300",
                                                 )}
                                               >
@@ -977,13 +977,13 @@ const DeliveryPipeline = ({
                       <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
                         {statusTone}
                       </p>
-                      <p className="text-[11px] font-semibold text-[#facc15]">
+                      <p className="text-[11px] font-semibold text-[var(--primary)]">
                         {hasActiveProject ? `${activeScheduleProgressPct}%` : "—"}
                       </p>
                     </div>
                     <div className="mt-3 h-[2px] overflow-hidden rounded-full bg-white/[0.08]">
                       <div
-                        className="h-full rounded-full bg-[#facc15]"
+                        className="h-full rounded-full bg-[var(--primary)]"
                         style={{
                           width: `${hasActiveProject ? Math.min(100, activeScheduleProgressPct || 0) : 0}%`,
                         }}
@@ -1030,7 +1030,7 @@ const DeliveryPipeline = ({
                           className={cn(
                             "h-1.5 w-1.5 rounded-full",
                             hasActiveProject && index < dotsOn
-                              ? "bg-[#facc15]"
+                              ? "bg-[var(--primary)]"
                               : "bg-white/[0.18]",
                           )}
                         />

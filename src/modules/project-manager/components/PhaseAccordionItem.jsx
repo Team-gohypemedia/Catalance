@@ -19,7 +19,7 @@ const phaseStatusStyles = {
 const taskStatusStyles = {
   VERIFIED: "border-emerald-200 bg-emerald-50 text-emerald-700",
   COMPLETED: "border-blue-200 bg-blue-50 text-blue-700",
-  PENDING: "border-amber-200 bg-amber-50 text-amber-700",
+  PENDING: "border-primary/20 bg-primary/10 text-primary",
 };
 
 const getStatusClass = (status, type = "phase") => {
@@ -73,7 +73,7 @@ export const PhaseAccordionItem = ({ milestone, value, onApproveMilestone }) => 
             <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
               Verified: {verifiedCount}
             </span>
-            <span className="rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700">
+            <span className="rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">
               Pending: {pendingCount}
             </span>
           </div>
@@ -92,8 +92,8 @@ export const PhaseAccordionItem = ({ milestone, value, onApproveMilestone }) => 
             </p>
           </div>
 
-          <div className="rounded-lg border border-amber-100 bg-amber-50/80 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-700">
+          <div className="rounded-lg border border-primary/20 bg-primary/10/80 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-primary">
               Stuck On
             </p>
             <p className="mt-1 text-sm font-medium text-slate-900 break-words">

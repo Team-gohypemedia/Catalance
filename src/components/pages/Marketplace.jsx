@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight, BadgeCheck, Bot, BriefcaseBusiness, Banknote, Tag, Check,
   ChevronLeft, ChevronRight, Clock, Cloud, Code2,
-  Database, Heart, LineChart, MessageSquare,
-  Plus, Rocket, Search, SlidersHorizontal,
-  Sparkles, Star, Users, Workflow, X
+  Database, Heart, LayoutGrid, LineChart, MessageSquare,
+  Plus, RefreshCcw, Rocket, Search, Settings, SlidersHorizontal,
+  Sparkles, Star, Users, Workflow, X, Zap
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
@@ -13,6 +13,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AnimatedCard,
+  CardBody,
+  CardDescription,
+  CardTitle,
+  CardVisual,
+  Visual3
+} from "@/components/ui/animated-card-chart";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,6 +28,7 @@ import { Slider } from "@/components/ui/slider";
 import { Sparkles as SparklesBackground } from "@/components/ui/sparkles";
 import MarketplaceServicesSection from "@/components/pages/marketplace-browse/MarketplaceServicesSection";
 import SubcategorySection from "@/components/pages/marketplace-browse/SubcategorySection";
+import ServiceCategoryCarousel from "@/components/ui/service-category-carousel";
 import { getSession } from "@/shared/lib/auth-storage";
 import { useAuth } from "@/shared/context/AuthContext";
 import { API_BASE_URL } from "@/shared/lib/api-client";
@@ -29,6 +38,10 @@ import {
   saveMarketplaceFavorites,
 } from "@/shared/lib/marketplace-favorites";
 import { cn } from "@/shared/lib/utils";
+import { ContainerScroll } from "@/components/ui/container-scroll-animation";
+import { AnimatedHeroText } from "@/components/ui/animated-hero";
+import ProcessVideo from "@/components/sections/marketplace/ProcessVideo";
+import { useTheme } from "@/components/providers/theme-provider";
 
 const FALLBACK_CATEGORIES = [
   ["Web Development", "web_development", Code2, "Products and storefronts"],
@@ -139,29 +152,6 @@ const faqs = [
   ["Do I need to know how to code?", "No, you don't need to know how to code. Our platform offers intuitive tools and templates that allow you to create and manage your website with ease."]
 ];
 
-const HOW_IT_WORKS_STEPS = [
-  {
-    id: "discover",
-    step: "01",
-    title: "Explore services and open briefs",
-    description: "Use focused categories, tools, and budget filters to discover relevant specialists in minutes.",
-    icon: Search,
-  },
-  {
-    id: "shortlist",
-    step: "02",
-    title: "Shortlist proven specialists",
-    description: "Review expertise, delivery windows, and trust signals before narrowing to your best-fit talent.",
-    icon: Users,
-  },
-  {
-    id: "launch",
-    step: "03",
-    title: "Connect and launch execution",
-    description: "Move from discovery to execution with structured project details and clear deliverable expectations.",
-    icon: Rocket,
-  },
-];
 
 const TRUST_PILLARS = [
   {
@@ -321,7 +311,7 @@ const getGradient = (seed = "") => {
   const gradients = [
     "from-sky-400/35 via-cyan-300/20 to-slate-900/85",
     "from-emerald-400/35 via-teal-300/20 to-slate-900/85",
-    "from-amber-300/35 via-orange-300/20 to-slate-900/85",
+    "from-primary/35 via-primary/50/20 to-slate-900/85",
     "from-rose-300/35 via-pink-300/20 to-slate-900/85"
   ];
   let hash = 0;
@@ -670,7 +660,9 @@ const readMarketplaceSearchState = () => {
 
 const Marketplace = () => {
   const { isAuthenticated, user, authFetch } = useAuth();
+  const { theme } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
   const resultsRequestIdRef = useRef(0);
   const projectRequestIdRef = useRef(0);
@@ -689,6 +681,10 @@ const Marketplace = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  const isDarkMode = 
+    theme === "dark" || 
+    (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   const [favorites, setFavorites] = useState({});
   const [activeMarketplaceView, setActiveMarketplaceView] = useState(() => {
@@ -833,7 +829,7 @@ const Marketplace = () => {
   const debouncedMax = useDebounce(maxBudget, 400);
   const shouldShowResults = category !== "all" || Boolean(String(debouncedQ || "").trim());
   const sparklesEnabled = !shouldReduceMotion && !isMobileViewport;
-  const sparklesDensity = isMobileViewport ? 90 : 220;
+  const sparklesDensity = isMobileViewport ? 60 : 120;
   const sparklesSpeed = isMobileViewport ? 0.35 : 0.55;
 
   useEffect(() => {
@@ -1340,7 +1336,7 @@ const Marketplace = () => {
     };
   }, [activeBrowseService?.label, activeService?.label, canViewProjectsMarketplace, projectData]);
 
-  const marketplaceBrowseActions = category !== "all" ? (
+  const marketplaceBrowseActions = (
     <Dialog open={isFilterOpen} onOpenChange={(open) => { setIsFilterOpen(open); if (open) syncDraftFilters(); }}>
       <DialogTrigger asChild>
         <Button variant="ghost" className="h-11 shrink-0 rounded-full bg-white/[0.04] px-5 text-[13px] font-semibold text-slate-200 hover:bg-white/10 hover:text-white">
@@ -1348,20 +1344,20 @@ const Marketplace = () => {
           Filters
         </Button>
       </DialogTrigger>
-      <DialogContent aria-describedby={undefined} className="w-[90vw] max-w-[760px] rounded-sm border-white/10 bg-[#1e1e1e] p-0 shadow-[0_24px_80px_-42px_rgba(2,6,23,1)] sm:w-[760px] [&>button]:hidden">
-        <div className="flex items-center justify-between border-b border-white/10 px-8 py-6">
+      <DialogContent aria-describedby={undefined} className="w-[90vw] max-w-[760px] rounded-[24px] border border-border bg-card p-0 shadow-2xl sm:w-[760px] [&>button]:hidden overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border px-8 py-6">
           <div className="space-y-1">
-            <h3 className="text-2xl font-bold tracking-tight text-white">Filters</h3>
+            <h3 className="text-2xl font-bold tracking-tight text-foreground">Filters</h3>
             <p className="text-sm text-muted-foreground">Refine your search</p>
           </div>
-          <button type="button" onClick={() => setIsFilterOpen(false)} className="rounded-full p-2 text-muted-foreground hover:bg-white/10 hover:text-white">
+          <button type="button" onClick={() => setIsFilterOpen(false)} className="rounded-full p-2 text-muted-foreground hover:bg-foreground/10 hover:text-foreground">
             <X className="h-6 w-6" />
           </button>
         </div>
 
           <div className="grid max-h-[70vh] grid-cols-1 gap-x-16 gap-y-10 overflow-x-hidden overflow-y-auto px-8 py-8 no-scrollbar sm:grid-cols-2">
           <div className="space-y-6">
-            <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-[#fbcc15]">
+            <h4 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.15em] text-[var(--primary)]">
               <Banknote className="h-5 w-5" /> PRICE RANGE
             </h4>
             <div className="px-2">
@@ -1371,10 +1367,10 @@ const Marketplace = () => {
                 step={10000}
                 value={[Number(draftMinBudget), Number(draftMaxBudget)]}
                 onValueChange={([min, max]) => { setDraftMinBudget(String(min)); setDraftMaxBudget(String(max)); }}
-                className="[&_[role=slider]]:h-5 [&_[role=slider]]:w-5 [&_[role=slider]]:border-[#fbcc15] [&_[role=slider]]:bg-[#fbcc15] [&_[role=track]]:h-2 [&_[role=track]]:bg-slate-800 [&>.relative>.absolute]:bg-[#fbcc15]"
+                className="[&_[role=slider]]:h-5 [&_[role=slider]]:w-5 [&_[role=slider]]:border-[var(--primary)] [&_[role=slider]]:bg-[var(--primary)] [&_[role=track]]:h-2 [&_[role=track]]:bg-muted [&>.relative>.absolute]:bg-[var(--primary)]"
               />
             </div>
-            <div className="flex items-center justify-between px-1 text-sm font-semibold text-white">
+            <div className="flex items-center justify-between px-1 text-sm font-semibold text-foreground">
               <span>Rs. {Number(draftMinBudget).toLocaleString("en-IN")}</span>
               <span>Rs. {Number(draftMaxBudget).toLocaleString("en-IN")}</span>
             </div>
@@ -1388,8 +1384,8 @@ const Marketplace = () => {
               {["Up to 4 weeks", "5-6 weeks", "7+ weeks"].map((label) => {
                 const active = draftDuration === label;
                 return (
-                  <button key={label} type="button" onClick={() => setDraftDuration(active ? "" : label)} className="flex items-center gap-3 text-[15px] font-medium text-muted-foreground hover:text-white">
-                    <div className={cn("flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-all", active ? "border-[#fbcc15] bg-[#fbcc15]" : "border-slate-500 bg-transparent")}>
+                  <button key={label} type="button" onClick={() => setDraftDuration(active ? "" : label)} className="flex items-center gap-3 text-[15px] font-medium text-muted-foreground hover:text-foreground">
+                    <div className={cn("flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-all", active ? "border-[var(--primary)] bg-[var(--primary)]" : "border-border bg-transparent")}>
                       {active && <Check className="h-3 w-3 text-black" strokeWidth={3} />}
                     </div>
                     {label}
@@ -1407,9 +1403,9 @@ const Marketplace = () => {
               {["4.5+ Stars", "4.0+ Stars"].map((label) => {
                 const active = draftRating === label;
                 return (
-                  <button key={label} type="button" onClick={() => setDraftRating(active ? "" : label)} className="flex items-center gap-3 text-[15px] font-medium text-muted-foreground hover:text-white">
-                    <div className={cn("flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-all", active ? "border-[#fbcc15] bg-transparent" : "border-slate-500 bg-transparent")}>
-                      {active && <div className="h-2.5 w-2.5 rounded-full bg-[#fbcc15]" />}
+                  <button key={label} type="button" onClick={() => setDraftRating(active ? "" : label)} className="flex items-center gap-3 text-[15px] font-medium text-muted-foreground hover:text-foreground">
+                    <div className={cn("flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-all", active ? "border-[var(--primary)] bg-transparent" : "border-border bg-transparent")}>
+                      {active && <div className="h-2.5 w-2.5 rounded-full bg-[var(--primary)]" />}
                     </div>
                     {label}
                   </button>
@@ -1432,7 +1428,7 @@ const Marketplace = () => {
                     className={cn(
                       "flex items-center gap-2 rounded-full border px-5 py-2.5 text-[14px] font-semibold transition-all",
                       active
-                        ? "border-[#fbcc15] text-[#fbcc15]"
+                        ? "border-[var(--primary)] text-[var(--primary)]"
                         : "border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/60 hover:text-foreground"
                     )}
                   >
@@ -1460,7 +1456,7 @@ const Marketplace = () => {
                         className={cn(
                           "rounded-full border px-4 py-2.5 text-sm font-semibold transition-all",
                           active
-                            ? "border-[#fbcc15]/45 bg-[#fbcc15]/12 text-[#fbcc15]"
+                            ? "border-[var(--primary)]/45 bg-[var(--primary)]/12 text-[var(--primary)]"
                             : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
                         )}
                       >
@@ -1473,22 +1469,35 @@ const Marketplace = () => {
             ) : null}
           </div>
 
-        <div className="flex items-center justify-between rounded-none border-t border-white/5 bg-[#1a1a1a] px-8 py-6 shadow-2xl">
-          <button onClick={clearDraftFilters} className="text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground hover:text-white">
+        <div className="flex items-center justify-between rounded-none border-t border-border bg-muted/30 px-8 py-6 shadow-2xl">
+          <button onClick={clearDraftFilters} className="text-[13px] font-bold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
             RESET
           </button>
-          <Button onClick={applyFilters} className="h-12 min-w-[160px] rounded-full border border-[#fbcc15]/40 bg-[#fbcc15] px-8 text-[14px] font-bold text-black drop-shadow-[0_0_15px_rgba(251,204,21,0.25)] hover:bg-[#fbcc15]/90 hover:opacity-90 active:scale-95">
+          <Button onClick={applyFilters} className="h-12 min-w-[160px] rounded-full border border-[var(--primary)]/40 bg-[var(--primary)] px-8 text-[14px] font-bold text-[var(--primary-foreground)] drop-shadow-[0_0_15px_rgba(var(--brand-rgb),0.25)] hover:bg-[var(--primary)]/90 hover:opacity-90 active:scale-95">
             APPLY FILTERS
           </Button>
         </div>
       </DialogContent>
     </Dialog>
-  ) : null;
+  );
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
       {/* Full Screen Hero Section */}
-      <section className="relative flex min-h-[100vh] w-full flex-col items-center justify-center overflow-hidden bg-background">
+      <section className="relative flex w-full flex-col items-center justify-start overflow-hidden bg-background pt-24 pb-0">
+        {/* Diagonal Grid Background */}
+        <div
+          className="absolute inset-0 z-0 opacity-[0.4] dark:opacity-[0.1]"
+          style={{
+            backgroundImage: `
+              repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 20px),
+              repeating-linear-gradient(-45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 20px)
+            `,
+            backgroundSize: "40px 40px",
+            color: isDarkMode ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.15)"
+          }}
+        />
+
         {/* Sparkles Background */}
         {sparklesEnabled ? (
           <div className="absolute inset-0 z-0 pointer-events-none opacity-45">
@@ -1508,37 +1517,48 @@ const Marketplace = () => {
         ) : null}
 
         {/* Glow Behind Planet */}
-        <div className="pointer-events-none absolute bottom-[15%] left-1/2 h-[600px] w-[100%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(250,204,21,0.45)_0%,rgba(250,204,21,0.15)_45%,transparent_70%)] blur-[60px]" />
-        <div className="pointer-events-none absolute bottom-[10%] left-1/2 h-[400px] w-[70%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.8)_0%,rgba(250,204,21,0.4)_50%,transparent_70%)] blur-[30px]" />
+        <div className="pointer-events-none absolute bottom-[15%] left-1/2 h-[600px] w-[100%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(var(--brand-rgb),0.45)_0%,rgba(var(--brand-rgb),0.15)_45%,transparent_70%)] blur-[60px]" />
+        <div className="pointer-events-none absolute bottom-[10%] left-1/2 h-[400px] w-[70%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.8)_0%,rgba(var(--brand-rgb),0.4)_50%,transparent_70%)] blur-[30px]" />
 
-        {/* Content */}
-        <div className="relative z-10 mb-[12vh] flex flex-col items-center gap-7 px-4 text-center">
-          <h1 className="max-w-[800px] text-[44px] font-medium tracking-tight text-white sm:text-[56px] md:text-[64px] lg:text-[76px] lg:leading-[1.05]">
-            Hire experts for<br />high-impact work.
-          </h1>
-          <p className="mx-auto max-w-xl text-[17px] leading-relaxed text-[#c9c9c9]">
-            Explore verified services, compare talent<br className="hidden sm:block" />fast, curated shortlist clarity.
-          </p>
-          <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row">
-            <Button size="lg" className="h-12 rounded-full border border-[#fbcc15] bg-[#fbcc15] px-8 text-[15px] font-semibold text-black transition-all hover:bg-[#fbcc15]/90 hover:opacity-90" onClick={() => scrollToSection("marketplace-results")}>
-              Explore Services
-            </Button>
-            <Button asChild variant="secondary" size="lg" className="h-12 rounded-full bg-white px-8 text-[15px] font-semibold text-black transition-all hover:bg-white/90">
-              <Link to="/contact">Talk to a strategist</Link>
-            </Button>
+        {/* Hero Section + Full Carousel */}
+        <div className="relative z-10 w-full pt-12 pb-8">
+          <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
+            <div className="relative z-10 mb-32 flex flex-col items-center gap-7 px-4 text-center">
+              <h1 className="max-w-[900px] text-[44px] font-medium tracking-tight text-white sm:text-[56px] md:text-[64px] lg:text-[76px] lg:leading-[1.05]">
+                <AnimatedHeroText 
+                  staticText="Hire experts for" 
+                  titles={["High-Impact Work", "Strategic Growth", "Expert Execution", "Verified Results", "Vetted Quality"]}
+                  className="flex flex-col items-center"
+                />
+              </h1>
+              <p className="mx-auto max-w-xl text-[17px] leading-relaxed text-[#c9c9c9]">
+                Explore verified services, compare talent<br className="hidden sm:block" />fast, curated shortlist clarity.
+              </p>
+              <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row">
+                <Button size="lg" className="h-12 rounded-full border border-[var(--primary)] bg-[var(--primary)] px-8 text-[15px] font-semibold text-[var(--primary-foreground)] transition-all hover:bg-[var(--primary)]/90 hover:opacity-90" onClick={() => scrollToSection("marketplace-results")}>
+                  Explore Services
+                </Button>
+                <Button asChild variant="secondary" size="lg" className="h-12 rounded-full bg-white px-8 text-[15px] font-semibold text-black transition-all hover:bg-white/90">
+                  <Link to="/contact">Talk to a strategist</Link>
+                </Button>
+              </div>
+            </div>
+
+            <div id="marketplace-results" className="w-full">
+              <ServiceCategoryCarousel
+                services={visibleBrowseServices}
+                loading={filterServicesLoading}
+                onSelectService={handleCategorySelect}
+                activeServiceKey={category}
+              />
+            </div>
           </div>
         </div>
 
         {/* Planet Horizon */}
-        <div className="pointer-events-none absolute bottom-0 left-1/2 w-[150%] -translate-x-1/2 translate-y-[65%] lg:w-[130%]">
+        <div className="pointer-events-none absolute bottom-0 left-1/2 w-[150%] -translate-x-1/2 translate-y-[25%] lg:w-[130%]">
           <div className="relative aspect-[3/1] w-full">
-
-            {/* 0. Base Black Planet (Anchors true horizon geometry) */}
             <div className="absolute w-full h-full rounded-[100%] bg-background" />
-
-            {/* 1. The Pure Solid White SVG Crescent */}
-            {/* An SVG crescent completely solves all blur, masking, and alignment constraints. It ensures a 100% solid, fully opaque #ffffff highlight that mathematically tracks the planet equator perfectly. 
-                The explicit path points start at x=20 and x=80 (extended slightly wider), forcing the solid filled geometry to physically pinch down to an absolute 0px razor point near the screen edges. */}
             <svg
               className="absolute inset-0 w-full h-full pointer-events-none"
               viewBox="0 0 100 100"
@@ -1547,185 +1567,213 @@ const Marketplace = () => {
             >
               <path d="M 20 10 A 50 50 0 0 1 80 10 A 50 45 0 0 0 20 10 Z" fill="#ffffff" />
             </svg>
-
-            {/* 3. Center Volumetric Flare */}
             <div className="absolute left-1/2 top-[-50px] h-[80px] w-[30%] max-w-[600px] -translate-x-1/2 rounded-[100%] bg-white opacity-20 blur-[40px] mix-blend-screen" />
           </div>
         </div>
       </section>
 
-      <section
-        id="marketplace-results"
-        className="relative z-30 mx-auto -mt-28 w-full max-w-[1280px] px-4 sm:-mt-32 sm:px-6 lg:-mt-32 lg:px-8"
-      >
-        <MarketplaceServicesSection
-          services={visibleBrowseServices}
-          loading={filterServicesLoading}
-          searchValue={q}
-          searchPlaceholder={
-            canViewProjectsMarketplace || isProjectsView
-              ? "Search live projects, services, or keywords"
-              : "Search freelancers or services"
-          }
-          onSearchChange={setQ}
-          onSelectService={handleCategorySelect}
-          activeServiceKey={category}
-          actions={marketplaceBrowseActions}
-        />
-      </section>
 
-      {/* Main Content Container Restored for content below hero */}
-      <div className="relative z-20 mx-auto mt-5 flex w-full max-w-[1280px] flex-col gap-14 px-4 pb-24 sm:mt-6 sm:gap-16 sm:px-6 lg:px-8">
-        <section className="space-y-5">
-          {(shouldRenderFreelancerResults || isProjectsView) && category !== "all" ? (
-            <>
-              <SubcategorySection
-                service={activeBrowseService || activeService}
-                subCategories={subCategoryOptions}
-                tools={toolOptions}
-                selectedSubCategoryId={selectedSubCategoryId}
-                selectedToolId={selectedToolId}
-                onSelectSubCategory={handleSubCategorySelect}
-                onSelectTool={handleToolSelect}
-                subCategoriesLoading={subCategoriesLoading}
-                toolsLoading={toolsLoading}
-                hideHeadings
-                hideEmptyMessages
-              />
-            </>
-          ) : null}
+      {/* ── Freelancer / Project results — appear right after carousel ── */}
+      <AnimatePresence>
+        {(shouldRenderFreelancerResults || isProjectsView) && category !== "all" && (
+          <motion.div
+            key="results-panel"
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }}
+            exit={{ opacity: 0, y: 16 }}
+            className="relative z-20 mx-auto w-full max-w-[1280px] px-4 pt-4 sm:px-6 lg:px-8"
+          >
+            {/* Active category header */}
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary">
+                  {isProjectsView ? "Live Projects" : "Specialists"}
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h3 className="text-3xl font-bold tracking-tight text-foreground dark:text-white sm:text-4xl">
+                    {activeBrowseService?.label || activeService?.label || "All Services"}
+                  </h3>
+                  {!loading && !projectLoading && (
+                    <Badge variant="secondary" className="rounded-full bg-primary/10 px-3 py-1 text-[12px] font-bold text-primary hover:bg-primary/20">
+                      {(isProjectsView ? projectTotal : total)} result{(isProjectsView ? projectTotal : total) === 1 ? "" : "s"}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setCategory("all"); setSelectedSubCategoryId(null); setSelectedToolId(null); }}
+                className="group inline-flex items-center gap-2.5 rounded-full border border-primary/10 bg-white/60 px-5 py-2.5 text-[13px] font-bold text-muted-foreground shadow-sm backdrop-blur-md transition-all hover:border-primary/40 hover:bg-white hover:text-primary dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.08]"
+              >
+                <X className="h-4 w-4 transition-transform duration-300 group-hover:rotate-90" />
+                Clear filter
+              </button>
+            </div>
 
-          {shouldRenderFreelancerResults ? (
-          <AnimatePresence mode="wait">
-            {loading ? (
-              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
-                <div className="space-y-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#fbcc15]">
-                    Specialists
-                  </p>
-                  <h3 className="text-2xl font-semibold tracking-[-0.04em] text-white">
-                    Freelancer listings
-                  </h3>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-                  {Array.from({ length: MARKETPLACE_PAGE_SIZE }).map((_, index) => (
-                    <Card key={`skeleton-${index}`} className={cn(glassCardClass, "overflow-hidden rounded-[28px]")}>
-                      <Skeleton className="h-44 w-full rounded-none" />
-                      <CardContent className="space-y-4 p-5">
-                        <div className="flex items-center gap-3"><Skeleton className="h-11 w-11 rounded-full" /><div className="space-y-2"><Skeleton className="h-4 w-28" /><Skeleton className="h-3 w-20" /></div></div>
-                        <Skeleton className="h-5 w-full" />
-                        <Skeleton className="h-4 w-4/5" />
-                        <Skeleton className="h-4 w-full" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </motion.div>
-            ) : data.length === 0 ? (
-              <motion.div key="empty" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="rounded-[34px] border border-dashed border-white/10 bg-white/[0.04] px-6 py-20 text-center shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)]">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.06] text-slate-400"><Search className="h-7 w-7" /></div>
-                <h2 className="mt-6 text-2xl font-semibold tracking-tight text-white">No services match this mix yet</h2>
-                <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-400">Try broadening the category, adjusting budget boundaries, or using a keyword like AI, cloud, or security.</p>
-                <Button variant="outline" className="mt-7 rounded-full border-white/10 bg-white/[0.04] px-6 py-5 text-sm font-semibold text-white hover:bg-white/[0.08]" onClick={resetFilters}>Clear all filters</Button>
-              </motion.div>
-            ) : (
-              <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
-                <div className="space-y-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#fbcc15]">
-                    Specialists
-                  </p>
-                  <h3 className="text-2xl font-semibold tracking-[-0.04em] text-white">
-                    Freelancer listings
-                  </h3>
-                  <p className="text-sm text-slate-400">
-                    {total} result{total === 1 ? "" : "s"}
-                    {activeBrowseService?.label || activeService?.label
-                      ? ` in ${activeBrowseService?.label || activeService?.label}.`
-                      : "."}
-                  </p>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-                {data.map((item) => {
-                  const image = item.serviceDetails?.coverImage || item.serviceDetails?.image || null;
-                  const rating = Number(item.rating || 0);
-                  const hasRating = rating > 0;
-                  const delivery = item.serviceDetails?.deliveryTime ? deliveryLabels[item.serviceDetails.deliveryTime] || String(item.serviceDetails.deliveryTime).replace(/_/g, " ") : null;
-                  const price = formatPrice(item.serviceDetails?.startingPrice || item.serviceDetails?.minBudget || item.serviceDetails?.price, item.serviceDetails?.averageProjectPriceRange || item.serviceDetails?.priceRange);
-                  return (
-                    <motion.article key={item.id} className="h-full">
-                      <Link
-                        to={`/marketplace/service/${item.id}`}
-                        state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
-                        className="block h-full"
-                      >
-                        <Card className="group h-full overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_28px_90px_-40px_color-mix(in_srgb,var(--primary)_22%,transparent)]">
-                          <div className="relative h-44 overflow-hidden border-b border-white/10 bg-slate-950">
-                            {image ? <img src={image} alt={item.service || "Marketplace service"} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" /> : <div className={cn("absolute inset-0 bg-gradient-to-br", getGradient(item.serviceKey || item.id))} />}
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
-                            {canUseClientWishlist ? (
-                              <div className="absolute inset-x-0 top-0 flex items-start justify-end p-4">
-                                <button type="button" onClick={(event) => toggleFavorite(event, item)} aria-label={favorites[item.id] ? "Remove from favorites" : "Add to favorites"} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-slate-950/72 text-white shadow-sm backdrop-blur-md transition hover:bg-slate-900/90">
-                                  <Heart className={cn("h-4 w-4", favorites[item.id] ? "fill-rose-500 text-rose-500" : "text-slate-200")} />
-                                </button>
-                              </div>
-                            ) : null}
-                            {item.isFeatured && <div className="absolute left-4 top-14"><Badge className="rounded-full border-none bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-white shadow-sm"><Sparkles className="h-3 w-3" />Featured</Badge></div>}
-                          </div>
-                          <CardContent className="flex min-h-[252px] flex-col p-5">
-                            <div className="flex min-h-12 items-center gap-3">
-                              {item.freelancer?.avatar ? <img src={item.freelancer.avatar} alt={item.freelancer.fullName || "Freelancer"} loading="lazy" decoding="async" className="h-11 w-11 rounded-full border border-white/10 object-cover shadow-sm" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-xs font-semibold text-slate-200 shadow-sm">{getInitials(item.freelancer?.fullName)}</div>}
-                              <div className="min-w-0 flex-1">
-                                <div className="flex min-h-12 items-center justify-between gap-3">
-                                  <div className="flex min-w-0 items-center gap-1.5">
-                                    <p className="truncate text-sm font-semibold text-white">{item.freelancer?.fullName || "Anonymous"}</p>
-                                    {parseBooleanFlag(item.freelancer?.isVerified) && (
-                                      <BadgeCheck className="h-4 w-4 shrink-0 fill-primary text-black" />
-                                    )}
-                                  </div>
-                                  {hasRating ? (
-                                    <div className="inline-flex shrink-0 items-center gap-1.5 text-xs text-slate-400">
-                                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                                      <span className="font-semibold text-white">{rating.toFixed(1)}</span>
-                                      <span>({item.reviewCount || 0})</span>
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="mt-0.5 flex min-h-16 flex-col">
-                              <h3 className="min-h-4 line-clamp-2 text-xs font-semibold leading-4 text-primary transition-colors group-hover:text-primary/85">{item.service || "Untitled service"}</h3>
-                              <div className="mt-0 min-h-[3.5rem]">
-                                {item.bio ? <p className="line-clamp-2 text-xs leading-5 text-slate-400">{item.bio}</p> : null}
-                              </div>
-                            </div>
-                            <div className="mt-auto flex items-end justify-between border-t border-white/10 pt-4">
-                              <div className="space-y-1">
-                                {delivery && <div className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-slate-300"><Clock className="h-3.5 w-3.5" />{delivery}</div>}
-                                <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Starts from</p><p className="mt-1 text-lg font-semibold tracking-tight text-white">{price}</p></div>
-                              </div>
-                              <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition group-hover:border-primary group-hover:bg-primary/90">View <ArrowRight className="h-3.5 w-3.5" /></span>
-                            </div>
+            {/* Subcategory row */}
+            {category !== "all" && (
+              <div className="mb-6">
+                <SubcategorySection
+                  service={activeBrowseService || activeService}
+                  subCategories={subCategoryOptions}
+                  tools={toolOptions}
+                  selectedSubCategoryId={selectedSubCategoryId}
+                  selectedToolId={selectedToolId}
+                  onSelectSubCategory={handleSubCategorySelect}
+                  onSelectTool={handleToolSelect}
+                  subCategoriesLoading={subCategoriesLoading}
+                  toolsLoading={toolsLoading}
+                  hideHeadings
+                  hideEmptyMessages
+                />
+              </div>
+            )}
+
+            {/* Freelancer grid */}
+            {shouldRenderFreelancerResults && (
+              <AnimatePresence mode="wait">
+                {loading ? (
+                  <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                      {Array.from({ length: MARKETPLACE_PAGE_SIZE }).map((_, index) => (
+                        <Card key={`skeleton-${index}`} className={cn(glassCardClass, "overflow-hidden rounded-[28px]")}>
+                          <Skeleton className="h-44 w-full rounded-none" />
+                          <CardContent className="space-y-4 p-5">
+                            <div className="flex items-center gap-3"><Skeleton className="h-11 w-11 rounded-full" /><div className="space-y-2"><Skeleton className="h-4 w-28" /><Skeleton className="h-3 w-20" /></div></div>
+                            <Skeleton className="h-5 w-full" />
+                            <Skeleton className="h-4 w-4/5" />
                           </CardContent>
                         </Card>
-                      </Link>
-                    </motion.article>
-                  );
-                })}
-                </div>
-              </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+                ) : data.length === 0 ? (
+                  <motion.div key="empty" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="rounded-[34px] border border-dashed border-border bg-card/40 px-6 py-20 text-center">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><Search className="h-7 w-7" /></div>
+                    <h2 className="mt-6 text-2xl font-semibold tracking-tight text-foreground">No specialists found</h2>
+                    <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-muted-foreground">Try broadening the category or clearing some filters.</p>
+                    <Button variant="outline" className="mt-7 rounded-full border-border bg-card px-6 py-5 text-sm font-semibold text-foreground hover:bg-muted" onClick={resetFilters}>Clear all filters</Button>
+                  </motion.div>
+                ) : (
+                  <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                      {data.map((item) => {
+                        const image = item.serviceDetails?.coverImage || item.serviceDetails?.image || null;
+                        const rating = Number(item.rating || 0);
+                        const hasRating = rating > 0;
+                        const delivery = item.serviceDetails?.deliveryTime ? deliveryLabels[item.serviceDetails.deliveryTime] || String(item.serviceDetails.deliveryTime).replace(/_/g, " ") : null;
+                        const price = formatPrice(item.serviceDetails?.startingPrice || item.serviceDetails?.minBudget || item.serviceDetails?.price, item.serviceDetails?.averageProjectPriceRange || item.serviceDetails?.priceRange);
+                        return (
+                          <motion.article
+                            key={item.id}
+                            className="h-full"
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.35, ease: "easeOut" }}
+                          >
+                            <Link
+                              to={`/marketplace/service/${item.id}`}
+                              state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
+                              className="block h-full"
+                            >
+                              <Card className="group relative h-full overflow-hidden rounded-[28px] border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-lg dark:border-white/8 dark:bg-[#070c18] dark:shadow-[0_22px_70px_-30px_rgba(2,6,23,0.9)]">
+                                {/* Image / gradient banner */}
+                                <div className="relative h-48 overflow-hidden bg-muted dark:bg-slate-950">
+                                  {image
+                                    ? <img src={image} alt={item.service || "Marketplace service"} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                    : <div className={cn("absolute inset-0 bg-gradient-to-br", getGradient(item.serviceKey || item.id))} />
+                                  }
+                                  {/* Gradient overlay */}
+                                  <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent dark:from-[#070c18] dark:via-[#070c18]/20" />
+
+                                  {/* Wishlist */}
+                                  {canUseClientWishlist && (
+                                    <div className="absolute right-3 top-3">
+                                      <button type="button" onClick={(event) => toggleFavorite(event, item)} aria-label={favorites[item.id] ? "Remove from favorites" : "Add to favorites"} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/60 text-foreground backdrop-blur-md transition hover:bg-background/80 dark:border-white/15 dark:bg-black/60 dark:text-white">
+                                        <Heart className={cn("h-3.5 w-3.5", favorites[item.id] ? "fill-rose-500 text-rose-500" : "text-muted-foreground dark:text-slate-200")} />
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  {/* Featured badge */}
+                                  {item.isFeatured && (
+                                    <div className="absolute bottom-3 left-3">
+                                      <Badge className="rounded-full border-none bg-emerald-500/90 px-2.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+                                        <Sparkles className="mr-1 h-2.5 w-2.5" /> Featured
+                                      </Badge>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <CardContent className="flex flex-col gap-3 p-4">
+                                  {/* Freelancer row */}
+                                  <div className="flex items-center gap-3">
+                                    {item.freelancer?.avatar
+                                      ? <img src={item.freelancer.avatar} alt={item.freelancer.fullName || "Freelancer"} loading="lazy" decoding="async" className="h-10 w-10 rounded-full border border-border object-cover dark:border-white/10" />
+                                      : <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted text-xs font-bold text-foreground dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200">{getInitials(item.freelancer?.fullName)}</div>
+                                    }
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <p className="truncate text-sm font-semibold text-foreground dark:text-white">{item.freelancer?.fullName || "Anonymous"}</p>
+                                        {parseBooleanFlag(item.freelancer?.isVerified) && <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-primary text-black" />}
+                                      </div>
+                                      {hasRating && (
+                                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                          <Star className="h-3 w-3 fill-primary text-primary" />
+                                          <span className="font-bold text-foreground dark:text-white">{rating.toFixed(1)}</span>
+                                          <span className="font-medium">({item.reviewCount || 0} reviews)</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Service title */}
+                                  <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary">{item.serviceDetails?.categoryLabel || item.serviceCategory || "Service"}</p>
+                                    <h3 className="mt-0.5 line-clamp-2 text-[14px] font-semibold leading-snug text-foreground group-hover:text-primary dark:text-white dark:group-hover:text-white/90">
+                                      {item.service || "Untitled service"}
+                                    </h3>
+                                  </div>
+
+                                  {/* Bio snippet */}
+                                  {item.bio && <p className="line-clamp-2 text-[12px] leading-relaxed text-muted-foreground dark:text-slate-500">{item.bio}</p>}
+
+                                  {/* Footer: price + CTA */}
+                                  <div className="mt-auto flex items-center justify-between border-t border-border pt-3 dark:border-white/6">
+                                    <div>
+                                      {delivery && (
+                                        <div className="mb-1 inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground dark:text-slate-500">
+                                          <Clock className="h-3 w-3" />{delivery}
+                                        </div>
+                                      )}
+                                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Starts from</p>
+                                      <p className="text-[16px] font-bold tracking-tight text-foreground dark:text-white">{price}</p>
+                                    </div>
+                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/35 bg-primary/90 px-3.5 py-2 text-[11px] font-bold text-primary-foreground transition group-hover:bg-primary">
+                                      View <ArrowRight className="h-3 w-3" />
+                                    </span>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </Link>
+                          </motion.article>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             )}
-          </AnimatePresence>
-          ) : null}
 
           {isProjectsView ? (
             <AnimatePresence mode="wait">
               {projectLoading ? (
                 <motion.div key="projects-loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
                   <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#fbcc15]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--primary)]">
                       Live projects
                     </p>
-                    <h3 className="text-2xl font-semibold tracking-[-0.04em] text-white">
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground dark:text-white">
                       Client project listings
                     </h3>
                   </div>
@@ -1760,7 +1808,7 @@ const Marketplace = () => {
               ) : (
                 <motion.div key="projects-grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
                   <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#fbcc15]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--primary)]">
                       Live projects
                     </p>
                     <h3 className="text-2xl font-semibold tracking-[-0.04em] text-white">
@@ -1854,65 +1902,52 @@ const Marketplace = () => {
             </AnimatePresence>
           ) : null}
 
-          {((shouldRenderFreelancerResults && !loading) || (isProjectsView && !projectLoading)) && activeTotalPages > 1 && (
-            <div className="flex flex-col gap-4 rounded-[30px] border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[0_24px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-400">
-                Page <span className="font-semibold text-white">{page}</span> of{" "}
-                <span className="font-semibold text-white">{activeTotalPages}</span>
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-11 w-11 rounded-full border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]"
-                  disabled={page <= 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                {Array.from({ length: activeTotalPages }, (_, index) => index + 1)
-                  .filter((pageNumber) => {
-                    if (activeTotalPages <= 7) return true;
-                    if (pageNumber === 1 || pageNumber === activeTotalPages) return true;
-                    return Math.abs(pageNumber - page) <= 1;
-                  })
-                  .map((pageNumber, index, visiblePages) => {
-                    const previous = visiblePages[index - 1];
-                    const showGap = previous && pageNumber - previous > 1;
-                    return (
-                      <div key={`page-group-${pageNumber}`} className="flex items-center gap-2">
-                        {showGap && <span className="px-1 text-sm text-slate-500">...</span>}
-                        <Button
-                          type="button"
-                          variant={pageNumber === page ? "default" : "outline"}
-                          className={cn(
-                            "h-11 min-w-11 rounded-full px-4 text-sm font-semibold",
-                            pageNumber === page
-                              ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                              : "border-white/10 bg-white/[0.04] text-slate-200 hover:border-white/20 hover:bg-white/[0.08]"
-                          )}
-                          onClick={() => setPage(pageNumber)}
-                        >
-                          {pageNumber}
-                        </Button>
-                      </div>
-                    );
-                  })}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-11 w-11 rounded-full border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]"
-                  disabled={page >= activeTotalPages}
-                  onClick={() => setPage((current) => Math.min(activeTotalPages, current + 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                     {((shouldRenderFreelancerResults && !loading) || (isProjectsView && !projectLoading)) && activeTotalPages > 1 && (
+              <div className="mt-6 flex flex-col gap-4 rounded-[30px] border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-slate-400">
+                  Page <span className="font-semibold text-white">{page}</span> of{" "}
+                  <span className="font-semibold text-white">{activeTotalPages}</span>
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  {Array.from({ length: activeTotalPages }, (_, index) => index + 1)
+                    .filter((pageNumber) => {
+                      if (activeTotalPages <= 7) return true;
+                      if (pageNumber === 1 || pageNumber === activeTotalPages) return true;
+                      if (Math.abs(pageNumber - page) <= 1) return true;
+                      return false;
+                    })
+                    .reduce((acc, pageNumber, index, array) => {
+                      if (index > 0 && pageNumber - array[index - 1] > 1) acc.push("ellipsis");
+                      acc.push(pageNumber);
+                      return acc;
+                    }, [])
+                    .map((item, index) => {
+                      if (item === "ellipsis") return <span key={`ellipsis-${index}`} className="px-1 text-slate-500">…</span>;
+                      const pageNumber = item;
+                      const isCurrentPage = pageNumber === page;
+                      return (
+                        <div key={pageNumber} className="contents">
+                          <Button type="button" variant={isCurrentPage ? "default" : "outline"} size="icon" className={cn("h-11 w-11 rounded-full", isCurrentPage ? "border-primary bg-primary text-black hover:bg-primary/90" : "border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]")} onClick={() => setPage(pageNumber)}>
+                            {pageNumber}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]" disabled={page >= activeTotalPages} onClick={() => setPage((current) => Math.min(activeTotalPages, current + 1))}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </section>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Static Sections: projects showcase, why-catalance, FAQ, CTA ── */}
+      <div className="relative z-20 mx-auto mt-4 flex w-full max-w-[1280px] flex-col gap-14 px-4 pb-24 sm:gap-16 sm:px-6 lg:px-8">
 
         {canViewProjectsMarketplace ? (
         <section id="open-projects" className="space-y-6">
@@ -1921,15 +1956,15 @@ const Marketplace = () => {
               <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
                 Live Projects
               </Badge>
-              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-foreground dark:text-white sm:text-4xl">
                 Open client briefs in active demand
               </h2>
-              <p className="max-w-2xl text-sm leading-7 text-slate-400">
+              <p className="max-w-2xl text-sm leading-7 text-muted-foreground dark:text-slate-400">
                 Real project context helps specialists respond with sharper proposals and gives buyers clearer match quality.
               </p>
             </div>
             {openProjectsShowcase.isFallback ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-slate-300">
+              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/40 px-4 py-2 text-xs font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                 Marketplace preview
               </span>
@@ -1939,30 +1974,30 @@ const Marketplace = () => {
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             {openProjectsShowcase.items.map((project) => (
               <article key={project.id} className="h-full">
-                <Card className="group h-full rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_28px_90px_-40px_color-mix(in_srgb,var(--primary)_22%,transparent)]">
+                <Card className="group h-full rounded-[28px] border border-border bg-card shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)]">
                   <CardContent className="flex h-full min-h-[264px] flex-col p-5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge className="rounded-full border border-white/15 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-slate-200">
+                      <Badge className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-[11px] font-medium text-foreground dark:border-white/15 dark:bg-white/[0.03] dark:text-slate-200">
                         {project.serviceName}
                       </Badge>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-slate-300">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300">
                         <Clock className="h-3 w-3" />
                         {project.timeline}
                       </span>
                     </div>
-                    <h3 className="mt-4 line-clamp-2 text-base font-semibold leading-6 text-white">
+                    <h3 className="mt-4 line-clamp-2 text-base font-semibold leading-6 text-foreground dark:text-white">
                       {project.title}
                     </h3>
-                    <p className="mt-3 line-clamp-3 text-xs leading-6 text-slate-400">
+                    <p className="mt-3 line-clamp-3 text-xs leading-6 text-muted-foreground dark:text-slate-400">
                       {project.summary}
                     </p>
 
-                    <div className="mt-auto flex items-end justify-between border-t border-white/10 pt-4">
+                    <div className="mt-auto flex items-end justify-between border-t border-border pt-4 dark:border-white/10">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 dark:text-slate-500">
                           Budget
                         </p>
-                        <p className="mt-1 text-lg font-semibold tracking-tight text-white">
+                        <p className="mt-1 text-lg font-semibold tracking-tight text-foreground dark:text-white">
                           {project.budgetLabel}
                         </p>
                       </div>
@@ -1982,203 +2017,221 @@ const Marketplace = () => {
         </section>
         ) : null}
 
-        <section id="how-it-works" className="space-y-6">
-          <div className="space-y-2">
-            <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-              How It Works
-            </Badge>
-            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-              A cleaner path from search to execution
-            </h2>
-          </div>
-          <div className="grid gap-5 md:grid-cols-3">
-            {HOW_IT_WORKS_STEPS.map((step) => {
-              const Icon = step.icon;
-              return (
-                <Card key={step.id} className="h-full rounded-[26px] border border-white/10 bg-white/[0.035] shadow-[0_20px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl">
-                  <CardContent className="p-5 sm:p-6">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold tracking-[0.2em] text-primary">{step.step}</span>
-                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-white/[0.04] text-slate-200">
-                        <Icon className="h-4 w-4" />
-                      </span>
-                    </div>
-                    <h3 className="mt-4 text-lg font-semibold leading-6 text-white">{step.title}</h3>
-                    <p className="mt-2 text-sm leading-7 text-slate-400">{step.description}</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </section>
 
-        <section id="why-catalance" className="space-y-6">
-          <div className="space-y-2">
-            <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+        {/* Process Video Section */}
+        <div className="w-full">
+          <ProcessVideo />
+        </div>
+
+        <section id="why-catalance" className="relative space-y-12 py-12">
+          {/* Section Header */}
+          <div className="space-y-4 text-center">
+            <Badge className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-primary">
               Why Catalance
             </Badge>
-            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-              Built for trust, clarity, and premium discovery
+            <h2 className="text-4xl font-bold tracking-tight text-foreground dark:text-white sm:text-6xl">
+              That’s Why You’ll Love <br />
+              <span className="italic font-medium text-primary">
+                Working With Us
+              </span>
             </h2>
-          </div>
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {TRUST_PILLARS.map((pillar) => {
-              const Icon = pillar.icon;
-              return (
-                <Card key={pillar.id} className="h-full rounded-[24px] border border-white/10 bg-white/[0.03] shadow-[0_20px_65px_-44px_rgba(2,6,23,0.82)] backdrop-blur-xl">
-                  <CardContent className="space-y-4 p-5">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <div className="space-y-2">
-                      <h3 className="text-base font-semibold text-white">{pillar.title}</h3>
-                      <p className="text-xs leading-6 text-slate-400">{pillar.description}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            <p className="mx-auto max-w-2xl text-lg font-medium leading-relaxed text-muted-foreground">
+              With top-tier specialists, daily updates, and unlimited revisions, we make the 
+              service experience fast, flexible, and frustration-free.
+            </p>
           </div>
 
-          <div className="relative overflow-hidden rounded-[34px] border border-white/10 bg-[#06080d]/95 p-5 shadow-[0_34px_100px_-44px_rgba(2,6,23,0.9)] sm:p-6">
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute left-[50%] top-[-34%] h-72 w-72 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl" />
-            </div>
-            <div className="relative mx-auto max-w-5xl space-y-4">
-              <div className="space-y-3 text-center">
-                <Badge className="rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
-                  Why Catalance
-                </Badge>
-                <div className="space-y-2.5">
-                  <h3 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-[56px] sm:leading-[1.02]">
-                    Why Catalance is <span className="text-primary">better</span> for your business
-                  </h3>
-                  <p className="mx-auto max-w-3xl text-sm leading-7 text-slate-300/90 sm:text-[16px]">
-                    We combine verified talent, transparent pricing, and premium support to deliver exceptional results every time.
-                  </p>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto lg:overflow-visible">
-                <div className="w-full min-w-[880px] overflow-hidden rounded-[24px] border border-white/12 bg-[#070a10]/92 lg:min-w-0">
-                  <div className="grid grid-cols-[1.14fr_0.95fr_0.95fr_0.95fr] border-b border-white/10">
-                    <div className="flex items-center px-6 py-4 text-[24px] font-semibold tracking-[-0.02em] text-white sm:text-[28px] lg:text-[31px]">Features</div>
-                    <div className="border-x border-primary/45 bg-gradient-to-b from-primary/[0.18] via-primary/[0.12] to-primary/[0.06] px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-primary/70 bg-primary/20 text-[15px] font-bold text-primary">
-                          C
-                        </span>
-                        <span className="text-[24px] font-semibold tracking-[-0.02em] text-white sm:text-[28px] lg:text-[31px]">Catalance</span>
-                      </div>
-                    </div>
-                    <div className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-500/90 text-[15px] font-bold text-white">
-                          GM
-                        </span>
-                        <span className="text-[20px] font-semibold tracking-[-0.02em] text-white sm:text-[24px] lg:text-[26px]">Generic Marketplaces</span>
-                      </div>
-                    </div>
-                    <div className="border-l border-white/10 px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-600/90 text-[15px] font-bold text-white">
-                          BP
-                        </span>
-                        <span className="text-[20px] font-semibold tracking-[-0.02em] text-white sm:text-[24px] lg:text-[26px]">Bidding Platforms</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {WHY_CATALANCE_COMPARISON_ROWS.map((row) => {
-                    const FeatureIcon = row.icon;
-                    const columns = [row.catalance, row.fiverr, row.upwork];
-                    return (
-                      <div key={row.id} className="grid grid-cols-[1.14fr_0.95fr_0.95fr_0.95fr] border-b border-white/10 last:border-b-0">
-                        <div className="flex items-center gap-3 px-6 py-2.5 text-slate-100 sm:py-3">
-                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary/35 bg-primary/10 text-primary">
-                            <FeatureIcon className="h-3.5 w-3.5" />
-                          </span>
-                          <span className="text-[14px] font-normal leading-[1.2] text-slate-100/95 sm:text-[15px]">{row.feature}</span>
-                        </div>
-
-                        {columns.map((item, index) => {
-                          const isNegative = item.tone === "negative";
-                          const isNeutral = item.tone === "neutral";
-                          return (
-                            <div
-                              key={`${row.id}-${index}`}
-                              className={cn(
-                                "px-6 py-2.5 sm:py-3",
-                                index === 0
-                                  ? "border-x border-primary/45 bg-primary/[0.075]"
-                                  : index === 1
-                                    ? "border-r border-white/10"
-                                    : "border-r-0"
-                              )}
-                            >
-                              <div className="inline-flex items-center gap-2.5">
-                                <span
-                                  className={cn(
-                                    "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
-                                    isNegative
-                                      ? "border-slate-500/55 text-slate-400"
-                                      : isNeutral
-                                        ? "border-primary/70 text-primary"
-                                        : "border-primary/70 text-primary"
-                                  )}
-                                >
-                                  {isNegative ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
-                                </span>
-                                <span className="text-[14px] font-normal leading-[1.2] text-slate-200 sm:text-[15px]">{item.label}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-4 rounded-[20px] border border-white/12 bg-black/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <div className="flex items-start gap-3">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-primary/10 text-primary">
-                    <Star className="h-4 w-4" />
-                  </span>
-                  <div className="space-y-1">
-                    <p className="text-base font-semibold leading-tight text-white sm:text-lg">
-                      Built for businesses that value quality, speed, and reliability.
+          {/* Bento Grid */}
+          <div className="grid gap-6 lg:grid-cols-12 lg:grid-rows-2">
+            {/* Column 1: Specialists Grid */}
+            <div className="lg:col-span-4 lg:row-span-2">
+              <Card className="group relative h-full overflow-hidden rounded-[32px] border border-border bg-card shadow-lg transition-all hover:border-primary/30 dark:border-white/10 dark:bg-white/[0.03]">
+                <CardContent className="flex h-full flex-col p-8">
+                  <div className="mb-8 space-y-3">
+                    <h3 className="text-2xl font-bold text-foreground dark:text-white">Specialists Who Get It</h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      You'll work with experienced experts who make things simple, smooth, and always focused on results.
                     </p>
-                    <p className="text-sm text-slate-400/95 sm:text-[16px]">Join thousands of businesses growing with Catalance.</p>
                   </div>
-                </div>
-                <Button
-                  size="lg"
-                  className="h-11 rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                  onClick={() => scrollToSection("marketplace-results")}
-                >
-                  Hire Top Experts
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
+                  
+                  {/* Avatar Grid: 3x3 Pattern */}
+                  <div className="mt-auto grid grid-cols-3 gap-3">
+                    {/* Row 1 */}
+                    <div className="aspect-square rounded-2xl bg-zinc-200/50 dark:bg-white/[0.03]" />
+                    <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-white dark:border-white/10 dark:bg-transparent">
+                      <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=specialist-1" alt="" className="h-full w-full object-cover" />
+                    </div>
+                    <div className="aspect-square rounded-2xl bg-zinc-200/50 dark:bg-white/[0.03]" />
+                    
+                    {/* Row 2 */}
+                    <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-white dark:border-white/10 dark:bg-transparent">
+                      <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=specialist-2" alt="" className="h-full w-full object-cover" />
+                    </div>
+                    <div className="aspect-square rounded-2xl bg-zinc-200/50 dark:bg-white/[0.03]" />
+                    <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-white dark:border-white/10 dark:bg-transparent">
+                      <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=specialist-3" alt="" className="h-full w-full object-cover" />
+                    </div>
+
+                    {/* Row 3 */}
+                    <div className="aspect-square rounded-2xl bg-zinc-200/50 dark:bg-white/[0.03]" />
+                    <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-white dark:border-white/10 dark:bg-transparent">
+                      <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=specialist-4" alt="" className="h-full w-full object-cover" />
+                    </div>
+                    <div className="aspect-square rounded-2xl bg-zinc-200/50 dark:bg-white/[0.03]" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Column 2: Metrics (Stacked) */}
+            <div className="space-y-6 lg:col-span-4 lg:row-span-2">
+              {/* Delivery Card */}
+              <Card className="group relative overflow-hidden rounded-[32px] border border-border bg-card shadow-lg transition-all hover:border-primary/30 dark:border-white/10 dark:bg-white/[0.03]">
+                <CardContent className="p-8">
+                  <div className="relative mb-8 flex flex-col items-center">
+                    <div className="relative z-10 flex gap-2">
+                      <div className="h-8 w-8 rounded-full border border-border bg-zinc-100 p-1 dark:border-white/10 dark:bg-white/[0.05]">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=s1" alt="" className="h-full w-full" />
+                      </div>
+                      <div className="h-8 w-8 rounded-full border border-border bg-zinc-100 p-1 dark:border-white/10 dark:bg-white/[0.05]">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=s2" alt="" className="h-full w-full" />
+                      </div>
+                      <div className="h-8 w-8 rounded-full border border-border bg-zinc-100 p-1 dark:border-white/10 dark:bg-white/[0.05]">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=s3" alt="" className="h-full w-full" />
+                      </div>
+                    </div>
+                    <div className="absolute top-4 h-12 w-24 border-x border-b border-primary/20 rounded-b-3xl" />
+                    <div className="mt-10">
+                      <Badge className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] font-bold text-primary">
+                        + Daily Progress
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="text-2xl font-bold text-foreground dark:text-white">24-Hour Delivery</h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      We start fast and deliver your first results in just a day. No delays, no chasing.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Revisions Card */}
+              <Card className="group relative overflow-hidden rounded-[32px] border border-border bg-card shadow-lg transition-all hover:border-primary/30 dark:border-white/10 dark:bg-white/[0.03]">
+                <CardContent className="p-8">
+                  <div className="relative mb-12 flex h-24 items-center justify-center">
+                    {/* Complex Decorative Line (SVG) */}
+                    <svg className="absolute inset-0 h-full w-full opacity-30" preserveAspectRatio="none" viewBox="0 0 100 100">
+                      <path 
+                        d="M 5,0 L 5,20 L 25,20 L 25,50 L 75,50 L 75,20 L 95,20 L 95,80" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="0.5"
+                        className="text-primary"
+                      />
+                    </svg>
+                    
+                    <Badge className="relative z-10 rounded-full border border-primary/30 bg-card px-6 py-2.5 text-[14px] font-bold text-foreground shadow-2xl dark:bg-[#0d0d0d] dark:text-white">
+                      Request, Anytime
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="text-2xl font-bold text-foreground dark:text-white">Unlimited Revisions</h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      Need changes? Just say it — We'll keep tweaking until you're truly happy.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Column 3: Transparency/Tasks */}
+            <div className="lg:col-span-4 lg:row-span-2">
+              <Card className="group relative h-full overflow-hidden rounded-[32px] border border-border bg-card shadow-lg transition-all hover:border-primary/30 dark:border-white/10 dark:bg-white/[0.03]">
+                <CardContent className="flex h-full flex-col p-8">
+                  <div className="mb-8 space-y-3">
+                    <h3 className="text-2xl font-bold text-foreground dark:text-white">Full Transparency</h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      Track every task, every step. See every update. We keep you in the loop at all times.
+                    </p>
+                  </div>
+
+                  {/* Task Mockup */}
+                  <div className="mt-auto space-y-4 rounded-3xl border border-border bg-muted/40 p-6 dark:border-white/10 dark:bg-white/[0.04]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                         <span className="text-[14px] font-bold text-foreground dark:text-white">Tasks</span>
+                         <span className="text-[14px] font-bold text-muted-foreground">/</span>
+                         <span className="text-[14px] font-bold text-muted-foreground">Catalance</span>
+                      </div>
+                      <Settings className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="space-y-4 pt-2">
+                      {[
+                        { label: "Project Kickoff", status: "Completed", color: "bg-emerald-500", icon: BriefcaseBusiness },
+                        { label: "Wireframes", status: "Completed", color: "bg-emerald-500", icon: LayoutGrid },
+                        { label: "UI Design", status: "In Progress", color: "bg-amber-500", icon: Sparkles },
+                        { label: "Framer Development", status: "Pending", color: "bg-rose-500", icon: Code2 },
+                      ].map((task, i) => (
+                        <div key={i} className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <task.icon className="h-4.5 w-4.5 text-foreground dark:text-white" />
+                            <span className="text-[14px] font-bold text-foreground/90 dark:text-white/90">{task.label}</span>
+                          </div>
+                          <Badge variant="outline" className="flex items-center gap-2 rounded-full border-border bg-card/50 px-2.5 py-0.5 text-[10px] font-bold dark:border-white/10">
+                             <span className="relative flex h-2 w-2">
+                               <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-75", task.color)} />
+                               <span className={cn("relative inline-flex h-2 w-2 rounded-full", task.color)} />
+                             </span>
+                             {task.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 pt-2 text-[13px] font-bold text-muted-foreground/60 transition-colors hover:text-primary">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted/50 dark:bg-white/[0.05]">
+                        <Plus className="h-3.5 w-3.5" />
+                      </div>
+                      Add New Task
+                    </div>
+                    
+                    <div className="flex justify-center pt-2">
+                      <span className="text-[12px] font-bold tracking-tight text-muted-foreground opacity-70">catalance®</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Large CTA Button */}
+          <div className="flex justify-center pt-8">
+            <Button
+              size="lg"
+              className="group relative h-16 overflow-hidden rounded-full bg-primary px-10 text-lg font-bold text-primary-foreground shadow-xl transition-all hover:scale-105 hover:shadow-primary/20"
+              onClick={() => navigate("/contact")}
+            >
+              <span className="relative z-10 mr-4">Book a 15-min call</span>
+              <div className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white text-primary transition-all duration-300 group-hover:-rotate-45 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+                <ArrowRight className="h-4 w-4" />
+              </div>
+            </Button>
           </div>
         </section>
 
         <section className="grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-10 lg:items-start">
           <div className="space-y-6 lg:sticky lg:top-24">
-            <Badge className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-slate-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-200" />
+            <Badge className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/40 px-4 py-2 text-xs font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
               FAQ
             </Badge>
             <div className="space-y-4">
-              <h2 className="text-4xl font-semibold tracking-[-0.03em] text-white sm:text-5xl">
+              <h2 className="text-4xl font-semibold tracking-[-0.03em] text-foreground dark:text-white sm:text-5xl">
                 Frequently
                 <br />
-                <span className="text-slate-400">Asked Questions</span>
+                <span className="text-muted-foreground dark:text-slate-400">Asked Questions</span>
               </h2>
-              <p className="max-w-md text-base leading-8 text-slate-400">
+              <p className="max-w-md text-base leading-8 text-muted-foreground dark:text-slate-400">
                 The marketplace is meant to reduce uncertainty early. These are the signals most teams look for before moving deeper into a service.
               </p>
             </div>
@@ -2192,8 +2245,8 @@ const Marketplace = () => {
                   className={cn(
                     "rounded-[24px] border transition-all duration-300",
                     isOpen
-                      ? "border-white/15 bg-black/45 shadow-[0_20px_50px_-30px_rgba(2,6,23,0.95)]"
-                      : "border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/35"
+                      ? "border-primary/30 bg-card shadow-lg dark:border-white/15 dark:bg-black/45"
+                      : "border-border bg-card/40 hover:border-primary/20 hover:bg-card/60 dark:border-white/10 dark:bg-black/20"
                   )}
                 >
                   <button
@@ -2202,8 +2255,8 @@ const Marketplace = () => {
                     onClick={() => toggleFaqItem(question)}
                     aria-expanded={isOpen}
                   >
-                    <span className="text-xl font-medium leading-tight text-white">{question}</span>
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-white/90">
+                    <span className="text-xl font-medium leading-tight text-foreground dark:text-white">{question}</span>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-foreground dark:text-white/90">
                       {isOpen ? <X className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
                     </span>
                   </button>
@@ -2218,7 +2271,7 @@ const Marketplace = () => {
                         className="overflow-hidden"
                       >
                         <div className="px-7 pb-7">
-                          <p className="max-w-3xl text-[18px] leading-8 text-slate-400">{answer}</p>
+                          <p className="max-w-3xl text-[18px] leading-8 text-muted-foreground dark:text-slate-400">{answer}</p>
                         </div>
                       </motion.div>
                     )}
@@ -2229,39 +2282,57 @@ const Marketplace = () => {
           </div>
         </section>
 
-        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.04] shadow-[0_34px_100px_-44px_rgba(15,23,42,0.72)] backdrop-blur-xl">
+        <section className="relative overflow-hidden rounded-[48px] border border-border bg-card shadow-2xl backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.04]">
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute right-[-10%] bottom-[-40%] h-80 w-80 rounded-full bg-primary/18 blur-3xl" />
-            <div className="absolute left-[22%] top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
+            <div className="absolute right-[-10%] bottom-[-40%] h-96 w-96 rounded-full bg-primary/20 blur-[120px]" />
+            <div className="absolute left-[22%] top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-primary/10 blur-[100px]" />
           </div>
-          <div className="relative flex flex-col gap-8 px-6 py-10 lg:flex-row lg:items-center lg:justify-between lg:px-10">
-            <div className="max-w-2xl space-y-4">
-              <Badge className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                Final CTA
-              </Badge>
-              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-                Need a marketplace that feels fast for buyers and credible for specialists?
-              </h2>
-              <p className="text-base leading-8 text-white/72">
-                Start by browsing service lanes or join as a freelancer and publish your offer into a more structured buying flow.
-              </p>
+          
+          <div className="relative grid gap-12 px-8 py-16 lg:grid-cols-2 lg:items-center lg:px-16">
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <Badge className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-primary">
+                  Get Started
+                </Badge>
+                <h2 className="text-4xl font-bold tracking-[-0.04em] text-foreground dark:text-white sm:text-5xl lg:leading-[1.1]">
+                  Need a marketplace that feels fast for buyers and credible for specialists?
+                </h2>
+                <p className="text-lg leading-relaxed text-muted-foreground dark:text-white/70">
+                  Start by browsing service lanes or join as a freelancer and publish your offer into a more structured buying flow.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <Button
+                  size="lg"
+                  className="h-16 rounded-full bg-primary px-10 text-lg font-bold text-primary-foreground shadow-xl transition-all hover:scale-105 hover:bg-primary/90"
+                  onClick={() => scrollToSection("marketplace-results")}
+                >
+                  Explore services
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="h-16 rounded-full border-primary/25 bg-primary/10 px-10 text-lg font-bold text-primary transition-all hover:scale-105 hover:bg-primary/20"
+                >
+                  <Link to="/signup?role=freelancer">Join as freelancer</Link>
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button
-                size="lg"
-                className="h-14 rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground hover:bg-primary/90"
-                onClick={() => scrollToSection("marketplace-results")}
-              >
-                Explore services
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="h-14 rounded-full border-primary/25 bg-primary/10 px-7 text-base font-semibold text-primary hover:bg-primary/15"
-              >
-                <Link to="/signup?role=freelancer">Join as freelancer</Link>
-              </Button>
+
+            <div className="flex justify-center lg:justify-end">
+              <AnimatedCard className="w-full max-w-[420px] scale-100 lg:scale-110">
+                <CardVisual>
+                  <Visual3 mainColor="#D9692A" secondaryColor="#F9D949" />
+                </CardVisual>
+                <CardBody>
+                  <CardTitle>Catalance Efficiency</CardTitle>
+                  <CardDescription>
+                    Real-time project tracking and performance metrics.
+                  </CardDescription>
+                </CardBody>
+              </AnimatedCard>
             </div>
           </div>
         </section>

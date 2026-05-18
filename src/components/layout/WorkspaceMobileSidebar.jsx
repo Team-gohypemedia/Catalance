@@ -114,7 +114,7 @@ const MobileMenuLink = ({
           "flex min-h-9 items-center gap-2 rounded-[15px] border px-3 py-1 text-left transition-colors duration-200",
           active
             ? "border-primary bg-primary text-background"
-            : "border-white/[0.05] bg-white/[0.03] text-muted-foreground hover:border-white/[0.08] hover:bg-white/[0.05] hover:text-foreground",
+            : "text-muted-foreground hover:text-foreground",
         )}
       >
         <span
@@ -250,7 +250,7 @@ const MobileProfileSwitchCard = ({
                 checked={isFreelancer}
                 onCheckedChange={handleSwitchDashboard}
                 aria-label={`${switchLabel} dashboard`}
-                className="h-5.5 w-[3.05rem] shrink-0 border-0 px-0.5 shadow-none data-[state=checked]:justify-end data-[state=checked]:bg-[#ffc107] data-[state=unchecked]:justify-start data-[state=unchecked]:bg-white/[0.15] [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:!translate-x-0 [&_[data-slot=switch-thumb]]:shadow-none [&_[data-slot=switch-thumb]]:data-[state=checked]:bg-[#111111] [&_[data-slot=switch-thumb]]:data-[state=unchecked]:bg-white"
+                className="h-5.5 w-[3.05rem] shrink-0 border-0 px-0.5 shadow-none data-[state=checked]:justify-end data-[state=checked]:bg-[var(--primary)] data-[state=unchecked]:justify-start data-[state=unchecked]:bg-white/[0.15] [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:!translate-x-0 [&_[data-slot=switch-thumb]]:shadow-none [&_[data-slot=switch-thumb]]:data-[state=checked]:bg-[#111111] [&_[data-slot=switch-thumb]]:data-[state=unchecked]:bg-white"
               />
             </SheetClose>
           </div>

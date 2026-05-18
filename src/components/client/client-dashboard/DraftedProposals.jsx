@@ -322,7 +322,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
         onClick={item.onSend}
         className={cn(
           draftProposalActionButtonClassName,
-          "bg-[#ffc107] text-black hover:bg-[#ffd54f] lg:h-auto lg:flex-1",
+          "bg-[var(--primary)] text-black hover:bg-primary/80 lg:h-auto lg:flex-1",
         )}
       >
         Send Proposal
@@ -367,7 +367,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
           </p>
 
           <div className="mt-2.5 flex items-center gap-3 text-[0.9rem] leading-none">
-            <p className="truncate font-semibold tracking-[-0.02em] text-white">
+            <p className="truncate font-semibold tracking-[-0.02em] text-foreground">
               {entry.budget}
             </p>
             <span className="h-4 w-px shrink-0 bg-white/[0.12]" aria-hidden="true" />
@@ -384,7 +384,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
         <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
           Service
         </p>
-        <p className="break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+        <p className="break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
           {item.tag}
         </p>
       </div>
@@ -393,7 +393,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
         <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
           Budget
         </p>
-        <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+        <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
           {item.budget}
         </p>
       </div>
@@ -402,7 +402,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
         <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
           Timeline
         </p>
-        <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+        <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
           {item.timeline || "Not set"}
         </p>
       </div>
@@ -411,7 +411,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
 
   return (
     <div className="w-full min-w-0">
-      <p className="min-w-0 truncate text-[1.4rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.55rem]">
+      <p className="min-w-0 truncate text-[1.4rem] font-semibold tracking-[-0.04em] text-foreground sm:text-[1.55rem]">
         {item.title}
       </p>
 
@@ -944,7 +944,7 @@ const Proposals = memo(function Proposals({
       <section className={cn("w-full min-w-0", className)}>
         <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
           <div className="min-w-0">
-            <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+            <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
               Proposals
             </h2>
           </div>
@@ -967,7 +967,7 @@ const Proposals = memo(function Proposals({
               <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground sm:size-16">
                 <ClipboardList className="size-6 sm:size-7" />
               </div>
-              <p className="mt-6 text-base font-medium text-white">
+              <p className="mt-6 text-base font-medium text-foreground">
                 No draft proposals yet
               </p>
               <p className="mt-2 max-w-[320px] text-sm text-muted-foreground">
@@ -977,7 +977,7 @@ const Proposals = memo(function Proposals({
               <button
                 type="button"
                 onClick={handleOpenQuickProject}
-                className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f] sm:min-w-0"
+                className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-primary/80 sm:min-w-0"
               >
                 Create New Proposal
               </button>

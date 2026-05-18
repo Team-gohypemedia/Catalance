@@ -84,8 +84,9 @@ const placeCards = imageSources.flatMap((image, index) => {
     },
   ];
 
-  if (index % 2 === 1) {
-    const videoIndex = Math.floor(index / 2);
+  // Optimization: Reduce video frequency from every 2nd to every 5th item
+  if (index % 5 === 1) {
+    const videoIndex = Math.floor(index / 5) % videoSources.length;
     const video = videoSources[videoIndex];
 
     cards.push({
@@ -199,16 +200,17 @@ const MadeOnCatalance = () => {
       : "relative grid min-h-0 flex-1 grid-cols-2 gap-4 overflow-hidden py-6";
 
   return (
-    <section className="relative h-screen overflow-hidden bg-background text-foreground lg:h-[115vh] xl:h-[125vh]">
+    <section className="relative w-full overflow-hidden bg-background py-20 sm:py-32">
 
-      <div className="relative mx-auto flex h-full max-w-7xl flex-col px-4 py-8 sm:px-6 lg:px-10">
+      <div className="relative mx-auto flex w-full max-w-7xl flex-col px-4 sm:px-6 lg:px-10">
         <header className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
           <h2 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-            Made on <span className="text-primary">CATALANCE</span>
+            Made on <span className="text-primary italic font-medium">CATALANCE</span>
           </h2>
         </header>
 
-        <div className={galleryGridClassName}>
+        <div className="relative mt-16 h-[600px] sm:h-[800px]">
+          <div className={galleryGridClassName + " h-full"}>
           {verticalLanes.map((lane) => (
             <Marquee
               key={lane.key}
@@ -223,15 +225,14 @@ const MadeOnCatalance = () => {
               ))}
             </Marquee>
           ))}
+          </div>
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-24 bg-background sm:h-32"
-            style={galleryTopFadeStyle}
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-32 bg-linear-to-b from-background via-background/80 to-transparent"
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-24 bg-background sm:h-32"
-            style={galleryBottomFadeStyle}
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-32 bg-linear-to-t from-background via-background/80 to-transparent"
           />
         </div>
       </div>

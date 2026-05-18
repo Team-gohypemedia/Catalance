@@ -309,11 +309,11 @@ const UserDetailsDialog = ({ userId, open, onOpenChange }) => {
 const StatCard = ({ icon: Icon, label, value, color }) => {
   const colorClasses = {
     blue: "text-blue-500",
-    yellow: "text-yellow-500",
+    yellow: "text-primary",
     green: "text-green-500",
     emerald: "text-emerald-500",
     purple: "text-purple-500",
-    orange: "text-orange-500"
+    orange: "text-primary"
   };
   
   return (

@@ -43,7 +43,7 @@ const ProjectProgressLockedCard = ({ project, onViewProject }) => (
         <div className="max-w-2xl">
           <Badge
             variant="outline"
-            className="border-[#5a4304] bg-[#312404] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#facc15] shadow-none"
+            className="border-[#5a4304] bg-[#312404] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)] shadow-none"
           >
             Initial Payment Pending
           </Badge>
@@ -57,7 +57,7 @@ const ProjectProgressLockedCard = ({ project, onViewProject }) => (
         </div>
 
         <div className="w-full rounded-[24px] border border-white/[0.08] bg-[linear-gradient(135deg,rgba(255,193,7,0.16),rgba(255,255,255,0.04))] p-5 sm:max-w-[320px] sm:rounded-[28px] sm:p-6">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-black/20 text-[#facc15]">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-black/20 text-[var(--primary)]">
             <CreditCard className="size-5" />
           </div>
           <p className="mt-5 text-sm font-medium uppercase tracking-[0.16em] text-[#fcd34d]">
@@ -80,7 +80,7 @@ const ProjectProgressLockedCard = ({ project, onViewProject }) => (
         variant="outline"
         className="gap-3 border-0 bg-transparent px-0 py-0 text-xs font-medium text-[#d4d4d4] shadow-none sm:text-sm"
       >
-        <span aria-hidden="true" className="size-3 rounded-full bg-[#facc15]" />
+        <span aria-hidden="true" className="size-3 rounded-full bg-[var(--primary)]" />
         Progress will appear after payment
       </Badge>
       <button
@@ -686,7 +686,7 @@ export const ProjectProgressSection = ({
                 <button
                   type="button"
                   onClick={onOpenQuickProject}
-                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f] sm:w-auto"
+                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-primary/80 sm:w-auto"
                 >
                   Start New Project
                 </button>

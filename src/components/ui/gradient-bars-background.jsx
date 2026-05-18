@@ -2,7 +2,7 @@ import React from 'react';
 
 const GradientBars = ({
   numBars = 15,
-  gradientFrom = '#facc15',
+  gradientFrom = 'var(--primary)',
   gradientTo = 'transparent',
   animationDuration = 2,
   className = '',

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 const TalentItem = ({ name, role, avatar, status = "online", onClick }) => {
   const statusColors = {
     online: "bg-green-500",
-    away: "bg-yellow-500",
+    away: "bg-primary/10",
     offline: "bg-gray-300",
   };
 

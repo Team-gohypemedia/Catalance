@@ -52,12 +52,12 @@ export const getFreelancerAvailabilityMeta = (freelancer = {}) => {
     badgeClass: openToWork
       ? "border-emerald-400/35 bg-emerald-500/10 text-emerald-300"
       : hasOpenToWorkSignal
-        ? "border-amber-500/20 bg-amber-500/10 text-amber-300"
+        ? "border-primary/20/20 bg-primary/10/10 text-primary"
         : "border-border/70 bg-background/35 text-muted-foreground",
     dotClass: openToWork
       ? "bg-emerald-400"
       : hasOpenToWorkSignal
-        ? "bg-amber-400"
+        ? "bg-primary/10"
         : "bg-muted-foreground/80",
   };
 };

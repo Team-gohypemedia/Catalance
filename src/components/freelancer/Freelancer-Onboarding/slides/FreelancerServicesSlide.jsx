@@ -94,7 +94,7 @@ const FreelancerServicesSlide = ({
                   className={cn(
                     "flex aspect-[1.18] w-full flex-col items-center justify-center rounded-[18px] border bg-card px-3 py-2.5 text-center transition-all duration-200",
                     isSelected
-                      ? "border-primary shadow-[0_0_0_1px_rgba(250,204,21,0.22)]"
+                      ? "border-primary shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.22)]"
                       : "border-white/10 hover:border-white/20"
                   )}
                   aria-pressed={isSelected}

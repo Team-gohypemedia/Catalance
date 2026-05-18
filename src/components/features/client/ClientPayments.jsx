@@ -166,7 +166,7 @@ const PaymentSummaryCard = ({
             tone === "success"
               ? "text-[#34d399]"
               : tone === "warning"
-                ? "text-[#facc15]"
+                ? "text-[var(--primary)]"
                 : "text-white",
           )}
         >
@@ -223,7 +223,7 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[10px] bg-[#facc15] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
+          className="inline-flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[10px] bg-[var(--primary)] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
         >
           <div className="flex min-w-0 items-center gap-2">
             <FolderOpen className="size-4 shrink-0" />
@@ -335,7 +335,7 @@ const TransactionRow = ({ transaction, visible, onOpenProject }) => {
         <p
           className={cn(
             "text-sm font-semibold",
-            transaction.isDue ? "text-[#facc15]" : "text-white",
+            transaction.isDue ? "text-[var(--primary)]" : "text-white",
           )}
         >
           {maskCurrency(amount, visible)}
@@ -360,7 +360,7 @@ const ActiveProjectPaymentsPanel = ({
       <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
         <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">Active Project Payments</h2>
         <div className="mt-5 rounded-[18px] border border-dashed border-white/[0.1] bg-[#2a2a2a] p-5 text-center sm:p-6">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-white/[0.04] text-[#facc15]">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-white/[0.04] text-[var(--primary)]">
             <CreditCard className="size-6" />
           </div>
           <p className="mt-4 text-lg font-semibold text-white">No active payment timeline yet</p>
@@ -372,7 +372,7 @@ const ActiveProjectPaymentsPanel = ({
             <button
               type="button"
               onClick={onOpenProposals}
-              className="inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-[#facc15] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
+              className="inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-[var(--primary)] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
             >
               Open Proposals
             </button>
@@ -421,7 +421,7 @@ const ActiveProjectPaymentsPanel = ({
           <p
             className={cn(
               "text-[1.35rem] font-semibold sm:shrink-0 sm:text-[1.6rem]",
-              hasDueInstallment ? "text-[#34d399]" : "text-[#facc15]",
+              hasDueInstallment ? "text-[#34d399]" : "text-[var(--primary)]",
             )}
           >
             {maskCurrency(dueInstallment?.amount || project.remainingAmount, showAmounts)}
@@ -444,7 +444,7 @@ const ActiveProjectPaymentsPanel = ({
 
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
           <div
-            className="h-full rounded-full bg-[#facc15] transition-[width]"
+            className="h-full rounded-full bg-[var(--primary)] transition-[width]"
             style={{ width: `${Math.max(0, Math.min(project.paidPercentage, 100))}%` }}
           />
         </div>
@@ -453,7 +453,7 @@ const ActiveProjectPaymentsPanel = ({
           <button
             type="button"
             onClick={() => onOpenProject(project.id)}
-            className="inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-[#facc15] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
+            className="inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-[var(--primary)] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
           >
             View details
           </button>
@@ -560,7 +560,7 @@ const getBillingStatusMeta = (invoice) => {
   if (invoice?.isDue) {
     return {
       label: "Pending",
-      badgeClass: "bg-[#facc15]/12 text-[#facc15]",
+      badgeClass: "bg-[var(--primary)]/12 text-[var(--primary)]",
     };
   }
 
@@ -575,7 +575,7 @@ const BillingAmountCell = ({ label, value, visible, tone = "default", className 
     tone === "success"
       ? "text-[#86efac]"
       : tone === "warning"
-        ? "text-[#facc15]"
+        ? "text-[var(--primary)]"
         : tone === "muted"
           ? "text-muted-foreground"
           : "text-white";
@@ -697,7 +697,7 @@ const ProjectBillingList = ({
                 <button
                   type="button"
                   onClick={() => onOpenProject(invoice.projectId)}
-                  className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-[#facc15] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto xl:w-full"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-[var(--primary)] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto xl:w-full"
                 >
                   View details
                 </button>

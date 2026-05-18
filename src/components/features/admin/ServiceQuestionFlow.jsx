@@ -52,10 +52,10 @@ const getQuestionTypeLabel = (type = 'input') => {
 const getQuestionTypeColors = (type = 'input') => {
     if (type === 'single_option') {
         return {
-            badgeText: '#facc15',
-            badgeBackground: 'rgba(250, 204, 21, 0.12)',
-            badgeBorder: '1px solid rgba(250, 204, 21, 0.2)',
-            accent: '#facc15',
+            badgeText: 'var(--primary)',
+            badgeBackground: 'rgba(var(--brand-rgb), 0.12)',
+            badgeBorder: '1px solid rgba(var(--brand-rgb), 0.2)',
+            accent: 'var(--primary)',
         };
     }
 
@@ -173,11 +173,11 @@ const ServiceQuestionFlow = ({ questions, onEditQuestion }) => {
                             label: `${rule.condition === 'equals' ? 'If' : rule.condition} ${rule.value || 'match'}`,
                             type: 'smoothstep',
                             animated: false,
-                            style: { stroke: '#facc15', strokeWidth: 2.25 },
-                            labelStyle: { fill: '#facc15', fontWeight: 700, fontSize: 10 },
+                            style: { stroke: 'var(--primary)', strokeWidth: 2.25 },
+                            labelStyle: { fill: 'var(--primary)', fontWeight: 700, fontSize: 10 },
                             markerEnd: {
                                 type: MarkerType.ArrowClosed,
-                                color: '#facc15',
+                                color: 'var(--primary)',
                             },
                         });
                     }

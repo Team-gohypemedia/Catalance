@@ -90,7 +90,7 @@ const FreelancerMetricCard = ({
 
   return (
     <article
-      className={`group relative flex min-h-[136px] flex-col rounded-[24px] border border-transparent bg-card px-3.5 py-4 transition-colors hover:border-[#facc15]/70 sm:min-h-[110px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
+      className={`group relative flex min-h-[136px] flex-col rounded-[24px] border border-transparent bg-card px-3.5 py-4 transition-colors hover:border-[var(--primary)]/70 sm:min-h-[110px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       role={onClick ? "button" : undefined}
@@ -111,7 +111,7 @@ const FreelancerMetricCard = ({
             <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
           </div>
         )}
-        <p className="mt-4 shrink-0 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-white transition-colors group-hover:text-[#facc15] sm:mt-6 sm:text-[3rem]">
+        <p className="mt-4 shrink-0 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-white transition-colors group-hover:text-[var(--primary)] sm:mt-6 sm:text-[3rem]">
           {value}
         </p>
         <p className="mt-3 text-center text-[8px] font-medium uppercase tracking-[0.14em] text-muted-foreground sm:mt-4 sm:text-[11px] sm:tracking-[0.2em]">
@@ -136,7 +136,7 @@ const FreelancerMetricCard = ({
         </div>
 
         <div className="mt-auto flex min-w-0 items-end gap-1.5 sm:gap-2">
-          <p className="shrink-0 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-[#facc15]">
+          <p className="shrink-0 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-[var(--primary)]">
             {value}
           </p>
           {detail ? (

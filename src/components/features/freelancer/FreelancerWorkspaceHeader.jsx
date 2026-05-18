@@ -58,7 +58,7 @@ const BrandMark = () => (
         className="h-7 w-7 object-contain"
       />
     </div>
-    <span className="text-base font-bold tracking-[-0.5px] text-white">
+    <span className="text-base font-bold tracking-[-0.5px] text-foreground">
       Catalance
     </span>
   </div>
@@ -81,7 +81,7 @@ const HeaderNavItem = ({ active, item, mobile, onSelect, variant = "marketing" }
         )
       : cn(
           "shrink-0 whitespace-nowrap text-sm font-medium transition-colors",
-          active ? "text-[#facc15]" : "text-muted-foreground hover:text-foreground",
+          active ? "text-[var(--primary)]" : "text-muted-foreground hover:text-foreground",
         );
 
   if (typeof onSelect === "function") {
@@ -162,20 +162,20 @@ const NotificationPopoverButton = ({
           >
             <Bell className="size-4.5" />
             {unreadCount > 0 ? (
-              <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
+              <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[var(--primary)]" />
             ) : null}
           </button>
         </SheetTrigger>
 
         <SheetContent
           side="right"
-          className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-white shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
+          className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-foreground shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
         >
           <div className="flex h-full min-h-0 flex-col">
             <SheetHeader className="border-b border-border px-4 py-3 pr-12">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <SheetTitle className="text-sm font-semibold text-white">Notifications</SheetTitle>
+                  <SheetTitle className="text-sm font-semibold text-foreground">Notifications</SheetTitle>
                   <SheetDescription className="mt-1 text-xs text-[#8f96a3]">
                     Stay updated with project, proposal, and message activity.
                   </SheetDescription>
@@ -235,7 +235,7 @@ const NotificationPopoverButton = ({
                         />
 
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-white whitespace-normal break-words">
+                          <p className="text-sm font-medium text-foreground whitespace-normal break-words">
                             {notification.title}
                           </p>
                           <p className="mt-1 text-xs leading-5 text-[#8f96a3] whitespace-normal break-words">
@@ -368,14 +368,14 @@ const FreelancerWorkspaceHeader = ({
                 <button
                   type="button"
                   onClick={onPrimaryAction}
-                  className="flex items-center gap-2 rounded-[16px] bg-[#ffc107] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
+                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-primary/80"
                 >
                   {primaryActionContent}
                 </button>
               ) : (
                 <Link
                   to={primaryActionTo}
-                  className="flex items-center gap-2 rounded-[16px] bg-[#ffc107] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
+                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-primary/80"
                 >
                   {primaryActionContent}
                 </Link>

@@ -102,7 +102,7 @@ const NotepadPage = () => {
       >
         <div className="p-4 border-b flex items-center justify-between">
             <div className="flex items-center gap-2 font-semibold">
-                <StickyNote className="size-5 text-yellow-500" />
+                <StickyNote className="size-5 text-primary" />
                 <span>My Notes</span>
             </div>
             <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(false)}>

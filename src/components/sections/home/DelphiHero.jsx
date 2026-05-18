@@ -486,7 +486,7 @@ const DelphiHero = () => {
                                         <ArrowRight className="ml-2 w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
                                     </Button>
                                 </Link>
-                                <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-orange-500/0 to-amber-500/0 -z-10 blur-xl" />
+                                <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-primary/0 to-primary/20/0 -z-10 blur-xl" />
                             </div>
 
                             {/* Freelancer Card */}

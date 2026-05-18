@@ -75,14 +75,14 @@ const TechnologyChips = ({
             onClick={() => onToggle?.(item.key)}
             className={cn(
               isSubtypeStyle
-                ? "group inline-flex min-h-[50px] min-w-[170px] items-center gap-2 rounded-full border px-3 py-2 text-left text-sm transition-all duration-200"
-                : "group inline-flex min-h-[62px] min-w-[200px] items-center gap-2.5 rounded-full border px-3.5 py-2.5 text-left text-sm transition-all",
+                ? "group inline-flex min-h-[48px] min-w-[160px] items-center gap-2.5 rounded-2xl border px-3 py-2 text-left text-[13px] transition-all duration-300"
+                : "group inline-flex min-h-[60px] min-w-[190px] items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition-all duration-300",
               horizontal ? "shrink-0" : "flex-1",
               active
-                ? "border-primary/50 bg-primary/12 text-white shadow-[0_0_0_1px_rgba(250,204,21,0.16)]"
+                ? "border-primary/40 bg-primary/10 text-primary shadow-sm dark:text-white"
                 : isSubtypeStyle
-                  ? "border-white/12 bg-white/[0.015] text-slate-200 hover:border-white/20 hover:bg-white/[0.045] hover:text-white"
-                  : "border-white/10 bg-white/[0.05] text-slate-200 hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
+                  ? "border-border bg-card/60 text-muted-foreground hover:border-primary/30 hover:bg-card hover:text-foreground dark:border-white/12 dark:bg-white/[0.015] dark:text-slate-200"
+                  : "border-border bg-card/60 text-muted-foreground hover:border-primary/30 hover:bg-card hover:text-foreground dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200"
             , itemClassName)}
           >
             <span
@@ -90,7 +90,7 @@ const TechnologyChips = ({
                 isSubtypeStyle
                   ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors"
                   : "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
-                active ? "bg-primary text-primary-foreground" : "bg-white/[0.06] text-primary"
+                active ? "bg-primary text-primary-foreground" : "bg-muted text-primary dark:bg-white/[0.06]"
               )}
             >
               <Wrench className="h-4 w-4" />
@@ -98,7 +98,7 @@ const TechnologyChips = ({
             <span className="min-w-0 flex-1">
               <span
                 className={cn(
-                  "block truncate font-semibold leading-tight text-white",
+                  "block truncate font-semibold leading-tight text-foreground dark:text-white",
                   isSubtypeStyle ? "text-[14px] sm:text-[15px]" : "text-[17px] sm:text-base"
                 )}
               >
@@ -118,7 +118,7 @@ const TechnologyChips = ({
             aria-label="Scroll technologies left"
             onClick={() => scrollRail(-1)}
             disabled={!railState.left}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/55 text-slate-300 backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground backdrop-blur-md transition hover:border-primary/30 hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-black/55 dark:text-slate-300"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -127,7 +127,7 @@ const TechnologyChips = ({
             aria-label="Scroll technologies right"
             onClick={() => scrollRail(1)}
             disabled={!railState.right}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/55 text-slate-300 backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground backdrop-blur-md transition hover:border-primary/30 hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-black/55 dark:text-slate-300"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

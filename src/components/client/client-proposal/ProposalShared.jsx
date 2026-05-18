@@ -43,7 +43,7 @@ export const ProposalStructuredList = memo(function ProposalStructuredList({
           key={`${item}-${index}`}
           className="flex items-start gap-3 rounded-2xl border border-white/8 bg-background/40 px-4 py-3"
         >
-          <span className="mt-0.5 text-xs font-semibold text-[#ffc107]">
+          <span className="mt-0.5 text-xs font-semibold text-[var(--primary)]">
             {String(index + 1).padStart(2, "0")}
           </span>
           <p className="text-sm leading-6 text-white">{item}</p>

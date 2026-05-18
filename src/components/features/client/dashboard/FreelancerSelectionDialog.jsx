@@ -411,8 +411,8 @@ const FreelancerSelectionDialog = ({
                         </div>
                       )}
                       {isBestMatch && (
-                        <div className="absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-full border border-amber-200/70 bg-[linear-gradient(120deg,rgba(17,24,39,0.82),rgba(88,28,135,0.56))] px-2.5 py-0.5 text-[10px] font-semibold text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.34),0_0_22px_rgba(251,191,36,0.38)] backdrop-blur-sm">
-                          <Star className="h-2.5 w-2.5 fill-current text-amber-300" />
+                        <div className="absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-full border border-primary/20/70 bg-[linear-gradient(120deg,rgba(17,24,39,0.82),rgba(88,28,135,0.56))] px-2.5 py-0.5 text-[10px] font-semibold text-primary shadow-[0_0_0_1px_rgba(251,191,36,0.34),0_0_22px_rgba(251,191,36,0.38)] backdrop-blur-sm">
+                          <Star className="h-2.5 w-2.5 fill-current text-primary" />
                           Best Match
                         </div>
                       )}
@@ -513,7 +513,7 @@ const FreelancerSelectionDialog = ({
                             >
                               <div className="flex items-center gap-1 text-[15px] font-semibold tracking-tight text-foreground">
                                 {stat.showStar && (
-                                  <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
+                                  <Star className="h-3.5 w-3.5 shrink-0 fill-primary text-primary" />
                                 )}
                                 <span className="truncate">{stat.value}</span>
                               </div>

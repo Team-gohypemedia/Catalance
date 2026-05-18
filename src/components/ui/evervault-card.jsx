@@ -37,7 +37,7 @@ export const EvervaultCard = ({ text, className, children, disableEffect = false
   return (
     <div
       className={cn(
-        "relative h-full w-full rounded-[30px] bg-gradient-to-br from-yellow-400/50 via-amber-500/40 to-orange-500/50 p-[2px]",
+        "relative h-full w-full rounded-[30px] bg-gradient-to-br from-primary/50 via-primary/50/40 to-primary/20/50 p-[2px]",
         className,
       )}
     >
@@ -55,7 +55,7 @@ export const EvervaultCard = ({ text, className, children, disableEffect = false
             children
           ) : (
             <div className="relative flex h-40 w-40 items-center justify-center rounded-full text-3xl font-bold">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-200/70 via-amber-400/60 to-orange-500/60 blur-md" />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/70 via-primary/50/60 to-primary/20/60 blur-md" />
               <span className="relative z-10 text-black">{text}</span>
             </div>
           )}
@@ -73,7 +73,7 @@ export function CardPattern({ mouseX, mouseY, randomString }) {
     <div className="pointer-events-none">
       <div className="absolute inset-0 rounded-2xl [mask-image:linear-gradient(white,transparent)] group-hover/card:opacity-50" />
       <motion.div
-        className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary to-orange-700 opacity-0 transition duration-500 backdrop-blur-xl group-hover/card:opacity-100"
+        className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary to-primary/20 opacity-0 transition duration-500 backdrop-blur-xl group-hover/card:opacity-100"
         style={style}
       />
       <motion.div

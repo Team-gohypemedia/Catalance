@@ -241,8 +241,8 @@ const ClientProjectDetailDialogs = ({
                 </p>
               ) : null}
               {pendingFreelancerChangeRequest ? (
-                <div className="mt-3 rounded-md border border-amber-500/20 bg-amber-500/10 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-400">
+                <div className="mt-3 rounded-md border border-primary/20/20 bg-primary/10/10 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
                     Pending request
                   </p>
                   <p className="mt-2 text-sm text-foreground">

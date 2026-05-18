@@ -311,7 +311,7 @@ const NotificationTriggerButton = ({ unreadCount = 0 }) => {
     >
       <Bell className="size-4.5" />
       {unreadCount > 0 ? (
-        <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
+        <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[var(--primary)]" />
       ) : null}
     </Button>
   );
@@ -334,7 +334,7 @@ const HeaderNavItem = ({ active, item, mobile, onSelect, variant = "marketing" }
         )
       : cn(
           "text-sm font-medium transition-colors",
-          active ? "text-[#facc15]" : "text-muted-foreground hover:text-foreground",
+          active ? "text-[var(--primary)]" : "text-muted-foreground hover:text-foreground",
         );
 
   if (typeof onSelect === "function") {
@@ -473,14 +473,14 @@ const ClientWorkspaceHeader = ({
                 <button
                   type="button"
                   onClick={onPrimaryAction}
-                  className="flex items-center gap-2 rounded-[16px] bg-[#ffc107] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
+                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-primary/80"
                 >
                   {primaryActionContent}
                 </button>
               ) : (
                 <Link
                   to={primaryActionTo}
-                  className="flex items-center gap-2 rounded-[16px] bg-[#ffc107] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
+                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-primary/80"
                 >
                   {primaryActionContent}
                 </Link>

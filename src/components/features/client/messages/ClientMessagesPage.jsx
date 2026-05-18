@@ -196,7 +196,7 @@ const ClientMessagesPage = () => {
   const renderEmptyConversationState = () => (
     <div className="flex h-full min-h-0 items-center justify-center bg-card px-6">
       <div className="max-w-md text-center">
-        <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[#ffc107]">
+        <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[var(--primary)]">
           <SendHorizontal className="size-6" />
         </div>
         <h2 className="mt-5 text-2xl font-semibold text-white">

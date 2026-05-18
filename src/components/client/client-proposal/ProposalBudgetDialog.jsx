@@ -60,7 +60,7 @@ const ProposalBudgetDialog = ({
               value={budgetInput}
               onChange={(event) => onBudgetInputChange?.(event.target.value)}
               placeholder="e.g. 60000 or INR 60,000"
-              className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+              className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
             />
           </div>
         </div>

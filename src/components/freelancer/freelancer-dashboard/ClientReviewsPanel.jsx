@@ -57,8 +57,8 @@ const ClientReviewsPanel = ({ reviews = [], meta = {}, isLoading = false }) => {
           Client Reviews
         </h2>
         {reviewCount > 0 ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-[#facc15]">
-            <Star className="size-3.5 fill-[#facc15] text-[#facc15]" />
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-[var(--primary)]">
+            <Star className="size-3.5 fill-[var(--primary)] text-[var(--primary)]" />
             {averageRating.toFixed(1)}
             <span className="text-zinc-400">({reviewCount})</span>
           </span>
@@ -107,7 +107,7 @@ const ClientReviewsPanel = ({ reviews = [], meta = {}, isLoading = false }) => {
                       className={cn(
                         "size-3.5",
                         Number(review.rating) >= ratingIndex
-                          ? "fill-[#facc15] text-[#facc15]"
+                          ? "fill-[var(--primary)] text-[var(--primary)]"
                           : "text-white/20",
                       )}
                     />

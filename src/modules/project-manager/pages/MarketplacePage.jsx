@@ -308,10 +308,10 @@ const MarketplacePage = () => {
                                           <MapPin className="h-4 w-4" />
                                           <span className="text-[10px] font-black uppercase tracking-tighter">{f.location || "Location not specified"}</span>
                                        </div>
-                                       <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-yellow-50 border border-yellow-100">
-                                          <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-                                          <span className="text-[10px] font-black text-yellow-700">{f.rating}</span>
-                                          <span className="text-[9px] font-bold text-yellow-600/60">({f.reviewsCount})</span>
+                                       <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/20">
+                                          <Star className="h-3 w-3 fill-primary text-primary" />
+                                          <span className="text-[10px] font-black text-primary">{f.rating}</span>
+                                          <span className="text-[9px] font-bold text-primary/60">({f.reviewsCount})</span>
                                        </div>
                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 text-[9px] font-black px-3 py-0.5 rounded-lg border-none">
                                            {f.projectExperience} YEARS EXPERIENCE

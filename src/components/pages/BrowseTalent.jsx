@@ -213,7 +213,7 @@ const BrowseTalent = () => {
 
       <Spotlight
         className="-top-40 left-0 md:left-60 md:-top-20 opacity-50"
-        fill={isDark ? "#fdc800" : "#f59e0b"}
+        fill={isDark ? "var(--primary)" : "var(--primary)"}
       />
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 pt-20 pb-20">
@@ -229,7 +229,7 @@ const BrowseTalent = () => {
             </span>{" "}
             <span
               ref={heroGradientRef}
-              className={`inline-block bg-clip-text text-transparent bg-linear-to-r ${isDark ? "from-primary via-yellow-200 to-primary" : "from-primary via-orange-400 to-primary"}`}
+              className={`inline-block bg-clip-text text-transparent bg-linear-to-r ${isDark ? "from-primary via-primary/50 to-primary" : "from-primary via-primary/50 to-primary"}`}
             >
               match.
             </span>

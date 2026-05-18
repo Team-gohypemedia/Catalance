@@ -63,7 +63,7 @@ const EmptyProjectsState = ({
       {showAction ? (
         <Link
           to="/client/proposal"
-          className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[#ffc107] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+          className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-primary/80"
         >
           Create New Proposal
         </Link>
@@ -327,7 +327,7 @@ const ClientProjectsPage = () => {
                           className={cn(
                             "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
                             isActive
-                              ? "border-[#ffc107]/70 bg-[#ffc107] text-[#141414]"
+                              ? "border-[var(--primary)]/70 bg-[var(--primary)] text-[#141414]"
                               : "text-[#a3a6ad] hover:text-white",
                           )}
                         >

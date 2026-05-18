@@ -257,7 +257,7 @@ const AdminDashboard = () => {
   const getDisputeStatusBadge = (status) => {
     const colors = {
       OPEN: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-      IN_PROGRESS: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+      IN_PROGRESS: "bg-primary/10 text-primary dark:bg-primary/10/30 dark:text-primary",
       RESOLVED: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
     };
     return <Badge className={`${colors[status] || "bg-gray-100"} border-0`}>{status}</Badge>;
@@ -470,7 +470,7 @@ const AdminDashboard = () => {
                     <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="projectVolume" name="Projects" stroke="#f59e0b" strokeWidth={2} />
+                    <Line type="monotone" dataKey="projectVolume" name="Projects" stroke="var(--primary)" strokeWidth={2} />
                     <Line type="monotone" dataKey="platformFees" name="Fee Collection (Est.)" stroke="#8b5cf6" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -480,16 +480,16 @@ const AdminDashboard = () => {
 
           <div className="grid gap-6 md:grid-cols-2">
             {pendingFreelancers.length > 0 && (
-              <Card className="border-yellow-500/50 bg-yellow-500/5 md:col-span-2">
+              <Card className="border-primary/20/50 bg-primary/10/5 md:col-span-2">
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+                  <CardTitle className="flex items-center gap-2 text-primary dark:text-primary">
                     <AlertTriangle className="h-5 w-5" />
                     Pending Approvals
                   </CardTitle>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 text-yellow-700 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300"
+                    className="h-8 text-primary hover:text-primary dark:text-primary dark:hover:text-primary"
                     onClick={() => navigate("/admin/approvals")}
                   >
                     See More
@@ -500,7 +500,7 @@ const AdminDashboard = () => {
                     {pendingFreelancers.map((user) => (
                       <div
                         key={user.id}
-                        className="flex cursor-pointer items-center justify-between rounded-lg border bg-background p-4 transition-colors hover:border-yellow-500/50"
+                        className="flex cursor-pointer items-center justify-between rounded-lg border bg-background p-4 transition-colors hover:border-primary/20/50"
                         onClick={() => navigate(`/admin/users/${user.id}`)}
                       >
                         <div className="flex items-center gap-3">

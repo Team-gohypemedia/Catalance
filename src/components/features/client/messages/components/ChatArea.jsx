@@ -557,7 +557,7 @@ const ChatArea = React.memo(function ChatArea({
                   ) : null}
                   <div className={cn("flex max-w-[88%] flex-col md:max-w-[74%]", ownsMessage ? "items-end" : "items-start")}>
                     {showRoleLabel ? (
-                      <p className={cn("mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.16em]", ownsMessage ? "text-right text-[#facc15]" : "text-left text-[#94a3b8]")}>
+                      <p className={cn("mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.16em]", ownsMessage ? "text-right text-[var(--primary)]" : "text-left text-[#94a3b8]")}>
                         {roleLabel}
                       </p>
                     ) : null}
@@ -613,7 +613,7 @@ const ChatArea = React.memo(function ChatArea({
             {filePreview ? (
               <img src={filePreview} alt="Preview" className="size-14 rounded-2xl object-cover" />
             ) : (
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/[0.04] text-[#ffc107]">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/[0.04] text-[var(--primary)]">
                 <Paperclip className="size-5" />
               </div>
             )}
@@ -730,7 +730,7 @@ const ChatArea = React.memo(function ChatArea({
               void handleSend();
             }}
             className={cn(
-              "flex items-center justify-center rounded-full bg-[#ffc107] text-[#141414] transition hover:bg-[#ffd54f] disabled:cursor-not-allowed disabled:bg-[#ffc107]/60",
+              "flex items-center justify-center rounded-full bg-[var(--primary)] text-[#141414] transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:bg-[var(--primary)]/60",
               mobileView ? "size-11" : "size-12",
             )}
             disabled={!chatUnlocked || sending || uploading || (!messageInput.trim() && !selectedFile)}

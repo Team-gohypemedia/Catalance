@@ -1003,8 +1003,8 @@ const ACTIVITY_TONE_STYLES = {
     badge: "bg-emerald-500/12 text-emerald-300",
   },
   amber: {
-    icon: "bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/20",
-    badge: "bg-amber-500/12 text-amber-200",
+    icon: "bg-primary/10/12 text-primary ring-1 ring-primary/20/20",
+    badge: "bg-primary/10/12 text-primary",
   },
   blue: {
     icon: "bg-blue-500/12 text-blue-300 ring-1 ring-blue-500/20",
@@ -1381,7 +1381,7 @@ const FreelancerRecentActivitySection = ({ recentActivities, onOpenViewAll }) =>
         <button
           type="button"
           onClick={onOpenViewAll}
-          className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[#ffc107] transition-colors hover:text-[#ffd54f]"
+          className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)] transition-colors hover:text-[#ffd54f]"
         >
           View All
         </button>
@@ -1646,7 +1646,7 @@ const FreelancerMetricCard = ({
 
   return (
     <article
-      className={`group relative flex min-h-[136px] flex-col rounded-[24px] border border-transparent bg-card px-3.5 py-4 transition-colors hover:border-[#facc15]/70 sm:min-h-[110px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
+      className={`group relative flex min-h-[136px] flex-col rounded-[24px] border border-transparent bg-card px-3.5 py-4 transition-colors hover:border-[var(--primary)]/70 sm:min-h-[110px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       role={onClick ? "button" : undefined}
@@ -1667,7 +1667,7 @@ const FreelancerMetricCard = ({
             <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
           </div>
         )}
-        <p className="mt-4 shrink-0 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-white transition-colors group-hover:text-[#facc15] sm:mt-6 sm:text-[3rem]">
+        <p className="mt-4 shrink-0 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-white transition-colors group-hover:text-[var(--primary)] sm:mt-6 sm:text-[3rem]">
           {value}
         </p>
         <p className="mt-3 text-center text-[8px] font-medium uppercase tracking-[0.14em] text-muted-foreground sm:mt-4 sm:text-[11px] sm:tracking-[0.2em]">
@@ -1690,7 +1690,7 @@ const FreelancerMetricCard = ({
           {renderDesktopControl()}
         </div>
         <div className="mt-auto flex min-w-0 items-end gap-1.5 sm:gap-2">
-          <p className="shrink-0 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-[#facc15]">
+          <p className="shrink-0 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-[var(--primary)]">
             {value}
           </p>
           {detail ? (
@@ -1773,7 +1773,7 @@ const FreelancerRunningProjectCard = ({
   canShowSelection,
   onSelect,
 }) => {
-  const statusBg = "bg-[#2f1e05] text-[#fbbf24]";
+  const statusBg = "bg-[#2f1e05] text-[var(--primary)]";
   const lineBg = "bg-primary";
   const progress = Math.max(0, Math.min(100, Number(item?.progress) || 0));
   const badgeLabel =
@@ -1794,7 +1794,7 @@ const FreelancerRunningProjectCard = ({
       }}
       className={cn(
         "relative cursor-pointer overflow-hidden rounded-[18px] bg-card shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition-colors hover:bg-card",
-        canShowSelection && isSelected && "border-transparent bg-card shadow-[inset_0_0_0_2px_rgba(250,204,21,1)]",
+        canShowSelection && isSelected && "border-transparent bg-card shadow-[inset_0_0_0_2px_rgba(var(--brand-rgb),1)]",
       )}
     >
       <CardContent className={cn("p-4 pb-6", canShowSelection && isSelected && "pb-7")}>
@@ -1872,7 +1872,7 @@ const FreelancerPendingProposalRow = ({ item }) => (
         disabled={item.isAccepting}
         className={cn(
           freelancerPendingProposalActionButtonClassName,
-          "bg-[#ffc107] text-black hover:bg-[#ffd54f] lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
+          "bg-[var(--primary)] text-black hover:bg-primary/80 lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
           item.isAccepting && "cursor-not-allowed opacity-60",
         )}
       >
@@ -1986,7 +1986,7 @@ const FreelancerPendingProposalsSection = ({
             <button
               type="button"
               onClick={onOpenAll}
-              className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f] sm:min-w-0"
+              className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-primary/80 sm:min-w-0"
             >
               View Proposals
             </button>
@@ -3062,14 +3062,14 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     if (current <= 0 && previous <= 0) {
       return {
         label: "Tracking this month",
-        toneClassName: "text-[#ffc107]",
+        toneClassName: "text-[var(--primary)]",
       };
     }
 
     if (previous <= 0) {
       return {
         label: "First payout this month",
-        toneClassName: "text-[#ffc107]",
+        toneClassName: "text-[var(--primary)]",
       };
     }
 
@@ -3082,7 +3082,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
 
     return {
       label: `${delta >= 0 ? "+" : "-"}${formattedDelta}% this month`,
-      toneClassName: delta >= 0 ? "text-[#ffc107]" : "text-rose-300",
+      toneClassName: delta >= 0 ? "text-[var(--primary)]" : "text-rose-300",
     };
   }, [earningsTrendData]);
 
@@ -3677,7 +3677,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
             onKeyDown={(event) => {
               event.stopPropagation();
             }}
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-[#facc15] sm:size-9 sm:rounded-lg"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-[var(--primary)] sm:size-9 sm:rounded-lg"
             aria-label={
               showPendingPaymentsStat ? "Show total earnings" : "Show pending payments"
             }
@@ -3772,7 +3772,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-[#f1f5f9]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
 
       <SuspensionAlert
@@ -3804,7 +3804,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
               {dashboardDateLabel}
             </p>
             <div className="order-2 min-w-0 lg:order-1">
-              <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
+              <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-foreground">
                 {greeting}, {firstName}
               </h1>
             </div>
@@ -3857,7 +3857,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                     onKeyDown={(event) => {
                       event.stopPropagation();
                     }}
-                    className="inline-flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-[#facc15] sm:size-9 sm:rounded-lg"
+                    className="inline-flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-[var(--primary)] sm:size-9 sm:rounded-lg"
                     aria-label={showPendingPaymentsStat ? "Show total earnings" : "Show pending payments"}
                   >
                     <Repeat2 className="size-4 text-muted-foreground/75" />
@@ -3877,7 +3877,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                     cy="18"
                     r="16"
                     fill="none"
-                    className="stroke-[#facc15] transition-all duration-1000 ease-out"
+                    className="stroke-[var(--primary)] transition-all duration-1000 ease-out"
                     strokeWidth="3.5"
                     strokeDasharray="100"
                     strokeDashoffset={100 - profileCompletionPercent}
@@ -3893,7 +3893,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                 <button
                   type="button"
                   onClick={() => navigate("/freelancer/profile")}
-                  className="mt-1 text-left text-[11px] font-semibold tracking-wide text-[#facc15] hover:text-[#ffd54f] transition-colors"
+                  className="mt-1 text-left text-[11px] font-semibold tracking-wide text-[var(--primary)] hover:text-[#ffd54f] transition-colors"
                 >
                   {profileCompletionComplete ? "Open Profile" : "Finish Now →"}
                 </button>
@@ -3908,7 +3908,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
             <div className="mb-6 flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+                  <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
                     Active Projects
                   </h2>
                   <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
@@ -3932,7 +3932,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
             {runningProjectCards.length === 0 ? (
               <FreelancerDashboardPanel className="flex min-h-[220px] items-center justify-center rounded-[28px] border border-white/[0.06] bg-card p-8 text-center">
                 <div className="max-w-md">
-                  <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+                  <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
                     No active projects yet
                   </p>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -4129,8 +4129,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                         Client Reviews
                       </h2>
                       {clientReviewsMeta.reviewCount > 0 ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-[#facc15]">
-                          <Star className="size-3.5 fill-[#facc15] text-[#facc15]" />
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-[var(--primary)]">
+                          <Star className="size-3.5 fill-[var(--primary)] text-[var(--primary)]" />
                           {clientReviewsMeta.averageRating.toFixed(1)}
                           <span className="text-zinc-400">({clientReviewsMeta.reviewCount})</span>
                         </span>
@@ -4178,7 +4178,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                     className={cn(
                                       "size-3.5",
                                       Number(review.rating) >= ratingIndex
-                                        ? "fill-[#facc15] text-[#facc15]"
+                                        ? "fill-[var(--primary)] text-[var(--primary)]"
                                         : "text-white/20",
                                     )}
                                   />
@@ -4461,7 +4461,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                       />
                                     ))}
                                     <div
-                                      className="absolute top-[-6px] bottom-0 w-px border-l-2 border-dotted border-[#facc15]/60"
+                                      className="absolute top-[-6px] bottom-0 w-px border-l-2 border-dotted border-[var(--primary)]/60"
                                       style={{ left: `${scheduleMarkerLeftPct}%` }}
                                     />
 
@@ -4491,7 +4491,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                               row.isCompleted
                                                 ? "bg-emerald-500/10"
                                                 : row.isActive
-                                                  ? "bg-[#facc15]/35"
+                                                  ? "bg-[var(--primary)]/35"
                                                   : "bg-white/[0.06]",
                                             )}
                                             style={{ left: `${row.rowStartPct}%`, width: `${row.rowWidthPct}%` }}
@@ -4502,7 +4502,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                               row.isCompleted
                                                 ? "bg-emerald-500/20 text-emerald-300"
                                                 : row.isActive
-                                                  ? "bg-[#facc15] text-black"
+                                                  ? "bg-[var(--primary)] text-black"
                                                   : "bg-white/[0.06] text-zinc-400",
                                             )}
                                             style={{ left: `${rowLabelCenterPct}%` }}
@@ -4535,13 +4535,13 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                               <span
                                                 className={cn(
                                                   "size-1.5 rounded-full",
-                                                  row.isActive ? "bg-[#facc15]" : "bg-zinc-500/70",
+                                                  row.isActive ? "bg-[var(--primary)]" : "bg-zinc-500/70",
                                                 )}
                                               />
                                               <span
                                                 className={cn(
                                                   "text-[9px] font-semibold uppercase tracking-[0.16em]",
-                                                  row.isActive ? "text-[#facc15]" : "text-zinc-300",
+                                                  row.isActive ? "text-[var(--primary)]" : "text-zinc-300",
                                                 )}
                                               >
                                                 {row.detailLabel}
@@ -4551,7 +4551,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                                   className={cn(
                                                     "rounded-[10px] border px-2 py-0.5 text-[9px] font-semibold",
                                                     isOnTrackNote
-                                                      ? "border-[#facc15]/40 bg-[#facc15]/14 text-[#facc15]"
+                                                      ? "border-[var(--primary)]/40 bg-[var(--primary)]/14 text-[var(--primary)]"
                                                       : "border-rose-500/30 bg-rose-500/10 text-rose-300",
                                                   )}
                                                 >
@@ -4614,16 +4614,16 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                   Current Status
                                 </p>
                                 <div className="mt-3 flex items-end justify-between gap-3">
-                                  <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+                                  <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
                                     {statusTone}
                                   </p>
-                                  <p className="text-[11px] font-semibold text-[#facc15]">
+                                  <p className="text-[11px] font-semibold text-[var(--primary)]">
                                     {hasActiveProject ? `${activeScheduleProgressPct}%` : "—"}
                                   </p>
                                 </div>
                                 <div className="mt-3 h-[2px] overflow-hidden rounded-full bg-white/[0.08]">
                                   <div
-                                    className="h-full rounded-full bg-[#facc15]"
+                                    className="h-full rounded-full bg-[var(--primary)]"
                                     style={{ width: `${hasActiveProject ? Math.min(100, activeScheduleProgressPct || 0) : 0}%` }}
                                   />
                                 </div>
@@ -4661,7 +4661,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                       key={i}
                                       className={cn(
                                         "h-1.5 w-1.5 rounded-full",
-                                        hasActiveProject && i < dotsOn ? "bg-[#facc15]" : "bg-white/[0.18]",
+                                        hasActiveProject && i < dotsOn ? "bg-[var(--primary)]" : "bg-white/[0.18]",
                                       )}
                                     />
                                   ))}

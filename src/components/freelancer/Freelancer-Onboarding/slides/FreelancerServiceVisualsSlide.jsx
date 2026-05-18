@@ -156,7 +156,7 @@ const MediaHeroPreview = ({ item, previewUrl, onUpload }) => {
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(250,204,21,0.12),transparent_32%),linear-gradient(135deg,#090909,#141414_60%,#0f0f0f)] text-white/48">
+        <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(var(--brand-rgb),0.12),transparent_32%),linear-gradient(135deg,#090909,#141414_60%,#0f0f0f)] text-white/48">
           <div className="flex flex-col items-center gap-3">
             <Image className="h-8 w-8" />
             <span className="text-sm font-medium">Image preview unavailable</span>
@@ -182,7 +182,7 @@ const MediaThumbnail = ({ item, previewUrl, index, isActive, onSelect }) => (
     className={cn(
       "group relative aspect-[3/4] overflow-hidden rounded-2xl border bg-[#101010] text-left transition-all duration-200",
       isActive
-        ? "border-primary/80 shadow-[0_0_0_1px_rgba(250,204,21,0.35),0_16px_40px_rgba(0,0,0,0.28)]"
+        ? "border-primary/80 shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.35),0_16px_40px_rgba(0,0,0,0.28)]"
         : "border-white/10 hover:border-white/25",
     )}
   >

@@ -9,7 +9,7 @@ export const EmptyStateCard = memo(function EmptyStateCard({ title, description 
   return (
     <Card className={cn("shadow-none", proposalPanelClassName)}>
       <CardContent className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-        <div className="rounded-xl bg-[#ffc107]/10 p-3 text-[#ffc107]">
+        <div className="rounded-xl bg-[var(--primary)]/10 p-3 text-[var(--primary)]">
           <FileText className="h-6 w-6" />
         </div>
         <div className="space-y-2">

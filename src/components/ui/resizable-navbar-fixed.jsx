@@ -16,7 +16,7 @@ import logo from "@/assets/logos/logo.svg";
 
 const DESKTOP_NAV_SCROLL_RANGE = 180;
 const DESKTOP_NAV_EXPANDED_MAX_WIDTH = "80rem";
-const DESKTOP_NAV_COLLAPSED_MAX_WIDTH = "56rem";
+const DESKTOP_NAV_COLLAPSED_MAX_WIDTH = "68rem"; // Increased from 56rem to prevent crowding
 
 const normalizePathname = (value = "") => {
   const [pathname] = String(value || "").trim().split(/[?#]/);
@@ -40,12 +40,10 @@ const isNavItemActive = (currentPath = "", targetPath = "") => {
 
 export const Navbar = ({ children, className, isHome, isDark }) => {
   const { scrollY } = useScroll();
-
-  // Add spring physics to the scroll value for smoothness
   const smoothScrollY = useSpring(scrollY, {
-    stiffness: 88,
-    damping: 24,
-    mass: 0.72,
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
   });
 
   // Map smoothed scroll to values
@@ -80,12 +78,9 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
     [startTextColor, endTextColor]
   );
 
-  const startBgColor = isDark
-    ? "rgba(10, 10, 10, 0.76)"
-    : "rgba(255, 255, 255, 0.86)";
-  const endBgColor = isDark
-    ? "rgba(10, 10, 10, 0.84)"
-    : "rgba(255, 255, 255, 0.88)";
+  const startBgColor = isDark ? "#0A0A0A" : "#FFFFFF";
+  const endBgColor = isDark ? "#0A0A0A" : "#FFFFFF";
+
   const backgroundColor = useTransform(
     smoothScrollY,
     [0, DESKTOP_NAV_SCROLL_RANGE],
@@ -116,7 +111,7 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
   );
 
   return (
-    <motion.div className={cn("fixed inset-x-0 top-2 z-40 w-full lg:top-5", className)}>
+    <motion.div className={cn("fixed inset-x-0 top-0 z-40 w-full lg:top-5", className)}>
       {React.Children.map(children, (child) =>
         React.isValidElement(child)
           ? typeof child.type === "string"
@@ -152,6 +147,7 @@ export const NavBody = ({
   backdropFilter,
   textColor,
   borderRadius,
+  isDark,
 }) => {
   return (
     <motion.div
@@ -174,7 +170,7 @@ export const NavBody = ({
         React.isValidElement(child)
           ? typeof child.type === "string"
             ? child
-            : React.cloneElement(child, { textColor })
+            : React.cloneElement(child, { textColor, isDark })
           : child
       )}
     </motion.div>
@@ -186,6 +182,7 @@ export const NavItems = ({
   className,
   onItemClick,
   textColor,
+  isDark,
   currentPath = "",
 }) => {
   return (
@@ -206,18 +203,19 @@ export const NavItems = ({
             onClick={onItemClick}
             to={item.link}
             className={cn(
-              "relative inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full px-2.5 py-2 transition-colors duration-200",
+              "relative inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 py-2 transition-all duration-300",
               isActive
-                ? "bg-primary text-primary-foreground shadow-[inset_0_0_0_1px_rgba(255,193,7,0.32)]"
-                : "text-foreground/85 hover:bg-white/5 hover:text-foreground dark:hover:bg-neutral-800/70",
+                ? "shadow-[0_0_24px_rgba(34,42,53,0.06),0_1px_1px_rgba(0,0,0,0.05),0_0_0_1px_rgba(34,42,53,0.04),0_0_4px_rgba(34,42,53,0.08),0_16px_68px_rgba(47,48,55,0.05),0_1px_0_rgba(255,255,255,0.1)_inset] px-4 py-2"
+                : "text-foreground/85 hover:text-foreground px-2.5 py-2",
             )}
+            style={isActive ? { backgroundColor: isDark ? "#F9D949" : "#D9692A" } : {}}
           >
             <span className="relative z-20">
               <motion.span
-                style={{ color: isActive ? "var(--primary-foreground)" : textColor }}
+                style={{ color: isActive ? "#1C1B1F" : textColor }}
                 className={cn(
                   "transition-colors duration-200",
-                  isActive && "font-semibold text-primary-foreground",
+                  isActive ? "font-bold" : "font-medium",
                 )}
               >
                 {item.name}
@@ -322,8 +320,8 @@ export const MobileNavToggle = ({ isOpen, onClick }) => {
   );
 };
 
-export const NavbarLogo = () => (
-  <div className="flex shrink-0 items-center gap-3">
+export const NavbarLogo = ({ className }) => (
+  <div className={cn("flex shrink-0 items-center gap-3 lg:min-w-[12rem]", className)}>
     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
       <img
         src={logo}
@@ -331,7 +329,7 @@ export const NavbarLogo = () => (
         className="h-8 w-8 object-contain brightness-0 saturate-100"
       />
     </div>
-    <span className="text-lg font-bold tracking-tight text-black dark:text-white">
+    <span className="text-lg font-bold tracking-tight text-[#1C1B1F] dark:text-white uppercase">
       Catalance
     </span>
   </div>

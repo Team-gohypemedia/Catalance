@@ -653,7 +653,7 @@ const ProjectDetailsPage = () => {
                                <div>
                                   <p className="text-base font-bold text-slate-900">{freelancerProfile.freelancerName}</p>
                                   <div className="flex items-center gap-1 mt-0.5">
-                                     <span className="text-yellow-500 text-xs">*</span>
+                                     <span className="text-primary text-xs">*</span>
                                      <span className="text-xs font-bold text-slate-900">{freelancerProfile.rating}</span>
                                      <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tighter ml-1">({freelancerProfile.reviewsCount} reviews)</span>
                                   </div>
@@ -777,7 +777,7 @@ const ProjectDetailsPage = () => {
                         </Badge>
                         <Badge
                           variant="outline"
-                          className="rounded-full border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700"
+                          className="rounded-full border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-primary"
                         >
                           {Math.max(phaseInsightRows.length - completedPhases, 0)} Pending
                         </Badge>
@@ -886,7 +886,7 @@ const ProjectDetailsPage = () => {
                                 ? "bg-emerald-500 text-white"
                                 : task.status === "COMPLETED"
                                   ? "bg-blue-600 text-white"
-                                  : "bg-amber-50 text-amber-700 border border-amber-200"
+                                  : "bg-primary/10 text-primary border border-primary/20"
                             }`}
                           >
                             {task.status}
@@ -973,7 +973,7 @@ const ProjectDetailsPage = () => {
                                     ? "bg-emerald-500 text-white"
                                     : task.status === "COMPLETED"
                                       ? "bg-blue-600 text-white"
-                                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                                      : "bg-primary/10 text-primary border border-primary/20"
                                 }`}
                               >
                                 {task.status}

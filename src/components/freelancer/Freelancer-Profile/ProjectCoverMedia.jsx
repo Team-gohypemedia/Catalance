@@ -5,7 +5,7 @@ const PROJECT_COVER_GRADIENTS = [
   "bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700",
   "bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700",
   "bg-gradient-to-br from-fuchsia-500 via-violet-600 to-indigo-700",
-  "bg-gradient-to-br from-rose-500 via-orange-600 to-amber-600",
+  "bg-gradient-to-br from-rose-500 via-primary/50 to-primary/20",
   "bg-gradient-to-br from-sky-500 via-indigo-600 to-purple-700",
   "bg-gradient-to-br from-lime-500 via-emerald-600 to-teal-700",
 ];

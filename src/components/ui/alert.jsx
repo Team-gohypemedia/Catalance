@@ -6,7 +6,7 @@ const alertVariants = cva("relative rounded-lg border", {
   variants: {
     variant: {
       default: "border-border bg-background",
-      warning: "border-amber-500/50 text-amber-600",
+      warning: "border-primary/20/50 text-primary",
       error: "border-red-500/50 text-red-600",
       success: "border-emerald-500/50",
       info: "border-blue-500/50 text-blue-600",

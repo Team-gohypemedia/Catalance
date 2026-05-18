@@ -175,7 +175,7 @@ const FreelancerProjectDetailMainColumn = ({
       <Card className={panelClassName}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-5 px-6">
           <CardTitle className={eyebrowClassName}>Project Progress</CardTitle>
-          <span className="text-[1.1rem] font-semibold text-yellow-400">
+          <span className="text-[1.1rem] font-semibold text-primary">
             {Math.round(overallProgress)}% Complete
           </span>
         </CardHeader>
@@ -183,7 +183,7 @@ const FreelancerProjectDetailMainColumn = ({
           <div className="relative pt-2">
             <div className="h-[6px] w-full overflow-hidden rounded-full bg-white/[0.06]">
               <div
-                className="h-full rounded-full bg-yellow-400 transition-all duration-300"
+                className="h-full rounded-full bg-primary/10 transition-all duration-300"
                 style={{ width: `${overallProgress}%` }}
               />
             </div>
@@ -242,7 +242,7 @@ const FreelancerProjectDetailMainColumn = ({
                       isCompleted
                         ? "text-emerald-500"
                         : isActive
-                          ? "text-[#f59e0b]"
+                          ? "text-[var(--primary)]"
                           : "text-muted-foreground/40"
                     }`}
                   >
@@ -271,8 +271,8 @@ const FreelancerProjectDetailMainColumn = ({
         </CardHeader>
         <CardContent className="pt-6">
           {project?.notes ? (
-            <div className="mb-4 flex items-start gap-2 rounded-[18px] border border-amber-500/20 bg-amber-500/8 px-4 py-3">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+            <div className="mb-4 flex items-start gap-2 rounded-[18px] border border-primary/20/20 bg-primary/10/8 px-4 py-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <p className="text-sm leading-6 text-[#f3e4b2]">
                 <span className="font-medium text-white">Note:</span> {project.notes}
               </p>
@@ -350,7 +350,7 @@ const FreelancerProjectDetailMainColumn = ({
                             {task.status === "completed" ? (
                               <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
                             ) : task.status === "pending-review" ? (
-                              <Clock className="h-5 w-5 shrink-0 text-amber-400" />
+                              <Clock className="h-5 w-5 shrink-0 text-primary" />
                             ) : (
                               <Circle className="h-5 w-5 shrink-0 text-muted-foreground" />
                             )}
@@ -363,13 +363,13 @@ const FreelancerProjectDetailMainColumn = ({
                             >
                               {task.title}
                               {phaseGroup.isLocked ? (
-                                <span className="ml-2 inline-block text-xs font-medium text-amber-500 no-underline">
+                                <span className="ml-2 inline-block text-xs font-medium text-primary no-underline">
                                   (Locked)
                                 </span>
                               ) : null}
                             </span>
                             {task.status === "pending-review" ? (
-                              <Badge className="h-6 border-amber-500/20 bg-amber-500/12 px-2 text-[10px] text-amber-300">
+                              <Badge className="h-6 border-primary/20/20 bg-primary/10/12 px-2 text-[10px] text-primary">
                                 Pending Review
                               </Badge>
                             ) : null}

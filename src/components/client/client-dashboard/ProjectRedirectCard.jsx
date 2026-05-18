@@ -33,7 +33,7 @@ const ProjectRedirectCard = memo(function ProjectRedirectCard({ item, className 
       <button
         type="button"
         onClick={item.onClick}
-        className="inline-flex h-[58px] w-full shrink-0 items-center justify-center gap-2 rounded-[16px] bg-[#ffc107] px-5 py-3.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+        className="inline-flex h-[58px] w-full shrink-0 items-center justify-center gap-2 rounded-[16px] bg-[var(--primary)] px-5 py-3.5 text-sm font-semibold text-black transition-colors hover:bg-primary/80"
       >
         <span>{String(item.actionLabel || "").toUpperCase()}</span>
         <ChevronRight className="size-4" />

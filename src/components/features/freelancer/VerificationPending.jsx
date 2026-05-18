@@ -56,8 +56,8 @@ const VerificationPending = () => {
                         className="bg-black/60 border border-white/10 rounded-2xl p-6 text-left space-y-4 backdrop-blur-xl shadow-2xl ring-1 ring-white/5"
                     >
                         <div className="flex gap-4">
-                            <div className="shrink-0 w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                                <AlertCircle className="w-5 h-5 text-yellow-500" />
+                            <div className="shrink-0 w-10 h-10 rounded-full bg-primary/10/10 flex items-center justify-center">
+                                <AlertCircle className="w-5 h-5 text-primary" />
                             </div>
                             <div>
                                 <h3 className="text-white font-medium mb-1">Action Required</h3>

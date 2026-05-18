@@ -37,7 +37,7 @@ const ConversationItem = React.memo(function ConversationItem({
       className={cn(
         "relative flex w-full items-center gap-4 rounded-[18px] border bg-card px-4 py-3.5 text-left transition",
         isActive
-          ? "border-[#ffc107]/60 text-white shadow-[0_0_0_1px_rgba(255,193,7,0.2),inset_0_1px_0_rgba(255,255,255,0.03)]"
+          ? "border-[var(--primary)]/60 text-white shadow-[0_0_0_1px_rgba(255,193,7,0.2),inset_0_1px_0_rgba(255,255,255,0.03)]"
           : "border-white/[0.06] text-white hover:border-white/[0.08]",
       )}
     >
@@ -58,7 +58,7 @@ const ConversationItem = React.memo(function ConversationItem({
           <p
             className={cn(
               "truncate text-[0.98rem] font-semibold",
-              isActive ? "text-[#ffc107]" : "text-white",
+              isActive ? "text-[var(--primary)]" : "text-white",
             )}
           >
             {projectName}

@@ -380,11 +380,11 @@ function EmailAuth() {
     const formSpacing = compact ? "space-y-3" : "space-y-6";
     const fieldSpacing = compact ? "space-y-3" : "space-y-4";
     const labelClass = compact
-      ? "block text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
-      : "block text-[12px] font-medium uppercase tracking-[0.2em] text-white/55";
+      ? "block text-[11px] font-medium uppercase tracking-[0.18em] text-black/55 dark:text-white/55"
+      : "block text-[12px] font-medium uppercase tracking-[0.2em] text-black/55 dark:text-white/55";
     const inputClass = compact
-      ? "!h-10 !py-0 rounded-md border-white/10 bg-[#171717] px-3 text-[13px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-      : "!h-12 !py-0 rounded-md border-white/10 bg-[#171717] px-4 text-[15px] leading-none text-white/90 placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
+      ? "!h-10 !py-0 rounded-md border-black/10 dark:border-white/10 bg-black/5 dark:bg-[#171717] px-3 text-[13px] leading-none text-black/90 dark:text-white/90 placeholder:text-black/35 dark:placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+      : "!h-12 !py-0 rounded-md border-black/10 dark:border-white/10 bg-black/5 dark:bg-[#171717] px-4 text-[15px] leading-none text-black/90 dark:text-white/90 placeholder:text-black/35 dark:placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
     const submitButtonClass = compact
       ? "!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
       : "!h-14 w-full rounded-md bg-primary text-base font-medium text-black shadow-none hover:bg-primary/95 sm:text-[17px]";
@@ -423,7 +423,7 @@ function EmailAuth() {
                   <label htmlFor={otpInputId} className={labelClass}>
                     Verification code
                   </label>
-                  <p className="mt-1 truncate text-xs text-white/55">
+                  <p className="mt-1 truncate text-xs text-black/55 dark:text-white/55">
                     Email code sent to {pendingEmail}
                   </p>
                 </div>
@@ -433,7 +433,7 @@ function EmailAuth() {
                   variant="ghost"
                   onClick={handleChangeEmail}
                   disabled={isSubmitting || isResending}
-                  className="h-8 shrink-0 px-2 text-xs text-primary hover:bg-white/[0.06] hover:text-primary"
+                  className="h-8 shrink-0 px-2 text-xs text-primary hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-primary"
                 >
                   Change
                 </Button>
@@ -472,14 +472,14 @@ function EmailAuth() {
                 </InputOTPGroup>
               </InputOTP>
 
-              <div className="flex items-center justify-between gap-3 text-xs text-white/50">
+              <div className="flex items-center justify-between gap-3 text-xs text-black/50 dark:text-white/50">
                 <span>Code expires in {otpExpiresInMinutes} minutes.</span>
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={handleResendOtp}
                   disabled={isSubmitting || isResending}
-                  className="h-8 px-2 text-xs text-primary hover:bg-white/[0.06] hover:text-primary"
+                  className="h-8 px-2 text-xs text-primary hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-primary"
                 >
                   {isResending ? "Resending..." : "Resend code"}
                 </Button>
@@ -526,24 +526,24 @@ function EmailAuth() {
                 />
               </div>
 
-              <h1 className="text-[2.15rem] font-medium leading-none tracking-[-0.02em] text-white">
+              <h1 className="text-[2.15rem] font-medium leading-none tracking-[-0.02em] text-black dark:text-white">
                 Catalance
               </h1>
 
-              <p className="mt-1 text-[0.78rem] leading-tight text-white/68">
+              <p className="mt-1 text-[0.78rem] leading-tight text-black/68 dark:text-white/68">
                 Hire verified creative freelancers.
               </p>
             </div>
 
             <section className="mt-3 w-full">
-              <Card className="mx-auto mt-3 w-full rounded-lg border border-white/10 bg-[#101010]/90 p-3.5 shadow-none backdrop-blur-2xl">
+              <Card className="mx-auto mt-3 w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-[#101010]/90 p-3.5 shadow-none backdrop-blur-2xl">
                 {renderAuthForm({ compact: true })}
               </Card>
 
-              <div className="mt-2.5 flex items-center gap-3 text-white/42">
-                <span className="h-px flex-1 bg-white/12" />
+              <div className="mt-2.5 flex items-center gap-3 text-black/42 dark:text-white/42">
+                <span className="h-px flex-1 bg-black/12 dark:bg-white/12" />
                 <span className="text-[11px] tracking-[0.18em]">or</span>
-                <span className="h-px flex-1 bg-white/12" />
+                <span className="h-px flex-1 bg-black/12 dark:bg-white/12" />
               </div>
 
               <div className="mt-2.5 grid grid-cols-2 gap-2">
@@ -552,7 +552,7 @@ function EmailAuth() {
                   variant="outline"
                   onClick={handleGoogleSignIn}
                   disabled={isSubmitting || isResending || isGoogleLoading}
-                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[12px] font-medium text-white hover:bg-white/[0.06] hover:text-white disabled:opacity-70 sm:text-[13px]"
+                  className="!h-10 w-full rounded-md border-black/12 dark:border-white/12 bg-black/[0.03] dark:bg-white/[0.03] text-[12px] font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white disabled:opacity-70 sm:text-[13px]"
                 >
                   {isGoogleLoading ? (
                     <Loader2 className="size-[18px] animate-spin" />
@@ -570,14 +570,14 @@ function EmailAuth() {
                   type="button"
                   variant="outline"
                   onClick={() => handleSocialClick("Apple")}
-                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[12px] font-medium text-white hover:bg-white/[0.06] hover:text-white sm:text-[13px]"
+                  className="!h-10 w-full rounded-md border-black/12 dark:border-white/12 bg-black/[0.03] dark:bg-white/[0.03] text-[12px] font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white sm:text-[13px]"
                 >
-                  <AppleLogo className="size-[18px] text-white" />
+                  <AppleLogo className="size-[18px] text-black dark:text-white" />
                   Continue with Apple
                 </Button>
               </div>
 
-              <div className="mt-3 text-center text-[0.82rem] text-white/68">
+              <div className="mt-3 text-center text-[0.82rem] text-black/68 dark:text-white/68">
                   <Link
                   to={phoneSigninPath}
                   className="text-primary underline-offset-4 hover:underline"
@@ -586,7 +586,7 @@ function EmailAuth() {
                 </Link>
               </div>
 
-              <p className="mx-auto mt-2.5 max-w-[19rem] text-center text-[11px] leading-4 text-white/58">
+              <p className="mx-auto mt-2.5 max-w-[19rem] text-center text-[11px] leading-4 text-black/58 dark:text-white/58">
                 By continuing you agree to Catalance&apos;s{" "}
                 <Link to="/terms" className="text-primary underline-offset-4 hover:underline">
                   Terms of Service
@@ -613,11 +613,11 @@ function EmailAuth() {
               </div>
 
               <div className="space-y-5">
-                <h1 className="text-4xl font-semibold tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl">
+                <h1 className="text-4xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-6xl lg:text-7xl">
                   Catalance
                 </h1>
 
-                <p className="max-w-lg text-lg leading-tight text-white/72 sm:text-2xl">
+                <p className="max-w-lg text-lg leading-tight text-black/72 dark:text-white/72 sm:text-2xl">
                   Hire verified creative freelancers.
                 </p>
               </div>
@@ -626,7 +626,7 @@ function EmailAuth() {
                 <Button
                   asChild
                   variant="outline"
-                  className="h-12 rounded-full border-white/15 bg-white/[0.03] px-5 text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                  className="h-12 rounded-full border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.03] px-5 text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
                 >
                   <Link to="/talent" className="gap-2.5">
                     <Search className="size-4 text-primary" />
@@ -637,7 +637,7 @@ function EmailAuth() {
                 <Button
                   asChild
                   variant="outline"
-                  className="h-12 rounded-full border-white/15 bg-white/[0.03] px-5 text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                  className="h-12 rounded-full border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.03] px-5 text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
                 >
                   <Link to="/get-started" className="gap-2.5">
                     <Briefcase className="size-4 text-primary" />
@@ -648,7 +648,7 @@ function EmailAuth() {
                 <Button
                   asChild
                   variant="outline"
-                  className="h-12 rounded-full border-white/15 bg-white/[0.03] px-5 text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                  className="h-12 rounded-full border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.03] px-5 text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
                 >
                   <Link to="/contact" className="gap-2.5">
                     <MessageCircle className="size-4 text-primary" />
@@ -661,22 +661,22 @@ function EmailAuth() {
 
           <section className="order-1 flex justify-center xl:order-2 xl:justify-end">
             <div className="flex w-full max-w-[42rem] flex-col">
-              <Card className="relative overflow-hidden rounded-lg border border-white/10 bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
+              <Card className="relative overflow-hidden rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.15)] dark:shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
                 <div className="relative p-6 sm:p-8 md:p-12">
-                  <p className="px-4 text-center text-3xl font-semibold uppercase text-white sm:px-6 md:px-12">
+                  <p className="px-4 text-center text-3xl font-semibold uppercase text-black dark:text-white sm:px-6 md:px-12">
                     Sign in
                   </p>
 
-                  <p className="mb-4 px-4 text-center text-md text-nowrap text-white/72 sm:px-6 md:px-12">
+                  <p className="mb-4 px-4 text-center text-md text-nowrap text-black/72 dark:text-white/72 sm:px-6 md:px-12">
                     Use your email to continue.
                   </p>
 
                   {renderAuthForm()}
 
-                  <div className="mt-6 flex items-center gap-4 text-white/42">
-                    <span className="h-px flex-1 bg-white/12" />
+                  <div className="mt-6 flex items-center gap-4 text-black/42 dark:text-white/42">
+                    <span className="h-px flex-1 bg-black/12 dark:bg-white/12" />
                     <span className="text-sm tracking-[0.28em]">OR</span>
-                    <span className="h-px flex-1 bg-white/12" />
+                    <span className="h-px flex-1 bg-black/12 dark:bg-white/12" />
                   </div>
 
                   <div className="mt-6 grid grid-cols-2 gap-3">
@@ -685,7 +685,7 @@ function EmailAuth() {
                       variant="outline"
                       onClick={handleGoogleSignIn}
                       disabled={isSubmitting || isResending || isGoogleLoading}
-                      className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white disabled:opacity-70"
+                      className="!h-14 w-full rounded-md border-black/12 dark:border-white/12 bg-black/[0.03] dark:bg-white/[0.03] text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white disabled:opacity-70"
                     >
                       {isGoogleLoading ? (
                         <Loader2 className="size-5 animate-spin" />
@@ -703,14 +703,14 @@ function EmailAuth() {
                       type="button"
                       variant="outline"
                       onClick={() => handleSocialClick("Apple")}
-                      className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                      className="!h-14 w-full rounded-md border-black/12 dark:border-white/12 bg-black/[0.03] dark:bg-white/[0.03] text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
                     >
-                      <AppleLogo className="size-5 text-white" />
+                      <AppleLogo className="size-5 text-black dark:text-white" />
                       Continue with Apple
                     </Button>
                   </div>
 
-                  <div className="mt-6 text-center text-[0.95rem] text-white/68">
+                  <div className="mt-6 text-center text-[0.95rem] text-black/68 dark:text-white/68">
                     <Link
                       to={phoneSigninPath}
                       className="text-primary underline-offset-4 hover:underline"
@@ -721,7 +721,7 @@ function EmailAuth() {
                 </div>
               </Card>
 
-              <p className="mt-6 px-4 text-center text-[13px] leading-relaxed text-white/58 sm:text-sm sm:whitespace-nowrap">
+              <p className="mt-6 px-4 text-center text-[13px] leading-relaxed text-black/58 dark:text-white/58 sm:text-sm sm:whitespace-nowrap">
                 By continuing you agree to Catalance&apos;s{" "}
                 <Link
                   to="/terms"

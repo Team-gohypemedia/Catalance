@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-
+import NumberTicker from "@/components/ui/number-ticker";
 import { Button } from "@/components/ui/button";
 import MascotCTA from "@/assets/videos/mascot-cta.mp4";
 import MascotPoster from "@/assets/mascot.png";
@@ -8,20 +8,23 @@ import MascotPoster from "@/assets/mascot.png";
 const MARKETPLACE_STATS = [
   {
     label: "Brands Onboarded",
-    value: "20k+",
+    value: 20,
+    suffix: "k+",
   },
   {
     label: "Successful Projects",
-    value: "1000+",
+    value: 1000,
+    suffix: "+",
   },
   {
     label: "Freelancers Enrolled",
-    value: "10+",
+    value: 10,
+    suffix: "+",
   },
 ];
 
 const MASCOT_MEDIA_CLASSNAME =
-  "block h-auto max-h-[16rem] w-full max-w-[16rem] select-none object-contain sm:max-h-[22rem] sm:max-w-[22rem] lg:max-h-[28rem] lg:max-w-[28rem]";
+  "block h-auto max-h-[18rem] w-full max-w-[18rem] select-none object-contain sm:max-h-[24rem] sm:max-w-[24rem] lg:max-h-[30rem] lg:max-w-[30rem]";
 
 const applyChromaKey = (frame) => {
   const { data } = frame;
@@ -91,12 +94,17 @@ const MarketPlaceCTA = () => {
         return;
       }
 
+      // Optimization: Limit the processing resolution to 480p equivalent
+      const scale = Math.min(1, 480 / videoElement.videoHeight);
+      const targetWidth = Math.round(videoElement.videoWidth * scale);
+      const targetHeight = Math.round(videoElement.videoHeight * scale);
+
       if (
-        canvasElement.width !== videoElement.videoWidth ||
-        canvasElement.height !== videoElement.videoHeight
+        canvasElement.width !== targetWidth ||
+        canvasElement.height !== targetHeight
       ) {
-        canvasElement.width = videoElement.videoWidth;
-        canvasElement.height = videoElement.videoHeight;
+        canvasElement.width = targetWidth;
+        canvasElement.height = targetHeight;
       }
     };
 
@@ -160,81 +168,90 @@ const MarketPlaceCTA = () => {
 
   return (
     <section className="relative isolate w-full overflow-hidden bg-background">
-      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-7xl grid-rows-[1fr_auto] px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-        <div className="flex items-center">
-          <div className="grid w-full items-center gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
-            <div className="flex justify-center lg:justify-start">
-              <div className="relative">
-                {!hasRenderedFrame ? (
-                  <img
-                    src={MascotPoster}
-                    alt=""
-                    aria-hidden="true"
-                    draggable="false"
-                    className={MASCOT_MEDIA_CLASSNAME}
-                  />
-                ) : null}
+      <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-32 lg:px-8">
 
-                <canvas
-                  ref={canvasRef}
-                  role="img"
-                  aria-label="Mascot animation"
-                  className={`${MASCOT_MEDIA_CLASSNAME} ${
-                    hasRenderedFrame ? "opacity-100" : "absolute inset-0 opacity-0"
-                  }`}
-                />
+        {/* ── Centered headline ── */}
+        <h2 className="mb-10 text-center text-[clamp(1.6rem,3.8vw,3rem)] font-medium leading-[1.1] tracking-tight text-foreground sm:mb-12 lg:mb-14 lg:whitespace-nowrap">
+          Work Done On Your Terms, Every Single Time
+        </h2>
 
-                <video
-                  ref={videoRef}
-                  src={MascotCTA}
-                  poster={MascotPoster}
-                  aria-hidden="true"
+        {/* ── Two-column: mascot LEFT, description + CTA RIGHT — vertically centered ── */}
+        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-12">
+
+          {/* Left – mascot */}
+          <div className="flex justify-center lg:justify-start">
+            <div className="relative">
+              {!hasRenderedFrame ? (
+                <img
+                  src={MascotPoster}
+                  alt="Catalance mascot"
                   draggable="false"
-                  className="pointer-events-none absolute h-px w-px opacity-0"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="auto"
-                  disablePictureInPicture
+                  className={MASCOT_MEDIA_CLASSNAME}
                 />
-              </div>
+              ) : null}
+
+              <canvas
+                ref={canvasRef}
+                role="img"
+                aria-label="Mascot animation"
+                className={`${MASCOT_MEDIA_CLASSNAME} ${
+                  hasRenderedFrame ? "opacity-100" : "absolute inset-0 opacity-0"
+                }`}
+              />
+
+              <video
+                ref={videoRef}
+                src={MascotCTA}
+                poster={MascotPoster}
+                aria-hidden="true"
+                draggable="false"
+                className="pointer-events-none absolute h-px w-px opacity-0"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                disablePictureInPicture
+              />
             </div>
+          </div>
 
-            <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:text-left">
-              <h2 className="whitespace-nowrap text-[clamp(1.5rem,5vw,4rem)] font-medium leading-[0.98] tracking-tight text-white">
-                Work Done On Your Terms
-              </h2>
+          {/* Right – description + CTA + stats */}
+          <div className="flex flex-col">
+            <p className="max-w-md text-sm leading-relaxed text-foreground/60 sm:text-base">
+              Our platform connects businesses with verified, top-tier
+              freelancers. From concept to completion, we help you ship
+              faster without compromising quality.
+            </p>
 
-              <p className="mt-1 sm:mt-3 max-w-xl text-pretty text-[0.98rem] leading-relaxed text-white/78 sm:text-lg lg:max-w-2xl">
-                No delays, no excuses, just great work.
-              </p>
+            <Button
+              asChild
+              className="mt-6 w-fit h-11 rounded-md bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-[0_14px_36px_rgba(var(--brand-rgb),0.22)] hover:bg-primary/90"
+            >
+              <Link to="/talent">Browse Talent</Link>
+            </Button>
 
-              <Button
-                asChild
-                className="mt-8 h-12 rounded-md bg-[#ffcc00] px-6 text-sm font-semibold text-black hover:bg-[#ffcc00]/90 sm:h-12 sm:px-7 sm:text-base"
-              >
-                <Link to="/talent">Browse Talent</Link>
-              </Button>
+            {/* Stats — inside right column */}
+            <div className="mt-10 grid grid-cols-3 gap-6 border-t border-border pt-8">
+              {MARKETPLACE_STATS.map((stat) => (
+                <div key={stat.label} className="min-w-0">
+                  <div className="flex items-baseline gap-0.5 text-[clamp(1.5rem,3.5vw,2.6rem)] font-medium leading-none tracking-tight text-foreground">
+                    <NumberTicker value={stat.value} className="text-foreground" />
+                    <span>{stat.suffix}</span>
+                  </div>
+                  <p className="mt-1.5 text-[0.72rem] font-medium leading-tight text-foreground/50 sm:text-xs">
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        <div className="mt-10 grid grid-cols-3 gap-3 border-t border-white/10 pt-10 text-center sm:mt-0 sm:gap-4 md:gap-8 lg:pt-12">
-          {MARKETPLACE_STATS.map((stat) => (
-            <div key={stat.label} className="min-w-0">
-              <p className="text-[0.65rem] font-medium leading-tight text-white/88 sm:text-base">
-                {stat.label}
-              </p>
-              <p className="mt-3 text-[clamp(1.35rem,8vw,3.4rem)] font-medium leading-none tracking-tight text-white">
-                {stat.value}
-              </p>
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   );
 };
 
 export default MarketPlaceCTA;
+

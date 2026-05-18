@@ -278,15 +278,15 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
             </p>
             <ul className={cn("space-y-2", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
               <li className="flex items-start gap-2.5">
-                <BadgeCheck className="mt-[0.6rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />
+                <BadgeCheck className="mt-[0.6rem] h-4 w-4 shrink-0 text-[var(--primary)]" aria-hidden="true" />
                 <span>They have read and understood this Agreement.</span>
               </li>
               <li className="flex items-start gap-2.5">
-                <BadgeCheck className="mt-[0.6rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />
+                <BadgeCheck className="mt-[0.6rem] h-4 w-4 shrink-0 text-[var(--primary)]" aria-hidden="true" />
                 <span>They agree to comply with all terms and conditions stated herein.</span>
               </li>
               <li className="flex items-start gap-2.5">
-                <BadgeCheck className="mt-[0.6rem] h-4 w-4 shrink-0 text-[#facc15]" aria-hidden="true" />
+                <BadgeCheck className="mt-[0.6rem] h-4 w-4 shrink-0 text-[var(--primary)]" aria-hidden="true" />
                 <span>This Agreement is binding upon acceptance of work.</span>
               </li>
             </ul>
@@ -297,7 +297,7 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           className={cn(
             "flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors",
             hasReachedEnd
-              ? "border-[#facc15]/35 bg-card"
+              ? "border-[var(--primary)]/35 bg-card"
               : "border-white/10 bg-card/70",
             ONBOARDING_FIELD_LABEL_CLASS,
           )}

@@ -89,14 +89,14 @@ const ProfileSummaryCards = ({
 
       {visibleMissingDetails.length > 0 ? (
         <div className="mt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/90">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/90">
             Missing details
           </p>
           <ul className="mt-2 space-y-3">
             {visibleMissingDetails.map((item, index) => (
               <li key={`${item.label}-${index}`} className="flex gap-3">
                 <span
-                  className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400 ring-4 ring-amber-500/10"
+                  className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary/10 ring-4 ring-primary/20/10"
                   aria-hidden="true"
                 />
                 <div className="min-w-0">
@@ -111,7 +111,7 @@ const ProfileSummaryCards = ({
             ))}
           </ul>
           {hiddenMissingCount > 0 ? (
-            <p className="mt-2 text-[11px] font-medium text-amber-300/80">
+            <p className="mt-2 text-[11px] font-medium text-primary/80">
               +{hiddenMissingCount} more detail{hiddenMissingCount === 1 ? "" : "s"} to complete
             </p>
           ) : null}

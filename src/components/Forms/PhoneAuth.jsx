@@ -168,7 +168,7 @@ function CountryFlag({ code, className = "h-5 w-5" }) {
     return (
       <div
         aria-hidden="true"
-        className={cn("rounded-sm border border-white/10 bg-white/5", className)}
+        className={cn("rounded-sm border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5", className)}
       />
     );
   }
@@ -179,7 +179,7 @@ function CountryFlag({ code, className = "h-5 w-5" }) {
     return (
       <div
         aria-hidden="true"
-        className={cn("rounded-sm border border-white/10 bg-white/5", className)}
+        className={cn("rounded-sm border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5", className)}
       />
     );
   }
@@ -588,7 +588,7 @@ function PhoneAuth() {
     const buttonLabel = isOtpStep ? "Verify OTP" : "Continue with WhatsApp";
     const loadingLabel = isOtpStep ? "Verifying..." : "Connecting...";
     const formSpacing = compact ? "space-y-3" : "space-y-5";
-    const labelClass = "block text-[11px] font-medium uppercase tracking-[0.18em] text-white";
+    const labelClass = "block text-[11px] font-medium uppercase tracking-[0.18em] text-black dark:text-white";
     const phoneGridClass = compact
       ? "grid w-full grid-cols-[7rem_minmax(0,1fr)] gap-1.5"
       : "grid grid-cols-[7.5rem_minmax(0,1fr)] gap-2 sm:grid-cols-[8rem_minmax(0,1fr)]";
@@ -644,20 +644,20 @@ function PhoneAuth() {
                   <SelectContent
                     position="popper"
                     sideOffset={8}
-                    className="z-[60] min-w-[18rem] border-white/10 bg-[#121212] text-white shadow-2xl sm:min-w-[26rem]"
+                    className="z-[60] min-w-[18rem] border-black/10 dark:border-white/10 bg-white dark:bg-[#121212] text-black dark:text-white shadow-2xl sm:min-w-[26rem]"
                   >
                     {COUNTRY_OPTIONS.map((option) => (
                       <SelectItem
                         key={option.code}
                         value={option.code}
-                        className="group cursor-pointer pr-8 text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white group-data-[state=checked]:pr-14"
+                        className="group cursor-pointer pr-8 text-black dark:text-white data-[highlighted]:bg-black/5 dark:bg-white/5 data-[highlighted]:text-black dark:text-white group-data-[state=checked]:pr-14"
                       >
                         <span className="flex w-full items-center gap-0">
                           <CountryFlag code={option.code} className="h-5 w-5" />
                           <span className="ml-3 min-w-0 flex-1 truncate text-[13px]">
                             {option.label}
                           </span>
-                          <span className="absolute right-3 text-[13px] text-white/45 group-data-[state=checked]:right-8">
+                          <span className="absolute right-3 text-[13px] text-black/45 dark:text-white/45 group-data-[state=checked]:right-8">
                             +{option.dialCode.replace(/\D/g, "")}
                           </span>
                         </span>
@@ -703,11 +703,11 @@ function PhoneAuth() {
                 <div className="min-w-0">
                   <FieldLabel
                     htmlFor={otpInputId}
-                    className="block text-[12px] font-semibold uppercase tracking-[0.2em] text-white"
+                    className="block text-[12px] font-semibold uppercase tracking-[0.2em] text-black dark:text-white"
                   >
                     Verification code
                   </FieldLabel>
-                  <p className="mt-1 truncate text-xs text-white/55">
+                  <p className="mt-1 truncate text-xs text-black/55 dark:text-white/55">
                     6-digit code sent to {pendingPhoneLabel}
                   </p>
                 </div>
@@ -770,8 +770,8 @@ function PhoneAuth() {
                 </InputOTPGroup>
               </InputOTP>
 
-              <div className="flex items-center justify-between gap-3 text-xs text-white/50">
-                <span className={isOtpExpired ? "text-red-400" : "text-white/50"}>
+              <div className="flex items-center justify-between gap-3 text-xs text-black/50 dark:text-white/50">
+                <span className={isOtpExpired ? "text-red-400" : "text-black/50 dark:text-white/50"}>
                   {countdownText}
                 </span>
                 <Button
@@ -779,7 +779,7 @@ function PhoneAuth() {
                   variant="ghost"
                   onClick={handleResendOtp}
                   disabled={!canResendOtp}
-                  className="h-8 px-2 text-xs text-primary hover:bg-white/[0.06] hover:text-primary"
+                  className="h-8 px-2 text-xs text-primary hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-primary"
                 >
                   {resendButtonLabel}
                 </Button>
@@ -828,24 +828,24 @@ function PhoneAuth() {
                 />
               </div>
 
-              <h1 className="text-[2.15rem] font-medium leading-none tracking-[-0.02em] text-white">
+              <h1 className="text-[2.15rem] font-medium leading-none tracking-[-0.02em] text-black dark:text-white">
                 Catalance
               </h1>
 
-              <p className="mt-1 text-[0.78rem] leading-tight text-white/68">
+              <p className="mt-1 text-[0.78rem] leading-tight text-black/68 dark:text-white/68">
                 Hire verified creative freelancers.
               </p>
             </div>
 
             <section className="mt-3 w-full">
-              <Card className="mx-auto mt-3 w-full rounded-lg border border-white/10 bg-[#101010]/90 p-3.5 shadow-none backdrop-blur-2xl">
+              <Card className="mx-auto mt-3 w-full rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-[#101010]/90 p-3.5 shadow-none backdrop-blur-2xl">
                 {renderAuthForm({ compact: true })}
               </Card>
 
-              <div className="mt-2.5 flex items-center gap-3 text-white/42">
-                <span className="h-px flex-1 bg-white/12" />
+              <div className="mt-2.5 flex items-center gap-3 text-black/42 dark:text-white/42">
+                <span className="h-px flex-1 bg-black/12 dark:bg-white/12" />
                 <span className="text-[11px] tracking-[0.18em]">or</span>
-                <span className="h-px flex-1 bg-white/12" />
+                <span className="h-px flex-1 bg-black/12 dark:bg-white/12" />
               </div>
 
               <div className="mt-2.5 space-y-2.5">
@@ -854,7 +854,7 @@ function PhoneAuth() {
                   variant="outline"
                   onClick={handleGoogleSignIn}
                   disabled={isSubmitting || isResending || isGoogleLoading}
-                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[12px] font-medium text-white hover:bg-white/[0.06] hover:text-white disabled:opacity-70 sm:text-[13px]"
+                  className="!h-10 w-full rounded-md border-black/12 dark:border-white/12 bg-black/[0.03] dark:bg-white/[0.03] text-[12px] font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white disabled:opacity-70 sm:text-[13px]"
                 >
                   {isGoogleLoading ? (
                     <Loader2 className="size-[18px] animate-spin" />
@@ -872,14 +872,14 @@ function PhoneAuth() {
                   type="button"
                   variant="outline"
                   onClick={() => handleSocialClick("Apple")}
-                  className="!h-10 w-full rounded-md border-white/12 bg-white/[0.03] text-[12px] font-medium text-white hover:bg-white/[0.06] hover:text-white sm:text-[13px]"
+                  className="!h-10 w-full rounded-md border-black/12 dark:border-white/12 bg-black/[0.03] dark:bg-white/[0.03] text-[12px] font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white sm:text-[13px]"
                 >
-                  <AppleLogo className="size-[18px] text-white" />
+                  <AppleLogo className="size-[18px] text-black dark:text-white" />
                   Continue with Apple
                 </Button>
               </div>
 
-              <div className="mt-3 text-center text-[0.82rem] text-white/68">
+              <div className="mt-3 text-center text-[0.82rem] text-black/68 dark:text-white/68">
                 <Link
                   to={emailSigninPath}
                   className="text-primary underline-offset-4 hover:underline"
@@ -888,7 +888,7 @@ function PhoneAuth() {
                 </Link>
               </div>
 
-              <p className="mx-auto mt-2 max-w-[19rem] text-center text-[11px] leading-4 text-white/58">
+              <p className="mx-auto mt-2 max-w-[19rem] text-center text-[11px] leading-4 text-black/58 dark:text-white/58">
                 By continuing you agree to Catalance&apos;s{" "}
                 <Link to="/terms" className="text-primary underline-offset-4 hover:underline">
                   Terms of Service
@@ -915,11 +915,11 @@ function PhoneAuth() {
               </div>
 
               <div className="space-y-5">
-                <h1 className="text-4xl font-semibold tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl">
+                <h1 className="text-4xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-6xl lg:text-7xl">
                   Catalance
                 </h1>
 
-                <p className="max-w-lg text-lg leading-tight text-white/72 sm:text-2xl">
+                <p className="max-w-lg text-lg leading-tight text-black/72 dark:text-white/72 sm:text-2xl">
                   Hire verified creative freelancers.
                 </p>
               </div>
@@ -928,7 +928,7 @@ function PhoneAuth() {
                 <Button
                   asChild
                   variant="outline"
-                  className="h-12 rounded-full border-white/15 bg-white/[0.03] px-5 text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                  className="h-12 rounded-full border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.03] px-5 text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
                 >
                   <Link to="/talent" className="gap-2.5">
                     <Search className="size-4 text-primary" />
@@ -939,7 +939,7 @@ function PhoneAuth() {
                 <Button
                   asChild
                   variant="outline"
-                  className="h-12 rounded-full border-white/15 bg-white/[0.03] px-5 text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                  className="h-12 rounded-full border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.03] px-5 text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
                 >
                   <Link to="/get-started" className="gap-2.5">
                     <Briefcase className="size-4 text-primary" />
@@ -950,7 +950,7 @@ function PhoneAuth() {
                 <Button
                   asChild
                   variant="outline"
-                  className="h-12 rounded-full border-white/15 bg-white/[0.03] px-5 text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                  className="h-12 rounded-full border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.03] px-5 text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
                 >
                   <Link to="/contact" className="gap-2.5">
                     <MessageCircle className="size-4 text-primary" />
@@ -963,14 +963,14 @@ function PhoneAuth() {
 
           <section className="order-1 flex justify-center xl:order-2 xl:justify-end">
             <div className="flex w-full max-w-[42rem] flex-col">
-              <Card className="relative overflow-hidden rounded-lg border border-white/10 bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
+              <Card className="relative overflow-hidden rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-[#101010]/90 p-0 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.15)] dark:shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
                 <div className="relative p-6 sm:p-8 md:p-10">
                   {renderAuthForm()}
 
-                  <div className="mt-5 flex items-center gap-4 text-white/42">
-                    <span className="h-px flex-1 bg-white/12" />
+                  <div className="mt-5 flex items-center gap-4 text-black/42 dark:text-white/42">
+                    <span className="h-px flex-1 bg-black/12 dark:bg-white/12" />
                     <span className="text-sm tracking-[0.28em]">OR</span>
-                    <span className="h-px flex-1 bg-white/12" />
+                    <span className="h-px flex-1 bg-black/12 dark:bg-white/12" />
                   </div>
 
                   <div className="mt-5 space-y-3">
@@ -979,7 +979,7 @@ function PhoneAuth() {
                   variant="outline"
                   onClick={handleGoogleSignIn}
                   disabled={isSubmitting || isResending || isGoogleLoading}
-                  className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white disabled:opacity-70"
+                  className="!h-14 w-full rounded-md border-black/12 dark:border-white/12 bg-black/[0.03] dark:bg-white/[0.03] text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white disabled:opacity-70"
                 >
                   {isGoogleLoading ? (
                     <Loader2 className="size-5 animate-spin" />
@@ -997,14 +997,14 @@ function PhoneAuth() {
                       type="button"
                       variant="outline"
                       onClick={() => handleSocialClick("Apple")}
-                      className="!h-14 w-full rounded-md border-white/12 bg-white/[0.03] text-sm font-medium text-white hover:bg-white/[0.06] hover:text-white"
+                      className="!h-14 w-full rounded-md border-black/12 dark:border-white/12 bg-black/[0.03] dark:bg-white/[0.03] text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
                     >
-                      <AppleLogo className="size-5 text-white" />
+                      <AppleLogo className="size-5 text-black dark:text-white" />
                       Continue with Apple
                     </Button>
                   </div>
 
-                  <div className="pt-5 text-center text-base text-white/68">
+                  <div className="pt-5 text-center text-base text-black/68 dark:text-white/68">
                     <Link
                       to={emailSigninPath}
                       className="text-primary underline-offset-4 hover:underline"
@@ -1015,7 +1015,7 @@ function PhoneAuth() {
                 </div>
               </Card>
 
-              <p className="mt-5 px-4 text-center text-[13px] leading-relaxed text-white/58 sm:text-sm sm:whitespace-nowrap">
+              <p className="mt-5 px-4 text-center text-[13px] leading-relaxed text-black/58 dark:text-white/58 sm:text-sm sm:whitespace-nowrap">
                 By continuing you agree to Catalance&apos;s{" "}
                 <Link
                   to="/terms"

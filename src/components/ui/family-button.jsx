@@ -16,10 +16,10 @@ const FamilyButton = ({ children }) => {
       className={cn(
         "rounded-[24px] border shadow-sm",
         "border-black/5 dark:border-white/10",
-        "bg-gradient-to-b from-[#FFFBF0] to-[#F2EFE9] dark:from-neutral-900 dark:to-black",
+        "bg-gradient-to-b from-[#FAF6F0] to-[#F2EFE9] dark:from-neutral-900 dark:to-black",
         isExpanded
-          ? "w-[204px] bg-gradient-to-b from-[#FFFBF0] to-[#F2EFE9] dark:from-neutral-900 dark:to-stone-950"
-          : "bg-gradient-to-b from-[#FFFBF0] to-[#F2EFE9] dark:from-neutral-900 dark:to-black"
+          ? "w-[204px] bg-gradient-to-b from-[#FAF6F0] to-[#F2EFE9] dark:from-neutral-900 dark:to-stone-950"
+          : "bg-gradient-to-b from-[#FAF6F0] to-[#F2EFE9] dark:from-neutral-900 dark:to-black"
       )}
     >
       <div className="rounded-[23px] border border-white/50 dark:border-white/5">
@@ -60,7 +60,7 @@ const FamilyButtonContainer = ({ isExpanded, toggleExpand, children }) => {
         "border-white/40 dark:border-white/10",
         "text-black dark:text-white",
         !isExpanded
-          ? "bg-gradient-to-b from-[#FFFBF0] to-[#F2EFE9] dark:from-neutral-900 dark:to-stone-900"
+          ? "bg-gradient-to-b from-[#FAF6F0] to-[#F2EFE9] dark:from-neutral-900 dark:to-stone-900"
           : ""
       )}
       layoutRoot

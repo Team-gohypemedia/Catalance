@@ -426,7 +426,7 @@ const ProfessionalProfilePage = () => {
                   {completedChecklist}/{pmChecklist.length} onboarding complete
                 </Badge>
                 {pendingRequest ? (
-                  <Badge className="border border-amber-200/70 bg-amber-100/20 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-amber-100">
+                  <Badge className="border border-primary/20/70 bg-primary/10/20 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-primary">
                     Pending Admin Approval
                   </Badge>
                 ) : null}
@@ -574,13 +574,13 @@ const ProfessionalProfilePage = () => {
                             </div>
                             <div className="mt-3 grid gap-2 sm:grid-cols-2">
                               {pmChecklist.map((item) => (
-                                <div key={item.key} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${item.complete ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                                <div key={item.key} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${item.complete ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-primary/20 bg-primary/10 text-primary"}`}>
                                   {item.label}
                                 </div>
                               ))}
                             </div>
                             {pendingRequest ? (
-                              <p className="mt-3 text-xs font-semibold text-amber-700">
+                              <p className="mt-3 text-xs font-semibold text-primary">
                                 Latest update is pending Admin approval. You can still update and resubmit.
                               </p>
                             ) : null}
@@ -844,7 +844,7 @@ const ProfessionalProfilePage = () => {
                   <div className="mb-6 flex items-center justify-between">
                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base Rate</p>
                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 text-yellow-500" />
+                        <Star className="h-4 w-4 text-primary" />
                         <span className="text-sm font-bold text-slate-900">{profile.rating}</span>
                      </div>
                   </div>
@@ -886,8 +886,8 @@ const ProfessionalProfilePage = () => {
                     </div>
                  </div>
                ) : (
-                 <Card className="rounded-[40px] border-amber-200 bg-amber-50/60 p-8 shadow-sm">
-                   <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                 <Card className="rounded-[40px] border-primary/20 bg-primary/10/60 p-8 shadow-sm">
+                   <p className="text-[10px] font-black uppercase tracking-widest text-primary">
                      Profile Edit Permissions
                    </p>
                    <p className="mt-3 text-sm font-semibold text-slate-900">
@@ -897,7 +897,7 @@ const ProfessionalProfilePage = () => {
                      Every profile update goes for Admin approval first. Until approval, profile changes remain in pending state.
                    </p>
                    <div className="mt-4">
-                     <Badge className={`border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${pendingRequest ? "border-amber-300 bg-amber-100 text-amber-800" : "border-emerald-200 bg-emerald-100 text-emerald-700"}`}>
+                     <Badge className={`border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${pendingRequest ? "border-primary/20 bg-primary/10 text-primary" : "border-emerald-200 bg-emerald-100 text-emerald-700"}`}>
                        {pendingRequest ? "Pending Approval" : "No Pending Request"}
                      </Badge>
                    </div>

@@ -29,7 +29,7 @@ const CatalanceHero = () => {
   const subTextColor = isDark ? "text-neutral-300" : "text-gray-600";
   const cardSurfaceClass = isDark
     ? "bg-linear-to-bl from-primary/40 via-black to-black border-white/10 shadow-card"
-    : "bg-linear-to-b from-white via-white to-amber-50/70 border-black/10 shadow-[0_16px_48px_rgba(2,6,23,0.08)]";
+    : "bg-linear-to-b from-white via-white to-primary/20 border-black/10 shadow-[0_16px_48px_rgba(2,6,23,0.08)]";
   const cardTitleClass = isDark ? "text-white" : "text-neutral-900";
   const cardBodyClass = isDark ? "text-neutral-300" : "text-neutral-600";
   const cardFeatureClass = isDark ? "text-neutral-100/90" : "text-neutral-700";
@@ -224,13 +224,13 @@ const CatalanceHero = () => {
                   <div className="w-full mt-auto">
                     <Button
                       size="lg"
-                      className="w-full group/btn font-semibold px-6 py-5 sm:py-6 text-base shadow-lg shadow-orange-500/20 transition-all duration-300 hover:shadow-orange-500/40"
+                      className="w-full group/btn font-semibold px-6 py-5 sm:py-6 text-base shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-primary/40"
                     >
                       Hire Now
                       <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                     </Button>
                   </div>
-                  <div className={`absolute inset-0 rounded-3xl -z-10 blur-xl ${isDark ? "bg-linear-to-br from-orange-500/0 to-amber-500/0" : "bg-linear-to-br from-amber-200/30 to-white/0"}`} />
+                  <div className={`absolute inset-0 rounded-3xl -z-10 blur-xl ${isDark ? "bg-linear-to-br from-primary/0 to-primary/20" : "bg-linear-to-br from-primary/30 to-white/0"}`} />
                 </div>
               </Link>
 
@@ -264,7 +264,7 @@ const CatalanceHero = () => {
                     loading="eager"
                     decoding="async"
                     fetchPriority="high"
-                    className="relative z-10 w-full object-contain drop-shadow-[0_28px_38px_rgba(255,204,0,0.24)]"
+                    className="relative z-10 w-full object-contain drop-shadow-[0_28px_38px_rgba(var(--brand-rgb),0.24)]"
                   />
                 </div>
 

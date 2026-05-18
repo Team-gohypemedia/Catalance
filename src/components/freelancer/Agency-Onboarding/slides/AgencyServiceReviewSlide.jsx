@@ -1041,7 +1041,7 @@ const AgencyServiceReviewSlide = ({
                   <div className="relative aspect-[16/10] w-full overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(255,214,10,0.12),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.06),transparent_22%),linear-gradient(135deg,#090909,#131313_55%,#111111)]">
                     <div className="absolute inset-y-0 left-[30%] w-px bg-white/10" />
                     <div className="absolute inset-y-0 right-[30%] w-px bg-white/10" />
-                    <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/35 shadow-[0_0_60px_rgba(250,204,21,0.1)]" />
+                    <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/35 shadow-[0_0_60px_rgba(var(--brand-rgb),0.1)]" />
                     <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/12" />
                     <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25" />
                     <div className="absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.78))]" />
@@ -1122,7 +1122,7 @@ const AgencyServiceReviewSlide = ({
                               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.08)_0%,rgba(5,5,5,0.22)_38%,rgba(5,5,5,0.86)_100%)]" />
                             </>
                           ) : (
-                            <div className="relative aspect-[16/9] w-full overflow-hidden bg-[radial-gradient(circle_at_18%_20%,rgba(250,204,21,0.2),transparent_26%),radial-gradient(circle_at_82%_12%,rgba(255,255,255,0.07),transparent_22%),linear-gradient(135deg,#0d0d0d,#131313_52%,#161616)]">
+                            <div className="relative aspect-[16/9] w-full overflow-hidden bg-[radial-gradient(circle_at_18%_20%,rgba(var(--brand-rgb),0.2),transparent_26%),radial-gradient(circle_at_82%_12%,rgba(255,255,255,0.07),transparent_22%),linear-gradient(135deg,#0d0d0d,#131313_52%,#161616)]">
                               <div className="absolute inset-y-0 left-[26%] w-px bg-white/8" />
                               <div className="absolute inset-y-0 right-[26%] w-px bg-white/8" />
                               <div className="absolute left-6 top-6 flex h-20 w-20 items-center justify-center rounded-[24px] border border-white/10 bg-white/[0.06] shadow-[0_10px_40px_rgba(0,0,0,0.28)] backdrop-blur-sm">

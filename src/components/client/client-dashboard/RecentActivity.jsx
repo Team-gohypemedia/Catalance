@@ -30,8 +30,8 @@ const activityIconMap = {
 
 const activityToneMap = {
   blue: "bg-[#1f3558]/65 text-[#6ea8ff]",
-  amber: "bg-[#3b2d0a] text-[#ffc107]",
-  warning: "bg-[#3b2d0a] text-[#ffc107]",
+  amber: "bg-[#3b2d0a] text-[var(--primary)]",
+  warning: "bg-[#3b2d0a] text-[var(--primary)]",
   green: "bg-[#102e24] text-[#23d18b]",
   violet: "bg-[#33204c] text-[#c084fc]",
   slate: "bg-[#273142] text-[#94a3b8]",
@@ -79,7 +79,7 @@ const ActivityActionButtons = memo(function ActivityActionButtons({
             item.onAction();
           }}
           className={cn(
-            "inline-flex h-8 items-center justify-center rounded-xl bg-[#ffc107] px-3 text-xs font-semibold text-black transition-colors hover:bg-[#ffd54f]",
+            "inline-flex h-8 items-center justify-center rounded-xl bg-[var(--primary)] px-3 text-xs font-semibold text-black transition-colors hover:bg-primary/80",
             compact ? "" : "text-[11px] uppercase tracking-[0.06em]",
           )}
         >
@@ -214,14 +214,14 @@ const RecentActivity = memo(function RecentActivity({
   return (
     <section className={cn("flex h-full w-full min-w-0 flex-col", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-        <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.65rem]">
+        <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-foreground sm:text-[1.65rem]">
           Recent Activity
         </h2>
         {!resolvedIsLoading ? (
           <button
             type="button"
             onClick={handleOpenViewAll}
-            className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[#ffc107] transition-colors hover:text-[#ffd54f]"
+            className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)] transition-colors hover:text-[#ffd54f]"
           >
             View All
           </button>

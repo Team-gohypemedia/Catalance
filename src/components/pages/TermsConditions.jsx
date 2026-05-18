@@ -145,7 +145,7 @@ const TermsConditions = () => {
                 <li>Harass, abuse, or harm other users</li>
                 <li>Attempt to bypass platform systems</li>
               </ul>
-              <p className="text-amber-400 font-medium mt-2">
+              <p className="text-primary font-medium mt-2">
                 Violation may lead to account suspension or termination.
               </p>
             </div>

@@ -103,7 +103,7 @@ const HoverGlowBackground = ({
       <div
         className={cn(
           "pointer-events-none absolute inset-0",
-          "bg-gradient-to-b from-yellow-200/15 to-transparent",
+          "bg-gradient-to-b from-primary/15 to-transparent",
           "transition-opacity duration-500",
           isActive ? "opacity-60" : "opacity-25"
         )}
@@ -113,7 +113,7 @@ const HoverGlowBackground = ({
       <motion.div
         className={cn(
           "pointer-events-none absolute inset-0",
-          "bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-400",
+          "bg-gradient-to-r from-primary via-primary/50 to-primary/20",
           "backdrop-blur-md transition duration-500",
           isActive ? "opacity-90" : "opacity-0"
         )}
@@ -129,7 +129,7 @@ const HoverGlowBackground = ({
           )}
           style={maskStyle}
         >
-          <p className="absolute inset-x-0 text-[10px] leading-5 h-full break-words whitespace-pre-wrap text-yellow-100/70 font-mono font-bold">
+          <p className="absolute inset-x-0 text-[10px] leading-5 h-full break-words whitespace-pre-wrap text-primary/70 font-mono font-bold">
             {noise}
           </p>
         </motion.div>
@@ -142,7 +142,7 @@ const HoverGlowBackground = ({
           style={{ x: smoothX, y: smoothY }}
         >
           <div className="transform -translate-x-1/2 -translate-y-1/2">
-            <div className="px-4 py-2 rounded-full bg-amber-200/85 text-amber-900 text-sm md:text-base font-semibold shadow-md backdrop-blur-sm">
+            <div className="px-4 py-2 rounded-full bg-primary/10/85 text-primary text-sm md:text-base font-semibold shadow-md backdrop-blur-sm">
               {cursorText}
             </div>
           </div>

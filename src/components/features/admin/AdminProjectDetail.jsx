@@ -148,7 +148,7 @@ const AdminProjectDetail = () => {
     const colors = {
       DRAFT: "bg-gray-500",
       OPEN: "bg-blue-500",
-      IN_PROGRESS: "bg-yellow-500",
+      IN_PROGRESS: "bg-primary/10",
       COMPLETED: "bg-green-500",
     };
     return (
@@ -529,10 +529,10 @@ const AdminProjectDetail = () => {
                         if (s === "IN_PROGRESS") {
                           return {
                             container:
-                              "bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800 hover:bg-amber-100/50",
-                            text: "text-amber-900 dark:text-amber-200",
-                            muted: "text-amber-700 dark:text-amber-300",
-                            badge: "text-amber-600 border-amber-200",
+                              "bg-primary/10 dark:bg-primary/10/10 border-primary/20 dark:border-primary/20 hover:bg-primary/10/50",
+                            text: "text-primary dark:text-primary",
+                            muted: "text-primary dark:text-primary",
+                            badge: "text-primary border-primary/20",
                           };
                         }
                         return {
