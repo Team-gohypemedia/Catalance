@@ -1396,41 +1396,6 @@ const GrowthQuestLiveDashboard = ({
             </article>
           </section>
 
-          {hasFocusData && (
-            <article className="growth-quest-focus-card-main growth-quest-panel">
-              <div>
-                <span className="growth-quest-chip growth-quest-chip--neutral" style={{ marginBottom: "0.9rem", display: "inline-flex" }}>Recommended Focus</span>
-                <h4 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#fff", marginBottom: "0.5rem", letterSpacing: "-0.01em" }}>{focusLabel || weakAreaLabel}</h4>
-                <p style={{ color: "rgba(170,185,215,0.72)", fontSize: "0.88rem", lineHeight: 1.65, maxWidth: "26rem", marginBottom: "1.25rem" }}>
-                  {focusDescriptionParts.join(" ")}
-                </p>
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", marginBottom: "0.45rem", color: "rgba(180,190,210,0.65)" }}>
-                    <span>7-day accuracy</span><span>{rolling7DayAccuracy}%</span>
-                  </div>
-                  <div className="growth-quest-progress"><span style={{ width: `${rolling7DayAccuracy}%` }} /></div>
-                </div>
-                <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", fontSize: "0.82rem", color: "rgba(180,190,210,0.6)" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}><CheckCircle2 className="size-3.5" style={{ color: "#4ade80" }} />{activity?.completedDays || 0} lifetime practice days</span>
-                  <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}><Target className="size-3.5" style={{ color: "#818cf8" }} />{rollingAccuracy}% lifetime accuracy</span>
-                </div>
-              </div>
-              <svg className="growth-quest-focus-card-main__illustration" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="80" cy="80" r="70" stroke="rgba(30,80,255,0.18)" strokeWidth="1" />
-                <circle cx="80" cy="80" r="55" stroke="rgba(30,80,255,0.28)" strokeWidth="1" />
-                <circle cx="80" cy="80" r="40" stroke="rgba(30,80,255,0.38)" strokeWidth="1.5" />
-                <circle cx="80" cy="80" r="25" stroke="rgba(30,80,255,0.48)" strokeWidth="1.5" />
-                <circle cx="80" cy="80" r="10" fill="rgba(255,193,7,0.75)" stroke="#ffc107" strokeWidth="2" />
-                <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(30,80,255,0.06)" strokeWidth="18" />
-                <line x1="32" y1="28" x2="74" y2="74" stroke="#ffc107" strokeWidth="2.5" strokeLinecap="round" />
-                <polygon points="32,14 44,32 20,32" fill="#ffc107" transform="rotate(-45 32 28)" />
-                <line x1="80" y1="8" x2="80" y2="52" stroke="rgba(30,100,255,0.35)" strokeWidth="1" strokeDasharray="3,3" />
-                <line x1="152" y1="80" x2="108" y2="80" stroke="rgba(30,100,255,0.35)" strokeWidth="1" strokeDasharray="3,3" />
-              </svg>
-            </article>
-          )}
-
-
         </div>
 
       </section>
@@ -1514,6 +1479,40 @@ const GrowthQuestLiveDashboard = ({
             </article>
           ))}
         </div>
+
+        {hasFocusData && (
+          <article className="growth-quest-focus-card-main growth-quest-panel" style={{ marginTop: "1.5rem" }}>
+            <div>
+              <span className="growth-quest-chip growth-quest-chip--neutral" style={{ marginBottom: "0.9rem", display: "inline-flex" }}>Recommended Focus</span>
+              <h4 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#fff", marginBottom: "0.5rem", letterSpacing: "-0.01em" }}>{focusLabel || weakAreaLabel}</h4>
+              <p style={{ color: "rgba(170,185,215,0.72)", fontSize: "0.88rem", lineHeight: 1.65, maxWidth: "26rem", marginBottom: "1.25rem" }}>
+                {focusDescriptionParts.join(" ")}
+              </p>
+              <div style={{ marginBottom: "1.25rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", marginBottom: "0.45rem", color: "rgba(180,190,210,0.65)" }}>
+                  <span>7-day accuracy</span><span>{rolling7DayAccuracy}%</span>
+                </div>
+                <div className="growth-quest-progress"><span style={{ width: `${rolling7DayAccuracy}%` }} /></div>
+              </div>
+              <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", fontSize: "0.82rem", color: "rgba(180,190,210,0.6)" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}><CheckCircle2 className="size-3.5" style={{ color: "#4ade80" }} />{activity?.completedDays || 0} lifetime practice days</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}><Target className="size-3.5" style={{ color: "#818cf8" }} />{rollingAccuracy}% lifetime accuracy</span>
+              </div>
+            </div>
+            <svg className="growth-quest-focus-card-main__illustration" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="80" cy="80" r="70" stroke="rgba(30,80,255,0.18)" strokeWidth="1" />
+              <circle cx="80" cy="80" r="55" stroke="rgba(30,80,255,0.28)" strokeWidth="1" />
+              <circle cx="80" cy="80" r="40" stroke="rgba(30,80,255,0.38)" strokeWidth="1.5" />
+              <circle cx="80" cy="80" r="25" stroke="rgba(30,80,255,0.48)" strokeWidth="1.5" />
+              <circle cx="80" cy="80" r="10" fill="rgba(255,193,7,0.75)" stroke="#ffc107" strokeWidth="2" />
+              <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(30,80,255,0.06)" strokeWidth="18" />
+              <line x1="32" y1="28" x2="74" y2="74" stroke="#ffc107" strokeWidth="2.5" strokeLinecap="round" />
+              <polygon points="32,14 44,32 20,32" fill="#ffc107" transform="rotate(-45 32 28)" />
+              <line x1="80" y1="8" x2="80" y2="52" stroke="rgba(30,100,255,0.35)" strokeWidth="1" strokeDasharray="3,3" />
+              <line x1="152" y1="80" x2="108" y2="80" stroke="rgba(30,100,255,0.35)" strokeWidth="1" strokeDasharray="3,3" />
+            </svg>
+          </article>
+        )}
       </section>
 
       {(hasMilestone || strongAreaLabel || weakAreaLabel) && (
