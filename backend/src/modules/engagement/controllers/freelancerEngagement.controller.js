@@ -7,6 +7,7 @@ import {
   getProcessReport,
   createContestSubmission,
   listContestSubmissions,
+  saveGrowthQuestServicePreference,
   startDailyChallenge,
   submitDailyChallenge
 } from "../services/engagement.service.js";
@@ -34,6 +35,14 @@ export const submitDaily = asyncHandler(async (req, res) => {
     userId: requireUserId(req),
     answers: req.body.answers,
     idempotencyKey: req.body.idempotencyKey
+  });
+  res.json({ data });
+});
+
+export const saveGrowthQuestService = asyncHandler(async (req, res) => {
+  const data = await saveGrowthQuestServicePreference({
+    userId: requireUserId(req),
+    service: req.body.service
   });
   res.json({ data });
 });

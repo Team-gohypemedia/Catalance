@@ -17,6 +17,12 @@ export const submitDailyChallengeSchema = z.object({
   })
 });
 
+export const saveGrowthQuestServiceSchema = z.object({
+  body: z.object({
+    service: z.string().min(2).max(120)
+  })
+});
+
 export const listAdminQuestionsSchema = z.object({
   query: z.object({
     status: z.string().max(40).optional(),

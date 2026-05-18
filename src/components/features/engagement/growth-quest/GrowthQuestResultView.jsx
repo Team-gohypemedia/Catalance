@@ -142,9 +142,6 @@ const GrowthQuestResultView = ({ result, nextResetAt, onBack }) => {
                           {answer.questionText}
                         </p>
                       </div>
-                      {answer.questionVariant === "personalized" && answer.focusReason ? (
-                        <p className="mt-1 text-xs text-muted-foreground">{answer.focusReason}</p>
-                      ) : null}
                     </div>
                   </div>
 

@@ -181,19 +181,24 @@ const normalizeQuestionPayload = (question = {}, fallback = {}) => {
 
 export const generateCommonAiQuestionSet = async ({
   dayKey,
+  freelancerContext = {},
   recentQuestionTexts = [],
 }) => {
   const systemPrompt = `
-You generate daily freelancer engagement quiz questions.
+You generate profile-specific freelancer engagement quiz questions.
 Return only JSON.
 Every question must be safe, practical, professional, and suitable for freelancers.
 Only create MCQ, TRUE_FALSE, or SCENARIO_MCQ questions.
 Do not use sensitive, private, or offensive content.
 Each question needs a clear correct answer and a short explanation.
+Choose the most relevant internal category dynamically based on the freelancer profile and the actual scenario.
 `;
 
   const userPrompt = `
-Generate exactly 5 common daily questions for all freelancers for UTC day ${dayKey}.
+Generate exactly 5 daily questions for one freelancer for UTC day ${dayKey}.
+
+Freelancer profile and performance context:
+${JSON.stringify(freelancerContext, null, 2)}
 
 Allowed categories:
 ${buildCategoryReference()}
@@ -201,7 +206,10 @@ ${buildCategoryReference()}
 Requirements:
 - Return exactly 5 questions.
 - Use diverse categories with no repeated question text.
-- Prefer scenario-based professionalism, scope, delivery, quality, platform workflow, and business judgment.
+- The question content must match the freelancer's service domain, role, skill keywords, and experience level.
+- Use realistic scenarios from the freelancer's actual work, not generic platform-only prompts.
+- Prefer scenario-based professionalism, scope, delivery, quality, platform workflow, and business judgment within that freelancer domain.
+- Add a short focusReason that explains which part of the freelancer profile this question is targeting.
 - Avoid repeating any of these recent question texts:
 ${recentQuestionTexts.slice(0, 18).map((text, index) => `${index + 1}. ${text}`).join("\n") || "None"}
 - Each MCQ or SCENARIO_MCQ should have exactly 4 options.
@@ -219,7 +227,8 @@ JSON shape:
       "difficulty": "BEGINNER",
       "options": [{"id":"A","text":"..."},{"id":"B","text":"..."},{"id":"C","text":"..."},{"id":"D","text":"..."}],
       "correctOptionId": "A",
-      "explanation": "string"
+      "explanation": "string",
+      "focusReason": "string"
     }
   ]
 }
@@ -237,9 +246,17 @@ JSON shape:
   return questions.map((question, index) =>
     normalizeQuestionPayload(question, {
       type: "MCQ",
-      category: engagementRules.categories[index % engagementRules.categories.length],
-      difficulty: "BEGINNER",
+      category:
+        freelancerContext?.recommendedTopic ||
+        freelancerContext?.weakTopics?.[0] ||
+        "CLIENT_COMMUNICATION",
+      difficulty: freelancerContext?.difficulty || "BEGINNER",
       skillTag: `ai_common_${index + 1}`,
+      focusReason:
+        freelancerContext?.serviceTitle ||
+        freelancerContext?.serviceCategory ||
+        freelancerContext?.services?.[0] ||
+        "Profile-based Growth Quest practice",
     })
   );
 };
@@ -274,6 +291,7 @@ Requirements:
 - Match the freelancer's current learning level.
 - Focus on a weak area or recommended next topic.
 - Make the question practical and scenario-based when possible.
+- Use the freelancer's own service domain, service title, keywords, and recent weak spots so the scenario feels written for that freelancer only.
 - Keep it answerable with one best option.
 
 JSON shape:

@@ -173,6 +173,23 @@ const getInitials = (value) =>
 
 const WeeklyRankingPanel = GrowthQuestWeeklyRankingPanel;
 const InfoModal = GrowthQuestInfoModal;
+const GROWTH_QUEST_SERVICE_FALLBACKS = [
+  "Web Development",
+  "Mobile App Development",
+  "AI Automation",
+  "CRM & ERP Integrated Solutions",
+  "Voice Agent",
+  "Creative & Design",
+  "Branding Kit",
+  "UGC Marketing",
+  "Paid Advertising",
+  "Social Media Marketing (Organic)",
+  "Video Services",
+  "Writing & Content",
+  "3D Animation/CGI Videos",
+  "Influencer Marketing",
+  "SEO / GMB",
+];
 
 const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
   if (loading) {
@@ -624,7 +641,16 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
   );
 };
 
-const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) => {
+const GrowthQuestLiveDashboard = ({
+  dashboard,
+  onStartQuest,
+  loading,
+  error,
+  previewQuestions = [],
+  loadingPreview = false,
+  onSaveServiceSelection,
+  savingServiceSelection = false,
+}) => {
   const navigate = useNavigate();
   const [sidePanel, setSidePanel] = useState("ranking");
   const intelSectionRef = useRef(null);
@@ -815,6 +841,16 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
     rewards: `+${session.coinsAwarded} coins / +${session.xpAwarded} XP`,
     score: `${session.accuracy}% accuracy`,
   }));
+  const commonPreviewQuestions = previewQuestions.filter(
+    (question) => question?.questionVariant !== "personalized",
+  );
+  const personalizedPreviewQuestion =
+    previewQuestions.find((question) => question?.questionVariant === "personalized") || null;
+  const serviceSelectionRequired = Boolean(dashboard?.serviceSelection?.required);
+  const serviceOptions = Array.isArray(dashboard?.serviceSelection?.options) &&
+    dashboard.serviceSelection.options.length
+    ? dashboard.serviceSelection.options
+    : GROWTH_QUEST_SERVICE_FALLBACKS;
 
   return (
     <div className="growth-quest-dashboard">
@@ -1031,53 +1067,333 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
               <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#ffc107" }}>{rolling7DayAccuracy}% 7-day accuracy</span>
             </div>
 
-            <div className="growth-quest-card-grid">
-              {operations.map((operation) => (
-                <article key={operation.id} className="growth-quest-panel growth-quest-card">
-                  {operation.id === "daily-quest" && (
-                    <svg className="growth-quest-card__illustration" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <polygon points="70,6 118,33 118,107 70,134 22,107 22,33" fill="none" stroke="rgba(255,193,7,0.25)" strokeWidth="1.5" />
-                      <polygon points="70,18 108,40 108,100 70,122 32,100 32,40" fill="none" stroke="rgba(255,193,7,0.4)" strokeWidth="1" />
-                      <path d="M70 36 L83 60 L70 70 L57 60 Z" fill="rgba(255,193,7,0.12)" stroke="#ffc107" strokeWidth="1.5" />
-                      <path d="M70 70 L83 80 L70 104 L57 80 Z" fill="rgba(255,193,7,0.08)" stroke="rgba(255,193,7,0.5)" strokeWidth="1" />
-                      <circle cx="70" cy="70" r="5" fill="#ffc107" opacity="0.9" />
-                      <circle cx="70" cy="70" r="22" fill="rgba(255,193,7,0.04)" stroke="rgba(255,193,7,0.12)" strokeWidth="12" />
-                      <circle cx="70" cy="70" r="34" fill="none" stroke="rgba(255,193,7,0.06)" strokeWidth="0.5" />
-                    </svg>
-                  )}
-                  <div className="growth-quest-card__content">
-                    <div className="growth-quest-card__head">
-                      <span className={`growth-quest-chip growth-quest-chip--${operation.difficultyTone}`}>{operation.difficulty}</span>
-                      <span style={{ fontSize: "0.8rem", color: "rgba(180,190,210,0.6)" }}>{operation.progress}%</span>
-                    </div>
-                    <h4>{operation.title}</h4>
-                    <p>{operation.description}</p>
-                    <div className="growth-quest-card__progress">
-                      <div className="growth-quest-card__progress-head">
-                        <span>{operation.progressLabel}</span>
-                        <strong>{operation.progress}%</strong>
-                      </div>
-                      <div className="growth-quest-progress"><span style={{ width: `${operation.progress}%` }} /></div>
-                    </div>
-                    <div className="growth-quest-card__foot">
-                      <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                        <Star className="size-3.5" style={{ color: "#ffc107" }} />
-                        {operation.coinLabel}
+            <article
+              className="growth-quest-panel"
+              style={{
+                padding: "1.35rem",
+                background:
+                  "linear-gradient(135deg,rgba(8,10,24,0.98),rgba(12,8,28,0.97))",
+              }}
+            >
+              {serviceSelectionRequired ? (
+                <div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      gap: "1rem",
+                      flexWrap: "wrap",
+                      marginBottom: "1.1rem",
+                    }}
+                  >
+                    <div>
+                      <span className="growth-quest-chip growth-quest-chip--warning">
+                        Service needed
                       </span>
-                      <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                        {operation.xpLabel}
-                        <span className="growth-quest-xp-chip">XP</span>
-                      </span>
+                      <h4
+                        style={{
+                          marginTop: "0.85rem",
+                          fontSize: "1.85rem",
+                          fontWeight: 800,
+                          color: "#fff",
+                          letterSpacing: "-0.02em",
+                        }}
+                      >
+                        Select your working service first
+                      </h4>
+                      <p
+                        style={{
+                          marginTop: "0.45rem",
+                          maxWidth: "42rem",
+                          fontSize: "0.92rem",
+                          lineHeight: 1.7,
+                          color: "rgba(170,185,215,0.68)",
+                        }}
+                      >
+                        Growth Quest needs one service selection before AI can prepare your 5 common questions and 1 personalized question for today.
+                      </p>
                     </div>
-                    {operation.id === "daily-quest" && (
-                      <button type="button" onClick={done ? undefined : onStartQuest} disabled={done} className={cn(PRIMARY_BUTTON_CLASS, "w-full mt-1")}>
-                        {done ? <><CheckCircle2 className="size-4" />Completed for today</> : <><Star className="size-4" />Start Today&apos;s Quest<ArrowRight className="size-4" /></>}
-                      </button>
-                    )}
                   </div>
-                </article>
-              ))}
-            </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                      gap: "0.8rem",
+                    }}
+                  >
+                    {serviceOptions.map((service) => (
+                      <button
+                        key={service}
+                        type="button"
+                        onClick={() => onSaveServiceSelection?.(service)}
+                        disabled={savingServiceSelection}
+                        className="growth-quest-service-option"
+                      >
+                        <span>{service}</span>
+                        <ArrowRight className="size-4" />
+                      </button>
+                    ))}
+                  </div>
+
+                  {savingServiceSelection ? (
+                    <div className="growth-quest-helper" style={{ marginTop: "1rem" }}>
+                      <Loader2 className="size-3.5 animate-spin" style={{ flexShrink: 0 }} />
+                      Saving your service and generating today&apos;s AI questions.
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: "1rem",
+                  flexWrap: "wrap",
+                  marginBottom: "1rem",
+                }}
+              >
+                <div>
+                  <span className="growth-quest-chip growth-quest-chip--success">
+                    {done ? "Completed" : "Live"}
+                  </span>
+                  <h4
+                    style={{
+                      marginTop: "0.85rem",
+                      fontSize: "1.9rem",
+                      fontWeight: 800,
+                      color: "#fff",
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    5 Common Questions + 1 Personalized Question
+                  </h4>
+                  <p
+                    style={{
+                      marginTop: "0.45rem",
+                      maxWidth: "42rem",
+                      fontSize: "0.92rem",
+                      lineHeight: 1.7,
+                      color: "rgba(170,185,215,0.68)",
+                    }}
+                  >
+                    Today&apos;s practice is prepared for your freelancer profile. The first five questions follow your
+                    service domain, and the last question targets your weak area.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={done ? undefined : onStartQuest}
+                  disabled={done || loadingPreview}
+                  className={cn(PRIMARY_BUTTON_CLASS, "min-w-[220px]")}
+                >
+                  {loadingPreview ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Loading questions
+                    </>
+                  ) : done ? (
+                    <>
+                      <CheckCircle2 className="size-4" />
+                      Completed for today
+                    </>
+                  ) : (
+                    <>
+                      <Star className="size-4" />
+                      Start Today&apos;s Quest
+                      <ArrowRight className="size-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="growth-quest-practice-preview">
+                <div className="growth-quest-practice-preview__list">
+                  {loadingPreview && !done ? (
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <div
+                        key={`preview-skeleton-${index}`}
+                        style={{
+                          borderRadius: "16px",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                          background: "rgba(255,255,255,0.03)",
+                          padding: "1rem 1.1rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "5rem",
+                            height: "0.75rem",
+                            borderRadius: "999px",
+                            background: "rgba(255,255,255,0.08)",
+                            marginBottom: "0.85rem",
+                          }}
+                        />
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "0.9rem",
+                            borderRadius: "999px",
+                            background: "rgba(255,255,255,0.06)",
+                            marginBottom: "0.5rem",
+                          }}
+                        />
+                        <div
+                          style={{
+                            width: "72%",
+                            height: "0.9rem",
+                            borderRadius: "999px",
+                            background: "rgba(255,255,255,0.06)",
+                          }}
+                        />
+                      </div>
+                    ))
+                  ) : commonPreviewQuestions.length > 0 ? (
+                    commonPreviewQuestions.map((question, index) => (
+                      <article
+                        key={question.id}
+                        style={{
+                          borderRadius: "18px",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                          background: "rgba(255,255,255,0.03)",
+                          padding: "1rem 1.1rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.75rem",
+                            marginBottom: "0.85rem",
+                          }}
+                        >
+                          <span className="growth-quest-chip growth-quest-chip--ghost">
+                            Q{index + 1}
+                          </span>
+                        </div>
+                        <p
+                          style={{
+                            fontSize: "0.93rem",
+                            lineHeight: 1.65,
+                            color: "rgba(235,240,255,0.92)",
+                          }}
+                        >
+                          {question.questionText}
+                        </p>
+                      </article>
+                    ))
+                  ) : (
+                    <div className="growth-quest-subpanel" style={{ padding: "1rem 1.1rem" }}>
+                      <p style={{ fontSize: "0.92rem", color: "rgba(170,185,215,0.72)" }}>
+                        {done
+                          ? "Today’s questions are already completed. Come back after reset for a new AI-generated set."
+                          : "Today’s question preview will appear here when the daily set is ready."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <aside className="growth-quest-practice-preview__side">
+                  <article
+                    style={{
+                      borderRadius: "20px",
+                      border: "1px solid rgba(124,58,237,0.22)",
+                      background: "linear-gradient(135deg,rgba(40,22,84,0.55),rgba(12,14,34,0.96))",
+                      padding: "1.1rem",
+                    }}
+                  >
+                    <span className="growth-quest-chip growth-quest-chip--violet">
+                      Personalized
+                    </span>
+                    <h5
+                      style={{
+                        marginTop: "0.85rem",
+                        fontSize: "1.15rem",
+                        fontWeight: 800,
+                        color: "#fff",
+                      }}
+                    >
+                      Your weak-area question
+                    </h5>
+                    <div
+                      style={{
+                        marginTop: "1rem",
+                        borderRadius: "16px",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        background: "rgba(255,255,255,0.04)",
+                        padding: "0.95rem",
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: "0.9rem",
+                          lineHeight: 1.65,
+                          color: "rgba(245,245,255,0.94)",
+                        }}
+                      >
+                        {personalizedPreviewQuestion?.questionText ||
+                          (done
+                            ? "Today’s personalized question has already been completed."
+                            : "Your personalized question will appear here once today’s set is loaded.")}
+                      </p>
+                    </div>
+                  </article>
+
+                  <div className="growth-quest-subpanel" style={{ padding: "1rem 1.1rem" }}>
+                    <p className={LABEL_CLASS}>Today&apos;s Practice Status</p>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: "0.75rem",
+                        marginTop: "0.85rem",
+                        fontSize: "0.88rem",
+                        color: "rgba(180,190,210,0.7)",
+                      }}
+                    >
+                      <span>Questions ready</span>
+                      <strong style={{ color: "#fff" }}>
+                        {previewQuestions.length || (done ? 6 : 0)}/6
+                      </strong>
+                    </div>
+                    <div className="growth-quest-progress" style={{ marginTop: "0.55rem" }}>
+                      <span
+                        style={{
+                          width: `${((previewQuestions.length || (done ? 6 : 0)) / 6) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                        gap: "0.75rem",
+                        marginTop: "1rem",
+                      }}
+                    >
+                      <div>
+                        <p className={LABEL_CLASS}>Common</p>
+                        <strong style={{ display: "block", marginTop: "0.35rem", fontSize: "1.2rem" }}>
+                          {commonPreviewQuestions.length || (done ? 5 : 0)}
+                        </strong>
+                      </div>
+                      <div>
+                        <p className={LABEL_CLASS}>Personal</p>
+                        <strong style={{ display: "block", marginTop: "0.35rem", fontSize: "1.2rem" }}>
+                          {personalizedPreviewQuestion || done ? 1 : 0}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+                </>
+              )}
+            </article>
           </section>
 
           {hasFocusData && (
@@ -1137,6 +1453,66 @@ const GrowthQuestLiveDashboard = ({ dashboard, onStartQuest, loading, error }) =
               compact
             />
           </section>
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <div className="growth-quest-section-head" style={{ marginBottom: "1rem" }}>
+          <div className="growth-quest-section-title">
+            <span className="growth-quest-pulse-dot" />
+            <h3>Progress Overview</h3>
+          </div>
+          <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "rgba(180,190,210,0.7)" }}>
+            Current status cards moved here
+          </span>
+        </div>
+
+        <div className="growth-quest-card-grid">
+          {operations.map((operation) => (
+            <article key={operation.id} className="growth-quest-panel growth-quest-card">
+              {operation.id === "daily-quest" && (
+                <svg className="growth-quest-card__illustration" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <polygon points="70,6 118,33 118,107 70,134 22,107 22,33" fill="none" stroke="rgba(255,193,7,0.25)" strokeWidth="1.5" />
+                  <polygon points="70,18 108,40 108,100 70,122 32,100 32,40" fill="none" stroke="rgba(255,193,7,0.4)" strokeWidth="1" />
+                  <path d="M70 36 L83 60 L70 70 L57 60 Z" fill="rgba(255,193,7,0.12)" stroke="#ffc107" strokeWidth="1.5" />
+                  <path d="M70 70 L83 80 L70 104 L57 80 Z" fill="rgba(255,193,7,0.08)" stroke="rgba(255,193,7,0.5)" strokeWidth="1" />
+                  <circle cx="70" cy="70" r="5" fill="#ffc107" opacity="0.9" />
+                  <circle cx="70" cy="70" r="22" fill="rgba(255,193,7,0.04)" stroke="rgba(255,193,7,0.12)" strokeWidth="12" />
+                  <circle cx="70" cy="70" r="34" fill="none" stroke="rgba(255,193,7,0.06)" strokeWidth="0.5" />
+                </svg>
+              )}
+              <div className="growth-quest-card__content">
+                <div className="growth-quest-card__head">
+                  <span className={`growth-quest-chip growth-quest-chip--${operation.difficultyTone}`}>{operation.difficulty}</span>
+                  <span style={{ fontSize: "0.8rem", color: "rgba(180,190,210,0.6)" }}>{operation.progress}%</span>
+                </div>
+                <h4>{operation.title}</h4>
+                <p>{operation.description}</p>
+                <div className="growth-quest-card__progress">
+                  <div className="growth-quest-card__progress-head">
+                    <span>{operation.progressLabel}</span>
+                    <strong>{operation.progress}%</strong>
+                  </div>
+                  <div className="growth-quest-progress"><span style={{ width: `${operation.progress}%` }} /></div>
+                </div>
+                <div className="growth-quest-card__foot">
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                    <Star className="size-3.5" style={{ color: "#ffc107" }} />
+                    {operation.coinLabel}
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    {operation.xpLabel}
+                    <span className="growth-quest-xp-chip">XP</span>
+                  </span>
+                </div>
+                {operation.id === "daily-quest" && (
+                  <button type="button" onClick={done ? undefined : onStartQuest} disabled={done} className={cn(PRIMARY_BUTTON_CLASS, "w-full mt-1")}>
+                    {done ? <><CheckCircle2 className="size-4" />Completed for today</> : <><Star className="size-4" />Start Today&apos;s Quest<ArrowRight className="size-4" /></>}
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -1682,8 +2058,11 @@ const FreelancerGrowthQuestPage = () => {
   const [dashboard, setDashboard] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [quest, setQuest] = useState(null);
+  const [previewQuest, setPreviewQuest] = useState(null);
   const [result, setResult] = useState(null);
   const [loadingQuest, setLoadingQuest] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [savingServiceSelection, setSavingServiceSelection] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -1719,8 +2098,86 @@ const FreelancerGrowthQuestPage = () => {
     }
   }, [loadDashboard, view]);
 
+  const loadQuestPreview = useCallback(async () => {
+    if (!authFetch || view !== "dashboard") return;
+    if (!dashboard?.profile?.serviceProfileReady) {
+      setPreviewQuest(null);
+      setLoadingPreview(false);
+      return;
+    }
+
+    setLoadingPreview(true);
+    try {
+      const response = await authFetch("/engagement/daily/start", {
+        method: "POST",
+        suppressToast: true,
+      });
+      const payload = await response.json().catch(() => null);
+      if (response.ok) {
+        setPreviewQuest(payload?.data || null);
+      }
+    } catch {
+      // Silent by design. Preview is optional UI.
+    } finally {
+      setLoadingPreview(false);
+    }
+  }, [authFetch, dashboard?.profile?.serviceProfileReady, view]);
+
+  useEffect(() => {
+    if (view === "dashboard") {
+      loadQuestPreview();
+    }
+  }, [loadQuestPreview, view, dashboard?.profile?.serviceProfileReady]);
+
+  const saveServiceSelection = useCallback(async (service) => {
+    if (!authFetch || !service || savingServiceSelection) return;
+
+    setSavingServiceSelection(true);
+    setError("");
+    try {
+      const response = await authFetch("/engagement/service-selection", {
+        method: "POST",
+        body: JSON.stringify({ service }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to save service.");
+      }
+
+      setDashboard(payload?.data?.dashboard || null);
+      setPreviewQuest(null);
+      toast.success("Service saved. Generating today’s questions.");
+    } catch (err) {
+      setError(err?.message || "Failed to save service.");
+      toast.error(err?.message || "Failed to save service.");
+    } finally {
+      setSavingServiceSelection(false);
+    }
+  }, [authFetch, savingServiceSelection]);
+
   const startQuest = async () => {
     if (!authFetch) return;
+    if (!dashboard?.profile?.serviceProfileReady) {
+      setError("Select your service first so AI can prepare your Growth Quest.");
+      return;
+    }
+
+    if (previewQuest?.status === "completed") {
+      setQuest(previewQuest);
+      setResult(previewQuest.resultSummary || null);
+      setView("result");
+      return;
+    }
+
+    if (previewQuest?.status === "in_progress" && Array.isArray(previewQuest?.questions)) {
+      setQuest(previewQuest);
+      setIdempotencyKey(makeKey());
+      setSelectedAnswers({});
+      setRevealedQuestions({});
+      setActiveIndex(0);
+      setView("quiz");
+      return;
+    }
 
     setLoadingQuest(true);
     setError("");
@@ -1863,6 +2320,10 @@ const FreelancerGrowthQuestPage = () => {
             loading={loadingDashboard}
             error={error}
             onStartQuest={startQuest}
+            previewQuestions={Array.isArray(previewQuest?.questions) ? previewQuest.questions : []}
+            loadingPreview={loadingPreview}
+            onSaveServiceSelection={saveServiceSelection}
+            savingServiceSelection={savingServiceSelection}
           />
         ) : null}
 
