@@ -265,7 +265,7 @@ const App = () => {
               }
             />
             <Route path="/get-started" element={<GetStarted />} />
-            <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+            <Route path="/signup" element={<PublicRoute><LegacyLoginRedirect /></PublicRoute>} />
             <Route path="/signin/phone" element={<PublicRoute><PhoneAuthPage /></PublicRoute>} />
             <Route path="/signin/email" element={<PublicRoute><EmailAuthPage /></PublicRoute>} />
             <Route
