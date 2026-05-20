@@ -20,18 +20,18 @@ import logo11 from "@/assets/marquee logo/11.webp";
 import logo12 from "@/assets/marquee logo/12.webp";
 
 const brands = [
-  { name: "Brand 1", logo: logo1 },
-  { name: "Brand 2", logo: logo2 },
-  { name: "Brand 3", logo: logo3, isWhite: true }, // Ghanshyam Das Kotawala
-  { name: "Brand 4", logo: logo4, isWhite: true }, // KAZO
-  { name: "Brand 5", logo: logo5, isWhite: true }, // Lazada
-  { name: "Brand 6", logo: logo6 },
-  { name: "Brand 7", logo: logo7, isWhite: true }, // IT
-  { name: "Brand 8", logo: logo8 },
-  { name: "Brand 9", logo: logo9 },
-  { name: "Brand 10", logo: logo10, isWhite: true },
-  { name: "Brand 11", logo: logo11, isWhite: true },
-  { name: "Brand 12", logo: logo12, isWhite: true },
+  { name: "Neo", logo: logo1 },
+  { name: "MASH", logo: logo2 },
+  { name: "Taneja Group", logo: logo3 },
+  { name: "Homify", logo: logo4 },
+  { name: "KAZO", logo: logo5, isWhite: true },
+  { name: "Lazada", logo: logo6, isWhite: true },
+  { name: "Yatra", logo: logo7 },
+  { name: "Indian Oil", logo: logo8 },
+  { name: "Fab Hotels", logo: logo9 },
+  { name: "Ghanshyam Das Kotawala", logo: logo10, isWhite: true },
+  { name: "IT", logo: logo11, isWhite: true },
+  { name: "Woodshala", logo: logo12 },
 ];
 
 const BrandCard = ({ brand, isDark }) => {
@@ -47,7 +47,7 @@ const BrandCard = ({ brand, isDark }) => {
           src={brand.logo} 
           alt={brand.name} 
           className="h-16 w-auto object-contain sm:h-20 md:h-24 lg:h-32"
-          style={!isDark && brand.isWhite ? { filter: "drop-shadow(1px 0 0 black) drop-shadow(-1px 0 0 black) drop-shadow(0 1px 0 black) drop-shadow(0 -1px 0 black)" } : {}}
+          style={!isDark && brand.isWhite ? { filter: "brightness(0)" } : {}}
         />
       </div>
     </div>
