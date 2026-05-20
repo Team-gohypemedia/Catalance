@@ -16,7 +16,7 @@ const MessagesHeaderTabs = React.memo(function MessagesHeaderTabs({
           "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
           activeTab === "messages"
             ? "border-[var(--primary)]/70 bg-[var(--primary)] text-[#141414]"
-            : "text-[#9ca3af] hover:text-white",
+            : "text-muted-foreground hover:text-foreground",
         )}
       >
         Messages ({messagesCount})
@@ -28,7 +28,7 @@ const MessagesHeaderTabs = React.memo(function MessagesHeaderTabs({
           "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
           activeTab === "requests"
             ? "border-[var(--primary)]/70 bg-[var(--primary)] text-[#141414]"
-            : "text-[#9ca3af] hover:text-white",
+            : "text-muted-foreground hover:text-foreground",
         )}
       >
         Requests ({requestsCount})

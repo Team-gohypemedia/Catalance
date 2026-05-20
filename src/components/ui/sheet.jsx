@@ -1,6 +1,6 @@
 import * as React from "react"
 import { XIcon } from "lucide-react"
-import { Dialog as SheetPrimitive } from "radix-ui"
+import * as SheetPrimitive from "@radix-ui/react-dialog"
 
 import { cn } from "@/shared/lib/utils"
 
@@ -28,12 +28,13 @@ function SheetPortal({
   return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />;
 }
 
-function SheetOverlay({
+const SheetOverlay = React.forwardRef(({
   className,
   ...props
-}) {
+}, ref) => {
   return (
     <SheetPrimitive.Overlay
+      ref={ref}
       data-slot="sheet-overlay"
       className={cn(
         "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
@@ -41,19 +42,21 @@ function SheetOverlay({
       )}
       {...props} />
   );
-}
+});
+SheetOverlay.displayName = "SheetOverlay";
 
-function SheetContent({
+const SheetContent = React.forwardRef(({
   className,
   children,
   side = "right",
   showCloseButton = true,
   ...props
-}) {
+}, ref) => {
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
+        ref={ref}
         data-slot="sheet-content"
         className={cn(
           "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
@@ -79,7 +82,8 @@ function SheetContent({
       </SheetPrimitive.Content>
     </SheetPortal>
   );
-}
+});
+SheetContent.displayName = "SheetContent";
 
 function SheetHeader({
   className,
@@ -105,29 +109,33 @@ function SheetFooter({
   );
 }
 
-function SheetTitle({
+const SheetTitle = React.forwardRef(({
   className,
   ...props
-}) {
+}, ref) => {
   return (
     <SheetPrimitive.Title
+      ref={ref}
       data-slot="sheet-title"
       className={cn("font-semibold text-foreground", className)}
       {...props} />
   );
-}
+});
+SheetTitle.displayName = "SheetTitle";
 
-function SheetDescription({
+const SheetDescription = React.forwardRef(({
   className,
   ...props
-}) {
+}, ref) => {
   return (
     <SheetPrimitive.Description
+      ref={ref}
       data-slot="sheet-description"
       className={cn("text-sm text-muted-foreground", className)}
       {...props} />
   );
-}
+});
+SheetDescription.displayName = "SheetDescription";
 
 export {
   Sheet,

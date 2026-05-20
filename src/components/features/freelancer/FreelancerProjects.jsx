@@ -31,14 +31,14 @@ const PROJECT_PROGRESS_BY_STATUS = Object.freeze({
 });
 
 const projectStatusToneMap = {
-  success: "border-[#14532d] bg-[#0c2616] text-[#34d399]",
-  warning: "border-[#5a3b0d] bg-[#2f1e05] text-[var(--primary)]",
-  slate: "border-white/[0.08] bg-white/[0.04] text-[#cbd5e1]",
+  success: "border-emerald-600/40 bg-emerald-950/30 dark:border-[#14532d] dark:bg-[#0c2616] text-emerald-600 dark:text-[#34d399]",
+  warning: "border-primary/40 bg-primary/10 dark:border-[#5a3b0d] dark:bg-[#2f1e05] text-primary",
+  slate: "border-border bg-muted/50 text-muted-foreground",
 };
 
 const projectActionToneMap = {
   amber: "bg-[var(--primary)] text-black hover:bg-primary/80",
-  slate: "bg-white/[0.08] text-white hover:bg-white/[0.12]",
+  slate: "bg-muted text-foreground hover:bg-muted/80",
 };
 
 const projectFilterOptions = [
@@ -654,35 +654,35 @@ const buildFreelancerProjectCardModel = (project) => {
 };
 
 const ProjectCardSkeleton = () => (
-  <div className="rounded-[28px] border border-white/[0.06] bg-accent p-6">
+  <div className="rounded-[28px] border border-border bg-card p-6">
     <div className="flex items-start justify-between gap-4">
-      <Skeleton className="h-6 w-32 bg-white/8" />
-      <Skeleton className="h-7 w-24 rounded-full bg-white/8" />
+      <Skeleton className="h-6 w-32" />
+      <Skeleton className="h-7 w-24 rounded-full" />
     </div>
-    <Skeleton className="mt-5 h-10 w-56 bg-white/8" />
-    <Skeleton className="mt-3 h-4 w-36 bg-white/8" />
+    <Skeleton className="mt-5 h-10 w-56" />
+    <Skeleton className="mt-3 h-4 w-36" />
     <div className="mt-6 flex items-center gap-3">
-      <Skeleton className="size-11 rounded-full bg-white/8" />
+      <Skeleton className="size-11 rounded-full" />
       <div className="flex-1 space-y-2">
-        <Skeleton className="h-4 w-36 bg-white/8" />
-        <Skeleton className="h-4 w-24 bg-white/8" />
+        <Skeleton className="h-4 w-36" />
+        <Skeleton className="h-4 w-24" />
       </div>
     </div>
     <div className="mt-6 grid grid-cols-2 gap-4">
-      <Skeleton className="h-24 rounded-[14px] bg-white/8" />
-      <Skeleton className="h-24 rounded-[14px] bg-white/8" />
+      <Skeleton className="h-24 rounded-[14px]" />
+      <Skeleton className="h-24 rounded-[14px]" />
     </div>
-    <Skeleton className="mt-7 h-2 w-full rounded-full bg-white/8" />
-    <div className="mt-6 rounded-[18px] border border-white/[0.06] bg-white/[0.035] p-4">
-      <Skeleton className="h-4 w-32 bg-white/8" />
-      <Skeleton className="mt-4 h-4 w-44 bg-white/8" />
+    <Skeleton className="mt-7 h-2 w-full rounded-full" />
+    <div className="mt-6 rounded-[18px] border border-border bg-muted/50 p-4">
+      <Skeleton className="h-4 w-32" />
+      <Skeleton className="mt-4 h-4 w-44" />
       <div className="mt-4 space-y-2">
-        <Skeleton className="h-4 w-full bg-white/8" />
-        <Skeleton className="h-4 w-[88%] bg-white/8" />
-        <Skeleton className="h-4 w-[78%] bg-white/8" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-[88%]" />
+        <Skeleton className="h-4 w-[78%]" />
       </div>
     </div>
-    <Skeleton className="mt-8 h-12 w-full rounded-[14px] bg-white/8" />
+    <Skeleton className="mt-8 h-12 w-full rounded-[14px]" />
   </div>
 );
 
@@ -694,24 +694,24 @@ const ProjectPhaseStep = ({ item }) => {
     ? {
         label: "Completed",
         Icon: CheckCircle2,
-        badgeClassName: "border-[#166534]/50 bg-[#052e16] text-[#4ade80]",
-        textClassName: "text-[#f3f4f6]",
-        iconClassName: "text-[#22c55e]",
+        badgeClassName: "border-emerald-600/40 bg-emerald-50 dark:bg-[#052e16] text-emerald-700 dark:text-[#4ade80]",
+        textClassName: "text-foreground",
+        iconClassName: "text-emerald-600 dark:text-[#22c55e]",
       }
     : isCurrent
       ? {
           label: "In Progress",
           Icon: Clock3,
-          badgeClassName: "border-[var(--primary)]/25 bg-[#3a2800] text-[var(--primary)]",
-          textClassName: "text-[#f3f4f6]",
-          iconClassName: "text-[var(--primary)]",
+          badgeClassName: "border-primary/25 bg-primary/10 dark:bg-[#3a2800] text-primary",
+          textClassName: "text-foreground",
+          iconClassName: "text-primary",
         }
       : {
           label: "Pending",
           Icon: Circle,
-          badgeClassName: "border-white/[0.08] bg-white/[0.04] text-[#94a3b8]",
-          textClassName: "text-[#6b7280]",
-          iconClassName: "text-[#94a3b8]",
+          badgeClassName: "border-border bg-muted text-muted-foreground",
+          textClassName: "text-muted-foreground",
+          iconClassName: "text-muted-foreground",
         };
   const StatusIcon = statusMeta.Icon;
 
@@ -742,7 +742,7 @@ const ProjectPhaseStep = ({ item }) => {
 
 const FreelancerProjectCard = ({ project }) => {
   const detailPanelClassName =
-    "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+    "border border-border bg-card";
   const phaseSteps = Array.isArray(project.currentPhaseSteps) ? project.currentPhaseSteps : [];
   const actionClassName = cn(
     "flex w-full items-center justify-center gap-2 rounded-[14px] px-4 py-3.5 text-base font-semibold transition-colors",
@@ -783,10 +783,10 @@ const FreelancerProjectCard = ({ project }) => {
   }
 
   return (
-    <article className="flex h-full flex-col rounded-[28px] border border-white/[0.06] bg-card p-6 transition-transform duration-200 hover:-translate-y-1 [content-visibility:auto]">
+    <article className="flex h-full flex-col rounded-[28px] border border-border bg-card p-6 transition-transform duration-200 hover:-translate-y-1 [content-visibility:auto]">
       <div className="flex flex-1 flex-col">
         <div className="flex items-start justify-between gap-4">
-          <span className="rounded-[8px] bg-white/[0.06] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#9ca3af]">
+          <span className="rounded-[8px] bg-muted px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
             {project.sectionLabel}
           </span>
 
@@ -907,18 +907,18 @@ const EmptyProjectsState = ({
   actionLabel = "View Proposals",
   actionHref = "/freelancer/proposals",
 }) => (
-  <div className="rounded-[28px] border border-white/[0.06] bg-accent p-8 text-center">
+  <div className="rounded-[28px] border border-border bg-card p-8 text-center">
     <div className="mx-auto flex max-w-md flex-col items-center">
-      <div className="flex size-16 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8]">
+      <div className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <ClipboardList className="size-7" />
       </div>
-      <h2 className="mt-6 text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+      <h2 className="mt-6 text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
         {title}
       </h2>
-      <p className="mt-3 text-sm leading-6 text-[#94a3b8]">{description}</p>
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
       <Link
         to={actionHref}
-        className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-primary/80"
+        className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
       >
         {actionLabel}
       </Link>
@@ -945,7 +945,7 @@ const ProjectCarouselDots = ({ count, activeIndex, onSelect, ariaLabel }) => {
               "h-2.5 rounded-full transition-all duration-200",
               isActive
                 ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
-                : "w-2.5 bg-white/[0.14] hover:bg-white/[0.28]",
+                : "w-2.5 bg-border hover:bg-muted-foreground/40",
             )}
           />
         );
@@ -1068,7 +1068,7 @@ const FreelancerProjectsContent = () => {
   ]);
 
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
+    <div className="flex-1 flex flex-col relative min-h-screen overflow-hidden bg-background transition-colors duration-300">
       <FreelancerTopBar />
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
@@ -1076,7 +1076,7 @@ const FreelancerProjectsContent = () => {
           <section className="space-y-5">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h1 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-[#f1f5f9]">
+                <h1 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-foreground">
                   Project Workspace
                 </h1>
               </div>
@@ -1099,8 +1099,8 @@ const FreelancerProjectsContent = () => {
                         className={cn(
                           "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
                           isActive
-                            ? "border-[var(--primary)]/70 bg-[var(--primary)] text-[#141414]"
-                            : "text-[#a3a6ad] hover:text-white",
+                            ? "border-primary/70 bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground",
                         )}
                       >
                         {option.label} ({count})

@@ -13,8 +13,8 @@ export const EmptyStateCard = memo(function EmptyStateCard({ title, description 
           <FileText className="h-6 w-6" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-xl font-semibold tracking-tight text-[#f1f5f9]">{title}</h3>
-          <p className="max-w-md text-sm leading-6 text-[#94a3b8]">{description}</p>
+          <h3 className="text-xl font-semibold tracking-tight text-foreground">{title}</h3>
+          <p className="max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
         </div>
       </CardContent>
     </Card>

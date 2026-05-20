@@ -213,7 +213,7 @@ const getProfileCompletionPercentage = (formData = emptyFormData) => {
 const ProfileSurface = ({ className, children }) => (
   <section
     className={cn(
-      "rounded-[24px] border border-white/[0.05] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:rounded-[32px]",
+      "rounded-[24px] border border-border bg-card sm:rounded-[32px]",
       className,
     )}
   >
@@ -228,7 +228,7 @@ const SectionHeader = ({ icon: Icon, title, description, onEdit }) => (
         <Icon className="size-5" />
       </div>
       <div className="space-y-1">
-        <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-white sm:text-[1.1rem]">{title}</h2>
+        <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-foreground sm:text-[1.1rem]">{title}</h2>
         {description ? <p className="text-sm leading-6 text-muted-foreground">{description}</p> : null}
       </div>
     </div>
@@ -237,7 +237,7 @@ const SectionHeader = ({ icon: Icon, title, description, onEdit }) => (
         type="button"
         variant="outline"
         onClick={onEdit}
-        className="h-10 self-start rounded-full border-white/[0.08] bg-white/[0.04] px-4 text-white hover:bg-white/[0.08]"
+        className="h-10 self-start rounded-full border-border bg-muted px-4 text-foreground hover:bg-muted/80"
       >
         <Edit2 className="mr-2 size-4 text-primary" />
         Edit
@@ -251,7 +251,7 @@ const StatBlock = ({ value, label, tone = "default" }) => (
     <p
       className={cn(
         "text-[1.55rem] font-semibold leading-none tracking-[-0.05em] sm:text-[1.9rem]",
-        tone === "accent" ? "text-primary" : "text-white",
+        tone === "accent" ? "text-primary" : "text-foreground",
       )}
     >
       {value}
@@ -286,7 +286,7 @@ const ProfileField = ({
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
-          "h-12 rounded-[14px] border-white/[0.06] bg-white/[0.03] pl-12 text-sm text-muted-foreground placeholder:text-muted-foreground focus-visible:border-primary/35 focus-visible:ring-primary/15",
+          "h-12 rounded-[14px] border-border bg-muted/50 pl-12 text-sm text-muted-foreground placeholder:text-muted-foreground focus-visible:border-primary/35 focus-visible:ring-primary/15",
           disabled && "cursor-not-allowed text-muted-foreground opacity-80",
         )}
       />
@@ -299,7 +299,7 @@ const ProfileDisplayField = ({ icon: Icon, label, value, placeholder }) => (
     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
       {label}
     </p>
-    <div className="flex min-h-12 items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-4 sm:px-5">
+    <div className="flex min-h-12 items-center gap-3 rounded-[14px] border border-border bg-muted/50 px-4 sm:px-5">
       <Icon className="size-4 shrink-0 text-primary" />
       <span
         className="min-w-0 flex-1 truncate text-sm text-muted-foreground"
@@ -317,7 +317,7 @@ const ProfileTextDisplay = ({ label, value, placeholder, className }) => (
     </p>
     <div
       className={cn(
-        "rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-4 py-4 text-sm leading-7 whitespace-pre-wrap sm:px-6 sm:py-5",
+        "rounded-[14px] border border-border bg-muted/50 px-4 py-4 text-sm leading-7 whitespace-pre-wrap sm:px-6 sm:py-5",
         "text-muted-foreground",
         className,
       )}
@@ -335,7 +335,7 @@ const ReadonlyActionField = ({ icon: Icon, label, value, actionLabel, onClick })
     <button
       type="button"
       onClick={onClick}
-      className="group flex min-h-12 w-full flex-col items-start gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-left transition hover:border-white/[0.1] hover:bg-white/[0.05] sm:flex-row sm:items-center sm:px-5"
+      className="group flex min-h-12 w-full flex-col items-start gap-3 rounded-[14px] border border-border bg-muted/50 px-4 py-3 text-left transition hover:bg-muted sm:flex-row sm:items-center sm:px-5"
     >
       <div className="flex w-full min-w-0 items-center gap-3">
         <Icon className="size-4 shrink-0 text-primary" />
@@ -362,7 +362,7 @@ const BillingShortcutCard = ({
   <button
     type="button"
     onClick={onClick}
-    className="group flex w-full flex-col rounded-[24px] border border-white/[0.06] bg-white/[0.03] p-4 text-left transition hover:border-white/[0.1] hover:bg-white/[0.05] sm:rounded-[28px] sm:p-5"
+    className="group flex w-full flex-col rounded-[24px] border border-border bg-card p-4 text-left transition hover:bg-muted/50 sm:rounded-[28px] sm:p-5"
   >
     <div
       className={cn(
@@ -376,7 +376,7 @@ const BillingShortcutCard = ({
     </div>
 
     <div className="mt-6">
-      <p className="text-[1.4rem] font-semibold tracking-[-0.04em] text-white sm:text-[1.75rem]">{title}</p>
+      <p className="text-[1.4rem] font-semibold tracking-[-0.04em] text-foreground sm:text-[1.75rem]">{title}</p>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
     </div>
 
@@ -398,7 +398,7 @@ const NotificationToggleRow = ({
   onCheckedChange,
   readOnly = false,
 }) => (
-  <div className="flex flex-col gap-4 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+  <div className="flex flex-col gap-4 rounded-[14px] border border-border bg-muted/50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
     <div className="flex min-w-0 items-start gap-4">
       <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] border border-primary/20 bg-primary/10 text-primary">
         <Icon className="size-4" />
@@ -415,7 +415,7 @@ const NotificationToggleRow = ({
         disabled={readOnly}
         onCheckedChange={readOnly ? undefined : onCheckedChange}
         className={cn(
-          "scale-125 data-[state=unchecked]:bg-white/[0.15]",
+          "scale-125 data-[state=unchecked]:bg-muted-foreground/30",
           readOnly && "pointer-events-none",
         )}
       />
@@ -817,7 +817,7 @@ const ClientProfileContent = () => {
     if (activeEditor === "personal") {
       return (
         <div className="space-y-6">
-          <div className="flex flex-col items-center gap-4 rounded-[24px] border border-white/[0.06] bg-white/[0.03] p-6 text-center">
+          <div className="flex flex-col items-center gap-4 rounded-[24px] border border-border bg-muted/30 p-6 text-center">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -829,12 +829,12 @@ const ClientProfileContent = () => {
                   alt={formData.fullName || headerDisplayName}
                   className="object-cover"
                 />
-                <AvatarFallback className="bg-[#10262d] text-3xl font-semibold text-[#f5f5f5]">
+                <AvatarFallback className="bg-muted text-3xl font-semibold text-foreground">
                   {getInitials(formData.fullName || headerDisplayName)}
                 </AvatarFallback>
               </Avatar>
 
-              <span className="absolute bottom-1 right-1 flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/20 text-white shadow-lg backdrop-blur-sm transition group-hover:bg-white/30">
+              <span className="absolute bottom-1 right-1 flex size-10 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg backdrop-blur-sm transition group-hover:bg-muted">
                 {uploadingImage ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
@@ -900,7 +900,7 @@ const ClientProfileContent = () => {
             value={formData.bio}
             onChange={handleChange}
             placeholder="Share the kind of projects you run, the outcomes you care about, and how your team likes to collaborate."
-            className="min-h-[220px] rounded-[14px] border-white/[0.06] bg-white/[0.03] px-6 py-5 text-sm leading-7 text-muted-foreground placeholder:text-muted-foreground focus-visible:border-primary/35 focus-visible:ring-primary/15"
+            className="min-h-[220px] rounded-[14px] border-border bg-muted/50 px-6 py-5 text-sm leading-7 text-muted-foreground placeholder:text-muted-foreground focus-visible:border-primary/35 focus-visible:ring-primary/15"
           />
         </div>
       );
@@ -963,12 +963,12 @@ const ClientProfileContent = () => {
                         alt={formData.fullName || headerDisplayName}
                         className="object-cover"
                       />
-                      <AvatarFallback className="bg-[#10262d] text-3xl font-semibold text-[#f5f5f5] sm:text-[2.2rem] lg:text-4xl">
+                      <AvatarFallback className="bg-muted text-3xl font-semibold text-foreground sm:text-[2.2rem] lg:text-4xl">
                         {getInitials(formData.fullName || headerDisplayName)}
                       </AvatarFallback>
                     </Avatar>
 
-                    <h2 className="mt-6 text-[1.8rem] font-semibold tracking-[-0.05em] text-white sm:mt-7 sm:text-[2rem] lg:mt-8 lg:text-[2.15rem]">
+                    <h2 className="mt-6 text-[1.8rem] font-semibold tracking-[-0.05em] text-foreground sm:mt-7 sm:text-[2rem] lg:mt-8 lg:text-[2.15rem]">
                       {formData.fullName || headerDisplayName}
                     </h2>
                     <p className="mt-2 text-sm text-muted-foreground sm:text-base">
@@ -979,7 +979,7 @@ const ClientProfileContent = () => {
                     </p>
                   </div>
 
-                  <div className="mt-8 border-t border-white/[0.05] pt-6">
+                  <div className="mt-8 border-t border-border pt-6">
                     <div className="grid grid-cols-3 gap-3 sm:gap-4">
                       {identityStats.map((item, index) => (
                         <StatBlock
@@ -1198,10 +1198,10 @@ const ClientProfileContent = () => {
           }
         }}
       >
-        <DialogContent className="max-w-3xl gap-0 overflow-hidden rounded-[32px] border-white/[0.08] bg-[#2d2d2d] p-0 text-muted-foreground">
-          <div className="border-b border-white/[0.06] px-6 py-5 sm:px-8">
+        <DialogContent className="max-w-3xl gap-0 overflow-hidden rounded-[32px] border-border bg-card p-0 text-muted-foreground">
+          <div className="border-b border-border px-6 py-5 sm:px-8">
             <DialogHeader>
-              <DialogTitle className="text-xl font-semibold tracking-[-0.03em] text-white">
+              <DialogTitle className="text-xl font-semibold tracking-[-0.03em] text-foreground">
                 {activeEditor ? activeEditorMeta[activeEditor]?.title : ""}
               </DialogTitle>
               <DialogDescription className="text-sm leading-6 text-muted-foreground">
@@ -1214,13 +1214,13 @@ const ClientProfileContent = () => {
             {renderEditorContent()}
           </div>
 
-          <DialogFooter className="border-t border-white/[0.06] px-6 py-5 sm:px-8">
+          <DialogFooter className="border-t border-border px-6 py-5 sm:px-8">
             <Button
               type="button"
               variant="outline"
               onClick={closeSectionEditor}
               disabled={loading}
-              className="h-12 rounded-full border-white/[0.12] bg-white/[0.04] px-6 text-sm font-semibold text-white hover:bg-white/[0.08]"
+              className="h-12 rounded-full border-border bg-muted px-6 text-sm font-semibold text-foreground hover:bg-muted/80"
             >
               Cancel
             </Button>

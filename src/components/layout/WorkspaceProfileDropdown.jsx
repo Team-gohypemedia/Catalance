@@ -24,16 +24,16 @@ import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
 import { cn } from "@/shared/lib/utils";
 
 const tileClasses =
-  "flex size-[2.05rem] shrink-0 items-center justify-center rounded-[0.8rem] border border-white/[0.04] bg-white/[0.045] text-[#ececf1] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
+  "flex size-[2.05rem] shrink-0 items-center justify-center rounded-[0.8rem] border border-border bg-muted text-foreground";
 
 const actionLabelClasses =
-  "text-[0.8rem] font-semibold tracking-[-0.03em] text-white sm:text-[0.84rem]";
+  "text-[0.8rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[0.84rem]";
 
 const ActionLink = ({ icon: Icon, label, to, onSelect }) => (
   <Link
     to={to}
     onClick={onSelect}
-    className="flex items-center gap-2.5 rounded-[0.95rem] px-0.5 py-0.5 transition-colors duration-200 hover:bg-white/[0.025]"
+    className="flex items-center gap-2.5 rounded-[0.95rem] px-0.5 py-0.5 transition-colors duration-200 hover:bg-muted"
   >
     <span className={tileClasses}>
       <Icon className="size-4.5 stroke-[1.85]" />
@@ -116,28 +116,28 @@ const WorkspaceProfileDropdown = ({
       <PopoverContent
         align="end"
         sideOffset={12}
-        className="w-[min(92vw,17rem)] rounded-[1rem] border border-white/[0.08] bg-[#121212] p-2.5 text-white shadow-[0_28px_84px_-48px_rgba(0,0,0,1)]"
+        className="w-[min(92vw,17rem)] rounded-[1rem] border border-border bg-card p-2.5 text-foreground shadow-lg"
       >
         <div className="space-y-2.5">
           <div className="flex items-center gap-2.5">
-            <Avatar className="size-10 border border-white/[0.06] bg-white">
+            <Avatar className="size-10 border border-border">
               <AvatarImage src={profile?.avatar} alt={displayName} />
-              <AvatarFallback className="bg-white text-base font-bold text-black">
+              <AvatarFallback className="bg-muted text-base font-bold text-foreground">
                 {profileInitial}
               </AvatarFallback>
             </Avatar>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[0.94rem] font-semibold leading-none tracking-[-0.04em] text-white sm:text-[1rem]">
+              <p className="truncate text-[0.94rem] font-semibold leading-none tracking-[-0.04em] text-foreground sm:text-[1rem]">
                 {displayName}
               </p>
-              <p className="mt-1 truncate text-[0.7rem] font-medium tracking-[-0.02em] text-[#7d7d86] sm:text-[0.74rem]">
+              <p className="mt-1 truncate text-[0.7rem] font-medium tracking-[-0.02em] text-muted-foreground sm:text-[0.74rem]">
                 {profile?.email}
               </p>
             </div>
           </div>
 
-          <Separator className="bg-white/[0.06]" />
+          <Separator />
 
           <div className="space-y-0.5">
             <ActionLink
@@ -156,9 +156,9 @@ const WorkspaceProfileDropdown = ({
 
           {canSwitchDashboard ? (
             <>
-              <Separator className="bg-white/[0.06]" />
+              <Separator />
 
-              <div className="rounded-[0.95rem] border border-white/[0.06] bg-white/[0.045] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+              <div className="rounded-[0.95rem] border border-border bg-muted p-1.5">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -170,10 +170,10 @@ const WorkspaceProfileDropdown = ({
                     </span>
 
                     <span className="min-w-0">
-                      <span className="block truncate text-[0.8rem] font-semibold tracking-[-0.03em] text-white">
+                      <span className="block truncate text-[0.8rem] font-semibold tracking-[-0.03em] text-foreground">
                         {switchLabel}
                       </span>
-                      <span className="mt-0.5 block truncate text-[0.68rem] text-[#85858d]">
+                      <span className="mt-0.5 block truncate text-[0.68rem] text-muted-foreground">
                         Currently in {currentDashboardLabel} mode
                       </span>
                     </span>
@@ -183,14 +183,14 @@ const WorkspaceProfileDropdown = ({
                     checked={isFreelancer}
                     onCheckedChange={handleSwitchDashboard}
                     aria-label={`${switchLabel} dashboard`}
-                    className="h-6 w-[3.55rem] border-0 px-0.5 shadow-none data-[state=checked]:justify-end data-[state=checked]:bg-[var(--primary)] data-[state=unchecked]:justify-start data-[state=unchecked]:bg-white/[0.12] [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:!translate-x-0 [&_[data-slot=switch-thumb]]:shadow-none [&_[data-slot=switch-thumb]]:data-[state=checked]:bg-[#111111] [&_[data-slot=switch-thumb]]:data-[state=unchecked]:bg-white"
+                    className="h-6 w-[3.55rem] border-0 px-0.5 shadow-none data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:justify-start data-[state=unchecked]:bg-muted-foreground/30 [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:!translate-x-0 [&_[data-slot=switch-thumb]]:shadow-none [&_[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_[data-slot=switch-thumb]]:data-[state=unchecked]:bg-background"
                   />
                 </div>
               </div>
             </>
           ) : null}
 
-          <Separator className="bg-white/[0.06]" />
+          <Separator />
 
           <button
             type="button"

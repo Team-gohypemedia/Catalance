@@ -20,18 +20,18 @@ const AcceptedFreelancerRow = memo(function AcceptedFreelancerRow({
 
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 sm:gap-4">
-      <Avatar className="size-11 shrink-0 border border-white/10 shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
+      <Avatar className="size-11 shrink-0 border border-border">
         <AvatarImage src={item.avatar} alt={item.name} />
-        <AvatarFallback className="bg-[#1e293b] text-sm text-white">
+        <AvatarFallback className="bg-muted text-sm text-foreground">
           {item.initial}
         </AvatarFallback>
       </Avatar>
 
       <div className="min-w-0">
-        <p className="truncate text-[1.08rem] font-semibold leading-tight tracking-[-0.03em] text-white">
+        <p className="truncate text-[1.08rem] font-semibold leading-tight tracking-[-0.03em] text-foreground">
           {item.name}
         </p>
-        <p className="mt-0.5 truncate text-[0.94rem] leading-tight text-[#b3b3b3]">
+        <p className="mt-0.5 truncate text-[0.94rem] leading-tight text-muted-foreground">
           {item.role}
         </p>
 
@@ -46,7 +46,7 @@ const AcceptedFreelancerRow = memo(function AcceptedFreelancerRow({
       <button
         type="button"
         onClick={handleMessageClick}
-        className="inline-flex h-10 min-w-23.5 shrink-0 items-center justify-center rounded-xl bg-white px-4 text-[13px] font-medium uppercase tracking-[0.01em] text-black transition-colors hover:bg-[#f2f2f2]"
+        className="inline-flex h-10 min-w-23.5 shrink-0 items-center justify-center rounded-xl bg-primary px-4 text-[13px] font-medium uppercase tracking-[0.01em] text-primary-foreground transition-colors hover:bg-primary/80"
       >
         {actionLabel}
       </button>
@@ -118,7 +118,7 @@ const ActiveChats = memo(function ActiveChats({
     <section className={cn("w-full min-w-0", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <div className="min-w-0">
-          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
             Active Chats
           </h2>
         </div>
@@ -126,7 +126,7 @@ const ActiveChats = memo(function ActiveChats({
 
       <DashboardPanel
         className={cn(
-          "w-full overflow-hidden bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+          "w-full overflow-hidden bg-card shadow-none",
           items.length === 0
             ? "p-0"
             : "px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6",
@@ -161,11 +161,11 @@ const ActiveChats = memo(function ActiveChats({
           </>
         ) : items.length === 0 ? (
           <div className="flex min-h-[240px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[320px] sm:px-6 sm:py-12">
-            <div className="flex size-12 items-center justify-center rounded-full bg-white/6 text-muted-foreground sm:size-14">
+            <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground sm:size-14">
               <MessageSquareText className="size-6" />
             </div>
-            <p className="mt-5 text-sm text-white">No active project chats yet</p>
-            <p className="mt-2 max-w-55 text-xs text-[#8f8f8f]">
+            <p className="mt-5 text-sm text-foreground">No active project chats yet</p>
+            <p className="mt-2 max-w-55 text-xs text-muted-foreground">
               Chat shortcuts appear here once a project becomes active and
               messaging is unlocked.
             </p>
@@ -181,7 +181,7 @@ const ActiveChats = memo(function ActiveChats({
                     index === 0 ? "pt-0" : "",
                     index === items.length - 1
                       ? "pb-0"
-                      : "border-b border-white/8",
+                      : "border-b border-border",
                   )}
                 >
                   <AcceptedFreelancerRow
@@ -196,7 +196,7 @@ const ActiveChats = memo(function ActiveChats({
               <button
                 type="button"
                 onClick={handleOpenMessages}
-                className="mt-5 flex w-full items-center justify-center gap-2 border-t border-white/8 pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-[#d6d6d6] transition-colors hover:text-white"
+                className="mt-5 flex w-full items-center justify-center gap-2 border-t border-border pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground"
               >
                 <span>View All Projects In Messages ({resolvedAcceptedFreelancersTotalCount})</span>
                 <ChevronRight className="size-3.75 stroke-[1.75]" />
@@ -205,13 +205,13 @@ const ActiveChats = memo(function ActiveChats({
               <button
                 type="button"
                 onClick={handleOpenMessages}
-                className="mt-5 flex w-full items-center justify-center gap-2 border-t border-white/8 pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-[#d6d6d6] transition-colors hover:text-white"
+                className="mt-5 flex w-full items-center justify-center gap-2 border-t border-border pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground"
               >
                 <span>Open Messages ({resolvedAcceptedFreelancersCount})</span>
                 <ChevronRight className="size-3.75 stroke-[1.75]" />
               </button>
             ) : (
-              <p className="mt-5 border-t border-white/8 pt-5 text-center text-[12px] font-medium uppercase tracking-[0.12em] text-[#8f8f8f]">
+              <p className="mt-5 border-t border-border pt-5 text-center text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Messages unlock after kickoff payment
               </p>
             )}

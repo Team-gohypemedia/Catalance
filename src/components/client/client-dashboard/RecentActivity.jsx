@@ -63,7 +63,7 @@ const ActivityActionButtons = memo(function ActivityActionButtons({
             item.onSecondaryAction();
           }}
           className={cn(
-            "inline-flex h-8 items-center justify-center rounded-xl border border-white/10 bg-background/40 px-3 text-xs font-semibold text-white transition-colors hover:bg-background/65",
+            "inline-flex h-8 items-center justify-center rounded-xl border border-border bg-background/40 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted",
             compact ? "" : "text-[11px] uppercase tracking-[0.06em]",
           )}
         >
@@ -79,7 +79,7 @@ const ActivityActionButtons = memo(function ActivityActionButtons({
             item.onAction();
           }}
           className={cn(
-            "inline-flex h-8 items-center justify-center rounded-xl bg-[var(--primary)] px-3 text-xs font-semibold text-black transition-colors hover:bg-primary/80",
+            "inline-flex h-8 items-center justify-center rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/80",
             compact ? "" : "text-[11px] uppercase tracking-[0.06em]",
           )}
         >
@@ -106,7 +106,7 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
         tabIndex={0}
         onClick={item.onClick}
         onKeyDown={handleRowKeyDown}
-        className="flex w-full items-start gap-4 rounded-[18px] px-3 py-3 text-left transition-colors hover:bg-white/[0.02]"
+        className="flex w-full items-start gap-4 rounded-[18px] px-3 py-3 text-left transition-colors hover:bg-muted"
       >
         <div
           className={cn(
@@ -117,7 +117,7 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
           <Icon className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[1.05rem] font-semibold leading-tight text-white">
+          <p className="truncate text-[1.05rem] font-semibold leading-tight text-foreground">
             {item.title}
           </p>
           <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
@@ -138,7 +138,7 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
       tabIndex={0}
       onClick={item.onClick}
       onKeyDown={handleRowKeyDown}
-      className="flex w-full flex-col gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.02] sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
+      className="flex w-full flex-col gap-3 px-4 py-4 text-left transition-colors hover:bg-muted sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
     >
       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
         <div
@@ -150,7 +150,7 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
           <Icon className="size-4" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-white">{item.title}</p>
+          <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
           <p className="text-xs leading-5 text-muted-foreground sm:truncate">
             {item.subtitle}
           </p>
@@ -242,7 +242,7 @@ const RecentActivity = memo(function RecentActivity({
             {[0, 1, 2, 3].map((item) => (
               <div
                 key={`dashboard-activity-skeleton-${item}`}
-                className="flex items-center justify-between gap-4 border-b border-white/5 px-6 py-5 last:border-b-0"
+                className="flex items-center justify-between gap-4 border-b border-border px-6 py-5 last:border-b-0"
               >
                 <div className="flex min-w-0 items-center gap-4">
                   <DashboardSkeletonBlock className="size-10 rounded-full" />
@@ -256,7 +256,7 @@ const RecentActivity = memo(function RecentActivity({
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="px-5 py-6 text-sm text-[#8f96a3] sm:px-6">
+          <div className="px-5 py-6 text-sm text-muted-foreground sm:px-6">
             No recent activity yet.
           </div>
         ) : isMobile ? (
@@ -269,11 +269,11 @@ const RecentActivity = memo(function RecentActivity({
 
             {hasOverflow ? (
               <div className="px-2 pt-4">
-                <div className="h-px bg-white/8" />
+                <div className="h-px bg-border" />
                 <button
                   type="button"
                   onClick={() => setShowAllRecentActivities((current) => !current)}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#cbd5e1] transition-colors hover:text-white"
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
                   aria-expanded={showAllRecentActivities}
                 >
                   <span>
@@ -300,9 +300,9 @@ const RecentActivity = memo(function RecentActivity({
             </div>
 
             {shouldShowLowActivityFiller ? (
-              <div className="flex flex-1 items-center justify-center border-t border-white/[0.06] px-6 py-10 text-center">
+              <div className="flex flex-1 items-center justify-center border-t border-border px-6 py-10 text-center">
                 <div className="max-w-xl">
-                  <p className="text-sm font-semibold text-white/85">
+                  <p className="text-sm font-semibold text-foreground/85">
                     More updates will appear here as your client activity grows.
                   </p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">

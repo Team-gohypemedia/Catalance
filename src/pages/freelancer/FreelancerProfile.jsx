@@ -3804,39 +3804,6 @@ const FreelancerProfile = () => {
                 openAddServiceModal={openAddServiceModal}
               />
 
-              <ServicesFromOnboardingCard
-                onboardingServiceEntries={onboardingServiceEntries}
-                portfolioProjects={displayPortfolioProjects}
-                getServiceLabel={getServiceLabel}
-                resolveAvatarUrl={resolveAvatarUrl}
-                collectServiceSpecializations={collectServiceSpecializations}
-                toUniqueLabels={toUniqueLabels}
-                normalizeValueLabel={normalizeValueLabel}
-                openEditServiceProfileModal={openEditServiceProfileModal}
-                openAddServiceModal={openAddServiceModal}
-              />
-
-              <FeaturedProjectsSection
-                portfolioProjects={displayPortfolioProjects}
-                projectCoverUploadingIndex={projectCoverUploadingIndex}
-                handleProjectCoverInputChange={handleProjectCoverInputChange}
-                removeProject={removeProject}
-                onEditProject={openEditProject}
-                hasPendingChanges={hasProjectChanges}
-                onAddProject={openAddProjectModal}
-              />
-            </div>
-
-            <div className="space-y-5 lg:sticky lg:top-40 lg:self-start">
-              <ProfileSummaryCards
-                profileCompletionPercent={profileCompletionPercent}
-                completedCompletionSections={completedCompletionSections}
-                partialCompletionSections={partialCompletionSections}
-                profileCompletionCriteriaLength={profileCompletionCriteria.length}
-                profileCompletionMessage={profileCompletionMessage}
-                profileCompletionMissingDetails={profileCompletionMissingDetails}
-              />
-
               <ProfileSidebarCards
                 openCreateExperienceModal={openCreateExperienceModal}
                 effectiveWorkExperience={effectiveWorkExperience}
@@ -3849,6 +3816,43 @@ const FreelancerProfile = () => {
               />
             </div>
 
+            <div className="space-y-5 lg:sticky lg:top-40 lg:self-start">
+              <ProfileSummaryCards
+                profileCompletionPercent={profileCompletionPercent}
+                completedCompletionSections={completedCompletionSections}
+                partialCompletionSections={partialCompletionSections}
+                profileCompletionCriteriaLength={profileCompletionCriteria.length}
+                profileCompletionMessage={profileCompletionMessage}
+                profileCompletionMissingDetails={profileCompletionMissingDetails}
+              />
+            </div>
+
+          </div>
+
+          <div className="mt-5">
+            <ServicesFromOnboardingCard
+              onboardingServiceEntries={onboardingServiceEntries}
+              portfolioProjects={displayPortfolioProjects}
+              getServiceLabel={getServiceLabel}
+              resolveAvatarUrl={resolveAvatarUrl}
+              collectServiceSpecializations={collectServiceSpecializations}
+              toUniqueLabels={toUniqueLabels}
+              normalizeValueLabel={normalizeValueLabel}
+              openEditServiceProfileModal={openEditServiceProfileModal}
+              openAddServiceModal={openAddServiceModal}
+            />
+          </div>
+
+          <div className="mt-5">
+            <FeaturedProjectsSection
+              portfolioProjects={displayPortfolioProjects}
+              projectCoverUploadingIndex={projectCoverUploadingIndex}
+              handleProjectCoverInputChange={handleProjectCoverInputChange}
+              removeProject={removeProject}
+              onEditProject={openEditProject}
+              hasPendingChanges={hasProjectChanges}
+              onAddProject={openAddProjectModal}
+            />
           </div>
         </div>
       </FreelancerProfilePageShell>
@@ -4020,7 +4024,7 @@ const FreelancerProfile = () => {
                     <h1 className="text-xl font-semibold tracking-tight text-foreground">
                       All Featured Projects
                     </h1>
-                    <span className="inline-flex items-center rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                    <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
                       {displayPortfolioProjects.length}{" "}
                       {displayPortfolioProjects.length === 1 ? "project" : "projects"}
                     </span>
@@ -4092,7 +4096,7 @@ const FreelancerProfile = () => {
                     return (
                       <article
                         key={`project-modal-${projectLink || projectTitle}-${idx}`}
-                        className="group overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]"
+                        className="group overflow-hidden rounded-2xl border border-border bg-card"
                       >
                         <div className="px-3 pt-3">
                           <div className="relative h-40 overflow-hidden rounded-xl lg:h-44">
@@ -4187,8 +4191,8 @@ const FreelancerProfile = () => {
                             </h2>
                           </div>
                           <p
-                            className="min-h-[2.75rem] line-clamp-2 text-sm leading-6 text-white/68"
-                            title={projectDescription || ""}
+                            className="min-h-[2.75rem] line-clamp-2 text-sm leading-6 text-muted-foreground"
+                            title={projectDescription || ""}  
                           >
                             {projectDescription ||
                               "Add a short project description so clients can quickly understand the scope and outcome."}
@@ -4198,9 +4202,9 @@ const FreelancerProfile = () => {
                               {projectDetails.map((detail) => (
                                 <div
                                   key={`${projectTitle}-${detail.label}`}
-                                  className="rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2"
+                                  className="rounded-xl border border-border bg-muted/50 px-3 py-2"
                                 >
-                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
+                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                                     {detail.label}
                                   </div>
                                   <div className="mt-1 line-clamp-1 text-xs font-medium text-foreground">
@@ -4210,19 +4214,19 @@ const FreelancerProfile = () => {
                               ))}
                             </div>
                           ) : null}
-                          <div className="flex items-start justify-between gap-3 border-t border-white/6 pt-3">
+                          <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
                             <div className="flex flex-wrap gap-2">
                               {visibleProjectServiceLabels.length ? (
                                 visibleProjectServiceLabels.map((label) => (
                                   <span
                                     key={`${projectTitle}-${label}`}
-                                    className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65"
+                                    className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
                                   >
                                     {label}
                                   </span>
                                 ))
                               ) : (
-                                <span className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65">
+                                <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
                                   Featured work
                                 </span>
                               )}
@@ -4243,7 +4247,7 @@ const FreelancerProfile = () => {
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </a>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.045] px-2.5 py-1.5 text-xs text-white/40">
+                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
                                 Link missing
                               </span>
                             )}

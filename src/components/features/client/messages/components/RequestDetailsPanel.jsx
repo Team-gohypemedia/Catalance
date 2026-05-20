@@ -16,13 +16,13 @@ const RequestDetailsPanel = React.memo(function RequestDetailsPanel({
     return (
       <div className="flex h-full min-h-0 items-center justify-center bg-card px-6">
         <div className="max-w-md text-center">
-          <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[var(--primary)]">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-border bg-muted text-primary">
             <SendHorizontal className="size-6" />
           </div>
-          <h2 className="mt-5 text-2xl font-semibold text-white">
+          <h2 className="mt-5 text-2xl font-semibold text-foreground">
             Select a request
           </h2>
-          <p className="mt-3 text-sm leading-6 text-[#8f96a3]">
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Review the request details and wait for the freelancer to accept or
             decline the marketplace inquiry.
           </p>
@@ -39,7 +39,7 @@ const RequestDetailsPanel = React.memo(function RequestDetailsPanel({
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-card">
       <div
         className={cn(
-          "sticky top-0 z-10 border-b border-white/[0.06] bg-card",
+          "sticky top-0 z-10 border-b border-border bg-card",
           mobileView ? "px-4 py-4" : "px-5 py-5 md:px-7",
         )}
       >
@@ -48,7 +48,7 @@ const RequestDetailsPanel = React.memo(function RequestDetailsPanel({
             <button
               type="button"
               onClick={onBack}
-              className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-white transition hover:bg-white/[0.06]"
+              className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-foreground transition hover:bg-muted/80"
               aria-label="Back to requests"
             >
               <ChevronLeft className="size-5" />
@@ -56,18 +56,18 @@ const RequestDetailsPanel = React.memo(function RequestDetailsPanel({
           ) : null}
           <div className="min-w-0 flex-1">
             <div className="flex flex-col gap-2">
-              <p className="truncate text-[1.2rem] font-semibold tracking-[-0.3px] text-white">
+              <p className="truncate text-[1.2rem] font-semibold tracking-[-0.3px] text-foreground">
                 {getFirstNonEmptyText(
                   request.serviceTitle,
                   request.title,
                   "Marketplace Request",
                 )}
               </p>
-              <p className="truncate text-sm text-[#cbd5e1]">
+              <p className="truncate text-sm text-muted-foreground">
                 {memberNames ||
                   getFirstNonEmptyText(request.clientName, request.freelancerName)}
               </p>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#7f8795]">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
                 Pending freelancer review
               </p>
             </div>
@@ -77,22 +77,22 @@ const RequestDetailsPanel = React.memo(function RequestDetailsPanel({
 
       <div className="flex-1 overflow-y-auto px-4 py-5 md:px-6 md:py-6">
         <div className="mx-auto flex w-full max-w-[980px] flex-col gap-5">
-          <div className="rounded-[24px] border border-white/[0.06] bg-background/40 p-5 md:p-6">
+          <div className="rounded-[24px] border border-border bg-background/40 p-5 md:p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-base font-semibold text-white">
+                <p className="text-base font-semibold text-foreground">
                   {getFirstNonEmptyText(request.freelancerName, "Freelancer")}
                 </p>
-                <p className="mt-1 text-sm text-[#8f96a3]">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Marketplace request sent
                 </p>
               </div>
-              <span className="text-xs uppercase tracking-[0.16em] text-[#7f8795]">
+              <span className="text-xs uppercase tracking-[0.16em] text-muted-foreground/80">
                 {formatConversationTimestamp(request.updatedAt || request.createdAt)}
               </span>
             </div>
 
-            <div className="mt-5 rounded-[20px] border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-sm leading-7 text-[#d7dee8]">
+            <div className="mt-5 rounded-[20px] border border-border bg-muted/30 px-4 py-3 text-sm leading-7 text-foreground">
               {request.requestMessage || request.previewText}
             </div>
           </div>

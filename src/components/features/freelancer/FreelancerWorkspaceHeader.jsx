@@ -30,7 +30,6 @@ const marketingNavItems = [
 
 const workspaceNavItems = [
   { label: "Dashboard", key: "dashboard", to: "/freelancer" },
-  { label: "Growth Quest", key: "growth-quest", to: "/freelancer/growth-quest" },
   { label: "Proposals", key: "proposals", to: "/freelancer/proposals" },
   { label: "Projects", key: "projects", to: "/freelancer/project" },
   { label: "Messages", key: "messages", to: "/freelancer/messages" },
@@ -158,7 +157,7 @@ const NotificationPopoverButton = ({
         <SheetTrigger asChild>
           <button
             type="button"
-            className="relative flex size-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+            className="relative flex size-9 items-center justify-center text-foreground transition-colors hover:text-muted-foreground"
             aria-label="Open notifications"
           >
             <Bell className="size-4.5" />

@@ -37,7 +37,7 @@ import {
 } from "./ProjectProgress.helpers.js";
 
 const ProjectProgressLockedCard = ({ project, onViewProject }) => (
-  <Card className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-accent text-white shadow-none backdrop-blur-[10px]">
+  <Card className="overflow-hidden rounded-[28px] border border-border bg-card text-foreground shadow-none">
     <CardContent className="px-4 py-5 sm:px-6 sm:py-7">
       <div className="flex min-h-[280px] flex-col justify-between gap-6 md:gap-8 lg:min-h-[320px] lg:flex-row lg:items-center">
         <div className="max-w-2xl">
@@ -47,27 +47,27 @@ const ProjectProgressLockedCard = ({ project, onViewProject }) => (
           >
             Initial Payment Pending
           </Badge>
-          <h3 className="mt-5 text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.04em] text-white">
+          <h3 className="mt-5 text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.04em] text-foreground">
             Progress unlocks after the first payment
           </h3>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-[#94a3b8]">
+          <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
             {project?.lockedDescription ||
               "The project progress graph will appear after the initial project amount is paid."}
           </p>
         </div>
 
-        <div className="w-full rounded-[24px] border border-white/[0.08] bg-[linear-gradient(135deg,rgba(255,193,7,0.16),rgba(255,255,255,0.04))] p-5 sm:max-w-[320px] sm:rounded-[28px] sm:p-6">
+        <div className="w-full rounded-[24px] border border-border bg-muted p-5 sm:max-w-[320px] sm:rounded-[28px] sm:p-6">
           <div className="flex size-12 items-center justify-center rounded-2xl bg-black/20 text-[var(--primary)]">
             <CreditCard className="size-5" />
           </div>
-          <p className="mt-5 text-sm font-medium uppercase tracking-[0.16em] text-[#fcd34d]">
+          <p className="mt-5 text-sm font-medium uppercase tracking-[0.16em] text-primary">
             Next unlock
           </p>
-          <p className="mt-3 text-[1.6rem] font-semibold tracking-[-0.04em] text-white">
+          <p className="mt-3 text-[1.6rem] font-semibold tracking-[-0.04em] text-foreground">
             {project?.lockedPaymentLabel || "Initial project payment"}
           </p>
           {project?.lockedPaymentValue ? (
-            <p className="mt-2 text-sm font-medium text-[#d4d4d4]">
+            <p className="mt-2 text-sm font-medium text-muted-foreground">
               {project.lockedPaymentValue}
             </p>
           ) : null}
@@ -75,10 +75,10 @@ const ProjectProgressLockedCard = ({ project, onViewProject }) => (
       </div>
     </CardContent>
 
-    <CardFooter className="flex flex-col items-start gap-4 border-t border-white/[0.05] px-4 py-5 text-[#d4d4d4] sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
+    <CardFooter className="flex flex-col items-start gap-4 border-t border-border px-4 py-5 text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
       <Badge
         variant="outline"
-        className="gap-3 border-0 bg-transparent px-0 py-0 text-xs font-medium text-[#d4d4d4] shadow-none sm:text-sm"
+        className="gap-3 border-0 bg-transparent px-0 py-0 text-xs font-medium text-muted-foreground shadow-none sm:text-sm"
       >
         <span aria-hidden="true" className="size-3 rounded-full bg-[var(--primary)]" />
         Progress will appear after payment
@@ -86,7 +86,7 @@ const ProjectProgressLockedCard = ({ project, onViewProject }) => (
       <button
         type="button"
         onClick={() => onViewProject?.(project.id)}
-        className="flex w-full items-center justify-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#171717] transition-colors hover:bg-white/90 sm:w-auto"
+        className="flex w-full items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto"
       >
         View Project
         <ChevronRight className="size-4 stroke-[2]" />
@@ -182,11 +182,11 @@ const ProjectProgressTooltip = ({ active, payload, label, seriesMetaMap }) => {
   }
 
   return (
-    <div className="min-w-[188px] rounded-[18px] border border-white/[0.08] bg-[#232323]/96 px-4 py-3 text-white shadow-[0_18px_40px_rgba(0,0,0,0.42)] backdrop-blur-md">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8f96a3]">
+    <div className="min-w-[188px] rounded-[18px] border border-border bg-card px-4 py-3 text-foreground shadow-lg">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         Progress Snapshot
       </p>
-      <p className="mt-1.5 text-sm font-semibold text-white">{point?.fullLabel || label}</p>
+      <p className="mt-1.5 text-sm font-semibold text-foreground">{point?.fullLabel || label}</p>
 
       <div className="mt-3 space-y-2.5">
         {visiblePayload.map((entry) => {
@@ -202,11 +202,11 @@ const ProjectProgressTooltip = ({ active, payload, label, seriesMetaMap }) => {
                   className="size-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: meta?.color || entry.color }}
                 />
-                <span className="truncate text-xs font-medium text-[#d4d4d4]">
+                <span className="truncate text-xs font-medium text-muted-foreground">
                   {meta?.label || entry.name}
                 </span>
               </div>
-              <span className="shrink-0 text-xs font-semibold text-white">{stageLabel}</span>
+              <span className="shrink-0 text-xs font-semibold text-foreground">{stageLabel}</span>
             </div>
           );
         })}
@@ -252,10 +252,10 @@ const ProjectProgressChartCard = ({
       <DashboardPanel className="min-h-[320px] bg-card p-6 sm:p-8">
         <div className="flex min-h-[240px] items-center justify-center text-center">
           <div className="max-w-md">
-            <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+            <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
               Progress timeline is not ready yet
             </p>
-            <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Once an active project starts unlocking progress, the line chart will appear here.
             </p>
           </div>
@@ -344,7 +344,7 @@ const ProjectProgressChartCard = ({
   const todayLabel = todayIndex >= 0 ? chartData[todayIndex]?.label : null;
 
   return (
-    <Card className="overflow-hidden rounded-[32px] border border-white/[0.06] bg-card text-white shadow-[0_30px_90px_-28px_rgba(0,0,0,0.95)]">
+    <Card className="overflow-hidden rounded-[32px] border border-border bg-card text-foreground shadow-sm">
       <CardContent className="px-4 pb-6 pt-4 sm:px-8 sm:pb-8 sm:pt-8">
         <div className="overflow-x-auto pb-2 [scrollbar-color:rgba(255,255,255,0.14)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.12]">
           <div className="min-w-[720px] lg:min-w-0">
@@ -367,7 +367,7 @@ const ProjectProgressChartCard = ({
               >
                 <CartesianGrid
                   vertical={false}
-                  stroke="rgba(255,255,255,0.07)"
+                  stroke="var(--border)"
                   strokeDasharray="4 6"
                 />
                 <XAxis
@@ -437,7 +437,7 @@ const ProjectProgressChartCard = ({
           {seriesMeta.map((entry) => (
             <div
               key={entry.key}
-              className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/[0.06] px-4 py-2 text-[12px] font-medium text-[#d7d2ca]"
+              className="inline-flex max-w-full items-center gap-2 rounded-full bg-muted px-4 py-2 text-[12px] font-medium text-muted-foreground"
             >
               <span
                 className="size-2 rounded-full"
@@ -509,7 +509,7 @@ export const ProjectProgressSection = ({
   return (
     <section className="mt-14 sm:mt-16">
       <div className="mb-4 flex flex-col gap-4 sm:mb-5 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <h2 className="min-w-0 text-[1.75rem] font-semibold tracking-[-0.02em] text-white">
+        <h2 className="min-w-0 text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
           Project Progress
         </h2>
 
@@ -519,7 +519,7 @@ export const ProjectProgressSection = ({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.06] bg-card px-4 text-sm font-medium text-[#d7d2ca] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.12] hover:bg-white/[0.04] sm:h-12 sm:px-5"
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:h-12 sm:px-5"
                   aria-label="Open date range filter"
                 >
                   <CalendarDays className="size-4 shrink-0 text-[#b8afa2]" />
@@ -533,14 +533,14 @@ export const ProjectProgressSection = ({
               <PopoverContent
                 align="end"
                 sideOffset={10}
-                className="w-[min(100vw-2rem,360px)] rounded-[24px] border border-white/[0.08] bg-[#232323] p-4 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
+                className="w-[min(100vw-2rem,360px)] rounded-[24px] border border-border bg-card p-4 text-foreground shadow-lg"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       Date Filter
                     </p>
-                    <p className="mt-1 text-sm font-medium text-[#d7d2ca]">
+                    <p className="mt-1 text-sm font-medium text-foreground">
                       Choose the chart range
                     </p>
                   </div>
@@ -560,8 +560,8 @@ export const ProjectProgressSection = ({
                       className={cn(
                         "inline-flex h-10 items-center justify-center rounded-[12px] border px-3 text-sm font-semibold transition-colors",
                         dateFilterMode === key
-                          ? "border-[#ffd400]/40 bg-[#ffd400]/14 text-[#ffd400]"
-                          : "border-white/[0.08] bg-white/[0.03] text-[#d7d2ca] hover:bg-white/[0.05]",
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border bg-muted/30 text-foreground hover:bg-muted",
                       )}
                     >
                       {option.label}
@@ -570,7 +570,7 @@ export const ProjectProgressSection = ({
                 </div>
 
                 {dateFilterMode === "custom" ? (
-                  <div className="mt-4 overflow-hidden rounded-[20px] border border-white/[0.08] bg-card/40">
+                  <div className="mt-4 overflow-hidden rounded-[20px] border border-border bg-muted/20">
                     <Calendar
                       mode="range"
                       numberOfMonths={1}
@@ -588,17 +588,17 @@ export const ProjectProgressSection = ({
                         months: "w-full",
                         month: "w-full space-y-4",
                         nav: "relative flex items-center justify-between px-1",
-                        caption_label: "text-sm font-semibold text-white",
+                        caption_label: "text-sm font-semibold text-foreground",
                         nav_button:
-                          "size-8 rounded-md border border-white/[0.08] bg-white/[0.03] text-white hover:bg-white/[0.06]",
+                          "size-8 rounded-md border border-border bg-muted text-foreground hover:bg-muted/80",
                         button_previous: "!static",
                         button_next: "!static",
                         weekday:
-                          "text-[11px] font-medium uppercase tracking-[0.16em] text-[#8f96a3]",
-                        day: "text-sm text-[#d7d2ca]",
-                        today: "bg-white/[0.08] text-white rounded-md",
-                        outside: "text-[#5f6671]",
-                        disabled: "text-[#5f6671] opacity-50",
+                          "text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground",
+                        day: "text-sm text-foreground",
+                        today: "bg-primary/20 text-primary rounded-md",
+                        outside: "text-muted-foreground/30",
+                        disabled: "text-muted-foreground/30 opacity-50",
                       }}
                     />
                   </div>
@@ -610,7 +610,7 @@ export const ProjectProgressSection = ({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex h-11 items-center justify-between gap-3 rounded-full border border-white/[0.06] bg-card px-4 text-sm font-semibold text-[#d7d2ca] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.12] hover:bg-white/[0.04] sm:h-12 sm:min-w-[170px] sm:px-5"
+                  className="inline-flex h-11 items-center justify-between gap-3 rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted sm:h-12 sm:min-w-[170px] sm:px-5"
                   aria-label="Open project progress menu"
                 >
                   <span className="max-w-[11rem] truncate text-left">{triggerProjectLabel}</span>
@@ -621,12 +621,12 @@ export const ProjectProgressSection = ({
               <DropdownMenuContent
                 align="end"
                 sideOffset={10}
-                className="w-[min(100vw-2rem,280px)] rounded-[22px] border border-white/[0.08] bg-[#232323] p-2 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
+                className="w-[min(100vw-2rem,280px)] rounded-[22px] border border-border bg-card p-2 text-foreground shadow-lg"
               >
-                <DropdownMenuLabel className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+                <DropdownMenuLabel className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   View Progress
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
+                <DropdownMenuSeparator className="my-1" />
 
                 <DropdownMenuRadioGroup
                   value={selectedProjectView}
@@ -634,9 +634,9 @@ export const ProjectProgressSection = ({
                 >
                   <DropdownMenuRadioItem
                     value="overall"
-                    className="rounded-[16px] px-3 py-3 pl-3 text-white transition-colors hover:bg-white/[0.04] focus:bg-white/[0.06] focus:text-white data-[state=checked]:bg-white/[0.06] [&>span:first-child]:hidden"
+                    className="rounded-[16px] px-3 py-3 pl-3 text-foreground transition-colors hover:bg-muted focus:bg-muted focus:text-foreground data-[state=checked]:bg-muted [&>span:first-child]:hidden"
                   >
-                    <span className="truncate text-sm font-semibold text-white">
+                    <span className="truncate text-sm font-semibold text-foreground">
                       Overall Project
                     </span>
                   </DropdownMenuRadioItem>
@@ -645,9 +645,9 @@ export const ProjectProgressSection = ({
                     <DropdownMenuRadioItem
                       key={entry.id}
                       value={String(entry.id)}
-                      className="rounded-[16px] px-3 py-3 pl-3 text-white transition-colors hover:bg-white/[0.04] focus:bg-white/[0.06] focus:text-white data-[state=checked]:bg-white/[0.06] [&>span:first-child]:hidden"
+                      className="rounded-[16px] px-3 py-3 pl-3 text-foreground transition-colors hover:bg-muted focus:bg-muted focus:text-foreground data-[state=checked]:bg-muted [&>span:first-child]:hidden"
                     >
-                      <span className="truncate text-sm font-semibold text-white">
+                      <span className="truncate text-sm font-semibold text-foreground">
                         {entry.label}
                       </span>
                     </DropdownMenuRadioItem>
@@ -672,10 +672,10 @@ export const ProjectProgressSection = ({
         <DashboardPanel className="min-h-[220px] bg-card p-5 sm:p-8">
           <div className="flex min-h-[140px] items-center justify-center text-center sm:min-h-[170px]">
             <div className="max-w-md">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-muted-foreground">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <FolderKanban className="size-6" />
               </div>
-              <p className="mt-5 text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+              <p className="mt-5 text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
                 No ongoing projects yet
               </p>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -686,7 +686,7 @@ export const ProjectProgressSection = ({
                 <button
                   type="button"
                   onClick={onOpenQuickProject}
-                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-primary/80 sm:w-auto"
+                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/80 sm:w-auto"
                 >
                   Start New Project
                 </button>

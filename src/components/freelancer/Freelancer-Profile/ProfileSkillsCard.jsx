@@ -664,11 +664,11 @@ const ProfileSkillsCard = ({
       {serviceExpertiseGroups.length > 0 ? (
         <div className="mt-0 space-y-4">
           <section>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <p className="text-2xl font-semibold tracking-tight text-foreground">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                 Services & Skills
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               {typeof openEditServiceProfileModal === "function" ? (
                 <button
                   type="button"
@@ -678,7 +678,7 @@ const ProfileSkillsCard = ({
                       openEditServiceProfileModal(activeService.serviceKey);
                     }
                   }}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Edit service details"
                   title="Edit service details"
                 >
@@ -689,7 +689,7 @@ const ProfileSkillsCard = ({
                 type="button"
                 disabled={!canScrollPrevService}
                 onClick={() => serviceCarouselApi?.scrollPrev()}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Previous specialization"
               >
                 <ChevronLeft className="h-5 w-5 text-foreground" aria-hidden="true" />
@@ -698,7 +698,7 @@ const ProfileSkillsCard = ({
                 type="button"
                 disabled={!canScrollNextService}
                 onClick={() => serviceCarouselApi?.scrollNext()}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Next specialization"
               >
                 <ChevronRight className="h-5 w-5 text-foreground" aria-hidden="true" />
@@ -730,7 +730,7 @@ const ProfileSkillsCard = ({
                         className={`group flex h-[96px] w-full flex-col items-center justify-center gap-2 rounded-2xl border px-3 text-center transition-all duration-200 ${
                           isActive
                             ? "border-primary bg-primary text-primary-foreground"
-                            : "border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] text-muted-foreground hover:border-white/20 hover:text-foreground"
+                            : "border-border/70 bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]"
                         }`}
                       >
                         <ServiceIcon
@@ -753,7 +753,7 @@ const ProfileSkillsCard = ({
                     <button
                       type="button"
                       onClick={() => openAddServiceModal()}
-                      className="group flex h-[96px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 bg-transparent px-3 text-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5"
+                      className="group flex h-[96px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/80 bg-transparent px-3 text-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 dark:border-white/20"
                     >
                       <Plus
                         className="h-7 w-7 text-muted-foreground group-hover:text-primary"

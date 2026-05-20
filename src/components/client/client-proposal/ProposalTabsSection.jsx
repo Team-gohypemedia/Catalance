@@ -210,7 +210,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                         "ml-1 hidden min-w-4 items-center justify-center rounded-full px-1.5 py-0.5 text-[8px] font-semibold leading-none xl:inline-flex",
                         isActive
                           ? "bg-black/10 text-primary-foreground/80"
-                          : "bg-white/[0.05] text-muted-foreground",
+                          : "bg-muted text-muted-foreground",
                       )}
                     >
                       {typeCounts[item.value] || 0}
@@ -244,7 +244,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                           "hidden min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none xl:inline-flex",
                           isStatusActive
                             ? "bg-black/10 text-primary-foreground/80"
-                            : "bg-white/[0.05] text-muted-foreground",
+                            : "bg-muted text-muted-foreground",
                         )}
                       >
                         {statusCounts[item.value] || 0}

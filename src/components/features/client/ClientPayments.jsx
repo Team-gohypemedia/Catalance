@@ -156,7 +156,7 @@ const PaymentSummaryCard = ({
   kind = "currency",
   tone = "default",
 }) => (
-  <div className="rounded-[20px] border border-white/[0.05] bg-card px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:px-5 sm:py-5">
+  <div className="rounded-[20px] border border-border bg-card px-4 py-4 sm:px-5 sm:py-5">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
@@ -164,17 +164,17 @@ const PaymentSummaryCard = ({
           className={cn(
             "mt-2 truncate text-[1.7rem] font-semibold leading-none tracking-[-0.04em] sm:text-[2rem]",
             tone === "success"
-              ? "text-[#34d399]"
+              ? "text-emerald-500 dark:text-[#34d399]"
               : tone === "warning"
-                ? "text-[var(--primary)]"
-                : "text-white",
+                ? "text-primary"
+                : "text-foreground",
           )}
         >
           {kind === "currency" ? maskCurrency(value, visible) : value}
         </p>
       </div>
       {Icon ? (
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[#2b2b2b] text-primary">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-muted text-primary">
           <Icon className="size-4" />
         </div>
       ) : null}
@@ -195,9 +195,9 @@ const BillingToolRow = ({
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className="group flex w-full items-start gap-3 rounded-[16px] border border-white/[0.05] bg-white/[0.01] px-4 py-3 text-left transition hover:border-white/[0.08] hover:bg-white/[0.02] disabled:cursor-not-allowed disabled:opacity-60 sm:items-center"
+    className="group flex w-full items-start gap-3 rounded-[16px] border border-border bg-muted/30 px-4 py-3 text-left transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 sm:items-center"
   >
-    <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[#141414] text-muted-foreground">
+    <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-muted text-muted-foreground">
       {loading ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
     </div>
     <div className="min-w-0 flex-1">
@@ -223,7 +223,7 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[10px] bg-[var(--primary)] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
+          className="inline-flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[10px] bg-[var(--primary)] px-4 text-sm font-semibold text-[#141414] transition hover:bg-primary/80 sm:w-auto"
         >
           <div className="flex min-w-0 items-center gap-2">
             <FolderOpen className="size-4 shrink-0" />
@@ -242,20 +242,20 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
       <DropdownMenuContent
         align="end"
         sideOffset={10}
-        className="w-[min(22rem,calc(100vw-2rem))] rounded-[18px] border border-white/[0.08] bg-[#1f1f1f] p-2 text-white shadow-[0_18px_45px_rgba(0,0,0,0.35)]"
+        className="w-[min(22rem,calc(100vw-2rem))] rounded-[18px] border border-border bg-card p-2 text-foreground shadow-lg"
       >
         <DropdownMenuLabel className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Filter projects
         </DropdownMenuLabel>
-        <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
+        <DropdownMenuSeparator className="my-1" />
 
         <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
           <DropdownMenuRadioItem
             value={PROJECT_FILTER_ALL_VALUE}
-            className="items-start rounded-[14px] px-3 py-2.5 pl-3 transition-colors hover:bg-white/[0.04] data-[state=checked]:bg-white/[0.06] [&>span:first-child]:hidden"
+            className="items-start rounded-[14px] px-3 py-2.5 pl-3 transition-colors hover:bg-muted data-[state=checked]:bg-muted [&>span:first-child]:hidden"
           >
             <div className="flex flex-col items-start">
-              <span className="text-sm font-semibold text-white">All Projects</span>
+              <span className="text-sm font-semibold text-foreground">All Projects</span>
               <span className="text-xs text-muted-foreground">
                 Show the combined payment dashboard
               </span>
@@ -266,10 +266,10 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
             <DropdownMenuRadioItem
               key={project.id}
               value={String(project.id)}
-              className="items-start rounded-[14px] px-3 py-2.5 pl-3 transition-colors hover:bg-white/[0.04] data-[state=checked]:bg-white/[0.06] [&>span:first-child]:hidden"
+              className="items-start rounded-[14px] px-3 py-2.5 pl-3 transition-colors hover:bg-muted data-[state=checked]:bg-muted [&>span:first-child]:hidden"
             >
               <div className="flex min-w-0 flex-col items-start">
-                <span className="truncate text-sm font-semibold text-white">
+                <span className="truncate text-sm font-semibold text-foreground">
                   {project.businessName ? toDisplayTitleCase(project.businessName) : project.title}
                 </span>
                 <span className="truncate text-xs text-muted-foreground">
@@ -305,7 +305,7 @@ const ProjectMetaStack = ({ serviceType, freelancerName, compact = false }) => {
         ) : null}
 
         {hasServiceType && hasFreelancerName ? (
-          <span className="h-3 w-px shrink-0 bg-white/[0.12]" aria-hidden="true" />
+          <span className="h-3 w-px shrink-0 bg-border" aria-hidden="true" />
         ) : null}
 
         {hasFreelancerName ? <div className="min-w-0 truncate text-muted-foreground">{freelancerName}</div> : null}
@@ -321,10 +321,10 @@ const TransactionRow = ({ transaction, visible, onOpenProject }) => {
     <button
       type="button"
       onClick={() => onOpenProject(transaction?.projectId)}
-      className="flex w-full flex-col gap-2 border-b border-white/[0.05] py-3 text-left last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+      className="flex w-full flex-col gap-2 border-b border-border py-3 text-left last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
     >
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-white">{transaction.installmentLabel}</p>
+        <p className="truncate text-sm font-semibold text-foreground">{transaction.installmentLabel}</p>
         <p className="truncate text-xs text-muted-foreground">
           {transaction.projectLabel}
           <span className="px-1 text-muted-foreground">/</span>
@@ -335,7 +335,7 @@ const TransactionRow = ({ transaction, visible, onOpenProject }) => {
         <p
           className={cn(
             "text-sm font-semibold",
-            transaction.isDue ? "text-[var(--primary)]" : "text-white",
+            transaction.isDue ? "text-primary" : "text-foreground",
           )}
         >
           {maskCurrency(amount, visible)}
@@ -357,13 +357,13 @@ const ActiveProjectPaymentsPanel = ({
 }) => {
   if (!project) {
     return (
-      <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
-        <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">Active Project Payments</h2>
-        <div className="mt-5 rounded-[18px] border border-dashed border-white/[0.1] bg-[#2a2a2a] p-5 text-center sm:p-6">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-white/[0.04] text-[var(--primary)]">
+      <div className="rounded-[24px] border border-border bg-card p-5 sm:p-6">
+        <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">Active Project Payments</h2>
+        <div className="mt-5 rounded-[18px] border border-dashed border-border bg-muted/50 p-5 text-center sm:p-6">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-muted text-primary">
             <CreditCard className="size-6" />
           </div>
-          <p className="mt-4 text-lg font-semibold text-white">No active payment timeline yet</p>
+          <p className="mt-4 text-lg font-semibold text-foreground">No active payment timeline yet</p>
           <p className="mx-auto mt-2 max-w-[30rem] text-sm text-muted-foreground">
             Accepted projects will appear here with milestone-based payment schedule, due amounts, and release actions.
           </p>
@@ -372,14 +372,14 @@ const ActiveProjectPaymentsPanel = ({
             <button
               type="button"
               onClick={onOpenProposals}
-              className="inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-[var(--primary)] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
+              className="inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/80 sm:w-auto"
             >
               Open Proposals
             </button>
             <button
               type="button"
               onClick={onOpenProjects}
-              className="inline-flex h-10 w-full items-center justify-center rounded-[10px] border border-white/[0.08] px-5 text-sm font-semibold text-white transition hover:border-white/[0.14] hover:bg-white/[0.03] sm:w-auto"
+              className="inline-flex h-10 w-full items-center justify-center rounded-[10px] border border-border px-5 text-sm font-semibold text-foreground transition hover:bg-muted sm:w-auto"
             >
               View Projects
             </button>
@@ -403,13 +403,13 @@ const ActiveProjectPaymentsPanel = ({
     "Untitled Project";
 
   return (
-    <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
-      <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">Active Project Payments</h2>
+    <div className="rounded-[24px] border border-border bg-card p-5 sm:p-6">
+      <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">Active Project Payments</h2>
 
       <div className="mt-5 rounded-[18px] border border-white/[0.05] bg-card p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <h3 className="truncate text-[1.2rem] font-semibold tracking-[-0.02em] text-white sm:text-[1.45rem]">
+            <h3 className="truncate text-[1.2rem] font-semibold tracking-[-0.02em] text-foreground sm:text-[1.45rem]">
               {projectHeadline}
             </h3>
             <ProjectMetaStack
@@ -430,7 +430,7 @@ const ActiveProjectPaymentsPanel = ({
 
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
-            <p className="text-[1.7rem] font-semibold leading-none tracking-[-0.03em] text-white sm:text-[2rem]">
+            <p className="text-[1.7rem] font-semibold leading-none tracking-[-0.03em] text-foreground sm:text-[2rem]">
               {maskCurrency(project.paidAmount, showAmounts)}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -442,7 +442,7 @@ const ActiveProjectPaymentsPanel = ({
           </p>
         </div>
 
-        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-[var(--primary)] transition-[width]"
             style={{ width: `${Math.max(0, Math.min(project.paidPercentage, 100))}%` }}
@@ -472,8 +472,8 @@ const ActiveProjectPaymentsPanel = ({
             className={cn(
               "inline-flex h-10 w-full items-center justify-center gap-2 rounded-[10px] px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto",
               hasDueInstallment
-                ? "bg-[#34d399] text-[#052e16] hover:bg-[#4ade80]"
-                : "border border-white/[0.08] text-white hover:border-white/[0.14] hover:bg-white/[0.03]",
+                ? "bg-emerald-500/20 text-emerald-700 dark:bg-[#34d399]/10 dark:text-[#34d399] hover:bg-emerald-500/30"
+                : "border border-border text-foreground hover:bg-muted",
             )}
           >
             {isProcessingDuePayment ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -484,7 +484,7 @@ const ActiveProjectPaymentsPanel = ({
         <p
           className={cn(
             "mt-3 text-xs",
-            hasDueInstallment ? "text-[#8ee7bc]" : "text-muted-foreground",
+            hasDueInstallment ? "text-emerald-600 dark:text-[#8ee7bc]" : "text-muted-foreground",
           )}
         >
           {dueInstallment
@@ -492,22 +492,22 @@ const ActiveProjectPaymentsPanel = ({
             : "All current milestones are settled. The next payment will unlock when the project reaches the next billing checkpoint."}
         </p>
 
-        <div className="mt-6 border-t border-white/[0.06] pt-4">
+        <div className="mt-6 border-t border-border pt-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Payment Schedule</p>
           <div className="mt-3 space-y-2">
             {scheduleItems.map((installment, index) => {
               const statusDotClass = installment?.isPaid
-                ? "bg-[#22c55e]"
+                ? "bg-emerald-500"
                 : installment?.isDue
-                  ? "bg-[#34d399]"
-                  : "bg-[#6b7280]";
+                  ? "bg-emerald-400"
+                  : "bg-muted-foreground/50";
               const scheduleRowClass = installment?.isDue
-                ? "border-[#34d399]/18 bg-[#34d399]/[0.04]"
-                : "border-white/[0.05] bg-white/[0.02]";
+                ? "border-emerald-500/20 bg-emerald-500/5"
+                : "border-border bg-muted/30";
               const scheduleStatusClass = installment?.isPaid
                 ? "text-muted-foreground"
                 : installment?.isDue
-                  ? "font-medium text-[#8ee7bc]"
+                  ? "font-medium text-emerald-600 dark:text-[#8ee7bc]"
                   : "text-muted-foreground";
 
               return (
@@ -520,12 +520,12 @@ const ActiveProjectPaymentsPanel = ({
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <span className={cn("size-2.5 rounded-full", statusDotClass)} />
-                    <p className="truncate text-sm text-white">
+                    <p className="truncate text-sm text-foreground">
                       {installment?.label || `Milestone ${installment?.sequence || index + 1}`}
                     </p>
                   </div>
                   <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-foreground">
                       {maskCurrency(Number(installment?.amount) || 0, showAmounts)}
                     </p>
                     <p className={cn("text-[10px]", scheduleStatusClass)}>
@@ -546,14 +546,14 @@ const getBillingStatusMeta = (invoice) => {
   if (invoice?.isPaid) {
     return {
       label: "Paid",
-      badgeClass: "bg-[#22c55e]/12 text-[#4ade80]",
+      badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-[#4ade80]",
     };
   }
 
   if (invoice?.amountPaid > 0) {
     return {
       label: "Part paid",
-      badgeClass: "bg-[#60a5fa]/12 text-[#93c5fd]",
+      badgeClass: "bg-blue-500/10 text-blue-600 dark:text-[#93c5fd]",
     };
   }
 
@@ -566,7 +566,7 @@ const getBillingStatusMeta = (invoice) => {
 
   return {
     label: "Scheduled",
-    badgeClass: "bg-white/[0.05] text-muted-foreground",
+    badgeClass: "bg-muted text-muted-foreground",
   };
 };
 
@@ -615,7 +615,7 @@ const ProjectBillingList = ({
 
   if (!invoices.length) {
     return (
-      <div className="mt-5 rounded-[18px] border border-dashed border-white/[0.08] bg-card px-4 py-7 text-sm text-muted-foreground sm:px-5 sm:py-8">
+      <div className="mt-5 rounded-[18px] border border-dashed border-border bg-muted/30 px-4 py-7 text-sm text-muted-foreground sm:px-5 sm:py-8">
         Billing entries will appear here once your project invoices are created.
       </div>
     );
@@ -630,12 +630,12 @@ const ProjectBillingList = ({
         return (
           <article
             key={invoice.id}
-            className="rounded-[18px] border border-white/[0.05] bg-card px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:px-5 sm:py-5"
+            className="rounded-[18px] border border-border bg-card px-4 py-4 sm:px-5 sm:py-5"
           >
             <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.95fr)_190px] xl:items-center">
               <div className="min-w-0 rounded-[16px] p-0 sm:px-4 sm:py-4">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h3 className="truncate text-[1.05rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.2rem]">
+                  <h3 className="truncate text-[1.05rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.2rem]">
                     {invoice.projectLabel}
                   </h3>
                   <span
@@ -653,7 +653,7 @@ const ProjectBillingList = ({
                 </p>
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-2 text-xs">
-                  <span className="inline-flex rounded-lg bg-white/[0.04] px-2.5 py-1 font-medium text-muted-foreground">
+                  <span className="inline-flex rounded-lg bg-muted px-2.5 py-1 font-medium text-muted-foreground">
                     {invoice.serviceType || "Project service"}
                   </span>
                   <span className="text-muted-foreground">•</span>
@@ -665,7 +665,7 @@ const ProjectBillingList = ({
                 </p>
               </div>
 
-              <div className="grid flex-1 gap-4 rounded-[16px] border border-white/[0.04] bg-white/[0.02] px-4 py-4 sm:grid-cols-3">
+              <div className="grid flex-1 gap-4 rounded-[16px] border border-border bg-muted/30 px-4 py-4 sm:grid-cols-3">
                 <BillingAmountCell
                   label="Scheduled"
                   value={invoice.amountDue}
@@ -689,7 +689,7 @@ const ProjectBillingList = ({
                 <button
                   type="button"
                   onClick={() => onDownloadInvoice(invoice)}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/[0.08] px-4 text-sm font-semibold text-white transition hover:bg-white/[0.05] hover:border-white/[0.12] sm:w-auto xl:w-full"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-border px-4 text-sm font-semibold text-foreground transition hover:bg-muted sm:w-auto xl:w-full"
                 >
                   <Download className="size-4" />
                   Download invoice
@@ -697,7 +697,7 @@ const ProjectBillingList = ({
                 <button
                   type="button"
                   onClick={() => onOpenProject(invoice.projectId)}
-                  className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-[var(--primary)] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto xl:w-full"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/80 sm:w-auto xl:w-full"
                 >
                   View details
                 </button>
@@ -714,7 +714,7 @@ const ProjectBillingList = ({
             onClick={() => {
               setShowAllInvoices((currentValue) => !currentValue);
             }}
-            className="inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-white/[0.06] bg-white/[0.03] px-5 text-sm font-semibold text-muted-foreground transition hover:bg-white/[0.06] hover:text-white sm:w-auto"
+            className="inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-border bg-muted/30 px-5 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground sm:w-auto"
           >
             {showAllInvoices ? "Show fewer invoices" : `Show all ${invoices.length} invoices`}
           </button>
@@ -851,7 +851,7 @@ const EmptyPaymentsState = () => (
     <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-white/[0.04] text-primary">
       <Wallet className="size-7" />
     </div>
-    <h2 className="mt-6 text-[1.55rem] font-semibold text-white sm:text-2xl">No billing activity yet</h2>
+    <h2 className="mt-6 text-[1.55rem] font-semibold text-foreground sm:text-2xl">No billing activity yet</h2>
     <p className="mx-auto mt-3 max-w-[32rem] text-sm text-muted-foreground">
       Once a project proposal is accepted and billing milestones are created, this dashboard will populate automatically.
     </p>

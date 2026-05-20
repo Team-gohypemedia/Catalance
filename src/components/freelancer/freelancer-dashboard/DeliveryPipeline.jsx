@@ -158,72 +158,72 @@ const FreelancerRunningProjectCard = ({
 const resolveMobilePipelineTone = (hasActiveProject, statusTone) => {
   if (!hasActiveProject) {
     return {
-      textClass: "text-zinc-400",
-      dotClass: "bg-zinc-500/70",
-      barClass: "bg-white/[0.18]",
+      textClass: "text-muted-foreground",
+      dotClass: "bg-muted-foreground/75",
+      barClass: "bg-muted",
     };
   }
 
   if (statusTone === "On track") {
     return {
-      textClass: "text-emerald-300",
-      dotClass: "bg-emerald-400",
-      barClass: "bg-emerald-400",
+      textClass: "text-emerald-500 dark:text-emerald-300",
+      dotClass: "bg-emerald-500 dark:bg-emerald-400",
+      barClass: "bg-emerald-500 dark:bg-emerald-400",
     };
   }
 
   if (statusTone === "Steady") {
     return {
-      textClass: "text-[var(--primary)]",
-      dotClass: "bg-[var(--primary)]",
-      barClass: "bg-[var(--primary)]",
+      textClass: "text-primary",
+      dotClass: "bg-primary",
+      barClass: "bg-primary",
     };
   }
 
   return {
     textClass: "text-primary",
-    dotClass: "bg-primary/10",
-    barClass: "bg-primary/10",
+    dotClass: "bg-primary/20",
+    barClass: "bg-primary/20",
   };
 };
 
 const resolveMobilePipelinePhaseAppearance = (row) => {
   if (row?.isCompleted) {
     return {
-      dotClass: "border-emerald-400 bg-emerald-400 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]",
-      cardClass: "border-emerald-400/18 bg-[#171717]",
-      chipClass: "border-emerald-400/20 bg-emerald-500/12 text-emerald-300",
-      barClass: "bg-emerald-400",
-      lineClass: "bg-emerald-400/55",
+      dotClass: "border-emerald-500 dark:border-emerald-400 bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]",
+      cardClass: "border-emerald-500/20 dark:border-emerald-400/18 bg-card",
+      chipClass: "border-emerald-500/20 dark:border-emerald-400/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
+      barClass: "bg-emerald-500 dark:bg-emerald-400",
+      lineClass: "bg-emerald-500/55 dark:bg-emerald-400/55",
     };
   }
 
   if (row?.isActive) {
     return {
-      dotClass: "border-[var(--primary)] bg-[var(--primary)] shadow-[0_0_0_4px_rgba(var(--brand-rgb),0.12)]",
-      cardClass: "border-[var(--primary)]/16 bg-[#171717]",
-      chipClass: "border-[var(--primary)]/20 bg-[var(--primary)]/12 text-[var(--primary)]",
-      barClass: "bg-[var(--primary)]",
-      lineClass: "bg-[var(--primary)]/55",
+      dotClass: "border-primary bg-primary shadow-[0_0_0_4px_rgba(var(--brand-rgb),0.12)]",
+      cardClass: "border-primary/20 bg-card",
+      chipClass: "border-primary/20 bg-primary/10 text-primary",
+      barClass: "bg-primary",
+      lineClass: "bg-primary/55",
     };
   }
 
   if (row?.isPending) {
     return {
-      dotClass: "border-primary/20 bg-primary/10 shadow-[0_0_0_4px_rgba(251,146,60,0.12)]",
-      cardClass: "border-primary/20/16 bg-[#171717]",
-      chipClass: "border-primary/20/20 bg-primary/10/12 text-primary",
-      barClass: "bg-primary/10",
-      lineClass: "bg-primary/10/55",
+      dotClass: "border-primary/30 bg-primary/20 shadow-[0_0_0_4px_rgba(251,146,60,0.12)]",
+      cardClass: "border-primary/10 bg-card",
+      chipClass: "border-primary/20 bg-primary/5 text-primary",
+      barClass: "bg-primary/20",
+      lineClass: "bg-primary/20",
     };
   }
 
   return {
-    dotClass: "border-white/[0.18] bg-[#111111]",
-    cardClass: "border-white/[0.06] bg-[#171717]",
-    chipClass: "border-white/[0.08] bg-white/[0.04] text-zinc-500",
-    barClass: "bg-white/[0.18]",
-    lineClass: "bg-white/[0.08]",
+    dotClass: "border-border bg-muted",
+    cardClass: "border-border bg-card",
+    chipClass: "border-border bg-muted text-muted-foreground",
+    barClass: "bg-muted",
+    lineClass: "bg-border",
   };
 };
 
@@ -246,34 +246,34 @@ const FreelancerRunningProjectCompactCard = ({ item, isSelected, onSelect }) => 
         }
       }}
       className={cn(
-        "w-[84vw] min-w-[15rem] max-w-[18rem] shrink-0 snap-start overflow-hidden rounded-[22px] border-0 bg-[#151515] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]",
+        "w-[84vw] min-w-[15rem] max-w-[18rem] shrink-0 snap-start overflow-hidden rounded-[22px] border bg-card border-border shadow-sm",
         isSelected &&
-          "shadow-[inset_0_0_0_1.5px_rgba(var(--brand-rgb),0.95),0_18px_40px_rgba(0,0,0,0.3)]",
+          "border-primary shadow-[0_18px_40px_rgba(0,0,0,0.1)]",
       )}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
-          <span className="inline-flex size-9 items-center justify-center rounded-[12px] border border-white/[0.08] bg-white/[0.03]">
+          <span className="inline-flex size-9 items-center justify-center rounded-[12px] border border-border bg-muted">
             <span className="size-2.5 rotate-45 rounded-[3px] border border-primary/80" />
           </span>
-          <Badge className="rounded-full border-0 bg-emerald-500/12 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+          <Badge className="rounded-full border-0 bg-emerald-500/12 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-300">
             {badgeLabel}
           </Badge>
         </div>
 
-        <p className="mt-4 text-[1.15rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
+        <p className="mt-4 text-[1.15rem] font-semibold tracking-[-0.04em] text-foreground">
           {item?.title || "Untitled project"}
         </p>
-        <p className="mt-1 text-[11px] leading-5 text-zinc-500">
+        <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
           {item?.clientLabel ? `With ${item.clientLabel}` : item?.timeLabel}
         </p>
 
         <div className="mt-5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em]">
-          <span className="text-zinc-500">Progress</span>
-          <span className="text-zinc-100">{progress}%</span>
+          <span className="text-muted-foreground">Progress</span>
+          <span className="text-foreground">{progress}%</span>
         </div>
 
-        <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.08]">
+        <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-[var(--primary)]" style={{ width: `${progress}%` }} />
         </div>
       </CardContent>
@@ -420,24 +420,24 @@ const DeliveryPipeline = ({
                 </div>
               </div>
             ) : (
-              <Card className="rounded-[22px] border border-dashed border-white/[0.12] bg-background/20 shadow-none">
+              <Card className="rounded-[22px] border border-dashed border-border bg-muted/20 shadow-none">
                 <CardContent className="flex min-h-[120px] flex-col items-center justify-center p-5 text-center">
-                  <p className="text-sm font-medium dark:text-white text-[#1C1B1F]">No active projects</p>
-                  <p className="mt-2 text-xs text-zinc-400">
+                  <p className="text-sm font-medium text-foreground">No active projects</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
                     Switch filters or accept a proposal to start tracking delivery phases.
                   </p>
                 </CardContent>
               </Card>
             )}
 
-            <Card className="overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#141414] shadow-none">
+            <Card className="overflow-hidden rounded-[28px] border border-border bg-card shadow-none">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                       Project Schedule
                     </p>
-                    <p className="mt-2 truncate text-[0.95rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
+                    <p className="mt-2 truncate text-[0.95rem] font-semibold tracking-[-0.03em] text-foreground">
                       {activeScheduleProjectTitle}
                     </p>
                   </div>
@@ -454,7 +454,7 @@ const DeliveryPipeline = ({
 
                 {hasActiveProject ? (
                   <div className="relative mt-5 pl-6">
-                    <div className="absolute bottom-6 left-[7px] top-3 w-px bg-white/[0.08]" />
+                    <div className="absolute bottom-6 left-[7px] top-3 w-px bg-border" />
 
                     <div className="space-y-4">
                       {scheduleTimelineRows.map((row, index) => {
@@ -528,7 +528,7 @@ const DeliveryPipeline = ({
                                 {helperLabel}
                               </p>
 
-                              <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.08]">
+                              <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-muted">
                                 <div
                                   className={cn("h-full rounded-full", appearance.barClass)}
                                   style={{ width: `${progressWidth}%` }}
@@ -542,8 +542,8 @@ const DeliveryPipeline = ({
                   </div>
                 ) : (
                   <div className="flex min-h-[240px] flex-col items-center justify-center px-3 py-10 text-center">
-                    <p className="text-sm font-semibold dark:text-white text-[#1C1B1F]">No active project</p>
-                    <p className="mt-2 text-xs leading-5 text-zinc-400">
+                    <p className="text-sm font-semibold text-foreground">No active project</p>
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
                       Select a running project to unlock the schedule timeline and delivery
                       checkpoints.
                     </p>
@@ -552,7 +552,7 @@ const DeliveryPipeline = ({
               </CardContent>
             </Card>
 
-            <Card className="rounded-[22px] border border-white/[0.08] bg-[#141414] shadow-none">
+            <Card className="rounded-[22px] border border-border bg-card shadow-none">
               <CardContent className="p-4">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                   Current Status
@@ -568,7 +568,7 @@ const DeliveryPipeline = ({
                     {hasActiveProject ? statusTone : "No active project"}
                   </p>
                 </div>
-                <div className="mt-4 h-[3px] overflow-hidden rounded-full bg-white/[0.08]">
+                <div className="mt-4 h-[3px] overflow-hidden rounded-full bg-border">
                   <div
                     className={cn("h-full rounded-full", mobileStatusTone.barClass)}
                     style={{
@@ -580,30 +580,30 @@ const DeliveryPipeline = ({
             </Card>
 
             <div className="grid grid-cols-2 gap-3">
-              <Card className="rounded-[20px] border border-white/[0.08] bg-[#141414] shadow-none">
+              <Card className="rounded-[20px] border border-border bg-card shadow-none">
                 <CardContent className="p-4">
                   <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                     Time Remaining
                   </p>
-                  <p className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
+                  <p className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-foreground">
                     {hasActiveProject
                       ? daysRemaining
                         ? `${daysRemaining} Days`
                         : "Today"
                       : "—"}
                   </p>
-                  <p className="mt-2 text-[11px] leading-5 text-zinc-500">
+                  <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
                     {hasActiveProject ? nextPayoutSummaryLabel : "Awaiting an active delivery."}
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="rounded-[20px] border border-white/[0.08] bg-[#141414] shadow-none">
+              <Card className="rounded-[20px] border border-border bg-card shadow-none">
                 <CardContent className="p-4">
                   <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                     Completed Tasks
                   </p>
-                  <p className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
+                  <p className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-foreground">
                     {hasActiveProject ? `${completed}/${total}` : "—"}
                   </p>
                   <div className="mt-3 flex items-center gap-1">
@@ -614,7 +614,7 @@ const DeliveryPipeline = ({
                           "h-1.5 w-1.5 rounded-full",
                           hasActiveProject && index < dotsOn
                             ? "bg-[var(--primary)]"
-                            : "bg-white/[0.18]",
+                            : "bg-muted",
                         )}
                       />
                     ))}

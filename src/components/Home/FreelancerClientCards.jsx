@@ -156,26 +156,26 @@ const FreelancerClientCards = () => {
               className="pointer-events-none absolute bottom-6 -right-16 z-0 w-48 select-none opacity-0 rotate-[30deg] transform-gpu transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-6 group-hover:opacity-100"
             />
 
-            <article className="relative isolate flex min-h-[26rem] flex-col rounded-[2rem] border border-transparent !bg-[#D9692A] px-6 pb-6 pt-6 text-left shadow-[0_24px_80px_rgba(217,105,42,0.35)] z-10">
+            <article className={`${cardClassName} z-10`}>
               <div className="relative z-10 flex h-full flex-col">
                 <div className="mb-11 flex items-center justify-between gap-4">
-                  <UserRoundSearch className="size-7 !text-white" />
-                  <span className="text-sm font-semibold uppercase tracking-[0.28em] !text-white/70">
+                  <UserRoundSearch className={`size-7 ${iconClass}`} />
+                  <span className={`text-sm font-semibold uppercase tracking-[0.28em] ${textMutedClass}`}>
                     For Freelancers
                   </span>
                 </div>
 
-                <h3 className="max-sm text-[2.05rem] font-semibold leading-tight !text-white">
+                <h3 className={`max-w-sm text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Grow Your Career with Trusted Clients
                 </h3>
 
                 <div className="mt-6 space-y-4">
                   {freelancerFeatures.map(({ icon: Icon, text }) => (
-                    <div key={text} className="flex items-center gap-4">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20">
-                        <Icon className="size-[1.1rem] !text-white" />
+                    <div key={text} className="flex items-center gap-4 group/feature">
+                      <div className={`flex size-9 shrink-0 items-center justify-center rounded-full ${iconContainerClass}`}>
+                        <Icon className={`size-[1.1rem] ${iconClass}`} />
                       </div>
-                      <span className="text-[1.05rem] font-medium leading-tight !text-white">
+                      <span className={`text-[1.05rem] font-medium leading-tight ${textFeatureClass}`}>
                         {text}
                       </span>
                     </div>
@@ -184,7 +184,7 @@ const FreelancerClientCards = () => {
 
                 <Link
                   to="/signup?role=freelancer"
-                  className="mt-8 flex items-center justify-center h-[3.75rem] rounded-2xl text-xl font-bold transition-transform hover:scale-[1.02] bg-white text-[#D9692A] shadow-lg"
+                  className={`mt-8 flex items-center justify-center h-[3.75rem] rounded-2xl text-xl font-bold transition-transform hover:scale-[1.02] ${buttonClass}`}
                 >
                   Get Hired Now
                 </Link>

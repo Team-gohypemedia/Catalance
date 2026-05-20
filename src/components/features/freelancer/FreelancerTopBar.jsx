@@ -188,22 +188,24 @@ export const FreelancerTopBar = () => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1536px] px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
-      <FreelancerWorkspaceHeader
-        profile={profile}
-        activeWorkspaceKey={activeWorkspaceKey}
-        onWorkspaceNav={handleWorkspaceNav}
-        onOpenProfile={() => navigate("/freelancer/profile")}
-        onPrimaryAction={
-          activeWorkspaceKey !== "proposals"
-            ? () => navigate("/freelancer/proposals")
-            : undefined
-        }
-        notifications={notifications}
-        unreadCount={unreadCount}
-        markAllAsRead={markAllAsRead}
-        onNotificationClick={handleNotificationClick}
-      />
+    <div className="sticky top-0 z-50 bg-background lg:static lg:bg-transparent w-full">
+      <div className="mx-auto w-full max-w-[1536px] px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+        <FreelancerWorkspaceHeader
+          profile={profile}
+          activeWorkspaceKey={activeWorkspaceKey}
+          onWorkspaceNav={handleWorkspaceNav}
+          onOpenProfile={() => navigate("/freelancer/profile")}
+          onPrimaryAction={
+            activeWorkspaceKey !== "proposals"
+              ? () => navigate("/freelancer/proposals")
+              : undefined
+          }
+          notifications={notifications}
+          unreadCount={unreadCount}
+          markAllAsRead={markAllAsRead}
+          onNotificationClick={handleNotificationClick}
+        />
+      </div>
     </div>
   );
 };

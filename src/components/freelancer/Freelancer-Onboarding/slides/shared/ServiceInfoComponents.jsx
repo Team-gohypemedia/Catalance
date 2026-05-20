@@ -301,7 +301,7 @@ export const CustomSelect = ({
       />
       <div
         className={cn(
-          "z-[70] overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40",
+          "z-[70] overflow-hidden rounded-xl border border-border bg-card shadow-xl",
           isCenteredPopup
             ? "fixed left-1/2 top-1/2 w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2"
             : "",
@@ -311,14 +311,14 @@ export const CustomSelect = ({
         onClick={(e) => e.stopPropagation()}
       >
         {isSearchable ? (
-          <div className="border-b border-white/8 p-2.5">
+          <div className="border-b border-border p-2.5">
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={searchPlaceholder}
-              className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              className="h-10 w-full rounded-lg border border-border bg-card px-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/60 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
             />
           </div>
         ) : null}
@@ -342,7 +342,7 @@ export const CustomSelect = ({
                   "flex w-full items-center gap-2 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
                   value === option.value
                     ? "border-primary/60 bg-primary text-black shadow-[0_0_0_1px_rgba(255,199,0,0.25)]"
-                    : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
+                    : "border-transparent text-foreground hover:border-border hover:bg-accent hover:text-accent-foreground"
                 )}
               >
                 <span className="min-w-0 truncate font-medium">{option.label}</span>
@@ -352,7 +352,7 @@ export const CustomSelect = ({
               </button>
             ))
           ) : (
-            <div className="px-4 py-3 text-sm text-white/45">
+            <div className="px-4 py-3 text-sm text-muted-foreground">
               {normalizedOptions.length > 0 ? "No results found" : "No options available"}
             </div>
           )}
@@ -368,8 +368,8 @@ export const CustomSelect = ({
         type="button"
         onClick={handleTriggerClick}
         className={cn(
-          "flex h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 transition-colors",
-          value ? "text-white" : "text-muted-foreground",
+          "flex h-12 w-full items-center justify-between rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 transition-colors hover:border-border/80",
+          value ? "text-foreground" : "text-muted-foreground/70",
           hasError
             ? "border-destructive/70 ring-1 ring-destructive/20"
             : isOpen && "border-primary/50 ring-1 ring-primary/20",
@@ -379,7 +379,7 @@ export const CustomSelect = ({
         <span className="text-[14px] leading-5">{selectedOption?.label || placeholder}</span>
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-white/40 transition-transform duration-200",
+            "h-4 w-4 text-muted-foreground transition-transform duration-200",
             isOpen && "rotate-180"
           )}
         />

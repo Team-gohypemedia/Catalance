@@ -54,17 +54,17 @@ const ClientPageHeader = ({
       <div className="max-w-[40rem]">
         <h1
           className={cn(
-            "text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white",
+            "text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-foreground",
             titleClassName,
           )}
         >
           {title}
         </h1>
         {description ? (
-          <p className="mt-2 max-w-[36rem] text-sm leading-7 text-[#94a3b8]">{description}</p>
+          <p className="mt-2 max-w-[36rem] text-sm leading-7 text-muted-foreground">{description}</p>
         ) : null}
         {supportingText ? (
-          <div className="mt-6 flex min-h-7 flex-wrap items-center gap-3 text-sm text-[#94a3b8]">
+          <div className="mt-6 flex min-h-7 flex-wrap items-center gap-3 text-sm text-muted-foreground">
             {supportingText}
           </div>
         ) : null}

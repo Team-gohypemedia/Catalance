@@ -283,8 +283,8 @@ const FeaturedProjectsSection = ({
                           </div>
 
                           <p
-                            className="min-h-[2.5rem] line-clamp-2 overflow-hidden text-xs leading-5 text-white/68 sm:min-h-[2.75rem] sm:text-[13px] sm:leading-6"
-                            title={project.description || ""}
+                            className="min-h-[2.5rem] line-clamp-2 overflow-hidden text-xs leading-5 text-muted-foreground sm:min-h-[2.75rem] sm:text-[13px] sm:leading-6"
+                            title={project.description || ""}  
                           >
                             {project.description ||
                               "Add a concise case study summary so clients can understand the scope, outcome, and value of this work."}
@@ -295,9 +295,9 @@ const FeaturedProjectsSection = ({
                               {projectDetails.map((detail) => (
                                 <div
                                   key={`${project.title || project.link || idx}-${detail.label}`}
-                                  className="rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2"
+                                  className="rounded-xl border border-border bg-muted/50 px-3 py-2"
                                 >
-                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
+                                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                                     {detail.label}
                                   </div>
                                   <div className="mt-1 line-clamp-1 text-xs font-medium text-foreground sm:text-[13px]">
@@ -308,19 +308,19 @@ const FeaturedProjectsSection = ({
                             </div>
                           ) : null}
 
-                          <div className="mt-auto flex flex-col items-start gap-2.5 border-t border-white/6 pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                          <div className="mt-auto flex flex-col items-start gap-2.5 border-t border-border pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                             <div className="flex flex-wrap gap-2">
                               {visibleProjectServiceLabels.length ? (
                                 visibleProjectServiceLabels.map((label) => (
                                   <span
                                     key={`${project.title || project.link || idx}-${label}`}
-                                    className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[10px] font-medium text-white/65 sm:text-[11px]"
+                                    className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] font-medium text-muted-foreground sm:text-[11px]"
                                   >
                                     {label}
                                   </span>
                                 ))
                               ) : (
-                                <span className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[10px] font-medium text-white/65 sm:text-[11px]">
+                                <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] font-medium text-muted-foreground sm:text-[11px]">
                                   Featured Work
                                 </span>
                               )}
@@ -341,7 +341,7 @@ const FeaturedProjectsSection = ({
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </a>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.045] px-2.5 py-1.5 text-xs text-white/40">
+                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
                                 Link missing
                               </span>
                             )}

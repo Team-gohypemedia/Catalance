@@ -56,7 +56,7 @@ const WorkspaceBrandMark = () => (
         className="h-6.5 w-6.5 object-contain"
       />
     </div>
-    <span className="text-[0.96rem] font-bold tracking-[-0.04em] text-white">
+    <span className="text-[0.96rem] font-bold tracking-[-0.04em] text-foreground">
       Catalance
     </span>
   </div>
@@ -190,55 +190,54 @@ const MobileProfileSwitchCard = ({
   };
 
   return (
-    <div className="rounded-[18px] border border-white/[0.06] bg-white/[0.035] p-2 shadow-[0_24px_60px_-44px_rgba(0,0,0,0.95)]">
+    <div className="rounded-2xl border border-border bg-card/65 backdrop-blur-md p-3.5 shadow-sm">
       <div className="flex items-start justify-between gap-2.5">
         <SheetClose asChild>
           <button
             type="button"
             onClick={() => navigate(profileTo)}
-            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            className="flex min-w-0 flex-1 items-center gap-3 text-left group"
           >
             <div className="relative shrink-0">
-              <Avatar className="size-9.5 border-2 border-white/80 bg-white shadow-[0_14px_30px_-22px_rgba(255,255,255,0.8)]">
+              <Avatar className="size-10.5 border border-border bg-background shadow-sm transition-transform group-hover:scale-105">
                 <AvatarImage src={profile?.avatar} alt={displayName} />
-                <AvatarFallback className="bg-[#272c3d] text-base font-bold text-white">
+                <AvatarFallback className="bg-primary/20 text-base font-bold text-primary">
                   {profileInitial}
                 </AvatarFallback>
               </Avatar>
-              <span className="absolute bottom-0.5 right-0 size-2.5 rounded-full border-2 border-[#101010] bg-[#22c55e]" />
+              <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-background bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.3)] animate-pulse" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-[0.9rem] font-semibold leading-tight tracking-[-0.03em] text-white">
+              <p className="truncate text-[0.92rem] font-bold tracking-tight text-foreground transition-colors group-hover:text-primary">
                 {displayName}
               </p>
-              <p className="mt-0 text-[0.7rem] font-medium leading-tight text-muted-foreground">
-                Current: {currentDashboardLabel} dashboard
+              <p className="mt-0.5 text-[0.7rem] font-medium leading-tight text-muted-foreground">
+                Current: <span className="font-semibold text-foreground/80">{currentDashboardLabel}</span> dashboard
               </p>
             </div>
           </button>
         </SheetClose>
-
       </div>
 
       {canSwitchDashboard ? (
         <>
-          <div className="my-1.5 h-px bg-white/[0.07]" />
+          <div className="my-3 h-px bg-border/60" />
 
-          <div className="flex items-center justify-between gap-2.5">
+          <div className="flex items-center justify-between gap-2.5 rounded-xl bg-muted/40 p-2 border border-border/30">
             <SheetClose asChild>
               <button
                 type="button"
                 onClick={handleSwitchDashboard}
-                className="flex min-w-0 flex-1 items-center gap-2 text-left transition-opacity hover:opacity-95"
+                className="flex min-w-0 flex-1 items-center gap-2.5 text-left transition-opacity hover:opacity-90"
               >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.05] text-muted-foreground">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
                   <Repeat2 className="size-4" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-[0.82rem] font-semibold tracking-[-0.03em] text-white">
+                  <span className="block truncate text-[0.82rem] font-bold tracking-tight text-foreground">
                     {switchLabel}
                   </span>
-                  <span className="mt-0 block truncate text-[0.7rem] font-medium text-muted-foreground">
+                  <span className="mt-0.5 block truncate text-[0.68rem] font-medium text-muted-foreground">
                     Currently in {currentDashboardLabel} mode
                   </span>
                 </span>
@@ -250,7 +249,7 @@ const MobileProfileSwitchCard = ({
                 checked={isFreelancer}
                 onCheckedChange={handleSwitchDashboard}
                 aria-label={`${switchLabel} dashboard`}
-                className="h-5.5 w-[3.05rem] shrink-0 border-0 px-0.5 shadow-none data-[state=checked]:justify-end data-[state=checked]:bg-[var(--primary)] data-[state=unchecked]:justify-start data-[state=unchecked]:bg-white/[0.15] [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:!translate-x-0 [&_[data-slot=switch-thumb]]:shadow-none [&_[data-slot=switch-thumb]]:data-[state=checked]:bg-[#111111] [&_[data-slot=switch-thumb]]:data-[state=unchecked]:bg-white"
+                className="h-5.5 w-[3.05rem] shrink-0 border-0 px-0.5 shadow-none data-[state=checked]:justify-end data-[state=checked]:bg-[var(--primary)] data-[state=unchecked]:justify-start data-[state=unchecked]:bg-muted [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:!translate-x-0 [&_[data-slot=switch-thumb]]:shadow-none [&_[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
               />
             </SheetClose>
           </div>
@@ -308,7 +307,7 @@ const WorkspaceMobileSidebar = ({
   return (
     <div
       className={cn(
-        "sticky top-0 z-50 flex-none bg-background px-4 py-2 lg:hidden",
+        "relative z-50 flex-none bg-background border-b border-border shadow-xs px-4 py-2 lg:hidden",
         flushContainerPadding ? "-mx-4 w-[calc(100%+2rem)]" : "w-full",
       )}
     >
@@ -319,7 +318,7 @@ const WorkspaceMobileSidebar = ({
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {topNotificationButton ? (
-            <div className="rounded-full bg-white/[0.03] text-muted-foreground">
+            <div>
               {topNotificationButton}
             </div>
           ) : null}
@@ -329,7 +328,7 @@ const WorkspaceMobileSidebar = ({
               <button
                 type="button"
                 aria-label="Open navigation menu"
-                className="inline-flex size-10 items-center justify-center rounded-full text-white transition-colors hover:text-muted-foreground"
+                className="inline-flex size-10 items-center justify-center rounded-full text-foreground transition-colors hover:text-muted-foreground"
               >
                 <Menu className="size-5" />
               </button>
@@ -338,7 +337,7 @@ const WorkspaceMobileSidebar = ({
             <SheetContent
               side="right"
               showCloseButton={false}
-              className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-white shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
+              className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-foreground shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
             >
               <SheetHeader className="sr-only">
                 <SheetTitle>Navigation menu</SheetTitle>
@@ -356,7 +355,7 @@ const WorkspaceMobileSidebar = ({
 
                 <div className="flex items-center gap-2">
                   {drawerNotificationButton ? (
-                    <div className="rounded-full bg-white/[0.04] text-muted-foreground">
+                    <div>
                       {drawerNotificationButton}
                     </div>
                   ) : null}
@@ -365,7 +364,7 @@ const WorkspaceMobileSidebar = ({
                     <button
                       type="button"
                       aria-label="Close navigation menu"
-                      className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
+                      className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
                       <X className="size-4.5" />
                     </button>

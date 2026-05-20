@@ -224,20 +224,20 @@ const OverviewMetricCard = memo(function OverviewMetricCard({ item }) {
         {hasValueSwitch ? (
           <div className="flex w-full items-center justify-between">
             <span className="size-10 shrink-0 sm:size-14" aria-hidden="true" />
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-muted text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
               <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
             </div>
             {renderSwitchButton(
-              "inline-flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-primary",
+              "inline-flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-muted text-muted-foreground/75 transition-colors hover:bg-muted-foreground/10 hover:text-primary",
               "size-4 text-muted-foreground/75",
             )}
           </div>
         ) : (
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-muted text-muted-foreground/75">
             <Icon className="size-[18px] text-muted-foreground/75" />
           </div>
         )}
-        <p className="mt-4 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-white transition-colors group-hover:text-primary">
+        <p className="mt-4 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-foreground transition-colors group-hover:text-primary">
           {displayedValue}
         </p>
         <p className="mt-3 text-center text-[8px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -253,7 +253,7 @@ const OverviewMetricCard = memo(function OverviewMetricCard({ item }) {
       <div className="hidden h-full flex-col gap-2.5 sm:flex sm:gap-3">
         <div className="flex items-start justify-between gap-2 sm:gap-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground/75">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground/75">
               <Icon className="size-4 text-muted-foreground/75" />
             </div>
             <p className="line-clamp-2 text-[11px] font-medium uppercase leading-4 tracking-[0.12em] text-muted-foreground">
@@ -262,14 +262,14 @@ const OverviewMetricCard = memo(function OverviewMetricCard({ item }) {
           </div>
           {hasValueSwitch
             ? renderSwitchButton(
-              "inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-primary",
+              "inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground/75 transition-colors hover:bg-muted-foreground/10 hover:text-primary",
               "size-4 text-muted-foreground/75",
             )
             : null}
         </div>
 
         <div className="flex flex-wrap items-end gap-x-1.5 gap-y-1 sm:gap-2">
-          <p className="text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-primary">
+          <p className="text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-foreground transition-colors group-hover:text-primary">
             {displayedValue}
           </p>
           {item.detail ? (

@@ -291,7 +291,6 @@ const FreelancerProfileLoadingState = ({
         <div className="min-w-0 space-y-5">
           <LoadingSkillsCard />
           <LoadingServicesCard />
-          <LoadingCaseStudiesCard />
         </div>
 
         <div className="space-y-5 lg:sticky lg:top-40 lg:self-start">
@@ -299,6 +298,10 @@ const FreelancerProfileLoadingState = ({
           <LoadingWorkExperienceCard />
           <LoadingEducationCard />
         </div>
+      </div>
+
+      <div className="mt-5">
+        <LoadingCaseStudiesCard />
       </div>
     </div>
   </FreelancerProfilePageShell>

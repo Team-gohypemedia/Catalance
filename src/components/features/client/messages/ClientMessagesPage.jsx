@@ -194,15 +194,15 @@ const ClientMessagesPage = () => {
       : null;
 
   const renderEmptyConversationState = () => (
-    <div className="flex h-full min-h-0 items-center justify-center bg-card px-6">
+    <div className="flex h-full min-h-0 items-center justify-center bg-card px-6 py-12 md:py-16">
       <div className="max-w-md text-center">
-        <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[var(--primary)]">
+        <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-border bg-muted text-primary">
           <SendHorizontal className="size-6" />
         </div>
-        <h2 className="mt-5 text-2xl font-semibold text-white">
+        <h2 className="mt-5 text-2xl font-semibold text-foreground">
           Select a conversation
         </h2>
-        <p className="mt-3 text-sm leading-6 text-[#8f96a3]">
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
           Pick a project thread from the left to review updates, reply to
           freelancers, and keep delivery moving.
         </p>

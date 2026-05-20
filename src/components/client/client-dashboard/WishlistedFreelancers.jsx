@@ -73,14 +73,14 @@ const WishlistedFreelancers = memo(function WishlistedFreelancers({
   return (
     <section className={cn("flex h-full w-full min-w-0 flex-col", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-        <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white">
+        <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground">
           Wishlisted Freelancers
         </h2>
       </div>
 
       <DashboardPanel
         className={cn(
-          "flex flex-1 flex-col overflow-hidden bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+          "flex flex-1 flex-col overflow-hidden bg-card shadow-none",
           resolvedItems.length === 0
             ? "p-0"
             : "px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6",
@@ -102,17 +102,17 @@ const WishlistedFreelancers = memo(function WishlistedFreelancers({
           </div>
         ) : resolvedItems.length === 0 ? (
           <div className="flex flex-1 min-h-[220px] flex-col items-center justify-center px-5 py-10 text-center sm:min-h-[260px] sm:px-6 sm:py-12">
-            <div className="flex size-12 items-center justify-center rounded-full bg-white/6 text-muted-foreground sm:size-14">
+            <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground sm:size-14">
               <Heart className="size-6" />
             </div>
-            <p className="mt-5 text-sm text-white">No wishlisted freelancers yet</p>
-            <p className="mt-2 max-w-60 text-xs text-[#8f8f8f]">
+            <p className="mt-5 text-sm text-foreground">No wishlisted freelancers yet</p>
+            <p className="mt-2 max-w-60 text-xs text-muted-foreground">
               Tap the heart icon in Marketplace to save freelancers here.
             </p>
             <button
               type="button"
               onClick={handleOpenMarketplace}
-              className="mt-5 inline-flex h-9 items-center justify-center rounded-xl bg-white px-4 text-xs font-semibold uppercase tracking-[0.08em] text-black transition-colors hover:bg-[#f2f2f2]"
+              className="mt-5 inline-flex h-9 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold uppercase tracking-[0.08em] text-primary-foreground transition-colors hover:bg-primary/80"
             >
               Browse Marketplace
             </button>
@@ -130,21 +130,21 @@ const WishlistedFreelancers = memo(function WishlistedFreelancers({
                     type="button"
                     onClick={() => handleOpenItem(item)}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-left transition-colors hover:bg-white/[0.05]",
+                      "flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left transition-colors hover:bg-muted",
                     )}
                   >
-                    <Avatar className="size-11 shrink-0 border border-white/10">
+                    <Avatar className="size-11 shrink-0 border border-border">
                       <AvatarImage
                         src={item.freelancerAvatar}
                         alt={item.freelancerName || "Freelancer"}
                       />
-                      <AvatarFallback className="bg-[#1e293b] text-sm text-white">
+                      <AvatarFallback className="bg-muted text-sm text-foreground">
                         {getInitials(item.freelancerName)}
                       </AvatarFallback>
                     </Avatar>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">
+                      <p className="truncate text-sm font-semibold text-foreground">
                         {item.freelancerName || "Freelancer"}
                       </p>
                       <p className="truncate text-xs text-primary">
@@ -157,7 +157,7 @@ const WishlistedFreelancers = memo(function WishlistedFreelancers({
                             {delivery}
                           </span>
                         ) : null}
-                        <span className="font-medium text-white">{price}</span>
+                        <span className="font-medium text-foreground">{price}</span>
                       </div>
                     </div>
 
@@ -170,7 +170,7 @@ const WishlistedFreelancers = memo(function WishlistedFreelancers({
             <button
               type="button"
               onClick={handleOpenMarketplace}
-              className="mt-5 flex w-full items-center justify-center gap-2 border-t border-white/8 pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-[#d6d6d6] transition-colors hover:text-white"
+              className="mt-5 flex w-full items-center justify-center gap-2 border-t border-border pt-5 text-[13px] font-medium uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground"
             >
               <span>Open Marketplace ({resolvedCount})</span>
               <ChevronRight className="size-3.75 stroke-[1.75]" />

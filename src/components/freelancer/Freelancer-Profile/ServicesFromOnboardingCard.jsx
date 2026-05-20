@@ -443,15 +443,17 @@ const createDefaultMetricDefinitions = (labels) => [
 ];
 
 const MetricCard = ({ icon: Icon = Briefcase, label, value }) => (
-  <div className="h-[60px] rounded-xl border border-border bg-card px-3 py-2">
-    <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-      <Icon className="h-3 w-3 shrink-0 text-primary" aria-hidden="true" />
-      <p className="truncate whitespace-nowrap text-[10px] font-semibold tracking-[0.04em]">
+  <div className="h-[65px] rounded-xl border border-border bg-gradient-to-br from-card to-muted/20 px-2.5 py-2 transition-all duration-200 hover:border-primary/25 hover:shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+    <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground/90">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+      </span>
+      <p className="truncate whitespace-nowrap text-[9px] font-bold uppercase tracking-wider">
         {label}
       </p>
     </div>
 
-    <p className="mt-1.5 truncate whitespace-nowrap text-sm font-semibold leading-tight text-foreground sm:text-[15px]">
+    <p className="mt-1.5 truncate whitespace-nowrap text-[13px] font-bold leading-tight text-foreground sm:text-[14px]">
       {value}
     </p>
   </div>
@@ -460,11 +462,11 @@ const MetricCard = ({ icon: Icon = Briefcase, label, value }) => (
 const SectionHeading = ({ icon: Icon, title, action }) => (
   <div className="flex items-center justify-between gap-3">
     <div className="flex min-w-0 items-center gap-2">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-primary/10 bg-primary/5">
         <Icon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
       </span>
 
-      <h5 className="truncate whitespace-nowrap text-sm font-semibold text-foreground">
+      <h5 className="truncate whitespace-nowrap text-[11px] font-bold uppercase tracking-widest text-foreground">
         {title}
       </h5>
     </div>
@@ -536,18 +538,18 @@ const ServiceDetailArticle = ({
   );
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card p-3 sm:rounded-2xl sm:p-4">
-      <div className="relative mb-3 h-44 overflow-hidden rounded-xl border border-border bg-card sm:h-52 lg:h-56">
+    <article className="group relative flex min-h-full flex-col overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-card to-card/65 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:z-10 hover:border-primary/20 hover:shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:hover:shadow-[0_8px_30px_rgba(249,115,22,0.01)] sm:p-5">
+      <div className="relative mb-4 h-44 overflow-hidden rounded-xl border border-border bg-card sm:h-52 lg:h-56">
         <button
           type="button"
           onClick={() => openEditServiceProfileModal?.(serviceKey)}
           aria-label={hasServiceProfileContent ? labels.editDetails : labels.addDetails}
           title={hasServiceProfileContent ? labels.editDetails : labels.addDetails}
           className={cn(
-            "absolute right-3 top-3 z-20 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border backdrop-blur transition-colors duration-200",
+            "absolute right-3 top-3 z-20 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border backdrop-blur-md transition-all duration-200 hover:scale-105",
             hasServiceProfileContent
-              ? "border-border bg-card/90 text-foreground hover:bg-card"
-              : "border-primary/40 bg-primary/15 text-primary hover:bg-primary/25"
+              ? "border-border bg-card/85 text-foreground hover:bg-card hover:border-primary/30"
+              : "border-primary/30 bg-primary/15 text-primary hover:bg-primary/25"
           )}
         >
           <Edit2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -562,18 +564,18 @@ const ServiceDetailArticle = ({
             decoding="async"
           />
         ) : (
-          <div className="flex h-full w-full items-end bg-card p-3">
+          <div className="flex h-full w-full items-end bg-card p-4">
             <span className="max-w-[80%] text-sm font-semibold text-muted-foreground">
               {serviceName}
             </span>
           </div>
         )}
 
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.02),rgba(0,0,0,0.18))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.01),rgba(0,0,0,0.12))]" />
       </div>
 
       {serviceName ? (
-        <div className="mb-2.5 inline-flex max-w-max items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+        <div className="mb-3 inline-flex max-w-max items-center rounded-lg border border-orange-500/15 bg-orange-500/5 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-orange-500 dark:text-orange-400">
           <span className="max-w-[220px] truncate whitespace-nowrap">
             {serviceName}
           </span>
@@ -581,19 +583,19 @@ const ServiceDetailArticle = ({
       ) : null}
 
       <div className="min-w-0">
-        <h4 className="line-clamp-2 text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+        <h4 className="line-clamp-2 text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl">
           {serviceTitle}
         </h4>
       </div>
 
       {serviceDescription ? (
-        <p className="mt-2.5 line-clamp-3 max-w-4xl text-sm leading-6 text-muted-foreground">
+        <p className="mt-2.5 line-clamp-3 max-w-4xl text-sm leading-6 text-muted-foreground/90">
           {serviceDescription}
         </p>
       ) : null}
 
       {metadataItems.length > 0 ? (
-        <div className="mt-3.5 grid grid-cols-3 gap-2.5">
+        <div className="mt-3.5 grid grid-cols-3 gap-1.5 sm:gap-2.5">
           {metadataItems.map((item) => (
             <MetricCard
               key={`${serviceKey}-${item.key || item.label}`}
@@ -621,31 +623,31 @@ const ServiceDetailArticle = ({
               }
             />
 
-            <CarouselContent className="mt-2.5 -ml-2.5">
+            <CarouselContent className="mt-2.5 -mx-2.5">
               {selectedSubcategories.map((subcategory) => {
                 const isActive = activeSubcategoryKey === subcategory.key;
 
                 return (
                   <CarouselItem
                     key={subcategory.key}
-                    className="basis-[52%] pl-2.5 sm:basis-[38%] lg:basis-[34%]"
+                    className="basis-[56%] px-2.5 sm:basis-[42%] lg:basis-[36%]"
                   >
                     <button
                       type="button"
                       aria-pressed={isActive}
                       onClick={() => setActiveSubcategoryKey(subcategory.key)}
                       className={cn(
-                        "flex h-[58px] w-full flex-col justify-between rounded-xl border px-3 py-2 text-left transition-colors",
+                        "flex h-[60px] w-full flex-col justify-between rounded-xl border px-3 py-2 text-left transition-all duration-200",
                         isActive
-                          ? "border-primary/45 bg-card text-foreground"
-                          : "border-border bg-card text-foreground hover:border-primary/25"
+                          ? "border-primary bg-primary/5 text-foreground shadow-[0_0_12px_rgba(249,115,22,0.06)]"
+                          : "border-border bg-card text-foreground hover:border-primary/25 hover:bg-muted/10"
                       )}
                     >
-                      <span className="truncate whitespace-nowrap text-sm font-semibold leading-5">
+                      <span className="line-clamp-2 block text-xs font-bold leading-tight">
                         {subcategory.label}
                       </span>
 
-                      <span className="mt-1 truncate whitespace-nowrap text-[10px] font-medium tracking-[0.04em] text-muted-foreground">
+                      <span className="mt-1.5 truncate whitespace-nowrap text-[9px] font-semibold tracking-wider uppercase text-muted-foreground/80">
                         {subcategory.skillCount} {labels.skillsCountLabel}
                       </span>
                     </button>
@@ -685,13 +687,13 @@ const ServiceDetailArticle = ({
               }
             />
 
-            <CarouselContent className="mt-2.5 -ml-2.5">
+            <CarouselContent className="mt-2.5 -mx-2.5">
               {activeSkillTags.map((tag) => (
                 <CarouselItem
                   key={`${serviceKey}-skill-${tag}`}
-                  className="basis-auto pl-2.5"
+                  className="basis-auto px-2.5"
                 >
-                  <span className="inline-flex h-8 max-w-[180px] items-center rounded-full border border-border bg-card px-3 text-[11px] font-semibold text-foreground">
+                  <span className="inline-flex h-7 max-w-[180px] items-center rounded-lg border border-border bg-gradient-to-br from-card to-muted/20 px-2.5 text-[11px] font-semibold text-foreground hover:bg-primary/5 hover:border-primary/20 hover:scale-[1.02] transition-all duration-150 cursor-default">
                     <span className="truncate whitespace-nowrap">{tag}</span>
                   </span>
                 </CarouselItem>
@@ -723,7 +725,7 @@ const ServiceDetailArticle = ({
         />
 
         {caseStudies.length > 0 ? (
-          <div className="mt-2.5 flex max-h-16 flex-wrap gap-x-4 gap-y-2 overflow-y-auto pr-1">
+          <div className="mt-3.5 flex max-h-32 flex-wrap gap-2.5 overflow-y-auto subtle-scrollbar pr-1 pb-2.5">
             {caseStudies.map((caseStudy) =>
               caseStudy.projectLink ? (
                 <a
@@ -731,16 +733,16 @@ const ServiceDetailArticle = ({
                   href={caseStudy.projectLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex max-w-full items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary"
+                  className="group/item inline-flex max-w-full items-center gap-1.5 rounded-lg border border-border/80 bg-gradient-to-br from-card to-muted/20 px-3 py-1.5 text-xs font-bold text-foreground hover:bg-primary/5 hover:border-primary/25 hover:text-primary transition-all duration-200"
                   aria-label={caseStudy.title}
                 >
                   <span className="truncate">{caseStudy.title}</span>
-                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover/item:text-primary group-hover/item:translate-x-0.5 group-hover/item:-translate-y-0.5 transition-all duration-200" aria-hidden="true" />
                 </a>
               ) : (
                 <span
                   key={`${serviceKey}-case-study-${caseStudy.id}`}
-                  className="inline-flex max-w-full items-center text-sm font-medium text-muted-foreground"
+                  className="inline-flex max-w-full items-center rounded-lg border border-border/40 bg-muted/10 px-3 py-1.5 text-xs font-bold text-muted-foreground"
                 >
                   <span className="truncate">{caseStudy.title}</span>
                 </span>
@@ -1359,12 +1361,12 @@ const ServicesFromOnboardingCard = ({
 
         {processedServices.length > 0 ? (
           <div className="relative mt-3">
-            <div className="overflow-hidden rounded-2xl py-px">
-              <CarouselContent className="-ml-3 [will-change:transform]">
+            <div className="overflow-hidden rounded-2xl px-1 pt-3 pb-3 -mx-1 -mt-3 -mb-3">
+              <CarouselContent className="-mx-3 [will-change:transform]">
                 {processedServices.map((cardData) => (
                   <CarouselItem
                     key={`service-card-${cardData.serviceKey}`}
-                    className="basis-full pl-3 md:basis-1/2"
+                    className="basis-full px-3 lg:basis-1/2"
                   >
                     <ServiceDetailArticle
                       cardData={cardData}

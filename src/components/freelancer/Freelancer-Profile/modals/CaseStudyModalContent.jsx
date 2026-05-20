@@ -67,7 +67,7 @@ const FileUploadButton = ({ file, onChange }) => {
         type="button"
         onClick={() => inputRef.current?.click()}
         className={cn(
-          "flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-card px-4 text-[14px] leading-5 text-white/20 transition-colors hover:border-white/20",
+          "flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-[14px] leading-5 text-muted-foreground/60 transition-colors hover:border-border/80 hover:bg-muted/10",
         )}
       >
         <Upload className="h-4 w-4" />
@@ -77,7 +77,7 @@ const FileUploadButton = ({ file, onChange }) => {
         <button
           type="button"
           onClick={() => onChange(null)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/75 hover:text-foreground"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -161,14 +161,14 @@ const ServiceLinkMultiSelect = ({
           <button
             type="button"
             className={cn(
-              "flex h-12 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-card px-4 text-left text-sm outline-none transition-colors hover:border-white/20 focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
+              "flex h-12 w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 text-left text-sm outline-none transition-colors hover:border-border/80 focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
               selectedValues.length ? "text-foreground" : "text-muted-foreground/70"
             )}
           >
             <span className="min-w-0 flex-1 truncate">{selectedSummary}</span>
             <span className="flex items-center gap-2 text-muted-foreground">
               {selectedValues.length ? (
-                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground/90">
                   {selectedValues.length} selected
                 </span>
               ) : null}
@@ -180,12 +180,12 @@ const ServiceLinkMultiSelect = ({
         <DropdownMenuContent
           align="start"
           sideOffset={6}
-          className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[18rem] max-w-[calc(100vw-2rem)] rounded-xl border border-white/10 bg-card p-2 shadow-2xl shadow-black/40"
+          className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[18rem] max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-2 shadow-2xl"
         >
           <DropdownMenuLabel className="px-2 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Link case study to service
           </DropdownMenuLabel>
-          <DropdownMenuSeparator className="my-1 bg-white/10" />
+          <DropdownMenuSeparator className="my-1 bg-border" />
 
           {normalizedOptions.length ? (
             normalizedOptions.map((option) => {
@@ -206,7 +206,7 @@ const ServiceLinkMultiSelect = ({
                     "flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-sm outline-none transition-colors",
                     checked
                       ? "bg-primary/10 text-foreground"
-                      : "text-foreground hover:bg-white/5"
+                      : "text-foreground hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
                   <span className="truncate">{String(option?.label || optionValue)}</span>
@@ -243,7 +243,7 @@ const CaseStudyModalContent = ({
 }) => {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="max-h-[calc(100vh-7rem)] overflow-y-auto">
+      <div className="max-h-[calc(100vh-7rem)] overflow-y-auto subtle-scrollbar pr-3">
         <div className="space-y-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -256,7 +256,7 @@ const CaseStudyModalContent = ({
             <button
               type="button"
               onClick={onClose}
-              className="mt-1 inline-flex h-9 w-9 flex-none items-center justify-center rounded-full bg-transparent text-foreground transition-colors hover:bg-white/5"
+              className="mt-1 mr-1 inline-flex h-9 w-9 flex-none items-center justify-center rounded-full bg-transparent text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
               aria-label="Close case study popup"
             >
               <X className="h-3.5 w-3.5" />
@@ -270,7 +270,7 @@ const CaseStudyModalContent = ({
                 value={caseStudyForm.title}
                 onChange={(e) => onCaseStudyFieldChange("title", e.target.value)}
                 placeholder="e.g. E-commerce Platform Redesign"
-                className="h-12 w-full rounded-xl border border-white/10 bg-card px-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
+                className="h-12 w-full rounded-xl border border-border bg-card px-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
               />
             </div>
 
@@ -281,7 +281,7 @@ const CaseStudyModalContent = ({
                 onChange={(e) => onCaseStudyFieldChange("description", e.target.value)}
                 placeholder="Briefly describe the project and its goals..."
                 rows={4}
-                className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
+                className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
               />
             </div>
 
@@ -315,13 +315,13 @@ const CaseStudyModalContent = ({
               <div className="space-y-0">
                 <label className="mb-1 block text-sm font-medium text-muted-foreground">Case Study Link (Optional)</label>
                 <div className="relative">
-                  <Link2 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                  <Link2 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
                   <input
                     type="url"
                     value={caseStudyForm.projectLink}
                     onChange={(e) => onCaseStudyFieldChange("projectLink", e.target.value)}
                     placeholder="https://..."
-                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
+                    className="h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
               </div>
@@ -359,19 +359,19 @@ const CaseStudyModalContent = ({
               <div className="space-y-0">
                 <label className="mb-1 block text-sm font-medium text-muted-foreground">Budget</label>
                 <div className="relative">
-                  <IndianRupee className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                  <IndianRupee className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
                   <input
                     value={caseStudyForm.budget}
                     onChange={(e) => onCaseStudyFieldChange("budget", String(e.target.value || "").replace(/[^0-9]/g, ""))}
                     placeholder="e.g. 5000"
-                    className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
+                    className="h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-center border-t border-white/10 pt-5">
+          <div className="flex items-center justify-center border-t border-border pt-5">
             <Button
               type="button"
               onClick={onSave}

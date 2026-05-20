@@ -38,15 +38,15 @@ const PROJECT_PROGRESS_BY_STATUS = Object.freeze({
 });
 
 const projectStatusToneMap = {
-  success: "border-[#14532d] bg-[#0c2616] text-[#34d399]",
-  warning: "border-white/[0.08] bg-card text-primary",
-  slate: "border-white/[0.08] bg-card text-[#cbd5e1]",
+  success: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  warning: "border-border bg-card text-primary",
+  slate: "border-border bg-card text-muted-foreground",
 };
 
 const projectActionToneMap = {
-  amber: "bg-[var(--primary)] text-black hover:bg-primary/80 disabled:bg-[var(--primary)]/70",
+  amber: "bg-primary text-primary-foreground hover:bg-primary/80 disabled:bg-primary/70",
   slate:
-    "border border-white/[0.08] bg-card text-white hover:bg-white/[0.04] disabled:bg-card disabled:text-white/70",
+    "border border-border bg-card text-foreground hover:bg-muted disabled:bg-card disabled:text-muted-foreground",
 };
 const projectFilterOptions = [
   { key: "ongoing", label: "Ongoing Projects" },
@@ -846,7 +846,7 @@ export const buildProjectCardModel = (project) => {
 export const ProjectCardSkeleton = ({ className }) => (
   <div
     className={cn(
-      "rounded-[28px] border border-white/[0.06] bg-card p-4 sm:p-5 xl:p-6",
+      "rounded-[28px] border border-border bg-card p-4 sm:p-5 xl:p-6",
       className,
     )}
   >
@@ -881,7 +881,7 @@ const ProjectPhaseStep = ({ item }) => {
     ? {
         label: "Completed",
         Icon: CheckCircle2,
-        badgeClassName: "border-[#166534]/50 bg-[#052e16] text-[#4ade80]",
+        badgeClassName: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-[#4ade80]",
         textClassName: "text-[#f3f4f6]",
         iconClassName: "text-[#22c55e]",
       }
@@ -889,14 +889,14 @@ const ProjectPhaseStep = ({ item }) => {
       ? {
           label: "In Progress",
           Icon: Clock3,
-          badgeClassName: "border-[var(--primary)]/25 bg-[#3a2800] text-[var(--primary)]",
+          badgeClassName: "border-primary/25 bg-primary/10 text-primary",
           textClassName: "text-[#f3f4f6]",
           iconClassName: "text-[var(--primary)]",
         }
       : {
           label: "Pending",
           Icon: Circle,
-          badgeClassName: "border-white/[0.08] bg-white/[0.04] text-muted-foreground",
+          badgeClassName: "border-border bg-muted/50 text-muted-foreground",
           textClassName: "text-muted-foreground",
           iconClassName: "text-muted-foreground",
         };
@@ -947,7 +947,7 @@ export const ProjectProposalCard = ({
     normalizeComparableText(project.serviceType) !==
       normalizeComparableText(project.title);
   const detailPanelClassName =
-    "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+    "border border-border bg-card shadow-none";
   const phaseSteps = Array.isArray(project.currentPhaseSteps) ? project.currentPhaseSteps : [];
   const actionClassName = cn(
     "flex w-full items-center justify-center rounded-[14px] px-3 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80 sm:px-4 sm:py-3.5 sm:text-base",
@@ -1010,7 +1010,7 @@ export const ProjectProposalCard = ({
   return (
     <article
       className={cn(
-        "flex w-full max-w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[28px] border border-white/[0.06] bg-card p-4 transition-transform duration-200 hover:-translate-y-1 sm:p-5 xl:p-6",
+        "flex w-full max-w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[28px] border border-border bg-card p-4 transition-transform duration-200 hover:-translate-y-1 sm:p-5 xl:p-6",
         className,
       )}
     >
@@ -1034,7 +1034,7 @@ export const ProjectProposalCard = ({
               aria-expanded={showPhaseDetails}
               aria-label={showPhaseDetails ? "Hide phases" : "Show phases"}
               title={showPhaseDetails ? "Hide phases" : "Show phases"}
-              className="inline-flex h-7 w-7 shrink-0 self-start items-center justify-center rounded-[8px] border border-white/[0.08] bg-card text-white transition-colors hover:bg-white/[0.08] hover:text-white sm:h-8 sm:w-8"
+              className="inline-flex h-7 w-7 shrink-0 self-start items-center justify-center rounded-[8px] border border-border bg-card text-foreground transition-colors hover:bg-muted sm:h-8 sm:w-8"
             >
               <ChevronDown
                 className={cn(
@@ -1046,7 +1046,7 @@ export const ProjectProposalCard = ({
           </div>
         </div>
 
-        <h2 className="mt-4 text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-white sm:mt-5">
+        <h2 className="mt-4 text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-foreground sm:mt-5">
           {project.title}
         </h2>
         {showServiceType ? (
@@ -1056,7 +1056,7 @@ export const ProjectProposalCard = ({
         ) : null}
 
         <div className="mt-5 flex items-center gap-3 sm:mt-6">
-          <Avatar className="size-11 shrink-0 border border-white/10 shadow-[0_12px_24px_rgba(0,0,0,0.24)]">
+          <Avatar className="size-11 shrink-0 border border-border">
             {canRenderFreelancerAvatar ? (
               <img
                 src={project.freelancerAvatar}
@@ -1067,14 +1067,14 @@ export const ProjectProposalCard = ({
               />
             ) : null}
             {!canRenderFreelancerAvatar ? (
-              <AvatarFallback className="bg-[#1f2937] text-sm text-white">
+              <AvatarFallback className="bg-muted text-sm text-foreground">
                 {project.freelancerInitial}
               </AvatarFallback>
             ) : null}
           </Avatar>
 
           <div className="min-w-0">
-            <p className="truncate text-[1rem] font-medium text-white">{project.freelancerName}</p>
+            <p className="truncate text-[1rem] font-medium text-foreground">{project.freelancerName}</p>
             <p className="truncate text-sm text-muted-foreground">{project.freelancerRole}</p>
           </div>
         </div>
@@ -1082,7 +1082,7 @@ export const ProjectProposalCard = ({
         <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
           <div className={cn("rounded-[14px] p-4", detailPanelClassName)}>
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">Budget</p>
-            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
               {project.budgetLabel}
             </p>
           </div>
@@ -1091,7 +1091,7 @@ export const ProjectProposalCard = ({
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
               {project.dateLabel}
             </p>
-            <p className="mt-3 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            <p className="mt-3 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
               {project.dateValue}
             </p>
           </div>
@@ -1122,13 +1122,13 @@ export const ProjectProposalCard = ({
                 <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Current Phase
                 </p>
-                <span className="shrink-0 self-start rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:self-auto">
+                <span className="shrink-0 self-start rounded-full border border-border bg-muted/50 px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:self-auto">
                   {project.currentPhaseCountLabel}
                 </span>
               </div>
               <p
                 title={project.currentPhase?.label || "Phase 1"}
-                className="mt-2 line-clamp-2 text-[0.98rem] font-semibold tracking-[-0.02em] text-white sm:line-clamp-1"
+                className="mt-2 line-clamp-2 text-[0.98rem] font-semibold tracking-[-0.02em] text-foreground sm:line-clamp-1"
               >
                 {project.currentPhase?.label || "Phase 1"}
               </p>
@@ -1207,12 +1207,12 @@ const EmptyProjectsState = ({
   description = "Active and pending collaborations will appear here once freelancers accept your proposals.",
   showAction = true,
 }) => (
-  <div className="rounded-[28px] border border-white/[0.06] bg-card p-8 text-center">
+  <div className="rounded-[28px] border border-border bg-card p-8 text-center">
     <div className="mx-auto flex max-w-md flex-col items-center">
       <div className="flex size-16 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8]">
         <ClipboardList className="size-7" />
       </div>
-      <h2 className="mt-6 text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+      <h2 className="mt-6 text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
         {title}
       </h2>
       <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
@@ -1445,7 +1445,7 @@ const ClientProjects = () => {
                         "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
                         isActive
                           ? "border-[var(--primary)]/70 bg-[var(--primary)] text-[#141414]"
-                          : "text-[#a3a6ad] hover:text-white",
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     >
                       {option.label} ({count})

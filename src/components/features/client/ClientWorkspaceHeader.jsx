@@ -20,6 +20,7 @@ import logo from "@/assets/logos/logo.svg";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
+import ThemeToggle from "@/components/common/ThemeToggle";
 
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
@@ -154,7 +155,7 @@ const BrandMark = () => (
         className="h-7 w-7 object-contain"
       />
     </div>
-    <span className="text-base font-bold tracking-[-0.5px] text-white">
+    <span className="text-base font-bold tracking-[-0.5px] text-foreground">
       Catalance
     </span>
   </div>
@@ -206,8 +207,8 @@ const NotificationSheetController = ({ notificationTo = "/client/project" }) => 
           <SheetHeader className="border-b border-border px-4 py-3 pr-12">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <SheetTitle className="text-sm font-semibold text-white">Notifications</SheetTitle>
-                <SheetDescription className="mt-1 text-xs text-[#8f96a3]">
+                <SheetTitle className="text-sm font-semibold text-foreground">Notifications</SheetTitle>
+                <SheetDescription className="mt-1 text-xs text-muted-foreground">
                   Stay updated with project, proposal, and message activity.
                 </SheetDescription>
               </div>
@@ -228,12 +229,12 @@ const NotificationSheetController = ({ notificationTo = "/client/project" }) => 
           </SheetHeader>
           <ScrollArea className="flex-1">
             {notifications.length === 0 ? (
-              <div className="flex h-full min-h-52 flex-col items-center justify-center gap-2 px-6 text-center text-[#7e8392]">
+              <div className="flex h-full min-h-52 flex-col items-center justify-center gap-2 px-6 text-center text-muted-foreground">
                 <Bell className="h-8 w-8 opacity-40" />
                 <p className="text-sm">No notifications yet</p>
               </div>
             ) : (
-              <div className="divide-y divide-white/6">
+              <div className="divide-y divide-border">
                 {notifications.slice(0, 20).map((notification) => {
                   const notificationTime = notification?.updatedAt || notification?.createdAt;
                   const formattedTime = notificationTime
@@ -251,25 +252,25 @@ const NotificationSheetController = ({ notificationTo = "/client/project" }) => 
                       type="button"
                       onClick={() => handleNotificationClick(notification)}
                       className={cn(
-                        "flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-white/5",
+                        "flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-muted/50",
                         !notification.read && "bg-primary/5",
                       )}
                     >
                       <div
                         className={cn(
                           "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                          !notification.read ? "bg-primary" : "bg-white/15",
+                          !notification.read ? "bg-primary" : "bg-muted-foreground/30",
                         )}
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-white whitespace-normal break-words">
+                        <p className="text-sm font-medium text-foreground whitespace-normal break-words">
                           {notification.title}
                         </p>
-                        <p className="mt-1 text-xs leading-5 text-[#8f96a3] whitespace-normal break-words">
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground whitespace-normal break-words">
                           {notification.message}
                         </p>
                         {formattedTime ? (
-                          <p className="mt-1 text-[11px] text-[#6b7280]">{formattedTime}</p>
+                          <p className="mt-1 text-[11px] text-muted-foreground">{formattedTime}</p>
                         ) : null}
                       </div>
                     </button>
@@ -306,7 +307,7 @@ const NotificationTriggerButton = ({ unreadCount = 0 }) => {
       variant="ghost"
       size="icon"
       onClick={handleOpenNotifications}
-      className="relative size-9 rounded-full text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+      className="relative size-9 rounded-full text-foreground transition-colors hover:bg-white/5 hover:text-muted-foreground"
       aria-label="Open notifications"
     >
       <Bell className="size-4.5" />
@@ -436,7 +437,7 @@ const ClientWorkspaceHeader = ({
       />
 
       <div className="hidden space-y-4 pb-3 pt-3 lg:block">
-        <div className="mx-auto w-full rounded-[40px] border border-border bg-background p-3 sm:p-4 xl:w-[70%]">
+        <div className="mx-auto w-full rounded-[40px] border border-border bg-background p-3 sm:p-4 xl:w-[85%]">
           <div className="flex items-center justify-between gap-4">
             <Link to="/">
               <BrandMark />
@@ -448,12 +449,15 @@ const ClientWorkspaceHeader = ({
               onSelect={onSiteNav}
             />
 
-            <WorkspaceProfileDropdown
-              profile={profile}
-              displayName={displayName}
-              profileInitial={profileInitial}
-              currentDashboard="client"
-            />
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <WorkspaceProfileDropdown
+                profile={profile}
+                displayName={displayName}
+                profileInitial={profileInitial}
+                currentDashboard="client"
+              />
+            </div>
           </div>
         </div>
 

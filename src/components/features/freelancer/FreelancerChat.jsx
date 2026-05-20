@@ -279,13 +279,13 @@ const RequestDetailsPanel = ({
 }) => {
   if (!request) {
     return (
-      <div className="flex h-full min-h-0 items-center justify-center bg-card px-6">
+      <div className="flex h-full min-h-0 items-center justify-center bg-card px-6 py-12 md:py-16">
         <div className="max-w-md text-center">
-          <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[var(--primary)]">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-border bg-muted text-primary">
             <SendHorizontal className="size-6" />
           </div>
-          <h2 className="mt-5 text-2xl font-semibold text-white">Select a request</h2>
-          <p className="mt-3 text-sm leading-6 text-[#8f96a3]">
+          <h2 className="mt-5 text-2xl font-semibold text-foreground">Select a request</h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Review marketplace inquiries, then accept them into your active chats or reject them.
           </p>
         </div>
@@ -297,13 +297,13 @@ const RequestDetailsPanel = ({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-card">
-      <div className="border-b border-white/[0.06] px-5 py-5 md:px-7">
+      <div className="border-b border-border px-5 py-5 md:px-7">
         <div className="flex flex-col gap-2">
-          <p className="text-[1.2rem] font-semibold tracking-[-0.3px] text-white">
+          <p className="text-[1.2rem] font-semibold tracking-[-0.3px] text-foreground">
             {getFirstNonEmptyText(request.serviceTitle, request.title, "Marketplace Request")}
           </p>
-          <p className="text-sm text-[#cbd5e1]">{memberNames || request.clientName}</p>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#7f8795]">
+          <p className="text-sm text-foreground/90">{memberNames || request.clientName}</p>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             {getFirstNonEmptyText(request.serviceType, "Marketplace request")}
           </p>
         </div>
@@ -311,22 +311,22 @@ const RequestDetailsPanel = ({
 
       <div className="flex-1 overflow-y-auto px-4 py-5 md:px-6 md:py-6">
         <div className="mx-auto flex w-full max-w-[980px] flex-col gap-5">
-          <div className="rounded-[24px] border border-white/[0.06] bg-background/40 p-5 md:p-6">
+          <div className="rounded-[24px] border border-border bg-card p-5 md:p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-base font-semibold text-white">
+                <p className="text-base font-semibold text-foreground">
                   {getFirstNonEmptyText(request.clientName, "Client")}
                 </p>
-                <p className="mt-1 text-sm text-[#8f96a3]">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {request.clientBusinessName || "Marketplace lead"}
                 </p>
               </div>
-              <span className="text-xs uppercase tracking-[0.16em] text-[#7f8795]">
+              <span className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                 {formatConversationTimestamp(request.updatedAt || request.createdAt)}
               </span>
             </div>
 
-            <div className="mt-5 rounded-[20px] border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-sm leading-7 text-[#d7dee8]">
+            <div className="mt-5 rounded-[20px] border border-border bg-muted/30 px-4 py-3 text-sm leading-7 text-foreground/90">
               {request.requestMessage || request.previewText}
             </div>
 
@@ -343,7 +343,7 @@ const RequestDetailsPanel = ({
                 type="button"
                 onClick={onReject}
                 disabled={accepting || rejecting}
-                className="inline-flex h-11 items-center justify-center rounded-full border border-white/[0.08] px-6 text-sm font-semibold text-[#fca5a5] transition hover:bg-white/[0.03] hover:text-[#fecaca] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 items-center justify-center rounded-full border border-border px-6 text-sm font-semibold text-destructive transition hover:bg-muted hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {rejecting ? "Rejecting..." : "Reject"}
               </button>
@@ -2019,7 +2019,7 @@ const FreelancerChatContent = () => {
   );
 
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
+    <div className="flex-1 flex flex-col relative min-h-screen overflow-hidden bg-background transition-colors duration-300">
       <FreelancerTopBar />
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
@@ -2027,33 +2027,33 @@ const FreelancerChatContent = () => {
           <section className="mt-7 flex flex-col gap-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <h1 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl md:text-[3.4rem]">
+                <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-4xl md:text-[3.4rem]">
                   Messages
                 </h1>
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <div className="rounded-full border border-white/[0.08] bg-card px-4 py-2 text-sm text-[#cbd5e1]">
+                <div className="rounded-full border border-border bg-card px-4 py-2 text-sm text-muted-foreground">
                   {conversations.length} active chat{conversations.length === 1 ? "" : "s"}
                 </div>
-                <div className="rounded-full border border-[#5a3b0d] bg-[#2f1e05] px-4 py-2 text-sm text-[#f4d37c]">
+                <div className="rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm text-primary">
                   {pendingRequests.length} request{pendingRequests.length === 1 ? "" : "s"} pending
                 </div>
               </div>
             </div>
 
-            <div className="flex min-h-[680px] w-full flex-col overflow-hidden rounded-[28px] border border-white/[0.05] bg-card lg:h-[calc(100vh-13.5rem)] lg:flex-row">
-              <aside className="flex w-full shrink-0 flex-col border-b border-white/[0.06] bg-card lg:w-[360px] lg:border-b-0 lg:border-r lg:border-white/[0.06]">
+            <div className="flex min-h-[680px] w-full flex-col overflow-hidden rounded-[28px] border border-border bg-card lg:h-[calc(100vh-13.5rem)] lg:flex-row">
+              <aside className="flex w-full shrink-0 flex-col border-b border-border bg-card lg:w-[360px] lg:border-b-0 lg:border-r">
                 <div className="px-4 pb-5 pt-5 md:px-6 md:pt-6">
-                  <div className="grid grid-cols-2 rounded-full border border-white/[0.08] bg-background/50 p-1">
+                  <div className="grid grid-cols-2 rounded-full border border-border bg-muted/50 p-1">
                     <button
                       type="button"
                       onClick={() => setActiveTab("messages")}
                       className={cn(
                         "rounded-full px-4 py-2.5 text-sm font-semibold transition",
                         activeTab === "messages"
-                          ? "bg-[var(--primary)] text-[#141414]"
-                          : "text-[#9ca3af] hover:text-white",
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     >
                       Messages ({conversations.length})
@@ -2064,8 +2064,8 @@ const FreelancerChatContent = () => {
                       className={cn(
                         "rounded-full px-4 py-2.5 text-sm font-semibold transition",
                         activeTab === "requests"
-                          ? "bg-[var(--primary)] text-[#141414]"
-                          : "text-[#9ca3af] hover:text-white",
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     >
                       Requests ({pendingRequests.length})
@@ -2088,14 +2088,14 @@ const FreelancerChatContent = () => {
                           ? "Search chats..."
                           : "Search requests..."
                       }
-                      className="h-11 rounded-[16px] border-white/[0.1] bg-background/60 pl-11 text-sm text-white placeholder:text-[#646b77] focus-visible:ring-0"
+                      className="h-11 rounded-[16px] border-border bg-muted/50 pl-11 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
                     />
                   </div>
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14] [&::-webkit-scrollbar-track]:bg-transparent">
                   {loading ? (
-                    <div className="flex h-full min-h-[280px] items-center justify-center gap-3 text-sm text-[#8f96a3]">
+                    <div className="flex h-full min-h-[280px] items-center justify-center gap-3 text-sm text-muted-foreground">
                       <Loader2 className="size-4 animate-spin" />
                       <span>Loading chats...</span>
                     </div>
@@ -2138,25 +2138,25 @@ const FreelancerChatContent = () => {
                       </div>
                     ) : conversations.length > 0 ? (
                       <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-                        <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
+                        <div className="rounded-full border border-border bg-muted p-4 text-primary">
                           <Search className="size-5" />
                         </div>
-                        <p className="mt-4 text-base font-semibold text-white">
+                        <p className="mt-4 text-base font-semibold text-foreground">
                           No matching conversations
                         </p>
-                        <p className="mt-2 text-sm text-[#8f96a3]">
+                        <p className="mt-2 text-sm text-muted-foreground">
                           Try a different client name, member name, or service type.
                         </p>
                       </div>
                     ) : (
                       <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-                        <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
+                        <div className="rounded-full border border-border bg-muted p-4 text-primary">
                           <SendHorizontal className="size-5" />
                         </div>
-                        <p className="mt-4 text-base font-semibold text-white">
+                        <p className="mt-4 text-base font-semibold text-foreground">
                           No conversations yet
                         </p>
-                        <p className="mt-2 text-sm text-[#8f96a3]">
+                        <p className="mt-2 text-sm text-muted-foreground">
                           Accepted project collaborations and accepted marketplace requests will appear here automatically.
                         </p>
                       </div>
@@ -2174,25 +2174,25 @@ const FreelancerChatContent = () => {
                     </div>
                   ) : pendingRequests.length > 0 ? (
                     <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-                      <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
+                      <div className="rounded-full border border-border bg-muted p-4 text-primary">
                         <Search className="size-5" />
                       </div>
-                      <p className="mt-4 text-base font-semibold text-white">
+                      <p className="mt-4 text-base font-semibold text-foreground">
                         No matching requests
                       </p>
-                      <p className="mt-2 text-sm text-[#8f96a3]">
+                      <p className="mt-2 text-sm text-muted-foreground">
                         Try a different requester name or service title.
                       </p>
                     </div>
                   ) : (
                     <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
-                      <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[var(--primary)]">
+                      <div className="rounded-full border border-border bg-muted p-4 text-primary">
                         <X className="size-5" />
                       </div>
-                      <p className="mt-4 text-base font-semibold text-white">
+                      <p className="mt-4 text-base font-semibold text-foreground">
                         No pending requests
                       </p>
-                      <p className="mt-2 text-sm text-[#8f96a3]">
+                      <p className="mt-2 text-sm text-muted-foreground">
                         New client requests from the marketplace will land here for review.
                       </p>
                     </div>
@@ -2226,15 +2226,15 @@ const FreelancerChatContent = () => {
                     isClearingChat={clearingChat}
                   />
                 ) : (
-                  <div className="flex h-full min-h-0 items-center justify-center bg-card px-6">
+                  <div className="flex h-full min-h-0 items-center justify-center bg-card px-6 py-12 md:py-16">
                     <div className="max-w-md text-center">
-                      <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[var(--primary)]">
+                      <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-border bg-muted text-primary">
                         <SendHorizontal className="size-6" />
                       </div>
-                      <h2 className="mt-5 text-2xl font-semibold text-white">
+                      <h2 className="mt-5 text-2xl font-semibold text-foreground">
                         Select a conversation
                       </h2>
-                      <p className="mt-3 text-sm leading-6 text-[#8f96a3]">
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
                         Pick a project thread from the left to review updates, reply to clients, and keep delivery moving.
                       </p>
                     </div>

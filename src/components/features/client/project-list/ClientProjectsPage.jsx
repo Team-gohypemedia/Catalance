@@ -51,15 +51,15 @@ const EmptyProjectsState = ({
   description = "Active and pending collaborations will appear here once freelancers accept your proposals.",
   showAction = true,
 }) => (
-  <div className="rounded-[28px] border border-white/[0.06] bg-card p-8 text-center">
+  <div className="rounded-[28px] border border-border bg-card p-8 text-center">
     <div className="mx-auto flex max-w-md flex-col items-center">
-      <div className="flex size-16 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8]">
+      <div className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <ClipboardList className="size-7" />
       </div>
-      <h2 className="mt-6 text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+      <h2 className="mt-6 text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
         {title}
       </h2>
-      <p className="mt-3 text-sm leading-6 text-[#94a3b8]">{description}</p>
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
       {showAction ? (
         <Link
           to="/client/proposal"
@@ -95,7 +95,7 @@ const ProjectCarouselDots = ({ count, activeIndex, onSelect, ariaLabel, getDotLa
               "h-2.5 rounded-full transition-all duration-200",
               isActive
                 ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
-                : "w-2.5 bg-white/[0.14] hover:bg-white/[0.28]",
+                : "w-2.5 bg-muted hover:bg-muted-foreground/40",
             )}
           />
         );
@@ -307,7 +307,7 @@ const ClientProjectsPage = () => {
             <main className="flex-1 pb-12">
               <section className="mt-12 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
-                  <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
+                  <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-foreground">
                     Active Projects
                   </h1>
                 </div>
@@ -328,7 +328,7 @@ const ClientProjectsPage = () => {
                             "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
                             isActive
                               ? "border-[var(--primary)]/70 bg-[var(--primary)] text-[#141414]"
-                              : "text-[#a3a6ad] hover:text-white",
+                              : "text-muted-foreground hover:text-foreground",
                           )}
                         >
                           {option.label} ({count})

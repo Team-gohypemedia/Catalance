@@ -84,7 +84,7 @@ const ProposalRowCard = ({
   return (
     <Card className={cn("h-full w-full overflow-hidden shadow-none", proposalPanelClassName)}>
       <CardContent className="p-0">
-        <div className="flex h-full flex-col gap-5 p-4 sm:gap-6 sm:p-5 xl:p-6">
+        <div className="flex h-full flex-col gap-5 p-3.5 xs:p-4 sm:gap-6 sm:p-5 xl:p-6">
           <div className="flex items-center justify-between gap-4">
             <Badge
               variant="outline"
@@ -178,7 +178,7 @@ const ProposalRowCard = ({
                   className={clientProposalMetricBlockClassName}
                   style={{ containerType: "inline-size" }}
                 >
-                  <p className="whitespace-nowrap text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.76rem]">
+                  <p className="whitespace-nowrap text-[0.68rem] sm:text-[0.72rem] font-semibold uppercase tracking-[0.08em] sm:tracking-[0.16em] text-muted-foreground">
                     Budget
                   </p>
                   <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
@@ -190,7 +190,7 @@ const ProposalRowCard = ({
                   className={clientProposalMetricBlockClassName}
                   style={{ containerType: "inline-size" }}
                 >
-                  <p className="whitespace-nowrap text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.76rem]">
+                  <p className="whitespace-nowrap text-[0.68rem] sm:text-[0.72rem] font-semibold uppercase tracking-[0.08em] sm:tracking-[0.16em] text-muted-foreground">
                     Timeline
                   </p>
                   <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
@@ -240,10 +240,10 @@ const ProposalRowCard = ({
 
           <div className="mt-auto flex flex-col gap-3">
             {showPrimaryAction ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <Button
                   type="button"
-                  className="h-11 rounded-[14px] border border-border bg-background/35 px-4 text-[clamp(0.72rem,0.95vw,0.95rem)] font-semibold text-foreground shadow-none hover:bg-background sm:px-6 sm:text-sm"
+                  className="h-11 rounded-[14px] border border-border bg-background/35 px-2 text-[11px] sm:px-4 sm:text-xs md:text-sm font-semibold text-foreground shadow-none hover:bg-background"
                   onClick={() => onOpen?.(proposal)}
                 >
                   View Details
@@ -251,7 +251,7 @@ const ProposalRowCard = ({
 
                 <Button
                   type="button"
-                  className="h-11 rounded-[14px] bg-primary px-4 text-[clamp(0.72rem,0.95vw,0.95rem)] font-semibold text-primary-foreground shadow-none hover:bg-primary/90 sm:px-6 sm:text-sm"
+                  className="h-11 rounded-[14px] bg-primary px-2 text-[11px] sm:px-4 sm:text-xs md:text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
                   onClick={() => {
                     if (canSendToFreelancers) {
                       if (canIncreaseBudget) {

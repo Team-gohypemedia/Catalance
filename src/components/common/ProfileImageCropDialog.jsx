@@ -287,8 +287,8 @@ const buildCroppedBlob = async ({
 
 export default function ProfileImageCropDialog({
   open,
-  file,
-  maxUploadBytes,
+  file = null,
+  maxUploadBytes = 5 * 1024 * 1024,
   onApply,
   onCancel,
 }) {
@@ -661,7 +661,3 @@ ProfileImageCropDialog.propTypes = {
   onCancel: PropTypes.func.isRequired,
 };
 
-ProfileImageCropDialog.defaultProps = {
-  file: null,
-  maxUploadBytes: 5 * 1024 * 1024,
-};
