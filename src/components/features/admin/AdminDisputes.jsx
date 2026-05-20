@@ -12,7 +12,18 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import User from "lucide-react/dist/esm/icons/user";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import format from "date-fns/format";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import DisputeDetailsDialog from "./DisputeDetailsDialog";
+
+const initialPmFormState = {
+  fullName: "",
+  email: "",
+  password: "",
+  phoneNumber: "",
+  note: "",
+};
 
 const AdminDisputes = () => {
   const { authFetch } = useAuth();
@@ -25,6 +36,9 @@ const AdminDisputes = () => {
   const [selectedDispute, setSelectedDispute] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedManager, setSelectedManager] = useState(null);
+  const [createPmOpen, setCreatePmOpen] = useState(false);
+  const [creatingPm, setCreatingPm] = useState(false);
+  const [pmForm, setPmForm] = useState(initialPmFormState);
 
   useEffect(() => {
     fetchProjectManagers();
@@ -114,6 +128,57 @@ const AdminDisputes = () => {
     setDetailsOpen(true);
   };
 
+  const updatePmField = (key, value) => {
+    setPmForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const resetPmForm = () => {
+    setPmForm(initialPmFormState);
+  };
+
+  const handleCreatePm = async () => {
+    if (creatingPm) return;
+
+    const payload = {
+      fullName: pmForm.fullName.trim(),
+      email: pmForm.email.trim().toLowerCase(),
+      password: pmForm.password,
+      phoneNumber: pmForm.phoneNumber.trim(),
+    };
+
+    if (!payload.fullName || !payload.email || !payload.password) {
+      toast.error("Full name, email, and password are required.");
+      return;
+    }
+
+    setCreatingPm(true);
+    try {
+      const res = await authFetch("/admin/project-managers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || "Failed to create Project Manager.");
+      }
+
+      const createdManager = data?.data || null;
+      toast.success("Project Manager created successfully.");
+      resetPmForm();
+      setCreatePmOpen(false);
+      await fetchProjectManagers();
+      if (createdManager?.id) {
+        setSelectedManager(createdManager);
+      }
+    } catch (error) {
+      toast.error(error?.message || "Failed to create Project Manager.");
+    } finally {
+      setCreatingPm(false);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="relative flex flex-col gap-6 p-6">
@@ -127,12 +192,22 @@ const AdminDisputes = () => {
                   <p className="text-muted-foreground">Manage and view all Project Managers.</p>
               </div>
             </div>
+            <Button
+              type="button"
+              onClick={() => setCreatePmOpen(true)}
+              className="min-w-[180px]"
+            >
+              Add Project Manager
+            </Button>
           </div>
 
           {/* Project Managers List */}
           <div className="rounded-md border bg-card mb-8">
             <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold">Project Managers</h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">Project Managers</h2>
+                <Badge variant="secondary">{pmCount} total</Badge>
+              </div>
             </div>
             <Table>
               <TableHeader>
@@ -347,6 +422,113 @@ const AdminDisputes = () => {
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
       />
+      <Dialog
+        open={createPmOpen}
+        onOpenChange={(open) => {
+          setCreatePmOpen(open);
+          if (!open && !creatingPm) {
+            resetPmForm();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Add Project Manager</DialogTitle>
+            <DialogDescription>
+              Create a new Project Manager account directly from the admin panel.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-foreground" htmlFor="pm-full-name">
+                Full Name
+              </label>
+              <Input
+                id="pm-full-name"
+                value={pmForm.fullName}
+                onChange={(event) => updatePmField("fullName", event.target.value)}
+                placeholder="Project manager full name"
+                disabled={creatingPm}
+              />
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="pm-email">
+                  Email
+                </label>
+                <Input
+                  id="pm-email"
+                  type="email"
+                  value={pmForm.email}
+                  onChange={(event) => updatePmField("email", event.target.value)}
+                  placeholder="manager@catalance.com"
+                  disabled={creatingPm}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="pm-phone">
+                  Phone Number
+                </label>
+                <Input
+                  id="pm-phone"
+                  value={pmForm.phoneNumber}
+                  onChange={(event) => updatePmField("phoneNumber", event.target.value)}
+                  placeholder="+91 98765 43210"
+                  disabled={creatingPm}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-foreground" htmlFor="pm-password">
+                Temporary Password
+              </label>
+              <Input
+                id="pm-password"
+                type="password"
+                value={pmForm.password}
+                onChange={(event) => updatePmField("password", event.target.value)}
+                placeholder="At least 8 characters"
+                disabled={creatingPm}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-foreground" htmlFor="pm-note">
+                Internal Note
+              </label>
+              <Textarea
+                id="pm-note"
+                value={pmForm.note}
+                onChange={(event) => updatePmField("note", event.target.value)}
+                placeholder="Optional note for admin use. This is not stored yet."
+                disabled={creatingPm}
+                className="min-h-24"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCreatePmOpen(false)}
+              disabled={creatingPm}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreatePm}
+              disabled={creatingPm}
+            >
+              {creatingPm ? "Creating..." : "Create Project Manager"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };

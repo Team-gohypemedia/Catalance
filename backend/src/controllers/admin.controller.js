@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { sendEmail } from "../lib/email-service.js";
+import { hashPassword } from "../modules/users/password.utils.js";
 
 // Helper to get or initialize catalog - DEPRECATED
 // We now use relational tables Service and ServiceQuestion
@@ -174,12 +175,78 @@ export const getUsers = asyncHandler(async (req, res) => {
   }
 });
 
+export const createProjectManager = asyncHandler(async (req, res) => {
+  const fullName = String(req.body?.fullName || "").trim();
+  const email = String(req.body?.email || "")
+    .trim()
+    .toLowerCase();
+  const password = String(req.body?.password || "");
+  const phoneNumber = String(req.body?.phoneNumber || "").trim();
+
+  if (!fullName) {
+    throw new AppError("Full name is required.", 400);
+  }
+
+  if (!email) {
+    throw new AppError("Email is required.", 400);
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(email)) {
+    throw new AppError("Please provide a valid email address.", 400);
+  }
+
+  if (password.length < 8) {
+    throw new AppError("Password must be at least 8 characters long.", 400);
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+
+  if (existingUser) {
+    throw new AppError("A user with this email already exists.", 409);
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  const manager = await prisma.user.create({
+    data: {
+      fullName,
+      email,
+      passwordHash,
+      role: "PROJECT_MANAGER",
+      status: "ACTIVE",
+      isVerified: true,
+      onboardingComplete: true,
+      ...(phoneNumber ? { phoneNumber, phone: phoneNumber } : {}),
+      managerProfile: {
+        create: {
+          profileDetails: {},
+        },
+      },
+    },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      status: true,
+      isVerified: true,
+      createdAt: true,
+    },
+  });
+
+  res.status(201).json({ data: manager });
+});
+
 // Update user role
 export const updateUserRole = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const { role } = req.body;
 
-  if (!["CLIENT", "FREELANCER", "ADMIN"].includes(role)) {
+  if (!["CLIENT", "FREELANCER", "ADMIN", "PROJECT_MANAGER"].includes(role)) {
     throw new Error("Invalid role");
   }
 

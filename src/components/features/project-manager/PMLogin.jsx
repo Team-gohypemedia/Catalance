@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
@@ -155,7 +155,13 @@ function PMLogin({ className, ...props }) {
                         </CardContent>
                     </Card>
                     <div className="text-center text-xs text-muted-foreground">
-                        Restricted Access. Authorized Personnel Only.
+                        <div>Restricted Access. Authorized Personnel Only.</div>
+                        <div className="mt-2">
+                            Need a PM account?{" "}
+                            <Link to="/project-manager/register" className="underline underline-offset-4 hover:text-foreground">
+                                Register here
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>

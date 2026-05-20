@@ -92,6 +92,9 @@ const ResetPasswordPage = lazy(
 const PMLogin = lazy(
   () => import("@/components/features/project-manager/PMLogin"),
 );
+const PMRegister = lazy(
+  () => import("@/components/features/project-manager/PMRegister"),
+);
 const FreelancerDashboard = lazy(
   () => import("@/pages/freelancer/FreelancerDashboard.jsx"),
 );
@@ -384,6 +387,7 @@ const App = () => {
             <Route path="/forgot-password" element={<PublicRoute><LayoutWithNavbar><ForgotPasswordPage /></LayoutWithNavbar></PublicRoute>} />
             <Route path="/reset-password" element={<PublicRoute><LayoutWithNavbar><ResetPasswordPage /></LayoutWithNavbar></PublicRoute>} />
             <Route path="/project-manager/login" element={<PublicRoute><PMLogin /></PublicRoute>} />
+            <Route path="/project-manager/register" element={<PublicRoute><PMRegister /></PublicRoute>} />
             <Route
               path="/client"
               element={
