@@ -610,7 +610,7 @@ function PhoneAuth() {
     const submitButtonClass = compact
       ? "!h-10 w-full rounded-md bg-primary text-[12px] font-medium text-black shadow-none hover:bg-primary/95 sm:text-[13px]"
       : "!h-12 w-full rounded-md bg-primary text-[13px] font-medium text-black shadow-none hover:bg-primary/95 sm:text-[14px]";
-    const otpSlotClass = "h-12 w-12 sm:h-14 sm:w-14 text-base sm:text-lg font-semibold";
+    const otpSlotClass = "h-8 w-8 sm:h-10 sm:w-10 text-xs sm:text-sm font-semibold";
     const selectedCountryDialDigits = normalizePhoneNumber(
       selectedCountry?.dialCode || "",
     );
