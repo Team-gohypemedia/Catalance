@@ -193,7 +193,7 @@ const ensureServicesCatalogLoaded = async (force = false) => {
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL =
-  env.OPENROUTER_MODEL || process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+  env.OPENROUTER_MODEL || process.env.OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6";
 const FALLBACK_MODEL =
   env.OPENROUTER_MODEL_FALLBACK ||
   process.env.OPENROUTER_MODEL_FALLBACK ||

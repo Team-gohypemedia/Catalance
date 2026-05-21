@@ -1096,7 +1096,7 @@ const analyzeImageAttachmentWithVision = async ({ url = "", name = "", type = ""
     const apiKey = env.OPENROUTER_API_KEY?.trim();
     if (!apiKey || !url) return "";
 
-    const model = env.OPENROUTER_MODEL || "openai/gpt-4o";
+    const model = env.OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6";
     const referer = env.FRONTEND_URL || env.CORS_ORIGIN || "http://localhost:5173";
     const prompt = [
         "Analyze this uploaded image for project-requirement discovery.",

@@ -109,7 +109,7 @@ ${JSON.stringify({
           "X-Title": "Catalance AI Editor",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini", // Use mini for faster responses
+          model: import.meta.env.VITE_OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6",
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: contextBlock },
