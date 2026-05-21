@@ -1,20 +1,26 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import format from "date-fns/format";
 import AdminLayout from "./AdminLayout";
 import { AdminTopBar } from "./AdminTopBar";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
+import { useAuth } from "@/shared/context/AuthContext";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/shared/context/AuthContext";
-import Search from "lucide-react/dist/esm/icons/search";
-import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
-import FileText from "lucide-react/dist/esm/icons/file-text";
-import User from "lucide-react/dist/esm/icons/user";
-import Eye from "lucide-react/dist/esm/icons/eye";
-import format from "date-fns/format";
-import { toast } from "sonner";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import ArrowRightLeft from "lucide-react/dist/esm/icons/arrow-right-left";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import Search from "lucide-react/dist/esm/icons/search";
+import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
+import User from "lucide-react/dist/esm/icons/user";
 import DisputeDetailsDialog from "./DisputeDetailsDialog";
 
 const initialPmFormState = {
@@ -25,108 +31,181 @@ const initialPmFormState = {
   note: "",
 };
 
+const initialEditPmFormState = {
+  fullName: "",
+  email: "",
+  phoneNumber: "",
+  password: "",
+  status: "ACTIVE",
+};
+
+const formatDate = (value) => {
+  if (!value) return "N/A";
+  try {
+    return format(new Date(value), "MMM d, yyyy");
+  } catch {
+    return "N/A";
+  }
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "N/A";
+  try {
+    return format(new Date(value), "MMM d, yyyy p");
+  } catch {
+    return "N/A";
+  }
+};
+
+const formatCurrency = (amount) => `INR ${(amount || 0).toLocaleString("en-IN")}`;
+
+const toTitle = (value) => String(value || "").replaceAll("_", " ");
+
+const getProfileSummary = (profileDetails) => {
+  if (!profileDetails || typeof profileDetails !== "object") {
+    return [];
+  }
+
+  const identity = profileDetails.identity && typeof profileDetails.identity === "object"
+    ? profileDetails.identity
+    : {};
+  const professional = profileDetails.professional && typeof profileDetails.professional === "object"
+    ? profileDetails.professional
+    : {};
+  const contact = profileDetails.contact && typeof profileDetails.contact === "object"
+    ? profileDetails.contact
+    : {};
+
+  return [
+    { label: "Headline", value: professional.headline || professional.title || null },
+    { label: "Location", value: contact.city || contact.location || null },
+    { label: "Experience", value: professional.experience || professional.experienceYears || null },
+    { label: "Identity", value: identity.legalName || identity.name || null },
+  ].filter((item) => item.value);
+};
+
+const StatusBadge = ({ value }) => (
+  <Badge variant={String(value).toUpperCase() === "ACTIVE" ? "default" : "secondary"}>
+    {toTitle(value)}
+  </Badge>
+);
+
 const AdminDisputes = () => {
   const { authFetch } = useAuth();
-  const [disputes, setDisputes] = useState([]);
-  const [projects, setProjects] = useState([]);
+  const navigate = useNavigate();
   const [projectManagers, setProjectManagers] = useState([]);
-  const [pmCount, setPmCount] = useState(0);
+  const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedManagerId, setSelectedManagerId] = useState("");
+  const [selectedManagerDetails, setSelectedManagerDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [selectedDispute, setSelectedDispute] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [selectedManager, setSelectedManager] = useState(null);
   const [createPmOpen, setCreatePmOpen] = useState(false);
   const [creatingPm, setCreatingPm] = useState(false);
   const [pmForm, setPmForm] = useState(initialPmFormState);
+  const [editPmOpen, setEditPmOpen] = useState(false);
+  const [editingPm, setEditingPm] = useState(false);
+  const [editPmForm, setEditPmForm] = useState(initialEditPmFormState);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [reassignProject, setReassignProject] = useState(null);
+  const [reassignTargetId, setReassignTargetId] = useState("");
+  const [reassigning, setReassigning] = useState(false);
 
-  useEffect(() => {
-    fetchProjectManagers();
-    fetchProjects();
-  }, []);
-
-  const fetchProjectManagers = async () => {
-    try {
-      const res = await authFetch("/admin/users?role=PROJECT_MANAGER");
-      const data = await res.json();
-      if (data?.data?.users) {
-        setProjectManagers(data.data.users);
-        setPmCount(data.data.users.length);
-      }
-    } catch (err) {
-      console.error("Failed to fetch PMs:", err);
-    }
+  const loadProjectManagers = async () => {
+    const res = await authFetch("/admin/users?role=PROJECT_MANAGER&limit=100");
+    const data = await res.json();
+    return data?.data?.users || [];
   };
 
-  const fetchDisputes = async () => {
+  const loadDisputes = async () => {
+    const res = await authFetch("/disputes");
+    const data = await res.json();
+    return data?.data || [];
+  };
+
+  const loadManagerDetails = async (managerId) => {
+    const res = await authFetch(`/admin/users/${managerId}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.message || data?.error || "Failed to fetch project manager details.");
+    }
+    return data?.data || null;
+  };
+
+  const refreshPageData = async ({ keepSelection = true } = {}) => {
     setLoading(true);
     try {
-      const res = await authFetch("/disputes");
-      const data = await res.json();
-      if (data?.data) {
-        setDisputes(data.data);
+      const [pmUsers, allDisputes] = await Promise.all([
+        loadProjectManagers(),
+        loadDisputes(),
+      ]);
+      setProjectManagers(pmUsers);
+      setDisputes(allDisputes);
+
+      if (keepSelection && selectedManagerId) {
+        const stillExists = pmUsers.some((pm) => pm.id === selectedManagerId);
+        if (stillExists) {
+          await handleManagerSelect(selectedManagerId, { skipState: true });
+        } else {
+          setSelectedManagerId("");
+          setSelectedManagerDetails(null);
+        }
       }
-    } catch (err) {
-      console.error("Failed to fetch disputes:", err);
+    } catch (error) {
+      console.error("Failed to refresh project manager dashboard:", error);
+      toast.error("Failed to load Project Manager dashboard.");
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchProjects = async () => {
+  useEffect(() => {
+    refreshPageData({ keepSelection: false });
+  }, []);
+
+  const handleManagerSelect = async (managerId, options = {}) => {
+    const { skipState = false } = options;
+    if (!skipState) {
+      setSelectedManagerId(managerId);
+    }
+
+    setLoadingDetails(true);
     try {
-      const res = await authFetch("/projects");
-      const data = await res.json();
-      if (data?.data) {
-        setProjects(data.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch projects:", err);
+      const details = await loadManagerDetails(managerId);
+      setSelectedManagerDetails(details);
+    } catch (error) {
+      console.error("Failed to load project manager details:", error);
+      toast.error(error?.message || "Failed to load Project Manager details.");
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
-  const filteredDisputes = disputes.filter(d => {
-    // Basic search filtering
-    const matchesSearch = 
-      d.project?.title?.toLowerCase().includes(search.toLowerCase()) ||
-      d.description?.toLowerCase().includes(search.toLowerCase()) ||
-      d.raisedBy?.fullName?.toLowerCase().includes(search.toLowerCase());
-    
-    // Filter by selected manager if one is selected
-    if (selectedManager) {
-      return matchesSearch && (d.manager?.id === selectedManager.id);
-    }
-    
-    return false; // Don't show any disputes if no manager is selected (based on "click to show")
-    // Or if we want to show all initially, change this logic.
-    // User said "click on it -> show dispute section".
-  });
-
-  const assignedProjects = projects.filter(p => selectedManager && p.managerId === selectedManager.id);
-  
-  const handleManagerClick = (pm) => {
-    setSelectedManager(pm);
-    fetchDisputes(); // Ensure we have the latest disputes
-  };
-
-  const getStatusBadge = (status) => {
-    const colors = {
-      OPEN: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-      IN_PROGRESS: "bg-primary/10 text-primary dark:bg-primary/10/30 dark:text-primary",
-      RESOLVED: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-    };
-    return (
-      <Badge className={`${colors[status] || "bg-gray-100"} border-0`}>
-        {status}
-      </Badge>
+  const filteredManagers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return projectManagers;
+    return projectManagers.filter((pm) =>
+      pm.fullName?.toLowerCase().includes(query) || pm.email?.toLowerCase().includes(query)
     );
-  };
+  }, [projectManagers, search]);
 
-  const handleViewDetails = (dispute, e) => {
-    if (e) e.stopPropagation();
-    setSelectedDispute(dispute);
-    setDetailsOpen(true);
-  };
+  const selectedManager = selectedManagerDetails?.user || null;
+  const selectedManagerStats = selectedManagerDetails?.stats || {};
+  const profileSummary = getProfileSummary(selectedManager?.profileDetails);
+  const assignedProjects = selectedManagerDetails?.projects || [];
+  const managerDisputes = useMemo(
+    () => disputes.filter((dispute) => dispute.manager?.id === selectedManagerId),
+    [disputes, selectedManagerId]
+  );
+  const managerAppointments = selectedManagerDetails?.appointments || [];
+  const managerReports = selectedManagerDetails?.reports || [];
+  const profileRequests = selectedManagerDetails?.profileRequests || [];
+  const reassignOptions = projectManagers.filter(
+    (pm) => pm.id !== selectedManagerId && String(pm.status || "").toUpperCase() === "ACTIVE"
+  );
 
   const updatePmField = (key, value) => {
     setPmForm((current) => ({ ...current, [key]: value }));
@@ -134,6 +213,22 @@ const AdminDisputes = () => {
 
   const resetPmForm = () => {
     setPmForm(initialPmFormState);
+  };
+
+  const resetEditPmForm = () => {
+    setEditPmForm(initialEditPmFormState);
+  };
+
+  const openEditPmDialog = () => {
+    if (!selectedManager) return;
+    setEditPmForm({
+      fullName: selectedManager.fullName || "",
+      email: selectedManager.email || "",
+      phoneNumber: selectedManager.phone || "",
+      password: "",
+      status: String(selectedManager.status || "ACTIVE").toUpperCase(),
+    });
+    setEditPmOpen(true);
   };
 
   const handleCreatePm = async () => {
@@ -168,9 +263,9 @@ const AdminDisputes = () => {
       toast.success("Project Manager created successfully.");
       resetPmForm();
       setCreatePmOpen(false);
-      await fetchProjectManagers();
+      await refreshPageData({ keepSelection: false });
       if (createdManager?.id) {
-        setSelectedManager(createdManager);
+        await handleManagerSelect(createdManager.id);
       }
     } catch (error) {
       toast.error(error?.message || "Failed to create Project Manager.");
@@ -179,356 +274,870 @@ const AdminDisputes = () => {
     }
   };
 
+  const handleUpdateStatus = async (nextStatus) => {
+    if (!selectedManagerId || !nextStatus || statusUpdating) return;
+
+    setStatusUpdating(true);
+    try {
+      const res = await authFetch(`/admin/users/${selectedManagerId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || "Failed to update Project Manager status.");
+      }
+
+      toast.success(`Project Manager marked as ${toTitle(nextStatus)}.`);
+      await refreshPageData();
+    } catch (error) {
+      toast.error(error?.message || "Failed to update Project Manager status.");
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const handleSavePmChanges = async () => {
+    if (!selectedManagerId || editingPm) return;
+
+    const payload = {
+      fullName: editPmForm.fullName.trim(),
+      email: editPmForm.email.trim().toLowerCase(),
+      phoneNumber: editPmForm.phoneNumber.trim(),
+      status: String(editPmForm.status || "ACTIVE").toUpperCase(),
+    };
+
+    if (editPmForm.password) {
+      payload.password = editPmForm.password;
+    }
+
+    if (!payload.fullName || !payload.email) {
+      toast.error("Full name and email are required.");
+      return;
+    }
+
+    setEditingPm(true);
+    try {
+      const res = await authFetch(`/admin/project-managers/${selectedManagerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || "Failed to update Project Manager.");
+      }
+
+      toast.success("Project Manager updated successfully.");
+      setEditPmOpen(false);
+      resetEditPmForm();
+      await refreshPageData();
+    } catch (error) {
+      toast.error(error?.message || "Failed to update Project Manager.");
+    } finally {
+      setEditingPm(false);
+    }
+  };
+
+  const openReassignDialog = (project) => {
+    setReassignProject(project);
+    setReassignTargetId(reassignOptions[0]?.id || "");
+    setReassignOpen(true);
+  };
+
+  const handleReassignProject = async () => {
+    if (!reassignProject?.id || !reassignTargetId || reassigning) {
+      return;
+    }
+
+    setReassigning(true);
+    try {
+      const res = await authFetch(`/projects/${reassignProject.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ managerId: reassignTargetId }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || "Failed to reassign project.");
+      }
+
+      const nextManager = projectManagers.find((pm) => pm.id === reassignTargetId);
+      toast.success(
+        `Project reassigned to ${nextManager?.fullName || "the selected Project Manager"}.`
+      );
+      setReassignOpen(false);
+      setReassignProject(null);
+      setReassignTargetId("");
+      await refreshPageData();
+    } catch (error) {
+      toast.error(error?.message || "Failed to reassign project.");
+    } finally {
+      setReassigning(false);
+    }
+  };
+
+  const summaryCards = [
+    { label: "Active Projects", value: selectedManagerStats.activeProjects || 0 },
+    { label: "Completed Projects", value: selectedManagerStats.completedProjects || 0 },
+    { label: "Open Disputes", value: selectedManagerStats.openDisputes || 0 },
+    { label: "Upcoming Meetings", value: selectedManagerStats.upcomingMeetings || 0 },
+    { label: "Reports Raised", value: selectedManagerStats.reportsRaised || 0 },
+    { label: "Profile Requests", value: selectedManagerStats.profileUpdateRequests || 0 },
+  ];
+
   return (
     <AdminLayout>
       <div className="relative flex flex-col gap-6 p-6">
-        <AdminTopBar label="Project Manager Work" />
+        <AdminTopBar label="Project Manager Control" />
 
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="space-y-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Project Managers</h1>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2">
-                  <p className="text-muted-foreground">Manage and view all Project Managers.</p>
-              </div>
+              <p className="mt-2 text-muted-foreground">
+                Full admin control for Project Managers, assigned work, disputes, and reassignment.
+              </p>
             </div>
-            <Button
-              type="button"
-              onClick={() => setCreatePmOpen(true)}
-              className="min-w-[180px]"
-            >
-              Add Project Manager
-            </Button>
+            <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search project managers..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button type="button" onClick={() => setCreatePmOpen(true)} className="min-w-[190px]">
+                Add Project Manager
+              </Button>
+            </div>
           </div>
 
-          {/* Project Managers List */}
-          <div className="rounded-md border bg-card mb-8">
-            <div className="p-4 border-b">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Project Managers</h2>
-                <Badge variant="secondary">{pmCount} total</Badge>
-              </div>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projectManagers.length === 0 ? (
-                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                      No Project Managers found.
-                    </TableCell>
-                  </TableRow>
+          <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+            <Card className="h-fit">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardTitle>Project Manager List</CardTitle>
+                    <CardDescription>{projectManagers.length} managers in admin control</CardDescription>
+                  </div>
+                  <Badge variant="secondary">{projectManagers.length}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {loading ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">Loading managers...</div>
+                ) : filteredManagers.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                    No Project Managers found.
+                  </div>
                 ) : (
-                  projectManagers.map((pm) => (
-                    <TableRow 
-                      key={pm.id} 
-                      className={`cursor-pointer hover:bg-muted/50 ${selectedManager?.id === pm.id ? 'bg-muted/50 border-l-4 border-primary' : ''}`}
-                      onClick={() => handleManagerClick(pm)}
-                    >
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span>{pm.fullName}</span>
+                  filteredManagers.map((pm) => {
+                    const isSelected = selectedManagerId === pm.id;
+                    return (
+                      <button
+                        key={pm.id}
+                        type="button"
+                        onClick={() => handleManagerSelect(pm.id)}
+                        className={`w-full rounded-xl border p-4 text-left transition ${
+                          isSelected
+                            ? "border-primary bg-primary/5 shadow-sm"
+                            : "border-border bg-background hover:border-primary/30 hover:bg-muted/40"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold">{pm.fullName}</p>
+                            <p className="truncate text-sm text-muted-foreground">{pm.email}</p>
+                          </div>
+                          <StatusBadge value={pm.status} />
                         </div>
-                      </TableCell>
-                      <TableCell>{pm.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={pm.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                          {pm.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(pm.createdAt), "MMM d, yyyy")}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Joined {formatDate(pm.createdAt)}</span>
+                          <span>{pm.isVerified ? "Verified" : "Unverified"}</span>
+                        </div>
+                      </button>
+                    );
+                  })
                 )}
-              </TableBody>
-            </Table>
-          </div>
+              </CardContent>
+            </Card>
 
-          </div>
+            <div className="space-y-6">
+              {!selectedManagerId ? (
+                <Card>
+                  <CardContent className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-center">
+                    <ShieldCheck className="h-10 w-10 text-muted-foreground/70" />
+                    <div>
+                      <p className="font-medium">Select a Project Manager</p>
+                      <p className="text-sm text-muted-foreground">
+                        Admin controls, workload, projects, meetings, disputes, and reassignment will appear here.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : loadingDetails ? (
+                <Card>
+                  <CardContent className="py-20 text-center text-sm text-muted-foreground">
+                    Loading Project Manager details...
+                  </CardContent>
+                </Card>
+              ) : selectedManager ? (
+                <>
+                  <Card>
+                    <CardHeader className="pb-4">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <CardTitle className="text-2xl">{selectedManager.fullName}</CardTitle>
+                            <StatusBadge value={selectedManager.status} />
+                          </div>
+                          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                            <span className="inline-flex items-center gap-2">
+                              <Mail className="h-4 w-4" />
+                              {selectedManager.email}
+                            </span>
+                            <span className="inline-flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              Role: {toTitle(selectedManager.role)}
+                            </span>
+                            <span className="inline-flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              Joined: {formatDate(selectedManager.createdAt)}
+                            </span>
+                            <span className="inline-flex items-center gap-2">
+                              <ShieldCheck className="h-4 w-4" />
+                              {selectedManager.isVerified ? "Verified" : "Not verified"}
+                            </span>
+                            {selectedManager.phone ? (
+                              <span className="inline-flex items-center gap-2">
+                                <Briefcase className="h-4 w-4" />
+                                {selectedManager.phone}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
 
-          {/* Assigned Projects List */}
-          {selectedManager && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <div>
-                  <h2 className="text-2xl font-bold tracking-tight">
-                    Projects Assigned to {selectedManager.fullName}
-                  </h2>
-                </div>
-              <div className="rounded-md border bg-card">
-                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project Title</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Budget</TableHead>
-                      <TableHead>Spent</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {assignedProjects.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                          No projects assigned to this manager.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      assignedProjects.map((project) => (
-                        <TableRow key={project.id}>
-                          <TableCell className="font-medium">{project.title}</TableCell>
-                          <TableCell>
-                             <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                                <span>{project.owner?.fullName || "Unknown"}</span>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={openEditPmDialog}
+                          >
+                            Edit PM
+                          </Button>
+                          {String(selectedManager.status || "").toUpperCase() === "ACTIVE" ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => handleUpdateStatus("SUSPENDED")}
+                              disabled={statusUpdating}
+                            >
+                              {statusUpdating ? "Updating..." : "Suspend PM"}
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              onClick={() => handleUpdateStatus("ACTIVE")}
+                              disabled={statusUpdating}
+                            >
+                              {statusUpdating ? "Updating..." : "Activate PM"}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      {summaryCards.map((card) => (
+                        <div key={card.label} className="rounded-xl border bg-muted/20 p-4">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">{card.label}</p>
+                          <p className="mt-2 text-2xl font-semibold">{card.value}</p>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle>Profile Snapshot</CardTitle>
+                        <CardDescription>Current PM profile data available to admin.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {profileSummary.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">
+                            No structured Project Manager profile details have been submitted yet.
+                          </p>
+                        ) : (
+                          profileSummary.map((item) => (
+                            <div key={item.label} className="rounded-lg border p-3">
+                              <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                              <p className="mt-1 text-sm font-medium">{String(item.value)}</p>
+                            </div>
+                          ))
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle>Admin Signals</CardTitle>
+                        <CardDescription>Items that need admin attention for this PM.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="rounded-lg border p-3">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Password</p>
+                          <p className="mt-1 text-sm font-medium">Current password cannot be viewed</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Passwords are stored as secure hashes. Use Edit PM to set a new temporary password.
+                          </p>
+                        </div>
+                        <div className="rounded-lg border p-3">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Latest Profile Request</p>
+                          <p className="mt-1 text-sm font-medium">
+                            {selectedManagerStats.latestProfileRequestStatus
+                              ? toTitle(selectedManagerStats.latestProfileRequestStatus)
+                              : "No request"}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border p-3">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Meetings Scheduled</p>
+                          <p className="mt-1 text-sm font-medium">{managerAppointments.length}</p>
+                        </div>
+                        <div className="rounded-lg border p-3">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Reports Raised</p>
+                          <p className="mt-1 text-sm font-medium">{managerReports.length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                          <CardTitle>Assigned Projects</CardTitle>
+                          <CardDescription>
+                            Admin can inspect each project and reassign it to another Project Manager.
+                          </CardDescription>
+                        </div>
+                        <Badge variant="secondary">{assignedProjects.length} assigned</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Project</TableHead>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Budget</TableHead>
+                            <TableHead>Spent</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {assignedProjects.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                No projects assigned to this Project Manager.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            assignedProjects.map((project) => (
+                              <TableRow key={project.id}>
+                                <TableCell className="font-medium">
+                                  <div className="space-y-1">
+                                    <p>{project.title}</p>
+                                    <p className="text-xs text-muted-foreground">Created {formatDate(project.createdAt)}</p>
+                                  </div>
+                                </TableCell>
+                                <TableCell>{project.owner?.fullName || "Unknown"}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">{toTitle(project.status)}</Badge>
+                                </TableCell>
+                                <TableCell>{formatCurrency(project.budget)}</TableCell>
+                                <TableCell>{formatCurrency(project.spent)}</TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => navigate(`/admin/projects/${project.id}`)}
+                                    >
+                                      View
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => openReassignDialog(project)}
+                                      disabled={reassignOptions.length === 0}
+                                    >
+                                      Reassign
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+
+                  <div className="grid gap-6 xl:grid-cols-2">
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle>Assigned Disputes</CardTitle>
+                        <CardDescription>Disputes currently routed to this PM.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Project</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Raised By</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {managerDisputes.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                                  No disputes assigned to this Project Manager.
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              managerDisputes.map((dispute) => (
+                                <TableRow key={dispute.id}>
+                                  <TableCell>{dispute.project?.title || "Unknown Project"}</TableCell>
+                                  <TableCell>{toTitle(dispute.status)}</TableCell>
+                                  <TableCell>{dispute.raisedBy?.fullName || "Unknown"}</TableCell>
+                                  <TableCell className="text-right">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedDispute(dispute);
+                                        setDetailsOpen(true);
+                                      }}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle>Meetings And Reports</CardTitle>
+                        <CardDescription>Recent PM-side operational activity.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-5">
+                        <div className="space-y-3">
+                          <p className="text-sm font-semibold">Upcoming Meetings</p>
+                          {managerAppointments.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No meetings scheduled.</p>
+                          ) : (
+                            managerAppointments.slice(0, 4).map((appointment) => (
+                              <div key={appointment.id} className="rounded-lg border p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="font-medium">{appointment.title || "Meeting"}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {formatDateTime(appointment.date)}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline">{toTitle(appointment.status)}</Badge>
+                                </div>
                               </div>
-                          </TableCell>
-                          <TableCell><Badge variant="outline">{project.status}</Badge></TableCell>
-                          <TableCell>₹{project.budget?.toLocaleString()}</TableCell>
-                          <TableCell>₹{project.spent?.toLocaleString()}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          )}
+                            ))
+                          )}
+                        </div>
 
-          {/* Disputes List (restored) */}
-          {selectedManager && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold tracking-tight">
-                    Disputes assigned to {selectedManager.fullName}
-                  </h2>
-                </div>
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <div className="space-y-3">
+                          <p className="text-sm font-semibold">Reports Raised</p>
+                          {managerReports.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No reports raised by this PM.</p>
+                          ) : (
+                            managerReports.slice(0, 4).map((report) => (
+                              <div key={report.id} className="rounded-lg border p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="font-medium">{report.project?.title || "Project report"}</p>
+                                    <p className="text-sm text-muted-foreground">{report.reason}</p>
+                                  </div>
+                                  <Badge variant="outline">{toTitle(report.status)}</Badge>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle>Profile Update Requests</CardTitle>
+                      <CardDescription>Requests submitted by this PM for admin approval.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Request ID</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Submitted</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {profileRequests.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                                No profile requests from this PM.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            profileRequests.map((request) => (
+                              <TableRow key={request.id}>
+                                <TableCell className="font-mono text-xs">{request.id}</TableCell>
+                                <TableCell>{toTitle(request.status)}</TableCell>
+                                <TableCell>{formatDate(request.createdAt)}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <Card>
+                  <CardContent className="py-20 text-center text-sm text-muted-foreground">
+                    Project Manager details are unavailable right now.
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <DisputeDetailsDialog
+          dispute={selectedDispute}
+          open={detailsOpen}
+          onOpenChange={setDetailsOpen}
+        />
+
+        <Dialog
+          open={createPmOpen}
+          onOpenChange={(open) => {
+            setCreatePmOpen(open);
+            if (!open && !creatingPm) {
+              resetPmForm();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Add Project Manager</DialogTitle>
+              <DialogDescription>
+                Create a new Project Manager account directly from the admin panel.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="pm-full-name">
+                  Full Name
+                </label>
+                <Input
+                  id="pm-full-name"
+                  value={pmForm.fullName}
+                  onChange={(event) => updatePmField("fullName", event.target.value)}
+                  placeholder="Project manager full name"
+                  disabled={creatingPm}
+                />
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-foreground" htmlFor="pm-email">
+                    Email
+                  </label>
                   <Input
-                    type="text"
-                    placeholder="Search disputes..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
+                    id="pm-email"
+                    type="email"
+                    value={pmForm.email}
+                    onChange={(event) => updatePmField("email", event.target.value)}
+                    placeholder="manager@catalance.com"
+                    disabled={creatingPm}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-foreground" htmlFor="pm-phone">
+                    Phone Number
+                  </label>
+                  <Input
+                    id="pm-phone"
+                    value={pmForm.phoneNumber}
+                    onChange={(event) => updatePmField("phoneNumber", event.target.value)}
+                    placeholder="+91 98765 43210"
+                    disabled={creatingPm}
                   />
                 </div>
               </div>
 
-              <div className="rounded-md border bg-card">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Raised By</TableHead>
-                      <TableHead>Issue</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Manager</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      [...Array(3)].map((_, i) => (
-                        <TableRow key={i}>
-                          <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
-                          <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
-                          <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
-                          <TableCell><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
-                          <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
-                          <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
-                          <TableCell><div className="h-8 w-8 bg-muted animate-pulse rounded ml-auto" /></TableCell>
-                        </TableRow>
-                      ))
-                    ) : filteredDisputes.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
-                          <div className="flex flex-col items-center justify-center">
-                            <AlertCircle className="h-8 w-8 mb-2 opacity-50" />
-                            <p>No disputes found for this manager.</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredDisputes.map((dispute) => (
-                        <TableRow 
-                          key={dispute.id} 
-                          className="group cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleViewDetails(dispute)}
-                        >
-                          <TableCell className="font-medium">
-                            {dispute.project?.title || "Unknown Project"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <span>{dispute.raisedBy?.fullName}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="max-w-[250px]">
-                            <div className="flex items-start gap-2">
-                              <FileText className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
-                              <p className="truncate text-sm text-muted-foreground">
-                                {dispute.description}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>{getStatusBadge(dispute.status)}</TableCell>
-                          <TableCell>
-                            {dispute.manager ? (
-                              <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                                {dispute.manager.fullName}
-                              </span>
-                            ) : (
-                              <span className="text-sm text-muted-foreground italic">Unassigned</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {format(new Date(dispute.createdAt), "MMM d, yyyy")}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => handleViewDetails(dispute, e)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="pm-password">
+                  Temporary Password
+                </label>
+                <Input
+                  id="pm-password"
+                  type="password"
+                  value={pmForm.password}
+                  onChange={(event) => updatePmField("password", event.target.value)}
+                  placeholder="At least 8 characters"
+                  disabled={creatingPm}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="pm-note">
+                  Internal Note
+                </label>
+                <Textarea
+                  id="pm-note"
+                  value={pmForm.note}
+                  onChange={(event) => updatePmField("note", event.target.value)}
+                  placeholder="Optional note for admin use. This is not stored yet."
+                  disabled={creatingPm}
+                  className="min-h-24"
+                />
               </div>
             </div>
-          )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreatePmOpen(false)}
+                disabled={creatingPm}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCreatePm}
+                disabled={creatingPm}
+              >
+                {creatingPm ? "Creating..." : "Create Project Manager"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={editPmOpen}
+          onOpenChange={(open) => {
+            setEditPmOpen(open);
+            if (!open && !editingPm) {
+              resetEditPmForm();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Edit Project Manager</DialogTitle>
+              <DialogDescription>
+                Update PM account details, status, and set a new temporary password if needed.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="edit-pm-full-name">
+                  Full Name
+                </label>
+                <Input
+                  id="edit-pm-full-name"
+                  value={editPmForm.fullName}
+                  onChange={(event) => setEditPmForm((current) => ({ ...current, fullName: event.target.value }))}
+                  placeholder="Project manager full name"
+                  disabled={editingPm}
+                />
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-foreground" htmlFor="edit-pm-email">
+                    Email
+                  </label>
+                  <Input
+                    id="edit-pm-email"
+                    type="email"
+                    value={editPmForm.email}
+                    onChange={(event) => setEditPmForm((current) => ({ ...current, email: event.target.value }))}
+                    placeholder="manager@catalance.com"
+                    disabled={editingPm}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-foreground" htmlFor="edit-pm-phone">
+                    Phone Number
+                  </label>
+                  <Input
+                    id="edit-pm-phone"
+                    value={editPmForm.phoneNumber}
+                    onChange={(event) => setEditPmForm((current) => ({ ...current, phoneNumber: event.target.value }))}
+                    placeholder="+91 98765 43210"
+                    disabled={editingPm}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="edit-pm-status">
+                  Account Status
+                </label>
+                <Select
+                  value={editPmForm.status}
+                  onValueChange={(value) => setEditPmForm((current) => ({ ...current, status: value }))}
+                >
+                  <SelectTrigger id="edit-pm-status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                    <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="edit-pm-password">
+                  New Temporary Password
+                </label>
+                <Input
+                  id="edit-pm-password"
+                  type="text"
+                  value={editPmForm.password}
+                  onChange={(event) => setEditPmForm((current) => ({ ...current, password: event.target.value }))}
+                  placeholder="Leave blank to keep current password"
+                  disabled={editingPm}
+                />
+                <p className="text-xs text-muted-foreground">
+                  The current password cannot be shown. Enter a new one here only when you want to reset it.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditPmOpen(false)}
+                disabled={editingPm}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSavePmChanges}
+                disabled={editingPm}
+              >
+                {editingPm ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={reassignOpen}
+          onOpenChange={(open) => {
+            setReassignOpen(open);
+            if (!open && !reassigning) {
+              setReassignProject(null);
+              setReassignTargetId("");
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Reassign Project</DialogTitle>
+              <DialogDescription>
+                Move this project from the current Project Manager to another active Project Manager.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="rounded-lg border p-3">
+                <p className="text-sm font-semibold">{reassignProject?.title || "Selected project"}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Current PM: {selectedManager?.fullName || "Unknown"}
+                </p>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-foreground">New Project Manager</label>
+                <Select value={reassignTargetId} onValueChange={setReassignTargetId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a Project Manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {reassignOptions.map((pm) => (
+                      <SelectItem key={pm.id} value={pm.id}>
+                        {pm.fullName} ({pm.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {reassignOptions.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                  No other active Project Manager is available for reassignment.
+                </div>
+              ) : null}
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setReassignOpen(false)}
+                disabled={reassigning}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleReassignProject}
+                disabled={reassigning || !reassignTargetId}
+              >
+                <ArrowRightLeft className="mr-2 h-4 w-4" />
+                {reassigning ? "Reassigning..." : "Reassign Project"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-      
-      <DisputeDetailsDialog 
-        dispute={selectedDispute}
-        open={detailsOpen}
-        onOpenChange={setDetailsOpen}
-      />
-      <Dialog
-        open={createPmOpen}
-        onOpenChange={(open) => {
-          setCreatePmOpen(open);
-          if (!open && !creatingPm) {
-            resetPmForm();
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Add Project Manager</DialogTitle>
-            <DialogDescription>
-              Create a new Project Manager account directly from the admin panel.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <label className="text-sm font-medium text-foreground" htmlFor="pm-full-name">
-                Full Name
-              </label>
-              <Input
-                id="pm-full-name"
-                value={pmForm.fullName}
-                onChange={(event) => updatePmField("fullName", event.target.value)}
-                placeholder="Project manager full name"
-                disabled={creatingPm}
-              />
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium text-foreground" htmlFor="pm-email">
-                  Email
-                </label>
-                <Input
-                  id="pm-email"
-                  type="email"
-                  value={pmForm.email}
-                  onChange={(event) => updatePmField("email", event.target.value)}
-                  placeholder="manager@catalance.com"
-                  disabled={creatingPm}
-                />
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium text-foreground" htmlFor="pm-phone">
-                  Phone Number
-                </label>
-                <Input
-                  id="pm-phone"
-                  value={pmForm.phoneNumber}
-                  onChange={(event) => updatePmField("phoneNumber", event.target.value)}
-                  placeholder="+91 98765 43210"
-                  disabled={creatingPm}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-sm font-medium text-foreground" htmlFor="pm-password">
-                Temporary Password
-              </label>
-              <Input
-                id="pm-password"
-                type="password"
-                value={pmForm.password}
-                onChange={(event) => updatePmField("password", event.target.value)}
-                placeholder="At least 8 characters"
-                disabled={creatingPm}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-sm font-medium text-foreground" htmlFor="pm-note">
-                Internal Note
-              </label>
-              <Textarea
-                id="pm-note"
-                value={pmForm.note}
-                onChange={(event) => updatePmField("note", event.target.value)}
-                placeholder="Optional note for admin use. This is not stored yet."
-                disabled={creatingPm}
-                className="min-h-24"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setCreatePmOpen(false)}
-              disabled={creatingPm}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleCreatePm}
-              disabled={creatingPm}
-            >
-              {creatingPm ? "Creating..." : "Create Project Manager"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AdminLayout>
   );
 };

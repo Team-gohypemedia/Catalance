@@ -241,6 +241,96 @@ export const createProjectManager = asyncHandler(async (req, res) => {
   res.status(201).json({ data: manager });
 });
 
+export const updateProjectManager = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim() : undefined;
+  const rawEmail = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : undefined;
+  const phoneNumber = typeof req.body?.phoneNumber === "string" ? req.body.phoneNumber.trim() : undefined;
+  const password = typeof req.body?.password === "string" ? req.body.password : undefined;
+  const status = typeof req.body?.status === "string" ? req.body.status.trim().toUpperCase() : undefined;
+
+  const existingManager = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, email: true },
+  });
+
+  if (!existingManager || existingManager.role !== "PROJECT_MANAGER") {
+    throw new AppError("Project Manager not found.", 404);
+  }
+
+  const updateData = {};
+
+  if (fullName !== undefined) {
+    if (!fullName) {
+      throw new AppError("Full name is required.", 400);
+    }
+    updateData.fullName = fullName;
+  }
+
+  if (rawEmail !== undefined) {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!rawEmail || !emailPattern.test(rawEmail)) {
+      throw new AppError("Please provide a valid email address.", 400);
+    }
+
+    if (rawEmail !== existingManager.email) {
+      const emailOwner = await prisma.user.findUnique({
+        where: { email: rawEmail },
+        select: { id: true },
+      });
+      if (emailOwner && emailOwner.id !== userId) {
+        throw new AppError("A user with this email already exists.", 409);
+      }
+    }
+
+    updateData.email = rawEmail;
+  }
+
+  if (phoneNumber !== undefined) {
+    updateData.phone = phoneNumber || null;
+    updateData.phoneNumber = phoneNumber || null;
+  }
+
+  if (status !== undefined) {
+    if (!["ACTIVE", "SUSPENDED", "PENDING_APPROVAL"].includes(status)) {
+      throw new AppError("Invalid status.", 400);
+    }
+    updateData.status = status;
+    updateData.suspendedAt = status === "SUSPENDED" ? new Date() : null;
+  }
+
+  if (password !== undefined) {
+    if (password && password.length < 8) {
+      throw new AppError("Password must be at least 8 characters long.", 400);
+    }
+    if (password) {
+      updateData.passwordHash = await hashPassword(password);
+    }
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    throw new AppError("No updates provided.", 400);
+  }
+
+  const updatedManager = await prisma.user.update({
+    where: { id: userId },
+    data: updateData,
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      status: true,
+      isVerified: true,
+      phone: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  res.json({ data: updatedManager });
+});
+
 // Update user role
 export const updateUserRole = asyncHandler(async (req, res) => {
   const { userId } = req.params;
@@ -378,13 +468,24 @@ export const getProjects = asyncHandler(async (req, res) => {
         title: true,
         description: true,
         budget: true,
+        spent: true,
         status: true,
+        progress: true,
+        managerId: true,
         createdAt: true,
         owner: {
           select: {
             id: true,
             fullName: true,
             email: true
+          }
+        },
+        manager: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            status: true,
           }
         },
         proposals: {
@@ -403,8 +504,7 @@ export const getProjects = asyncHandler(async (req, res) => {
         },
         _count: {
           select: { proposals: true }
-        },
-        progress: true
+        }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -441,8 +541,15 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         email: true,
         role: true,
         status: true,
+        isVerified: true,
+        phone: true,
         createdAt: true,
         updatedAt: true,
+        managerProfile: {
+          select: {
+            profileDetails: true,
+          }
+        },
         freelancerProfile: {
           select: {
             profileRole: true,
@@ -493,6 +600,88 @@ export const getUserDetails = asyncHandler(async (req, res) => {
               }
             }
           }
+        },
+        managedProjects: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            budget: true,
+            spent: true,
+            progress: true,
+            createdAt: true,
+            owner: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+              }
+            }
+          },
+          orderBy: { createdAt: "desc" }
+        },
+        managedDisputes: {
+          select: {
+            id: true,
+            status: true,
+            description: true,
+            createdAt: true,
+            project: {
+              select: {
+                id: true,
+                title: true,
+              }
+            }
+          },
+          orderBy: { createdAt: "desc" }
+        },
+        managedAppointments: {
+          select: {
+            id: true,
+            title: true,
+            date: true,
+            startHour: true,
+            endHour: true,
+            status: true,
+            meetingLink: true,
+            bookedBy: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+              }
+            },
+            project: {
+              select: {
+                id: true,
+                title: true,
+              }
+            },
+          },
+          orderBy: { date: "asc" }
+        },
+        raisedEscalations: {
+          select: {
+            id: true,
+            reason: true,
+            status: true,
+            createdAt: true,
+            project: {
+              select: {
+                id: true,
+                title: true,
+              }
+            }
+          },
+          orderBy: { createdAt: "desc" }
+        },
+        profileUpdateRequests: {
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" }
         }
       }
     });
@@ -560,6 +749,64 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         pendingAmount: pendingAmount > 0 ? pendingAmount : 0,
         activeProjects: acceptedProposals.length
       };
+    } else if (user.role === "PROJECT_MANAGER") {
+      const activeProjectStatuses = ["OPEN", "IN_PROGRESS", "STARTED", "PENDING", "REVIEW"];
+      const activeProjects = user.managedProjects.filter((project) =>
+        activeProjectStatuses.includes(String(project.status || "").toUpperCase())
+      );
+      const completedProjects = user.managedProjects.filter(
+        (project) => String(project.status || "").toUpperCase() === "COMPLETED"
+      );
+      const openDisputes = user.managedDisputes.filter(
+        (dispute) => String(dispute.status || "").toUpperCase() === "OPEN"
+      );
+      const upcomingMeetings = user.managedAppointments.filter((appointment) => {
+        if (!appointment?.date) return false;
+        return new Date(appointment.date) >= new Date();
+      });
+      const profileDetails =
+        user.managerProfile?.profileDetails && typeof user.managerProfile.profileDetails === "object"
+          ? user.managerProfile.profileDetails
+          : {};
+      const latestProfileRequest = user.profileUpdateRequests[0] || null;
+
+      stats = {
+        totalProjects: user.managedProjects.length,
+        activeProjects: activeProjects.length,
+        completedProjects: completedProjects.length,
+        openDisputes: openDisputes.length,
+        totalDisputes: user.managedDisputes.length,
+        upcomingMeetings: upcomingMeetings.length,
+        totalMeetings: user.managedAppointments.length,
+        reportsRaised: user.raisedEscalations.length,
+        profileUpdateRequests: user.profileUpdateRequests.length,
+        latestProfileRequestStatus: latestProfileRequest?.status || null,
+      };
+
+      const pmPayload = {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone || null,
+        role: user.role,
+        status: user.status || "ACTIVE",
+        isVerified: Boolean(user.isVerified),
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        profileDetails,
+      };
+
+      return res.json({
+        data: {
+          user: pmPayload,
+          stats,
+          projects: user.managedProjects,
+          disputes: user.managedDisputes,
+          appointments: user.managedAppointments,
+          reports: user.raisedEscalations,
+          profileRequests: user.profileUpdateRequests,
+        }
+      });
     }
 
     res.json({
