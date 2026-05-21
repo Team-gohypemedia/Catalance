@@ -8,6 +8,67 @@ import { hashPassword } from "../modules/users/password.utils.js";
 // Helper to get or initialize catalog - DEPRECATED
 // We now use relational tables Service and ServiceQuestion
 
+const PM_ROLE = "PROJECT_MANAGER";
+
+const toTaskKeySet = (value) => {
+  if (Array.isArray(value)) {
+    return new Set(value.map((item) => String(item || "").trim()).filter(Boolean));
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return new Set(parsed.map((item) => String(item || "").trim()).filter(Boolean));
+      }
+    } catch {
+      return new Set();
+    }
+  }
+
+  return new Set();
+};
+
+const hasFirstTaskCompletion = (project) => {
+  const completedTasks = toTaskKeySet(project?.completedTasks);
+  return Array.from(completedTasks).some((taskKey) => String(taskKey).startsWith("1-"));
+};
+
+const getApprovedPhaseSet = (project = {}) =>
+  new Set(
+    (Array.isArray(project?.milestoneApprovals) ? project.milestoneApprovals : [])
+      .map((item) => Number(item?.phase))
+      .filter(Number.isFinite)
+  );
+
+const countCompletedLifecyclePhases = (project = {}) => {
+  const approved = getApprovedPhaseSet(project);
+  const phase1Done =
+    hasFirstTaskCompletion(project) ||
+    approved.has(2) ||
+    approved.has(3) ||
+    approved.has(4);
+
+  return [phase1Done, approved.has(2), approved.has(3), approved.has(4)].filter(Boolean).length;
+};
+
+const mapAssignedProjectStatus = (project = {}) => {
+  const hasIssue = Array.isArray(project?.disputes)
+    ? project.disputes.some((item) => String(item?.status || "").toUpperCase() !== "RESOLVED")
+    : false;
+
+  if (hasIssue) return "Issue Raised";
+
+  const rawStatus = String(project?.status || "").toUpperCase();
+  if (rawStatus === "DRAFT") return "Proposal";
+
+  const completedPhases = countCompletedLifecyclePhases(project);
+  if (completedPhases >= 4) return "Completed";
+  if (rawStatus === "IN_PROGRESS" || completedPhases > 0) return "In Progress";
+
+  return "Started";
+};
+
 // Get dashboard stats
 export const getDashboardStats = asyncHandler(async (req, res) => {
   try {
@@ -609,6 +670,8 @@ export const getUserDetails = asyncHandler(async (req, res) => {
             budget: true,
             spent: true,
             progress: true,
+            updatedAt: true,
+            completedTasks: true,
             createdAt: true,
             owner: {
               select: {
@@ -616,7 +679,34 @@ export const getUserDetails = asyncHandler(async (req, res) => {
                 fullName: true,
                 email: true,
               }
-            }
+            },
+            disputes: {
+              select: {
+                id: true,
+                status: true,
+              }
+            },
+            milestoneApprovals: {
+              select: {
+                phase: true,
+              }
+            },
+            proposals: {
+              where: { status: { in: ["ACCEPTED", "REPLACED"] } },
+              select: {
+                id: true,
+                status: true,
+                freelancer: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                  }
+                }
+              },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+            },
           },
           orderBy: { createdAt: "desc" }
         },
@@ -682,6 +772,19 @@ export const getUserDetails = asyncHandler(async (req, res) => {
             createdAt: true,
           },
           orderBy: { createdAt: "desc" }
+        },
+        notifications: {
+          select: {
+            id: true,
+            type: true,
+            title: true,
+            message: true,
+            read: true,
+            data: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 12,
         }
       }
     });
@@ -750,11 +853,44 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         activeProjects: acceptedProposals.length
       };
     } else if (user.role === "PROJECT_MANAGER") {
+      const dashboardProjects = await Promise.all(
+        user.managedProjects.map(async (project) => {
+          const conversation = await prisma.chatConversation.findFirst({
+            where: {
+              OR: [
+                { service: { startsWith: `CHAT:${project.id}:` } },
+                { service: { contains: project.id } },
+              ],
+            },
+            include: {
+              messages: { orderBy: { createdAt: "desc" }, take: 1 },
+              _count: { select: { messages: true } },
+            },
+            orderBy: { updatedAt: "desc" },
+          });
+
+          return {
+            ...project,
+            freelancer: project.proposals?.[0]?.freelancer || null,
+            displayStatus: mapAssignedProjectStatus(project),
+            chatMetrics: {
+              totalMessages: conversation?._count?.messages || 0,
+              lastMessagePreview: conversation?.messages?.[0]?.content || null,
+              lastMessageSender:
+                String(conversation?.messages?.[0]?.senderRole || "").toUpperCase() === PM_ROLE
+                  ? "Project Manager"
+                  : conversation?.messages?.[0]?.senderName || conversation?.messages?.[0]?.role || null,
+              lastInteractionTime: conversation?.messages?.[0]?.createdAt || project.updatedAt,
+            },
+          };
+        })
+      );
+
       const activeProjectStatuses = ["OPEN", "IN_PROGRESS", "STARTED", "PENDING", "REVIEW"];
-      const activeProjects = user.managedProjects.filter((project) =>
+      const activeProjects = dashboardProjects.filter((project) =>
         activeProjectStatuses.includes(String(project.status || "").toUpperCase())
       );
-      const completedProjects = user.managedProjects.filter(
+      const completedProjects = dashboardProjects.filter(
         (project) => String(project.status || "").toUpperCase() === "COMPLETED"
       );
       const openDisputes = user.managedDisputes.filter(
@@ -769,9 +905,10 @@ export const getUserDetails = asyncHandler(async (req, res) => {
           ? user.managerProfile.profileDetails
           : {};
       const latestProfileRequest = user.profileUpdateRequests[0] || null;
+      const unreadNotifications = user.notifications.filter((notification) => !notification.read);
 
       stats = {
-        totalProjects: user.managedProjects.length,
+        totalProjects: dashboardProjects.length,
         activeProjects: activeProjects.length,
         completedProjects: completedProjects.length,
         openDisputes: openDisputes.length,
@@ -781,6 +918,7 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         reportsRaised: user.raisedEscalations.length,
         profileUpdateRequests: user.profileUpdateRequests.length,
         latestProfileRequestStatus: latestProfileRequest?.status || null,
+        unreadNotifications: unreadNotifications.length,
       };
 
       const pmPayload = {
@@ -800,11 +938,21 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         data: {
           user: pmPayload,
           stats,
-          projects: user.managedProjects,
+          projects: dashboardProjects,
           disputes: user.managedDisputes,
           appointments: user.managedAppointments,
           reports: user.raisedEscalations,
           profileRequests: user.profileUpdateRequests,
+          notifications: user.notifications,
+          dashboard: {
+            projects: dashboardProjects.slice(0, 10),
+            stats: {
+              activeCount: activeProjects.length,
+              upcomingMeetingsCount: upcomingMeetings.length,
+              escalationsCount: openDisputes.length,
+              unreadNotificationsCount: unreadNotifications.length,
+            },
+          },
         }
       });
     }

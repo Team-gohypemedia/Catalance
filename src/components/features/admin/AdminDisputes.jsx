@@ -57,6 +57,22 @@ const formatDateTime = (value) => {
   }
 };
 
+const formatHourRange = (startHour, endHour) => {
+  const formatHour = (hour) => {
+    if (!Number.isFinite(hour)) return "";
+    const normalized = ((hour % 24) + 24) % 24;
+    const suffix = normalized >= 12 ? "PM" : "AM";
+    const displayHour = normalized % 12 || 12;
+    return `${displayHour}:00 ${suffix}`;
+  };
+
+  const start = formatHour(startHour);
+  const end = formatHour(endHour);
+  if (!start && !end) return "Time not set";
+  if (!end) return start;
+  return `${start} - ${end}`;
+};
+
 const formatCurrency = (amount) => `INR ${(amount || 0).toLocaleString("en-IN")}`;
 
 const toTitle = (value) => String(value || "").replaceAll("_", " ");
@@ -203,6 +219,9 @@ const AdminDisputes = () => {
   const managerAppointments = selectedManagerDetails?.appointments || [];
   const managerReports = selectedManagerDetails?.reports || [];
   const profileRequests = selectedManagerDetails?.profileRequests || [];
+  const managerNotifications = selectedManagerDetails?.notifications || [];
+  const dashboardSnapshot = selectedManagerDetails?.dashboard || {};
+  const dashboardProjects = dashboardSnapshot.projects || [];
   const reassignOptions = projectManagers.filter(
     (pm) => pm.id !== selectedManagerId && String(pm.status || "").toUpperCase() === "ACTIVE"
   );
@@ -388,6 +407,7 @@ const AdminDisputes = () => {
     { label: "Upcoming Meetings", value: selectedManagerStats.upcomingMeetings || 0 },
     { label: "Reports Raised", value: selectedManagerStats.reportsRaised || 0 },
     { label: "Profile Requests", value: selectedManagerStats.profileUpdateRequests || 0 },
+    { label: "Unread Notifications", value: selectedManagerStats.unreadNotifications || 0 },
   ];
 
   return (
@@ -619,6 +639,110 @@ const AdminDisputes = () => {
                     </Card>
                   </div>
 
+                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle>PM Dashboard Snapshot</CardTitle>
+                        <CardDescription>
+                          The same top operational view the Project Manager works from.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {dashboardProjects.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No dashboard projects available for this PM.</p>
+                        ) : (
+                          dashboardProjects.slice(0, 6).map((project) => (
+                            <div key={project.id} className="rounded-xl border p-4">
+                              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-semibold">{project.title}</p>
+                                    <Badge variant="outline">{project.displayStatus || toTitle(project.status)}</Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    Client: {project.owner?.fullName || "Unknown"}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Freelancer: {project.freelancer?.fullName || "Not assigned"}
+                                  </p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => navigate(`/admin/projects/${project.id}`)}
+                                >
+                                  View Project
+                                </Button>
+                              </div>
+
+                              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                                <div className="rounded-lg bg-muted/30 p-3">
+                                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Chat Messages</p>
+                                  <p className="mt-1 text-lg font-semibold">{project.chatMetrics?.totalMessages || 0}</p>
+                                </div>
+                                <div className="rounded-lg bg-muted/30 p-3">
+                                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Last Sender</p>
+                                  <p className="mt-1 text-sm font-medium">
+                                    {project.chatMetrics?.lastMessageSender || "No activity"}
+                                  </p>
+                                </div>
+                                <div className="rounded-lg bg-muted/30 p-3">
+                                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Last Activity</p>
+                                  <p className="mt-1 text-sm font-medium">
+                                    {project.chatMetrics?.lastInteractionTime
+                                      ? formatDateTime(project.chatMetrics.lastInteractionTime)
+                                      : "No activity"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {project.chatMetrics?.lastMessagePreview ? (
+                                <div className="mt-3 rounded-lg border border-dashed p-3">
+                                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Latest Message</p>
+                                  <p className="mt-1 text-sm text-muted-foreground">
+                                    {project.chatMetrics.lastMessagePreview}
+                                  </p>
+                                </div>
+                              ) : null}
+                            </div>
+                          ))
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle>Recent Notifications</CardTitle>
+                        <CardDescription>
+                          PM-side notification feed visible from admin.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {managerNotifications.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No notifications for this PM.</p>
+                        ) : (
+                          managerNotifications.map((notification) => (
+                            <div key={notification.id} className="rounded-lg border p-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-medium">{notification.title}</p>
+                                  <p className="mt-1 text-sm text-muted-foreground">{notification.message}</p>
+                                </div>
+                                <Badge variant={notification.read ? "secondary" : "default"}>
+                                  {notification.read ? "Read" : "Unread"}
+                                </Badge>
+                              </div>
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                {formatDateTime(notification.createdAt)}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
                   <Card>
                     <CardHeader className="pb-3">
                       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
@@ -654,11 +778,14 @@ const AdminDisputes = () => {
                             assignedProjects.map((project) => (
                               <TableRow key={project.id}>
                                 <TableCell className="font-medium">
-                                  <div className="space-y-1">
-                                    <p>{project.title}</p>
-                                    <p className="text-xs text-muted-foreground">Created {formatDate(project.createdAt)}</p>
-                                  </div>
-                                </TableCell>
+                                <div className="space-y-1">
+                                  <p>{project.title}</p>
+                                  <p className="text-xs text-muted-foreground">Created {formatDate(project.createdAt)}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Freelancer: {project.freelancer?.fullName || "Not assigned"}
+                                  </p>
+                                </div>
+                              </TableCell>
                                 <TableCell>{project.owner?.fullName || "Unknown"}</TableCell>
                                 <TableCell>
                                   <Badge variant="outline">{toTitle(project.status)}</Badge>
@@ -760,8 +887,13 @@ const AdminDisputes = () => {
                                   <div>
                                     <p className="font-medium">{appointment.title || "Meeting"}</p>
                                     <p className="text-sm text-muted-foreground">
-                                      {formatDateTime(appointment.date)}
+                                      {formatDate(appointment.date)} • {formatHourRange(appointment.startHour, appointment.endHour)}
                                     </p>
+                                    {appointment.project?.title ? (
+                                      <p className="mt-1 text-xs text-muted-foreground">
+                                        Project: {appointment.project.title}
+                                      </p>
+                                    ) : null}
                                   </div>
                                   <Badge variant="outline">{toTitle(appointment.status)}</Badge>
                                 </div>
