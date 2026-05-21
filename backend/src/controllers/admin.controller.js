@@ -9,6 +9,15 @@ import { hashPassword } from "../modules/users/password.utils.js";
 // We now use relational tables Service and ServiceQuestion
 
 const PM_ROLE = "PROJECT_MANAGER";
+const ADMIN_ROLE = "ADMIN";
+
+const normalizeText = (value) => String(value || "").trim();
+
+const toIsoOrNull = (value) => {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
 
 const toTaskKeySet = (value) => {
   if (Array.isArray(value)) {
@@ -67,6 +76,98 @@ const mapAssignedProjectStatus = (project = {}) => {
   if (rawStatus === "IN_PROGRESS" || completedPhases > 0) return "In Progress";
 
   return "Started";
+};
+
+const getAcceptedProposal = (project = {}) => {
+  const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
+  return (
+    proposals.find((item) => String(item?.status || "").toUpperCase() === "ACCEPTED") ||
+    proposals.find((item) => String(item?.status || "").toUpperCase() === "REPLACED") ||
+    null
+  );
+};
+
+const getCanonicalProjectChatServiceKey = (project = {}) => {
+  const activeProposal = getAcceptedProposal(project);
+  const freelancerId = normalizeText(activeProposal?.freelancerId || activeProposal?.freelancer?.id || "unknown");
+  return `CHAT:${project.id}:${normalizeText(project.ownerId)}:${freelancerId}`;
+};
+
+const resolveProjectChatConversations = async (project = {}) => {
+  const canonicalServiceKey = getCanonicalProjectChatServiceKey(project);
+  const conversations = await prisma.chatConversation.findMany({
+    where: {
+      OR: [
+        { service: canonicalServiceKey },
+        { service: { startsWith: `CHAT:${project.id}:` } },
+        { service: { contains: project.id } },
+        { projectTitle: project.title || undefined },
+      ],
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const seen = new Set();
+  return conversations.filter((conversation) => {
+    if (!conversation?.id || seen.has(conversation.id)) return false;
+    seen.add(conversation.id);
+    return true;
+  });
+};
+
+const buildMilestonesForAdminProject = (project = {}) => {
+  const approved = new Set(
+    (Array.isArray(project?.milestoneApprovals) ? project.milestoneApprovals : [])
+      .map((item) => Number(item?.phase))
+      .filter(Number.isFinite)
+  );
+  const firstTaskCompleted = hasFirstTaskCompletion(project);
+  const phase1Done = firstTaskCompleted || approved.has(2) || approved.has(3) || approved.has(4);
+
+  const phaseRows = [
+    { phase: 1, title: "Kickoff & UI Design", percent: 0 },
+    { phase: 2, title: "Core Development", percent: 25 },
+    { phase: 3, title: "Integration & Testing", percent: 25 },
+    { phase: 4, title: "Launch & Documentation", percent: 50 },
+  ];
+
+  return phaseRows.map((entry) => {
+    const amount = Math.round((Number(project?.budget || 0) * entry.percent) / 100);
+    const isApproved = entry.phase === 1 ? phase1Done : approved.has(entry.phase);
+
+    let status = "Locked";
+    let eligibleForApproval = false;
+
+    if (entry.phase === 1) {
+      status = phase1Done ? "Completed" : "Pending";
+    } else if (isApproved) {
+      status = "Approved";
+    } else if (
+      (entry.phase === 2 && phase1Done) ||
+      (entry.phase === 3 && approved.has(2)) ||
+      (entry.phase === 4 && approved.has(3))
+    ) {
+      status = "Pending Approval";
+      eligibleForApproval = true;
+    }
+
+    return {
+      phase: entry.phase,
+      title: entry.title,
+      percentage: entry.percent,
+      amount,
+      status,
+      eligibleForApproval,
+      validationNotes:
+        entry.phase === 1
+          ? firstTaskCompleted
+            ? "First task completed by freelancer. Phase 2 can move to PM approval."
+            : "Waiting for freelancer to complete first task."
+          : eligibleForApproval
+            ? "Ready for Project Manager approval."
+            : "Waiting for previous phase completion.",
+    };
+  });
 };
 
 // Get dashboard stats
@@ -390,6 +491,677 @@ export const updateProjectManager = asyncHandler(async (req, res) => {
   });
 
   res.json({ data: updatedManager });
+});
+
+const ensureProjectBelongsToManager = async (projectId, managerId) => {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      title: true,
+      managerId: true,
+      status: true,
+      closureHandoverConfirmed: true,
+      closureDeliverablesConfirmed: true,
+      closureReceiptConfirmed: true,
+      closureNoIssuesConfirmed: true,
+      milestoneApprovals: { select: { phase: true } },
+      completedTasks: true,
+      disputes: { select: { status: true } },
+    },
+  });
+
+  if (!project || String(project.managerId || "") !== String(managerId)) {
+    throw new AppError("Project not found for this Project Manager.", 404);
+  }
+
+  return project;
+};
+
+export const updateProjectManagerProfile = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const profileDetails = req.body?.profileDetails && typeof req.body.profileDetails === "object"
+    ? req.body.profileDetails
+    : {};
+
+  const existingManager = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, managerProfile: { select: { userId: true } } },
+  });
+
+  if (!existingManager || existingManager.role !== "PROJECT_MANAGER") {
+    throw new AppError("Project Manager not found.", 404);
+  }
+
+  if (existingManager.managerProfile?.userId) {
+    await prisma.managerProfile.update({
+      where: { userId },
+      data: { profileDetails },
+    });
+  } else {
+    await prisma.managerProfile.create({
+      data: { userId, profileDetails },
+    });
+  }
+
+  const refreshed = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      managerProfile: { select: { profileDetails: true } },
+    },
+  });
+
+  res.json({ data: refreshed });
+});
+
+export const updateProjectManagerNotification = asyncHandler(async (req, res) => {
+  const { userId, notificationId } = req.params;
+  const read = typeof req.body?.read === "boolean" ? req.body.read : true;
+
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+    select: { id: true, userId: true },
+  });
+
+  if (!notification || String(notification.userId || "") !== String(userId)) {
+    throw new AppError("Notification not found for this Project Manager.", 404);
+  }
+
+  const updated = await prisma.notification.update({
+    where: { id: notificationId },
+    data: { read },
+  });
+
+  res.json({ data: updated });
+});
+
+export const markAllProjectManagerNotificationsRead = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  await prisma.notification.updateMany({
+    where: { userId, read: false },
+    data: { read: true },
+  });
+
+  res.json({ data: { success: true } });
+});
+
+export const updateProjectManagerReport = asyncHandler(async (req, res) => {
+  const { userId, reportId } = req.params;
+  const status = typeof req.body?.status === "string" ? req.body.status.trim().toUpperCase() : undefined;
+  const notes = typeof req.body?.notes === "string" ? req.body.notes.trim() : undefined;
+
+  const report = await prisma.adminEscalation.findUnique({
+    where: { id: reportId },
+    select: { id: true, raisedById: true, notes: true },
+  });
+
+  if (!report || String(report.raisedById || "") !== String(userId)) {
+    throw new AppError("Report not found for this Project Manager.", 404);
+  }
+
+  const nextData = {};
+  if (status) {
+    if (!["OPEN", "IN_PROGRESS", "RESOLVED"].includes(status)) {
+      throw new AppError("Invalid report status.", 400);
+    }
+    nextData.status = status;
+  }
+
+  if (notes !== undefined) {
+    nextData.notes = notes
+      ? JSON.stringify({
+          source: "ADMIN_REVIEW",
+          note: notes,
+          previous: report.notes || null,
+        })
+      : null;
+  }
+
+  const updated = await prisma.adminEscalation.update({
+    where: { id: reportId },
+    data: nextData,
+    include: { project: { select: { id: true, title: true } } },
+  });
+
+  res.json({ data: updated });
+});
+
+export const createProjectManagerMeeting = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const projectId = String(req.body?.projectId || "").trim();
+  const title = String(req.body?.title || "Project Sync").trim();
+  const startsAt = new Date(req.body?.startsAt);
+  const endsAt = new Date(req.body?.endsAt);
+  const participantScope = String(req.body?.participantScope || "BOTH").trim().toUpperCase();
+  const platform = String(req.body?.platform || "INTERNAL").trim().toUpperCase();
+  const notes = String(req.body?.notes || "").trim();
+
+  if (!projectId) throw new AppError("projectId is required.", 400);
+  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
+    throw new AppError("Invalid meeting time.", 400);
+  }
+
+  await ensureProjectBelongsToManager(projectId, userId);
+
+  const date = new Date(startsAt);
+  date.setHours(0, 0, 0, 0);
+  const startHour = startsAt.getHours();
+  const endHour = Math.max(startHour + 1, endsAt.getHours() + (endsAt.getMinutes() > 0 ? 1 : 0));
+
+  const meeting = await prisma.appointment.create({
+    data: {
+      title,
+      description: JSON.stringify({ participantScope, platform, notes, meetingType: "ADMIN_PM_MEETING" }),
+      date,
+      startHour,
+      endHour,
+      status: "APPROVED",
+      meetingLink:
+        platform === "ZOOM"
+          ? `https://zoom.us/j/${Date.now()}`
+          : platform === "GOOGLE_MEET"
+            ? "https://meet.google.com/new"
+            : `internal://meeting/${Date.now()}`,
+      bookedById: userId,
+      managerId: userId,
+      projectId,
+    },
+    include: {
+      bookedBy: { select: { id: true, fullName: true, email: true } },
+      project: { select: { id: true, title: true } },
+    },
+  });
+
+  res.status(201).json({ data: meeting });
+});
+
+export const updateProjectManagerMeeting = asyncHandler(async (req, res) => {
+  const { userId, meetingId } = req.params;
+  const startsAt = req.body?.startsAt ? new Date(req.body.startsAt) : null;
+  const endsAt = req.body?.endsAt ? new Date(req.body.endsAt) : null;
+  const status = typeof req.body?.status === "string" ? req.body.status.trim().toUpperCase() : undefined;
+
+  const meeting = await prisma.appointment.findUnique({
+    where: { id: meetingId },
+    select: { id: true, managerId: true },
+  });
+
+  if (!meeting || String(meeting.managerId || "") !== String(userId)) {
+    throw new AppError("Meeting not found for this Project Manager.", 404);
+  }
+
+  const updateData = {};
+
+  if (startsAt || endsAt) {
+    if (!startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
+      throw new AppError("Invalid meeting time.", 400);
+    }
+
+    const date = new Date(startsAt);
+    date.setHours(0, 0, 0, 0);
+    const startHour = startsAt.getHours();
+    const endHour = Math.max(startHour + 1, endsAt.getHours() + (endsAt.getMinutes() > 0 ? 1 : 0));
+    updateData.date = date;
+    updateData.startHour = startHour;
+    updateData.endHour = endHour;
+  }
+
+  if (status) {
+    if (!["PENDING", "APPROVED", "REJECTED", "CANCELLED"].includes(status)) {
+      throw new AppError("Invalid meeting status.", 400);
+    }
+    updateData.status = status;
+  }
+
+  const updated = await prisma.appointment.update({
+    where: { id: meetingId },
+    data: updateData,
+    include: {
+      bookedBy: { select: { id: true, fullName: true, email: true } },
+      project: { select: { id: true, title: true } },
+    },
+  });
+
+  res.json({ data: updated });
+});
+
+export const approveProjectManagerMilestone = asyncHandler(async (req, res) => {
+  const { userId, projectId } = req.params;
+  const phaseNumber = Number(req.body?.phase);
+  const note = String(req.body?.pmNote || req.body?.notes || "").trim() || null;
+
+  if (![2, 3, 4].includes(phaseNumber)) {
+    throw new AppError("phase must be 2, 3 or 4.", 400);
+  }
+
+  const project = await ensureProjectBelongsToManager(projectId, userId);
+
+  const approvedPhases = new Set(
+    (Array.isArray(project.milestoneApprovals) ? project.milestoneApprovals : [])
+      .map((item) => Number(item.phase))
+  );
+
+  if (phaseNumber === 2 && !hasFirstTaskCompletion(project)) {
+    throw new AppError("Phase 2 approval unlocks only after freelancer completes the first task.", 400);
+  }
+  if (phaseNumber === 3 && !approvedPhases.has(2)) {
+    throw new AppError("Phase 3 is locked until Phase 2 is approved.", 400);
+  }
+  if (phaseNumber === 4 && !approvedPhases.has(3)) {
+    throw new AppError("Final Phase is locked until Phase 3 is approved.", 400);
+  }
+
+  const existing = await prisma.milestoneApproval.findUnique({
+    where: { projectId_phase: { projectId, phase: phaseNumber } },
+  });
+  if (existing) {
+    throw new AppError(`Phase ${phaseNumber} is already approved.`, 409);
+  }
+
+  const approval = await prisma.milestoneApproval.create({
+    data: {
+      projectId,
+      managerId: userId,
+      phase: phaseNumber,
+      notes: note,
+    },
+  });
+
+  res.json({ data: approval });
+});
+
+export const finalizeProjectManagerHandover = asyncHandler(async (req, res) => {
+  const { userId, projectId } = req.params;
+  const handoverConfirmed = Boolean(req.body?.handoverConfirmed);
+  const deliverablesConfirmed = Boolean(req.body?.deliverablesConfirmed);
+  const finalFilesDelivered = Boolean(req.body?.finalFilesDelivered);
+  const receiptConfirmed = Boolean(req.body?.receiptConfirmed);
+  const noIssuesConfirmed = Boolean(req.body?.noIssuesConfirmed);
+
+  const project = await ensureProjectBelongsToManager(projectId, userId);
+
+  if (handoverConfirmed && deliverablesConfirmed && finalFilesDelivered && receiptConfirmed && noIssuesConfirmed) {
+    const unresolvedDisputes = (project.disputes || []).filter(
+      (item) => String(item.status || "").toUpperCase() !== "RESOLVED"
+    );
+    if (unresolvedDisputes.length) {
+      throw new AppError("Cannot complete project: There are unresolved disputes.", 400);
+    }
+  }
+
+  const updated = await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      closureHandoverConfirmed: handoverConfirmed,
+      closureDeliverablesConfirmed: Boolean(deliverablesConfirmed && finalFilesDelivered),
+      closureReceiptConfirmed: receiptConfirmed,
+      closureNoIssuesConfirmed: noIssuesConfirmed,
+      closureVerifiedById: userId,
+      closureVerifiedAt: new Date(),
+      ...(handoverConfirmed && deliverablesConfirmed && finalFilesDelivered && receiptConfirmed && noIssuesConfirmed
+        ? { status: "COMPLETED" }
+        : {}),
+    },
+    select: {
+      id: true,
+      status: true,
+      closureHandoverConfirmed: true,
+      closureDeliverablesConfirmed: true,
+      closureReceiptConfirmed: true,
+      closureNoIssuesConfirmed: true,
+      closureVerifiedAt: true,
+    },
+  });
+
+  res.json({ data: updated });
+});
+
+export const getProjectManagerProjectDetails = asyncHandler(async (req, res) => {
+  const { userId, projectId } = req.params;
+  await ensureProjectBelongsToManager(projectId, userId);
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      status: true,
+      budget: true,
+      spent: true,
+      progress: true,
+      createdAt: true,
+      updatedAt: true,
+      ownerId: true,
+      managerId: true,
+      completedTasks: true,
+      closureHandoverConfirmed: true,
+      closureDeliverablesConfirmed: true,
+      closureReceiptConfirmed: true,
+      closureNoIssuesConfirmed: true,
+      owner: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+        },
+      },
+      proposals: {
+        where: { status: { in: ["ACCEPTED", "REPLACED"] } },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          freelancerId: true,
+          createdAt: true,
+          freelancer: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              status: true,
+              freelancerProfile: {
+                select: {
+                  profileRole: true,
+                  professionalBio: true,
+                  services: true,
+                  serviceDetails: true,
+                  profilePhoto: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      disputes: {
+        select: {
+          id: true,
+          status: true,
+          description: true,
+          createdAt: true,
+          raisedBy: { select: { id: true, fullName: true, email: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+      milestoneApprovals: {
+        select: {
+          phase: true,
+          notes: true,
+          createdAt: true,
+        },
+        orderBy: { phase: "asc" },
+      },
+    },
+  });
+
+  if (!project) {
+    throw new AppError("Project not found.", 404);
+  }
+
+  const appointments = await prisma.appointment.findMany({
+    where: { projectId, managerId: userId },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      date: true,
+      startHour: true,
+      endHour: true,
+      status: true,
+      meetingLink: true,
+      createdAt: true,
+      bookedBy: { select: { id: true, fullName: true, email: true } },
+    },
+    orderBy: [{ date: "asc" }, { startHour: "asc" }],
+  });
+
+  const notifications = await prisma.notification.findMany({
+    where: { userId },
+    select: {
+      id: true,
+      type: true,
+      title: true,
+      message: true,
+      read: true,
+      data: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  const projectNotifications = notifications.filter((notification) => {
+    const data = notification?.data && typeof notification.data === "object" ? notification.data : {};
+    return String(data.projectId || "") === String(projectId);
+  });
+
+  const activeProposal = getAcceptedProposal(project);
+  const freelancer = activeProposal?.freelancer || null;
+  const milestones = buildMilestonesForAdminProject(project);
+
+  res.json({
+    data: {
+      project: {
+        id: project.id,
+        title: project.title,
+        description: project.description,
+        status: project.status,
+        displayStatus: mapAssignedProjectStatus(project),
+        budget: project.budget,
+        spent: project.spent,
+        progress: project.progress,
+        createdAt: toIsoOrNull(project.createdAt),
+        updatedAt: toIsoOrNull(project.updatedAt),
+      },
+      clientProfile: project.owner
+        ? {
+            id: project.owner.id,
+            clientName: project.owner.fullName,
+            email: project.owner.email,
+            phone: project.owner.phone || null,
+          }
+        : null,
+      freelancerProfile: freelancer
+        ? {
+            id: freelancer.id,
+            freelancerName: freelancer.fullName,
+            email: freelancer.email,
+            phone: freelancer.phone || null,
+            status: freelancer.status,
+            avatar: freelancer.freelancerProfile?.profilePhoto || null,
+            professionalBio: freelancer.freelancerProfile?.professionalBio || "",
+            services: Array.isArray(freelancer.freelancerProfile?.services)
+              ? freelancer.freelancerProfile.services
+              : [],
+            serviceDetails: freelancer.freelancerProfile?.serviceDetails || {},
+          }
+        : null,
+      disputes: project.disputes.map((item) => ({
+        ...item,
+        createdAt: toIsoOrNull(item.createdAt),
+      })),
+      milestones,
+      milestoneApprovals: project.milestoneApprovals.map((item) => ({
+        ...item,
+        createdAt: toIsoOrNull(item.createdAt),
+      })),
+      handoverChecklist: {
+        handoverConfirmed: Boolean(project.closureHandoverConfirmed),
+        deliverablesConfirmed: Boolean(project.closureDeliverablesConfirmed),
+        finalFilesDelivered: Boolean(project.closureDeliverablesConfirmed),
+        receiptConfirmed: Boolean(project.closureReceiptConfirmed),
+        noIssuesConfirmed: Boolean(project.closureNoIssuesConfirmed),
+      },
+      appointments: appointments.map((item) => ({
+        ...item,
+        createdAt: toIsoOrNull(item.createdAt),
+        date: toIsoOrNull(item.date),
+      })),
+      notifications: projectNotifications.map((item) => ({
+        ...item,
+        createdAt: toIsoOrNull(item.createdAt),
+      })),
+    },
+  });
+});
+
+export const getProjectManagerProjectMessages = asyncHandler(async (req, res) => {
+  const { userId, projectId } = req.params;
+  await ensureProjectBelongsToManager(projectId, userId);
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      title: true,
+      ownerId: true,
+      proposals: {
+        where: { status: { in: ["ACCEPTED", "REPLACED"] } },
+        select: { freelancerId: true, status: true },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+
+  if (!project) {
+    throw new AppError("Project not found.", 404);
+  }
+
+  const conversations = await resolveProjectChatConversations(project);
+  const conversationIds = conversations.map((conversation) => conversation.id);
+
+  if (!conversationIds.length) {
+    res.json({ data: { conversation: null, conversations: [], messages: [] } });
+    return;
+  }
+
+  const latestConversation = conversations[0] || null;
+  const messages = await prisma.chatMessage.findMany({
+    where: { conversationId: { in: conversationIds } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: 1000,
+  });
+
+  res.json({
+    data: {
+      conversation: latestConversation
+        ? {
+            id: latestConversation.id,
+            service: latestConversation.service,
+            projectTitle: latestConversation.projectTitle,
+          }
+        : null,
+      conversations: conversations.map((conversation) => ({
+        id: conversation.id,
+        service: conversation.service,
+        projectTitle: conversation.projectTitle,
+      })),
+      messages: messages.map((message) => ({
+        id: message.id,
+        conversationId: message.conversationId,
+        content: message.content,
+        senderRole: message.senderRole,
+        senderLabel:
+          String(message.senderRole || "").toUpperCase() === PM_ROLE
+            ? "Project Manager"
+            : String(message.senderRole || "").toUpperCase() === ADMIN_ROLE
+              ? message.senderName || "Admin"
+              : message.senderName || message.senderRole || "User",
+        createdAt: toIsoOrNull(message.createdAt),
+      })),
+    },
+  });
+});
+
+export const sendProjectManagerProjectMessage = asyncHandler(async (req, res) => {
+  const { userId, projectId } = req.params;
+  const content = normalizeText(req.body?.content || req.body?.message);
+  if (!content) throw new AppError("Message content is required.", 400);
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      owner: { select: { id: true } },
+      proposals: {
+        where: { status: { in: ["ACCEPTED", "REPLACED"] } },
+        select: { freelancerId: true, status: true, freelancer: { select: { id: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+
+  if (!project || String(project.managerId || "") !== String(userId)) {
+    throw new AppError("Project not found for this Project Manager.", 404);
+  }
+
+  const serviceKey = getCanonicalProjectChatServiceKey(project);
+  let conversation = await prisma.chatConversation.findFirst({
+    where: { service: serviceKey },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  if (!conversation) {
+    conversation = await prisma.chatConversation.create({
+      data: {
+        service: serviceKey,
+        projectTitle: project.title,
+        createdById: req.user?.id || userId,
+      },
+    });
+  }
+
+  const senderId = req.user?.id || userId;
+  const senderName = normalizeText(req.user?.fullName || "Admin");
+  const message = await prisma.chatMessage.create({
+    data: {
+      conversationId: conversation.id,
+      senderId,
+      senderRole: ADMIN_ROLE,
+      senderName,
+      role: "user",
+      content,
+    },
+  });
+
+  await prisma.chatConversation.update({
+    where: { id: conversation.id },
+    data: { updatedAt: new Date() },
+  });
+
+  const activeProposal = getAcceptedProposal(project);
+  const recipients = [project.ownerId, project.managerId, activeProposal?.freelancerId]
+    .filter(Boolean)
+    .filter((recipientId) => String(recipientId) !== String(senderId));
+
+  await Promise.all(
+    recipients.map((recipientId) =>
+      sendNotificationToUser(recipientId, {
+        type: "chat",
+        title: "Admin project message",
+        message: `${senderName}: ${content.slice(0, 120)}`,
+        data: { projectId, conversationId: conversation.id, source: "ADMIN_PM_CONTROL" },
+      }).catch(() => null)
+    )
+  );
+
+  res.status(201).json({
+    data: {
+      id: message.id,
+      content: message.content,
+      senderRole: message.senderRole,
+      senderLabel: senderName,
+      createdAt: toIsoOrNull(message.createdAt),
+      conversationId: conversation.id,
+    },
+  });
 });
 
 // Update user role
