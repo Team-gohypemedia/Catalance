@@ -238,11 +238,16 @@ function PhoneAuth() {
     const digits = normalizePhoneNumber(rawValue);
     const dialDigits = normalizePhoneNumber(initialCountry?.dialCode || "");
 
+    let finalDigits = digits;
     if (dialDigits && digits.startsWith(dialDigits)) {
-      return digits.slice(dialDigits.length);
+      finalDigits = digits.slice(dialDigits.length);
     }
 
-    return digits;
+    if (finalDigits.startsWith("0") && finalDigits.length === 11) {
+      finalDigits = finalDigits.slice(1);
+    }
+
+    return finalDigits;
   })();
 
   const [countryCode, setCountryCode] = useState(initialCountryCode);
@@ -358,7 +363,11 @@ function PhoneAuth() {
   };
 
   const getPhonePayload = () => {
-    const normalizedPhoneNumber = normalizePhoneNumber(phoneDigits);
+    let normalizedPhoneNumber = normalizePhoneNumber(phoneDigits);
+
+    if (normalizedPhoneNumber.startsWith("0") && normalizedPhoneNumber.length === 11) {
+      normalizedPhoneNumber = normalizedPhoneNumber.slice(1);
+    }
 
     if (normalizedPhoneNumber.length < MIN_PHONE_DIGITS) {
       setFormError("Enter a valid phone number to continue.");
@@ -689,7 +698,10 @@ function PhoneAuth() {
                       showDigitsOnlyToast("Phone number can only contain numbers.");
                     }
 
-                    const digits = rawValue.replace(/\D/g, "").slice(0, 15);
+                    let digits = rawValue.replace(/\D/g, "").slice(0, 15);
+                    if (digits.startsWith("0") && digits.length === 11) {
+                      digits = digits.slice(1);
+                    }
                     setPhoneDigits(digits);
                     if (formError) setFormError("");
                   }}

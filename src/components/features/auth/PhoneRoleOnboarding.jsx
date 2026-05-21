@@ -183,12 +183,16 @@ function PhoneRoleOnboarding() {
   const [countryCode, setCountryCode] = useState(() =>
     getInitialCountryCode(initialPhoneValue),
   );
-  const [phoneNumber, setPhoneNumber] = useState(() =>
-    initialPhoneValue.replace(
+  const [phoneNumber, setPhoneNumber] = useState(() => {
+    let rawNum = initialPhoneValue.replace(
       new RegExp(`^${normalizePhoneNumber(COUNTRY_OPTION_BY_CODE[getInitialCountryCode(initialPhoneValue)]?.dialCode || "")}`),
       "",
-    ),
-  );
+    );
+    if (rawNum.startsWith("0") && rawNum.length === 11) {
+      rawNum = rawNum.slice(1);
+    }
+    return rawNum;
+  });
   const [profileImage, setProfileImage] = useState(() => getInitialProfileImage(user));
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [profileImageRemoved, setProfileImageRemoved] = useState(false);
@@ -370,10 +374,14 @@ function PhoneRoleOnboarding() {
 
     try {
       const uploadedAvatarUrl = await uploadProfileImage();
+      let finalPhoneDigits = phoneDigits;
+      if (finalPhoneDigits.startsWith("0") && finalPhoneDigits.length === 11) {
+        finalPhoneDigits = finalPhoneDigits.slice(1);
+      }
       const profileUpdates = {
         onboardingRole: roleOverride,
         fullName: fullName.trim(),
-        phoneNumber: `${selectedCountry?.dialCode || ""}${phoneDigits}`,
+        phoneNumber: `${selectedCountry?.dialCode || ""}${finalPhoneDigits}`,
         ...(emailValue ? { email: emailValue } : {}),
         ...(profileImageRemoved
           ? { avatar: null }
@@ -623,7 +631,10 @@ function PhoneRoleOnboarding() {
                     value={phoneNumber}
                     disabled={isSaving}
                     onChange={(event) => {
-                      const digits = event.target.value.replace(/\D/g, "");
+                      let digits = event.target.value.replace(/\D/g, "");
+                      if (digits.startsWith("0") && digits.length === 11) {
+                        digits = digits.slice(1);
+                      }
                       setPhoneNumber(digits.slice(0, 15));
                       setFormErrors({});
                     }}

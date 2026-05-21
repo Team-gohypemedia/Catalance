@@ -241,21 +241,28 @@ const Contact = () => {
             { title: "You Can Email Here", value: "support@catalance.com", link: "mailto:support@catalance.com" },
             { title: "Call us on", value: "+91 8882855425", link: "tel:+918882855425" },
             { title: "Working Hours", value: "10:00 am - 6:00 pm", link: null },
-          ].map((item, idx) => (
-            <div key={idx} className={`contact-card flex items-center justify-between p-5 rounded-xl border ${borderColor} ${cardBg} backdrop-blur-md group hover:-translate-y-1 transition-transform cursor-pointer`}>
-               <div className="flex flex-col gap-1 overflow-hidden pr-2">
-                 <span className={`text-[11px] md:text-xs uppercase tracking-wider font-semibold ${mutedText}`}>{item.title}</span>
-                 {item.link ? (
-                   <a href={item.link} className={`text-sm md:text-base font-bold truncate transition-colors ${brandTextClass} hover:opacity-80`}>{item.value}</a>
-                 ) : (
-                   <span className={`text-sm md:text-base font-bold truncate`}>{item.value}</span>
-                 )}
-               </div>
-               <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center bg-neutral-900 text-white dark:bg-white dark:text-black transition-transform group-hover:scale-110`}>
-                 <ArrowUpRight className="w-4 h-4" />
-               </div>
-            </div>
-          ))}
+          ].map((item, idx) => {
+            const CardElement = item.link ? "a" : "div";
+            const extraProps = item.link ? { href: item.link } : {};
+
+            return (
+              <CardElement
+                key={idx}
+                {...extraProps}
+                className={`contact-card flex items-center justify-between p-5 rounded-xl border ${borderColor} ${cardBg} backdrop-blur-md group hover:-translate-y-1 transition-transform cursor-pointer`}
+              >
+                <div className="flex flex-col gap-1 overflow-hidden pr-2 text-left">
+                  <span className={`text-[11px] md:text-xs uppercase tracking-wider font-semibold ${mutedText}`}>{item.title}</span>
+                  <span className={`text-sm md:text-base font-bold truncate transition-colors ${item.link ? `${brandTextClass} group-hover:opacity-80` : ""}`}>
+                    {item.value}
+                  </span>
+                </div>
+                <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center bg-neutral-900 text-white dark:bg-white dark:text-black transition-transform group-hover:scale-110`}>
+                  <ArrowUpRight className="w-4 h-4" />
+                </div>
+              </CardElement>
+            );
+          })}
         </div>
 
         {/* (Map Section Moved Below Form) */}
@@ -441,15 +448,12 @@ const Contact = () => {
         {/* 4. Two Info Cards */}
         <div className="hero-content w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
            {[
-             { title: "Freelancer Opportunities", desc: "Interested in becoming a top-tier freelancer and making a hands-on difference? Please visit our Freelancer page for more information and to apply.", btn: "Visit Page" },
-             { title: "Enterprise Solutions", desc: "To empower your business with elite talent or learn more about our enterprise options, visit our Enterprise page.", btn: "Enterprise Page" }
+             { title: "Freelancer Opportunities", desc: "Interested in becoming a top-tier freelancer and making a hands-on difference? Please visit our Freelancer page for more information and to apply." },
+             { title: "Enterprise Solutions", desc: "To empower your business with elite talent or learn more about our enterprise options, visit our Enterprise page." }
            ].map((info, idx) => (
               <div key={idx} className={`p-8 md:p-10 rounded-2xl border ${borderColor} ${cardBg} backdrop-blur-md flex flex-col items-start gap-4 hover:-translate-y-1 transition-transform`}>
                  <h3 className="text-lg md:text-xl font-bold">{info.title}</h3>
                  <p className={`text-xs md:text-sm leading-relaxed ${mutedText} mb-2`}>{info.desc}</p>
-                 <button className={`mt-auto px-6 py-3 rounded-full flex items-center gap-2 bg-neutral-900 text-white dark:bg-white dark:text-black text-sm font-semibold hover:shadow-lg transition-all`}>
-                    {info.btn} <ArrowUpRight className="w-4 h-4"/>
-                 </button>
               </div>
            ))}
         </div>
