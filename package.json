@@ -12,7 +12,8 @@
     "backend:dev": "npm --prefix backend run dev",
     "backend:build": "npm --prefix backend run build",
     "backend:start": "npm --prefix backend run start",
-    "backend:prisma:studio": "npm --prefix backend run prisma:studio"
+    "backend:prisma:studio": "npm --prefix backend run prisma:studio",
+    "prisma:seed": "npm --prefix backend run prisma:seed"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

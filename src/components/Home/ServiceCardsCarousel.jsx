@@ -5,142 +5,68 @@ import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import cataLogo from "@/assets/logos/logo.svg";
 import { Button } from "@/components/ui/button";
 
-const SERVICE_LOGO_MODULES = import.meta.glob("../../assets/icons/*.png", {
-  eager: true,
-  import: "default",
-});
-
-const normalizeServiceLogoKey = (value = "") =>
-  String(value || "")
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[_-]+/g, " ")
-    .replace(/[^a-z0-9 ]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-const SERVICE_LOGOS_BY_KEY = Object.entries(SERVICE_LOGO_MODULES).reduce(
-  (acc, [path, source]) => {
-    const fileName =
-      String(path || "").split("/").pop()?.replace(/\.png$/i, "") || "";
-    const key = normalizeServiceLogoKey(fileName);
-    if (key) acc[key] = source;
-    return acc;
-  },
-  {},
-);
-
-const SERVICE_LOGO_KEYS = Object.keys(SERVICE_LOGOS_BY_KEY);
-
-const SERVICE_LOGO_ALIASES = {
-  branding: "branding and brand identity",
-  "branding kit": "branding and brand identity",
-  "web development": "website development",
-  website: "website development",
-  "website uiux": "website development",
-  "website ui ux": "website development",
-  seo: "seo optimization",
-  "seo search engine optimisation": "seo optimization",
-  "seo search engine optimization": "seo optimization",
-  "social media marketing organic": "social media management",
-  "paid advertising performance": "performance marketing",
-  "performance marketing": "performance marketing",
-  "app development android ios cross platform": "app development",
-  "software development web saas custom systems": "software development",
-  "writing content": "writing and content",
-  "whatsapp chatbot": "whatsapp chat bot",
-  "creative design": "creative and design",
-  "modeling 3d": "3d modeling",
-  "cgi video services": "cgi video",
-  "crm erp integrated solutions": "crm and erp solutions",
-  "crm and erp integrated solutions": "crm and erp solutions",
-};
-
-const isLogoUrl = (value = "") =>
-  /^(?:https?:\/\/|\/|data:image\/)/i.test(String(value || "").trim());
-
-const resolveServiceLogoSrc = (service = {}) => {
-  const explicitLogo = [
-    service.logo,
-    service.logoUrl,
-    service.logo_url,
-    service.image,
-    service.imageUrl,
-    service.image_url,
-  ].find((value) => isLogoUrl(value));
-
-  if (explicitLogo) return explicitLogo;
-
-  const candidates = [service.slug, service.id, service.title, service.name];
-
-  for (const candidate of candidates) {
-    const normalized = normalizeServiceLogoKey(candidate);
-    if (!normalized) continue;
-    const mappedKey = SERVICE_LOGO_ALIASES[normalized] || normalized;
-    if (SERVICE_LOGOS_BY_KEY[mappedKey]) return SERVICE_LOGOS_BY_KEY[mappedKey];
-    const fuzzyKey = SERVICE_LOGO_KEYS.find(
-      (key) => key.includes(mappedKey) || mappedKey.includes(key),
-    );
-    if (fuzzyKey) return SERVICE_LOGOS_BY_KEY[fuzzyKey];
-  }
-
-  return cataLogo;
-};
+import voiceAgentImg from "@/assets/cards/voice-agent.png";
+import aiAutomationImg from "@/assets/cards/ai-automation.png";
+import crmErpImg from "@/assets/cards/crm-erp-solutions.png";
+import customerSupportImg from "@/assets/cards/customer-support.png";
 
 const HOME_SERVICES = [
-  { id: "website-development", title: "Website Development", description: "Custom and platform-based websites built for performance, speed, and growth." },
-  { id: "app-development", title: "App Development", description: "Mobile apps designed to engage users and scale businesses." },
-  { id: "software-development", title: "Software Development", description: "Custom software solutions built to solve real business problems." },
-  { id: "lead-generation", title: "Lead Generation", description: "Targeted campaigns that turn prospects into qualified business leads." },
-  { id: "video-services", title: "Video Editing", description: "Creative videos that tell stories and boost brand engagement." },
-  { id: "cgi-videos", title: "CGI Videos", description: "High-impact CGI visuals for products, ads, and storytelling." },
-  { id: "3d-modeling", title: "3D Modeling", description: "Detailed 3D models for products, visuals, and digital experiences." },
-  { id: "seo-optimization", title: "SEO Optimization", description: "Improve search rankings and drive consistent organic traffic." },
-  { id: "social-media-management", title: "Social Media Management", description: "Content and community management to grow your brand online." },
-  { id: "influencer-marketing", title: "Influencer Marketing", description: "Collaborate with creators to build trust and audience reach." },
-  { id: "ugc-marketing", title: "UGC Marketing", description: "Authentic creator content that boosts credibility and conversions." },
-  { id: "performance-marketing", title: "Performance Marketing", description: "Data-driven advertising campaigns focused on measurable results." },
-  { id: "creative-design", title: "Creative & Design", description: "Visual designs that strengthen branding and communication." },
-  { id: "branding", title: "Branding Kit", description: "Build strong brand identities that people remember and trust." },
-  { id: "writing-content", title: "Writing & Content", description: "Compelling content that informs, engages, and converts audiences." },
-  { id: "customer-support", title: "Customer Support", description: "Reliable support services that improve satisfaction and retention." },
-  { id: "crm-erp-solutions", title: "CRM & ERP Solutions", description: "Systems that streamline operations and centralize business data." },
-  { id: "ai-automation", title: "AI Automation", description: "Automate workflows to save time and improve team productivity." },
-  { id: "voice-agent", title: "Voice Agent", description: "AI voice automation for sales, support, and faster follow-ups." },
-  { id: "whatsapp-chatbot", title: "WhatsApp Chat Bot", description: "Automated conversations for faster support and conversion flows." },
+  {
+    id: "voice_agent",
+    title: "Voice Agent",
+    description: "Voice Agent (AI Voice Bot / Call Automation) for sales, support, and follow-ups.",
+    cardImg: voiceAgentImg,
+    price: "₹50,000/-",
+  },
+  {
+    id: "ai_automation",
+    title: "AI Automation",
+    description: "Automate workflows to save time and improve productivity.",
+    cardImg: aiAutomationImg,
+    price: "₹25,000/-",
+  },
+  {
+    id: "crm_erp_integrated_solutions",
+    title: "CRM & ERP Solutions",
+    description: "Systems that streamline operations and centralize business data.",
+    cardImg: crmErpImg,
+    price: "₹50,000/-",
+  },
+  {
+    id: "customer_support",
+    title: "Customer Support",
+    description: "Reliable support services that improve customer satisfaction and retention.",
+    cardImg: customerSupportImg,
+    price: "₹10,000/- Month",
+  },
 ];
-
-const HOME_SERVICE_PRICES = {
-  "website-development": "₹10,000/-",
-  "app-development": "₹80,000/-",
-  "software-development": "₹50,000/-",
-  "lead-generation": "₹15,000/- Month",
-  "video-services": "₹1,000/- Video",
-  "cgi-videos": "₹10,000/- Video",
-  "3d-modeling": "₹2,000/- Model",
-  "seo-optimization": "₹7,000/- Month",
-  "social-media-management": "₹8,000/- Month",
-  "influencer-marketing": "₹20,000/-",
-  "ugc-marketing": "₹20,000/-",
-  "performance-marketing": "₹15,000/- Month",
-  "creative-design": "₹500/- Creative",
-  branding: "₹10,000/-",
-  "writing-content": "₹500/- Article",
-  "customer-support": "₹10,000/- Month",
-  "crm-erp-solutions": "₹50,000/-",
-  "ai-automation": "₹25,000/-",
-  "voice-agent": "₹50,000/-",
-  "whatsapp-chatbot": "₹10,000/-",
-};
 
 const HOME_SERVICE_CARDS = HOME_SERVICES.map((service, index) => ({
   ...service,
-  price: HOME_SERVICE_PRICES[service.id] || "₹10,000/-",
-  logoSrc: resolveServiceLogoSrc(service),
-  isPriority: index < 4,
+  isPriority: true,
 }));
 
 const ServiceRailCard = React.memo(function ServiceRailCard({ service, onSelect }) {
+  if (service.cardImg) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(service)}
+        aria-label={`Explore ${service.title}`}
+        className="group relative flex h-[24rem] w-[16rem] flex-shrink-0 flex-col overflow-hidden rounded-[2rem] border border-border/10 bg-transparent shadow-[0_10px_28px_-26px_rgba(0,0,0,0.58)] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 sm:h-[27rem] sm:w-[18rem] sm:rounded-[2.1rem]"
+      >
+        <img
+          src={service.cardImg}
+          alt={service.title}
+          loading={service.isPriority ? "eager" : "lazy"}
+          fetchpriority={service.isPriority ? "high" : "low"}
+          decoding="async"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+        />
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -219,8 +145,13 @@ const ServiceCardsCarousel = () => {
     if (trackRef.current) trackRef.current.style.animationPlayState = "running";
   };
 
-  // Duplicate cards for seamless loop
-  const allCards = [...HOME_SERVICE_CARDS, ...HOME_SERVICE_CARDS];
+  // Duplicate cards for seamless loop (4 times to look smooth with 4 unique items)
+  const allCards = [
+    ...HOME_SERVICE_CARDS,
+    ...HOME_SERVICE_CARDS,
+    ...HOME_SERVICE_CARDS,
+    ...HOME_SERVICE_CARDS,
+  ];
 
   return (
     <section className="relative flex w-full items-center overflow-hidden bg-background py-20 sm:py-32">
@@ -277,7 +208,7 @@ const ServiceCardsCarousel = () => {
           type="button"
           onClick={() => navigate("/service")}
           variant="outline"
-          className="self-center mt-4 hover:bg-[#D9692A] hover:text-white hover:border-transparent transition-colors duration-300"
+          className="self-center mt-4 hover:bg-primary hover:text-primary-foreground hover:border-transparent transition-colors duration-300"
         >
           View All
         </Button>

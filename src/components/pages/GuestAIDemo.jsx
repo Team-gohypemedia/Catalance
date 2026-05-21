@@ -5702,8 +5702,9 @@ const GuestAIDemo = () => {
                                             <div
                                                 className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                                                 style={{
-                                                    background:
-                                                        'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(217, 105, 42, 0.18) 0%, rgba(217, 105, 42, 0.08) 30%, transparent 65%)',
+                                                    background: isDark
+                                                        ? 'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(249, 217, 73, 0.18) 0%, rgba(249, 217, 73, 0.08) 30%, transparent 65%)'
+                                                        : 'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(217, 105, 42, 0.18) 0%, rgba(217, 105, 42, 0.08) 30%, transparent 65%)',
                                                 }}
                                             />
                                             {isAgencySelectionMode ? (

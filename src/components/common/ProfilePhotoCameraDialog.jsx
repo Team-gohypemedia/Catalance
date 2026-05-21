@@ -130,16 +130,16 @@ export default function ProfilePhotoCameraDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-white/10 bg-[#101010] p-0 text-white shadow-[0_24px_90px_rgba(0,0,0,0.55)]">
+      <DialogContent className="max-w-md border-black/10 dark:border-white/10 bg-white dark:bg-[#101010] p-0 text-black dark:text-white shadow-[0_24px_90px_rgba(0,0,0,0.15)] dark:shadow-[0_24px_90px_rgba(0,0,0,0.55)]">
         <DialogHeader className="px-5 pt-5 text-left">
-          <DialogTitle className="text-base text-white">Take a picture</DialogTitle>
-          <DialogDescription className="text-sm text-white/55">
+          <DialogTitle className="text-base text-black dark:text-white">Take a picture</DialogTitle>
+          <DialogDescription className="text-sm text-black/55 dark:text-white/55">
             Use your camera for the profile photo.
           </DialogDescription>
         </DialogHeader>
 
         <div className="px-5">
-          <div className="relative aspect-square overflow-hidden rounded-[18px] border border-white/10 bg-black">
+          <div className="relative aspect-square overflow-hidden rounded-[18px] border border-black/10 dark:border-white/10 bg-black">
             <video
               ref={videoRef}
               autoPlay
@@ -171,7 +171,7 @@ export default function ProfilePhotoCameraDialog({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+            className="border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10"
           >
             Cancel
           </Button>

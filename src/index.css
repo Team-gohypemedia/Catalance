@@ -570,8 +570,10 @@ html.onboarding-page:not(.dark) main [class*="SelectTrigger"] {
   border-color: #E5E1D3 !important;
 }
 
-html.onboarding-page:not(.dark) main [class*="placeholder:text-white"] {
-  --placeholder-color: #7C778A;
+html.onboarding-page:not(.dark) main input::placeholder,
+html.onboarding-page:not(.dark) main textarea::placeholder {
+  color: #7C778A !important;
+  opacity: 0.65 !important;
 }
 
 /* Marketplace specific overrides */

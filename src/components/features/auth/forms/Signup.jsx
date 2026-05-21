@@ -464,12 +464,10 @@ function Signup({ className, ...props }) {
                   {isVerifying ? (
                     <div className="flex flex-col items-center gap-4 py-4">
                       <InputOTP maxLength={6} value={otpValue} onChange={setOtpValue}>
-                        <InputOTPGroup>
+                        <InputOTPGroup className="justify-center">
                           <InputOTPSlot index={0} />
                           <InputOTPSlot index={1} />
                           <InputOTPSlot index={2} />
-                        </InputOTPGroup>
-                        <InputOTPGroup>
                           <InputOTPSlot index={3} />
                           <InputOTPSlot index={4} />
                           <InputOTPSlot index={5} />

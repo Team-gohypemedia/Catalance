@@ -39,7 +39,6 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { ChevronLeft } from "lucide-react";
-import whatsappIcon from "@/assets/icons/whatsapp.svg";
 
 const CLIENT_ROLE = "CLIENT";
 const FREELANCER_ROLE = "FREELANCER";
@@ -83,13 +82,13 @@ const FlagIcon = ({ code, className = "h-5 w-5" }) => {
   const normalizedCode = String(code || "").trim().toUpperCase();
 
   if (!/^[A-Z]{2}$/.test(normalizedCode)) {
-    return <div className={className + " rounded-sm border border-white/10 bg-white/5"} />;
+    return <div className={className + " rounded-sm border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5"} />;
   }
 
   const FlagComponent = Flags[normalizedCode];
 
   if (!FlagComponent) {
-    return <div className={className + " rounded-sm border border-white/10 bg-white/5"} />;
+    return <div className={className + " rounded-sm border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5"} />;
   }
 
   return (
@@ -435,7 +434,7 @@ function PhoneRoleOnboarding() {
                       type="button"
                       disabled={isSaving}
                       aria-label={hasProfilePhoto ? "Change profile photo" : "Add profile photo"}
-                      className="group relative flex size-32 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-white/20 bg-[#1a1a1a] text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-[#0b0b0c] sm:size-36"
+                      className="group relative flex size-32 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-black/10 dark:border-white/20 bg-black/5 dark:bg-[#1a1a1a] text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-background sm:size-36"
                     >
                       {hasProfilePhoto ? (
                         <img
@@ -452,7 +451,7 @@ function PhoneRoleOnboarding() {
                   <PopoverContent
                     align="center"
                     sideOffset={10}
-                    className="w-56 rounded-[18px] border border-white/10 bg-[#161616] p-1 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                    className="w-56 rounded-[18px] border border-black/10 dark:border-white/10 bg-white dark:bg-[#161616] p-1 text-black dark:text-white shadow-2xl backdrop-blur-xl"
                   >
                     <button
                       type="button"
@@ -461,7 +460,7 @@ function PhoneRoleOnboarding() {
                         setIsCameraOpen(true);
                       }}
                       disabled={isSaving}
-                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-white transition-colors hover:bg-white/8 focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-black dark:text-white transition-colors hover:bg-black/5 dark:hover:bg-white/8 focus:bg-black/5 dark:focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Camera className="size-4 text-primary" />
                       <span>Take a picture</span>
@@ -473,7 +472,7 @@ function PhoneRoleOnboarding() {
                         deviceInputRef.current?.click();
                       }}
                       disabled={isSaving}
-                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-white transition-colors hover:bg-white/8 focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-black dark:text-white transition-colors hover:bg-black/5 dark:hover:bg-white/8 focus:bg-black/5 dark:focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Upload className="size-4 text-primary" />
                       <span>Choose from device</span>
@@ -495,7 +494,7 @@ function PhoneRoleOnboarding() {
                     type="button"
                     onClick={handleProfileImageRemove}
                     aria-label="Remove profile photo"
-                    className="absolute right-1 top-1 flex size-8 items-center justify-center rounded-full border border-white/10 bg-[#101010] text-white/75 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition-colors hover:border-white/20 hover:text-white"
+                    className="absolute right-1 top-1 flex size-8 items-center justify-center rounded-full border border-black/10 dark:border-white/10 bg-white dark:bg-[#101010] text-black/75 dark:text-white/75 shadow-md transition-colors hover:border-black/20 dark:hover:border-white/20 hover:text-black dark:hover:text-white"
                   >
                     <X className="size-3.5" />
                   </button>
@@ -509,10 +508,10 @@ function PhoneRoleOnboarding() {
               </div>
 
               <div className="space-y-1">
-                <p className={cn(fieldLabelClassName, "text-white")}>
+                <p className={cn(fieldLabelClassName, "text-black dark:text-white")}>
                   Profile Photo
                 </p>
-                <p className="text-sm text-white/55">
+                <p className="text-sm text-black/55 dark:text-white/55">
                   JPG, PNG or GIF. Max 5MB.
                 </p>
               </div>
@@ -544,9 +543,9 @@ function PhoneRoleOnboarding() {
                     setFormErrors({});
                   }}
                   placeholder="Enter your full name"
-                  className="!h-10 rounded-md border-white/10 bg-[#171717] px-3 pr-11 text-[13px] text-white/90 placeholder:text-white/35 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                  className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:text-[#1c1b1f]/45 dark:placeholder:text-[#ffffff]/35 focus-visible:border-primary/60 focus-visible:ring-primary/20"
                 />
-                <User className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-white/35" />
+                <User className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
               </div>
             </label>
 
@@ -565,9 +564,9 @@ function PhoneRoleOnboarding() {
                     setFormErrors({});
                   }}
                   placeholder="Enter your email address"
-                  className="!h-10 rounded-md border-white/10 bg-[#171717] px-3 pr-11 text-[13px] text-white/90 placeholder:text-white/35 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                  className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:text-[#1c1b1f]/45 dark:placeholder:text-[#ffffff]/35 focus-visible:border-primary/60 focus-visible:ring-primary/20"
                 />
-                <Mail className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-white/35" />
+                <Mail className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
               </div>
             </label>
 
@@ -587,7 +586,7 @@ function PhoneRoleOnboarding() {
                   <SelectTrigger
                     type="button"
                     aria-label="Select country code"
-                    className="!h-10 w-full cursor-pointer rounded-md border-white/10 bg-[#171717] px-2.5 text-white"
+                    className="!h-10 w-full cursor-pointer rounded-md border-black/15 dark:border-white/10 bg-black/[0.03] dark:bg-[#171717] px-2.5 text-black dark:text-white"
                   >
                     <div className="pointer-events-none flex items-center justify-center select-none">
                       <FlagIcon code={selectedCountry.code} className="h-5 w-5" />
@@ -596,18 +595,18 @@ function PhoneRoleOnboarding() {
                   <SelectContent
                     position="popper"
                     sideOffset={8}
-                    className="z-[60] min-w-[18rem] border-white/10 bg-[#121212] text-white shadow-2xl sm:min-w-[26rem]"
+                    className="z-[60] min-w-[18rem] border-black/10 dark:border-white/10 bg-white dark:bg-[#121212] text-black dark:text-white shadow-2xl sm:min-w-[26rem]"
                   >
                     {COUNTRY_OPTIONS.map((option) => (
                       <SelectItem
                         key={option.code}
                         value={option.code}
-                        className="group cursor-pointer text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white pr-8 group-data-[state=checked]:pr-14"
+                        className="group cursor-pointer text-black dark:text-white data-[highlighted]:bg-black/5 dark:data-[highlighted]:bg-white/5 data-[highlighted]:text-black dark:data-[highlighted]:text-white pr-8 group-data-[state=checked]:pr-14"
                       >
                         <span className="flex w-full items-center gap-0">
                           <FlagIcon code={option.code} className="h-5 w-5" />
                           <span className="min-w-0 flex-1 truncate text-[13px] ml-3">{option.label}</span>
-                          <span className="text-white/45 text-[13px] absolute right-3 group-data-[state=checked]:right-8">
+                          <span className="text-black/45 dark:text-white/45 text-[13px] absolute right-3 group-data-[state=checked]:right-8">
                             +{option.dialCode.replace(/\D/g, "")}
                           </span>
                         </span>
@@ -629,9 +628,9 @@ function PhoneRoleOnboarding() {
                       setFormErrors({});
                     }}
                     placeholder="9999999999"
-                    className="!h-10 w-full rounded-md border-white/10 bg-[#171717] px-3 pr-11 text-[13px] text-white/90 placeholder:text-white/35 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                    className="!h-10 w-full rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:text-[#1c1b1f]/45 dark:placeholder:text-[#ffffff]/35 focus-visible:border-primary/60 focus-visible:ring-primary/20"
                   />
-                  <Phone className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-white/35" />
+                  <Phone className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
                 </div>
               </div>
             </label>
@@ -729,7 +728,7 @@ function PhoneRoleOnboarding() {
           type="button"
           disabled={isSaving}
           onClick={handleBack}
-          className="absolute left-4 top-6 z-10 !h-10 rounded-md border bg-background px-3 text-sm text-white hover:bg-accent/10 hover:text-white sm:left-6 lg:left-8"
+          className="absolute left-4 top-6 z-10 !h-10 rounded-md border border-black/10 dark:border-white/10 bg-background px-3 text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 sm:left-6 lg:left-8"
         >
           <ChevronLeft className="size-4" />
           Back
@@ -751,7 +750,7 @@ function PhoneRoleOnboarding() {
             </div>
           )}
           {activeSlide === 0 ? (
-            <Card className="w-full rounded-lg border border-white/10 bg-[#101010]/90 p-5 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] sm:p-6 lg:p-7">
+            <Card className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-[#101010]/90 p-5 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.15)] dark:shadow-[0_30px_120px_-60px_rgba(0,0,0,0.95)] sm:p-6 lg:p-7">
 
               {renderSlideContent()}
 
@@ -767,7 +766,7 @@ function PhoneRoleOnboarding() {
                       variant="outline"
                       disabled={isSaving}
                       onClick={handleBack}
-                      className="!h-10 rounded-md border-white/12 bg-white/[0.03] px-3 text-sm text-white hover:bg-white/[0.06] hover:text-white"
+                      className="!h-10 rounded-md border-black/12 dark:border-white/12 bg-black/[0.03] dark:bg-white/[0.03] px-3 text-sm text-black dark:text-white hover:bg-black/[0.06] dark:hover:bg-white/[0.06]"
                     >
                       <ArrowLeft className="size-4" />
                       Back
@@ -780,10 +779,8 @@ function PhoneRoleOnboarding() {
                     onClick={handleNext}
                     className="!h-10 flex-1 rounded-md bg-primary text-sm font-medium text-black hover:bg-primary/95"
                   >
-                    {isSaving ? (
+                    {isSaving && (
                       <Loader2 className="size-[18px] animate-spin" />
-                    ) : isLastSlide ? null : (
-                      <img src={whatsappIcon} alt="" className="size-[18px]" />
                     )}
                     {isSaving ? "Saving..." : isLastSlide ? "Finish setup" : "Continue with WhatsApp"}
                     {!isSaving && isLastSlide ? (
@@ -794,7 +791,7 @@ function PhoneRoleOnboarding() {
               )}
 
               {activeSlide === 0 && (
-                <div className="mt-3 flex items-center justify-center gap-2 text-xs text-white/45">
+                <div className="mt-3 flex items-center justify-center gap-2 text-xs text-black/45 dark:text-white/45">
                   <Lock className="size-3.5 text-primary/80" />
                   <span>Your information is secure and will never be shared.</span>
                 </div>

@@ -31,6 +31,11 @@ npm run dev                             # nodemon on http://localhost:5000
 
 Fill in `backend/.env` with your Neon, Resend, and auth secrets before running the commands above.
 
+Admin dashboard seed credentials:
+
+- Email: `admin@catalance.com`
+- Password: `Password123`
+
 You can execute the same commands from the repository root:
 
 ```bash
@@ -38,6 +43,7 @@ npm run backend:dev
 npm run backend:build
 npm run backend:start
 npm run backend:prisma:studio
+npm run prisma:seed
 ```
 
 ### Backend structure

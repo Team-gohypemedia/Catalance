@@ -20,6 +20,7 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login: setAuthSession } = useAuth();
+  const showSeedHint = import.meta.env.DEV;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -106,6 +107,12 @@ const AdminLogin = () => {
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? "Signing in..." : "Sign In"}
             </Button>
+
+            {showSeedHint && (
+              <p className="text-xs text-muted-foreground text-center">
+                Seeded local admin: <span className="font-medium">admin@catalance.com</span> / <span className="font-medium">Password123</span>
+              </p>
+            )}
           </form>
         </CardContent>
       </Card>

@@ -1,15 +1,97 @@
 import { Router } from "express";
-import { getDashboardStats, getUsers, updateUserRole, updateUserStatus, updateUserVerification, getUserDetails, getProjects, getProjectDetails, getServices, upsertService, getServiceQuestions, upsertQuestion, reorderQuestions, deleteQuestion, createProjectManager, updateProjectManager, updateProjectManagerProfile, updateProjectManagerNotification, markAllProjectManagerNotificationsRead, updateProjectManagerReport, createProjectManagerMeeting, updateProjectManagerMeeting, approveProjectManagerMilestone, finalizeProjectManagerHandover, getProjectManagerProjectDetails, getProjectManagerProjectMessages, sendProjectManagerProjectMessage } from "../controllers/admin.controller.js";
-import { deleteAdminBlog, getAdminBlogById, getAdminBlogs, upsertAdminBlog } from "../controllers/blog.controller.js";
+
+import {
+  getDashboardStats,
+  getUsers,
+  updateUserRole,
+  updateUserStatus,
+  updateUserVerification,
+  getUserDetails,
+  getProjects,
+  getProjectDetails,
+  getServices,
+  upsertService,
+  getServiceQuestions,
+  upsertQuestion,
+  reorderQuestions,
+  deleteQuestion,
+  createProjectManager,
+  updateProjectManager,
+  updateProjectManagerProfile,
+  updateProjectManagerNotification,
+  markAllProjectManagerNotificationsRead,
+  updateProjectManagerReport,
+  createProjectManagerMeeting,
+  updateProjectManagerMeeting,
+  approveProjectManagerMilestone,
+  finalizeProjectManagerHandover,
+  getProjectManagerProjectDetails,
+  getProjectManagerProjectMessages,
+  sendProjectManagerProjectMessage,
+} from "../controllers/admin.controller.js";
+
+import {
+  archiveFreelancerOnboardingSubmission,
+  createFreelancerOnboardingSubmission,
+  getFreelancerOnboardingSubmission,
+  listFreelancerOnboardingSubmissions,
+  updateFreelancerOnboardingStatus,
+  updateFreelancerOnboardingSubmission,
+} from "../controllers/adminFreelancerOnboarding.controller.js";
+
+import {
+  deleteAdminBlog,
+  getAdminBlogById,
+  getAdminBlogs,
+  upsertAdminBlog,
+} from "../controllers/blog.controller.js";
+
 import { requireAuth } from "../middlewares/require-auth.js";
 import { requireAdmin } from "../middleware/admin.middleware.js";
 import { adminEngagementRouter } from "../modules/engagement/routes/adminEngagement.routes.js";
+import { validateResource } from "../middlewares/validate-resource.js";
 
+import {
+  listFreelancerOnboardingSchema,
+  onboardingStatusActionSchema,
+  onboardingSubmissionIdParamsSchema,
+  onboardingSubmissionWriteSchema,
+} from "../modules/users/admin-freelancer-onboarding.schema.js";
 const router = Router();
 
 router.use(requireAuth, requireAdmin);
 
 router.get("/stats", getDashboardStats);
+router.get(
+  "/freelancer-onboarding",
+  validateResource(listFreelancerOnboardingSchema),
+  listFreelancerOnboardingSubmissions
+);
+router.post(
+  "/freelancer-onboarding",
+  validateResource(onboardingSubmissionWriteSchema),
+  createFreelancerOnboardingSubmission
+);
+router.get(
+  "/freelancer-onboarding/:submissionId",
+  validateResource(onboardingSubmissionIdParamsSchema),
+  getFreelancerOnboardingSubmission
+);
+router.put(
+  "/freelancer-onboarding/:submissionId",
+  validateResource(onboardingSubmissionWriteSchema),
+  updateFreelancerOnboardingSubmission
+);
+router.patch(
+  "/freelancer-onboarding/:submissionId/status",
+  validateResource(onboardingStatusActionSchema),
+  updateFreelancerOnboardingStatus
+);
+router.delete(
+  "/freelancer-onboarding/:submissionId",
+  validateResource(onboardingSubmissionIdParamsSchema),
+  archiveFreelancerOnboardingSubmission
+);
 router.get("/users", getUsers);
 router.get("/users/:userId", getUserDetails);
 router.post("/project-managers", createProjectManager);

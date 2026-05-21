@@ -23,6 +23,8 @@ import pmRouter from "./pm.routes.js";
 import blogRouter from "./blog.routes.js";
 import { whatsappWebhookRouter } from "./whatsapp-webhook.routes.js";
 import { freelancerEngagementRouter } from "../modules/engagement/routes/freelancerEngagement.routes.js";
+import { env } from "../config/env.js";
+import devRouter from "./dev.routes.js";
 
 export const apiRouter = Router();
 
@@ -50,3 +52,7 @@ apiRouter.use("/pm", pmRouter);
 apiRouter.use("/blogs", blogRouter);
 apiRouter.use("/webhooks/whatsapp", whatsappWebhookRouter);
 apiRouter.use("/engagement", freelancerEngagementRouter);
+
+if (env.NODE_ENV !== "production") {
+  apiRouter.use("/dev", devRouter);
+}

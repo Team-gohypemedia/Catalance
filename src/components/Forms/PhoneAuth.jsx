@@ -41,7 +41,6 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import logo from "@/assets/logos/logo.svg";
-import whatsappIcon from "@/assets/icons/whatsapp.svg";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
@@ -602,7 +601,7 @@ function PhoneAuth() {
     const submitButtonClass = compact
       ? "!h-10 w-full rounded-md bg-primary text-[12px] font-medium text-black shadow-none hover:bg-primary/95 sm:text-[13px]"
       : "!h-12 w-full rounded-md bg-primary text-[13px] font-medium text-black shadow-none hover:bg-primary/95 sm:text-[14px]";
-    const otpSlotClass = "h-10 w-10 sm:h-11 sm:w-11";
+    const otpSlotClass = "h-12 w-12 sm:h-14 sm:w-14 text-base sm:text-lg font-semibold";
     const selectedCountryDialDigits = normalizePhoneNumber(
       selectedCountry?.dialCode || "",
     );
@@ -804,11 +803,9 @@ function PhoneAuth() {
           }
           className={submitButtonClass}
         >
-          {isSubmitting ? (
+          {isSubmitting && (
             <Loader2 className={compact ? "size-[18px] animate-spin" : "size-5 animate-spin"} />
-          ) : !isOtpStep ? (
-            <img src={whatsappIcon} alt="" className={compact ? "size-[18px]" : "size-5"} />
-          ) : null}
+          )}
           {isSubmitting ? loadingLabel : buttonLabel}
         </Button>
       </form>

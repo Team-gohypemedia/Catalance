@@ -209,7 +209,7 @@ export const NavItems = ({
           >
             <span className="relative z-20">
               <motion.span
-                style={{ color: isActive ? "#1C1B1F" : textColor }}
+                style={{ color: isActive ? (isDark ? "#1C1B1F" : "#FFFFFF") : textColor }}
                 className={cn(
                   "transition-colors duration-200",
                   isActive ? "font-bold" : "font-medium",

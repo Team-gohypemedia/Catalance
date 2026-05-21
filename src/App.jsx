@@ -75,9 +75,6 @@ const ManagerReports = lazy(
 const ManagerProjectSetup = lazy(
   () => import("@/modules/project-manager/pages/ProjectSetupPage"),
 );
-const SignupPage = lazy(
-  () => import("@/components/features/auth/forms/Signup"),
-);
 const EmailAuthPage = lazy(() => import("@/components/Forms/EmailAuth"));
 const PhoneAuthPage = lazy(() => import("@/components/Forms/PhoneAuth"));
 const PhoneRoleOnboarding = lazy(
@@ -145,6 +142,9 @@ const AdminDisputes = lazy(
 const AdminLogin = lazy(() => import("@/components/features/admin/AdminLogin"));
 const AdminApprovals = lazy(
   () => import("@/components/features/admin/AdminApprovals"),
+);
+const AdminFreelancerOnboarding = lazy(
+  () => import("@/components/features/admin/AdminFreelancerOnboarding"),
 );
 const AdminUserDetails = lazy(
   () => import("@/components/features/admin/AdminUserDetails"),
@@ -726,6 +726,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminUsers roleFilter="FREELANCER" />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/freelancer-onboarding"
+              element={
+                <AdminRoute>
+                  <AdminFreelancerOnboarding />
                 </AdminRoute>
               }
             />

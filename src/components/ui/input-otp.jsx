@@ -27,7 +27,7 @@ function InputOTPGroup({
   return (
     <div
       data-slot="input-otp-group"
-      className={cn("flex items-center", className)}
+      className={cn("flex items-center gap-3 sm:gap-4", className)}
       {...props} />
   );
 }
@@ -45,7 +45,7 @@ function InputOTPSlot({
       data-slot="input-otp-slot"
       data-active={isActive}
       className={cn(
-        "data-[active=true]:border-primary data-[active=true]:ring-2 data-[active=true]:ring-primary/50 data-[active=true]:aria-invalid:ring-destructive/20 dark:data-[active=true]:aria-invalid:ring-destructive/40 aria-invalid:border-destructive data-[active=true]:aria-invalid:border-destructive bg-black/5 dark:bg-[#171717] border-black/20 dark:border-white/20 relative flex h-9 w-9 items-center justify-center border text-sm shadow-xs transition-all outline-none first:rounded-l-md last:rounded-r-md data-[active=true]:z-10",
+        "data-[active=true]:border-primary data-[active=true]:ring-2 data-[active=true]:ring-primary/50 data-[active=true]:aria-invalid:ring-destructive/20 dark:data-[active=true]:aria-invalid:ring-destructive/40 aria-invalid:border-destructive data-[active=true]:aria-invalid:border-destructive bg-black/5 dark:bg-[#171717] border-black/20 dark:border-white/20 relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center border text-base sm:text-lg font-semibold shadow-xs transition-all outline-none rounded-xl data-[active=true]:z-10",
         className
       )}
       {...props}>

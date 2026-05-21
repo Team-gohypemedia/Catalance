@@ -36,7 +36,7 @@ const FreelancerClientCards = () => {
     theme === "dark" || 
     (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-  const brandColor = isDarkMode ? "#FFC107" : "#D9692A";
+  const brandColor = isDarkMode ? "#F9D949" : "#D9692A";
   
   const cardClassName = isDarkMode
     ? "relative isolate flex min-h-[26rem] flex-col rounded-[2rem] border border-white/10 bg-white/5 px-6 pb-6 pt-6 text-left shadow-2xl backdrop-blur-xl transition-all duration-500 ease-in-out"
@@ -44,27 +44,27 @@ const FreelancerClientCards = () => {
 
   const textHeadingClass = isDarkMode
     ? "text-white"
-    : "text-[#1C1B1F] group-hover:!text-white transition-colors duration-500 ease-in-out";
+    : "text-[#1C1B1F] group-hover:!text-[#ffffff] transition-colors duration-500 ease-in-out";
 
   const textMutedClass = isDarkMode
     ? "text-white/50"
-    : "text-[#1C1B1F]/50 group-hover:!text-white/70 transition-colors duration-500 ease-in-out";
+    : "text-[#1C1B1F]/50 group-hover:!text-[#ffffff]/70 transition-colors duration-500 ease-in-out";
 
   const textFeatureClass = isDarkMode
     ? "text-white/70"
-    : "text-[#1C1B1F] group-hover:!text-white transition-colors duration-500 ease-in-out";
+    : "text-[#1C1B1F] group-hover:!text-[#ffffff] transition-colors duration-500 ease-in-out";
 
   const iconContainerClass = isDarkMode
     ? "bg-white/5"
     : "bg-transparent group-hover:!bg-white/20 transition-colors duration-500 ease-in-out";
 
   const iconClass = isDarkMode
-    ? "text-[#FFC107]"
-    : "text-[#1C1B1F]/60 group-hover:!text-white transition-colors duration-500 ease-in-out";
+    ? "text-[#F9D949]"
+    : "text-[#1C1B1F]/60 group-hover:!text-[#ffffff] transition-colors duration-500 ease-in-out";
 
   const buttonClass = isDarkMode
-    ? "bg-[#FFC107] text-[#1C1B1F]"
-    : "bg-[#D9692A] !text-white border border-transparent group-hover:!bg-white group-hover:!text-[#D9692A] transition-colors duration-500 ease-in-out shadow-sm group-hover:shadow-lg";
+    ? "bg-[#F9D949] text-[#1C1B1F]"
+    : "bg-[#D9692A] !text-[#ffffff] border border-transparent group-hover:!bg-white group-hover:!text-[#D9692A] transition-colors duration-500 ease-in-out shadow-sm group-hover:shadow-lg";
 
   return (
     <section className="relative flex w-full items-center justify-center overflow-hidden bg-[#fafaf9] dark:bg-[#020202] px-4 py-20 sm:py-32 sm:px-6 lg:px-8 transition-colors duration-500">

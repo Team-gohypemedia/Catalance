@@ -55,7 +55,7 @@ function StarRating() {
     theme === "dark" || 
     (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-  const starColor = isDarkMode ? "#FFC107" : "#D9692A";
+  const starColor = isDarkMode ? "#F9D949" : "#D9692A";
 
   return (
     <div className="flex items-center gap-1" aria-label="5 out of 5 stars">
@@ -99,7 +99,7 @@ function TestimonialCard({ testimonial }) {
         <div className="relative">
           <div className={cn(
             "absolute -inset-1 rounded-full opacity-20 blur-sm transition duration-500 group-hover:opacity-100",
-            isDark ? "bg-[#FFC107]" : "bg-[#D9692A]"
+            isDark ? "bg-[#F9D949]" : "bg-[#D9692A]"
           )} />
           <img
             src={testimonial.image}
@@ -122,7 +122,7 @@ function TestimonialCard({ testimonial }) {
 }
 
 const WavyBackground = ({ isDark }) => {
-  const waveColor = isDark ? "#FFC107" : "#D9692A";
+  const waveColor = isDark ? "#F9D949" : "#D9692A";
   
   return (
     <div className="absolute inset-0 z-0 overflow-hidden opacity-20 dark:opacity-30">
@@ -151,9 +151,9 @@ const WavyBackground = ({ isDark }) => {
   )
 }
 
-const FloatingAvatar = ({ image, delay = 0, x = "0%", y = "0%", scale = 1 }) => (
+const FloatingAvatar = ({ testimonial, delay = 0, x = "0%", y = "0%", scale = 1, isDark }) => (
   <motion.div
-    className="absolute z-10"
+    className="absolute z-10 hover:z-50"
     style={{ left: x, top: y }}
     initial={{ opacity: 0, scale: 0 }}
     animate={{ 
@@ -168,12 +168,34 @@ const FloatingAvatar = ({ image, delay = 0, x = "0%", y = "0%", scale = 1 }) => 
     }}
   >
     <div className="group relative">
-      <div className="absolute -inset-1.5 rounded-full bg-linear-to-r from-primary to-orange-400 opacity-20 blur-lg transition duration-500 group-hover:opacity-100" />
+      <div className={cn("absolute -inset-1 rounded-full opacity-20 blur-sm transition duration-500 group-hover:opacity-100", isDark ? "bg-[#F9D949]" : "bg-[#D9692A]")} />
       <img
-        src={image}
-        alt="User"
+        src={testimonial.image}
+        alt={testimonial.name}
         className="relative size-10 rounded-full border-2 border-white/30 object-cover grayscale transition duration-500 group-hover:grayscale-0 group-hover:scale-110 sm:size-16"
       />
+      {/* Pop-up Review */}
+      <div className="absolute top-full left-1/2 mt-3 w-48 sm:w-56 -translate-x-1/2 opacity-0 pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:-translate-y-1">
+        <div className={cn("relative rounded-xl border backdrop-blur-md p-3 sm:p-4 shadow-xl", isDark ? "border-white/10 bg-neutral-900/90" : "border-black/5 bg-white/95")}>
+            {/* Triangle pointer */}
+            <div className={cn(
+              "absolute -top-[6px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-t border-l",
+              isDark 
+                ? "border-white/10 bg-[#171717]" 
+                : "border-black/5 bg-white/95"
+            )}></div>
+           
+           <div className="flex items-center gap-0.5 mb-1.5 sm:mb-2">
+             {Array.from({ length: 5 }).map((_, i) => (
+               <svg key={i} viewBox="0 0 20 20" className="h-2.5 w-2.5 sm:h-3 sm:w-3" style={{ fill: isDark ? "#F9D949" : "#D9692A", color: isDark ? "#F9D949" : "#D9692A" }}>
+                 <path d="M10 1.5l2.49 5.04 5.56.81-4.02 3.92.95 5.54L10 13.98 5.02 16.81l.95-5.54-4.02-3.92 5.56-.81L10 1.5z" />
+               </svg>
+             ))}
+           </div>
+           <p className={cn("text-[10px] sm:text-xs font-medium italic leading-relaxed line-clamp-3", isDark ? "text-white/90" : "text-neutral-700")}>"{testimonial.quote}"</p>
+           <p className={cn("text-[9px] sm:text-[10px] font-bold mt-1.5 sm:mt-2 uppercase tracking-wider")} style={{ color: isDark ? "#F9D949" : "#D9692A" }}>- {testimonial.name}</p>
+        </div>
+      </div>
     </div>
   </motion.div>
 )
@@ -227,7 +249,7 @@ const Testimonidals = () => {
               <motion.path
                 key={i}
                 d={`M-100 ${20 + i * 35} Q 360 ${-30 + i * 30}, 720 ${20 + i * 35} T 1540 ${20 + i * 35}`}
-                stroke={isDark ? "#FFC107" : "#D9692A"}
+                stroke={isDark ? "#F9D949" : "#D9692A"}
                 strokeWidth={1 + i * 0.1}
                 fill="none"
               />
@@ -235,13 +257,13 @@ const Testimonidals = () => {
           </svg>
         </div>
         
-        <FloatingAvatar image={testimonial1} x="5%" y="10%" delay={0} scale={0.8} />
-        <FloatingAvatar image={testimonial2} x="12%" y="45%" delay={1} scale={1} />
-        <FloatingAvatar image={testimonial3} x="85%" y="15%" delay={0.5} scale={0.9} />
-        <FloatingAvatar image={testimonial4} x="90%" y="45%" delay={1.5} scale={0.75} />
-        <FloatingAvatar image={testimonial2} x="20%" y="65%" delay={2} scale={1.1} />
-        <FloatingAvatar image={testimonial3} x="78%" y="70%" delay={0.8} scale={1} />
-        <FloatingAvatar image={testimonial4} x="50%" y="5%" delay={1.2} scale={0.7} />
+        <FloatingAvatar testimonial={testimonials[0]} x="5%" y="10%" delay={0} scale={0.8} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[1]} x="12%" y="45%" delay={1} scale={1} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[2]} x="85%" y="15%" delay={0.5} scale={0.9} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[3]} x="90%" y="45%" delay={1.5} scale={0.75} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[4]} x="20%" y="65%" delay={2} scale={1.1} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[5]} x="78%" y="70%" delay={0.8} scale={1} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[3]} x="50%" y="5%" delay={1.2} scale={0.7} isDark={isDark} />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">

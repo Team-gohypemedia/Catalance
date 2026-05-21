@@ -383,8 +383,8 @@ function EmailAuth() {
       ? "block text-[11px] font-medium uppercase tracking-[0.18em] text-black/55 dark:text-white/55"
       : "block text-[12px] font-medium uppercase tracking-[0.2em] text-black/55 dark:text-white/55";
     const inputClass = compact
-      ? "!h-10 !py-0 rounded-md border-black/10 dark:border-white/10 bg-black/5 dark:bg-[#171717] px-3 text-[13px] leading-none text-black/90 dark:text-white/90 placeholder:text-black/35 dark:placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
-      : "!h-12 !py-0 rounded-md border-black/10 dark:border-white/10 bg-black/5 dark:bg-[#171717] px-4 text-[15px] leading-none text-black/90 dark:text-white/90 placeholder:text-black/35 dark:placeholder:text-white/35 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
+      ? "!h-10 !py-0 rounded-md border-black/10 dark:border-[#ffffff]/10 bg-black/5 dark:bg-[#171717] px-3 text-[13px] leading-none text-black/90 dark:text-[#ffffff]/90 placeholder:text-black/35 dark:placeholder:text-[#ffffff]/35 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20"
+      : "!h-12 !py-0 rounded-md border-black/10 dark:border-[#ffffff]/10 bg-black/5 dark:bg-[#171717] px-4 text-[15px] leading-none text-black/90 dark:text-[#ffffff]/90 placeholder:text-black/35 dark:placeholder:text-[#ffffff]/35 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] focus-visible:border-primary/60 focus-visible:ring-primary/20";
     const submitButtonClass = compact
       ? "!h-11 w-full rounded-md bg-primary text-[15px] font-medium text-black shadow-none hover:bg-primary/95"
       : "!h-14 w-full rounded-md bg-primary text-base font-medium text-black shadow-none hover:bg-primary/95 sm:text-[17px]";

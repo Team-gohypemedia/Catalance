@@ -28,7 +28,7 @@ const BlackholeParticles = () => {
     let centerY = 0;
     let maxRadius = 0;
     let animationFrame = 0;
-    const particleCount = 80; // Reduced from 160 for performance
+    const particleCount = 80;
 
     const createParticle = () => {
       const radius = Math.random() * maxRadius;
@@ -44,15 +44,13 @@ const BlackholeParticles = () => {
     };
 
     let particles = [];
-
     let particleColorRGB = "255, 255, 255";
 
     const resize = () => {
       const bounds = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
-      
+
       const fg = getComputedStyle(document.documentElement).getPropertyValue("--foreground").trim();
-      // Simple check to see if we are in light mode (very dark foreground color)
       particleColorRGB = fg.includes("1C1B1F") || fg.includes("0, 0, 0") || fg.includes("#1C1B1F") ? "0, 0, 0" : "255, 255, 255";
 
       width = bounds.width;
@@ -82,21 +80,17 @@ const BlackholeParticles = () => {
           });
         }
 
-        const x =
-          centerX + Math.cos(particle.angle) * particle.radius + particle.driftX;
-        const y =
-          centerY + Math.sin(particle.angle) * particle.radius + particle.driftY;
+        const x = centerX + Math.cos(particle.angle) * particle.radius + particle.driftX;
+        const y = centerY + Math.sin(particle.angle) * particle.radius + particle.driftY;
         const brightness = 0.92 + (particle.radius / maxRadius) * 0.08;
 
         context.beginPath();
         context.fillStyle = `rgba(${particleColorRGB}, ${particle.alpha * brightness})`;
-        // Removed expensive shadowBlur for performance
         context.arc(x, y, particle.size, 0, Math.PI * 2);
         context.fill();
       }
 
       context.shadowBlur = 0;
-
       animationFrame = window.requestAnimationFrame(draw);
     };
 
@@ -119,11 +113,11 @@ const BlackholeParticles = () => {
 
 const Hero = () => {
   const { theme } = useTheme();
-  const isDarkMode = 
-    theme === "dark" || 
+  const isDarkMode =
+    theme === "dark" ||
     (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-  const starColor = isDarkMode ? "#FFC107" : "#D9692A";
+  const starColor = isDarkMode ? "#F9D949" : "#D9692A";
 
   return (
     <section className="relative flex w-full flex-col items-center overflow-hidden bg-background pt-32 pb-10">
@@ -188,8 +182,8 @@ const Hero = () => {
         </Badge>
 
         <h1 className="max-w-4xl text-[2.1rem] font-medium leading-[1.1] tracking-tight text-foreground dark:text-white sm:text-[2.75rem] md:text-[3.4rem] lg:text-[4.4rem]">
-          <AnimatedHeroText 
-            staticText="Find Talent You Can" 
+          <AnimatedHeroText
+            staticText="Find Talent You Can"
             titles={["Expertly Trust", "Verify Today", "Safely Hire", "Clearly Vetted", "Top-Tier Only"]}
             className="flex flex-col items-center"
           />

@@ -39,7 +39,7 @@ const Footer = () => {
 
   return (
     <footer className="relative w-full overflow-hidden bg-background text-foreground">
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="grid gap-14 lg:grid-cols-[0.95fr_1.9fr] lg:gap-10">
           <div className="flex flex-col gap-7">
             <a className="flex w-fit items-center gap-2" href="#">
@@ -229,9 +229,9 @@ const Footer = () => {
         </div>
       </div>
       {/* Large Background Text */}
-      <div className="pointer-events-none absolute bottom-0 left-1/2 -z-10 -translate-x-1/2 translate-y-[20%] select-none overflow-hidden pb-4">
-        <span className="whitespace-nowrap text-[15vw] font-black leading-none tracking-tighter text-foreground/[0.03] sm:text-[18vw] lg:text-[22vw]">
-          CATALANCE
+      <div className="pointer-events-none absolute bottom-0 left-4 sm:left-6 lg:left-8 xl:left-[calc((100%-80rem)/2+2rem)] z-0 select-none overflow-hidden pb-4 opacity-[0.025] dark:opacity-[0.015]">
+        <span className="whitespace-nowrap text-[15vw] font-black leading-none tracking-tighter text-foreground sm:text-[18vw] lg:text-[22vw]">
+          Catalance
         </span>
       </div>
     </footer>

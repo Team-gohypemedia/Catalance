@@ -2,62 +2,18 @@ import { env } from "../src/config/env.js";
 import { seedServicePositiveKeywords } from "../src/data/service-positive-keywords.js";
 import { prisma } from "../src/lib/prisma.js";
 import { hashPassword } from "../src/modules/users/password.utils.js";
-import { seedFreelancerShowcaseAccounts } from "./seed-freelancers.js";
+import { seedAdminAccount } from "../src/services/bootstrap.service.js";
 
 const main = async () => {
   console.log(`Seeding database for ${env.NODE_ENV}...`);
 
   const defaultPasswordHash = await hashPassword("Password123!");
-  const clientPasswordHash = await hashPassword("Password123");
-  const adminPasswordHash = await hashPassword("Admin@2025");
 
-  // Create admin user
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@catalance.com" },
-    update: {
-      passwordHash: adminPasswordHash,
-    },
-    create: {
-      email: "admin@catalance.com",
-      fullName: "Catalance Admin",
-      passwordHash: adminPasswordHash,
-      role: "ADMIN",
-      isVerified: true,
-      onboardingComplete: true,
-    }
-  });
-  console.log("Admin user created:", admin.email);
-
-  const client = await prisma.user.upsert({
-    where: { email: "client@example.com" },
-    update: {
-      passwordHash: clientPasswordHash,
-    },
-    create: {
-      email: "client@example.com",
-      fullName: "Sample Client",
-      passwordHash: clientPasswordHash,
-      role: "CLIENT",
-    }
-  });
-  console.log("Client account password reset via seed:", client.email);
-
-  const freelancer = await prisma.user.upsert({
-    where: { email: "freelancer@example.com" },
-    update: {},
-    create: {
-      email: "freelancer@example.com",
-      fullName: "Sample Freelancer",
-      passwordHash: defaultPasswordHash,
-      role: "FREELANCER",
-      freelancerProfile: {
-        create: {
-          professionalBio: "Product designer & front-end developer.",
-          services: ["web_development"],
-        }
-      }
-    }
-  });
+  const adminSeed = await seedAdminAccount();
+  console.log("Admin user created:", adminSeed.admin.email);
+  console.log(
+    `Admin login ready: ${adminSeed.credentials.email} / ${adminSeed.credentials.password}`
+  );
 
   const manager = await prisma.user.upsert({
     where: { email: "manager@example.com" },
@@ -69,37 +25,7 @@ const main = async () => {
       role: "PROJECT_MANAGER",
     }
   });
-
-  const project = await prisma.project.upsert({
-    where: { id: "sample-project" },
-    update: {},
-    create: {
-      id: "sample-project",
-      title: "New Landing Page",
-      description: "Design and build a modern marketing site for a SaaS product.",
-      budget: 5000,
-      status: "OPEN",
-      ownerId: client.id
-    }
-  });
-
-  await prisma.proposal.upsert({
-    where: { id: "sample-proposal" },
-    update: {},
-    create: {
-      id: "sample-proposal",
-      coverLetter: "I'd love to help you ship this landing page in two weeks.",
-      amount: 4500,
-      status: "PENDING",
-      freelancerId: freelancer.id,
-      projectId: project.id
-    }
-  });
-
-  const seededFreelancers = await seedFreelancerShowcaseAccounts();
-  console.log(
-    `Freelancer showcase accounts ready: ${seededFreelancers.total} total (${seededFreelancers.createdCount} created, ${seededFreelancers.updatedCount} updated).`
-  );
+  console.log("Project Manager account ready:", manager.email);
 
   const positiveKeywordSeedResult = await seedServicePositiveKeywords(prisma);
   console.log(

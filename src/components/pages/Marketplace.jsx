@@ -2324,7 +2324,7 @@ const Marketplace = () => {
             <div className="flex justify-center lg:justify-end">
               <AnimatedCard className="w-full max-w-[420px] scale-100 lg:scale-110">
                 <CardVisual>
-                  <Visual3 mainColor="#D9692A" secondaryColor="#F9D949" />
+                  <Visual3 mainColor={isDarkMode ? "#F9D949" : "#D9692A"} secondaryColor={isDarkMode ? "#ffffff" : "#F9D949"} />
                 </CardVisual>
                 <CardBody>
                   <CardTitle>Catalance Efficiency</CardTitle>
