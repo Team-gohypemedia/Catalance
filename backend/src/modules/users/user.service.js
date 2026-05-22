@@ -385,9 +385,27 @@ const requiresEmailAccountOnboarding = (user = null) => {
   return !fullName || phoneDigits.length < 6;
 };
 
+const scorePhoneLoginCandidate = ({
+  candidateDigits = "",
+  phoneDigits = "",
+  localDigits = "",
+}) => {
+  if (!candidateDigits || !phoneDigits) return -1;
+  if (candidateDigits === phoneDigits) return 400;
+  if (localDigits && candidateDigits === localDigits) return 350;
+  if (candidateDigits.endsWith(phoneDigits)) return 300;
+  if (phoneDigits.endsWith(candidateDigits)) return 250;
+  if (localDigits && candidateDigits.endsWith(localDigits)) return 200;
+  if (localDigits && localDigits.endsWith(candidateDigits)) return 150;
+  if (candidateDigits.includes(phoneDigits)) return 100;
+  if (phoneDigits.includes(candidateDigits)) return 50;
+  return -1;
+};
+
 const findUserByLoginPhone = async (identifier) => {
   const phoneDigits = normalizeLoginPhoneDigits(identifier);
   if (!phoneDigits) return null;
+  const localDigits = phoneDigits.length > 10 ? phoneDigits.slice(-10) : phoneDigits;
   const lookupDigits = Array.from(
     new Set([
       phoneDigits,
@@ -406,18 +424,55 @@ const findUserByLoginPhone = async (identifier) => {
     })
   );
 
-  return (
-    candidates.find((candidate) => {
+  const rankedCandidates = candidates
+    .map((candidate) => {
       const candidateDigits = normalizeLoginPhoneDigits(
         candidate?.phoneNumber || candidate?.phone || ""
       );
-      return (
-        candidateDigits &&
-        (candidateDigits.includes(phoneDigits) ||
-          phoneDigits.includes(candidateDigits))
-      );
-    }) || null
-  );
+      const score = scorePhoneLoginCandidate({
+        candidateDigits,
+        phoneDigits,
+        localDigits,
+      });
+      return {
+        candidate,
+        candidateDigits,
+        score,
+      };
+    })
+    .filter((entry) => entry.score >= 0)
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      if (Number(Boolean(right.candidate?.isVerified)) !== Number(Boolean(left.candidate?.isVerified))) {
+        return Number(Boolean(right.candidate?.isVerified)) - Number(Boolean(left.candidate?.isVerified));
+      }
+      const rightUpdatedAt = new Date(
+        right.candidate?.updatedAt || right.candidate?.createdAt || 0
+      ).getTime();
+      const leftUpdatedAt = new Date(
+        left.candidate?.updatedAt || left.candidate?.createdAt || 0
+      ).getTime();
+      return rightUpdatedAt - leftUpdatedAt;
+    });
+
+  if (process.env.NODE_ENV !== "production") {
+    console.info("[Auth][Phone Lookup]", {
+      identifier,
+      phoneDigits,
+      localDigits,
+      candidateCount: rankedCandidates.length,
+      candidates: rankedCandidates.map(({ candidate, candidateDigits, score }) => ({
+        id: candidate?.id || null,
+        phoneDigits: candidateDigits || null,
+        score,
+        isVerified: Boolean(candidate?.isVerified),
+        role: candidate?.role || null,
+      })),
+      selectedUserId: rankedCandidates[0]?.candidate?.id || null,
+    });
+  }
+
+  return rankedCandidates[0]?.candidate || null;
 };
 
 const getWhatsappOtpTtlMinutes = () => {

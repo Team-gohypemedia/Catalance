@@ -135,7 +135,21 @@ export const ClientProposalDataProvider = ({ children }) => {
     const localDrafts = localSavedProposals.map(mapLocalDraftProposal);
 
     try {
-      const response = await authFetch("/proposals?as=owner");
+      const response = await authFetch("/proposals?as=owner", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      });
+
+      if (response.status === 304) {
+        setProposals((current) =>
+          mergeProposalCollections(current.length > 0 ? current : [], localDrafts),
+        );
+        return;
+      }
+
       const payload = await response.json().catch(() => null);
       const remote = Array.isArray(payload?.data) ? payload.data : [];
       const remoteNormalized = remote.map(mapApiProposal);

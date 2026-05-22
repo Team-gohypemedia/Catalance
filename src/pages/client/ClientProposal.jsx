@@ -11,11 +11,19 @@ import {
 const ClientProposalWorkspace = () => {
   const { userState, proposalState, dialogState, freelancerState, actions } =
     useClientProposalData();
+  const debugPhone =
+    userState?.user?.phoneNumber || userState?.user?.phone || "missing";
+  const debugProposalCount = Array.isArray(proposalState?.proposals)
+    ? proposalState.proposals.length
+    : 0;
 
   return (
     <div className="min-h-screen bg-background text-[#f1f5f9]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
         <ClientProposalHeader userState={userState} />
+        <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+          Debug user: {userState?.user?.id || "missing"} | phone: {debugPhone} | proposals: {debugProposalCount}
+        </div>
 
         <main className="flex-1 pb-12">
           <ProposalTabsSection proposalState={proposalState} actions={actions} />

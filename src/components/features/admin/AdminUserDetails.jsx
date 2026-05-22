@@ -17,6 +17,215 @@ import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Award from "lucide-react/dist/esm/icons/award";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 
+const isPlainObject = (value) => value && typeof value === "object" && !Array.isArray(value);
+const isPrimitiveValue = (value) =>
+  value === null || value === undefined || ["string", "number", "boolean"].includes(typeof value);
+
+const hasDisplayValue = (value) => {
+  if (Array.isArray(value)) return value.length > 0;
+  if (isPlainObject(value)) return Object.keys(value).length > 0;
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim() !== "";
+  return true;
+};
+
+const toDisplayLabel = (value = "") =>
+  String(value || "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const formatPrimitiveValue = (value) => {
+  if (value === null || value === undefined) return "Not set";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  const asString = String(value);
+  return asString.trim() ? asString : "Not set";
+};
+
+const getObjectSummary = (value = {}) => {
+  const candidates = [
+    "title",
+    "name",
+    "label",
+    "serviceTitle",
+    "role",
+    "company",
+    "niche",
+    "timeline",
+    "budget",
+  ];
+
+  for (const key of candidates) {
+    const candidateValue = value?.[key];
+    if (typeof candidateValue === "string" && candidateValue.trim()) return candidateValue.trim();
+  }
+
+  if (typeof value?.id === "string" && value.id.trim()) return value.id.trim();
+
+  return "";
+};
+
+const normalizeUrl = (value) => {
+  if (!value || typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+};
+
+const pickFirstValue = (...values) => values.find((value) => hasDisplayValue(value));
+
+const normalizeCaseStudies = (detail = {}) => {
+  const caseStudies = Array.isArray(detail.caseStudies)
+    ? detail.caseStudies
+    : detail.caseStudy
+      ? [detail.caseStudy]
+      : [];
+
+  return caseStudies
+    .filter((entry) => isPlainObject(entry))
+    .map((entry) => ({
+      title: String(entry.title || entry.name || "").trim(),
+      description: String(entry.description || "").trim(),
+      niche: String(entry.niche || "").trim(),
+      role: String(entry.role || "").trim(),
+      timeline: String(entry.timeline || "").trim(),
+      budget: String(entry.budget || "").trim(),
+      link: normalizeUrl(entry.projectLink || entry.link || entry.url || ""),
+      image: normalizeUrl(entry.coverImage || entry.image || entry.fileUrl || entry?.file?.url || ""),
+    }))
+    .filter((entry) => hasDisplayValue(entry.title) || hasDisplayValue(entry.description));
+};
+
+const normalizeMediaEntries = (detail = {}) => {
+  const rawMedia = Array.isArray(detail.media)
+    ? detail.media
+    : detail.media
+      ? [detail.media]
+      : detail.coverImage
+        ? [{ url: detail.coverImage, name: "Cover image" }]
+        : [];
+
+  return rawMedia
+    .filter((entry) => isPlainObject(entry))
+    .map((entry) => ({
+      name: String(entry.name || entry.fileName || entry.title || "Media").trim(),
+      url: normalizeUrl(entry.url || entry.fileUrl || entry.coverImage || entry.path || ""),
+      mimeType: String(entry.mimeType || entry.type || "").trim(),
+      size: entry.size,
+    }))
+    .filter((entry) => hasDisplayValue(entry.url));
+};
+
+const normalizeSubcategories = (detail = {}) => {
+  const subcategories = Array.isArray(detail.subcategories) ? detail.subcategories : [];
+  return subcategories
+    .map((entry) => {
+      if (typeof entry === "string") return entry;
+      if (!isPlainObject(entry)) return "";
+      return String(entry.label || entry.name || entry.subCategoryName || "").trim();
+    })
+    .filter((entry) => entry);
+};
+
+const normalizeSkills = (detail = {}) => {
+  const skills = Array.isArray(detail.skillsAndTechnologies)
+    ? detail.skillsAndTechnologies
+    : Array.isArray(detail.skills)
+      ? detail.skills
+      : [];
+  return skills.filter((entry) => typeof entry === "string" && entry.trim());
+};
+
+const getAdditionalDetailEntries = (detail = {}) => {
+  const hiddenKeys = new Set([
+    "serviceKey",
+    "serviceId",
+    "serviceID",
+    "activeCaseStudyId",
+    "caseStudyId",
+    "caseStudyID",
+    "caseStudy",
+    "caseStudies",
+    "subcategories",
+    "skillsAndTechnologies",
+    "skills",
+    "title",
+    "serviceTitle",
+    "serviceDescription",
+    "description",
+    "deliveryTime",
+    "deliveryTimeline",
+    "experienceYears",
+    "experience",
+    "averageProjectPrice",
+    "averagePrice",
+    "priceRange",
+    "media",
+    "coverImage",
+  ]);
+
+  return Object.entries(detail).filter(
+    ([key, value]) => !hiddenKeys.has(key) && hasDisplayValue(value)
+  );
+};
+
+function renderDetailValue(value) {
+  if (Array.isArray(value)) {
+    if (!value.length) return "Not set";
+    const allPrimitive = value.every(isPrimitiveValue);
+    if (allPrimitive) return value.map(formatPrimitiveValue).join(", ");
+
+    return (
+      <div className="space-y-3">
+        {value.map((entry, index) => {
+          if (!isPlainObject(entry)) {
+            return (
+              <p key={index} className="text-sm break-words">
+                {formatPrimitiveValue(entry)}
+              </p>
+            );
+          }
+
+          const summary = getObjectSummary(entry);
+          return (
+            <div key={index} className="rounded-md border bg-muted/10 p-3">
+              {summary ? <p className="text-sm font-medium mb-2">{summary}</p> : null}
+              {renderKeyValuePairs(entry)}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (isPlainObject(value)) {
+    return renderKeyValuePairs(value) || "Not set";
+  }
+
+  return formatPrimitiveValue(value);
+}
+
+function renderKeyValuePairs(value) {
+  const entries = Object.entries(value || {}).filter(([, entryValue]) => hasDisplayValue(entryValue));
+  if (!entries.length) return null;
+
+  return (
+    <div className="grid gap-2 md:grid-cols-2">
+      {entries.map(([entryKey, entryValue]) => (
+        <div key={entryKey}>
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            {toDisplayLabel(entryKey)}
+          </p>
+          <p className="mt-1 text-sm break-words">
+            {renderDetailValue(entryValue)}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const AdminUserDetails = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -60,12 +269,11 @@ const AdminUserDetails = () => {
     });
   };
 
-  // Parse bio JSON
   const parseBio = (bio) => {
     if (!bio) return null;
     try {
       const parsed = JSON.parse(bio);
-      return typeof parsed === 'object' ? parsed : { bio };
+      return isPlainObject(parsed) ? parsed : { bio };
     } catch {
       return { bio };
     }
@@ -95,7 +303,58 @@ const AdminUserDetails = () => {
   if (!data) return null;
 
   const bioData = parseBio(data.user.bio);
+  const profileDetails = isPlainObject(data.user.profileDetails) ? data.user.profileDetails : {};
+  const identity = isPlainObject(profileDetails.identity) ? profileDetails.identity : {};
+  const availability = isPlainObject(profileDetails.availability) ? profileDetails.availability : {};
+  const reliability = isPlainObject(profileDetails.reliability) ? profileDetails.reliability : {};
   const isFreelancer = data.user.role === "FREELANCER";
+  const headline =
+    data.user.professionalTitle ||
+    bioData?.headline ||
+    identity.professionalTitle ||
+    null;
+  const phone = data.user.phone || data.user.phoneNumber || bioData?.phone || null;
+  const location =
+    data.user.location ||
+    bioData?.location ||
+    [identity.city, identity.country].filter(Boolean).join(", ");
+  const services = Array.isArray(data.user.services)
+    ? data.user.services
+    : Array.isArray(profileDetails.services)
+      ? profileDetails.services
+      : Array.isArray(bioData?.services)
+        ? bioData.services
+        : [];
+  const skills = Array.isArray(data.user.skills)
+    ? data.user.skills
+    : Array.isArray(profileDetails.skills)
+      ? profileDetails.skills
+      : [];
+  const portfolioProjects = Array.isArray(data.user.portfolioProjects)
+    ? data.user.portfolioProjects
+    : Array.isArray(profileDetails.portfolioProjects)
+      ? profileDetails.portfolioProjects
+      : [];
+  const workExperience = Array.isArray(profileDetails.workExperience)
+    ? profileDetails.workExperience
+    : Array.isArray(bioData?.workExperience)
+      ? bioData.workExperience
+      : [];
+  const education = Array.isArray(profileDetails.education) ? profileDetails.education : [];
+  const serviceDetails = isPlainObject(data.user.serviceDetails)
+    ? data.user.serviceDetails
+    : isPlainObject(profileDetails.serviceDetails)
+      ? profileDetails.serviceDetails
+      : {};
+  const portfolioLink = data.user.portfolio || identity.portfolioUrl || bioData?.portfolioUrl || null;
+  const linkedinLink = data.user.linkedin || identity.linkedinUrl || bioData?.linkedinUrl || null;
+  const githubLink = data.user.github || identity.githubUrl || bioData?.githubUrl || null;
+  const aboutText =
+    profileDetails.professionalBio ||
+    data.user.bio ||
+    bioData?.bio ||
+    null;
+  const detailSections = Object.entries(serviceDetails).filter(([, detail]) => isPlainObject(detail));
 
   return (
     <AdminLayout>
@@ -124,8 +383,8 @@ const AdminUserDetails = () => {
                 </div>
                 
                 {/* Headline */}
-                {bioData?.headline && (
-                    <p className="text-lg text-muted-foreground mb-4">{bioData.headline}</p>
+                {headline && (
+                    <p className="text-lg text-muted-foreground mb-4">{headline}</p>
                 )}
                 
                 {/* Contact Info Row */}
@@ -134,17 +393,17 @@ const AdminUserDetails = () => {
                     <Mail className="h-4 w-4" />
                     {data.user.email}
                     </span>
-                    {bioData?.phone && (
-                    <span className="flex items-center gap-2">
+                    {phone && (
+                     <span className="flex items-center gap-2">
                         <Phone className="h-4 w-4" />
-                        {bioData.phone}
-                    </span>
+                        {phone}
+                     </span>
                     )}
-                    {bioData?.location && (
-                    <span className="flex items-center gap-2">
+                    {location && (
+                     <span className="flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
-                        {bioData.location}
-                    </span>
+                        {location}
+                     </span>
                     )}
                     <span className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
@@ -160,8 +419,8 @@ const AdminUserDetails = () => {
           <div className="max-w-5xl mx-auto w-full p-8 space-y-10">
             
             {/* Services Row */}
-            {bioData?.services && bioData.services.length > 0 && (
-              <div className="bg-card p-6 rounded-lg border shadow-sm">
+             {services.length > 0 && (
+               <div className="bg-card p-6 rounded-lg border shadow-sm">
                 <div className="flex items-start gap-4">
                     <div className="p-2 bg-primary/10 rounded-lg">
                         <Wrench className="h-5 w-5 text-primary" />
@@ -169,11 +428,11 @@ const AdminUserDetails = () => {
                     <div>
                         <h4 className="font-semibold mb-2">Services</h4>
                         <div className="flex flex-wrap gap-2">
-                            {bioData.services.map((service, idx) => (
-                                <Badge key={idx} variant="secondary" className="font-normal">
-                                    {service}
-                                </Badge>
-                            ))}
+                            {services.map((service, idx) => (
+                                 <Badge key={idx} variant="secondary" className="font-normal">
+                                    {toDisplayLabel(service)}
+                                 </Badge>
+                             ))}
                         </div>
                     </div>
                 </div>
@@ -184,11 +443,11 @@ const AdminUserDetails = () => {
             {isFreelancer && (
               <div className="space-y-10">
                 {/* Skills */}
-                {data.user.skills?.length > 0 && (
+                {skills.length > 0 && (
                   <div>
                     <h3 className="text-xl font-semibold mb-4 text-foreground/80">Skills</h3>
                     <div className="flex flex-wrap gap-2">
-                      {data.user.skills.map((skill, idx) => (
+                      {skills.map((skill, idx) => (
                         <Badge key={idx} variant="outline" className="text-sm px-3 py-1">
                           {skill}
                         </Badge>
@@ -198,24 +457,44 @@ const AdminUserDetails = () => {
                 )}
 
                 {/* Additional Info Row - Availability */}
-                {bioData?.available !== undefined && (
-                    <div className="flex items-center gap-3">
-                        <div className={`h-3 w-3 rounded-full ${bioData.available ? 'bg-green-500' : 'bg-red-500'} shadow-sm`} />
-                        <span className="font-medium">
-                        {bioData.available ? 'Currently available for new projects' : 'Currently unavailable'}
-                        </span>
-                    </div>
+                {(availability.hoursPerWeek || availability.startTimeline || availability.workingSchedule || typeof profileDetails.acceptInProgressProjects === "boolean") && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {availability.hoursPerWeek && (
+                      <div className="rounded-lg border bg-card p-4">
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground">Hours Per Week</p>
+                        <p className="mt-1 font-medium">{availability.hoursPerWeek}</p>
+                      </div>
+                    )}
+                    {availability.startTimeline && (
+                      <div className="rounded-lg border bg-card p-4">
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground">Start Timeline</p>
+                        <p className="mt-1 font-medium">{availability.startTimeline}</p>
+                      </div>
+                    )}
+                    {availability.workingSchedule && (
+                      <div className="rounded-lg border bg-card p-4">
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground">Working Schedule</p>
+                        <p className="mt-1 font-medium">{availability.workingSchedule}</p>
+                      </div>
+                    )}
+                    {typeof profileDetails.acceptInProgressProjects === "boolean" && (
+                      <div className="rounded-lg border bg-card p-4">
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground">Accepts In-Progress Projects</p>
+                        <p className="mt-1 font-medium">{profileDetails.acceptInProgressProjects ? "Yes" : "No"}</p>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* Work Experience */}
-                {bioData?.workExperience && bioData.workExperience.length > 0 && (
+                {workExperience.length > 0 && (
                   <div>
                     <h3 className="text-xl font-semibold mb-4 flex items-center gap-2 text-foreground/80">
                       <Award className="h-5 w-5" />
                       Work Experience
                     </h3>
                     <div className="grid gap-4">
-                      {bioData.workExperience.map((exp, idx) => (
+                      {workExperience.map((exp, idx) => (
                         <div key={idx} className="bg-card border rounded-lg p-4 shadow-sm">
                           <div className="flex justify-between items-start mb-2">
                               <div>
@@ -238,11 +517,11 @@ const AdminUserDetails = () => {
                 )}
 
                  {/* Portfolio Projects */}
-                {data.user.portfolioProjects && data.user.portfolioProjects.length > 0 && (
+                {portfolioProjects.length > 0 && (
                   <div>
                     <h3 className="text-xl font-semibold mb-4 text-foreground/80">Featured Projects</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {data.user.portfolioProjects.map((project, idx) => (
+                      {portfolioProjects.map((project, idx) => (
                         <div key={idx} className="group relative rounded-xl border bg-card overflow-hidden shadow-sm hover:shadow-md transition-all">
                           <a 
                             href={project.link} 
@@ -277,14 +556,6 @@ const AdminUserDetails = () => {
                 {/* External Links */}
                 {(() => {
                   // Helper to safely get string or null
-                  const getString = (val) => (typeof val === 'string' && val.trim().length > 0 ? val : null);
-                  const portfolioObj = (typeof bioData?.portfolio === 'object' && bioData?.portfolio) ? bioData.portfolio : {};
-
-                  // Check all possible locations for links
-                  const portfolioLink = getString(data.user.portfolio) || getString(bioData?.portfolioUrl) || getString(portfolioObj?.portfolioUrl) || getString(portfolioObj?.website);
-                  const linkedinLink = getString(data.user.linkedin) || getString(bioData?.linkedinUrl) || getString(portfolioObj?.linkedinUrl) || getString(portfolioObj?.linkedin);
-                  const githubLink = getString(data.user.github) || getString(bioData?.githubUrl) || getString(portfolioObj?.githubUrl) || getString(portfolioObj?.github);
-                  
                   if (!portfolioLink && !linkedinLink && !githubLink) return null;
                   
                   return (
@@ -350,11 +621,245 @@ const AdminUserDetails = () => {
                   );
                 })()}
 
+                {education.length > 0 && (
+                  <div className="bg-card p-8 rounded-xl border">
+                    <h3 className="text-xl font-semibold mb-4">Education</h3>
+                    <div className="grid gap-4">
+                      {education.map((entry, idx) => (
+                        <div key={idx} className="rounded-lg border bg-muted/20 p-4">
+                          <p className="font-medium">
+                            {entry?.degree || entry?.course || entry?.qualification || "Education"}
+                          </p>
+                          {(entry?.institution || entry?.school || entry?.college) && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {entry.institution || entry.school || entry.college}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {detailSections.length > 0 && (
+                  <div className="bg-card p-8 rounded-xl border">
+                    <h3 className="text-xl font-semibold mb-4">Service Details</h3>
+                    <div className="space-y-8">
+                      {detailSections.map(([serviceKey, detail]) => {
+                        const title = pickFirstValue(detail.title, detail.serviceTitle);
+                        const description = pickFirstValue(
+                          detail.serviceDescription,
+                          detail.description
+                        );
+                        const delivery = pickFirstValue(detail.deliveryTime, detail.deliveryTimeline);
+                        const experience = pickFirstValue(detail.experienceYears, detail.experience);
+                        const price = pickFirstValue(
+                          detail.averageProjectPrice,
+                          detail.averagePrice,
+                          detail.priceRange
+                        );
+                        const skills = normalizeSkills(detail);
+                        const subcategories = normalizeSubcategories(detail);
+                        const caseStudies = normalizeCaseStudies(detail);
+                        const mediaEntries = normalizeMediaEntries(detail);
+                        const additionalEntries = getAdditionalDetailEntries(detail);
+
+                        return (
+                          <div key={serviceKey} className="rounded-xl border p-6">
+                            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                              <h4 className="text-lg font-semibold">{toDisplayLabel(serviceKey)}</h4>
+                              {title ? (
+                                <Badge variant="secondary" className="font-normal">
+                                  {title}
+                                </Badge>
+                              ) : null}
+                            </div>
+
+                            <div className="grid gap-6 lg:grid-cols-2">
+                              <div className="space-y-5">
+                                {description ? (
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                                      Description
+                                    </p>
+                                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                                      {description}
+                                    </p>
+                                  </div>
+                                ) : null}
+
+                                {skills.length > 0 ? (
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                                      Skills and technologies
+                                    </p>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                      {skills.map((skill) => (
+                                        <Badge key={skill} variant="outline" className="text-xs">
+                                          {skill}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+
+                                {subcategories.length > 0 ? (
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                                      Subcategories
+                                    </p>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                      {subcategories.map((entry, index) => (
+                                        <Badge key={`${entry}-${index}`} variant="secondary" className="text-xs">
+                                          {entry}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+
+                                {caseStudies.length > 0 ? (
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                                      Case studies
+                                    </p>
+                                    <div className="mt-3 space-y-3">
+                                      {caseStudies.map((entry, index) => (
+                                        <div key={`${entry.title || "case"}-${index}`} className="rounded-lg border bg-muted/10 p-4">
+                                          <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <p className="text-sm font-medium">
+                                              {entry.title || "Case study"}
+                                            </p>
+                                            {entry.timeline ? (
+                                              <Badge variant="outline" className="text-xs">
+                                                {entry.timeline}
+                                              </Badge>
+                                            ) : null}
+                                          </div>
+                                          <div className="mt-2 grid gap-2 text-xs text-muted-foreground md:grid-cols-2">
+                                            {entry.role ? <div>Role: {entry.role}</div> : null}
+                                            {entry.niche ? <div>Niche: {entry.niche}</div> : null}
+                                            {entry.budget ? <div>Budget: {entry.budget}</div> : null}
+                                            {entry.link ? (
+                                              <a
+                                                href={entry.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-primary hover:underline"
+                                              >
+                                                View project
+                                              </a>
+                                            ) : null}
+                                          </div>
+                                          {entry.description ? (
+                                            <p className="mt-3 text-sm text-muted-foreground whitespace-pre-wrap">
+                                              {entry.description}
+                                            </p>
+                                          ) : null}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+
+                              <div className="space-y-4">
+                                <div className="grid gap-3">
+                                  {delivery ? (
+                                    <div className="rounded-lg border bg-muted/10 p-3">
+                                      <p className="text-xs uppercase tracking-wider text-muted-foreground">Delivery time</p>
+                                      <p className="mt-1 text-sm font-medium">{delivery}</p>
+                                    </div>
+                                  ) : null}
+                                  {experience ? (
+                                    <div className="rounded-lg border bg-muted/10 p-3">
+                                      <p className="text-xs uppercase tracking-wider text-muted-foreground">Experience</p>
+                                      <p className="mt-1 text-sm font-medium">{experience}</p>
+                                    </div>
+                                  ) : null}
+                                  {price ? (
+                                    <div className="rounded-lg border bg-muted/10 p-3">
+                                      <p className="text-xs uppercase tracking-wider text-muted-foreground">Average price</p>
+                                      <p className="mt-1 text-sm font-medium">{price}</p>
+                                    </div>
+                                  ) : null}
+                                </div>
+
+                                {mediaEntries.length > 0 ? (
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                                      Media
+                                    </p>
+                                    <div className="mt-2 grid gap-3">
+                                      {mediaEntries.map((entry, index) => (
+                                        <a
+                                          key={`${entry.url}-${index}`}
+                                          href={entry.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-3 rounded-lg border bg-muted/10 p-3 hover:bg-muted/20 transition"
+                                        >
+                                          <div className="h-10 w-10 rounded-md bg-muted/40 overflow-hidden shrink-0">
+                                            <img
+                                              src={entry.url}
+                                              alt={entry.name || "Media"}
+                                              className="h-full w-full object-cover"
+                                            />
+                                          </div>
+                                          <div className="min-w-0">
+                                            <p className="text-sm font-medium truncate">{entry.name || "Media"}</p>
+                                            <p className="text-xs text-muted-foreground truncate">
+                                              {entry.mimeType || entry.url}
+                                            </p>
+                                          </div>
+                                        </a>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+
+                                {additionalEntries.length > 0 ? (
+                                  <details className="rounded-lg border bg-muted/10 p-3">
+                                    <summary className="cursor-pointer text-sm font-medium">Additional details</summary>
+                                    <div className="mt-3">
+                                      {renderKeyValuePairs(Object.fromEntries(additionalEntries))}
+                                    </div>
+                                  </details>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {(reliability.delayHandling || reliability.missedDeadlines) && (
+                  <div className="bg-card p-8 rounded-xl border">
+                    <h3 className="text-xl font-semibold mb-4">Reliability</h3>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {reliability.delayHandling && (
+                        <div>
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground">Delay Handling</p>
+                          <p className="mt-1 text-sm leading-relaxed">{reliability.delayHandling}</p>
+                        </div>
+                      )}
+                      {reliability.missedDeadlines && (
+                        <div>
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground">Missed Deadlines</p>
+                          <p className="mt-1 text-sm leading-relaxed">{reliability.missedDeadlines}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Bio Text */}
-                {bioData?.bio && typeof bioData.bio === 'string' && bioData.bio.length > 5 && (
+                {typeof aboutText === 'string' && aboutText.length > 5 && (
                   <div className="bg-card p-8 rounded-xl border">
                     <h3 className="text-xl font-semibold mb-4">About</h3>
-                    <p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">{bioData.bio}</p>
+                    <p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">{aboutText}</p>
                   </div>
                 )}
               </div>
