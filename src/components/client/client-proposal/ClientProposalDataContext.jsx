@@ -783,10 +783,24 @@ export const ClientProposalDataProvider = ({ children }) => {
           ? matchedFreelancers
           : [];
 
-        setSuggestedFreelancers(normalizedFreelancers);
-        setFreelancerFetchStatus(
-          normalizedFreelancers.length > 0 ? "success" : "empty",
-        );
+      setSuggestedFreelancers(normalizedFreelancers);
+      setFreelancerFetchStatus(
+        normalizedFreelancers.length > 0 ? "success" : "empty",
+      );
+
+        if (import.meta.env?.DEV) {
+          console.info("[Proposal Match Popup][Fetched]", {
+            proposalId:
+              selectedProposalForSend?.id ||
+              selectedProposalForSend?.projectId ||
+              selectedProposalForSend?.syncedProjectId ||
+              null,
+            fetchedCount: normalizedFreelancers.length,
+            freelancerIds: normalizedFreelancers
+              .map((freelancer) => freelancer?.id)
+              .filter(Boolean),
+          });
+        }
       } catch (error) {
         console.error("Failed to load matched freelancers:", error);
         if (!isActive) return;
@@ -1774,6 +1788,57 @@ export const ClientProposalDataProvider = ({ children }) => {
       available,
     };
   }, [
+    proposalForFreelancerSelection?.projectId,
+    proposalForFreelancerSelection?.syncedProjectId,
+    proposals,
+    rankedSuggestedFreelancers,
+    showFreelancerSelect,
+  ]);
+
+  useEffect(() => {
+    if (!showFreelancerSelect || !import.meta.env?.DEV) return;
+
+    const sourceProjectId =
+      proposalForFreelancerSelection?.syncedProjectId ||
+      proposalForFreelancerSelection?.projectId ||
+      null;
+    const normalized = rankedSuggestedFreelancers.map((entry) =>
+      normalizeFreelancerCardData(entry),
+    );
+    const blockedByInvite = normalized.filter((freelancer) => {
+      if (!sourceProjectId) return false;
+      return proposals.some((proposal) => {
+        if (String(proposal.projectId) !== String(sourceProjectId)) return false;
+        const status = String(proposal.status || "").toLowerCase();
+        return (
+          proposal.freelancerId &&
+          String(proposal.freelancerId) === String(freelancer.id) &&
+          PROPOSAL_BLOCKED_STATUSES.has(status)
+        );
+      });
+    });
+    const blockedByAvailability = normalized.filter(
+      (freelancer) =>
+        !blockedByInvite.some((entry) => entry.id === freelancer.id) &&
+        !isFreelancerOpenToWork(freelancer),
+    );
+
+    console.info("[Proposal Match Popup][Client Filters]", {
+      proposalId:
+        proposalForFreelancerSelection?.id ||
+        proposalForFreelancerSelection?.projectId ||
+        proposalForFreelancerSelection?.syncedProjectId ||
+        null,
+      totalFetched: normalized.length,
+      blockedAlreadyInvited: blockedByInvite.length,
+      blockedClosedToWork: blockedByAvailability.length,
+      availableAfterClientFilters: freelancerSelectionData.available.length,
+      invitedIds: blockedByInvite.map((freelancer) => freelancer.id),
+      closedToWorkIds: blockedByAvailability.map((freelancer) => freelancer.id),
+    });
+  }, [
+    freelancerSelectionData.available.length,
+    proposalForFreelancerSelection?.id,
     proposalForFreelancerSelection?.projectId,
     proposalForFreelancerSelection?.syncedProjectId,
     proposals,
