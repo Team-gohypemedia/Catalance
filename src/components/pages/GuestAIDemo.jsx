@@ -3142,6 +3142,8 @@ const GuestAIDemo = () => {
     const messagesRef = useRef(messages);
     const agencyFlowStateRef = useRef(agencyFlowState);
     const dismissedAutoHelperKeysRef = useRef(new Set());
+    const shouldFocusAfterAssistantResponseRef = useRef(false);
+    const lastAssistantMessageKeyRef = useRef('');
     const speechBaseInputRef = useRef("");
     const speechFinalRef = useRef("");
     const suppressSpeechCommitRef = useRef(false);
@@ -3414,17 +3416,50 @@ const GuestAIDemo = () => {
         viewport.scrollTop = viewport.scrollHeight;
     }, [getScrollViewport]);
 
+    const getVisibleMessageInput = useCallback(() => {
+        if (typeof document === 'undefined') return inputRef.current;
+
+        const candidates = Array.from(
+            document.querySelectorAll('textarea[data-guest-ai-input="true"]')
+        );
+        const visibleField = candidates.find((element) =>
+            element instanceof HTMLElement
+            && element.getClientRects().length > 0
+            && window.getComputedStyle(element).visibility !== 'hidden'
+        );
+
+        return visibleField || inputRef.current;
+    }, []);
+
     const focusMessageInput = useCallback(() => {
         if (!shouldShowTextInput) return;
-        const field = inputRef.current;
+        const field = getVisibleMessageInput();
         if (!field || field.disabled) return;
 
-        field.focus({ preventScroll: true });
+        if (
+            typeof document !== 'undefined'
+            && document.activeElement
+            && document.activeElement !== field
+            && typeof document.activeElement.blur === 'function'
+        ) {
+            document.activeElement.blur();
+        }
+
+        try {
+            field.focus();
+        } catch {
+            field.focus({ preventScroll: true });
+        }
+
+        if (typeof field.scrollIntoView === 'function') {
+            field.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+
         const textLength = typeof field.value === 'string' ? field.value.length : 0;
         if (typeof field.setSelectionRange === 'function') {
             field.setSelectionRange(textLength, textLength);
         }
-    }, [shouldShowTextInput]);
+    }, [getVisibleMessageInput, shouldShowTextInput]);
 
     const clearSpeechDraftRefs = useCallback(() => {
         speechBaseInputRef.current = "";
@@ -3728,6 +3763,43 @@ const GuestAIDemo = () => {
     }, [messages, isTyping, inputConfig, selectedService, scrollToLatestMessage]);
 
     useEffect(() => {
+        if (!selectedService || isTyping || !shouldShowTextInput) return undefined;
+
+        const latestAssistant = [...messages]
+            .reverse()
+            .find((message) => message?.role === 'assistant');
+        const latestAssistantKey = latestAssistant
+            ? `${latestAssistant.content || ''}::${messages.length}`
+            : '';
+
+        if (latestAssistantKey !== lastAssistantMessageKeyRef.current) {
+            lastAssistantMessageKeyRef.current = latestAssistantKey;
+            if (latestAssistantKey) {
+                shouldFocusAfterAssistantResponseRef.current = true;
+            }
+        }
+
+        if (!shouldFocusAfterAssistantResponseRef.current || !latestAssistantKey) {
+            return undefined;
+        }
+
+        const rafId = window.requestAnimationFrame(() => {
+            focusMessageInput();
+        });
+        const timeoutIds = [120, 280, 520, 900].map((delay, index, delays) => window.setTimeout(() => {
+            focusMessageInput();
+            if (index === delays.length - 1) {
+                shouldFocusAfterAssistantResponseRef.current = false;
+            }
+        }, delay));
+
+        return () => {
+            window.cancelAnimationFrame(rafId);
+            timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+        };
+    }, [messages, isTyping, selectedService, shouldShowTextInput, focusMessageInput]);
+
+    useEffect(() => {
         if (!isTyping && shouldShowTextInput) {
             const rafId = window.requestAnimationFrame(() => {
                 focusMessageInput();
@@ -3735,10 +3807,18 @@ const GuestAIDemo = () => {
             const timeoutId = window.setTimeout(() => {
                 focusMessageInput();
             }, 120);
+            const retryTimeoutId = window.setTimeout(() => {
+                focusMessageInput();
+            }, 280);
+            const finalRetryTimeoutId = window.setTimeout(() => {
+                focusMessageInput();
+            }, 520);
 
             return () => {
                 window.cancelAnimationFrame(rafId);
                 window.clearTimeout(timeoutId);
+                window.clearTimeout(retryTimeoutId);
+                window.clearTimeout(finalRetryTimeoutId);
             };
         }
 
@@ -4222,6 +4302,7 @@ const GuestAIDemo = () => {
         const sharedAnswers = normalizeAgencySharedAnswers(options.sharedAnswers);
 
         dismissedAutoHelperKeysRef.current = new Set();
+        shouldFocusAfterAssistantResponseRef.current = true;
         expandSidebar();
         setSelectedService(service);
         setLoading(true);
@@ -4712,6 +4793,7 @@ const GuestAIDemo = () => {
 
         try {
             const requestStartedAt = getNowTimestamp();
+            shouldFocusAfterAssistantResponseRef.current = true;
             setIsTyping(true);
             startThinkingTrace(requestStartedAt);
             setIsUploadingAttachment(hasAttachments);
@@ -5982,6 +6064,7 @@ const GuestAIDemo = () => {
                         <div className="flex flex-col flex-1">
                             <textarea
                                 ref={inputRef}
+                                data-guest-ai-input="true"
                                 autoFocus
                                 value={input}
                                 onChange={(e) => {
@@ -6350,7 +6433,7 @@ const GuestAIDemo = () => {
                 </div>
             </aside>
 
-            <section className={`relative flex min-w-0 flex-1 flex-col overflow-hidden bg-transparent pt-3 ${isInitialScreen ? 'md:items-center md:justify-center md:pt-0' : ''}`}>
+            <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-transparent pt-3">
 
                 {/* Sidebar toggle button in top-left of chat area */}
                 <div className="absolute left-3 top-3 z-20">
@@ -6368,9 +6451,9 @@ const GuestAIDemo = () => {
 
                 <ScrollArea
                     ref={scrollRef}
-                    className={`w-full transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''} ${isInitialScreen ? 'flex-1 min-h-0 pt-4 md:flex-none md:min-h-fit md:pt-0' : 'flex-1 min-h-0 pt-4'}`}
+                    className={`w-full flex-1 min-h-0 pt-4 transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''}`}
                 >
-                    <div className={`mx-auto flex w-full max-w-4xl flex-col space-y-8 px-4 sm:px-5 lg:px-8 ${isInitialScreen ? 'pt-14 pb-6 md:pt-0 md:pb-0' : 'pt-4 pb-10 sm:pb-12'}`}>
+                    <div className={`mx-auto flex w-full max-w-4xl flex-col space-y-8 px-4 sm:px-5 lg:px-8 ${isInitialScreen ? 'min-h-[calc(100vh-16rem)] justify-center py-8 sm:min-h-[calc(100vh-17rem)] sm:py-10' : 'pt-4 pb-10 sm:pb-12'}`}>
                         {messages.map((msg, idx) => {
                             const { text: messageContent, attachments: messageAttachments, urls: messageUrls } = parseMessageContentWithAttachments(
                                 msg.content,
@@ -6605,18 +6688,12 @@ const GuestAIDemo = () => {
                             </motion.div>
                         )}
 
-                        {isInitialScreen && (
-                            <div className="mt-8 hidden w-full md:block">
-                                {renderChatInput()}
-                            </div>
-                        )}
-
                     </div>
                 </ScrollArea>
 
                 {shouldShowTextInput && (
                     <div
-                        className={`shrink-0 w-full px-[clamp(0.75rem,4vw,1rem)] pt-[clamp(0.75rem,4vw,1.5rem)] sm:px-5 lg:px-8 transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''} ${isInitialScreen ? 'md:hidden' : ''} bg-gradient-to-t ${isDark ? 'from-[#212121] via-[#212121]/90 to-transparent' : 'from-[#F9F9F9] via-[#F9F9F9]/90 to-transparent'}`}
+                        className={`shrink-0 w-full px-[clamp(0.75rem,4vw,1rem)] pt-[clamp(0.75rem,4vw,1.5rem)] sm:px-5 lg:px-8 transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''} bg-gradient-to-t ${isDark ? 'from-[#212121] via-[#212121]/90 to-transparent' : 'from-[#F9F9F9] via-[#F9F9F9]/90 to-transparent'}`}
                         style={{ paddingBottom: 'max(1.25rem, calc(env(safe-area-inset-bottom) + 0.5rem))' }}
                     >
                         <div className="mx-auto w-full max-w-4xl space-y-2.5">
