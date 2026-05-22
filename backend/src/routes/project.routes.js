@@ -4,6 +4,7 @@ import {
   listProjects,
   getProject,
   updateProject,
+  deleteProject,
   payUpfront,
   createProjectPaymentOrder,
   createUpfrontPaymentOrder,
@@ -24,6 +25,7 @@ projectRouter.get("/", requireAuth, listProjects);
 projectRouter.post("/", requireAuth, validateResource(createProjectSchema), createProject);
 projectRouter.get("/:id", requireAuth, getProject);
 projectRouter.patch("/:id", requireAuth, updateProject);
+projectRouter.delete("/:id", requireAuth, deleteProject);
 projectRouter.post("/:id/complete", requireAuth, completeProject);
 projectRouter.post("/:id/payments/order", requireAuth, createProjectPaymentOrder);
 projectRouter.post("/:id/payments/verify", requireAuth, verifyProjectPayment);

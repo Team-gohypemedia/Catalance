@@ -1569,6 +1569,81 @@ export const mapLocalDraftProposal = (proposal) => {
   };
 };
 
+export const mapApiDraftProject = (project) => {
+  const normalizedProject = normalizeProposalRecord(project);
+  const serviceLabel = resolveProposalServiceLabel(normalizedProject);
+  const isAgency = resolveProposalAgencyFlag(normalizedProject);
+  const projectId = normalizedProject.id || null;
+  const projectTitle = resolveProposalProjectName(normalizedProject);
+  const content =
+    normalizedProject.proposalContent ||
+    normalizedProject.description ||
+    normalizedProject.summary ||
+    "";
+
+  return {
+    id: `draft-project:${projectId || "unknown"}`,
+    projectTitle,
+    title: projectTitle || "Proposal Draft",
+    category: serviceLabel,
+    service: serviceLabel,
+    serviceType:
+      normalizedProject.serviceType ||
+      normalizedProject.proposalContext?.serviceType ||
+      normalizedProject.proposalJson?.contextSnapshot?.serviceType ||
+      normalizedProject.service ||
+      serviceLabel,
+    serviceKey:
+      normalizedProject.serviceKey ||
+      normalizedProject.category ||
+      normalizedProject.service ||
+      "",
+    projectStack:
+      normalizedProject.projectStack ||
+      normalizedProject.proposalJson?.projectStack ||
+      null,
+    techStack:
+      normalizedProject.techStack ||
+      normalizedProject.proposalJson?.techStack ||
+      null,
+    status: "draft",
+    recipientName: "Not assigned",
+    recipientId: "LOCAL_DRAFT",
+    projectId,
+    syncedProjectId: projectId,
+    freelancerId: null,
+    submittedDate: formatProposalDate(
+      normalizedProject.updatedAt || normalizedProject.createdAt,
+    ),
+    avatar: "",
+    summary: content,
+    content,
+    proposalContent: content,
+    budget: normalizedProject.budget || "",
+    timeline: normalizedProject.timeline || "",
+    projectStatus: String(normalizedProject.status || "DRAFT").toUpperCase(),
+    requiresPayment: false,
+    isLocalDraft: true,
+    isDraftProject: true,
+    draftSignature: getProposalSignature({
+      ...normalizedProject,
+      summary: content,
+      content,
+      projectId,
+      syncedProjectId: projectId,
+    }),
+    createdAt: normalizedProject.createdAt || null,
+    updatedAt: normalizedProject.updatedAt || normalizedProject.createdAt || null,
+    proposalContext:
+      normalizedProject.proposalContext ||
+      normalizedProject.proposalJson?.contextSnapshot ||
+      null,
+    project: normalizedProject,
+    isAgency,
+    isAgencyProposal: isAgency,
+  };
+};
+
 export const buildEditableProposalDraft = (proposal, clientNameFallback = "Client") => {
   if (!proposal) {
     return {

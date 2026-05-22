@@ -1094,6 +1094,64 @@ export const getProject = asyncHandler(async (req, res) => {
     },
   });
 });
+
+export const deleteProject = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const [user, project] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    }),
+    prisma.project.findUnique({
+      where: { id },
+      include: {
+        proposals: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  const isAdmin = String(user?.role || "").toUpperCase() === "ADMIN";
+  const isOwner = String(project.ownerId || "") === String(userId);
+
+  if (!isAdmin && !isOwner) {
+    throw new AppError("You do not have permission to delete this project", 403);
+  }
+
+  if (String(project.status || "").toUpperCase() !== "DRAFT") {
+    throw new AppError("Only draft projects can be deleted.", 409);
+  }
+
+  if (Array.isArray(project.proposals) && project.proposals.length > 0) {
+    throw new AppError("Cannot delete a draft project after proposals have been sent.", 409);
+  }
+
+  await prisma.project.delete({
+    where: { id },
+  });
+
+  res.json({
+    data: {
+      id,
+      deleted: true,
+    },
+  });
+});
+
 export const updateProject = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
   const { id } = req.params;
