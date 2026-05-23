@@ -1489,8 +1489,8 @@ const ProjectDetailsPage = () => {
       </Dialog>
 
       <Dialog open={projectSummaryOpen} onOpenChange={setProjectSummaryOpen}>
-        <DialogContent className="max-w-2xl rounded-3xl border-slate-100 p-0">
-          <DialogHeader className="border-b border-slate-100 p-6 pb-4">
+        <DialogContent className="max-w-3xl rounded-3xl border-slate-200 bg-white/95 p-0 shadow-2xl">
+          <DialogHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-slate-100 p-6 pb-4">
             <DialogTitle className="text-lg font-black text-slate-900">
               Project Overview
             </DialogTitle>
@@ -1499,8 +1499,8 @@ const ProjectDetailsPage = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5 p-6">
-            <div className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
+          <div className="space-y-6 p-6 pt-5">
+            <div className="grid gap-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 sm:grid-cols-2">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                   Project Name
@@ -1513,7 +1513,7 @@ const ProjectDetailsPage = () => {
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                   Project ID
                 </p>
-                <p className="mt-1 text-sm font-medium text-slate-700">
+                <p className="mt-1 text-xs font-semibold text-slate-700">
                   #{project.id || projectId}
                 </p>
               </div>
@@ -1521,15 +1521,15 @@ const ProjectDetailsPage = () => {
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                   Status
                 </p>
-                <p className="mt-1 text-sm font-bold text-slate-900">
+                <Badge className="mt-1 w-fit rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
                   {project.status?.label || "Active"}
-                </p>
+                </Badge>
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                   Budget
                 </p>
-                <p className="mt-1 text-sm font-bold text-slate-900">
+                <p className="mt-1 text-sm font-black text-slate-900">
                   INR {Number(project.budget || 0).toLocaleString("en-IN")}
                 </p>
               </div>
@@ -1551,19 +1551,21 @@ const ProjectDetailsPage = () => {
               </div>
             </div>
 
-            <div>
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                 Project Description
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                {project.description || "No description available."}
-              </p>
+              <div className="mt-2 max-h-[40vh] overflow-y-auto pr-2">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                  {project.description || "No description available."}
+                </p>
+              </div>
             </div>
 
-            <div className="flex flex-wrap justify-end gap-2 pt-1">
+            <div className="flex flex-wrap justify-end gap-3 pt-1">
               <Button
                 variant="outline"
-                className="h-10 rounded-xl border-slate-200 bg-white px-4 text-xs font-bold text-slate-600"
+                className="h-10 rounded-xl border-slate-200 bg-white px-4 text-xs font-bold text-slate-700"
                 onClick={() => {
                   setProjectSummaryOpen(false);
                   handleViewClientProfile();
@@ -1572,7 +1574,7 @@ const ProjectDetailsPage = () => {
                 View Client Profile
               </Button>
               <Button
-                className="h-10 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-700"
+                className="h-10 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
                 onClick={() => {
                   setProjectSummaryOpen(false);
                   navigate(`/project-manager/projects/${projectId}`);
