@@ -1054,8 +1054,9 @@ export const getPmProjectDetails = asyncHandler(async (req, res) => {
   const milestones = buildMilestonesForProject(project);
   const freelancer = activeProposal?.freelancer || null;
   const freelancerAssignmentHistory = buildFreelancerAssignmentHistory(project);
+  const details = freelancer ? await resolveUserProfileDetails(freelancer) : {};
   const portfolioProjects = freelancer
-    ? extractPortfolioProjectsFromProfileDetails(freelancer.freelancerProfile?.profileDetails || {})
+    ? extractPortfolioProjectsFromProfileDetails(details || {})
     : [];
 
   const logs = [

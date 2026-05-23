@@ -533,6 +533,20 @@ const maskLoginPhone = (value = "") => {
   return digits ? `***${digits.slice(-4)}` : "unknown";
 };
 
+const maskLoginIdentifier = (value = "") => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "unknown";
+  if (!normalized.includes("@")) return maskLoginPhone(normalized);
+
+  const [localPart, domainPart = ""] = normalized.split("@");
+  const visibleLocal =
+    localPart.length <= 2
+      ? `${localPart.slice(0, 1)}*`
+      : `${localPart.slice(0, 2)}***`;
+
+  return `${visibleLocal}@${domainPart}`;
+};
+
 const createOrUpdatePhoneOnlyUser = async ({ normalizedPhone, role, otpCode, otpExpires }) => {
   const normalizedRole = normalizeRoleValue(role) || "CLIENT";
   const syntheticEmail = buildPhoneOnlyEmail(normalizedPhone);
@@ -3409,6 +3423,7 @@ export const verifyWhatsappOtp = async ({
 export const authenticateUser = async ({ email, identifier, password, role }) => {
   const rawIdentifier = String(identifier || email || "").trim();
   const normalizedEmail = rawIdentifier.toLowerCase();
+  const requestedRole = normalizeRoleValue(role);
   const user = rawIdentifier.includes("@")
     ? await prisma.user.findUnique(
         withFreelancerProfileInclude({
@@ -3436,10 +3451,22 @@ export const authenticateUser = async ({ email, identifier, password, role }) =>
   }
 
   if (!isValid) {
+    console.warn("[Auth Login] Invalid credentials", {
+      identifier: maskLoginIdentifier(rawIdentifier),
+      requestedRole: requestedRole || null,
+      userFound: Boolean(user),
+    });
     throw new AppError("Invalid email, phone number, or password", 401);
   }
 
   if (!user.isVerified) {
+    console.warn("[Auth Login] Blocked unverified account", {
+      identifier: maskLoginIdentifier(rawIdentifier),
+      userId: user.id,
+      requestedRole: requestedRole || null,
+      primaryRole: normalizeRoleValue(user.role),
+      roles: Array.isArray(user.roles) ? user.roles : [],
+    });
     // Resend OTP for unverified users
     const otpCode = crypto.randomInt(100000, 999999).toString();
     const otpExpires = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
@@ -3466,7 +3493,6 @@ export const authenticateUser = async ({ email, identifier, password, role }) =>
   }
 
   const updatedUser = await ensureUserRoles(user, role);
-  const requestedRole = normalizeRoleValue(role);
   const roles = Array.isArray(updatedUser?.roles)
     ? updatedUser.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
     : [];
@@ -3474,6 +3500,17 @@ export const authenticateUser = async ({ email, identifier, password, role }) =>
     ? requestedRole
     : normalizeRoleValue(updatedUser?.role) || "FREELANCER";
   const sessionUser = sanitizeUser({ ...updatedUser, role: activeRole });
+
+  console.log("[Auth Login] Role resolution", {
+    identifier: maskLoginIdentifier(rawIdentifier),
+    userId: updatedUser?.id || null,
+    requestedRole: requestedRole || null,
+    primaryRole: normalizeRoleValue(updatedUser?.role) || null,
+    roles,
+    activeRole,
+    isVerified: Boolean(updatedUser?.isVerified),
+    status: updatedUser?.status || null,
+  });
 
   return {
     user: sessionUser,

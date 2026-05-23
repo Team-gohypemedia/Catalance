@@ -48,11 +48,21 @@ function PMLogin({ className, ...props }) {
         try {
             const authPayload = await login({
                 email: formData.email.trim().toLowerCase(),
-                password: formData.password
+                password: formData.password,
+                role: "PROJECT_MANAGER",
             });
 
-            const role = authPayload?.user?.role;
-            if (role !== "PROJECT_MANAGER" && role !== "ADMIN") {
+            const role = String(authPayload?.user?.role || "").toUpperCase();
+            const roles = Array.isArray(authPayload?.user?.roles)
+                ? authPayload.user.roles.map((entry) => String(entry || "").toUpperCase())
+                : [];
+            const hasPmAccess =
+                role === "PROJECT_MANAGER" ||
+                role === "ADMIN" ||
+                roles.includes("PROJECT_MANAGER") ||
+                roles.includes("ADMIN");
+
+            if (!hasPmAccess) {
                 throw new Error("Access Denied: This portal is for Project Managers only.");
             }
 

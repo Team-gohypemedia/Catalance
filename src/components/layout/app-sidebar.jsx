@@ -138,7 +138,7 @@ const navConfigs = {
     },
     {
       title: "Active Projects",
-      url: "/project-manager?view=active-disputes",
+      url: "/project-manager/projects?preset=active",
       icon: AlertCircle,
     },
     {
@@ -156,7 +156,7 @@ const navConfigs = {
 
     {
       title: "Resolved History",
-      url: "/project-manager?view=resolved-history",
+      url: "/project-manager/projects?status=Completed",
       icon: History,
     },
     {
