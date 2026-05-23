@@ -40,14 +40,14 @@ const FreelancerAcceptInProgressProjectsSlide = ({
                   "w-full rounded-2xl border bg-card px-5 py-4 text-center transition-all duration-200",
                   isSelected
                     ? "border-primary ring-1 ring-primary/20"
-                    : "border-white/10 hover:border-white/20",
+                    : "border-border hover:border-border/80",
                 )}
                 aria-pressed={isSelected}
               >
                 <p
                   className={cn(
                     "text-base font-normal sm:text-base",
-                    isSelected ? "text-primary" : "text-white",
+                    isSelected ? "text-primary" : "text-foreground",
                   )}
                 >
                   {option.label}

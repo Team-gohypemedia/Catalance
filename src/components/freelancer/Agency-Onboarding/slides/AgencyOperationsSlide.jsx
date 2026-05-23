@@ -36,7 +36,7 @@ const AgencyOperationsSlide = ({
         </p>
       </div>
 
-      <div className="relative w-full overflow-hidden rounded-[32px] border border-white/[0.07] bg-[#0b0b0c] px-5 py-7 shadow-[0_28px_100px_rgba(0,0,0,0.34)] sm:px-10 sm:py-10 lg:px-14 lg:py-12">
+      <div className="relative w-full overflow-hidden rounded-[32px] border border-border bg-card px-5 py-7 shadow-[0_28px_100px_rgba(0,0,0,0.08)] dark:shadow-[0_28px_100px_rgba(0,0,0,0.34)] sm:px-10 sm:py-10 lg:px-14 lg:py-12">
         <div className="grid gap-5">
           <div className="space-y-1.5">
             <Label className={getFieldLabelClasses(Boolean(responseTimeError))}>

@@ -54,7 +54,7 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
         <div
           ref={agreementRef}
           onScroll={handleAgreementScroll}
-          className="max-h-[430px] space-y-4 overflow-y-auto rounded-2xl border border-white/10 bg-card p-6 sm:p-7"
+          className="max-h-[430px] space-y-4 overflow-y-auto subtle-scrollbar rounded-2xl border border-border bg-card p-6 sm:p-7"
         >
           <div className="space-y-2">
             <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-2xl")}>Freelancer Agreement</h3>
@@ -297,8 +297,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
           className={cn(
             "flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors",
             hasReachedEnd
-              ? "border-[var(--primary)]/35 bg-card"
-              : "border-white/10 bg-card/70",
+              ? "border-primary/35 bg-card"
+              : "border-border bg-muted/40",
             ONBOARDING_FIELD_LABEL_CLASS,
           )}
         >
@@ -307,12 +307,12 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
             checked={isAgreementChecked}
             onChange={(event) => setIsAgreementChecked(event.target.checked)}
             disabled={!hasReachedEnd}
-            className="h-4 w-4 rounded border-white/30 bg-transparent text-primary focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-4 w-4 rounded border-border bg-transparent text-primary focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
           />
           <span>I have read and accept the Freelancer Agreement and Terms.</span>
         </label>
 
-        <p className={cn("text-center", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-[#d1d5db]")}>
+        <p className={cn("text-center", ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
           {hasReachedEnd
             ? "Check the box to enable Agree & Continue."
             : "Scroll to the end to enable the confirmation checkbox."}

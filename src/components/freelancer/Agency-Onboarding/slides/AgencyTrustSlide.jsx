@@ -12,9 +12,9 @@ import {
 } from "../agency-details";
 
 const inputClassName =
-  "h-14 rounded-[18px] border border-white/[0.04] bg-card px-5 !text-[14px] !leading-5 text-white shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15";
+  "h-14 rounded-[18px] border border-input bg-card px-5 !text-[14px] !leading-5 text-foreground shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15";
 const textAreaClassName =
-  "min-h-[120px] rounded-[24px] border border-white/[0.04] bg-card px-5 py-4 !text-[14px] !leading-5 text-white shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15";
+  "min-h-[120px] rounded-[24px] border border-input bg-card px-5 py-4 !text-[14px] !leading-5 text-foreground shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15";
 const dangerFieldClassName =
   "border-destructive/75 text-destructive focus-visible:border-destructive focus-visible:ring-destructive/20";
 
@@ -73,7 +73,7 @@ const AgencyTrustSlide = ({
         </p>
       </div>
 
-      <div className="relative w-full overflow-hidden rounded-[32px] border border-white/[0.07] bg-[#0b0b0c] px-5 py-7 shadow-[0_28px_100px_rgba(0,0,0,0.34)] sm:px-10 sm:py-10 lg:px-14 lg:py-12">
+      <div className="relative w-full overflow-hidden rounded-[32px] border border-border bg-card px-5 py-7 shadow-[0_28px_100px_rgba(0,0,0,0.08)] dark:shadow-[0_28px_100px_rgba(0,0,0,0.34)] sm:px-10 sm:py-10 lg:px-14 lg:py-12">
         <div className="space-y-6">
           <ChoiceGrid
             label="Industries Served"
@@ -149,7 +149,7 @@ const AgencyTrustSlide = ({
               ) : null}
             </div>
 
-            <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-card px-4 py-4 md:col-span-2">
+            <label className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-4 md:col-span-2">
               <Checkbox
                 checked={Boolean(agencyProfileForm.ndaAvailable)}
                 onCheckedChange={(checked) =>
@@ -157,10 +157,10 @@ const AgencyTrustSlide = ({
                 }
               />
               <span className="flex flex-col">
-                <span className="text-sm font-semibold text-white">
+                <span className="text-sm font-semibold text-foreground">
                   NDA Available
                 </span>
-                <span className="text-sm leading-6 text-white/55">
+                <span className="text-sm leading-6 text-muted-foreground">
                   Mark this if your team can sign a non-disclosure agreement.
                 </span>
               </span>

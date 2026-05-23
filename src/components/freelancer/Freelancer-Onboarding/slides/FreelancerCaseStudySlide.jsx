@@ -56,10 +56,10 @@ const FileUploadButton = ({ file, onChange, hasError = false }) => {
         type="button"
         onClick={() => inputRef.current?.click()}
         className={cn(
-          "flex h-12 w-full items-center justify-center gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-white/20 transition-colors",
+          "flex h-12 w-full items-center justify-center gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-muted-foreground/45 transition-colors",
           hasError
             ? "border-destructive/70 hover:border-destructive/80"
-            : "border-white/10 hover:border-white/20",
+            : "border-border hover:border-border/80",
         )}
         aria-invalid={hasError}
       >
@@ -70,7 +70,7 @@ const FileUploadButton = ({ file, onChange, hasError = false }) => {
         <button
           type="button"
           onClick={() => onChange(null)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -145,7 +145,7 @@ const FreelancerCaseStudySlide = ({
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3 sm:flex sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-3">
                 <div>
-                  <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
+                  <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-foreground")}>
                     Case Studies
                   </h2>
                   <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
@@ -172,7 +172,7 @@ const FreelancerCaseStudySlide = ({
                   type="button"
                   onClick={onAddCaseStudy}
                   disabled={isCaseStudyLimitReached}
-                  className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-black transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-card disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-card sm:w-auto"
+                  className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted sm:w-auto"
                 >
                   <Plus className="h-4 w-4" />
                   Add Case Study
@@ -198,7 +198,7 @@ const FreelancerCaseStudySlide = ({
                 type="button"
                 onClick={onAddCaseStudy}
                 disabled={isCaseStudyLimitReached}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-black transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-card disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-card"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted"
               >
                 <Plus className="h-4 w-4" />
                 Add Case Study
@@ -231,8 +231,8 @@ const FreelancerCaseStudySlide = ({
                         className={cn(
                           "hidden h-10 w-full items-center rounded-full border py-0 pl-3 pr-12 text-xs font-semibold transition-colors sm:inline-flex sm:justify-start sm:text-left lg:text-sm",
                           isActive
-                            ? "border-primary bg-primary text-black"
-                            : "border-transparent bg-card text-white/65 hover:text-white",
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
                         )}
                       >
                         <span className="truncate max-w-[9rem]">{caseStudyLabel}</span>
@@ -251,8 +251,8 @@ const FreelancerCaseStudySlide = ({
                         className={cn(
                           "flex h-10 w-full items-center justify-center gap-2 rounded-full border px-4 text-center text-sm font-semibold transition-colors sm:hidden",
                           isActive
-                            ? "border-primary bg-primary text-black"
-                            : "border-transparent bg-card text-white/65 hover:text-white",
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
                         )}
                       >
                         <span className="truncate max-w-[11rem]">{caseStudyLabel}</span>
@@ -298,9 +298,9 @@ const FreelancerCaseStudySlide = ({
             ) : null}
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)] sm:p-6">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.08)] sm:p-6">
           {/* Project Header */}
-          <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "mb-4 text-white")}>
+          <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "mb-4 text-foreground")}>
             {activeCaseStudyLabel}
           </h3>
 
@@ -318,10 +318,10 @@ const FreelancerCaseStudySlide = ({
                 }
                 placeholder="e.g. E-commerce Platform Redesign"
                 className={cn(
-                  "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                   titleError
                     ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                    : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                    : "border-border focus:border-primary/50 focus:ring-primary/20",
                 )}
                 aria-invalid={Boolean(titleError)}
               />
@@ -343,10 +343,10 @@ const FreelancerCaseStudySlide = ({
                 placeholder="Briefly describe the project and its goals..."
                 rows={4}
                 className={cn(
-                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                   descriptionError
                     ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                    : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                    : "border-border focus:border-primary/50 focus:ring-primary/20",
                 )}
                 aria-invalid={Boolean(descriptionError)}
               />
@@ -382,7 +382,7 @@ const FreelancerCaseStudySlide = ({
                   Project Link (Optional)
                 </label>
                 <div className="relative">
-                  <Link2 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                  <Link2 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
                   <input
                     type="url"
                     value={caseStudyForm.projectLink}
@@ -391,7 +391,7 @@ const FreelancerCaseStudySlide = ({
                     }
                     placeholder="https://..."
                     className={cn(
-                      "h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
+                      "h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
                     )}
                   />
                 </div>
@@ -452,7 +452,7 @@ const FreelancerCaseStudySlide = ({
                   Budget
                 </label>
                 <div className="relative">
-                  <IndianRupee className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                  <IndianRupee className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
                   <input
                     type="text"
                     value={caseStudyForm.budget}
@@ -462,10 +462,10 @@ const FreelancerCaseStudySlide = ({
                     }}
                     placeholder="e.g. 5000"
                     className={cn(
-                      "h-12 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      "h-12 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                       budgetError
                         ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                        : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                        : "border-border focus:border-primary/50 focus:ring-primary/20",
                     )}
                     aria-invalid={Boolean(budgetError)}
                   />

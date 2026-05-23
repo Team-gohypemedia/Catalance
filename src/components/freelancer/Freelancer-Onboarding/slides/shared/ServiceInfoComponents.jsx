@@ -31,7 +31,7 @@ export const ServiceTitleTooltip = ({
         <button
           type="button"
           aria-label={ariaLabel}
-          className="inline-flex size-5 items-center justify-center text-white/60 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          className="inline-flex size-5 items-center justify-center text-muted-foreground/60 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
         >
           <Info className="size-3.5" />
         </button>
@@ -66,8 +66,8 @@ const StepperItem = ({
         isActive
           ? "justify-center gap-0 border-primary bg-primary px-2 text-primary-foreground shadow-[0_0_16px_rgba(var(--brand-rgb),0.22)] min-[360px]:px-3 sm:gap-2 sm:px-4"
           : isCompleted
-            ? "justify-center gap-0 border-white/10 bg-white/10 px-2 text-white hover:border-white/20 hover:bg-white/15 sm:gap-2 sm:px-4"
-            : "justify-center gap-0 border-white/8 bg-white/[0.03] px-2 text-white/55 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/75 sm:gap-2 sm:px-4",
+            ? "justify-center gap-0 border-border bg-muted/80 px-2 text-foreground hover:border-primary/30 hover:bg-muted sm:gap-2 sm:px-4"
+            : "justify-center gap-0 border-border/40 bg-muted/30 px-2 text-muted-foreground/85 hover:border-border/85 hover:bg-muted/60 hover:text-foreground sm:gap-2 sm:px-4",
       )}
       aria-current={isActive ? "step" : undefined}
       aria-label={`${step.step}. ${step.label}`}
@@ -98,7 +98,7 @@ export const ServiceInfoStepper = ({
   const activeIdx = steps.findIndex((step) => step.id === activeStepId);
 
   return (
-    <div className="flex w-full items-center gap-1 overflow-hidden rounded-full border border-white/10 bg-card p-1">
+    <div className="flex w-full items-center gap-1 overflow-hidden rounded-full border border-border bg-card p-1">
       {steps.map((step, idx) => (
         <StepperItem
           key={step.id}
@@ -324,7 +324,7 @@ export const CustomSelect = ({
         ) : null}
         <div
           className={cn(
-            "overflow-y-auto",
+            "flex flex-col gap-1 p-1 overflow-y-auto subtle-scrollbar",
             isCenteredPopup ? "max-h-[min(60vh,320px)]" : "",
           )}
           style={isCenteredPopup ? undefined : { maxHeight: `${attachedPopupMaxHeight}px` }}
@@ -341,13 +341,13 @@ export const CustomSelect = ({
                 className={cn(
                   "flex w-full items-center gap-2 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
                   value === option.value
-                    ? "border-primary/60 bg-primary text-black shadow-[0_0_0_1px_rgba(255,199,0,0.25)]"
+                    ? "border-primary/60 bg-primary text-primary-foreground shadow-[0_0_0_1px_rgba(255,199,0,0.25)]"
                     : "border-transparent text-foreground hover:border-border hover:bg-accent hover:text-accent-foreground"
                 )}
               >
                 <span className="min-w-0 truncate font-medium">{option.label}</span>
                 {value === option.value ? (
-                  <Check className="ml-1 h-4 w-4 shrink-0 text-black" />
+                  <Check className="ml-1 h-4 w-4 shrink-0 text-primary-foreground" />
                 ) : null}
               </button>
             ))
@@ -391,3 +391,4 @@ export const CustomSelect = ({
     </div>
   );
 };
+

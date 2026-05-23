@@ -25,7 +25,7 @@ const FreelancerWorkPreferenceSlide = ({
               "bg-card",
               selectedWorkPreference === "individual"
                 ? "border-primary ring-1 ring-primary/25"
-                : "border-white/10 hover:border-primary"
+                : "border-border hover:border-primary"
             )}
             aria-pressed={selectedWorkPreference === "individual"}
           >
@@ -35,7 +35,7 @@ const FreelancerWorkPreferenceSlide = ({
                   "h-7 w-7",
                   selectedWorkPreference === "individual"
                     ? "text-primary"
-                    : "text-white"
+                    : "text-foreground"
                 )}
               />
 
@@ -44,7 +44,7 @@ const FreelancerWorkPreferenceSlide = ({
                   "flex h-7 w-7 items-center justify-center rounded-full border transition-colors duration-200",
                   selectedWorkPreference === "individual"
                     ? "border-primary"
-                    : "border-white/35 group-hover:border-primary"
+                    : "border-input group-hover:border-primary"
                 )}
                 aria-hidden="true"
               >
@@ -61,10 +61,10 @@ const FreelancerWorkPreferenceSlide = ({
 
             <div className="mt-5">
               <h2
-                className="text-xl lg:text-2xl font-medium"
-                style={{
-                  color: selectedWorkPreference === "individual" ? "var(--primary)" : "var(--white)",
-                }}
+                className={cn(
+                  "text-xl lg:text-2xl font-medium",
+                  selectedWorkPreference === "individual" ? "text-primary" : "text-foreground"
+                )}
               >
                 Individual Freelancer
               </h2>
@@ -82,7 +82,7 @@ const FreelancerWorkPreferenceSlide = ({
               "bg-card",
               selectedWorkPreference === "agency"
                 ? "border-primary ring-1 ring-primary/25"
-                : "border-white/10 hover:border-primary"
+                : "border-border hover:border-primary"
             )}
             aria-pressed={selectedWorkPreference === "agency"}
           >
@@ -92,7 +92,7 @@ const FreelancerWorkPreferenceSlide = ({
                   "h-7 w-7",
                   selectedWorkPreference === "agency"
                     ? "text-primary"
-                    : "text-[#d4d4d4]"
+                    : "text-muted-foreground"
                 )}
               />
 
@@ -101,7 +101,7 @@ const FreelancerWorkPreferenceSlide = ({
                   "flex h-7 w-7 items-center justify-center rounded-full border transition-colors duration-200",
                   selectedWorkPreference === "agency"
                     ? "border-primary"
-                    : "border-white/35 group-hover:border-primary"
+                    : "border-input group-hover:border-primary"
                 )}
                 aria-hidden="true"
               >
@@ -118,10 +118,10 @@ const FreelancerWorkPreferenceSlide = ({
 
             <div className="mt-5">
               <h2
-                className="text-xl lg:text-2xl font-medium"
-                style={{
-                  color: selectedWorkPreference === "agency" ? "var(--primary)" : "var(--white)",
-                }}
+                className={cn(
+                  "text-xl lg:text-2xl font-medium",
+                  selectedWorkPreference === "agency" ? "text-primary" : "text-foreground"
+                )}
               >
                 Agency / Studio
               </h2>

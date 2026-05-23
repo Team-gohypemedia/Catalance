@@ -68,7 +68,7 @@ const FreelancerServicePricingSlide = ({
         <div className="w-full space-y-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
-              <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-white")}>
+              <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-foreground")}>
                 Set Your Price
               </h2>
               <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
@@ -90,7 +90,7 @@ const FreelancerServicePricingSlide = ({
             </Button>
           </div>
 
-          <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
+          <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
             {/* Service Description */}
             <div className="space-y-0">
               <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
@@ -104,10 +104,10 @@ const FreelancerServicePricingSlide = ({
                 placeholder="Description..."
                 rows={4}
                 className={cn(
-                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                   descriptionError
                     ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                    : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                    : "border-border focus:border-primary/50 focus:ring-primary/20",
                 )}
                 aria-invalid={Boolean(descriptionError)}
               />
@@ -143,7 +143,7 @@ const FreelancerServicePricingSlide = ({
                 Starting Price
               </label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-white/40">₹</span>
+                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-muted-foreground/50">₹</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -154,10 +154,10 @@ const FreelancerServicePricingSlide = ({
                   }}
                   placeholder="Enter starting price"
                   className={cn(
-                    "w-full rounded-xl border bg-card pl-8 pr-4 py-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                    "w-full rounded-xl border bg-card pl-8 pr-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                     priceRangeError
                       ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                      : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                      : "border-border focus:border-primary/50 focus:ring-primary/20",
                   )}
                   aria-invalid={Boolean(priceRangeError)}
                 />

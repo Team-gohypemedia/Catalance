@@ -398,7 +398,7 @@ export const normalizeUsernameInput = (value = "") =>
         .slice(0, 20);
 
 export const isValidUsername = (value = "") =>
-    /^(?=.*\d)[a-z0-9]{5,20}$/.test(String(value || "").trim());
+    /^[a-z0-9]{3,20}$/.test(String(value || "").trim());
 
 export const toQuestionTitle = (value = "") =>
     value

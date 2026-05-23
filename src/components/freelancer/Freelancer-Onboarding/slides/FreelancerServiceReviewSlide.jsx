@@ -55,13 +55,15 @@ const DELIVERY_TIMELINE_LABELS = {
 
 
 
-const SECTION_TITLE_CLASS = `${ONBOARDING_SECTION_TITLE_CLASS} text-white`;
+const SECTION_TITLE_CLASS = `${ONBOARDING_SECTION_TITLE_CLASS} text-foreground`;
 const SECTION_SUBTITLE_CLASS =
-  `${ONBOARDING_SECTION_DESCRIPTION_CLASS} text-white/48`;
-const CARD_LABEL_CLASS = `${ONBOARDING_FIELD_LABEL_CLASS} mb-1 block`;
-const CARD_VALUE_CLASS = "mt-3 text-xl font-semibold tracking-[-0.03em] text-white";
+  `${ONBOARDING_SECTION_DESCRIPTION_CLASS} text-muted-foreground`;
+const CARD_LABEL_CLASS = "text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/60";
+const CARD_VALUE_CLASS = "mt-3 text-xl font-semibold tracking-[-0.03em] text-foreground";
+const BADGE_CLASS =
+  "inline-flex items-center rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground";
 const CASE_STUDY_META_PILL_CLASS =
-  "inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/78";
+  "inline-flex items-center rounded-full border border-white/10 bg-white/8 px-2.5 py-1 text-xs font-medium text-white/70";
 const CASE_STUDY_PREVIEW_CACHE = new Map();
 
 const normalizeStringArray = (values) => {
@@ -397,8 +399,8 @@ const PreviewTag = ({ label, variant = "pill" }) => {
     <div
       className={
         isCategoryCard
-          ? "flex min-h-[54px] items-center gap-3 rounded-2xl border border-white/8 bg-[#191919] px-4 py-3 text-sm font-medium text-white/88 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-          : "flex items-center gap-2 rounded-full border border-white/8 bg-[#191919] px-4 py-3 text-sm font-medium text-white/86 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+          ? "flex min-h-[54px] items-center gap-3 rounded-2xl border border-border bg-muted px-4 py-3 text-sm font-medium text-foreground"
+          : "flex items-center gap-2 rounded-full border border-border bg-muted px-4 py-3 text-sm font-medium text-foreground"
       }
     >
       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/12 text-primary">
@@ -961,7 +963,7 @@ const FreelancerServiceReviewSlide = ({
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 overflow-hidden rounded-full border border-white/10 bg-white/8 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+                <div className="h-12 w-12 overflow-hidden rounded-full border border-border bg-muted shadow-[0_10px_30px_rgba(0,0,0,0.15)]">
                   {profilePhotoPreview?.url ? (
                     <img
                       src={profilePhotoPreview.url}
@@ -969,15 +971,15 @@ const FreelancerServiceReviewSlide = ({
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-white/72">
+                    <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground">
                       {avatarFallbackInitial}
                     </div>
                   )}
                 </div>
 
                 <div className="space-y-0.5">
-                  <p className="text-sm font-semibold text-white">{freelancerName}</p>
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/38">
+                  <p className="text-sm font-semibold text-foreground">{freelancerName}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                     {serviceName}
                   </p>
                 </div>
@@ -1001,56 +1003,50 @@ const FreelancerServiceReviewSlide = ({
           <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.58fr)_300px] xl:grid-cols-[minmax(0,1.62fr)_332px]">
             <article className="space-y-7">
               <div className="space-y-4">
-                <div className="group relative overflow-hidden rounded-[30px] border border-white/8 bg-[#0d0d0d] shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
-                {mediaPreview?.url ? (
-                  mediaPreview.kind === "video" ? (
-                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010]">
-                      <video
-                        key={mediaPreview.url}
-                        src={mediaPreview.url}
-                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.01]"
-                        muted
-                        playsInline
-                        autoPlay
-                        loop
-                        controls
-                        preload="metadata"
-                      />
-                      <div className="pointer-events-none absolute left-4 top-4 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] font-medium text-white/85 backdrop-blur-md">
-                        <Play className="h-3 w-3" />
-                        <span>Video preview</span>
+                <div className="group relative overflow-hidden rounded-[30px] border border-border bg-[#0d0d0d] shadow-[0_20px_80px_rgba(0,0,0,0.45)] dark-card">
+                  {mediaPreview?.url ? (
+                    mediaPreview.kind === "video" ? (
+                      <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010] dark-card">
+                        <video
+                          key={mediaPreview.url}
+                          src={mediaPreview.url}
+                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.01]"
+                          muted
+                          playsInline
+                          autoPlay
+                          loop
+                          controls
+                          preload="metadata"
+                        />
+                        <div className="pointer-events-none absolute left-4 top-4 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] font-medium text-white/85 backdrop-blur-md keep-white">
+                          <Play className="h-3 w-3" />
+                          <span>Video preview</span>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010] dark-card">
+                        <img
+                          key={mediaPreview.url}
+                          src={mediaPreview.url}
+                          alt={`${serviceName} preview`}
+                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.01]"
+                        />
+                      </div>
+                    )
                   ) : (
-                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010]">
-                      <img
-                        key={mediaPreview.url}
-                        src={mediaPreview.url}
-                        alt={`${serviceName} preview`}
-                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.01]"
-                      />
-                    </div>
-                  )
-                ) : (
-                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010]">
-                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(255,255,255,0.01)_28%,rgba(0,0,0,0.18)_100%)]" />
-                    <div className="absolute inset-x-6 top-6 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 backdrop-blur-sm">
-                      <p className="text-xs uppercase tracking-[0.2em] text-white/45">
-                        Visual Preview
-                      </p>
+                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010] dark-card">
                       <p className="mt-2 max-w-sm text-sm text-white/65">
                         Add service images or a video in the media step to replace this placeholder.
                       </p>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {hasMultipleMediaPreviews ? (
                   <>
                     <button
                       type="button"
                       onClick={handlePreviousMediaPreview}
-                      className="absolute left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70"
+                      className="absolute left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70 keep-white"
                       aria-label="Show previous media"
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -1059,14 +1055,14 @@ const FreelancerServiceReviewSlide = ({
                     <button
                       type="button"
                       onClick={handleNextMediaPreview}
-                      className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70"
+                      className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70 keep-white"
                       aria-label="Show next media"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
 
                     <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-                      <span className="rounded-full border border-white/12 bg-black/55 px-3 py-1 text-xs font-medium text-white/86 backdrop-blur-md">
+                      <span className="rounded-full border border-white/12 bg-black/55 px-3 py-1 text-xs font-medium text-white/86 backdrop-blur-md keep-white">
                         {activeMediaPreviewIndex + 1} / {mediaPreviews.length}
                       </span>
                     </div>
@@ -1099,9 +1095,9 @@ const FreelancerServiceReviewSlide = ({
                     {resolvedCaseStudyCards.map((caseStudy) => (
                       <article
                         key={caseStudy.id}
-                        className="group overflow-hidden rounded-[28px] border border-white/8 bg-card shadow-[0_18px_54px_rgba(0,0,0,0.28)] transition-transform duration-300 hover:-translate-y-0.5 hover:border-white/12"
+                        className="group overflow-hidden rounded-[28px] border border-border bg-card shadow-[0_18px_54px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-0.5 hover:border-primary/30"
                       >
-                        <div className="relative overflow-hidden border-b border-white/8">
+                        <div className="relative overflow-hidden border-b border-border">
                           {caseStudy.previewImage ? (
                             <>
                               <img
@@ -1112,7 +1108,7 @@ const FreelancerServiceReviewSlide = ({
                               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.08)_0%,rgba(5,5,5,0.22)_38%,rgba(5,5,5,0.86)_100%)]" />
                             </>
                           ) : (
-                            <div className="relative aspect-[16/9] w-full overflow-hidden bg-[radial-gradient(circle_at_18%_20%,rgba(var(--brand-rgb),0.2),transparent_26%),radial-gradient(circle_at_82%_12%,rgba(255,255,255,0.07),transparent_22%),linear-gradient(135deg,#0d0d0d,#131313_52%,#161616)]">
+                            <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#101010] dark-card">
                               <div className="absolute inset-y-0 left-[26%] w-px bg-white/8" />
                               <div className="absolute inset-y-0 right-[26%] w-px bg-white/8" />
                               <div className="absolute left-6 top-6 flex h-20 w-20 items-center justify-center rounded-[24px] border border-white/10 bg-white/[0.06] shadow-[0_10px_40px_rgba(0,0,0,0.28)] backdrop-blur-sm">
@@ -1125,12 +1121,12 @@ const FreelancerServiceReviewSlide = ({
                           )}
 
                           <div className="absolute left-5 right-5 top-5 flex items-start justify-between gap-3">
-                            <span className="rounded-full border border-white/12 bg-black/45 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/78 backdrop-blur-md">
+                            <span className="rounded-full border border-white/12 bg-black/45 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/78 backdrop-blur-md keep-white">
                               Case Study {caseStudy.order}
                             </span>
 
                             {caseStudy.niche ? (
-                              <span className="max-w-[70%] truncate rounded-full border border-primary/25 bg-black/35 px-3 py-1 text-xs font-medium text-primary backdrop-blur-md">
+                              <span className="max-w-[70%] truncate rounded-full border border-primary/25 bg-black/35 px-3 py-1 text-xs font-medium text-primary backdrop-blur-md keep-white">
                                 {caseStudy.niche}
                               </span>
                             ) : null}
@@ -1138,11 +1134,11 @@ const FreelancerServiceReviewSlide = ({
 
                           <div className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-4">
                             <div className="min-w-0">
-                              <h4 className="truncate text-2xl font-semibold tracking-[-0.04em] text-white">
+                              <h4 className="truncate text-2xl font-semibold tracking-[-0.04em] text-white keep-white">
                                 {caseStudy.displayTitle}
                               </h4>
                               {caseStudy.projectHost ? (
-                                <p className="mt-1 truncate text-xs font-medium uppercase tracking-[0.16em] text-white/58">
+                                <p className="mt-1 truncate text-xs font-medium uppercase tracking-[0.16em] text-white/58 keep-white">
                                   {caseStudy.projectHost}
                                 </p>
                               ) : null}
@@ -1182,10 +1178,10 @@ const FreelancerServiceReviewSlide = ({
                             ) : null}
                           </div>
 
-                          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
-                            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-white/58">
+                          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
                               {caseStudy.projectFileName ? (
-                                <span className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/72">
+                                <span className="inline-flex min-w-0 items-center gap-2 rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
                                   <FileText className="h-3.5 w-3.5 shrink-0" />
                                   <span className="max-w-[180px] truncate">
                                     {caseStudy.projectFileName}
@@ -1215,7 +1211,7 @@ const FreelancerServiceReviewSlide = ({
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-[#151515] px-4 py-5 text-sm text-white/45">
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
                     Add at least one case study in the case-study step to show it here.
                   </div>
                 )}
@@ -1238,7 +1234,7 @@ const FreelancerServiceReviewSlide = ({
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-[#151515] px-4 py-5 text-sm text-white/45">
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
                     Select at least one sub-category in the overview step to show it here.
                   </div>
                 )}
@@ -1258,7 +1254,7 @@ const FreelancerServiceReviewSlide = ({
                   <div className="space-y-4">
                     {skillsBySubCategory.map((group) => (
                       <div key={group.id} className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                           {group.label}
                         </p>
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1276,15 +1272,13 @@ const FreelancerServiceReviewSlide = ({
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-[#151515] px-4 py-5 text-sm text-white/45">
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
                     Add tools or custom skills in the overview step to populate this section.
                   </div>
                 )}
               </div>
-            </article>
-
-            <aside className="space-y-4 lg:pt-0">
-              <div className="relative overflow-hidden rounded-[29px] border border-white/8 bg-card">
+            </article>             <aside className="space-y-4 lg:pt-0">
+              <div className="relative overflow-hidden rounded-[29px] border border-border bg-card">
                 <div className="absolute inset-0" />
                 <section className="relative p-6">
                   <p className={CARD_LABEL_CLASS}>Starting Price</p>
@@ -1295,7 +1289,7 @@ const FreelancerServiceReviewSlide = ({
               </div>
 
               <div className="space-y-3">
-                <div className="rounded-[24px] border border-white/8 bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
+                <div className="rounded-[24px] border border-border bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.08)]">
                   <p className={CARD_LABEL_CLASS}>
                     Experience Level
                   </p>
@@ -1304,7 +1298,7 @@ const FreelancerServiceReviewSlide = ({
                   </p>
                 </div>
 
-                <div className="rounded-[24px] border border-white/8 bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
+                <div className="rounded-[24px] border border-border bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.08)]">
                   <p className={CARD_LABEL_CLASS}>
                     Delivery Timeline
                   </p>

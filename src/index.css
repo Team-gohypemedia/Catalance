@@ -376,7 +376,7 @@ html.marketplace-page:not(.dark) {
   --accent:               #FFF3C4;
   --accent-foreground:    #1C1B1F;
   --border:               #E5E1D3; /* Very soft border */
-  --input:                #FFFFFF;
+  --input:                #E5E1D3;
   --ring:                 #D9692A;
 }
 
@@ -444,30 +444,30 @@ html:not(.dark) [data-active="true"] span {
 }
 
 /* ── Catch all hardcoded text-white utility classes ── */
-html.home-page:not(.dark) main [class*="text-white"],
-html.onboarding-page:not(.dark) main [class*="text-white"] {
+html.home-page:not(.dark) main [class*="text-white"]:not(.keep-white):not(.dark-card *),
+html.onboarding-page:not(.dark) main [class*="text-white"]:not(.keep-white):not(.dark-card *) {
   color: #1C1B1F !important;
 }
 
 /* ── Exception: buttons/links ON a primary background must stay white ── */
 html.home-page:not(.dark) main button.bg-primary,
-html.home-page:not(.dark) main button[class*="bg-primary/"]:not([class*="hover:bg-primary/"]),
+html.home-page:not(.dark) main button[class*="bg-primary/"]:not([class*="bg-primary/5"]):not([class*="bg-primary/6"]):not([class*="bg-primary/10"]):not([class*="bg-primary/12"]):not([class*="bg-primary/15"]):not([class*="bg-primary/20"]):not([class*="bg-primary/24"]):not([class*="hover:bg-primary/"]):not([class*="text-primary"]):not([class*="text-foreground"]):not([class*="text-muted-foreground"]),
 html.home-page:not(.dark) main a.bg-primary,
-html.home-page:not(.dark) main a[class*="bg-primary/"]:not([class*="hover:bg-primary/"]),
+html.home-page:not(.dark) main a[class*="bg-primary/"]:not([class*="bg-primary/5"]):not([class*="bg-primary/6"]):not([class*="bg-primary/10"]):not([class*="bg-primary/12"]):not([class*="bg-primary/15"]):not([class*="bg-primary/20"]):not([class*="bg-primary/24"]):not([class*="hover:bg-primary/"]):not([class*="text-primary"]):not([class*="text-foreground"]):not([class*="text-muted-foreground"]),
 html.onboarding-page:not(.dark) main button.bg-primary,
-html.onboarding-page:not(.dark) main button[class*="bg-primary/"]:not([class*="hover:bg-primary/"]),
+html.onboarding-page:not(.dark) main button[class*="bg-primary/"]:not([class*="bg-primary/5"]):not([class*="bg-primary/6"]):not([class*="bg-primary/10"]):not([class*="bg-primary/12"]):not([class*="bg-primary/15"]):not([class*="bg-primary/20"]):not([class*="bg-primary/24"]):not([class*="hover:bg-primary/"]):not([class*="text-primary"]):not([class*="text-foreground"]):not([class*="text-muted-foreground"]),
 html.onboarding-page:not(.dark) main a.bg-primary,
-html.onboarding-page:not(.dark) main a[class*="bg-primary/"]:not([class*="hover:bg-primary/"]),
+html.onboarding-page:not(.dark) main a[class*="bg-primary/"]:not([class*="bg-primary/5"]):not([class*="bg-primary/6"]):not([class*="bg-primary/10"]):not([class*="bg-primary/12"]):not([class*="bg-primary/15"]):not([class*="bg-primary/20"]):not([class*="bg-primary/24"]):not([class*="hover:bg-primary/"]):not([class*="text-primary"]):not([class*="text-foreground"]):not([class*="text-muted-foreground"]),
 html:not(.dark) button.bg-primary,
-html:not(.dark) button[class*="bg-primary/"]:not([class*="hover:bg-primary/"]),
+html:not(.dark) button[class*="bg-primary/"]:not([class*="bg-primary/5"]):not([class*="bg-primary/6"]):not([class*="bg-primary/10"]):not([class*="bg-primary/12"]):not([class*="bg-primary/15"]):not([class*="bg-primary/20"]):not([class*="bg-primary/24"]):not([class*="hover:bg-primary/"]):not([class*="text-primary"]):not([class*="text-foreground"]):not([class*="text-muted-foreground"]),
 html:not(.dark) a.bg-primary,
-html:not(.dark) a[class*="bg-primary/"]:not([class*="hover:bg-primary/"]) {
+html:not(.dark) a[class*="bg-primary/"]:not([class*="bg-primary/5"]):not([class*="bg-primary/6"]):not([class*="bg-primary/10"]):not([class*="bg-primary/12"]):not([class*="bg-primary/15"]):not([class*="bg-primary/20"]):not([class*="bg-primary/24"]):not([class*="hover:bg-primary/"]):not([class*="text-primary"]):not([class*="text-foreground"]):not([class*="text-muted-foreground"]) {
   color: #FFFFFF !important;
 }
 
 /* Softer muted variants for text-white/55 etc */
-html.home-page:not(.dark) main [class*="text-white/"],
-html.onboarding-page:not(.dark) main [class*="text-white/"] {
+html.home-page:not(.dark) main [class*="text-white/"]:not(.keep-white):not(.dark-card *),
+html.onboarding-page:not(.dark) main [class*="text-white/"]:not(.keep-white):not(.dark-card *) {
   color: #7C778A !important;
 }
 
@@ -578,26 +578,67 @@ html.home-page:not(.dark) main [class*="bg-linear-to-l"] {
 }
 
 /* ── Hardcoded Onboarding Specifics ── */
-html.onboarding-page:not(.dark) main [class*="bg-[#1a1a1a]"],
-html.onboarding-page:not(.dark) main [class*="bg-[#171717]"],
+html.onboarding-page:not(.dark) main [class*="bg-[#0b0b0c]"],
+html.onboarding-page:not(.dark) main [class*="bg-[#0d0d0d]"],
+html.onboarding-page:not(.dark) main [class*="bg-[#101010]"],
 html.onboarding-page:not(.dark) main [class*="bg-[#121212]"],
-html.onboarding-page:not(.dark) main [class*="bg-[#161616]"] {
+html.onboarding-page:not(.dark) main [class*="bg-[#151515]"],
+html.onboarding-page:not(.dark) main [class*="bg-[#161616]"],
+html.onboarding-page:not(.dark) main [class*="bg-[#171717]"],
+html.onboarding-page:not(.dark) main [class*="bg-[#191919]"],
+html.onboarding-page:not(.dark) main [class*="bg-[#1a1a1a]"] {
   background-color: #FFFFFF !important;
   color: #1C1B1F !important;
 }
 
+/* Secondary bg fields, buttons, or custom widgets */
+html.onboarding-page:not(.dark) main [class*="bg-[#232323]"] {
+  background-color: #E5E1D3 !important;
+  color: #1C1B1F !important;
+}
+html.onboarding-page:not(.dark) main [class*="bg-[#232323]"] * {
+  color: #1C1B1F !important;
+}
+html.onboarding-page:not(.dark) main [class*="bg-[#2a2a2a]"]:hover {
+  background-color: #D9D3C2 !important;
+}
+
+/* Inputs, textareas, selects */
 html.onboarding-page:not(.dark) main input,
 html.onboarding-page:not(.dark) main select,
+html.onboarding-page:not(.dark) main textarea,
 html.onboarding-page:not(.dark) main [class*="SelectTrigger"] {
   background-color: #FFFFFF !important;
   color: #1C1B1F !important;
   border-color: #E5E1D3 !important;
 }
 
+/* Focus and dropdown overrides */
+html.onboarding-page:not(.dark) main [class*="focus:bg-white/10"]:focus,
+html.onboarding-page:not(.dark) main [class*="focus:bg-white/10"]:focus-within {
+  background-color: #F8F6EF !important;
+  color: #1C1B1F !important;
+}
+html.onboarding-page:not(.dark) main [class*="focus:bg-white/10"] * {
+  color: #1C1B1F !important;
+}
+
 html.onboarding-page:not(.dark) main input::placeholder,
 html.onboarding-page:not(.dark) main textarea::placeholder {
   color: #7C778A !important;
   opacity: 0.65 !important;
+}
+
+/* Soften all white borders to match soft border */
+html.onboarding-page:not(.dark) main [class*="border-white/"]:not(.keep-white):not(.dark-card *) {
+  border-color: #E5E1D3 !important;
+}
+
+/* Clean up gradients in onboarding slides under light theme */
+html.onboarding-page:not(.dark) main [class*="bg-[radial-gradient"]:not(.keep-white):not(.dark-card *),
+html.onboarding-page:not(.dark) main [class*="bg-[linear-gradient"]:not(.keep-white):not(.dark-card *) {
+  background: #FFFFFF !important;
+  background-image: none !important;
 }
 
 /* Marketplace specific overrides */
@@ -643,9 +684,9 @@ html.marketplace-page:not(.dark) main [class*="bg-[#1C1B1F]"] h3 {
 }
 
 /* ── Global border softening ── */
-html.home-page:not(.dark) main [class*="border-white"],
-html.onboarding-page:not(.dark) main [class*="border-white"],
-html.marketplace-page:not(.dark) main [class*="border-white"] {
+html.home-page:not(.dark) main [class*="border-white"]:not(.keep-white):not(.dark-card *),
+html.onboarding-page:not(.dark) main [class*="border-white"]:not(.keep-white):not(.dark-card *),
+html.marketplace-page:not(.dark) main [class*="border-white"]:not(.keep-white):not(.dark-card *) {
   border-color: #E5E1D3 !important;
 }
 html.home-page:not(.dark) main [class*="border-primary"] {

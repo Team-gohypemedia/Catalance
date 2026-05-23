@@ -76,6 +76,7 @@ import AgencyServiceReviewSlide from "./slides/AgencyServiceReviewSlide";
 import FreelancerAcceptInProgressProjectsSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerAcceptInProgressProjectsSlide";
 import FreelancerDeliveryPolicySlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerDeliveryPolicySlide";
 import FreelancerCommunicationPolicySlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerCommunicationPolicySlide";
+import { useOnboardingTheme } from "../Freelancer-Onboarding/useOnboardingTheme";
 
 const slideRegistry = {
   welcome: FreelancerWelcomeSlide,
@@ -730,8 +731,8 @@ const getBasicProfileFieldError = (field, form) => {
       if (username.length < MIN_USERNAME_LENGTH) {
         return `Username must be at least ${MIN_USERNAME_LENGTH} characters long.`;
       }
-      if (!/[a-z]/.test(username) || !/\d/.test(username)) {
-        return "Username must include at least one letter and one number.";
+      if (!/^[a-z0-9]+$/.test(username)) {
+        return "Username can only contain letters and numbers.";
       }
       return "";
     }
@@ -831,6 +832,8 @@ const AgencyOnboardingShell = ({
     () => buildOnboardingDraftStorageKey(user?.id),
     [user?.id],
   );
+
+  useOnboardingTheme();
 
   const onboardingSlides = useMemo(
     () => getOnboardingSlideSet(selectedWorkPreference),
@@ -1497,7 +1500,8 @@ const AgencyOnboardingShell = ({
 
       console.error("Failed to check username availability:", error);
       setUsernameStatus("error");
-      syncUsernameErrorState(USERNAME_CHECK_ERROR, normalizedUsername);
+      // Don't set a form validation error for network failures — the check is advisory.
+      // The server will validate uniqueness on submit.
       return "error";
     }
   }, [basicProfileForm.username, currentUsername, syncUsernameErrorState]);

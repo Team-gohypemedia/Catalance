@@ -40,8 +40,8 @@ const StepperItem = ({
         isActive
           ? "justify-center gap-0 border-primary bg-primary px-3 text-primary-foreground shadow-[0_0_16px_rgba(var(--brand-rgb),0.22)] sm:gap-2 sm:px-4"
           : isCompleted
-            ? "justify-center gap-0 border-white/10 bg-white/10 px-2 text-white hover:border-white/20 hover:bg-white/15 sm:gap-2 sm:px-4"
-            : "justify-center gap-0 border-white/8 bg-white/[0.03] px-2 text-white/55 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/75 sm:gap-2 sm:px-4",
+            ? "justify-center gap-0 border-border bg-muted/80 px-2 text-foreground hover:border-primary/30 hover:bg-muted sm:gap-2 sm:px-4"
+            : "justify-center gap-0 border-border/40 bg-muted/30 px-2 text-muted-foreground/85 hover:border-border/85 hover:bg-muted/60 hover:text-foreground sm:gap-2 sm:px-4",
       )}
       aria-current={isActive ? "step" : undefined}
       aria-label={`${step.step}. ${step.label}`}
@@ -72,7 +72,7 @@ export const ServiceInfoStepper = ({
   const activeIdx = steps.findIndex((step) => step.id === activeStepId);
 
   return (
-    <div className="flex w-full items-center gap-1 overflow-hidden rounded-full border border-white/10 bg-card p-1">
+    <div className="flex w-full items-center gap-1 overflow-hidden rounded-full border border-border bg-card p-1">
       {steps.map((step, idx) => (
         <StepperItem
           key={step.id}
@@ -235,7 +235,7 @@ export const CustomSelect = ({
       />
       <div
         className={cn(
-          "z-[70] overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40",
+          "z-[70] overflow-hidden rounded-xl border border-border bg-card shadow-xl",
           isCenteredPopup
             ? "fixed left-1/2 top-1/2 w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2"
             : "",
@@ -245,20 +245,20 @@ export const CustomSelect = ({
         onClick={(e) => e.stopPropagation()}
       >
         {isSearchable ? (
-          <div className="border-b border-white/8 p-2.5">
+          <div className="border-b border-border p-2.5">
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={searchPlaceholder}
-              className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              className="h-10 w-full rounded-lg border border-input bg-card px-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
             />
           </div>
         ) : null}
         <div
           className={cn(
-            "overflow-y-auto",
+            "overflow-y-auto subtle-scrollbar",
             isCenteredPopup ? "max-h-[min(60vh,320px)]" : "",
           )}
           style={isCenteredPopup ? undefined : { maxHeight: `${attachedPopupMaxHeight}px` }}
@@ -273,17 +273,17 @@ export const CustomSelect = ({
                   setIsOpen(false);
                 }}
                 className={cn(
-                  "flex w-full items-center px-4 py-3 text-left text-sm transition-colors hover:bg-white/5",
+                  "flex w-full items-center px-4 py-3 text-left text-sm transition-colors hover:bg-muted",
                   value === option.value
                     ? "bg-primary/10 text-primary"
-                    : "text-white/80"
+                    : "text-foreground"
                 )}
               >
                 {option.label}
               </button>
             ))
           ) : (
-            <div className="px-4 py-3 text-sm text-white/45">
+            <div className="px-4 py-3 text-sm text-muted-foreground">
               {normalizedOptions.length > 0 ? "No results found" : "No options available"}
             </div>
           )}
@@ -299,8 +299,8 @@ export const CustomSelect = ({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-card px-4 !text-[14px] !leading-5 transition-colors",
-          value ? "text-white" : "text-muted-foreground",
+          "flex h-12 w-full items-center justify-between rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 transition-colors",
+          value ? "text-foreground" : "text-muted-foreground",
           hasError
             ? "border-destructive/70 ring-1 ring-destructive/20"
             : isOpen && "border-primary/50 ring-1 ring-primary/20",
@@ -310,7 +310,7 @@ export const CustomSelect = ({
         <span className="text-[14px] leading-5">{selectedOption?.label || placeholder}</span>
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-white/40 transition-transform duration-200",
+            "h-4 w-4 text-muted-foreground transition-transform duration-200",
             isOpen && "rotate-180"
           )}
         />

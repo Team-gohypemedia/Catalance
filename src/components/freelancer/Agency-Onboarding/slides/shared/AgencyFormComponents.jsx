@@ -19,9 +19,9 @@ export const ChoiceGrid = ({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="space-y-1">
-        <p className="text-sm font-semibold text-white">{label}</p>
+        <p className="text-sm font-semibold text-foreground">{label}</p>
         {description ? (
-          <p className="text-sm leading-6 text-white/55">{description}</p>
+          <p className="text-sm leading-6 text-muted-foreground">{description}</p>
         ) : null}
       </div>
 
@@ -42,7 +42,7 @@ export const ChoiceGrid = ({
                 "rounded-2xl border px-4 py-3 text-left text-sm font-medium transition-colors",
                 isSelected
                   ? "border-primary bg-primary/10 text-primary"
-                  : "border-white/10 bg-card text-white/85 hover:border-white/20 hover:bg-white/[0.04]",
+                  : "border-border bg-card text-foreground/90 hover:border-primary/30 hover:bg-muted",
               )}
               aria-pressed={isSelected}
             >

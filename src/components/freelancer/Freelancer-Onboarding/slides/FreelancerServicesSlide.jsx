@@ -95,20 +95,20 @@ const FreelancerServicesSlide = ({
                     "flex aspect-[1.18] w-full flex-col items-center justify-center rounded-[18px] border bg-card px-3 py-2.5 text-center transition-all duration-200",
                     isSelected
                       ? "border-primary shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.22)]"
-                      : "border-white/10 hover:border-white/20"
+                      : "border-border hover:border-primary/50"
                   )}
                   aria-pressed={isSelected}
                 >
                   <Icon
                     className={cn(
                       "mb-3 h-5 w-5",
-                      isSelected ? "text-primary" : "text-white/80"
+                      isSelected ? "text-primary" : "text-muted-foreground"
                     )}
                   />
                   <span
                     className={cn(
                       "text-sm font-semibold leading-[1.3]",
-                      isSelected ? "text-primary" : "text-white"
+                      isSelected ? "text-primary" : "text-foreground"
                     )}
                   >
                     {service.name}
@@ -118,7 +118,7 @@ const FreelancerServicesSlide = ({
             })}
           </div>
         ) : (
-          <div className="rounded-xl border border-white/10 bg-card/40 px-5 py-4 text-center text-sm text-white/65">
+          <div className="rounded-xl border border-border bg-card/40 px-5 py-4 text-center text-sm text-muted-foreground">
             Services are unavailable right now. Please try again.
           </div>
         )}

@@ -644,13 +644,13 @@ const AddEditServiceWizard = ({
   return (
     <div className="flex h-full min-h-0 flex-col bg-gradient-to-br from-background via-background/95 to-background/90 rounded-2xl overflow-hidden">
       {/* Header with Glassmorphism */}
-      <div className="flex-none mb-6 h-20 border-b border-white/5 px-8 bg-card backdrop-blur-sm rounded-t-2xl">
+      <div className="flex-none mb-6 h-20 border-b border-border px-8 bg-card backdrop-blur-sm rounded-t-2xl">
         <div className="relative flex h-full items-center justify-between">
           <Button
             variant="ghost"
             size="icon"
             onClick={currentStepIndex > 0 ? handleBack : onCancel}
-            className="rounded-full border border-muted-foreground/30 hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+            className="rounded-full border border-muted-foreground/30 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             aria-label={currentStepIndex > 0 ? "Go to previous step" : "Close wizard"}
           >
             <ChevronLeft className="h-6 w-6" />
@@ -662,7 +662,7 @@ const AddEditServiceWizard = ({
                 {isDraftingNewService ? "New Service Setup" : "Editing Service"}
               </span>
             </div>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-white drop-shadow-sm">
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground drop-shadow-sm">
               {headerServiceLabel}
             </h1>
           </div>
@@ -671,7 +671,7 @@ const AddEditServiceWizard = ({
             variant="ghost"
             size="icon"
             onClick={onCancel}
-            className="rounded-full hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+            className="rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Close wizard"
           >
             <X className="h-6 w-6" />
@@ -699,7 +699,7 @@ const AddEditServiceWizard = ({
         {activeStepId === "overview" && (
           <div className="space-y-7 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+              <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
                 Add service info
               </h2>
               <p className="text-sm text-muted-foreground sm:text-base">
@@ -707,12 +707,12 @@ const AddEditServiceWizard = ({
               </p>
             </div>
 
-            <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
+            <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
               <div className="space-y-6">
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2">
                     <label
-                      className="text-xs font-bold uppercase tracking-[0.16em] text-white"
+                      className="text-xs font-bold uppercase tracking-[0.16em] text-foreground"
                       htmlFor="service-title-input"
                     >
                       Service Title
@@ -733,16 +733,16 @@ const AddEditServiceWizard = ({
                         }));
                       }}
                       placeholder="I will do something I'm really good at"
-                      className="h-12 w-full rounded-xl border border-white/10 bg-card px-4 pr-24 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                      className="h-12 w-full rounded-xl border border-border bg-card px-4 pr-24 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                     />
-                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-white/30">
+                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-foreground/30">
                       {serviceTitleLength} / {SERVICE_TITLE_MAX} MAX
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                     Select Category
                   </label>
                   <CategoryMultiSelect
@@ -754,12 +754,12 @@ const AddEditServiceWizard = ({
                 </div>
 
                 <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                     Skills
                   </label>
                   
                   {selectedSubcategories.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-white/12 bg-card px-4 py-3 text-sm text-muted-foreground">
+                    <div className="rounded-xl border border-dashed border-border bg-card px-4 py-3 text-sm text-muted-foreground">
                       Select at least one sub-category to add skills.
                     </div>
                   ) : (
@@ -783,14 +783,14 @@ const AddEditServiceWizard = ({
                         viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
                       />
 
-                      <div className="rounded-xl border border-white/8 bg-card/60 p-3 sm:p-4">
-                         <p className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-white/55">
+                      <div className="rounded-xl border border-border bg-card/60 p-3 sm:p-4">
+                         <p className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-foreground/55">
                            Adding Skills To{" "}
                            <span className="text-primary">
                              {allCategoryOptions.find(opt => opt.value === activeSubcategory?.subCategoryKey)?.label || activeSubcategory?.label || activeSubcategory?.name || "Selected sub-category"}
                            </span>
                          </p>
-                         <p className="mb-3 text-xs text-white/45">
+                         <p className="mb-3 text-xs text-foreground/45">
                            Choose tools from the selected sub-category or add your own.
                          </p>
                          <TechnologiesInput
@@ -806,7 +806,7 @@ const AddEditServiceWizard = ({
                 </div>
 
                 <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                     Experience
                   </label>
                   <CustomSelect
@@ -832,7 +832,7 @@ const AddEditServiceWizard = ({
         {activeStepId === "pricing" && (
           <div className="space-y-7 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+              <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
                 Set Your Price
               </h2>
               <p className="text-sm text-muted-foreground sm:text-base">
@@ -840,9 +840,9 @@ const AddEditServiceWizard = ({
               </p>
             </div>
 
-            <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
+            <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                   Service Description
                 </label>
                 <textarea
@@ -856,13 +856,13 @@ const AddEditServiceWizard = ({
                   }
                   placeholder="Description..."
                   rows={4}
-                  className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                  className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   maxLength={500}
                 />
               </div>
 
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                   Delivery Timeline
                 </label>
                 <CustomSelect
@@ -881,11 +881,11 @@ const AddEditServiceWizard = ({
               </div>
 
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                   Starting Price
                 </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-white/40">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-foreground/40">
                     ₹
                   </span>
                   <input
@@ -902,7 +902,7 @@ const AddEditServiceWizard = ({
                       }));
                     }}
                     placeholder="Enter starting price"
-                    className="w-full rounded-xl border border-white/10 bg-card py-3 pl-8 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className="w-full rounded-xl border border-border bg-card py-3 pl-8 pr-4 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
               </div>
@@ -914,7 +914,7 @@ const AddEditServiceWizard = ({
         {activeStepId === "visuals" && (
           <div className="space-y-7 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+              <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
                 Add Media
               </h2>
               <p className="text-sm text-muted-foreground sm:text-base">
@@ -922,9 +922,9 @@ const AddEditServiceWizard = ({
               </p>
             </div>
 
-            <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
+            <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                   Upload Media
                 </label>
                 <ServiceMediaUploadArea
@@ -937,7 +937,7 @@ const AddEditServiceWizard = ({
                     }))
                   }
                 />
-                <p className="text-xs leading-relaxed text-white/35">
+                <p className="text-xs leading-relaxed text-foreground/35">
                   Upload up to 2 images and 1 video (max 5MB each).
                 </p>
               </div>
@@ -949,7 +949,7 @@ const AddEditServiceWizard = ({
         {activeStepId === "caseStudy" && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+              <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
                 Tell Us About Your Previous Work
               </h2>
               <p className="text-sm text-muted-foreground sm:text-base">
@@ -960,10 +960,10 @@ const AddEditServiceWizard = ({
             <div className="space-y-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                     Case Studies
                   </p>
-                  <p className="text-xs leading-relaxed text-white/40">
+                  <p className="text-xs leading-relaxed text-foreground/40">
                     Add multiple case studies and switch between them while filling the details.
                   </p>
                 </div>
@@ -972,7 +972,7 @@ const AddEditServiceWizard = ({
                   type="button"
                   onClick={handleAddCaseStudy}
                   disabled={caseStudies.length >= MAX_ONBOARDING_CASE_STUDIES}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-card disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-card"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14 disabled:cursor-not-allowed disabled:border-border disabled:bg-card disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-card"
                 >
                   <Plus className="h-4 w-4" />
                   Add Case Study
@@ -996,7 +996,7 @@ const AddEditServiceWizard = ({
                         "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
                         activeCaseStudy?.id === caseStudy.id
                           ? "border-primary bg-primary/15 text-primary"
-                          : "border-white/10 bg-white/5 text-white/45 hover:text-white"
+                          : "border-border bg-muted text-foreground/45 hover:text-foreground"
                       )}
                     >
                       {String(caseStudy.title || "").trim() || `Project ${index + 1}`}
@@ -1006,14 +1006,14 @@ const AddEditServiceWizard = ({
               ) : null}
             </div>
 
-            <h3 className="text-xl font-semibold text-white sm:text-2xl">
+            <h3 className="text-xl font-semibold text-foreground sm:text-2xl">
               {String(activeCaseStudy?.title || "").trim() ||
                 `Project ${activeCaseStudyIndex + 1}`}
             </h3>
 
             <div className="space-y-6">
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                   Case Study Title
                 </label>
                 <input
@@ -1021,12 +1021,12 @@ const AddEditServiceWizard = ({
                   value={activeCaseStudy?.title || ""}
                   onChange={(e) => updateCaseStudy("title", e.target.value)}
                   placeholder="e.g. E-commerce Platform Redesign"
-                  className="h-12 w-full rounded-xl border border-white/10 bg-card px-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                  className="h-12 w-full rounded-xl border border-border bg-card px-4 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                 />
               </div>
 
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                   Description
                 </label>
                 <textarea
@@ -1034,12 +1034,12 @@ const AddEditServiceWizard = ({
                   onChange={(e) => updateCaseStudy("description", e.target.value)}
                   placeholder="Briefly describe the project and its goals..."
                   rows={4}
-                  className="w-full resize-none rounded-xl border border-white/10 bg-card px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                  className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                 />
               </div>
 
               <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                   Niche
                 </label>
                 <CustomSelect
@@ -1055,23 +1055,23 @@ const AddEditServiceWizard = ({
 
               <div className="grid gap-5 sm:grid-cols-3">
                 <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                     Project Link (Optional)
                   </label>
                   <div className="relative">
-                    <Link2 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                    <Link2 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
                     <input
                       type="url"
                       value={activeCaseStudy?.projectLink || ""}
                       onChange={(e) => updateCaseStudy("projectLink", e.target.value)}
                       placeholder="https://..."
-                      className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                      className="h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                     Project File (Optional)
                   </label>
                   <FileUploadButton
@@ -1081,7 +1081,7 @@ const AddEditServiceWizard = ({
                 </div>
 
                 <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                     Your Role
                   </label>
                   <CustomSelect
@@ -1096,7 +1096,7 @@ const AddEditServiceWizard = ({
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                     Timeline
                   </label>
                   <CustomSelect
@@ -1109,11 +1109,11 @@ const AddEditServiceWizard = ({
                 </div>
 
                 <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                     Budget
                   </label>
                   <div className="relative">
-                    <IndianRupee className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                    <IndianRupee className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
                     <input
                       type="text"
                       value={activeCaseStudy?.budget || ""}
@@ -1122,7 +1122,7 @@ const AddEditServiceWizard = ({
                         updateCaseStudy("budget", value);
                       }}
                       placeholder="e.g. 5000"
-                      className="h-12 w-full rounded-xl border border-white/10 bg-card pl-10 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                      className="h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                     />
                   </div>
                 </div>
@@ -1134,7 +1134,7 @@ const AddEditServiceWizard = ({
       </div>
 
       {/* Footer Nav with Polished Glass Button */}
-      <div className="flex-none mt-2 flex h-20 items-center justify-center border-t border-white/5 px-8 bg-card backdrop-blur-sm rounded-b-2xl">
+      <div className="flex-none mt-2 flex h-20 items-center justify-center border-t border-border px-8 bg-card backdrop-blur-sm rounded-b-2xl">
         <div className="flex gap-4">
           <Button 
             onClick={handleNext} 
@@ -1353,11 +1353,11 @@ const KeywordInput = ({
 
   return (
     <div ref={wrapperRef} className="relative">
-      <div className="flex min-h-[3rem] w-full flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-card px-4 py-2.5 transition-colors focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20">
+      <div className="flex min-h-[3rem] w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 transition-colors focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20">
         {keywords.map((keyword) => (
           <span
             key={keyword}
-            className="flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 text-xs font-medium text-white"
+            className="flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-foreground"
           >
             {keyword}
             <button
@@ -1365,7 +1365,7 @@ const KeywordInput = ({
               onClick={() =>
                 onChange(keywords.filter((entry) => entry !== keyword))
               }
-              className="text-white/50 transition-colors hover:text-white"
+              className="text-foreground/50 transition-colors hover:text-foreground"
             >
               <X className="h-3 w-3" />
             </button>
@@ -1388,13 +1388,13 @@ const KeywordInput = ({
           }}
           disabled={keywords.length >= MAX_KEYWORDS}
           placeholder={keywords.length === 0 ? "Add relevant keywords" : ""}
-          className="min-w-[120px] flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40 disabled:cursor-not-allowed"
+          className="min-w-[120px] flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-foreground/40 disabled:cursor-not-allowed"
         />
       </div>
 
       {(isLoading || previewSuggestions.length > 0) && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-foreground/35">
             {isLoading
               ? "Loading keyword suggestions..."
               : `Suggested for ${serviceName || "this service"}`}
@@ -1417,7 +1417,7 @@ const KeywordInput = ({
       )}
 
       {showDropdown && (
-        <div className="absolute left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-card shadow-xl">
+        <div className="absolute left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
           {dropdownItems.map((item, index) => (
             <button
               key={item.id}
@@ -1431,7 +1431,7 @@ const KeywordInput = ({
                 "flex w-full items-center px-4 py-2.5 text-left text-sm transition-colors",
                 index === highlightedIndex
                   ? "bg-primary/15 text-primary"
-                  : "text-white/70 hover:bg-white/5 hover:text-white"
+                  : "text-foreground/70 hover:bg-muted hover:text-foreground"
               )}
             >
               {item.label}
@@ -1554,7 +1554,7 @@ const ServiceMediaUploadArea = ({
           {previewItems.map((item) => (
             <div
               key={item.id}
-              className="group relative h-24 w-24 overflow-hidden rounded-xl border border-white/10 bg-card"
+              className="group relative h-24 w-24 overflow-hidden rounded-xl border border-border bg-card"
             >
               {item.isVideo && item.previewUrl ? (
                 <video
@@ -1574,7 +1574,7 @@ const ServiceMediaUploadArea = ({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-white/40">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-foreground/40">
                   <ImageIcon className="h-5 w-5" />
                   <span className="text-[10px]">{item.isVideo ? "Video" : "Image"}</span>
                 </div>
@@ -1582,7 +1582,7 @@ const ServiceMediaUploadArea = ({
               <button
                 type="button"
                 onClick={() => removeFile(item)}
-                className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-foreground opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -1619,7 +1619,7 @@ const ServiceMediaUploadArea = ({
               <Plus className="h-5 w-5 text-primary" />
             )}
           </div>
-          <span className="text-sm font-medium text-white/70">
+          <span className="text-sm font-medium text-foreground/70">
             Upload Media
           </span>
         </button>
@@ -1649,7 +1649,7 @@ const FileUploadButton = ({ file, onChange }) => {
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-card px-4 text-sm text-white/40 transition-colors hover:border-white/20"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm text-foreground/40 transition-colors hover:border-white/20"
       >
         <Upload className="h-4 w-4" />
         <span className="truncate">{fileName || "Upload file"}</span>
@@ -1658,7 +1658,7 @@ const FileUploadButton = ({ file, onChange }) => {
         <button
           type="button"
           onClick={() => onChange(null)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -1730,15 +1730,15 @@ const CategoryMultiSelect = ({
         className={cn(
           "flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 text-sm transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
           selectedOptions.length > 0
-            ? "border-primary/25 text-white"
-            : "border-white/10 text-white/40"
+            ? "border-primary/25 text-foreground"
+            : "border-border text-foreground/40"
         )}
       >
         <span className="truncate text-left">{summaryText}</span>
         <ChevronDown
           className={cn(
             "h-4 w-4 transition-transform duration-200",
-            selectedOptions.length > 0 ? "text-primary" : "text-white/40",
+            selectedOptions.length > 0 ? "text-primary" : "text-foreground/40",
             isOpen && "rotate-180"
           )}
         />
@@ -1765,10 +1765,10 @@ const CategoryMultiSelect = ({
       ) : null}
 
       {isOpen && (
-        <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40 animate-in fade-in zoom-in-95 duration-200">
-          <div className="max-h-56 overflow-y-auto p-2">
+        <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-black/40 animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex max-h-56 flex-col gap-1 overflow-y-auto p-2">
             {options.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-white/40">
+              <div className="px-3 py-2 text-sm text-foreground/40">
                 {isLoading ? "Loading sub-categories..." : "No sub-categories available"}
               </div>
             ) : (
@@ -1790,7 +1790,7 @@ const CategoryMultiSelect = ({
                       "flex w-full items-center gap-2 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
                       isSelected
                         ? "border-primary/60 bg-primary text-black shadow-[0_0_0_1px_rgba(255,199,0,0.25)]"
-                        : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5"
+                        : "border-transparent text-foreground/80 hover:border-border hover:bg-muted"
                     )}
                   >
                     <span className="min-w-0 truncate font-medium">{option.label}</span>
@@ -1834,7 +1834,7 @@ const TechnologiesInput = ({ toolOptions, selectedToolIds, customSkillNames, onC
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustom())}
           placeholder="Add custom skill..."
-          className="h-12 rounded-xl border-white/10 bg-card px-4 text-sm text-white placeholder:text-white/40 focus:border-primary/50"
+          className="h-12 rounded-xl border-border bg-card px-4 text-sm text-foreground placeholder:text-foreground/40 focus:border-primary/50"
         />
         <Button
           type="button"
@@ -1857,7 +1857,7 @@ const TechnologiesInput = ({ toolOptions, selectedToolIds, customSkillNames, onC
               onClick={() => toggleTool(tool.id)}
               className={cn(
                 "rounded-full border px-4 py-1.5 text-xs font-medium transition-all",
-                isSelected ? "border-primary bg-primary/10 text-primary" : "border-white/10 text-white/50 hover:border-white/20 hover:text-white"
+                isSelected ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground/50 hover:border-white/20 hover:text-foreground"
               )}
             >
               {toolName}
@@ -1865,7 +1865,7 @@ const TechnologiesInput = ({ toolOptions, selectedToolIds, customSkillNames, onC
           );
         })}
         {isLoading ? (
-          <p className="text-[10px] text-white/20">Syncing tools...</p>
+          <p className="text-[10px] text-foreground/20">Syncing tools...</p>
         ) : toolOptions.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No preset skills found. Add a custom skill above.
@@ -1873,7 +1873,7 @@ const TechnologiesInput = ({ toolOptions, selectedToolIds, customSkillNames, onC
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t border-white/5 pt-3">
+      <div className="flex flex-wrap gap-2 border-t border-border pt-3">
         {selectedToolIds.map(id => {
           const tool = toolOptions.find(o => o.id === id);
           const name = tool?.name || tool?.label || "Tool";
@@ -1900,3 +1900,4 @@ const TechnologiesInput = ({ toolOptions, selectedToolIds, customSkillNames, onC
 };
 
 export default AddEditServiceWizard;
+

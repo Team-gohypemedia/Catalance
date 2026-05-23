@@ -364,10 +364,10 @@ const CategoryMultiSelect = ({
           className={cn(
             "flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors focus:ring-1",
             hasError
-              ? "border-destructive/70 text-white focus:border-destructive/60 focus:ring-destructive/20"
+              ? "border-destructive/70 text-foreground focus:border-destructive/60 focus:ring-destructive/20"
               : selectedOptions.length > 0
-                ? "border-white/10 text-white focus:border-white/20 focus:ring-white/10"
-                : "border-white/10 text-muted-foreground focus:border-white/20 focus:ring-white/10",
+                ? "border-border text-foreground focus:border-primary/50 focus:ring-primary/20"
+                : "border-border text-muted-foreground focus:border-primary/50 focus:ring-primary/20",
             isOpen && "border-primary/50 ring-1 ring-primary/20",
           )}
           aria-invalid={hasError}
@@ -377,7 +377,7 @@ const CategoryMultiSelect = ({
           <ChevronDown
             className={cn(
               "h-4 w-4 transition-transform duration-200",
-              selectedOptions.length > 0 ? "text-white/60" : "text-white/40",
+              selectedOptions.length > 0 ? "text-foreground/60" : "text-muted-foreground",
               isOpen && "rotate-180",
             )}
           />
@@ -408,47 +408,47 @@ const CategoryMultiSelect = ({
           ? createPortal(
               <div
                 ref={popupRef}
-                className="z-[70] flex flex-col overflow-hidden rounded-xl border border-white/10 bg-card shadow-xl shadow-black/40"
+                className="z-[70] flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-black/10 dark:shadow-black/40"
                 style={popupStyle || undefined}
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="border-b border-white/8 p-2.5">
+                <div className="border-b border-border p-2.5">
                   <input
                     ref={searchInputRef}
                     type="text"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder={searchPlaceholder}
-                    className="h-10 w-full rounded-lg border border-white/10 bg-card px-3 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className="h-10 w-full rounded-lg border border-input bg-card px-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
 
                 <div
                   className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row"
                 >
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-white/8 md:border-b-0 md:border-r md:border-r-white/8">
-                    <div className="shrink-0 border-b border-white/8 px-4 py-3">
+                  <div className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-border md:border-b-0 md:border-r md:border-r-border">
+                    <div className="shrink-0 border-b border-border px-4 py-3">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                           Categories
                         </p>
-                        <p className="text-[11px] text-white/35">
+                        <p className="text-[11px] text-muted-foreground/80">
                           {selectedOptions.length} selected
                         </p>
                       </div>
                     </div>
 
-                    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+                    <div className="min-h-0 flex-1 overflow-y-auto subtle-scrollbar px-4 py-3">
                       {isLoading ? (
-                        <div className="px-3 py-2 text-sm text-white/40">
+                        <div className="px-3 py-2 text-sm text-muted-foreground/60">
                           {loadingMessage}
                         </div>
                       ) : options.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-white/40">
+                        <div className="px-3 py-2 text-sm text-muted-foreground/60">
                           {emptyMessage}
                         </div>
                       ) : filteredOptions.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-white/40">
+                        <div className="px-3 py-2 text-sm text-muted-foreground/60">
                           {noResultsMessage}
                         </div>
                       ) : (
@@ -467,10 +467,10 @@ const CategoryMultiSelect = ({
                                 className={cn(
                                   "flex min-w-0 w-full items-center gap-2 rounded-lg border px-4 py-3 pr-12 text-left text-sm transition-colors",
                                   isActive
-                                    ? "border-primary/60 bg-primary text-black shadow-[0_0_0_1px_rgba(255,199,0,0.25)]"
+                                    ? "border-primary bg-primary text-primary-foreground shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.25)]"
                                     : isSelected
-                                      ? "border-white/10 bg-white/[0.04] text-white/80 hover:border-white/20 hover:bg-white/[0.07]"
-                                      : "border-transparent text-white/80 hover:border-white/8 hover:bg-white/5",
+                                      ? "border-border bg-muted text-foreground hover:border-primary/50 hover:bg-muted/80"
+                                      : "border-transparent text-foreground hover:bg-muted",
                                 )}
                                 aria-pressed={isSelected}
                                 >
@@ -485,8 +485,8 @@ const CategoryMultiSelect = ({
                                 className={cn(
                                     "absolute right-1 top-1/2 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-lg bg-transparent shadow-none transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0",
                                     isActive
-                                      ? "text-background hover:text-background/90"
-                                      : "text-white/80 hover:text-white",
+                                      ? "text-primary-foreground hover:text-primary-foreground/90"
+                                      : "text-muted-foreground hover:text-foreground",
                                   )}
                                   aria-label={`Remove ${option.label}`}
                                 >
@@ -503,12 +503,12 @@ const CategoryMultiSelect = ({
                   <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                     {activeCategoryValue ? (
                       <>
-                        <div className="shrink-0 border-b border-white/8 px-4 py-3">
+                        <div className="shrink-0 border-b border-border px-4 py-3">
                           <div className="flex items-center justify-between">
-                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                               Skills
                             </p>
-                            <p className="text-[11px] text-white/35">
+                            <p className="text-[11px] text-muted-foreground/80">
                               {activeSelectionCount} selected
                             </p>
                           </div>
@@ -519,7 +519,7 @@ const CategoryMultiSelect = ({
                             <div className="flex flex-col gap-2">
                               {isToolsLoading &&
                               activeToolOptions.length === 0 ? (
-                                <p className="text-sm text-white/35">
+                                <p className="text-sm text-muted-foreground">
                                   Loading skills...
                                 </p>
                               ) : activeToolOptions.length > 0 ? (
@@ -534,7 +534,7 @@ const CategoryMultiSelect = ({
                                         "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors",
                                         isSelected
                                           ? "border-primary/60 bg-primary/10 text-primary"
-                                          : "border-white/10 bg-white/[0.03] text-white/75 hover:border-white/20 hover:bg-white/[0.06]",
+                                          : "border-border bg-muted text-foreground hover:border-primary/50 hover:bg-muted/80",
                                       )}
                                       aria-pressed={isSelected}
                                     >
@@ -544,14 +544,14 @@ const CategoryMultiSelect = ({
                                       <Check
                                         className={cn(
                                           "ml-3 h-4 w-4 shrink-0 transition-colors",
-                                          isSelected ? "text-primary" : "text-white/30",
+                                          isSelected ? "text-primary" : "text-muted-foreground/50",
                                         )}
                                       />
                                     </button>
                                   );
                                 })
                               ) : (
-                                <p className="text-sm text-white/35">
+                                <p className="text-sm text-muted-foreground">
                                   {activeToolOptions.length === 0
                                     ? toolFetchError ||
                                       "No preset skills found for this sub-category."
@@ -561,7 +561,7 @@ const CategoryMultiSelect = ({
                             </div>
                           </div>
 
-                          <div className="shrink-0 border-t border-white/5 pt-3">
+                          <div className="shrink-0 border-t border-border pt-3">
                             <div className="flex flex-wrap gap-2">
                               {activeSelectedToolEntries.map((tool) => (
                                 <span
@@ -598,7 +598,7 @@ const CategoryMultiSelect = ({
                         </div>
                       </>
                     ) : (
-                      <div className="flex flex-1 items-center justify-center px-4 py-8 text-sm text-white/35">
+                      <div className="flex flex-1 items-center justify-center px-4 py-8 text-sm text-muted-foreground">
                         Select a category to manage its skills.
                       </div>
                     )}
@@ -948,7 +948,7 @@ const FreelancerServiceInfoSlide = ({
         <div className="w-full space-y-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
-              <h2 className="text-lg sm:text-xl md:text-2xl font-medium text-white">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-medium text-foreground">
                 Add service info
               </h2>
               <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
@@ -971,7 +971,7 @@ const FreelancerServiceInfoSlide = ({
             </Button>
           </div>
 
-          <div className="space-y-6 rounded-2xl border border-white/8 bg-card p-5 sm:p-7">
+          <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
             <div className="space-y-0">
               <div className="mb-1 flex items-center gap-2">
                 <label
@@ -994,14 +994,14 @@ const FreelancerServiceInfoSlide = ({
                   }}
                   placeholder="I will do something I'm really good at"
                   className={cn(
-                    "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-white outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                    "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                     titleError
                       ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                      : "border-white/10 focus:border-primary/50 focus:ring-primary/20",
+                      : "border-border focus:border-primary/50 focus:ring-primary/20",
                   )}
                   aria-invalid={Boolean(titleError)}
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-white/30">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/50">
                   {serviceInfoForm.title.length} / {SERVICE_TITLE_MAX} MAX
                 </span>
               </div>

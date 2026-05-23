@@ -15,7 +15,7 @@ const FreelancerDeliveryPolicySlide = () => (
         </h1>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-card p-6 sm:p-7">
+      <div className="rounded-2xl border border-border bg-card p-6 sm:p-7">
         <div className="space-y-2">
           <h2 className={cn(SECTION_TITLE_CLASS,)}>Delivery &amp; Revision Policy</h2>
           <p className="text-base font-normal leading-7 text-muted-foreground">
@@ -30,19 +30,19 @@ const FreelancerDeliveryPolicySlide = () => (
           <ul className="space-y-2 text-base font-normal leading-7 text-muted-foreground">
             <li className="flex items-start gap-3">
               <BadgeCheck className="mt-[0.55rem] h-4 w-4 shrink-0 text-[var(--primary)]" aria-hidden="true" />
-              <span><span className="font-semibold text-white">Revision Limit:</span> Up to 3 revisions are included per milestone.</span>
+              <span><span className="font-semibold text-foreground">Revision Limit:</span> Up to 3 revisions are included per milestone.</span>
             </li>
             <li className="flex items-start gap-3">
               <BadgeCheck className="mt-[0.55rem] h-4 w-4 shrink-0 text-[var(--primary)]" aria-hidden="true" />
-              <span><span className="font-semibold text-white">Scope Changes:</span> Additional scope must follow the milestone modification SOP.</span>
+              <span><span className="font-semibold text-foreground">Scope Changes:</span> Additional scope must follow the milestone modification SOP.</span>
             </li>
             <li className="flex items-start gap-3">
               <BadgeCheck className="mt-[0.55rem] h-4 w-4 shrink-0 text-[var(--primary)]" aria-hidden="true" />
-              <span><span className="font-semibold text-white">Final Submission:</span> All final deliverables must be submitted through the Catalance milestone system.</span>
+              <span><span className="font-semibold text-foreground">Final Submission:</span> All final deliverables must be submitted through the Catalance milestone system.</span>
             </li>
             <li className="flex items-start gap-3">
               <BadgeCheck className="mt-[0.55rem] h-4 w-4 shrink-0 text-[var(--primary)]" aria-hidden="true" />
-              <span><span className="font-semibold text-white">Progress Updates:</span> Reporting and project updates must follow the platform workflow.</span>
+              <span><span className="font-semibold text-foreground">Progress Updates:</span> Reporting and project updates must follow the platform workflow.</span>
             </li>
           </ul>
         </div>
