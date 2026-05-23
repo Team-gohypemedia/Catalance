@@ -409,18 +409,25 @@ const AdminDisputes = () => {
   const selectedManager = selectedManagerDetails?.user || null;
   const selectedManagerStats = selectedManagerDetails?.stats || {};
   const profileSummary = getProfileSummary(selectedManager?.profileDetails);
-  const serviceLabelMap = useMemo(
+  const availableServices = useMemo(
     () =>
-      serviceCatalog.reduce((acc, service) => {
-        const key = normalizeServiceKey(service?.slug || service?.id || service?.name);
-        if (key) {
-          acc[key] = service?.name || service?.slug || service?.id || key;
-        }
-        return acc;
-      }, {}),
+      serviceCatalog
+        .map((service) => ({
+          key: normalizeServiceKey(service?.slug || service?.id || service?.name),
+          label: service?.name || service?.slug || service?.id || "",
+        }))
+        .filter((service) => service.key && service.label),
     [serviceCatalog]
   );
-  const getServiceLabel = (value) => serviceLabelMap[normalizeServiceKey(value)] || value || "Uncategorized";
+  const serviceLabelMap = useMemo(
+    () =>
+      availableServices.reduce((acc, service) => {
+        acc[service.key] = service.label;
+        return acc;
+      }, {}),
+    [availableServices]
+  );
+  const getServiceLabel = (value) => serviceLabelMap[normalizeServiceKey(value)] || value || "Unknown service";
   const selectedManagerAllowedServiceKeys = getAllowedServiceKeys(selectedManager?.profileDetails);
   const assignedProjects = selectedManagerDetails?.projects || [];
   const managerDisputes = useMemo(
@@ -1203,7 +1210,7 @@ const AdminDisputes = () => {
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="rounded-lg border p-3">
-                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Eligible Service Categories</p>
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Eligible Services</p>
                           <p className="mt-1 text-sm font-medium">
                             {selectedManagerAllowedServiceKeys.length
                               ? selectedManagerAllowedServiceKeys.map(getServiceLabel).join(", ")
@@ -2221,32 +2228,31 @@ const AdminDisputes = () => {
               <Input value={profileForm.identityDocumentUrl} onChange={(e) => setProfileForm((c) => ({ ...c, identityDocumentUrl: e.target.value }))} placeholder="Identity document URL" />
               <div className="grid gap-3 rounded-lg border p-4">
                 <div>
-                  <p className="text-sm font-medium">Service Categories</p>
+                  <p className="text-sm font-medium">Services</p>
                   <p className="text-xs text-muted-foreground">
-                    Choose which service-category projects this Project Manager can receive. Leave empty to allow all services.
+                    Choose which services this Project Manager can receive. Leave empty to allow all services.
                   </p>
                 </div>
-                {serviceCatalog.length === 0 ? (
+                {availableServices.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No services are available in the admin catalog yet.</p>
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2">
-                    {serviceCatalog.map((service) => {
-                      const serviceKey = normalizeServiceKey(service.slug || service.id || service.name);
-                      const checked = profileForm.allowedServiceKeys.includes(serviceKey);
+                    {availableServices.map((service) => {
+                      const checked = profileForm.allowedServiceKeys.includes(service.key);
                       return (
-                        <label key={serviceKey} className="flex items-start gap-3 rounded-lg border p-3 text-sm">
+                        <label key={service.key} className="flex items-start gap-3 rounded-lg border p-3 text-sm">
                           <Checkbox
                             checked={checked}
                             onCheckedChange={(nextChecked) =>
                               setProfileForm((current) => ({
                                 ...current,
                                 allowedServiceKeys: nextChecked
-                                  ? Array.from(new Set([...current.allowedServiceKeys, serviceKey]))
-                                  : current.allowedServiceKeys.filter((item) => item !== serviceKey),
+                                  ? Array.from(new Set([...current.allowedServiceKeys, service.key]))
+                                  : current.allowedServiceKeys.filter((item) => item !== service.key),
                               }))
                             }
                           />
-                          <span>{service.name || service.slug || service.id}</span>
+                          <span>{service.label}</span>
                         </label>
                       );
                     })}
