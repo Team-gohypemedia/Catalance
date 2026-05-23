@@ -19,7 +19,12 @@ import MascotImage from "@/assets/mascot.png";
 const CatalanceHero = () => {
   const [isMounted, setIsMounted] = useState(false);
   const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark =
+    theme === "dark" ||
+    (theme === "system" &&
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsMounted(true), 100);

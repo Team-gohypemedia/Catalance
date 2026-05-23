@@ -39,7 +39,12 @@ export default function GetStarted() {
     const [isHovering, setIsHovering] = useState(null);
     const navigate = useNavigate();
     const { theme } = useTheme();
-    const isDark = theme === "dark";
+    const isDark =
+        theme === "dark" ||
+        (theme === "system" &&
+            typeof window !== "undefined" &&
+            typeof window.matchMedia === "function" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
 
     useEffect(() => {
         document.documentElement.classList.add("onboarding-page");

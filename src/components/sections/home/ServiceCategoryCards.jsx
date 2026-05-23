@@ -91,7 +91,12 @@ const toServiceKey = (value) =>
 
 const ServiceCategoryCards = () => {
   const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark =
+    theme === "dark" ||
+    (theme === "system" &&
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
   const navigate = useNavigate();
 
   const handleCardClick = (item) => {

@@ -16,7 +16,12 @@ import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 
 const DelphiHero = () => {
     const { theme } = useTheme();
-    const isDarkMode = theme === 'dark';
+    const isDarkMode =
+        theme === 'dark' ||
+        (theme === 'system' &&
+            typeof window !== 'undefined' &&
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches);
 
     // Animation mount state
     const [isMounted, setIsMounted] = useState(false);

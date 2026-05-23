@@ -788,7 +788,7 @@ function PhoneRoleOnboarding() {
                     type="button"
                     disabled={isSaving}
                     onClick={handleNext}
-                    className="!h-10 flex-1 rounded-md bg-primary text-sm font-medium text-black hover:bg-primary/95"
+                    className="!h-10 flex-1 rounded-md bg-primary text-sm font-medium text-white hover:bg-primary/95"
                   >
                     {isSaving && (
                       <Loader2 className="size-[18px] animate-spin" />

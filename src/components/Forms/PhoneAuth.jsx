@@ -608,8 +608,8 @@ function PhoneAuth() {
       ? "phone-auth-autofill !h-10 !py-0"
       : "phone-auth-autofill !h-12 !py-0";
     const submitButtonClass = compact
-      ? "!h-10 w-full rounded-md bg-primary text-[12px] font-medium text-black shadow-none hover:bg-primary/95 sm:text-[13px]"
-      : "!h-12 w-full rounded-md bg-primary text-[13px] font-medium text-black shadow-none hover:bg-primary/95 sm:text-[14px]";
+      ? "!h-10 w-full rounded-md bg-primary text-[12px] font-medium text-white shadow-none hover:bg-primary/95 sm:text-[13px]"
+      : "!h-12 w-full rounded-md bg-primary text-[13px] font-medium text-white shadow-none hover:bg-primary/95 sm:text-[14px]";
     const otpSlotClass = "h-8 w-8 sm:h-10 sm:w-10 text-xs sm:text-sm font-semibold";
     const selectedCountryDialDigits = normalizePhoneNumber(
       selectedCountry?.dialCode || "",

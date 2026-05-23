@@ -226,7 +226,10 @@ const Navbar = () => {
   const isDark = useMemo(() => {
     if (theme === "dark") return true;
     if (theme === "light") return false;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return false;
   }, [theme]);
 
   return (

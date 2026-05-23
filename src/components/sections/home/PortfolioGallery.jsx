@@ -119,7 +119,12 @@ const portfolioItems = [
 
 const PortfolioGallery = () => {
   const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark =
+    theme === "dark" ||
+    (theme === "system" &&
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   return (
     <section className="w-full bg-background px-4 py-16 transition-colors duration-500 md:px-8 lg:px-16">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "@/components/providers/theme-provider";
 import Sun from "lucide-react/dist/esm/icons/sun";
 import Monitor from "lucide-react/dist/esm/icons/monitor";
@@ -47,6 +47,30 @@ export default function ThemeToggle({ className }) {
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
 
+  const [isSystemDark, setIsSystemDark] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return false;
+    }
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e) => {
+      setIsSystemDark(e.matches);
+    };
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    } else if (mediaQuery.addListener) {
+      mediaQuery.addListener(handleChange);
+      return () => mediaQuery.removeListener(handleChange);
+    }
+  }, []);
+
   const ActiveIcon = iconMap[theme] ?? Moon;
 
   return (
@@ -90,6 +114,15 @@ export default function ThemeToggle({ className }) {
             const isSelected = theme === option.value;
             const { Icon } = option;
 
+            let displayLabel = option.label;
+            let displayDescription = option.description;
+
+            if (option.value === "system") {
+              const systemThemeText = isSystemDark ? "Dark" : "Light";
+              displayLabel = `System (${systemThemeText})`;
+              displayDescription = `Follows your OS (${systemThemeText.toLowerCase()})`;
+            }
+
             return (
               <button
                 key={option.value}
@@ -99,7 +132,7 @@ export default function ThemeToggle({ className }) {
                 }}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-[0.8rem] px-3.5 py-2.5 text-left transition-all duration-200",
-                  // Selected State ΓÇö Solid fill for visibility
+                  // Selected State — Solid fill for visibility
                   isSelected
                     ? "bg-primary text-[#1C1B1F] shadow-md"
                     : "text-foreground/60 hover:bg-black/[0.04] hover:text-foreground dark:text-white/60 dark:hover:bg-white/[0.04] dark:hover:text-white"
@@ -118,13 +151,13 @@ export default function ThemeToggle({ className }) {
                     "text-[0.88rem] font-bold",
                     isSelected ? "text-[#1C1B1F]" : "text-foreground dark:text-white"
                   )}>
-                    {option.label}
+                    {displayLabel}
                   </span>
                   <span className={cn(
                     "text-[0.72rem] font-medium",
                     isSelected ? "text-[#1C1B1F]/70" : "opacity-60"
                   )}>
-                    {option.description}
+                    {displayDescription}
                   </span>
                 </div>
               </button>

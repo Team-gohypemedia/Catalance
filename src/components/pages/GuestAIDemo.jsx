@@ -3081,7 +3081,12 @@ const GuestAIDemo = () => {
     }, []);
 
     const { theme } = useTheme();
-    const isDark = theme === 'dark';
+    const isDark =
+        theme === 'dark' ||
+        (theme === 'system' &&
+            typeof window !== 'undefined' &&
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches);
     const navigate = useNavigate();
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 

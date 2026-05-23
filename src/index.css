@@ -449,6 +449,22 @@ html.onboarding-page:not(.dark) main [class*="text-white"] {
   color: #1C1B1F !important;
 }
 
+/* ── Exception: buttons/links ON a primary background must stay white ── */
+html.home-page:not(.dark) main button.bg-primary,
+html.home-page:not(.dark) main button[class*="bg-primary/"]:not([class*="hover:bg-primary/"]),
+html.home-page:not(.dark) main a.bg-primary,
+html.home-page:not(.dark) main a[class*="bg-primary/"]:not([class*="hover:bg-primary/"]),
+html.onboarding-page:not(.dark) main button.bg-primary,
+html.onboarding-page:not(.dark) main button[class*="bg-primary/"]:not([class*="hover:bg-primary/"]),
+html.onboarding-page:not(.dark) main a.bg-primary,
+html.onboarding-page:not(.dark) main a[class*="bg-primary/"]:not([class*="hover:bg-primary/"]),
+html:not(.dark) button.bg-primary,
+html:not(.dark) button[class*="bg-primary/"]:not([class*="hover:bg-primary/"]),
+html:not(.dark) a.bg-primary,
+html:not(.dark) a[class*="bg-primary/"]:not([class*="hover:bg-primary/"]) {
+  color: #FFFFFF !important;
+}
+
 /* Softer muted variants for text-white/55 etc */
 html.home-page:not(.dark) main [class*="text-white/"],
 html.onboarding-page:not(.dark) main [class*="text-white/"] {
