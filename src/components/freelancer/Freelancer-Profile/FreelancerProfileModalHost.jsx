@@ -1,7 +1,7 @@
 import { FULL_PROFILE_EDITOR_SECTIONS } from "./freelancerProfileUtils";
 
 const getModalPanelClassName = (modalType, fullProfileEditorSection) =>
-  `w-full border border-border/70 bg-card shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${
+  `subtle-scrollbar w-full border border-border/70 bg-card text-card-foreground shadow-2xl shadow-black/10 animate-in fade-in zoom-in-95 duration-200 ${
     modalType === "onboardingService" ? "rounded-md p-0" : "rounded-2xl p-6"
   } ${
     modalType === "viewAllProjects"
@@ -38,7 +38,7 @@ const FreelancerProfileModalHost = ({
   if (!modalType) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 transition-all">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/65 px-4 transition-all backdrop-blur-[2px] dark:bg-black/60">
       <div className={getModalPanelClassName(modalType, fullProfileEditorSection)}>
         {children}
       </div>

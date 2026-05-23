@@ -16,7 +16,6 @@ const TOPIC_LABELS = {
 
 const label = (key) => TOPIC_LABELS[key] || String(key || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-/* Donut chart using SVG */
 const DonutChart = ({ percent = 50, size = 110 }) => {
   const r = 44;
   const circ = 2 * Math.PI * r;
@@ -43,7 +42,6 @@ const DonutChart = ({ percent = 50, size = 110 }) => {
   );
 };
 
-/* Radar polygon for topic card */
 const RadarPolygon = ({ color = "#22c55e", points = [70, 55, 80, 65, 75] }) => {
   const n = points.length;
   const cx = 50; const cy = 50; const r = 38;
@@ -78,7 +76,7 @@ const ProcessSummaryCard = ({ processSummary = {} }) => {
 
   if (!hasData) {
     return (
-      <div style={{ borderRadius: "18px", border: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(145deg,rgba(8,10,24,0.98),rgba(5,7,18,0.98))", padding: "1.5rem" }}>
+      <div className="growth-quest-summary-card" style={{ borderRadius: "18px", border: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(145deg,rgba(8,10,24,0.98),rgba(5,7,18,0.98))", padding: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
           <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "0.75rem", background: "rgba(80,60,200,0.15)", border: "1px solid rgba(100,80,255,0.2)", display: "grid", placeItems: "center" }}>
             <Target className="size-5" style={{ color: "#818cf8" }} />
@@ -88,9 +86,7 @@ const ProcessSummaryCard = ({ processSummary = {} }) => {
             <h3 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff" }}>Best &amp; Weak Topics</h3>
           </div>
         </div>
-        <p style={{ fontSize: "0.85rem", color: "rgba(170,185,215,0.6)" }}>
-          Complete a few practice quizzes to see your strong topics, weak topics, and next focus here.
-        </p>
+        <p style={{ fontSize: "0.85rem", color: "rgba(170,185,215,0.6)" }}>Complete a few practice quizzes to see your strong topics, weak topics, and next focus here.</p>
       </div>
     );
   }
@@ -99,8 +95,7 @@ const ProcessSummaryCard = ({ processSummary = {} }) => {
   const incorrect = 100 - acc;
 
   return (
-    <div style={{ borderRadius: "18px", border: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(145deg,rgba(8,10,24,0.99),rgba(5,7,18,0.99))", overflow: "hidden", boxShadow: "0 12px 48px rgba(0,0,0,0.5)" }}>
-      {/* Header */}
+    <div className="growth-quest-summary-card" style={{ borderRadius: "18px", border: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(145deg,rgba(8,10,24,0.99),rgba(5,7,18,0.99))", overflow: "hidden", boxShadow: "0 12px 48px rgba(0,0,0,0.5)" }}>
       <div style={{ padding: "1.5rem 1.5rem 1rem", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
           <div style={{ width: "2.8rem", height: "2.8rem", borderRadius: "0.85rem", background: "rgba(60,80,200,0.2)", border: "1px solid rgba(100,120,255,0.25)", display: "grid", placeItems: "center", flexShrink: 0 }}>
@@ -122,13 +117,10 @@ const ProcessSummaryCard = ({ processSummary = {} }) => {
           </button>
         )}
       </div>
-
       <div style={{ padding: "0 1.5rem 1.5rem", display: "grid", gap: "1rem" }}>
-        {/* Next Focus + Donut row */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1rem", alignItems: "center" }}>
           {next && (
             <div style={{ borderRadius: "14px", border: "1px solid rgba(255,193,7,0.18)", background: "linear-gradient(135deg,rgba(255,193,7,0.06),rgba(10,12,30,0.6))", padding: "1rem", position: "relative", overflow: "hidden" }}>
-              {/* sonar rings */}
               <svg style={{ position: "absolute", right: "-0.5rem", top: "50%", transform: "translateY(-50%)", width: "80px", height: "80px", opacity: 0.3, pointerEvents: "none" }} viewBox="0 0 80 80" fill="none">
                 <circle cx="40" cy="40" r="35" stroke="#ffc107" strokeWidth="0.5" />
                 <circle cx="40" cy="40" r="24" stroke="#ffc107" strokeWidth="0.5" />
@@ -161,8 +153,6 @@ const ProcessSummaryCard = ({ processSummary = {} }) => {
             </div>
           )}
         </div>
-
-        {/* Strongest + Weakest row */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
           {strong && (
             <div style={{ borderRadius: "14px", border: "1px solid rgba(34,197,94,0.2)", background: "linear-gradient(135deg,rgba(34,197,94,0.07),rgba(8,10,24,0.6))", padding: "1rem", position: "relative" }}>
@@ -179,13 +169,6 @@ const ProcessSummaryCard = ({ processSummary = {} }) => {
                   </p>
                 </div>
                 <RadarPolygon color="#22c55e" points={[80, 70, 85, 65, 75]} />
-              </div>
-              <div style={{ marginTop: "0.6rem", display: "grid", gap: "0.25rem" }}>
-                {["High accuracy", "Consistent performance", "Keep it up!"].map(t => (
-                  <p key={t} style={{ fontSize: "0.72rem", color: "#4ade80", display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                    <span style={{ color: "#22c55e" }}>✓</span> {t}
-                  </p>
-                ))}
               </div>
             </div>
           )}
@@ -205,32 +188,10 @@ const ProcessSummaryCard = ({ processSummary = {} }) => {
                 </div>
                 <RadarPolygon color="#ef4444" points={[30, 25, 35, 28, 32]} />
               </div>
-              <div style={{ marginTop: "0.6rem", display: "grid", gap: "0.25rem" }}>
-                {["Low accuracy", "Review key concepts", "Practice more questions"].map(t => (
-                  <p key={t} style={{ fontSize: "0.72rem", color: "#f87171", display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                    <span style={{ color: "#ef4444" }}>⚠</span> {t}
-                  </p>
-                ))}
-              </div>
             </div>
           )}
         </div>
-
-        {/* Footer motivational bar */}
         <div style={{ borderRadius: "12px", background: "linear-gradient(90deg,rgba(30,20,60,0.8),rgba(40,20,80,0.5))", border: "1px solid rgba(100,80,200,0.15)", padding: "0.85rem 1rem", display: "flex", alignItems: "center", gap: "0.75rem", position: "relative", overflow: "hidden" }}>
-          <svg style={{ position: "absolute", right: 0, bottom: 0, width: "160px", height: "50px", opacity: 0.15, pointerEvents: "none" }} viewBox="0 0 160 50" fill="none">
-            <rect x="10" y="25" width="8" height="25" fill="#818cf8" />
-            <rect x="22" y="15" width="8" height="35" fill="#a78bfa" />
-            <rect x="34" y="20" width="8" height="30" fill="#818cf8" />
-            <rect x="46" y="10" width="8" height="40" fill="#c4b5fd" />
-            <rect x="58" y="30" width="8" height="20" fill="#818cf8" />
-            <rect x="70" y="18" width="12" height="32" fill="#a78bfa" />
-            <rect x="86" y="8" width="12" height="42" fill="#c4b5fd" />
-            <rect x="102" y="22" width="8" height="28" fill="#818cf8" />
-            <rect x="114" y="12" width="10" height="38" fill="#a78bfa" />
-            <rect x="128" y="5" width="14" height="45" fill="#c4b5fd" />
-            <rect x="146" y="18" width="10" height="32" fill="#818cf8" />
-          </svg>
           <div style={{ width: "2.2rem", height: "2.2rem", borderRadius: "50%", background: "rgba(100,80,255,0.15)", border: "1px solid rgba(130,110,255,0.25)", display: "grid", placeItems: "center", flexShrink: 0 }}>
             <Rocket className="size-4" style={{ color: "#a78bfa" }} />
           </div>

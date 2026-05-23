@@ -1159,17 +1159,19 @@ const AddEditServiceWizard = ({
            width: 4px;
          }
          .custom-wizard-content::-webkit-scrollbar-track {
-           background: transparent;
+           background: #FAF6F0 !important;
          }
          .custom-wizard-content::-webkit-scrollbar-thumb {
-           background: rgba(255, 255, 255, 0.05);
+           background: #D9692A !important;
+           border: 1px solid #FAF6F0 !important;
            border-radius: 20px;
+           background-clip: padding-box;
          }
          .custom-textarea {
            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
          }
          .custom-textarea:focus {
-           background: rgba(255, 255, 255, 0.04);
+           background: #FFFFFF;
          }
       `}</style>
     </div>

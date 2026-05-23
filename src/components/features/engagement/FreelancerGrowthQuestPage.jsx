@@ -1932,7 +1932,7 @@ const GrowthQuestLiveDashboard = ({
       ) : null}
 
       {/* ─── Premium Footer ─── */}
-      <footer className="mt-20 relative pt-12 pb-8 px-8 rounded-[32px] border border-white/5 bg-slate-950/40 backdrop-blur-xl overflow-hidden shadow-3xl">
+      <footer className="growth-quest-footer mt-20 relative pt-12 pb-8 px-8 rounded-[32px] border border-white/5 bg-slate-950/40 backdrop-blur-xl overflow-hidden shadow-3xl">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 size-1.5 rounded-full bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,1)] z-10" />
 

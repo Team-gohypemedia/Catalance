@@ -82,7 +82,7 @@ const freelancerWorkspaceNavItems = [
 
 const isFreelancerSidePath = (pathname = "") => {
   const normalizedPath = String(pathname || "").trim().toLowerCase();
-  return normalizedPath.startsWith("/freelancer") || normalizedPath === "/opportunity";
+  return normalizedPath.startsWith("/freelancer") && !normalizedPath.startsWith("/freelancer/growth-quest");
 };
 
 const normalizePathname = (value = "") => {

@@ -24,6 +24,7 @@ import ThemeToggle from "@/components/common/ThemeToggle";
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
   { label: "Opportunity", key: "marketplace", to: "/marketplace" },
+  { label: "Service", key: "service", to: "/service" },
   { label: "Contact", key: "contact", to: "/contact" },
   { label: "Growth Hub", key: "growth-quest", to: "/freelancer/growth-quest" },
 ];
