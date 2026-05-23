@@ -935,7 +935,20 @@ const scoreBudgetCompatibility = (targetRange = {}, sourceRange = {}) => {
     };
   }
 
-  if (!rangesOverlap(targetRange, sourceRange)) {
+  const freelancerMinimumBudget = sourceRange?.min ?? null;
+  const freelancerMaximumBudget = sourceRange?.max ?? null;
+  const projectBudgetFloor = targetRange?.min ?? null;
+  const projectBudgetCeiling = targetRange?.max ?? null;
+
+  // Matching rule: the freelancer budget is the minimum acceptable project value.
+  // Reject only when the full project budget sits below that minimum.
+  if (
+    freelancerMinimumBudget !== null &&
+    freelancerMinimumBudget !== undefined &&
+    projectBudgetCeiling !== null &&
+    projectBudgetCeiling !== undefined &&
+    projectBudgetCeiling < freelancerMinimumBudget
+  ) {
     return {
       score: 0,
       withinRange: false,
@@ -946,15 +959,25 @@ const scoreBudgetCompatibility = (targetRange = {}, sourceRange = {}) => {
     };
   }
 
-  const targetCenter = getRangeCenter(targetRange);
-  const sourceCenter = getRangeCenter(sourceRange);
-  const spread = Math.max((targetRange.max - targetRange.min) / 2, 1);
-  const distance = Math.abs((targetCenter ?? 0) - (sourceCenter ?? 0));
-  const proximity = Math.max(0, 1 - distance / spread);
-  const percentage = Math.max(50, Math.round(50 + proximity * 50));
+  const projectReferenceBudget =
+    getRangeCenter(targetRange) ??
+    projectBudgetCeiling ??
+    projectBudgetFloor ??
+    0;
+  const budgetSurplus =
+    freelancerMinimumBudget !== null && freelancerMinimumBudget !== undefined
+      ? Math.max(0, projectReferenceBudget - freelancerMinimumBudget)
+      : 0;
+  const normalizationBase = Math.max(
+    freelancerMinimumBudget || 0,
+    freelancerMaximumBudget || 0,
+    1,
+  );
+  const surplusRatio = Math.min(1, budgetSurplus / normalizationBase);
+  const percentage = Math.round(70 + surplusRatio * 30);
 
   return {
-    score: Math.max(9, Math.min(15, Math.round(9 + proximity * 6))),
+    score: Math.max(10, Math.min(15, Math.round(10 + surplusRatio * 5))),
     withinRange: true,
     hardRejected: false,
     budgetMatchPercentage: percentage,
@@ -1125,6 +1148,64 @@ const buildMatchReasons = ({
   return reasons.slice(0, 4);
 };
 
+const buildLevelDebugSummary = ({
+  levelKey = "",
+  passed = false,
+  failReason = null,
+  freelancer = {},
+  sourceEvidence = null,
+  targetProfile = {},
+  sourceProfile = {},
+  activeProjectCount = 0,
+  availability = null,
+  budgetCompatibility = null,
+  serviceMatch = null,
+  skills = null,
+  niches = null,
+  projectTypes = null,
+  textRelevance = null,
+} = {}) => ({
+  levelKey,
+  passed,
+  failReason,
+  freelancerId: freelancer?.id || null,
+  freelancerName: freelancer?.fullName || freelancer?.name || null,
+  sourceType: sourceEvidence?.type || null,
+  sourceTitle: sourceEvidence?.title || sourceProfile?.recordTitle || null,
+  checks: {
+    targetServiceKey: targetProfile?.serviceKey || null,
+    targetServiceType: targetProfile?.serviceType || null,
+    targetBudget: targetProfile?.budgetRange || null,
+    activeProjectCount,
+    availabilityEligible: availability?.eligible ?? null,
+    availabilityScore: availability?.score ?? null,
+    budgetHardRejected: budgetCompatibility?.hardRejected ?? null,
+    budgetWithinRange: budgetCompatibility?.withinRange ?? null,
+    budgetScore: budgetCompatibility?.score ?? null,
+    serviceMatch,
+    matchedSkills: Array.isArray(skills?.matchedValues) ? skills.matchedValues : [],
+    matchedNiches: Array.isArray(niches?.matchedValues) ? niches.matchedValues : [],
+    matchedProjectTypes: Array.isArray(projectTypes?.matchedValues)
+      ? projectTypes.matchedValues
+      : [],
+    textScore: textRelevance?.score ?? null,
+    matchedKeywords: Array.isArray(textRelevance?.matchedKeywords)
+      ? textRelevance.matchedKeywords
+      : [],
+  },
+});
+
+const logLevelDiagnostics = (label, entries = []) => {
+  if (process.env.NODE_ENV === "production" || !Array.isArray(entries)) return;
+
+  console.info(label, {
+    totalChecked: entries.length,
+    passed: entries.filter((entry) => entry?.passed).length,
+    failed: entries.filter((entry) => !entry?.passed).length,
+    details: entries,
+  });
+};
+
 const evaluateCandidateMatch = ({
   targetProfile = {},
   sourceProfile = {},
@@ -1133,6 +1214,7 @@ const evaluateCandidateMatch = ({
   activeProjectCount = 0,
   sourceEvidence = null,
   now = new Date(),
+  includeDebug = false,
 } = {}) => {
   const availability = scoreAvailability({
     activeProjectCount,
@@ -1140,7 +1222,18 @@ const evaluateCandidateMatch = ({
   });
 
   if (!availability.eligible) {
-    return null;
+    const debug = buildLevelDebugSummary({
+      levelKey,
+      passed: false,
+      failReason: "availability_not_eligible",
+      freelancer,
+      sourceEvidence,
+      targetProfile,
+      sourceProfile,
+      activeProjectCount,
+      availability,
+    });
+    return includeDebug ? { candidate: null, debug } : null;
   }
 
   const skills = scoreListOverlap({
@@ -1164,7 +1257,19 @@ const evaluateCandidateMatch = ({
   );
 
   if (budgetCompatibility.hardRejected) {
-    return null;
+    const debug = buildLevelDebugSummary({
+      levelKey,
+      passed: false,
+      failReason: "budget_hard_rejected",
+      freelancer,
+      sourceEvidence,
+      targetProfile,
+      sourceProfile,
+      activeProjectCount,
+      availability,
+      budgetCompatibility,
+    });
+    return includeDebug ? { candidate: null, debug } : null;
   }
 
   const targetServiceSignals = collectServiceSignals(
@@ -1231,7 +1336,45 @@ const evaluateCandidateMatch = ({
     textRelevance.score > 0;
 
   if (!hasSignalMatch) {
-    return null;
+    const debug = buildLevelDebugSummary({
+      levelKey,
+      passed: false,
+      failReason: "no_signal_match",
+      freelancer,
+      sourceEvidence,
+      targetProfile,
+      sourceProfile,
+      activeProjectCount,
+      availability,
+      budgetCompatibility,
+      serviceMatch,
+      skills,
+      niches,
+      projectTypes,
+      textRelevance,
+    });
+    return includeDebug ? { candidate: null, debug } : null;
+  }
+
+  if (hasTargetServiceSignal && !serviceMatch) {
+    const debug = buildLevelDebugSummary({
+      levelKey,
+      passed: false,
+      failReason: "service_category_mismatch",
+      freelancer,
+      sourceEvidence,
+      targetProfile,
+      sourceProfile,
+      activeProjectCount,
+      availability,
+      budgetCompatibility,
+      serviceMatch,
+      skills,
+      niches,
+      projectTypes,
+      textRelevance,
+    });
+    return includeDebug ? { candidate: null, debug } : null;
   }
 
   if (
@@ -1240,16 +1383,24 @@ const evaluateCandidateMatch = ({
     serviceMatch &&
     !hasConcreteOverlap
   ) {
-    return null;
-  }
-
-  if (
-    ["level_2_case_study", "level_3_profile_skills"].includes(levelKey) &&
-    hasTargetServiceSignal &&
-    !serviceMatch &&
-    skills.matchedValues.length === 0
-  ) {
-    return null;
+    const debug = buildLevelDebugSummary({
+      levelKey,
+      passed: false,
+      failReason: "service_only_without_concrete_overlap",
+      freelancer,
+      sourceEvidence,
+      targetProfile,
+      sourceProfile,
+      activeProjectCount,
+      availability,
+      budgetCompatibility,
+      serviceMatch,
+      skills,
+      niches,
+      projectTypes,
+      textRelevance,
+    });
+    return includeDebug ? { candidate: null, debug } : null;
   }
 
   const sourcePriorityScore =
@@ -1318,7 +1469,7 @@ const evaluateCandidateMatch = ({
       ? uniqueItems([sourceProfile.recordTitle || sourceEvidence?.title || ""]).filter(Boolean)
       : [];
 
-  return {
+  const candidate = {
     freelancerId: freelancer?.id || null,
     sourceLevel: levelMeta.level,
     sourceLabel: levelMeta.label,
@@ -1381,6 +1532,30 @@ const evaluateCandidateMatch = ({
       timeline: sourceProfile.timeline || sourceEvidence?.timeline || null,
     },
     sourceEvidence,
+  };
+
+  if (!includeDebug) {
+    return candidate;
+  }
+
+  return {
+    candidate,
+    debug: buildLevelDebugSummary({
+      levelKey,
+      passed: true,
+      freelancer,
+      sourceEvidence,
+      targetProfile,
+      sourceProfile,
+      activeProjectCount,
+      availability,
+      budgetCompatibility,
+      serviceMatch,
+      skills,
+      niches,
+      projectTypes,
+      textRelevance,
+    }),
   };
 };
 
@@ -1590,6 +1765,7 @@ const buildLevel1Candidates = ({
   freelancerById = new Map(),
   activeProjectCounts = new Map(),
   now = new Date(),
+  debugEntries = null,
 } = {}) => {
   const candidateMap = new Map();
 
@@ -1604,7 +1780,7 @@ const buildLevel1Candidates = ({
       if (!freelancer) return;
 
       const activeProjectCount = activeProjectCounts.get(freelancerId) || 0;
-      const candidate = evaluateCandidateMatch({
+      const evaluation = evaluateCandidateMatch({
         targetProfile,
         sourceProfile,
         freelancer,
@@ -1617,8 +1793,13 @@ const buildLevel1Candidates = ({
           completedAt: completedProject?.completedAt || null,
         },
         now,
+        includeDebug: Array.isArray(debugEntries),
       });
 
+      const candidate = Array.isArray(debugEntries) ? evaluation?.candidate : evaluation;
+      if (Array.isArray(debugEntries) && evaluation?.debug) {
+        debugEntries.push(evaluation.debug);
+      }
       if (!candidate) return;
 
       candidateMap.set(
@@ -1636,6 +1817,7 @@ const buildLevel2Candidates = ({
   freelancers = [],
   activeProjectCounts = new Map(),
   now = new Date(),
+  debugEntries = null,
 } = {}) => {
   const candidateMap = new Map();
 
@@ -1644,7 +1826,7 @@ const buildLevel2Candidates = ({
     const caseStudies = extractCanonicalServiceCaseStudies(freelancer);
 
     caseStudies.forEach((caseStudy) => {
-      const candidate = evaluateCandidateMatch({
+      const evaluation = evaluateCandidateMatch({
         targetProfile,
         sourceProfile: caseStudy,
         freelancer,
@@ -1657,8 +1839,13 @@ const buildLevel2Candidates = ({
           timeline: cleanText(caseStudy?.timeline) || null,
         },
         now,
+        includeDebug: Array.isArray(debugEntries),
       });
 
+      const candidate = Array.isArray(debugEntries) ? evaluation?.candidate : evaluation;
+      if (Array.isArray(debugEntries) && evaluation?.debug) {
+        debugEntries.push(evaluation.debug);
+      }
       if (!candidate) return;
 
       candidateMap.set(
@@ -1676,6 +1863,7 @@ const buildLevel3Candidates = ({
   freelancers = [],
   activeProjectCounts = new Map(),
   now = new Date(),
+  debugEntries = null,
 } = {}) => {
   const candidateMap = new Map();
 
@@ -1685,7 +1873,7 @@ const buildLevel3Candidates = ({
       freelancer,
       targetProfile.serviceKey,
     );
-    const candidate = evaluateCandidateMatch({
+    const evaluation = evaluateCandidateMatch({
       targetProfile,
       sourceProfile,
       freelancer,
@@ -1697,8 +1885,13 @@ const buildLevel3Candidates = ({
         title: cleanText(freelancer?.fullName) || "Freelancer profile",
       },
       now,
+      includeDebug: Array.isArray(debugEntries),
     });
 
+    const candidate = Array.isArray(debugEntries) ? evaluation?.candidate : evaluation;
+    if (Array.isArray(debugEntries) && evaluation?.debug) {
+      debugEntries.push(evaluation.debug);
+    }
     if (!candidate) return;
 
     candidateMap.set(
@@ -1733,6 +1926,11 @@ export const rankFreelancersFromData = ({
       .map((freelancer) => [freelancer.id, freelancer]),
   );
   const selectedCandidates = new Map();
+  const levelDebugEntries = {
+    level1: [],
+    level2: [],
+    level3: [],
+  };
   const levelCounts = {
     level1: 0,
     level2: 0,
@@ -1754,6 +1952,7 @@ export const rankFreelancersFromData = ({
     freelancerById,
     activeProjectCounts,
     now,
+    debugEntries: levelDebugEntries.level1,
   });
   levelCounts.level1 = level1Candidates.size;
   registerCandidates(level1Candidates);
@@ -1764,6 +1963,7 @@ export const rankFreelancersFromData = ({
       freelancers,
       activeProjectCounts,
       now,
+      debugEntries: levelDebugEntries.level2,
     });
     levelCounts.level2 = level2Candidates.size;
     registerCandidates(level2Candidates);
@@ -1775,6 +1975,7 @@ export const rankFreelancersFromData = ({
       freelancers,
       activeProjectCounts,
       now,
+      debugEntries: levelDebugEntries.level3,
     });
     levelCounts.level3 = level3Candidates.size;
     registerCandidates(level3Candidates);
@@ -1789,6 +1990,15 @@ export const rankFreelancersFromData = ({
     .filter(Boolean)
     .sort(sortMatches)
     .slice(0, normalizedLimit);
+
+  if (process.env.NODE_ENV !== "production") {
+    console.info("[Proposal Match][Level 1] Completed project matching checks service, skills, niches, project type, budget, timeline, text relevance, and availability.");
+    logLevelDiagnostics("[Proposal Match][Level 1][Diagnostics]", levelDebugEntries.level1);
+    console.info("[Proposal Match][Level 2] Case study matching checks case-study service alignment, skills overlap, budget fit, text relevance, and availability.");
+    logLevelDiagnostics("[Proposal Match][Level 2][Diagnostics]", levelDebugEntries.level2);
+    console.info("[Proposal Match][Level 3] Profile matching checks freelancer profile service, skills, niches, project type, budget fit, text relevance, and availability.");
+    logLevelDiagnostics("[Proposal Match][Level 3][Diagnostics]", levelDebugEntries.level3);
+  }
 
   return {
     results,
@@ -1914,7 +2124,7 @@ export const matchFreelancersForProposalPayload = async (
     collectActiveProjectCounts(),
   ]);
 
-  return rankFreelancersFromData({
+  const ranking = rankFreelancersFromData({
     targetProfile,
     freelancers,
     completedProjects,
@@ -1922,6 +2132,26 @@ export const matchFreelancersForProposalPayload = async (
     limit,
     minResults,
   });
+
+  return {
+    ...ranking,
+    meta: {
+      ...(ranking.meta || {}),
+      sourceType: "payload",
+      freelancerPoolCount: Array.isArray(freelancers) ? freelancers.length : 0,
+      completedProjectPoolCount: Array.isArray(completedProjects)
+        ? completedProjects.length
+        : 0,
+      activeProjectCountEntries:
+        activeProjectCounts instanceof Map ? activeProjectCounts.size : 0,
+      openToWorkCount: Array.isArray(freelancers)
+        ? freelancers.filter((freelancer) => freelancer?.openToWork !== false).length
+        : 0,
+      closedToWorkCount: Array.isArray(freelancers)
+        ? freelancers.filter((freelancer) => freelancer?.openToWork === false).length
+        : 0,
+    },
+  };
 };
 
 export const matchFreelancersForProposal = async (
@@ -1953,6 +2183,22 @@ export const matchFreelancersForProposal = async (
   return {
     ...resolvedSource,
     ...ranking,
+    meta: {
+      ...(ranking.meta || {}),
+      sourceType: resolvedSource?.sourceType || "project",
+      freelancerPoolCount: Array.isArray(freelancers) ? freelancers.length : 0,
+      completedProjectPoolCount: Array.isArray(completedProjects)
+        ? completedProjects.length
+        : 0,
+      activeProjectCountEntries:
+        activeProjectCounts instanceof Map ? activeProjectCounts.size : 0,
+      openToWorkCount: Array.isArray(freelancers)
+        ? freelancers.filter((freelancer) => freelancer?.openToWork !== false).length
+        : 0,
+      closedToWorkCount: Array.isArray(freelancers)
+        ? freelancers.filter((freelancer) => freelancer?.openToWork === false).length
+        : 0,
+    },
   };
 };
 

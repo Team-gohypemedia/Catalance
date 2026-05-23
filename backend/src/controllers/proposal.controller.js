@@ -177,13 +177,46 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
     : [];
 
   if (process.env.NODE_ENV !== "production") {
-    console.info("[Proposal Match]", {
+    console.info("[Proposal Match][Request]", {
+      userId,
+      sourceType: matchingResult?.meta?.sourceType || matchingResult?.sourceType || null,
+      proposalId: proposalId || proposal?.projectId || proposal?.syncedProjectId || null,
+      filtersUsed: {
+        role: "FREELANCER",
+        statuses: ["ACTIVE", "PENDING_APPROVAL"],
+        onboardingComplete: true,
+        serviceKey: proposal.serviceKey || proposal.project?.serviceKey || null,
+        serviceType: proposal.serviceType || proposal.service || null,
+        budget: proposal.budget ?? proposal.proposalBudget ?? null,
+        projectTypes: Array.isArray(matchingResult?.source?.projectTypes)
+          ? matchingResult.source.projectTypes
+          : null,
+        niches: Array.isArray(matchingResult?.source?.niches)
+          ? matchingResult.source.niches
+          : null,
+        projectStack: proposal.projectStack || proposal.techStack || null,
+      },
+      pools: {
+        freelancerPoolCount: matchingResult?.meta?.freelancerPoolCount ?? null,
+        openToWorkCount: matchingResult?.meta?.openToWorkCount ?? null,
+        closedToWorkCount: matchingResult?.meta?.closedToWorkCount ?? null,
+        completedProjectPoolCount: matchingResult?.meta?.completedProjectPoolCount ?? null,
+        activeProjectCountEntries:
+          matchingResult?.meta?.activeProjectCountEntries ?? null,
+      },
+      ranking: {
+        limit: matchingResult?.meta?.limit ?? null,
+        minResults: matchingResult?.meta?.minResults ?? null,
+        totalMatchedBeforeClientFilters: matchedFreelancers.length,
+        levelCounts: matchingResult?.levelCounts || null,
+      },
+    });
+    console.info("[Proposal Match][Results]", {
       userId,
       serviceKey: proposal.serviceKey || proposal.project?.serviceKey || null,
       budget: proposal.budget ?? proposal.proposalBudget ?? null,
-      candidates: matchedFreelancers.length,
       matched: matchedFreelancers.length,
-      levelCounts: matchingResult?.levelCounts || null,
+      freelancerIds: matchedFreelancers.map((freelancer) => freelancer?.id).filter(Boolean),
     });
   }
 

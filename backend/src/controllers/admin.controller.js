@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { sendEmail } from "../lib/email-service.js";
+import { buildFreelancerProfileDetailsObject } from "../modules/users/freelancer-profile-details.mapper.js";
 import { hashPassword } from "../modules/users/password.utils.js";
 
 // Helper to get or initialize catalog - DEPRECATED
@@ -1376,6 +1377,7 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         status: true,
         isVerified: true,
         phone: true,
+        phoneNumber: true,
         createdAt: true,
         updatedAt: true,
         managerProfile: {
@@ -1389,7 +1391,9 @@ export const getUserDetails = asyncHandler(async (req, res) => {
             professionalBio: true,
             services: true,
             serviceDetails: true,
-            profilePhoto: true
+            profilePhoto: true,
+            isVerified: true,
+            username: true
           }
         },
         // For clients: get their owned projects
@@ -1568,6 +1572,11 @@ export const getUserDetails = asyncHandler(async (req, res) => {
       user.freelancerProfile && typeof user.freelancerProfile === "object"
         ? user.freelancerProfile
         : {};
+    const freelancerProfileDetails = buildFreelancerProfileDetailsObject(freelancerProfile);
+    const freelancerIdentity =
+      freelancerProfileDetails.identity && typeof freelancerProfileDetails.identity === "object"
+        ? freelancerProfileDetails.identity
+        : {};
 
     // Calculate statistics based on role
     let stats = {};
@@ -1736,13 +1745,43 @@ export const getUserDetails = asyncHandler(async (req, res) => {
           fullName: user.fullName,
           email: user.email,
           role: user.role,
-          bio: freelancerProfile.professionalBio ?? null,
-          services: Array.isArray(freelancerProfile.services) ? freelancerProfile.services : [],
+          bio:
+            freelancerProfileDetails.professionalBio ||
+            freelancerProfile.professionalBio ||
+            null,
+          phone: user.phone || user.phoneNumber || null,
+          phoneNumber: user.phoneNumber || user.phone || null,
+          isVerified: Boolean(user.isVerified),
+          profileVerified: Boolean(freelancerProfile.isVerified),
           status: user.status || 'ACTIVE',
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
-          serviceDetails: freelancerProfile.serviceDetails ?? {},
-          profilePhoto: freelancerProfile.profilePhoto ?? null
+          profileRole:
+            freelancerProfileDetails.role ||
+            freelancerProfileDetails.profileRole ||
+            freelancerProfile.profileRole ||
+            null,
+          professionalTitle: freelancerIdentity.professionalTitle || null,
+          location: [freelancerIdentity.city, freelancerIdentity.country].filter(Boolean).join(", "),
+          languages: Array.isArray(freelancerIdentity.languages) ? freelancerIdentity.languages : [],
+          portfolio: freelancerIdentity.portfolioUrl || null,
+          linkedin: freelancerIdentity.linkedinUrl || null,
+          github: freelancerIdentity.githubUrl || null,
+          username: freelancerIdentity.username || freelancerProfile.username || null,
+          services: Array.isArray(freelancerProfileDetails.services)
+            ? freelancerProfileDetails.services
+            : Array.isArray(freelancerProfile.services)
+              ? freelancerProfile.services
+              : [],
+          skills: Array.isArray(freelancerProfileDetails.skills)
+            ? freelancerProfileDetails.skills
+            : [],
+          serviceDetails: freelancerProfileDetails.serviceDetails ?? freelancerProfile.serviceDetails ?? {},
+          portfolioProjects: Array.isArray(freelancerProfileDetails.portfolioProjects)
+            ? freelancerProfileDetails.portfolioProjects
+            : [],
+          profileDetails: freelancerProfileDetails,
+          profilePhoto: freelancerIdentity.profilePhoto || freelancerProfile.profilePhoto || null
         },
         stats,
         projects: user.role === "CLIENT" ? user.ownedProjects : [],

@@ -20,6 +20,7 @@ const AdminUsers = ({ roleFilter }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("ALL");
 
   const pageTitle = roleFilter 
     ? (roleFilter === "CLIENT" ? "Clients" : roleFilter === "PROJECT_MANAGER" ? "Project Managers" : "Freelancers")
@@ -28,6 +29,19 @@ const AdminUsers = ({ roleFilter }) => {
   const pageDescription = roleFilter
     ? `Manage your platform's ${roleFilter === "PROJECT_MANAGER" ? "project managers" : roleFilter.toLowerCase() + "s"}.`
     : "Manage your platform's users.";
+
+  const getDisplayStatus = (user) => {
+    if (user.status === "SUSPENDED") return "SUSPENDED";
+    if (user.status === "PENDING_APPROVAL" || (user.role === "FREELANCER" && !user.isVerified)) {
+      return "PENDING";
+    }
+    return "ACTIVE";
+  };
+
+  const filteredUsers = users.filter((user) => {
+    if (statusFilter === "ALL") return true;
+    return getDisplayStatus(user) === statusFilter;
+  });
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -90,19 +104,33 @@ const AdminUsers = ({ roleFilter }) => {
         <AdminTopBar label={pageTitle} />
 
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">{pageTitle}</h1>
               <p className="text-muted-foreground mt-2">{pageDescription}</p>
             </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={`Search ${pageTitle.toLowerCase()}...`}
-                className="pl-8"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+            <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {["ALL", "ACTIVE", "PENDING", "SUSPENDED"].map((status) => (
+                  <Button
+                    key={status}
+                    variant={statusFilter === status ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter(status)}
+                  >
+                    {status === "ALL" ? "All" : status.charAt(0) + status.slice(1).toLowerCase()}
+                  </Button>
+                ))}
+              </div>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={`Search ${pageTitle.toLowerCase()}...`}
+                  className="pl-8"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
@@ -128,12 +156,12 @@ const AdminUsers = ({ roleFilter }) => {
                       <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : users.length === 0 ? (
+                ) : filteredUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">No {pageTitle.toLowerCase()} found.</TableCell>
                   </TableRow>
                 ) : (
-                  users.map((user) => (
+                  filteredUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell>
                         <div>
@@ -154,51 +182,51 @@ const AdminUsers = ({ roleFilter }) => {
                       <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          user.status === 'SUSPENDED' 
+                          getDisplayStatus(user) === 'SUSPENDED'
                             ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                            : (user.status === 'PENDING_APPROVAL' || (user.role === 'FREELANCER' && !user.isVerified))
+                            : getDisplayStatus(user) === 'PENDING'
                               ? 'bg-primary/10 text-primary dark:bg-primary/10/30 dark:text-primary'
                               : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                         }`}>
-                          {user.status === 'SUSPENDED' 
-                            ? 'Suspended' 
-                            : (user.status === 'PENDING_APPROVAL' || (user.role === 'FREELANCER' && !user.isVerified))
+                          {getDisplayStatus(user) === 'SUSPENDED'
+                            ? 'Suspended'
+                            : getDisplayStatus(user) === 'PENDING'
                               ? 'Pending'
                               : 'Active'}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleView(user.id)}
-                            className="h-8 w-8 p-0"
-                            title="View"
+                            className="gap-2"
                           >
                             <Eye className="h-4 w-4" />
+                            View
                           </Button>
                           {user.status === 'SUSPENDED' ? (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => handleStatusChange(user.id, 'ACTIVE')}
                               disabled={actionLoading === user.id}
-                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-100"
-                              title="Activate"
+                              className="gap-2 text-green-600 hover:text-green-700 hover:border-green-200 hover:bg-green-50"
                             >
                               <CheckCircle className="h-4 w-4" />
+                              Activate
                             </Button>
                           ) : (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => handleStatusChange(user.id, 'SUSPENDED')}
                               disabled={actionLoading === user.id}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-100"
-                              title="Suspend"
+                              className="gap-2 text-red-600 hover:text-red-700 hover:border-red-200 hover:bg-red-50"
                             >
                               <Ban className="h-4 w-4" />
+                              Suspend
                             </Button>
                           )}
                         </div>

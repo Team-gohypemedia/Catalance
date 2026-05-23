@@ -60,6 +60,12 @@ import {
 const router = Router();
 
 router.use(requireAuth, requireAdmin);
+router.use((req, res, next) => {
+  res.set("Cache-Control", "no-store, max-age=0");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  next();
+});
 
 router.get("/stats", getDashboardStats);
 router.get(

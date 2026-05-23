@@ -31,6 +31,7 @@ import {
   getProposalFreelancerRecipients,
   getProposalInvitee,
   hasFreelancerRole,
+  mapApiDraftProject,
   mapApiProposal,
   mapLocalDraftProposal,
   mergeInviteeCollections,
@@ -76,6 +77,11 @@ export const ClientProposalDataProvider = ({ children }) => {
   const [freelancerFetchStatus, setFreelancerFetchStatus] = useState("idle");
   const [freelancerFetchError, setFreelancerFetchError] = useState("");
   const [selectedProposalForSend, setSelectedProposalForSend] = useState(null);
+  const draftSyncStateRef = useRef({
+    userId: null,
+    synced: false,
+    inFlight: false,
+  });
   const freelancerPoolCacheRef = useRef({
     userId: null,
     queryKey: null,
@@ -130,15 +136,212 @@ export const ClientProposalDataProvider = ({ children }) => {
     return [proposalId, serviceKey, budget, stackSignature, title, contentHash].join("::");
   }, []);
 
+  const buildProjectDraftPayload = useCallback((proposal = {}) => {
+    const normalizedBudget = parseProposalBudgetValue(
+      proposal?.budget ?? proposal?.amount ?? "",
+    );
+    const proposalContent =
+      proposal?.proposalContent || proposal?.content || proposal?.summary || "";
+
+    return {
+      title: resolveProposalTitle(proposal),
+      description: proposalContent || "Proposal draft",
+      proposalContent: proposalContent || "Proposal draft",
+      budget: normalizedBudget,
+      timeline: proposal?.timeline || "1 month",
+      serviceKey: proposal?.serviceKey || resolveProposalServiceLabel(proposal),
+      status: "DRAFT",
+      ...(proposal?.proposalContext &&
+      typeof proposal.proposalContext === "object" &&
+      !Array.isArray(proposal.proposalContext)
+        ? { proposalContext: proposal.proposalContext }
+        : {}),
+    };
+  }, []);
+
+  const buildDraftProjectMatchKey = useCallback((proposal = {}) => {
+    const title = String(resolveProposalTitle(proposal) || "")
+      .trim()
+      .toLowerCase();
+    const service = String(
+      proposal?.serviceKey || resolveProposalServiceLabel(proposal) || "",
+    )
+      .trim()
+      .toLowerCase();
+    const content = String(
+      proposal?.proposalContent || proposal?.content || proposal?.summary || "",
+    )
+      .trim()
+      .slice(0, 120)
+      .toLowerCase();
+
+    return [title, service, content].join("::");
+  }, []);
+
+  const syncLocalDraftsToDatabase = useCallback(
+    async (savedProposals = [], remoteProjects = []) => {
+      if (!user?.id || !Array.isArray(savedProposals) || savedProposals.length === 0) {
+        return savedProposals;
+      }
+
+      if (draftSyncStateRef.current.inFlight) {
+        return savedProposals;
+      }
+
+      const unsyncedDrafts = savedProposals.filter(
+        (proposal) => !String(proposal?.syncedProjectId || proposal?.projectId || "").trim(),
+      );
+
+      if (!unsyncedDrafts.length) {
+        draftSyncStateRef.current = {
+          userId: user.id,
+          synced: true,
+          inFlight: false,
+        };
+        return savedProposals;
+      }
+
+      const existingDraftProjects = Array.isArray(remoteProjects)
+        ? remoteProjects.filter(
+            (project) => String(project?.status || "").toUpperCase() === "DRAFT",
+          )
+        : [];
+      const existingDraftProjectMap = new Map(
+        existingDraftProjects.map((project) => [buildDraftProjectMatchKey(project), project]),
+      );
+
+      const now = new Date().toISOString();
+      draftSyncStateRef.current = {
+        userId: user.id,
+        synced: false,
+        inFlight: true,
+      };
+      try {
+        const results = await Promise.all(
+          unsyncedDrafts.map(async (proposal) => {
+            const existingDraftProject = existingDraftProjectMap.get(
+              buildDraftProjectMatchKey(proposal),
+            );
+            if (existingDraftProject?.id) {
+              return {
+                localId: proposal.id,
+                projectId: existingDraftProject.id,
+                projectStatus: existingDraftProject.status || "DRAFT",
+              };
+            }
+
+            try {
+              const response = await authFetch("/projects", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(buildProjectDraftPayload(proposal)),
+                suppressToast: true,
+              });
+              const payload = await response.json().catch(() => null);
+              const projectId = payload?.data?.project?.id || payload?.data?.id || null;
+              const projectStatus =
+                payload?.data?.project?.status || payload?.data?.status || "DRAFT";
+
+              return {
+                localId: proposal.id,
+                projectId,
+                projectStatus,
+              };
+            } catch (error) {
+              console.error("Failed to sync proposal draft:", error);
+              return {
+                localId: proposal.id,
+                projectId: null,
+                projectStatus: null,
+              };
+            }
+          }),
+        );
+
+        const updatedSavedProposals = savedProposals.map((proposal) => {
+          const match = results.find((entry) => entry.localId === proposal.id);
+          if (!match?.projectId) {
+            return proposal;
+          }
+
+          return {
+            ...proposal,
+            ownerId: user.id,
+            projectId: match.projectId,
+            syncedProjectId: match.projectId,
+            projectStatus: String(match.projectStatus || "DRAFT").toUpperCase(),
+            syncedAt: proposal.syncedAt || now,
+          };
+        });
+
+        const storageKeys = getProposalStorageKeys(user.id);
+        const { activeId } = loadSavedProposalsFromStorage(user.id);
+        const nextActiveId = resolveActiveProposalId(
+          updatedSavedProposals,
+          activeId,
+          null,
+        );
+        persistSavedProposalsToStorage(updatedSavedProposals, nextActiveId, storageKeys);
+        draftSyncStateRef.current = {
+          userId: user.id,
+          synced: true,
+          inFlight: false,
+        };
+
+        return updatedSavedProposals;
+      } finally {
+        draftSyncStateRef.current.inFlight = false;
+      }
+    },
+    [authFetch, buildDraftProjectMatchKey, buildProjectDraftPayload, user?.id],
+  );
+
   const fetchProposals = useCallback(async () => {
-    const { proposals: localSavedProposals } = loadSavedProposalsFromStorage(user?.id);
-    const localDrafts = localSavedProposals.map(mapLocalDraftProposal);
+    const { proposals: initialLocalSavedProposals } = loadSavedProposalsFromStorage(user?.id);
 
     try {
-      const response = await authFetch("/proposals?as=owner");
-      const payload = await response.json().catch(() => null);
-      const remote = Array.isArray(payload?.data) ? payload.data : [];
+      const [proposalResponse, projectResponse] = await Promise.all([
+        authFetch("/proposals?as=owner", {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        }),
+        authFetch("/projects", {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+          suppressToast: true,
+        }),
+      ]);
+
+      const proposalPayload =
+        proposalResponse.status === 304
+          ? null
+          : await proposalResponse.json().catch(() => null);
+      const projectPayload =
+        projectResponse.status === 304
+          ? null
+          : await projectResponse.json().catch(() => null);
+
+      const remote = Array.isArray(proposalPayload?.data) ? proposalPayload.data : [];
       const remoteNormalized = remote.map(mapApiProposal);
+      const remoteProjects = Array.isArray(projectPayload?.data) ? projectPayload.data : [];
+      const shouldSyncDrafts =
+        draftSyncStateRef.current.userId !== user?.id ||
+        !draftSyncStateRef.current.synced;
+      const syncedLocalSavedProposals = shouldSyncDrafts
+        ? await syncLocalDraftsToDatabase(initialLocalSavedProposals, remoteProjects)
+        : initialLocalSavedProposals;
+      const localDrafts = syncedLocalSavedProposals.map(mapLocalDraftProposal);
+      const remoteDraftProjects = Array.isArray(projectPayload?.data)
+        ? projectPayload.data
+            .filter((project) => String(project?.status || "").toUpperCase() === "DRAFT")
+            .map(mapApiDraftProject)
+        : [];
 
       const uniqueById = remoteNormalized.reduce(
         (acc, proposal) => {
@@ -151,14 +354,20 @@ export const ClientProposalDataProvider = ({ children }) => {
         { seen: new Set(), list: [] },
       ).list;
 
-      setProposals(mergeProposalCollections(uniqueById, localDrafts));
+      setProposals(
+        mergeProposalCollections(
+          [...uniqueById, ...remoteDraftProjects],
+          localDrafts,
+        ),
+      );
     } catch (error) {
       console.error("Failed to load proposals from API:", error);
-      setProposals((current) => (current.length > 0 ? current : localDrafts));
+      const fallbackLocalDrafts = initialLocalSavedProposals.map(mapLocalDraftProposal);
+      setProposals((current) => (current.length > 0 ? current : fallbackLocalDrafts));
     } finally {
       setIsLoading(false);
     }
-  }, [authFetch, user?.id]);
+  }, [authFetch, mapApiDraftProject, syncLocalDraftsToDatabase, user?.id]);
 
   const handleProposalBudgetUpdated = useCallback(
     async ({ projectId, budgetValue, updatedProposalIds = [] } = {}) => {
@@ -574,10 +783,24 @@ export const ClientProposalDataProvider = ({ children }) => {
           ? matchedFreelancers
           : [];
 
-        setSuggestedFreelancers(normalizedFreelancers);
-        setFreelancerFetchStatus(
-          normalizedFreelancers.length > 0 ? "success" : "empty",
-        );
+      setSuggestedFreelancers(normalizedFreelancers);
+      setFreelancerFetchStatus(
+        normalizedFreelancers.length > 0 ? "success" : "empty",
+      );
+
+        if (import.meta.env?.DEV) {
+          console.info("[Proposal Match Popup][Fetched]", {
+            proposalId:
+              selectedProposalForSend?.id ||
+              selectedProposalForSend?.projectId ||
+              selectedProposalForSend?.syncedProjectId ||
+              null,
+            fetchedCount: normalizedFreelancers.length,
+            freelancerIds: normalizedFreelancers
+              .map((freelancer) => freelancer?.id)
+              .filter(Boolean),
+          });
+        }
       } catch (error) {
         console.error("Failed to load matched freelancers:", error);
         if (!isActive) return;
@@ -608,13 +831,56 @@ export const ClientProposalDataProvider = ({ children }) => {
   const handleDelete = useCallback(
     async (proposal) => {
       if (proposal?.isLocalDraft) {
-        deleteLocalDraftProposal(proposal.id, user?.id);
-        setProposals((prev) => prev.filter((item) => item.id !== proposal.id));
-        setActiveProposal((current) => (current?.id === proposal.id ? null : current));
-        setSelectedProposalForSend((current) =>
-          current?.id === proposal.id ? null : current,
+        if (proposal?.isDraftProject && proposal?.projectId) {
+          const response = await authFetch(`/projects/${proposal.projectId}`, {
+            method: "DELETE",
+          });
+          const payload = await response.json().catch(() => null);
+          if (!response.ok) {
+            throw new Error(payload?.message || "Unable to delete draft project.");
+          }
+        }
+
+        const storageKeys = getProposalStorageKeys(user?.id);
+        const { proposals: savedProposals, activeId } = loadSavedProposalsFromStorage(user?.id);
+        const remainingSavedProposals = savedProposals.filter((savedProposal) => {
+          if (savedProposal.id === proposal.id) return false;
+          const savedProjectId = String(
+            savedProposal?.syncedProjectId || savedProposal?.projectId || "",
+          ).trim();
+          return !savedProjectId || savedProjectId !== String(proposal?.projectId || "").trim();
+        });
+        const nextActiveId = resolveActiveProposalId(
+          remainingSavedProposals,
+          activeId === proposal.id ? null : activeId,
+          null,
         );
-        if (activeProposal?.id === proposal.id) setIsViewing(false);
+        persistSavedProposalsToStorage(remainingSavedProposals, nextActiveId, storageKeys);
+
+        setProposals((prev) =>
+          prev.filter((item) => {
+            if (item.id === proposal.id) return false;
+            return String(item?.projectId || "") !== String(proposal?.projectId || "");
+          }),
+        );
+        setActiveProposal((current) =>
+          current?.id === proposal.id ||
+          String(current?.projectId || "") === String(proposal?.projectId || "")
+            ? null
+            : current,
+        );
+        setSelectedProposalForSend((current) =>
+          current?.id === proposal.id ||
+          String(current?.projectId || "") === String(proposal?.projectId || "")
+            ? null
+            : current,
+        );
+        if (
+          activeProposal?.id === proposal.id ||
+          String(activeProposal?.projectId || "") === String(proposal?.projectId || "")
+        ) {
+          setIsViewing(false);
+        }
         toast.success("Draft deleted.");
         return;
       }
@@ -1049,6 +1315,53 @@ export const ClientProposalDataProvider = ({ children }) => {
             return payload?.data || null;
           })(),
         );
+      } else if (activeProposal?.isLocalDraft) {
+        syncTasks.push(
+          (async () => {
+            const response = await authFetch("/projects", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...buildProjectDraftPayload({
+                  ...activeProposal,
+                  budget: nextBudget,
+                  proposalContent: nextContent,
+                  content: nextContent,
+                  summary: nextContent,
+                  timeline: nextTimeline,
+                  serviceKey:
+                    activeProposal.serviceKey || resolveProposalServiceLabel(activeProposal),
+                  proposalContext: nextProposalContext,
+                  title: nextTitle,
+                  projectTitle: nextTitle,
+                }),
+                title: nextTitle,
+                description: nextContent,
+                proposalContent: nextContent,
+                status: "DRAFT",
+              }),
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) {
+              throw new Error(payload?.message || "Failed to create draft project.");
+            }
+
+            const createdProject =
+              payload?.data?.project ||
+              payload?.data ||
+              null;
+
+            if (createdProject?.id) {
+              updateProposalProjectReference(
+                localDraftPayload,
+                createdProject.id,
+                String(createdProject.status || "DRAFT").toUpperCase(),
+              );
+            }
+
+            return createdProject;
+          })(),
+        );
       }
 
       if (!activeProposal?.isLocalDraft && activeProposal?.id) {
@@ -1092,7 +1405,16 @@ export const ClientProposalDataProvider = ({ children }) => {
     } finally {
       setIsSavingProposal(false);
     }
-  }, [activeProposal, authFetch, editableProposalDraft, fetchProposals, isSavingProposal, user]);
+  }, [
+    activeProposal,
+    authFetch,
+    buildProjectDraftPayload,
+    editableProposalDraft,
+    fetchProposals,
+    isSavingProposal,
+    updateProposalProjectReference,
+    user,
+  ]);
 
   const sendProposalToFreelancer = useCallback(
     async (freelancer) => {
@@ -1466,6 +1788,57 @@ export const ClientProposalDataProvider = ({ children }) => {
       available,
     };
   }, [
+    proposalForFreelancerSelection?.projectId,
+    proposalForFreelancerSelection?.syncedProjectId,
+    proposals,
+    rankedSuggestedFreelancers,
+    showFreelancerSelect,
+  ]);
+
+  useEffect(() => {
+    if (!showFreelancerSelect || !import.meta.env?.DEV) return;
+
+    const sourceProjectId =
+      proposalForFreelancerSelection?.syncedProjectId ||
+      proposalForFreelancerSelection?.projectId ||
+      null;
+    const normalized = rankedSuggestedFreelancers.map((entry) =>
+      normalizeFreelancerCardData(entry),
+    );
+    const blockedByInvite = normalized.filter((freelancer) => {
+      if (!sourceProjectId) return false;
+      return proposals.some((proposal) => {
+        if (String(proposal.projectId) !== String(sourceProjectId)) return false;
+        const status = String(proposal.status || "").toLowerCase();
+        return (
+          proposal.freelancerId &&
+          String(proposal.freelancerId) === String(freelancer.id) &&
+          PROPOSAL_BLOCKED_STATUSES.has(status)
+        );
+      });
+    });
+    const blockedByAvailability = normalized.filter(
+      (freelancer) =>
+        !blockedByInvite.some((entry) => entry.id === freelancer.id) &&
+        !isFreelancerOpenToWork(freelancer),
+    );
+
+    console.info("[Proposal Match Popup][Client Filters]", {
+      proposalId:
+        proposalForFreelancerSelection?.id ||
+        proposalForFreelancerSelection?.projectId ||
+        proposalForFreelancerSelection?.syncedProjectId ||
+        null,
+      totalFetched: normalized.length,
+      blockedAlreadyInvited: blockedByInvite.length,
+      blockedClosedToWork: blockedByAvailability.length,
+      availableAfterClientFilters: freelancerSelectionData.available.length,
+      invitedIds: blockedByInvite.map((freelancer) => freelancer.id),
+      closedToWorkIds: blockedByAvailability.map((freelancer) => freelancer.id),
+    });
+  }, [
+    freelancerSelectionData.available.length,
+    proposalForFreelancerSelection?.id,
     proposalForFreelancerSelection?.projectId,
     proposalForFreelancerSelection?.syncedProjectId,
     proposals,
