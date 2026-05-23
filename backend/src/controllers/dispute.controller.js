@@ -2,6 +2,10 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
+import {
+  findLeastLoadedActiveProjectManager,
+  isProjectManagerEligibleForProject,
+} from "../services/project-manager-assignment.service.js";
 
 const PROJECT_MANAGER_SELECT = {
   id: true,
@@ -12,16 +16,6 @@ const PROJECT_MANAGER_SELECT = {
   status: true,
   role: true
 };
-
-const findLeastLoadedActiveProjectManager = (dbClient) =>
-  dbClient.user.findFirst({
-    where: {
-      role: "PROJECT_MANAGER",
-      status: "ACTIVE"
-    },
-    orderBy: { managedProjects: { _count: "asc" } },
-    select: PROJECT_MANAGER_SELECT
-  });
 
 export const createDispute = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
@@ -58,7 +52,11 @@ export const createDispute = asyncHandler(async (req, res) => {
     let availabilityId = undefined;
 
     if (!assignedActiveManagerId && !meetingDate) {
-      const fallbackManager = await findLeastLoadedActiveProjectManager(tx);
+      const fallbackManager = await findLeastLoadedActiveProjectManager({
+        dbClient: tx,
+        project,
+        excludeManagerId: project.managerId,
+      });
       managerId = fallbackManager?.id;
     }
 
@@ -102,17 +100,31 @@ export const createDispute = asyncHandler(async (req, res) => {
             status: "ACTIVE",
           },
         },
+        include: {
+          manager: {
+            select: {
+              ...PROJECT_MANAGER_SELECT,
+              managerProfile: {
+                select: { profileDetails: true },
+              },
+            },
+          },
+        },
       });
 
-      if (availableSlots.length === 0) {
+      const eligibleSlots = assignedActiveManagerId
+        ? availableSlots
+        : availableSlots.filter((slot) => isProjectManagerEligibleForProject(slot.manager, project));
+
+      if (eligibleSlots.length === 0) {
         throw new AppError("The selected time slot is no longer available. Please choose another time.", 409);
       }
 
       // If project already has an active assigned PM, use their slot.
       // Otherwise choose among active managers with free slots.
       const selectedSlot = assignedActiveManagerId
-        ? availableSlots[0]
-        : availableSlots[Math.floor(Math.random() * availableSlots.length)];
+        ? eligibleSlots[0]
+        : eligibleSlots[Math.floor(Math.random() * eligibleSlots.length)];
 
       managerId = selectedSlot.managerId;
       availabilityId = selectedSlot.id;
@@ -498,7 +510,7 @@ export const getAvailability = asyncHandler(async (req, res) => {
         assignedManager = project.manager;
         assignedManagerId = project.manager.id;
       } else {
-        const slotBackfill = await prisma.managerAvailability.findFirst({
+        const slotBackfillCandidates = await prisma.managerAvailability.findMany({
           where: {
             date: {
               gte: startOfDay,
@@ -512,16 +524,32 @@ export const getAvailability = asyncHandler(async (req, res) => {
             }
           },
           include: {
-            manager: { select: PROJECT_MANAGER_SELECT }
+            manager: {
+              select: {
+                ...PROJECT_MANAGER_SELECT,
+                managerProfile: {
+                  select: { profileDetails: true },
+                },
+              },
+            },
           },
-          orderBy: { startHour: "asc" }
+          orderBy: { startHour: "asc" },
+          take: 20,
         });
+
+        const slotBackfill = slotBackfillCandidates.find((slot) =>
+          isProjectManagerEligibleForProject(slot.manager, project)
+        );
 
         if (slotBackfill?.manager) {
           assignedManager = slotBackfill.manager;
           assignedManagerId = slotBackfill.managerId;
         } else {
-          const fallbackManager = await findLeastLoadedActiveProjectManager(prisma);
+          const fallbackManager = await findLeastLoadedActiveProjectManager({
+            dbClient: prisma,
+            project,
+            excludeManagerId: project.managerId,
+          });
           assignedManager = fallbackManager || null;
           assignedManagerId = fallbackManager?.id || null;
         }

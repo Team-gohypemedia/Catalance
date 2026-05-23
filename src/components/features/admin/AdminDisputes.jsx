@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,6 +55,34 @@ const initialProfileFormState = {
   identityType: "",
   identityNumber: "",
   identityDocumentUrl: "",
+  allowedServiceKeys: [],
+};
+
+const normalizeServiceKey = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const getAllowedServiceKeys = (profileDetails = {}) => {
+  if (!profileDetails || typeof profileDetails !== "object") return [];
+  const source = Array.isArray(profileDetails.allowedServiceKeys)
+    ? profileDetails.allowedServiceKeys
+    : Array.isArray(profileDetails.eligibleServiceKeys)
+      ? profileDetails.eligibleServiceKeys
+      : [];
+  return Array.from(new Set(source.map((item) => normalizeServiceKey(item)).filter(Boolean)));
+};
+
+const getProjectServiceKey = (project = {}) =>
+  normalizeServiceKey(project?.serviceKey) || normalizeServiceKey(project?.serviceType);
+
+const managerCanHandleProject = (manager, project) => {
+  const projectServiceKey = getProjectServiceKey(project);
+  if (!projectServiceKey) return true;
+  const allowedServiceKeys = getAllowedServiceKeys(manager?.profileDetails);
+  return allowedServiceKeys.length === 0 || allowedServiceKeys.includes(projectServiceKey);
 };
 
 const buildProfileFormState = (manager) => {
@@ -80,6 +109,7 @@ const buildProfileFormState = (manager) => {
     identityType: identification.type || "",
     identityNumber: identification.number || "",
     identityDocumentUrl: identification.documentUrl || "",
+    allowedServiceKeys: getAllowedServiceKeys(details),
   };
 };
 
@@ -113,6 +143,9 @@ const buildProfilePayload = (profileForm) => {
       professionalSummary: profileForm.expertiseSummary.trim(),
       location: profileForm.location.trim(),
     },
+    allowedServiceKeys: getAllowedServiceKeys({
+      allowedServiceKeys: Array.isArray(profileForm.allowedServiceKeys) ? profileForm.allowedServiceKeys : [],
+    }),
   };
 };
 
@@ -211,6 +244,7 @@ const AdminDisputes = () => {
   const { authFetch } = useAuth();
   const navigate = useNavigate();
   const [projectManagers, setProjectManagers] = useState([]);
+  const [serviceCatalog, setServiceCatalog] = useState([]);
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -264,6 +298,15 @@ const AdminDisputes = () => {
     return data?.data?.users || [];
   };
 
+  const loadServiceCatalog = async () => {
+    const res = await authFetch("/admin/services");
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(data?.message || data?.error || "Failed to fetch service catalog.");
+    }
+    return Array.isArray(data?.data) ? data.data : [];
+  };
+
   const loadDisputes = async () => {
     const res = await authFetch("/disputes");
     const data = await res.json();
@@ -307,12 +350,14 @@ const AdminDisputes = () => {
   const refreshPageData = async ({ keepSelection = true } = {}) => {
     setLoading(true);
     try {
-      const [pmUsers, allDisputes] = await Promise.all([
+      const [pmUsers, allDisputes, services] = await Promise.all([
         loadProjectManagers(),
         loadDisputes(),
+        loadServiceCatalog(),
       ]);
       setProjectManagers(pmUsers);
       setDisputes(allDisputes);
+      setServiceCatalog(services);
 
       if (keepSelection && selectedManagerId) {
         const stillExists = pmUsers.some((pm) => pm.id === selectedManagerId);
@@ -364,6 +409,19 @@ const AdminDisputes = () => {
   const selectedManager = selectedManagerDetails?.user || null;
   const selectedManagerStats = selectedManagerDetails?.stats || {};
   const profileSummary = getProfileSummary(selectedManager?.profileDetails);
+  const serviceLabelMap = useMemo(
+    () =>
+      serviceCatalog.reduce((acc, service) => {
+        const key = normalizeServiceKey(service?.slug || service?.id || service?.name);
+        if (key) {
+          acc[key] = service?.name || service?.slug || service?.id || key;
+        }
+        return acc;
+      }, {}),
+    [serviceCatalog]
+  );
+  const getServiceLabel = (value) => serviceLabelMap[normalizeServiceKey(value)] || value || "Uncategorized";
+  const selectedManagerAllowedServiceKeys = getAllowedServiceKeys(selectedManager?.profileDetails);
   const assignedProjects = selectedManagerDetails?.projects || [];
   const managerDisputes = useMemo(
     () => disputes.filter((dispute) => dispute.manager?.id === selectedManagerId),
@@ -383,8 +441,17 @@ const AdminDisputes = () => {
   const workspaceAppointments = workspaceData?.details?.appointments || [];
   const workspaceNotifications = workspaceData?.details?.notifications || [];
   const workspaceDisputes = workspaceData?.details?.disputes || [];
-  const reassignOptions = projectManagers.filter(
-    (pm) => pm.id !== selectedManagerId && String(pm.status || "").toUpperCase() === "ACTIVE"
+  const getEligibleReassignOptions = (project) =>
+    projectManagers.filter(
+      (pm) =>
+        pm.id !== selectedManagerId &&
+        String(pm.status || "").toUpperCase() === "ACTIVE" &&
+        managerCanHandleProject(pm, project)
+    );
+
+  const reassignOptions = useMemo(
+    () => getEligibleReassignOptions(reassignProject),
+    [projectManagers, selectedManagerId, reassignProject]
   );
 
   useEffect(() => {
@@ -891,8 +958,9 @@ const AdminDisputes = () => {
   };
 
   const openReassignDialog = (project) => {
+    const eligibleManagers = getEligibleReassignOptions(project);
     setReassignProject(project);
-    setReassignTargetId(reassignOptions[0]?.id || "");
+    setReassignTargetId(eligibleManagers[0]?.id || "");
     setReassignOpen(true);
   };
 
@@ -1134,6 +1202,14 @@ const AdminDisputes = () => {
                         <CardDescription>Current PM profile data available to admin.</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-3">
+                        <div className="rounded-lg border p-3">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Eligible Service Categories</p>
+                          <p className="mt-1 text-sm font-medium">
+                            {selectedManagerAllowedServiceKeys.length
+                              ? selectedManagerAllowedServiceKeys.map(getServiceLabel).join(", ")
+                              : "All services"}
+                          </p>
+                        </div>
                         {profileSummary.length === 0 ? (
                           <p className="text-sm text-muted-foreground">
                             No structured Project Manager profile details have been submitted yet.
@@ -1332,6 +1408,9 @@ const AdminDisputes = () => {
                                 <div className="space-y-1">
                                   <p>{project.title}</p>
                                   <p className="text-xs text-muted-foreground">Created {formatDate(project.createdAt)}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Service: {getServiceLabel(project.serviceKey || project.serviceType)}
+                                  </p>
                                   <p className="text-xs text-muted-foreground">
                                     Freelancer: {project.freelancer?.fullName || "Not assigned"}
                                   </p>
@@ -2140,6 +2219,40 @@ const AdminDisputes = () => {
                 <Input value={profileForm.identityNumber} onChange={(e) => setProfileForm((c) => ({ ...c, identityNumber: e.target.value }))} placeholder="Identity number" />
               </div>
               <Input value={profileForm.identityDocumentUrl} onChange={(e) => setProfileForm((c) => ({ ...c, identityDocumentUrl: e.target.value }))} placeholder="Identity document URL" />
+              <div className="grid gap-3 rounded-lg border p-4">
+                <div>
+                  <p className="text-sm font-medium">Service Categories</p>
+                  <p className="text-xs text-muted-foreground">
+                    Choose which service-category projects this Project Manager can receive. Leave empty to allow all services.
+                  </p>
+                </div>
+                {serviceCatalog.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No services are available in the admin catalog yet.</p>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {serviceCatalog.map((service) => {
+                      const serviceKey = normalizeServiceKey(service.slug || service.id || service.name);
+                      const checked = profileForm.allowedServiceKeys.includes(serviceKey);
+                      return (
+                        <label key={serviceKey} className="flex items-start gap-3 rounded-lg border p-3 text-sm">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(nextChecked) =>
+                              setProfileForm((current) => ({
+                                ...current,
+                                allowedServiceKeys: nextChecked
+                                  ? Array.from(new Set([...current.allowedServiceKeys, serviceKey]))
+                                  : current.allowedServiceKeys.filter((item) => item !== serviceKey),
+                              }))
+                            }
+                          />
+                          <span>{service.name || service.slug || service.id}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setProfileOpen(false)} disabled={savingProfile}>Cancel</Button>
@@ -2290,6 +2403,9 @@ const AdminDisputes = () => {
                 <p className="mt-1 text-sm text-muted-foreground">
                   Current PM: {selectedManager?.fullName || "Unknown"}
                 </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Service: {getServiceLabel(reassignProject?.serviceKey || reassignProject?.serviceType)}
+                </p>
               </div>
 
               <div className="grid gap-2">
@@ -2310,7 +2426,7 @@ const AdminDisputes = () => {
 
               {reassignOptions.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                  No other active Project Manager is available for reassignment.
+                  No other active Project Manager is eligible for this service category.
                 </div>
               ) : null}
             </div>

@@ -23,6 +23,10 @@ import {
 } from "../../../src/shared/lib/project-proposal-fields.js";
 import { generateFreelancerMatchingJson } from "../services/ai.service.js";
 import { archiveCompletedProject } from "../services/completed-projects.service.js";
+import {
+  findLeastLoadedActiveProjectManager,
+  isProjectManagerEligibleForProject,
+} from "../services/project-manager-assignment.service.js";
 import crypto from "crypto";
 
 const MAX_INT = 2147483647; // PostgreSQL INT4 upper bound
@@ -619,37 +623,6 @@ const MAX_FREELANCER_CHANGE_REQUESTS = 2;
 const MAX_PM_DIRECT_REASSIGNMENTS = 2;
 const PM_REASSIGNMENT_APPROVAL_SOURCE = "PM_FREELANCER_REASSIGNMENT_APPROVAL";
 
-const findLeastLoadedActiveProjectManager = async () => {
-  const managers = await prisma.user.findMany({
-    where: {
-      role: "PROJECT_MANAGER",
-      status: "ACTIVE",
-    },
-    select: {
-      ...PROJECT_MANAGER_SELECT,
-      managedProjects: {
-        where: {
-          status: { notIn: ["COMPLETED", "PAUSED", "DRAFT"] }
-        },
-        select: { id: true },
-        take: 11,
-      }
-    }
-  });
-
-  const available = managers
-    .map(m => ({ ...m, activeCount: m.managedProjects.length }))
-    .filter(m => m.activeCount < 10)
-    .sort((a, b) => a.activeCount - b.activeCount);
-
-  if (available.length === 0) return null;
-
-  const selected = available[0];
-  delete selected.managedProjects;
-  delete selected.activeCount;
-  return selected;
-};
-
 const getProjectForResponse = (projectId, tx = prisma) =>
   tx.project.findUnique({
     where: { id: projectId },
@@ -900,7 +873,9 @@ export const createProject = asyncHandler(async (req, res) => {
   });
 
   console.log("Looking for an available Project Manager...");
-  const projectManager = await findLeastLoadedActiveProjectManager();
+  const projectManager = await findLeastLoadedActiveProjectManager({
+    project: structuredProposalData,
+  });
   console.log(`Assigning Project Manager: ${projectManager ? projectManager.id : "None found"}`);
 
   const project = await prisma.project.create({
@@ -1043,7 +1018,10 @@ export const getProject = asyncHandler(async (req, res) => {
     project.manager?.status === "ACTIVE";
 
   if (!hasActiveAssignedManager) {
-    const fallbackManager = await findLeastLoadedActiveProjectManager();
+    const fallbackManager = await findLeastLoadedActiveProjectManager({
+      project,
+      excludeManagerId: project.managerId,
+    });
 
     if (fallbackManager) {
       if (project.managerId !== fallbackManager.id) {
@@ -1386,10 +1364,27 @@ export const updateProject = asyncHandler(async (req, res) => {
       // Admin manual assignment - enforce 10 cap
       const targetManager = await prisma.user.findUnique({
         where: { id: sanitizedUpdates.managerId },
-        include: { managedProjects: { where: { status: { notIn: ["COMPLETED", "PAUSED", "DRAFT"] } } } }
+        include: {
+          managedProjects: { where: { status: { notIn: ["COMPLETED", "PAUSED", "DRAFT"] } } },
+          managerProfile: { select: { profileDetails: true } },
+        }
       });
       if (!targetManager || targetManager.role !== "PROJECT_MANAGER") {
         throw new AppError("Invalid Project Manager ID", 400);
+      }
+      if (String(targetManager.status || "").toUpperCase() !== "ACTIVE") {
+        throw new AppError("Only active Project Managers can be assigned to projects.", 400);
+      }
+      if (
+        !isProjectManagerEligibleForProject(targetManager, {
+          ...existing,
+          ...sanitizedUpdates,
+        })
+      ) {
+        throw new AppError(
+          "This Project Manager is not eligible for the selected service category.",
+          400
+        );
       }
       if (targetManager.managedProjects.length >= 10) {
         throw new AppError("This Project Manager has reached the maximum capacity of 10 active projects.", 403);
@@ -1618,7 +1613,10 @@ export const requestFreelancerChange = asyncHandler(async (req, res) => {
     assignedManager.role !== "PROJECT_MANAGER" ||
     assignedManager.status !== "ACTIVE"
   ) {
-    assignedManager = await findLeastLoadedActiveProjectManager();
+    assignedManager = await findLeastLoadedActiveProjectManager({
+      project,
+      excludeManagerId: project.managerId,
+    });
   }
 
   if (!assignedManager?.id) {

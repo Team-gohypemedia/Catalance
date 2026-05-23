@@ -5,6 +5,7 @@ import { sendNotificationToUser } from "../lib/notification-util.js";
 import { sendEmail } from "../lib/email-service.js";
 import { buildFreelancerProfileDetailsObject } from "../modules/users/freelancer-profile-details.mapper.js";
 import { hashPassword } from "../modules/users/password.utils.js";
+import { reassignProjectsFromProjectManager } from "../services/project-manager-assignment.service.js";
 
 // Helper to get or initialize catalog - DEPRECATED
 // We now use relational tables Service and ServiceQuestion
@@ -309,14 +310,25 @@ export const getUsers = asyncHandler(async (req, res) => {
         role: true,
         status: true,
         isVerified: true,
-        createdAt: true
+        createdAt: true,
+        managerProfile: {
+          select: {
+            profileDetails: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit
     });
 
-    const paginatedUsers = users; // Already paginated via Prisma
+    const paginatedUsers = users.map((user) => ({
+      ...user,
+      profileDetails:
+        user.managerProfile?.profileDetails && typeof user.managerProfile.profileDetails === "object"
+          ? user.managerProfile.profileDetails
+          : undefined,
+    })); // Already paginated via Prisma
 
     console.log("Returning", paginatedUsers.length, "users");
 
@@ -491,7 +503,12 @@ export const updateProjectManager = asyncHandler(async (req, res) => {
     },
   });
 
-  res.json({ data: updatedManager });
+  let reassignmentSummary = null;
+  if (status === "SUSPENDED") {
+    reassignmentSummary = await reassignProjectsFromProjectManager({ managerId: userId });
+  }
+
+  res.json({ data: { ...updatedManager, reassignmentSummary } });
 });
 
 const ensureProjectBelongsToManager = async (projectId, managerId) => {
@@ -1207,8 +1224,13 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
   const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: updateData,
-    select: { id: true, status: true, fullName: true, email: true, suspendedAt: true }
+    select: { id: true, role: true, status: true, fullName: true, email: true, suspendedAt: true }
   });
+
+  let reassignmentSummary = null;
+  if (status === "SUSPENDED" && updatedUser.role === PM_ROLE) {
+    reassignmentSummary = await reassignProjectsFromProjectManager({ managerId: userId });
+  }
 
   // Notify user about status change
   try {
@@ -1252,7 +1274,7 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
     console.error("Failed to notify user about status change:", e);
   }
 
-  res.json({ data: updatedUser });
+  res.json({ data: { ...updatedUser, reassignmentSummary } });
 });
 
 // Update user verification (KYC) status
@@ -1443,6 +1465,8 @@ export const getUserDetails = asyncHandler(async (req, res) => {
             id: true,
             title: true,
             status: true,
+            serviceKey: true,
+            serviceType: true,
             budget: true,
             spent: true,
             progress: true,
