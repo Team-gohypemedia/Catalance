@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import * as Flags from "country-flag-icons/react/3x2";
 import { Button } from "@/components/ui/button";
@@ -169,8 +169,17 @@ const getTargetPath = (role, user) => {
 };
 
 function PhoneRoleOnboarding() {
+  const location = useLocation();
   const navigate = useNavigate();
   const { login: setAuthSession, token, user, authFetch } = useAuth();
+  const onboardingState = location?.state || {};
+  const isFromEmailAuth = Boolean(
+    onboardingState?.fromEmailVerification || onboardingState?.fromGoogleSignin,
+  );
+  const isPhoneOnlyEmail = isPhoneOnlyAccountEmail(user?.email);
+  const hasNonPhoneEmail = Boolean(user?.email) && !isPhoneOnlyEmail;
+  const isEmailRequired = hasNonPhoneEmail || isFromEmailAuth;
+  const isEmailLocked = hasNonPhoneEmail;
   const initialRole = useMemo(() => {
     const role = String(user?.role || "").toUpperCase();
     return role === FREELANCER_ROLE ? FREELANCER_ROLE : null;
@@ -223,8 +232,14 @@ function PhoneRoleOnboarding() {
         return "Enter your full name to continue.";
       }
 
+      if (isEmailRequired && !emailValue) {
+        return "Enter your email address to continue.";
+      }
+
       if (!isValidEmail(emailValue)) {
-        return "Enter a valid email address or leave it empty.";
+        return isEmailRequired
+          ? "Enter a valid email address to continue."
+          : "Enter a valid email address or leave it empty.";
       }
 
       if (phoneDigits.length < 6) {
@@ -559,14 +574,14 @@ function PhoneRoleOnboarding() {
 
             <label className="block space-y-1 text-left">
               <span className={fieldLabelClassName}>
-                Email address (optional)
+                {isEmailRequired ? "Email address" : "Email address (optional)"}
               </span>
               <div className="relative">
                 <Input
                   type="email"
                   autoComplete="email"
                   value={email}
-                  disabled={isSaving}
+                  disabled={isSaving || isEmailLocked}
                   onChange={(event) => {
                     setEmail(event.target.value);
                     setFormErrors({});
@@ -788,12 +803,18 @@ function PhoneRoleOnboarding() {
                     type="button"
                     disabled={isSaving}
                     onClick={handleNext}
-                    className="!h-10 flex-1 rounded-md bg-primary text-sm font-medium text-white hover:bg-primary/95"
+                    className="!h-10 flex-1 rounded-md bg-primary text-sm font-bold text-black hover:bg-primary/95"
                   >
                     {isSaving && (
                       <Loader2 className="size-[18px] animate-spin" />
                     )}
-                    {isSaving ? "Saving..." : isLastSlide ? "Finish setup" : "Continue with WhatsApp"}
+                    {isSaving
+                      ? "Saving..."
+                      : isLastSlide
+                        ? "Finish setup"
+                        : isEmailRequired
+                          ? "Continue"
+                          : "Continue with WhatsApp"}
                     {!isSaving && isLastSlide ? (
                       <ArrowRight className="size-4" />
                     ) : null}
