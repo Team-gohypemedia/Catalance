@@ -236,7 +236,7 @@ const ServiceCategoryCarousel = ({
       </div>
 
       {/* Navigation arrows */}
-      <div className="flex justify-end gap-2 pr-2">
+      <div className="flex w-full justify-end gap-2 pr-6 sm:pr-8 lg:pr-[40px]">
         <button
           type="button"
           onClick={() => scrollBy(-1)}
