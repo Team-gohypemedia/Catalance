@@ -22,6 +22,19 @@ import {
   listFreelancers,
   updateProfile,
 } from "@/shared/lib/api-client";
+import {
+  DEFAULT_BASIC_PROFILE_FIELDS,
+  DEFAULT_CASE_STUDY_FIELDS,
+  DEFAULT_SERVICE_INFO_FIELDS,
+  DEFAULT_SERVICE_PRICING_FIELDS,
+  DEFAULT_SERVICE_VISUALS_FIELDS,
+  getFreelancerOnboardingContentForService,
+  resolveBasicProfileFields,
+  resolveCaseStudyFields,
+  resolveServiceInfoFields,
+  resolveServicePricingFields,
+  resolveServiceVisualFields,
+} from "@/shared/lib/freelancer-onboarding-content";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
   ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS,
@@ -92,14 +105,21 @@ const RESUME_UPLOAD_ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 const RESUME_UPLOAD_ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx"];
-const BASIC_PROFILE_FIELD_ORDER = [
-  "fullName",
-  "username",
-  "professionalBio",
-  "country",
-  "state",
-  "languages",
-];
+const SYSTEM_BASIC_PROFILE_FIELD_IDS = new Set(
+  DEFAULT_BASIC_PROFILE_FIELDS.map((field) => field.id),
+);
+const SYSTEM_SERVICE_INFO_FIELD_IDS = new Set(
+  DEFAULT_SERVICE_INFO_FIELDS.map((field) => field.id),
+);
+const SYSTEM_SERVICE_PRICING_FIELD_IDS = new Set(
+  DEFAULT_SERVICE_PRICING_FIELDS.map((field) => field.id),
+);
+const SYSTEM_SERVICE_VISUAL_FIELD_IDS = new Set(
+  DEFAULT_SERVICE_VISUALS_FIELDS.map((field) => field.id),
+);
+const SYSTEM_CASE_STUDY_FIELD_IDS = new Set(
+  DEFAULT_CASE_STUDY_FIELDS.map((field) => field.id),
+);
 
 const createInitialBasicProfileForm = () => ({
   fullName: "",
@@ -110,7 +130,43 @@ const createInitialBasicProfileForm = () => ({
   languages: [],
   profilePhoto: null,
   resume: null,
+  customFields: {},
 });
+
+const getBasicProfileFieldValue = (form, fieldId) => {
+  const normalizedFieldId = String(fieldId || "").trim();
+  if (!normalizedFieldId) {
+    return "";
+  }
+
+  if (SYSTEM_BASIC_PROFILE_FIELD_IDS.has(normalizedFieldId)) {
+    return form?.[normalizedFieldId];
+  }
+
+  const customFields =
+    form?.customFields && typeof form.customFields === "object"
+      ? form.customFields
+      : {};
+
+  return customFields[normalizedFieldId];
+};
+
+const normalizeCustomFieldValue = (field = {}, value) => {
+  if (field?.type === "multiselect") {
+    return normalizeStringArray(value);
+  }
+
+  return value;
+};
+
+const getServiceSectionFieldsByStep = (stepId = "", sections = {}) => {
+  const normalizedStepId = String(stepId || "").trim();
+  if (normalizedStepId === "serviceInfo") return sections.serviceInfoFields || [];
+  if (normalizedStepId === "servicePricing") return sections.servicePricingFields || [];
+  if (normalizedStepId === "serviceVisuals") return sections.serviceVisualFields || [];
+  if (normalizedStepId === "caseStudy") return sections.caseStudyFields || [];
+  return [];
+};
 
 const extractProfilePhotoUrl = (value) => {
   if (!value) return "";
@@ -391,6 +447,19 @@ const sanitizeBasicProfileFormForDraft = (form) => {
     languages: normalizeStringArray(sourceForm.languages),
     profilePhoto: toPersistableProfilePhoto(sourceForm.profilePhoto),
     resume: toPersistableResumeFile(sourceForm.resume),
+    customFields:
+      sourceForm.customFields && typeof sourceForm.customFields === "object"
+        ? Object.fromEntries(
+            Object.entries(sourceForm.customFields).map(([key, value]) => [
+              String(key || "").trim(),
+              Array.isArray(value)
+                ? normalizeStringArray(value)
+                : typeof value === "string"
+                  ? value
+                  : value ?? "",
+            ]),
+          )
+        : {},
   };
 };
 
@@ -681,15 +750,22 @@ const fetchServicePositiveKeywords = async (serviceId) => {
   }
 };
 
-const getBasicProfileFieldError = (field, form) => {
-  switch (field) {
+const getBasicProfileFieldError = (field, form, schemaField = null) => {
+  const fieldId = String(field || "").trim();
+  const isRequired = schemaField?.required !== false;
+
+  switch (fieldId) {
     case "fullName":
+      if (!isRequired) return "";
       return String(form.fullName || "").trim()
         ? ""
         : "Please enter your full name.";
     case "username": {
       const username = normalizeUsernameInput(form.username);
 
+      if (!isRequired && !username) {
+        return "";
+      }
       if (!username) {
         return "Please enter a username.";
       }
@@ -702,37 +778,66 @@ const getBasicProfileFieldError = (field, form) => {
       return "";
     }
     case "professionalBio":
+      if (!isRequired) return "";
       return String(form.professionalBio || "").trim()
         ? ""
         : "Please enter your professional bio.";
     case "country":
+      if (!isRequired) return "";
       return String(form.country || "").trim() ? "" : "Please select your country.";
     case "state":
+      if (!isRequired) return "";
       return String(form.state || "").trim()
         ? ""
         : "Please select or enter your state / province.";
     case "languages":
+      if (!isRequired) return "";
       return Array.isArray(form.languages) && form.languages.length > 0
         ? ""
         : "Please select at least one language.";
     default:
-      return "";
+      if (!schemaField) {
+        return "";
+      }
+
+      const value = getBasicProfileFieldValue(form, fieldId);
+      if (!schemaField.required) {
+        return "";
+      }
+
+      if (schemaField.type === "multiselect") {
+        return Array.isArray(value) && value.length > 0
+          ? ""
+          : `Please select at least one option for ${schemaField.label || "this field"}.`;
+      }
+
+      if (schemaField.type === "file" || schemaField.type === "image") {
+        return value ? "" : `Please upload ${schemaField.label || "this file"}.`;
+      }
+
+      return String(value || "").trim()
+        ? ""
+        : `Please enter ${String(schemaField.label || "this field").toLowerCase()}.`;
   }
 };
 
-const buildBasicProfileValidationErrors = (form) =>
-  BASIC_PROFILE_FIELD_ORDER.reduce((errors, field) => {
-    const fieldError = getBasicProfileFieldError(field, form);
+const buildBasicProfileValidationErrors = (form, fields = []) =>
+  fields.reduce((errors, field) => {
+    if (!field?.visible) {
+      return errors;
+    }
+
+    const fieldError = getBasicProfileFieldError(field.id, form, field);
 
     if (fieldError) {
-      errors[field] = fieldError;
+      errors[field.id] = fieldError;
     }
 
     return errors;
   }, {});
 
-const getFirstBasicProfileError = (errors) =>
-  BASIC_PROFILE_FIELD_ORDER.map((field) => errors[field]).find(Boolean) || "";
+const getFirstBasicProfileError = (errors, fields = []) =>
+  fields.map((field) => errors[field?.id]).find(Boolean) || "";
 
 const FreelancerOnboardingShell = () => {
   const navigate = useNavigate();
@@ -772,6 +877,7 @@ const FreelancerOnboardingShell = () => {
   const [usernameStatus, setUsernameStatus] = useState("idle");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResettingOnboarding, setIsResettingOnboarding] = useState(false);
+  const [onboardingContentConfig, setOnboardingContentConfig] = useState(null);
   const countryOptions = COUNTRY_OPTIONS;
   const languageOptions = LANGUAGE_OPTIONS.filter(
     (option) => option.value !== "Other",
@@ -871,6 +977,42 @@ const FreelancerOnboardingShell = () => {
         serviceId: currentService?.id,
       })
     : createEmptyServiceDraft();
+  const currentServiceOnboardingContent = useMemo(
+    () =>
+      getFreelancerOnboardingContentForService(
+        onboardingContentConfig,
+        currentServiceKey,
+      ),
+    [currentServiceKey, onboardingContentConfig],
+  );
+  const globalOnboardingContent = useMemo(
+    () => getFreelancerOnboardingContentForService(onboardingContentConfig),
+    [onboardingContentConfig],
+  );
+  const basicProfileFields = useMemo(
+    () => resolveBasicProfileFields(globalOnboardingContent),
+    [globalOnboardingContent],
+  );
+  const serviceInfoFields = useMemo(
+    () => resolveServiceInfoFields(currentServiceOnboardingContent),
+    [currentServiceOnboardingContent],
+  );
+  const servicePricingFields = useMemo(
+    () => resolveServicePricingFields(currentServiceOnboardingContent),
+    [currentServiceOnboardingContent],
+  );
+  const serviceVisualFields = useMemo(
+    () => resolveServiceVisualFields(currentServiceOnboardingContent),
+    [currentServiceOnboardingContent],
+  );
+  const caseStudyFields = useMemo(
+    () => resolveCaseStudyFields(currentServiceOnboardingContent),
+    [currentServiceOnboardingContent],
+  );
+  const activeOnboardingContent =
+    currentSlide.id === "serviceSetup" || isServiceSectionSlide
+    ? currentServiceOnboardingContent
+    : globalOnboardingContent;
 
   useEffect(() => {
     const container = onboardingScrollContainerRef.current;
@@ -957,6 +1099,14 @@ const FreelancerOnboardingShell = () => {
     const currentLanguages = Array.isArray(identity.languages)
       ? identity.languages
       : [];
+    const currentCustomFieldValues =
+      profileDetails?.customOnboardingFields?.basicProfile &&
+      typeof profileDetails.customOnboardingFields.basicProfile === "object"
+        ? profileDetails.customOnboardingFields.basicProfile
+        : profileDetails?.basicProfileCustomFields &&
+            typeof profileDetails.basicProfileCustomFields === "object"
+          ? profileDetails.basicProfileCustomFields
+          : {};
     const existingPhoto =
       identity.profilePhoto || user.avatar || user.profilePhoto || "";
     const existingResume =
@@ -1017,6 +1167,10 @@ const FreelancerOnboardingShell = () => {
       profilePhoto:
         buildRemoteProfilePhoto(existingPhoto) || currentForm.profilePhoto,
       resume: buildRemoteResumeFile(existingResume) || currentForm.resume,
+      customFields:
+        Object.keys(currentCustomFieldValues).length > 0
+          ? currentCustomFieldValues
+          : currentForm.customFields,
     }));
     setSelectedWorkPreference(
       String(profileDetails.role || "").trim() === "individual"
@@ -1145,6 +1299,34 @@ const FreelancerOnboardingShell = () => {
       isCancelled = true;
     };
   }, [dbServices.length]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch(`${API_BASE_URL}/onboarding/freelancer-content?ts=${Date.now()}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch onboarding content");
+        }
+
+        return response.json();
+      })
+      .then((payload) => {
+        setOnboardingContentConfig(payload?.data || null);
+      })
+      .catch((error) => {
+        if (error?.name !== "AbortError") {
+          console.error("Failed to load onboarding content:", error);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (dbNiches.length) {
@@ -1361,11 +1543,13 @@ const FreelancerOnboardingShell = () => {
   }, [basicProfileForm.country]);
 
   const syncUsernameErrorState = useCallback((message = "", usernameValue = "") => {
+    const usernameField =
+      basicProfileFields.find((field) => field.id === "username") || null;
     setBasicProfileErrors((currentErrors) => {
       const nextErrors = { ...currentErrors };
       const localUsernameError = getBasicProfileFieldError("username", {
         username: usernameValue,
-      });
+      }, usernameField);
 
       if (message) {
         nextErrors.username = message;
@@ -1380,13 +1564,15 @@ const FreelancerOnboardingShell = () => {
       delete nextErrors.username;
       return nextErrors;
     });
-  }, []);
+  }, [basicProfileFields]);
 
   const checkUsernameAvailability = useCallback(async (value) => {
     const normalizedUsername = normalizeUsernameInput(value ?? basicProfileForm.username);
+    const usernameField =
+      basicProfileFields.find((field) => field.id === "username") || null;
     const localUsernameError = getBasicProfileFieldError("username", {
       username: normalizedUsername,
-    });
+    }, usernameField);
 
     if (!normalizedUsername || localUsernameError) {
       setUsernameStatus("idle");
@@ -1442,13 +1628,15 @@ const FreelancerOnboardingShell = () => {
       // The server will validate uniqueness on submit.
       return "error";
     }
-  }, [basicProfileForm.username, currentUsername, syncUsernameErrorState]);
+  }, [basicProfileFields, basicProfileForm.username, currentUsername, syncUsernameErrorState]);
 
   useEffect(() => {
     const normalizedUsername = normalizeUsernameInput(basicProfileForm.username);
+    const usernameField =
+      basicProfileFields.find((field) => field.id === "username") || null;
     const localUsernameError = getBasicProfileFieldError("username", {
       username: normalizedUsername,
-    });
+    }, usernameField);
 
     if (!normalizedUsername || localUsernameError) {
       setUsernameStatus("idle");
@@ -1468,7 +1656,7 @@ const FreelancerOnboardingShell = () => {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [basicProfileForm.username, currentUsername, checkUsernameAvailability, syncUsernameErrorState]);
+  }, [basicProfileFields, basicProfileForm.username, currentUsername, checkUsernameAvailability, syncUsernameErrorState]);
 
   const updateCurrentServiceDraft = useCallback((updater) => {
     if (!currentServiceKey) {
@@ -1656,8 +1844,8 @@ const FreelancerOnboardingShell = () => {
     setBasicProfileErrors((currentErrors) => {
       const nextErrors = { ...currentErrors };
 
-      BASIC_PROFILE_FIELD_ORDER.forEach((field) => {
-        delete nextErrors[field];
+      basicProfileFields.forEach((field) => {
+        delete nextErrors[field.id];
       });
 
       return { ...nextErrors, ...validationErrors };
@@ -1674,7 +1862,13 @@ const FreelancerOnboardingShell = () => {
       }
 
       fieldsToValidate.forEach((fieldName) => {
-        const fieldError = getBasicProfileFieldError(fieldName, nextForm);
+        const schemaField =
+          basicProfileFields.find((entry) => entry.id === fieldName) || null;
+        const fieldError = getBasicProfileFieldError(
+          fieldName,
+          nextForm,
+          schemaField,
+        );
 
         if (fieldError) {
           nextErrors[fieldName] = fieldError;
@@ -1811,8 +2005,14 @@ const FreelancerOnboardingShell = () => {
   };
 
   const validateBasicProfileBeforeContinue = async () => {
-    const validationErrors = buildBasicProfileValidationErrors(basicProfileForm);
-    const firstValidationError = getFirstBasicProfileError(validationErrors);
+    const validationErrors = buildBasicProfileValidationErrors(
+      basicProfileForm,
+      basicProfileFields,
+    );
+    const firstValidationError = getFirstBasicProfileError(
+      validationErrors,
+      basicProfileFields,
+    );
 
     syncBasicProfileValidationErrors(validationErrors);
 
@@ -1999,6 +2199,18 @@ const FreelancerOnboardingShell = () => {
     const nextServiceDetails = Object.fromEntries(
       persistedServices.map(([serviceKey, value]) => [serviceKey, value.serializedDetail]),
     );
+    const customBasicProfileFields = basicProfileFields.filter(
+      (field) => !SYSTEM_BASIC_PROFILE_FIELD_IDS.has(field.id),
+    );
+    const customBasicProfileAnswers = Object.fromEntries(
+      customBasicProfileFields.map((field) => [
+        field.id,
+        normalizeCustomFieldValue(
+          field,
+          getBasicProfileFieldValue(basicProfileForm, field.id),
+        ),
+      ]),
+    );
     const profileDetails = {
       ...currentProfileDetails,
       profileDetailsVersion: 3,
@@ -2019,6 +2231,10 @@ const FreelancerOnboardingShell = () => {
         typeof resolvedCommunicationPolicyAccepted === "boolean"
           ? resolvedCommunicationPolicyAccepted
           : null,
+      customOnboardingFields: {
+        ...(currentProfileDetails.customOnboardingFields || {}),
+        basicProfile: customBasicProfileAnswers,
+      },
       identity: {
         ...currentIdentity,
         fullName: resolvedFullName,
@@ -2207,13 +2423,21 @@ const FreelancerOnboardingShell = () => {
 
   const validateServiceStepBeforeContinue = useCallback(
     (stepId = currentSlide.id) => {
+      const sectionFields = getServiceSectionFieldsByStep(stepId, {
+        serviceInfoFields,
+        servicePricingFields,
+        serviceVisualFields,
+        caseStudyFields,
+      });
       const validationErrors = getServiceStepValidationErrors(
         currentServiceDraft,
         stepId,
+        sectionFields,
       );
       const validationMessage = getServiceStepValidationMessage(
         currentServiceDraft,
         stepId,
+        sectionFields,
       );
 
       if (validationMessage) {
@@ -2231,7 +2455,15 @@ const FreelancerOnboardingShell = () => {
       clearServiceStepValidationErrors(stepId);
       return true;
     },
-    [clearServiceStepValidationErrors, currentServiceDraft, currentSlide.id],
+    [
+      caseStudyFields,
+      clearServiceStepValidationErrors,
+      currentServiceDraft,
+      currentSlide.id,
+      serviceInfoFields,
+      servicePricingFields,
+      serviceVisualFields,
+    ],
   );
 
   const handleContinue = () => {
@@ -2463,7 +2695,17 @@ const FreelancerOnboardingShell = () => {
       clearServiceStepValidationErrors("serviceInfo");
       updateCurrentServiceDraft((draft) => ({
         ...draft,
-        [field]: value,
+        ...(SYSTEM_SERVICE_INFO_FIELD_IDS.has(field)
+          ? { [field]: value }
+          : {
+              customFields: {
+                ...(draft.customFields || {}),
+                serviceInfo: {
+                  ...(draft.customFields?.serviceInfo || {}),
+                  [field]: value,
+                },
+              },
+            }),
       }));
     },
     [clearServiceStepValidationErrors, updateCurrentServiceDraft],
@@ -2482,7 +2724,17 @@ const FreelancerOnboardingShell = () => {
       clearServiceStepValidationErrors("servicePricing");
       updateCurrentServiceDraft((draft) => ({
         ...draft,
-        [field]: value,
+        ...(SYSTEM_SERVICE_PRICING_FIELD_IDS.has(field)
+          ? { [field]: value }
+          : {
+              customFields: {
+                ...(draft.customFields || {}),
+                servicePricing: {
+                  ...(draft.customFields?.servicePricing || {}),
+                  [field]: value,
+                },
+              },
+            }),
       }));
     },
     [clearServiceStepValidationErrors, updateCurrentServiceDraft],
@@ -2493,7 +2745,17 @@ const FreelancerOnboardingShell = () => {
       clearServiceStepValidationErrors("serviceVisuals");
       updateCurrentServiceDraft((draft) => ({
         ...draft,
-        [field]: value,
+        ...(SYSTEM_SERVICE_VISUAL_FIELD_IDS.has(field)
+          ? { [field]: value }
+          : {
+              customFields: {
+                ...(draft.customFields || {}),
+                serviceVisuals: {
+                  ...(draft.customFields?.serviceVisuals || {}),
+                  [field]: value,
+                },
+              },
+            }),
       }));
     },
     [clearServiceStepValidationErrors, updateCurrentServiceDraft],
@@ -2512,7 +2774,14 @@ const FreelancerOnboardingShell = () => {
             String(caseStudy?.id || "").trim() === activeCaseStudyId
               ? {
                   ...caseStudy,
-                  [field]: value,
+                  ...(SYSTEM_CASE_STUDY_FIELD_IDS.has(field)
+                    ? { [field]: value }
+                    : {
+                        customFields: {
+                          ...(caseStudy.customFields || {}),
+                          [field]: value,
+                        },
+                      }),
                 }
               : caseStudy,
           ),
@@ -2596,15 +2865,24 @@ const FreelancerOnboardingShell = () => {
   );
 
   const handleBasicProfileFieldChange = (field, value) => {
+    const schemaField =
+      basicProfileFields.find((entry) => entry.id === field) || null;
     const normalizedValue =
       field === "username"
         ? normalizeUsernameInput(value)
-        : value;
+        : normalizeCustomFieldValue(schemaField, value);
     const nextForm = {
       ...basicProfileForm,
-      ...(field === "country"
-        ? { country: normalizedValue, state: "" }
-        : { [field]: normalizedValue }),
+      ...(SYSTEM_BASIC_PROFILE_FIELD_IDS.has(field)
+        ? field === "country"
+          ? { country: normalizedValue, state: "" }
+          : { [field]: normalizedValue }
+        : {
+            customFields: {
+              ...(basicProfileForm.customFields || {}),
+              [field]: normalizedValue,
+            },
+          }),
     };
 
     setProfileError("");
@@ -2995,6 +3273,7 @@ const FreelancerOnboardingShell = () => {
                 selectedWorkPreference={selectedWorkPreference}
                 onSelectWorkPreference={handleWorkPreferenceSelect}
                 basicProfileForm={basicProfileForm}
+                basicProfileFields={basicProfileFields}
                 onBasicProfileFieldChange={handleBasicProfileFieldChange}
                 onUsernameBlur={handleUsernameBlur}
                 basicProfileErrors={basicProfileErrors}
@@ -3017,24 +3296,29 @@ const FreelancerOnboardingShell = () => {
                 currentServiceKey={currentServiceKey}
                 currentService={currentService}
                 currentServiceName={currentServiceName}
+                onboardingContent={activeOnboardingContent}
                 currentServiceIndex={currentServiceIndex}
                 totalSelectedServices={selectedServices.length}
                 serviceDraft={currentServiceDraft}
                 onServiceStepChange={handleServiceStepChange}
                 onUpdateServiceDraft={handleServiceInfoDraftUpdate}
+                serviceInfoFields={serviceInfoFields}
                 serviceInfoForm={currentServiceInfoForm}
                 onServiceInfoFieldChange={handleServiceInfoFieldChange}
                 serviceInfoValidationErrors={serviceInfoValidationErrors}
                 servicePricingForm={currentServicePricingForm}
+                servicePricingFields={servicePricingFields}
                 onServicePricingFieldChange={handleServicePricingFieldChange}
                 servicePricingValidationErrors={servicePricingValidationErrors}
                 serviceVisualsForm={currentServiceVisualsForm}
+                serviceVisualFields={serviceVisualFields}
                 suggestedKeywords={suggestedKeywords}
                 isSuggestedKeywordsLoading={isSuggestedKeywordsLoading}
                 onServiceVisualsFieldChange={handleServiceVisualsFieldChange}
                 onUploadServiceMediaFile={uploadServiceMediaFile}
                 serviceVisualsValidationErrors={serviceVisualsValidationErrors}
                 caseStudyForm={currentCaseStudyForm}
+                caseStudyFields={caseStudyFields}
                 caseStudies={currentServiceCaseStudies}
                 activeCaseStudyId={currentActiveCaseStudyId}
                 activeCaseStudyIndex={currentActiveCaseStudyIndex}

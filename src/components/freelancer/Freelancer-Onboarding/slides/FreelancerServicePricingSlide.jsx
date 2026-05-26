@@ -1,13 +1,15 @@
-import {
-  ServiceInfoStepper,
-  CustomSelect,
-} from "./shared/ServiceInfoComponents";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
+import {
+  applyServiceTemplate,
+  DEFAULT_FREELANCER_ONBOARDING_CONTENT,
+  resolveServicePricingFields,
+} from "@/shared/lib/freelancer-onboarding-content";
 import {
   ONBOARDING_FIELD_LABEL_CLASS,
   ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
 } from "../typography";
+import { ServiceInfoStepper, CustomSelect } from "./shared/ServiceInfoComponents";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
@@ -25,12 +27,16 @@ const DELIVERY_TIMELINE_OPTIONS = [
   { value: "ongoing", label: "Ongoing / Retainer" },
 ];
 
-
-
-/* ──────────────────── Main Slide ──────────────────── */
+const fieldClassName =
+  "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1";
+const textareaClassName =
+  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1";
 
 const FreelancerServicePricingSlide = ({
   currentServiceName,
+  onboardingContent,
+  servicePricingFields = [],
+  serviceDraft,
   servicePricingForm,
   onServicePricingFieldChange,
   onServiceStepChange,
@@ -38,41 +44,123 @@ const FreelancerServicePricingSlide = ({
   servicePricingValidationErrors = {},
 }) => {
   const serviceName = currentServiceName || "Service";
-  const descriptionError = String(servicePricingValidationErrors.description || "").trim();
-  const deliveryTimelineError = String(
-    servicePricingValidationErrors.deliveryTimeline || "",
-  ).trim();
-  const priceRangeError = String(servicePricingValidationErrors.priceRange || "").trim();
+  const pricingContent =
+    onboardingContent?.servicePricing ||
+    DEFAULT_FREELANCER_ONBOARDING_CONTENT.servicePricing;
+  const stepperSteps =
+    onboardingContent?.stepper?.steps ||
+    DEFAULT_FREELANCER_ONBOARDING_CONTENT.stepper.steps;
+  const resolvedFields =
+    Array.isArray(servicePricingFields) && servicePricingFields.length > 0
+      ? servicePricingFields
+      : resolveServicePricingFields(onboardingContent);
+  const fieldMap = Object.fromEntries(resolvedFields.map((field) => [field.id, field]));
+  const deliveryTimelineOptions =
+    fieldMap.deliveryTimeline?.options ||
+    pricingContent?.fields?.deliveryTimeline?.options ||
+    DELIVERY_TIMELINE_OPTIONS;
+  const customPricingFields = resolvedFields.filter(
+    (field) =>
+      !["description", "deliveryTimeline", "priceRange"].includes(field.id) &&
+      field.visible !== false,
+  );
+
+  const renderInputField = (field, value, error, onChange, { numeric = false } = {}) => (
+    <div className="space-y-0">
+      <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+        {field.label}
+      </label>
+      <div className="relative">
+        {field.prefix ? (
+          <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-muted-foreground/50">
+            {field.prefix}
+          </span>
+        ) : null}
+        <input
+          type="text"
+          inputMode={numeric ? "numeric" : undefined}
+          value={value}
+          onChange={(event) =>
+            onChange(numeric ? event.target.value.replace(/\D/g, "") : event.target.value)
+          }
+          placeholder={field.placeholder || ""}
+          className={cn(
+            fieldClassName,
+            field.prefix ? "pl-8 pr-4" : "",
+            error
+              ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+              : "border-border focus:border-primary/50 focus:ring-primary/20",
+          )}
+          aria-invalid={Boolean(error)}
+        />
+      </div>
+      {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
+    </div>
+  );
+
+  const renderTextareaField = (field, value, error, onChange) => (
+    <div className="space-y-0">
+      <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+        {field.label}
+      </label>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={field.placeholder || ""}
+        rows={4}
+        className={cn(
+          textareaClassName,
+          error
+            ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+            : "border-border focus:border-primary/50 focus:ring-primary/20",
+        )}
+        aria-invalid={Boolean(error)}
+      />
+      {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
+    </div>
+  );
+
+  const renderSelectField = (field, value, error, onChange, options = []) => (
+    <div className="space-y-0">
+      <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+        {field.label}
+      </label>
+      <CustomSelect
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder={field.placeholder || "Select option"}
+        hasError={Boolean(error)}
+      />
+      {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
+    </div>
+  );
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
       <div className="w-full space-y-8">
-        {/* Heading */}
         <div className="text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
-            <span>Set Your </span>
-            <span className="text-primary">{serviceName}</span>
-            <span> Service Price</span>
+            {applyServiceTemplate(pricingContent?.headingTitleTemplate, serviceName)}
           </h1>
         </div>
 
-        {/* Stepper */}
         <div className="w-full">
           <ServiceInfoStepper
             activeStepId="pricing"
             onStepChange={onServiceStepChange}
+            steps={stepperSteps}
           />
         </div>
 
-        {/* Step Content */}
         <div className="w-full space-y-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-foreground")}>
-                Set Your Price
+                {pricingContent?.sectionTitle || "Set Your Price"}
               </h2>
               <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-                Provide the details of the service you will offer.
+                {pricingContent?.sectionDescription || "Provide the details of the service you will offer."}
               </p>
             </div>
 
@@ -91,81 +179,59 @@ const FreelancerServicePricingSlide = ({
           </div>
 
           <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
-            {/* Service Description */}
-            <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                Service Description
-              </label>
-              <textarea
-                value={servicePricingForm.description}
-                onChange={(e) =>
-                  onServicePricingFieldChange("description", e.target.value)
-                }
-                placeholder="Description..."
-                rows={4}
-                className={cn(
-                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
-                  descriptionError
-                    ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                    : "border-border focus:border-primary/50 focus:ring-primary/20",
-                )}
-                aria-invalid={Boolean(descriptionError)}
-              />
-              {descriptionError ? (
-                <p className="mt-1 text-sm text-destructive">{descriptionError}</p>
-              ) : null}
-            </div>
+            {fieldMap.description?.visible !== false
+              ? renderTextareaField(
+                  fieldMap.description,
+                  servicePricingForm.description,
+                  String(servicePricingValidationErrors.description || "").trim(),
+                  (value) => onServicePricingFieldChange("description", value),
+                )
+              : null}
 
-            {/* Delivery Timeline */}
-            <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                Delivery Timeline
-              </label>
-              <CustomSelect
-                value={servicePricingForm.deliveryTimeline}
-                onChange={(val) =>
-                  onServicePricingFieldChange("deliveryTimeline", val)
-                }
-                options={DELIVERY_TIMELINE_OPTIONS}
-                placeholder="Select delivery time"
-                hasError={Boolean(deliveryTimelineError)}
-              />
-              {deliveryTimelineError ? (
-                <p className="mt-1 text-sm text-destructive">
-                  {deliveryTimelineError}
-                </p>
-              ) : null}
-            </div>
+            {fieldMap.deliveryTimeline?.visible !== false
+              ? renderSelectField(
+                  fieldMap.deliveryTimeline,
+                  servicePricingForm.deliveryTimeline,
+                  String(servicePricingValidationErrors.deliveryTimeline || "").trim(),
+                  (value) => onServicePricingFieldChange("deliveryTimeline", value),
+                  deliveryTimelineOptions,
+                )
+              : null}
 
-            {/* Starting Price */}
-            <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                Starting Price
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-muted-foreground/50">₹</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={servicePricingForm.priceRange || ""}
-                  onChange={(e) => {
-                    const digitsOnly = e.target.value.replace(/\D/g, "");
-                  onServicePricingFieldChange("priceRange", digitsOnly);
-                  }}
-                  placeholder="Enter starting price"
-                  className={cn(
-                    "w-full rounded-xl border bg-card pl-8 pr-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
-                    priceRangeError
-                      ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                      : "border-border focus:border-primary/50 focus:ring-primary/20",
-                  )}
-                  aria-invalid={Boolean(priceRangeError)}
-                />
-              </div>
-              {priceRangeError ? (
-                <p className="mt-1 text-sm text-destructive">{priceRangeError}</p>
-              ) : null}
-            </div>
+            {fieldMap.priceRange?.visible !== false
+              ? renderInputField(
+                  fieldMap.priceRange,
+                  servicePricingForm.priceRange || "",
+                  String(servicePricingValidationErrors.priceRange || "").trim(),
+                  (value) => onServicePricingFieldChange("priceRange", value),
+                  { numeric: true },
+                )
+              : null}
+
+            {customPricingFields.map((field) => {
+              const value = serviceDraft?.customFields?.servicePricing?.[field.id] ?? "";
+              const error = String(servicePricingValidationErrors[field.id] || "").trim();
+
+              if (field.type === "textarea") {
+                return renderTextareaField(field, value, error, (nextValue) =>
+                  onServicePricingFieldChange(field.id, nextValue),
+                );
+              }
+
+              if (field.type === "select") {
+                return renderSelectField(
+                  field,
+                  value,
+                  error,
+                  (nextValue) => onServicePricingFieldChange(field.id, nextValue),
+                  field.options || [],
+                );
+              }
+
+              return renderInputField(field, value, error, (nextValue) =>
+                onServicePricingFieldChange(field.id, nextValue),
+              );
+            })}
           </div>
         </div>
       </div>

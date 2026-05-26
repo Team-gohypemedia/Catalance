@@ -16,6 +16,10 @@ import {
   CustomSelect,
 } from "./shared/ServiceInfoComponents";
 import { MAX_ONBOARDING_CASE_STUDIES } from "../service-details";
+import {
+  DEFAULT_FREELANCER_ONBOARDING_CONTENT,
+  resolveCaseStudyFields,
+} from "@/shared/lib/freelancer-onboarding-content";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
@@ -92,7 +96,9 @@ const FileUploadButton = ({ file, onChange, hasError = false }) => {
 /* ──────────────────── Main Slide ──────────────────── */
 
 const FreelancerCaseStudySlide = ({
+  onboardingContent,
   caseStudyForm,
+  caseStudyFields = [],
   caseStudies = [],
   activeCaseStudyIndex = 0,
   activeCaseStudyId = "",
@@ -105,6 +111,27 @@ const FreelancerCaseStudySlide = ({
   onSkipServices,
   caseStudyValidationErrors = {},
 }) => {
+  const caseStudyContent =
+    onboardingContent?.caseStudy ||
+    DEFAULT_FREELANCER_ONBOARDING_CONTENT.caseStudy;
+  const stepperSteps =
+    onboardingContent?.stepper?.steps ||
+    DEFAULT_FREELANCER_ONBOARDING_CONTENT.stepper.steps;
+  const resolvedFields =
+    Array.isArray(caseStudyFields) && caseStudyFields.length > 0
+      ? caseStudyFields
+      : resolveCaseStudyFields(onboardingContent);
+  const fieldMap = Object.fromEntries(
+    resolvedFields.map((field) => [field.id, field]),
+  );
+  const roleOptions =
+    fieldMap.role?.options ||
+    caseStudyContent?.fields?.role?.options ||
+    ROLE_OPTIONS;
+  const timelineOptions =
+    fieldMap.timeline?.options ||
+    caseStudyContent?.fields?.timeline?.options ||
+    TIMELINE_OPTIONS;
   const activeCaseStudyLabel =
     toTitleCase(caseStudyForm?.title) ||
     `Case Study ${Number.isInteger(activeCaseStudyIndex) ? activeCaseStudyIndex + 1 : 1}`;
@@ -117,6 +144,11 @@ const FreelancerCaseStudySlide = ({
   const roleError = String(caseStudyValidationErrors.role || "").trim();
   const timelineError = String(caseStudyValidationErrors.timeline || "").trim();
   const budgetError = String(caseStudyValidationErrors.budget || "").trim();
+  const customCaseStudyFields = resolvedFields.filter(
+    (field) =>
+      !["title", "description", "niche", "projectLink", "projectFile", "role", "timeline", "budget"].includes(field.id) &&
+      field.visible !== false,
+  );
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
@@ -124,10 +156,7 @@ const FreelancerCaseStudySlide = ({
         {/* Heading */}
         <div className="text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
-            <span>Tell Us About </span>
-            <span className="text-primary">Your</span>
-            <span> Previous </span>
-            <span className="text-primary">Work</span>
+            {caseStudyContent?.headingTitle || "Tell Us About Your Previous Work"}
           </h1>
         </div>
 
@@ -136,6 +165,7 @@ const FreelancerCaseStudySlide = ({
           <ServiceInfoStepper
             activeStepId="caseStudy"
             onStepChange={onServiceStepChange}
+            steps={stepperSteps}
           />
         </div>
 
@@ -146,10 +176,11 @@ const FreelancerCaseStudySlide = ({
               <div className="min-w-0 space-y-3">
                 <div>
                   <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-foreground")}>
-                    Case Studies
+                    {caseStudyContent?.sectionTitle || "Case Studies"}
                   </h2>
                   <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-                    Add multiple case studies and switch between them while filling the details.
+                    {caseStudyContent?.sectionDescription ||
+                      "Add multiple case studies and switch between them while filling the details."}
                   </p>
                 </div>
               </div>
@@ -175,7 +206,7 @@ const FreelancerCaseStudySlide = ({
                   className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted sm:w-auto"
                 >
                   <Plus className="h-4 w-4" />
-                  Add Case Study
+                  {caseStudyContent?.addButtonLabel || "Add Case Study"}
                 </button>
 
                 <Button
@@ -201,7 +232,7 @@ const FreelancerCaseStudySlide = ({
                 className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted"
               >
                 <Plus className="h-4 w-4" />
-                Add Case Study
+                {caseStudyContent?.addButtonLabel || "Add Case Study"}
               </button>
             </div>
 
@@ -293,7 +324,8 @@ const FreelancerCaseStudySlide = ({
 
             {isCaseStudyLimitReached ? (
               <p className="mt-3 text-sm text-muted-foreground">
-                Onboarding limit reached: 5 case studies. Add more later from your profile.
+                {caseStudyContent?.limitMessage ||
+                  "Onboarding limit reached: 5 case studies. Add more later from your profile."}
               </p>
             ) : null}
           </div>
@@ -308,7 +340,7 @@ const FreelancerCaseStudySlide = ({
             {/* Case Study Title */}
             <div className="space-y-0">
               <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                Case Study Title
+                {fieldMap.title?.label || caseStudyContent?.fields?.title?.label || "Case Study Title"}
               </label>
               <input
                 type="text"
@@ -316,7 +348,11 @@ const FreelancerCaseStudySlide = ({
                 onChange={(e) =>
                   onCaseStudyFieldChange("title", e.target.value)
                 }
-                placeholder="e.g. E-commerce Platform Redesign"
+                placeholder={
+                  fieldMap.title?.placeholder ||
+                  caseStudyContent?.fields?.title?.placeholder ||
+                  "e.g. E-commerce Platform Redesign"
+                }
                 className={cn(
                   "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                   titleError
@@ -333,14 +369,18 @@ const FreelancerCaseStudySlide = ({
             {/* Description */}
             <div className="space-y-0">
               <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                Description
+                {fieldMap.description?.label || caseStudyContent?.fields?.description?.label || "Description"}
               </label>
               <textarea
                 value={caseStudyForm.description}
                 onChange={(e) =>
                   onCaseStudyFieldChange("description", e.target.value)
                 }
-                placeholder="Briefly describe the project and its goals..."
+                placeholder={
+                  fieldMap.description?.placeholder ||
+                  caseStudyContent?.fields?.description?.placeholder ||
+                  "Briefly describe the project and its goals..."
+                }
                 rows={4}
                 className={cn(
                   "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
@@ -358,15 +398,20 @@ const FreelancerCaseStudySlide = ({
             {/* Niche */}
             <div className="space-y-0">
               <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                Niche
+                {fieldMap.niche?.label || caseStudyContent?.fields?.niche?.label || "Niche"}
               </label>
               <CustomSelect
                 value={caseStudyForm.niche}
                 onChange={(val) => onCaseStudyFieldChange("niche", val)}
                 options={nicheOptions}
-                placeholder="select niche"
+                placeholder={
+                  fieldMap.niche?.placeholder || caseStudyContent?.fields?.niche?.placeholder || "Select niche"
+                }
                 isSearchable
-                searchPlaceholder="Search niches"
+                searchPlaceholder={
+                  fieldMap.niche?.searchPlaceholder || caseStudyContent?.fields?.niche?.searchPlaceholder ||
+                  "Search niches"
+                }
                 hasError={Boolean(nicheError)}
               />
               {nicheError ? (
@@ -379,7 +424,8 @@ const FreelancerCaseStudySlide = ({
               {/* Project Link */}
               <div className="space-y-0">
                 <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                  Project Link (Optional)
+                  {fieldMap.projectLink?.label || caseStudyContent?.fields?.projectLink?.label ||
+                    "Project Link (Optional)"}
                 </label>
                 <div className="relative">
                   <Link2 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
@@ -389,7 +435,10 @@ const FreelancerCaseStudySlide = ({
                     onChange={(e) =>
                       onCaseStudyFieldChange("projectLink", e.target.value)
                     }
-                    placeholder="https://..."
+                    placeholder={
+                      fieldMap.projectLink?.placeholder || caseStudyContent?.fields?.projectLink?.placeholder ||
+                      "https://..."
+                    }
                     className={cn(
                       "h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
                     )}
@@ -400,7 +449,8 @@ const FreelancerCaseStudySlide = ({
               {/* Project File */}
               <div className="space-y-0">
                 <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                  Project File (Optional)
+                  {fieldMap.projectFile?.label || caseStudyContent?.fields?.projectFile?.label ||
+                    "Project File (Optional)"}
                 </label>
                 <FileUploadButton
                   file={caseStudyForm.projectFile}
@@ -413,13 +463,15 @@ const FreelancerCaseStudySlide = ({
               {/* Your Role */}
               <div className="space-y-0">
                 <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                  Your Role
+                  {fieldMap.role?.label || caseStudyContent?.fields?.role?.label || "Your Role"}
                 </label>
                 <CustomSelect
                   value={caseStudyForm.role}
                   onChange={(val) => onCaseStudyFieldChange("role", val)}
-                  options={ROLE_OPTIONS}
-                  placeholder="Select role"
+                  options={roleOptions}
+                  placeholder={
+                    fieldMap.role?.placeholder || caseStudyContent?.fields?.role?.placeholder || "Select role"
+                  }
                   hasError={Boolean(roleError)}
                 />
                 {roleError ? (
@@ -432,13 +484,16 @@ const FreelancerCaseStudySlide = ({
               {/* Timeline */}
               <div className="space-y-0">
                 <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                  Timeline
+                  {fieldMap.timeline?.label || caseStudyContent?.fields?.timeline?.label || "Timeline"}
                 </label>
                 <CustomSelect
                   value={caseStudyForm.timeline}
                   onChange={(val) => onCaseStudyFieldChange("timeline", val)}
-                  options={TIMELINE_OPTIONS}
-                  placeholder="Select duration"
+                  options={timelineOptions}
+                  placeholder={
+                    fieldMap.timeline?.placeholder || caseStudyContent?.fields?.timeline?.placeholder ||
+                    "Select duration"
+                  }
                   hasError={Boolean(timelineError)}
                 />
                 {timelineError ? (
@@ -449,7 +504,7 @@ const FreelancerCaseStudySlide = ({
               {/* Budget */}
               <div className="space-y-0">
                 <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                  Budget
+                  {fieldMap.budget?.label || caseStudyContent?.fields?.budget?.label || "Budget"}
                 </label>
                 <div className="relative">
                   <IndianRupee className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
@@ -460,7 +515,10 @@ const FreelancerCaseStudySlide = ({
                       const val = e.target.value.replace(/[^0-9]/g, "");
                       onCaseStudyFieldChange("budget", val);
                     }}
-                    placeholder="e.g. 5000"
+                    placeholder={
+                      fieldMap.budget?.placeholder || caseStudyContent?.fields?.budget?.placeholder ||
+                      "e.g. 5000"
+                    }
                     className={cn(
                       "h-12 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                       budgetError
@@ -475,6 +533,74 @@ const FreelancerCaseStudySlide = ({
                 ) : null}
               </div>
             </div>
+            {customCaseStudyFields.map((field) => {
+              const customValue = caseStudyForm?.customFields?.[field.id] ?? "";
+              const customError = String(caseStudyValidationErrors[field.id] || "").trim();
+
+              if (field.type === "textarea") {
+                return (
+                  <div key={field.id} className="space-y-0">
+                    <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                      {field.label}
+                    </label>
+                    <textarea
+                      value={customValue}
+                      onChange={(e) => onCaseStudyFieldChange(field.id, e.target.value)}
+                      placeholder={field.placeholder || ""}
+                      rows={4}
+                      className={cn(
+                        "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                        customError
+                          ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                          : "border-border focus:border-primary/50 focus:ring-primary/20",
+                      )}
+                    />
+                    {customError ? <p className="mt-1 text-sm text-destructive">{customError}</p> : null}
+                  </div>
+                );
+              }
+
+              if (field.type === "select") {
+                return (
+                  <div key={field.id} className="space-y-0">
+                    <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                      {field.label}
+                    </label>
+                    <CustomSelect
+                      value={customValue}
+                      onChange={(val) => onCaseStudyFieldChange(field.id, val)}
+                      options={field.options || []}
+                      placeholder={field.placeholder || "Select option"}
+                      isSearchable={Boolean(field.searchPlaceholder)}
+                      searchPlaceholder={field.searchPlaceholder || "Search"}
+                      hasError={Boolean(customError)}
+                    />
+                    {customError ? <p className="mt-1 text-sm text-destructive">{customError}</p> : null}
+                  </div>
+                );
+              }
+
+              return (
+                <div key={field.id} className="space-y-0">
+                  <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                    {field.label}
+                  </label>
+                  <input
+                    type="text"
+                    value={customValue}
+                    onChange={(e) => onCaseStudyFieldChange(field.id, e.target.value)}
+                    placeholder={field.placeholder || ""}
+                    className={cn(
+                      "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      customError
+                        ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                        : "border-border focus:border-primary/50 focus:ring-primary/20",
+                    )}
+                  />
+                  {customError ? <p className="mt-1 text-sm text-destructive">{customError}</p> : null}
+                </div>
+              );
+            })}
       </div>
       </div>
       </div>

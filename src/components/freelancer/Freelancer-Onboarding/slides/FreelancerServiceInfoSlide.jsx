@@ -22,6 +22,11 @@ import {
   ServiceTitleTooltip,
 } from "./shared/ServiceInfoComponents";
 import { Button } from "@/components/ui/button";
+import {
+  applyServiceTemplate,
+  DEFAULT_FREELANCER_ONBOARDING_CONTENT,
+  resolveServiceInfoFields,
+} from "@/shared/lib/freelancer-onboarding-content";
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
 const EXPERIENCE_OPTIONS = [
@@ -616,6 +621,8 @@ const CategoryMultiSelect = ({
 const FreelancerServiceInfoSlide = ({
   currentService,
   currentServiceName,
+  onboardingContent,
+  serviceInfoFields = [],
   serviceDraft,
   serviceInfoForm,
   onServiceInfoFieldChange,
@@ -624,6 +631,23 @@ const FreelancerServiceInfoSlide = ({
   onSkipServices,
   serviceInfoValidationErrors = {},
 }) => {
+  const serviceInfoContent =
+    onboardingContent?.serviceInfo ||
+    DEFAULT_FREELANCER_ONBOARDING_CONTENT.serviceInfo;
+  const stepperSteps =
+    onboardingContent?.stepper?.steps ||
+    DEFAULT_FREELANCER_ONBOARDING_CONTENT.stepper.steps;
+  const resolvedFields =
+    Array.isArray(serviceInfoFields) && serviceInfoFields.length > 0
+      ? serviceInfoFields
+      : resolveServiceInfoFields(onboardingContent);
+  const fieldMap = Object.fromEntries(
+    resolvedFields.map((field) => [field.id, field]),
+  );
+  const experienceOptions =
+    fieldMap.experience?.options ||
+    serviceInfoContent?.fields?.experience?.options ||
+    EXPERIENCE_OPTIONS;
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
   const [toolOptionsByCategory, setToolOptionsByCategory] = useState({});
@@ -681,6 +705,9 @@ const FreelancerServiceInfoSlide = ({
   const categoryError = String(serviceInfoValidationErrors.category || "").trim();
   const skillsError = String(serviceInfoValidationErrors.skills || "").trim();
   const experienceError = String(serviceInfoValidationErrors.experience || "").trim();
+  const customServiceInfoFields = resolvedFields.filter(
+    (field) => !["title", "categories", "experience"].includes(field.id) && field.visible !== false,
+  );
 
   useEffect(() => {
     if (!resolvedServiceId) {
@@ -932,9 +959,10 @@ const FreelancerServiceInfoSlide = ({
       <div className="w-full space-y-8">
         <div className="text-center">
           <h1 className="text-xl md:text-4xl lg:text-5xl font-medium">
-            <span>Fill Your </span>
-            <span className="text-primary">{serviceName}</span>
-            <span> Service Info</span>
+            {applyServiceTemplate(
+              serviceInfoContent?.headingTitleTemplate,
+              serviceName,
+            )}
           </h1>
         </div>
 
@@ -942,6 +970,7 @@ const FreelancerServiceInfoSlide = ({
           <ServiceInfoStepper
             activeStepId="overview"
             onStepChange={onServiceStepChange}
+            steps={stepperSteps}
           />
         </div>
 
@@ -949,10 +978,11 @@ const FreelancerServiceInfoSlide = ({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <h2 className="text-lg sm:text-xl md:text-2xl font-medium text-foreground">
-                Add service info
+                {serviceInfoContent?.sectionTitle || "Add service info"}
               </h2>
               <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-                Enter details of your service
+                {serviceInfoContent?.sectionDescription ||
+                  "Enter details of your service"}
               </p>
             </div>
 
@@ -973,14 +1003,18 @@ const FreelancerServiceInfoSlide = ({
 
           <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
             <div className="space-y-0">
+              {fieldMap.title?.visible === false ? null : (
+              <>
               <div className="mb-1 flex items-center gap-2">
                 <label
                   className={ONBOARDING_FIELD_LABEL_CLASS}
                   htmlFor="service-title-input"
                 >
-                  Service Title
+                  {fieldMap.title?.label || serviceInfoContent?.fields?.title?.label || "Service Title"}
                 </label>
-                <ServiceTitleTooltip />
+                <ServiceTitleTooltip
+                  message={serviceInfoContent?.serviceTitleTooltip}
+                />
               </div>
               <div className="relative">
                 <input
@@ -992,7 +1026,11 @@ const FreelancerServiceInfoSlide = ({
                       onServiceInfoFieldChange("title", event.target.value);
                     }
                   }}
-                  placeholder="I will do something I'm really good at"
+                  placeholder={
+                    fieldMap.title?.placeholder ||
+                    serviceInfoContent?.fields?.title?.placeholder ||
+                    "I will do something I'm really good at"
+                  }
                   className={cn(
                     "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                     titleError
@@ -1008,18 +1046,32 @@ const FreelancerServiceInfoSlide = ({
               {titleError ? (
                 <p className="mt-1 text-sm text-destructive">{titleError}</p>
               ) : null}
+              </>
+              )}
             </div>
 
             <div className="space-y-0">
+              {fieldMap.categories?.visible === false ? null : (
+              <>
               <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                Select Category
+                {fieldMap.categories?.label || serviceInfoContent?.fields?.categories?.label || "Select Category"}
               </label>
               <CategoryMultiSelect
                 selected={selectedCategoryKeys}
                 onChange={handleSelectedCategoriesChange}
                 options={allCategoryOptions}
-                placeholder={isCategoriesLoading ? "Loading..." : "Search here"}
-                searchPlaceholder="Search here"
+                placeholder={
+                  isCategoriesLoading
+                    ? "Loading..."
+                    : fieldMap.categories?.placeholder ||
+                      serviceInfoContent?.fields?.categories?.placeholder ||
+                      "Search here"
+                }
+                searchPlaceholder={
+                  fieldMap.categories?.searchPlaceholder ||
+                  serviceInfoContent?.fields?.categories?.searchPlaceholder ||
+                  "Search here"
+                }
                 isLoading={isCategoriesLoading}
                 hasError={Boolean(categoryError)}
                 activeCategoryKey={activeSkillCategoryId}
@@ -1041,23 +1093,110 @@ const FreelancerServiceInfoSlide = ({
               {skillsError ? (
                 <p className="mt-1 text-sm text-destructive">{skillsError}</p>
               ) : null}
+              </>
+              )}
             </div>
 
             <div className="space-y-0">
+              {fieldMap.experience?.visible === false ? null : (
+              <>
               <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                Experience
+                {fieldMap.experience?.label || serviceInfoContent?.fields?.experience?.label || "Experience"}
               </label>
               <CustomSelect
                 value={serviceInfoForm.experience}
                 onChange={(value) => onServiceInfoFieldChange("experience", value)}
-                options={EXPERIENCE_OPTIONS}
-                placeholder="Select experience level"
+                options={experienceOptions}
+                placeholder={
+                  fieldMap.experience?.placeholder ||
+                  serviceInfoContent?.fields?.experience?.placeholder ||
+                  "Select experience level"
+                }
                 hasError={Boolean(experienceError)}
               />
               {experienceError ? (
                 <p className="mt-1 text-sm text-destructive">{experienceError}</p>
               ) : null}
+              </>
+              )}
             </div>
+
+            {customServiceInfoFields.map((field) => {
+              const customValue = serviceDraft?.customFields?.serviceInfo?.[field.id] ?? "";
+              const customError = String(serviceInfoValidationErrors[field.id] || "").trim();
+              const isSelect = field.type === "select";
+              const isMulti = field.type === "multiselect";
+
+              if (isSelect || isMulti) {
+                return (
+                  <div key={field.id} className="space-y-0">
+                    <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                      {field.label}
+                    </label>
+                    <CustomSelect
+                      value={customValue}
+                      onChange={(value) => onServiceInfoFieldChange(field.id, value)}
+                      options={field.options || []}
+                      placeholder={field.placeholder || "Select option"}
+                      isSearchable={Boolean(field.searchPlaceholder)}
+                      searchPlaceholder={field.searchPlaceholder || "Search here"}
+                      hasError={Boolean(customError)}
+                    />
+                    {customError ? (
+                      <p className="mt-1 text-sm text-destructive">{customError}</p>
+                    ) : null}
+                  </div>
+                );
+              }
+
+              if (field.type === "textarea") {
+                return (
+                  <div key={field.id} className="space-y-0">
+                    <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                      {field.label}
+                    </label>
+                    <textarea
+                      value={customValue}
+                      onChange={(event) => onServiceInfoFieldChange(field.id, event.target.value)}
+                      placeholder={field.placeholder || ""}
+                      rows={4}
+                      className={cn(
+                        "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                        customError
+                          ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                          : "border-border focus:border-primary/50 focus:ring-primary/20",
+                      )}
+                    />
+                    {customError ? (
+                      <p className="mt-1 text-sm text-destructive">{customError}</p>
+                    ) : null}
+                  </div>
+                );
+              }
+
+              return (
+                <div key={field.id} className="space-y-0">
+                  <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                    {field.label}
+                  </label>
+                  <input
+                    type="text"
+                    value={customValue}
+                    onChange={(event) => onServiceInfoFieldChange(field.id, event.target.value)}
+                    placeholder={field.placeholder || ""}
+                    className={cn(
+                      "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      customError
+                        ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                        : "border-border focus:border-primary/50 focus:ring-primary/20",
+                    )}
+                  />
+                  {customError ? (
+                    <p className="mt-1 text-sm text-destructive">{customError}</p>
+                  ) : null}
+                </div>
+              );
+            })}
 
 
           </div>

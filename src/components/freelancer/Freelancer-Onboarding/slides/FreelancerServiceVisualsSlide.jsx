@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
+import { DEFAULT_FREELANCER_ONBOARDING_CONTENT } from "@/shared/lib/freelancer-onboarding-content";
 import {
   ONBOARDING_FIELD_LABEL_CLASS,
   ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
@@ -236,7 +237,14 @@ const MediaThumbnail = ({ item, previewUrl, index, isActive, onSelect }) => (
   </button>
 );
 
-const UploadArea = ({ files, onChange, onUploadFile, hasError = false }) => {
+const UploadArea = ({
+  files,
+  onChange,
+  onUploadFile,
+  hasError = false,
+  uploadRuleWithMedia,
+  uploadRuleEmpty,
+}) => {
   const inputRef = useRef(null);
   const filesRef = useRef(Array.isArray(files) ? files : []);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -581,10 +589,10 @@ const UploadArea = ({ files, onChange, onUploadFile, hasError = false }) => {
             hasError ? "border-destructive/30" : "border-border",
           )}
         >
-          <p className={cn("text-xs font-normal leading-relaxed", hasError ? "text-destructive/80" : "text-muted-foreground")}>
+            <p className={cn("text-xs font-normal leading-relaxed", hasError ? "text-destructive/80" : "text-muted-foreground")}>
             {hasMedia
-              ? "Upload rule: up to 2 images and 1 video (max 5MB each)."
-              : "Upload rule: add one file to start, then add up to 2 images and 1 video total."}
+              ? uploadRuleWithMedia
+              : uploadRuleEmpty}
           </p>
         </div>
       </div>
@@ -611,6 +619,7 @@ const UploadArea = ({ files, onChange, onUploadFile, hasError = false }) => {
 /* ──────────────────── Main Slide ──────────────────── */
 
 const FreelancerServiceVisualsSlide = ({
+  onboardingContent,
   serviceVisualsForm,
   onServiceVisualsFieldChange,
   onServiceStepChange,
@@ -618,6 +627,12 @@ const FreelancerServiceVisualsSlide = ({
   onSkipServices,
   serviceVisualsValidationErrors = {},
 }) => {
+  const visualsContent =
+    onboardingContent?.serviceVisuals ||
+    DEFAULT_FREELANCER_ONBOARDING_CONTENT.serviceVisuals;
+  const stepperSteps =
+    onboardingContent?.stepper?.steps ||
+    DEFAULT_FREELANCER_ONBOARDING_CONTENT.stepper.steps;
   const mediaFilesError = String(serviceVisualsValidationErrors.mediaFiles || "").trim();
 
   return (
@@ -626,8 +641,7 @@ const FreelancerServiceVisualsSlide = ({
         {/* Heading */}
         <div className="text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
-            <span>Add </span>
-            <span className="text-primary">Media</span>
+            {visualsContent?.headingTitle || "Add Media"}
           </h1>
         </div>
 
@@ -636,6 +650,7 @@ const FreelancerServiceVisualsSlide = ({
           <ServiceInfoStepper
             activeStepId="visuals"
             onStepChange={onServiceStepChange}
+            steps={stepperSteps}
           />
         </div>
 
@@ -644,10 +659,11 @@ const FreelancerServiceVisualsSlide = ({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-foreground")}>
-                Enhance Your Service
+                {visualsContent?.sectionTitle || "Enhance Your Service"}
               </h2>
               <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-                Add media for better visibility.
+                {visualsContent?.sectionDescription ||
+                  "Add media for better visibility."}
               </p>
             </div>
 
@@ -673,6 +689,14 @@ const FreelancerServiceVisualsSlide = ({
               }
               onUploadFile={onUploadServiceMediaFile}
               hasError={Boolean(mediaFilesError)}
+              uploadRuleWithMedia={
+                visualsContent?.uploadRuleWithMedia ||
+                DEFAULT_FREELANCER_ONBOARDING_CONTENT.serviceVisuals.uploadRuleWithMedia
+              }
+              uploadRuleEmpty={
+                visualsContent?.uploadRuleEmpty ||
+                DEFAULT_FREELANCER_ONBOARDING_CONTENT.serviceVisuals.uploadRuleEmpty
+              }
             />
             {mediaFilesError ? (
               <p className="text-sm text-destructive">{mediaFilesError}</p>

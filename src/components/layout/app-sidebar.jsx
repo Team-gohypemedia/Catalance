@@ -16,6 +16,7 @@ import History from "lucide-react/dist/esm/icons/history";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import UserCheck from "lucide-react/dist/esm/icons/user-check";
+import MessageSquareCode from "lucide-react/dist/esm/icons/message-square-code";
 
 import { NavMain } from "@/components/layout/nav-main";
 import { NavUser } from "@/components/layout/nav-user";
@@ -206,6 +207,12 @@ const navConfigs = {
       title: "Onboarding",
       url: "/admin/freelancer-onboarding",
       icon: UserCheck,
+      isActive: true,
+    },
+    {
+      title: "Onboarding Content",
+      url: "/admin/onboarding-content",
+      icon: MessageSquareCode,
       isActive: true,
     },
     {

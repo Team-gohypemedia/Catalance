@@ -197,6 +197,7 @@ export const createEmptyServiceCaseStudy = ({
   timeline: "",
   budget: "",
   niche: "",
+  customFields: {},
 });
 
 export const MAX_ONBOARDING_CASE_STUDIES = 5;
@@ -219,8 +220,31 @@ const normalizeServiceCaseStudy = (value = {}, { fallbackId } = {}) => {
     timeline: toOptionalString(source.timeline),
     budget: toOptionalString(source.budget),
     niche: toOptionalString(source.niche),
+    customFields:
+      isPlainObject(source.customFields) ? { ...source.customFields } : {},
   };
 };
+
+const getSchemaFieldErrors = (fieldValues = {}, fields = []) =>
+  (Array.isArray(fields) ? fields : []).reduce((errors, field) => {
+    if (!field?.id || field.visible === false || field.required === false) {
+      return errors;
+    }
+
+    const fieldId = String(field.id || "").trim();
+    const value = fieldValues?.[fieldId];
+    const hasValue = Array.isArray(value)
+      ? value.length > 0
+      : hasMeaningfulValue(value);
+
+    if (!hasValue) {
+      errors[fieldId] = `Please enter ${String(field.label || fieldId)
+        .trim()
+        .toLowerCase()}.`;
+    }
+
+    return errors;
+  }, {});
 
 const normalizeServiceCaseStudies = (values, fallbackCaseStudy) => {
   const rawEntries = Array.isArray(values)
@@ -286,6 +310,12 @@ export const createEmptyServiceDraft = ({
     platformLinks: {},
     activeSkillCategory: null,
     pendingCategoryLabels: [],
+    customFields: {
+      serviceInfo: {},
+      servicePricing: {},
+      serviceVisuals: {},
+      caseStudy: {},
+    },
   };
 };
 
@@ -353,6 +383,20 @@ export const normalizeServiceDraft = (
     pendingCategoryLabels: normalizePendingCategoryLabels(
       source.pendingCategoryLabels || source.legacyCategoryLabels,
     ),
+    customFields: {
+      serviceInfo: isPlainObject(source?.customFields?.serviceInfo)
+        ? { ...source.customFields.serviceInfo }
+        : {},
+      servicePricing: isPlainObject(source?.customFields?.servicePricing)
+        ? { ...source.customFields.servicePricing }
+        : {},
+      serviceVisuals: isPlainObject(source?.customFields?.serviceVisuals)
+        ? { ...source.customFields.serviceVisuals }
+        : {},
+      caseStudy: isPlainObject(source?.customFields?.caseStudy)
+        ? { ...source.customFields.caseStudy }
+        : {},
+    },
   };
 };
 
@@ -624,6 +668,9 @@ export const serializeServiceDraft = ({
       : {},
     activeSkillCategory:
       toOptionalString(normalizedDraft.activeSkillCategory) || null,
+    customFields: isPlainObject(normalizedDraft.customFields)
+      ? { ...normalizedDraft.customFields }
+      : {},
   };
 };
 
@@ -667,50 +714,90 @@ const hasServiceInfoSkillSelection = (normalizedDraft) => {
   return hasSubcategorySkillSelection || hasLegacySkills;
 };
 
-const buildServiceInfoValidationErrors = (normalizedDraft) => {
+const buildServiceInfoValidationErrors = (normalizedDraft, fields = []) => {
   const errors = {};
+  const fieldMap = Object.fromEntries(
+    (Array.isArray(fields) ? fields : []).map((field) => [field.id, field]),
+  );
   const title = String(normalizedDraft.title || "").trim();
-  if (!title) {
+  if (fieldMap.title?.visible !== false && fieldMap.title?.required !== false && !title) {
     errors.title = "Please enter a service title.";
   }
 
   const hasCategory = Array.isArray(normalizedDraft.subcategories)
     ? normalizedDraft.subcategories.length > 0
     : false;
-  if (!hasCategory) {
+  if (
+    fieldMap.categories?.visible !== false &&
+    fieldMap.categories?.required !== false &&
+    !hasCategory
+  ) {
     errors.category = "Please select a category.";
   }
 
-  if (!hasServiceInfoSkillSelection(normalizedDraft)) {
+  if (
+    fieldMap.categories?.visible !== false &&
+    fieldMap.categories?.required !== false &&
+    !hasServiceInfoSkillSelection(normalizedDraft)
+  ) {
     errors.skills = "Please add at least one skill or technology.";
   }
 
   const experience = String(normalizedDraft.experience || "").trim();
-  if (!experience) {
+  if (
+    fieldMap.experience?.visible !== false &&
+    fieldMap.experience?.required !== false &&
+    !experience
+  ) {
     errors.experience = "Please select your experience level.";
   }
 
-  return errors;
+  return {
+    ...errors,
+    ...getSchemaFieldErrors(normalizedDraft.customFields?.serviceInfo, fields.filter(
+      (field) => !["title", "categories", "experience"].includes(field.id),
+    )),
+  };
 };
 
-const buildServicePricingValidationErrors = (normalizedDraft) => {
+const buildServicePricingValidationErrors = (normalizedDraft, fields = []) => {
   const errors = {};
+  const fieldMap = Object.fromEntries(
+    (Array.isArray(fields) ? fields : []).map((field) => [field.id, field]),
+  );
   const description = String(normalizedDraft.description || "").trim();
-  if (!description) {
+  if (
+    fieldMap.description?.visible !== false &&
+    fieldMap.description?.required !== false &&
+    !description
+  ) {
     errors.description = "Please add a service description.";
   }
 
   const deliveryTimeline = String(normalizedDraft.deliveryTimeline || "").trim();
-  if (!deliveryTimeline) {
+  if (
+    fieldMap.deliveryTimeline?.visible !== false &&
+    fieldMap.deliveryTimeline?.required !== false &&
+    !deliveryTimeline
+  ) {
     errors.deliveryTimeline = "Please select a delivery timeline.";
   }
 
   const priceRange = String(normalizedDraft.priceRange || "").trim();
-  if (!priceRange) {
+  if (
+    fieldMap.priceRange?.visible !== false &&
+    fieldMap.priceRange?.required !== false &&
+    !priceRange
+  ) {
     errors.priceRange = "Please set a service price.";
   }
 
-  return errors;
+  return {
+    ...errors,
+    ...getSchemaFieldErrors(normalizedDraft.customFields?.servicePricing, fields.filter(
+      (field) => !["description", "deliveryTimeline", "priceRange"].includes(field.id),
+    )),
+  };
 };
 
 const resolveServiceVisualKind = (entry) => {
@@ -782,58 +869,96 @@ export const isServiceVisualsUploadValid = (mediaFiles = []) => {
   );
 };
 
-const buildServiceVisualsValidationErrors = (normalizedDraft) => {
+const buildServiceVisualsValidationErrors = (normalizedDraft, fields = []) => {
   const mediaFiles = Array.isArray(normalizedDraft.mediaFiles)
     ? normalizedDraft.mediaFiles
     : [];
   const errors = {};
   const hasValidUpload = isServiceVisualsUploadValid(mediaFiles);
+  const mediaField = (Array.isArray(fields) ? fields : []).find(
+    (field) => field?.id === "mediaFiles",
+  );
 
-  if (!hasValidUpload) {
+  if (
+    mediaField?.visible !== false &&
+    mediaField?.required !== false &&
+    !hasValidUpload
+  ) {
     errors.mediaFiles = "Please add up to 2 images and 1 video before continuing.";
   }
 
-  return errors;
+  return {
+    ...errors,
+    ...getSchemaFieldErrors(normalizedDraft.customFields?.serviceVisuals, fields.filter(
+      (field) => field?.id !== "mediaFiles",
+    )),
+  };
 };
 
-const buildCaseStudyValidationErrors = (normalizedDraft) => {
+const buildCaseStudyValidationErrors = (normalizedDraft, fields = []) => {
   const errors = {};
   const activeCaseStudy = getActiveServiceCaseStudy(normalizedDraft);
+  const fieldMap = Object.fromEntries(
+    (Array.isArray(fields) ? fields : []).map((field) => [field.id, field]),
+  );
 
   const title = String(activeCaseStudy.title || "").trim();
-  if (!title) {
+  if (fieldMap.title?.visible !== false && fieldMap.title?.required !== false && !title) {
     errors.title = "Please enter a case study title.";
   }
 
   const description = String(activeCaseStudy.description || "").trim();
-  if (!description) {
+  if (
+    fieldMap.description?.visible !== false &&
+    fieldMap.description?.required !== false &&
+    !description
+  ) {
     errors.description = "Please add a case study description.";
   }
 
   const niche = String(activeCaseStudy.niche || "").trim();
-  if (!niche) {
+  if (fieldMap.niche?.visible !== false && fieldMap.niche?.required !== false && !niche) {
     errors.niche = "Please select a niche.";
   }
 
   const role = String(activeCaseStudy.role || "").trim();
-  if (!role) {
+  if (fieldMap.role?.visible !== false && fieldMap.role?.required !== false && !role) {
     errors.role = "Please enter your role.";
   }
 
   const timeline = String(activeCaseStudy.timeline || "").trim();
-  if (!timeline) {
+  if (
+    fieldMap.timeline?.visible !== false &&
+    fieldMap.timeline?.required !== false &&
+    !timeline
+  ) {
     errors.timeline = "Please select a timeline.";
   }
 
   const budget = String(activeCaseStudy.budget || "").trim();
-  if (!budget) {
+  if (fieldMap.budget?.visible !== false && fieldMap.budget?.required !== false && !budget) {
     errors.budget = "Please set a budget.";
   }
 
-  return errors;
+  return {
+    ...errors,
+    ...getSchemaFieldErrors(activeCaseStudy.customFields, fields.filter(
+      (field) =>
+        ![
+          "title",
+          "description",
+          "niche",
+          "projectLink",
+          "projectFile",
+          "role",
+          "timeline",
+          "budget",
+        ].includes(field.id),
+    )),
+  };
 };
 
-export const getServiceStepValidationErrors = (draft = {}, stepId = "") => {
+export const getServiceStepValidationErrors = (draft = {}, stepId = "", fields = []) => {
   const normalizedDraft = normalizeServiceDraft(draft, {
     serviceKey: draft?.serviceKey,
     serviceId: draft?.serviceId,
@@ -841,25 +966,25 @@ export const getServiceStepValidationErrors = (draft = {}, stepId = "") => {
   const normalizedStepId = String(stepId || "").trim();
 
   if (normalizedStepId === "serviceInfo") {
-    return buildServiceInfoValidationErrors(normalizedDraft);
+    return buildServiceInfoValidationErrors(normalizedDraft, fields);
   }
 
   if (normalizedStepId === "servicePricing") {
-    return buildServicePricingValidationErrors(normalizedDraft);
+    return buildServicePricingValidationErrors(normalizedDraft, fields);
   }
 
   if (normalizedStepId === "serviceVisuals") {
-    return buildServiceVisualsValidationErrors(normalizedDraft);
+    return buildServiceVisualsValidationErrors(normalizedDraft, fields);
   }
 
   if (normalizedStepId === "caseStudy") {
-    return buildCaseStudyValidationErrors(normalizedDraft);
+    return buildCaseStudyValidationErrors(normalizedDraft, fields);
   }
 
   return {};
 };
 
-export const getServiceStepValidationMessage = (draft = {}, stepId = "") => {
-  const errors = getServiceStepValidationErrors(draft, stepId);
+export const getServiceStepValidationMessage = (draft = {}, stepId = "", fields = []) => {
+  const errors = getServiceStepValidationErrors(draft, stepId, fields);
   return Object.values(errors).find(Boolean) || "";
 };

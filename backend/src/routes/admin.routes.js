@@ -57,6 +57,10 @@ import {
   onboardingSubmissionIdParamsSchema,
   onboardingSubmissionWriteSchema,
 } from "../modules/users/admin-freelancer-onboarding.schema.js";
+import {
+  getAdminFreelancerOnboardingContent,
+  updateAdminFreelancerOnboardingContent,
+} from "../controllers/freelancerOnboardingContent.controller.js";
 const router = Router();
 
 router.use(requireAuth, requireAdmin);
@@ -126,6 +130,8 @@ router.get("/services/:serviceId/questions", getServiceQuestions);
 router.post("/services/:serviceId/questions", upsertQuestion);
 router.post("/services/:serviceId/questions/reorder", reorderQuestions);
 router.delete("/services/:serviceId/questions/:id", deleteQuestion);
+router.get("/freelancer-onboarding-content", getAdminFreelancerOnboardingContent);
+router.put("/freelancer-onboarding-content", updateAdminFreelancerOnboardingContent);
 
 router.get("/blogs", getAdminBlogs);
 router.get("/blogs/:blogId", getAdminBlogById);
