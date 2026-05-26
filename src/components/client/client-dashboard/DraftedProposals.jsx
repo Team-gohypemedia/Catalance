@@ -8,6 +8,8 @@ import React, {
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import User from "lucide-react/dist/esm/icons/user";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
@@ -43,13 +45,13 @@ import {
 import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
 
 const draftProposalSurfaceToneClassName =
-  "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+  "border border-border bg-background shadow-[0_18px_42px_-30px_rgba(16,24,40,0.22)] dark:border-white/[0.06] dark:bg-card dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 
 const draftProposalDetailBlockClassName =
-  `flex h-[98px] min-w-0 flex-col justify-between overflow-hidden rounded-[14px] ${draftProposalSurfaceToneClassName} px-4 pt-4 pb-5`;
+  `flex min-w-0 flex-col justify-between overflow-hidden rounded-[18px] border border-border bg-[#fbfbfc] px-4 py-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] dark:border-white/[0.06] dark:bg-card dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]`;
 
 const draftProposalActionButtonClassName =
-  "inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-[10px] px-4 text-sm font-semibold transition-colors";
+  "inline-flex h-12 min-w-0 w-full items-center justify-center whitespace-nowrap rounded-[16px] px-6 text-[0.95rem] font-semibold tracking-[-0.02em] transition-colors lg:h-13 lg:px-7 lg:text-[0.98rem]";
 
 const PROPOSAL_BLOCKED_STATUSES = new Set(["pending", "accepted", "sent"]);
 const CLOSED_PROJECT_STATUSES = new Set(["completed", "paused"]);
@@ -91,6 +93,25 @@ const formatDraftBudget = (value) => {
 const formatDraftTimeline = (value) => {
   const rawValue = String(value || "").trim();
   return rawValue || "Not set";
+};
+
+const formatDraftDate = (value) => {
+  if (!value) {
+    return new Date().toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+
+  return parsed.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 };
 
 const buildDraftServiceEntries = (proposal = {}) => {
@@ -322,34 +343,23 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
         onClick={item.onSend}
         className={cn(
           draftProposalActionButtonClassName,
-          "bg-[var(--primary)] text-black hover:bg-primary/80 lg:h-auto lg:flex-1",
+          "bg-[var(--primary)] px-7 text-white shadow-[0_18px_34px_-18px_rgba(230,108,32,0.78)] hover:bg-primary/80 dark:text-[#141414] lg:h-auto lg:flex-1 lg:px-8",
         )}
       >
         Send Proposal
       </button>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_44px] gap-2.5 lg:h-auto lg:flex-1 lg:gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-2.5 lg:h-auto lg:flex-1 lg:gap-2">
         <button
           type="button"
           onClick={item.onView}
           className={cn(
             draftProposalActionButtonClassName,
-            `${draftProposalSurfaceToneClassName} text-white hover:bg-white/[0.05] lg:h-full`,
+            `${draftProposalSurfaceToneClassName} justify-center gap-3 text-[0.98rem] text-foreground hover:bg-muted/60 lg:h-full`,
           )}
         >
+          <FileText className="size-4.5 shrink-0" />
           View Details
-        </button>
-
-        <button
-          type="button"
-          onClick={item.onDelete}
-          className={cn(
-            draftProposalActionButtonClassName,
-            `${draftProposalSurfaceToneClassName} px-0 text-muted-foreground hover:bg-white/[0.05] hover:text-white lg:h-full`,
-          )}
-          aria-label={`Delete ${item.title}`}
-        >
-          <Trash2 className="size-4 text-current" />
         </button>
       </div>
     </div>
@@ -362,16 +372,16 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
           key={`${entry.name}-${index}`}
           className={cn(draftProposalDetailBlockClassName, "h-full")}
         >
-          <p className="min-h-[2.5rem] break-words text-[0.82rem] font-medium leading-5 text-white/80">
+          <p className="min-h-[2.5rem] break-words text-[0.82rem] font-medium leading-5 text-foreground">
             {entry.name}
           </p>
 
           <div className="mt-2.5 flex items-center gap-3 text-[0.9rem] leading-none">
-            <p className="truncate font-semibold tracking-[-0.02em] text-foreground">
+            <p className="truncate font-semibold tracking-[-0.02em] text-muted-foreground">
               {entry.budget}
             </p>
-            <span className="h-4 w-px shrink-0 bg-white/[0.12]" aria-hidden="true" />
-            <p className="truncate font-medium text-white/70">
+            <span className="h-4 w-px shrink-0 bg-border dark:bg-white/[0.12]" aria-hidden="true" />
+            <p className="truncate font-medium text-muted-foreground">
               {entry.timeline}
             </p>
           </div>
@@ -379,43 +389,65 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
       ))}
     </div>
   ) : (
-    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
-      <div className={draftProposalDetailBlockClassName}>
-        <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
-          Service
-        </p>
-        <p className="break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
-          {item.tag}
-        </p>
-      </div>
+    <div className="space-y-4">
+      <p className="max-w-[42rem] text-[1.05rem] leading-7 text-muted-foreground">
+        {item.summary || "Draft proposal ready to review and send."}
+      </p>
 
-      <div className={draftProposalDetailBlockClassName}>
-        <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
-          Budget
-        </p>
-        <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
-          {item.budget}
-        </p>
-      </div>
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <div className={draftProposalDetailBlockClassName}>
+          <p className="text-[0.78rem] uppercase tracking-[0.18em] text-muted-foreground">
+            Budget
+          </p>
+          <p className="mt-2 text-[1.15rem] font-semibold tracking-[-0.02em] text-foreground">
+            {item.budget}
+          </p>
+        </div>
 
-      <div className={draftProposalDetailBlockClassName}>
-        <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
-          Timeline
-        </p>
-        <p className="text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
-          {item.timeline || "Not set"}
-        </p>
+        <div className={draftProposalDetailBlockClassName}>
+          <p className="text-[0.78rem] uppercase tracking-[0.18em] text-muted-foreground">
+            Timeline
+          </p>
+          <p className="mt-2 text-[1.15rem] font-semibold tracking-[-0.02em] text-foreground">
+            {item.timeline || "Not set"}
+          </p>
+        </div>
       </div>
     </div>
   );
 
   return (
     <div className="w-full min-w-0">
-      <p className="min-w-0 truncate text-[1.4rem] font-semibold tracking-[-0.04em] text-foreground sm:text-[1.55rem]">
+      <div className="mb-3 flex items-center justify-between gap-3 border-b border-border pb-3 dark:border-white/[0.06]">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-[#fff7ef] px-3 py-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--primary)] dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-primary">
+          DRAFT
+        </div>
+        <p className="text-[0.8rem] font-medium tracking-[0.02em] text-muted-foreground sm:text-[0.85rem]">
+          {item.dateLabel || new Date().toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </p>
+        <button
+          type="button"
+          onClick={item.onDelete}
+          className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
+          aria-label={`Delete ${item.title}`}
+        >
+          <Trash2 className="size-4.5" />
+        </button>
+      </div>
+
+      <p className="min-w-0 truncate text-[0.98rem] font-semibold tracking-[-0.05em] text-foreground sm:text-[1.06rem] lg:text-[1.12rem]">
         {item.title}
       </p>
 
-      <div className="mt-4 grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-stretch">
+      <div className="mt-2 max-w-[28rem] text-[0.78rem] leading-5 text-muted-foreground sm:text-[0.82rem]">
+        {item.summary || "Draft proposal ready to send to selected freelancers."}
+      </div>
+
+      <div className="mt-4 grid w-full min-w-0 gap-2.5 lg:grid-cols-[minmax(0,1fr)_176px] lg:items-stretch">
         {contentPanels}
         {actionButtons}
       </div>
@@ -425,7 +457,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
 
 const DraftProposalCard = memo(function DraftProposalCard({ item }) {
   return (
-    <article className="flex h-auto w-full max-w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[28px] border border-white/[0.06] bg-card p-4 transition-transform duration-200 hover:-translate-y-1 sm:p-5 xl:p-6">
+    <article className="flex h-auto w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[28px] border border-border bg-background p-4 shadow-[0_20px_50px_-35px_rgba(16,24,40,0.22)] transition-transform duration-200 hover:-translate-y-1 sm:max-w-[400px] sm:p-4 lg:max-w-[440px] xl:max-w-[460px] dark:border-white/[0.06] dark:bg-card dark:shadow-[0_20px_50px_-35px_rgba(0,0,0,0.65)]">
       <DraftProposalRow item={item} />
     </article>
   );
@@ -701,10 +733,12 @@ const Proposals = memo(function Proposals({
         id: proposal.id,
         title: resolveDraftTitle(proposal),
         tag: resolveDraftService(proposal),
+        summary: proposal.summary || proposal.content || proposal.proposalContent || "",
         budget: formatDraftBudget(proposal.budget),
         timeline: formatDraftTimeline(
           proposal.timeline || proposal.launchTimeline || proposal.duration,
         ),
+        dateLabel: formatDraftDate(proposal.updatedAt || proposal.createdAt),
         isAgencyProposal: resolveProposalAgencyFlag(proposal),
         serviceEntries: buildDraftServiceEntries(proposal),
         onSend: () => {
@@ -977,7 +1011,7 @@ const Proposals = memo(function Proposals({
               <button
                 type="button"
                 onClick={handleOpenQuickProject}
-                className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-primary/80 sm:min-w-0"
+                className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/80 dark:text-[#141414] sm:min-w-0"
               >
                 Create New Proposal
               </button>
@@ -999,7 +1033,7 @@ const Proposals = memo(function Proposals({
                 {items.map((item) => (
                   <CarouselItem
                     key={item.id}
-                    className="basis-full pl-[2px] pr-[2px] pt-1"
+                    className="basis-full pl-[2px] pr-[2px] pt-1 sm:basis-auto sm:max-w-[400px] lg:max-w-[440px]"
                   >
                     <DraftProposalCard item={item} />
                   </CarouselItem>

@@ -223,7 +223,7 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[10px] bg-[var(--primary)] px-4 text-sm font-semibold text-[#141414] transition hover:bg-primary/80 sm:w-auto"
+          className="inline-flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[10px] bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-primary/80 dark:text-[#141414] sm:w-auto"
         >
           <div className="flex min-w-0 items-center gap-2">
             <FolderOpen className="size-4 shrink-0" />

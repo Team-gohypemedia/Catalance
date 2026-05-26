@@ -346,7 +346,7 @@ const ProposalDraftsContent = () => {
       </div>
 
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="mx-auto grid w-full max-w-[920px] gap-4">
           {Array.from({ length: 2 }).map((_, index) => (
             <DraftCardSkeleton key={`draft-skeleton-${index}`} />
           ))}
@@ -356,7 +356,7 @@ const ProposalDraftsContent = () => {
           No drafts found. Draft a proposal from the chat and it will show up here.
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="mx-auto grid w-full max-w-[920px] gap-4">
           {drafts.map((draft) => (
             <DraftCard
               key={draft.id}

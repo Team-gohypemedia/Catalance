@@ -40,7 +40,7 @@ const ProfileCompletionPanel = ({
             </span>
             <button
               type="button"
-              className="h-10 w-full rounded-full bg-[var(--primary)] px-5 text-xs font-semibold text-black transition-colors hover:bg-primary/80 sm:w-auto"
+              className="h-10 w-full rounded-full bg-[var(--primary)] px-5 text-xs font-semibold text-white transition-colors hover:bg-primary/80 sm:w-auto"
               onClick={onOpenProfile}
             >
               {isComplete ? "Open Profile" : "Finish Setup"}

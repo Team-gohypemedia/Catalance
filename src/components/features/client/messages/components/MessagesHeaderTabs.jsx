@@ -4,35 +4,37 @@ import { cn } from "@/shared/lib/utils";
 const MessagesHeaderTabs = React.memo(function MessagesHeaderTabs({
   activeTab,
   onTabChange,
-  messagesCount,
-  requestsCount,
+  messagesCount = 0,
+  requestsCount = 0,
 }) {
   return (
-    <div className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-background p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
-      <button
-        type="button"
-        onClick={() => onTabChange("messages")}
-        className={cn(
-          "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
-          activeTab === "messages"
-            ? "border-[var(--primary)]/70 bg-[var(--primary)] text-[#141414]"
-            : "text-muted-foreground hover:text-foreground",
-        )}
-      >
-        Messages ({messagesCount})
-      </button>
-      <button
-        type="button"
-        onClick={() => onTabChange("requests")}
-        className={cn(
-          "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
-          activeTab === "requests"
-            ? "border-[var(--primary)]/70 bg-[var(--primary)] text-[#141414]"
-            : "text-muted-foreground hover:text-foreground",
-        )}
-      >
-        Requests ({requestsCount})
-      </button>
+    <div className="flex items-center justify-end">
+      <div className="inline-flex items-center gap-2 rounded-[32px] border border-border bg-background p-2 shadow-[0_16px_40px_-28px_rgba(0,0,0,0.18)]">
+        <button
+          type="button"
+          onClick={() => onTabChange("messages")}
+          className={cn(
+            "min-w-[164px] rounded-[26px] px-5 py-4 text-[1.02rem] font-semibold transition-colors",
+            activeTab === "messages"
+              ? "bg-[var(--primary)] text-white dark:text-[#141414]"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Messages ({messagesCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => onTabChange("requests")}
+          className={cn(
+            "min-w-[164px] rounded-[26px] px-5 py-4 text-[1.02rem] font-semibold transition-colors",
+            activeTab === "requests"
+              ? "bg-[var(--primary)] text-white dark:text-[#141414]"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Requests ({requestsCount})
+        </button>
+      </div>
     </div>
   );
 });

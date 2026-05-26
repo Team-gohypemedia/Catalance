@@ -370,7 +370,7 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-[12px] bg-[var(--primary)] px-4 text-sm font-semibold text-[#141414] transition hover:bg-primary/80 sm:w-auto"
+          className="inline-flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-[12px] bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-primary/80 dark:text-[#141414] sm:w-auto"
         >
           <div className="flex min-w-0 items-center gap-2">
             <FolderOpen className="size-4 shrink-0" />
@@ -785,7 +785,7 @@ const FreelancerPayments = () => {
                       !isPayoutConnected ||
                       summary.availableToWithdraw <= 0
                     }
-                    className="h-12 w-full rounded-[14px] bg-[var(--primary)] px-5 text-sm font-semibold text-black hover:bg-[#f6d64e] sm:w-auto"
+                  className="h-12 w-full rounded-[14px] bg-[var(--primary)] px-5 text-sm font-semibold text-white hover:bg-[#f6d64e] dark:text-[#141414] sm:w-auto"
                   >
                     {isWithdrawing ? (
                       <Loader2 className="mr-2 size-4 animate-spin" />

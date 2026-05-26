@@ -43,23 +43,23 @@ export const ProposalCard = ({ content }) => {
     };
 
     return (
-        <Card className="w-full max-w-3xl mx-auto shadow-xl border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <Card className="mx-auto w-[min(92vw,1180px)] overflow-hidden border border-zinc-200/80 bg-white shadow-[0_20px_60px_-28px_rgba(15,23,42,0.35)] animate-in fade-in slide-in-from-bottom-4 duration-700 dark:border-zinc-800 dark:bg-zinc-900">
             {/* Header / Brand Strip */}
-            <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded bg-indigo-500 flex items-center justify-center">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200/80 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-4 py-3 text-white sm:flex-nowrap sm:px-5 lg:px-6">
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10 ring-1 ring-white/10 sm:h-10 sm:w-10">
                         <FileText className="h-5 w-5 text-white" />
                     </div>
-                    <div>
-                        <h3 className="font-bold text-sm tracking-wide uppercase">Catalance</h3>
-                        <p className="text-[10px] text-slate-400">AI Generated Proposal</p>
+                    <div className="min-w-0">
+                        <h3 className="truncate text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/95 sm:text-xs lg:text-[13px]">Catalance</h3>
+                        <p className="text-[10px] font-medium text-white/55 sm:text-[11px] lg:text-xs">AI Generated Proposal</p>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-1.5 self-end sm:self-auto sm:gap-2">
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="text-slate-300 hover:text-white hover:bg-slate-800"
+                        className="h-9 w-9 rounded-xl border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white"
                         onClick={handleCopy}
                     >
                         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -68,24 +68,27 @@ export const ProposalCard = ({ content }) => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="text-slate-300 hover:text-white hover:bg-slate-800 gap-2"
+                        className="h-9 gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-[11px] font-semibold text-white/85 hover:bg-white/10 hover:text-white sm:px-4 sm:text-xs"
                         onClick={handlePrint}
                     >
                         <Printer className="h-4 w-4" />
-                        <span className="text-xs font-medium">Download PDF</span>
+                        <span className="hidden sm:inline">Download PDF</span>
                     </Button>
                 </div>
             </div>
 
-            <CardContent className="p-8 md:p-12">
-                <div id="proposal-content" className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-h1:border-b prose-h1:pb-4 prose-h1:border-slate-100 dark:prose-h1:border-zinc-700 prose-a:text-indigo-600 dark:prose-a:text-indigo-400">
+            <CardContent className="px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8 xl:px-10 2xl:px-12 2xl:py-10">
+                <div
+                    id="proposal-content"
+                    className="prose prose-slate max-w-none prose-headings:font-semibold prose-h1:mb-4 prose-h1:text-[1.45rem] sm:prose-h1:text-[1.65rem] lg:prose-h1:text-[1.9rem] 2xl:prose-h1:text-[2.05rem] prose-h1:leading-tight prose-h1:border-b prose-h1:pb-3 prose-h1:border-zinc-200 prose-h2:mt-6 prose-h2:mb-3 prose-h2:text-[1rem] sm:prose-h2:text-[1.1rem] lg:prose-h2:text-[1.2rem] 2xl:prose-h2:text-[1.3rem] prose-h2:leading-snug prose-p:my-3 prose-p:leading-7 prose-li:my-1.5 prose-ul:pl-5 prose-ol:pl-5 prose-a:text-orange-600 prose-a:underline-offset-4 hover:prose-a:text-orange-700 dark:prose-invert dark:prose-h1:border-zinc-700 dark:prose-a:text-amber-400"
+                >
                     <ReactMarkdown>
                         {content}
                     </ReactMarkdown>
                 </div>
             </CardContent>
 
-            <CardFooter className="bg-slate-50 dark:bg-zinc-950 p-4 border-t border-slate-100 dark:border-zinc-800 flex justify-center text-xs text-slate-400">
+            <CardFooter className="flex items-center justify-center border-t border-zinc-200/80 bg-zinc-50 px-4 py-3 text-center text-[11px] leading-5 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400 sm:px-6">
                 This document is a preliminary draft based on your requirements.
             </CardFooter>
         </Card>

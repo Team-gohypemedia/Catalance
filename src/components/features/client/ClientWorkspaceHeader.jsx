@@ -477,14 +477,14 @@ const ClientWorkspaceHeader = ({
                 <button
                   type="button"
                   onClick={onPrimaryAction}
-                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-primary/80"
+                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
                 >
                   {primaryActionContent}
                 </button>
               ) : (
                 <Link
                   to={primaryActionTo}
-                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-primary/80"
+                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
                 >
                   {primaryActionContent}
                 </Link>

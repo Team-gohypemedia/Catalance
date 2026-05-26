@@ -1221,7 +1221,7 @@ const EmptyProjectsState = ({
       {showAction ? (
         <Link
           to="/client/proposal"
-          className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-primary/80"
+          className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
         >
           Create New Proposal
         </Link>

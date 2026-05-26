@@ -1647,14 +1647,7 @@ const Marketplace = () => {
                       ))}
                     </div>
                   </motion.div>
-                ) : data.length === 0 ? (
-                  <motion.div key="empty" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="rounded-[34px] border border-dashed border-border bg-card/40 px-6 py-20 text-center">
-                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><Search className="h-7 w-7" /></div>
-                    <h2 className="mt-6 text-2xl font-semibold tracking-tight text-foreground">No specialists found</h2>
-                    <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-muted-foreground">Try broadening the category or clearing some filters.</p>
-                    <Button variant="outline" className="mt-7 rounded-full border-border bg-card px-6 py-5 text-sm font-semibold text-foreground hover:bg-muted" onClick={resetFilters}>Clear all filters</Button>
-                  </motion.div>
-                ) : (
+                ) : data.length === 0 ? null : (
                   <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                       {data.map((item) => {

@@ -4,11 +4,11 @@ import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
+import MessagesHeaderTabs from "./components/MessagesHeaderTabs";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
-import MessagesHeaderTabs from "./components/MessagesHeaderTabs";
 import MessagesSidebar from "./components/MessagesSidebar";
 import RequestDetailsPanel from "./components/RequestDetailsPanel";
 import ChatArea from "./components/ChatArea";
@@ -295,15 +295,18 @@ const ClientMessagesPage = () => {
               className="shrink-0 lg:items-start"
               title="Messages"
               dateLabel={false}
-              actions={
-                <MessagesHeaderTabs
-                  activeTab={activeTab}
-                  onTabChange={handleTabChange}
-                  messagesCount={conversations.length}
-                  requestsCount={pendingRequests.length}
-                />
-              }
             />
+          ) : null}
+
+          {!isMobileDetailOpen ? (
+            <div className="mt-6 flex justify-end">
+              <MessagesHeaderTabs
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+                messagesCount={conversations.length}
+                requestsCount={pendingRequests.length}
+              />
+            </div>
           ) : null}
 
           <section

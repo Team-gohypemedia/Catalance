@@ -729,14 +729,14 @@ const ProfileSkillsCard = ({
                         onClick={() => setActiveServiceKey(service.serviceKey)}
                         className={`group flex h-[96px] w-full flex-col items-center justify-center gap-2 rounded-2xl border px-3 text-center transition-all duration-200 ${
                           isActive
-                            ? "border-primary bg-primary text-primary-foreground"
+                            ? "border-primary bg-card text-foreground shadow-sm"
                             : "border-border/70 bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]"
                         }`}
                       >
                         <ServiceIcon
                           className={`h-7 w-7 ${
                             isActive
-                              ? "text-primary-foreground"
+                              ? "text-primary"
                               : "text-muted-foreground group-hover:text-foreground"
                           }`}
                           aria-hidden="true"

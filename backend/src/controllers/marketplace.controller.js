@@ -1950,41 +1950,57 @@ export const getMarketplace = asyncHandler(async (req, res) => {
       }
     : query;
 
-  const where = buildTier1DiscoveryWhere(
-    query,
-    undefined,
-    useHierarchyMapping ? strictHierarchyFreelancerIds : null
-  );
+  const userWhere = {
+    role: "FREELANCER",
+    status: { in: ["ACTIVE", "PENDING_APPROVAL"] },
+    freelancerProfile: { isNot: null },
+  };
 
-  const marketplaceRows = await prisma.marketplace.findMany({
-    where,
+  if (query.category && query.category !== "all") {
+    userWhere.freelancerProfile = {
+      ...userWhere.freelancerProfile,
+      serviceCategory: query.category
+    };
+  }
+
+  const rawUsers = await prisma.user.findMany({
+    where: userWhere,
     take: candidateLimit,
     include: {
-      freelancer: {
-        select: {
-          id: true,
-          fullName: true,
-          avatar: true,
-          isVerified: true,
-          status: true,
-          freelancerProfile: {
-            select: {
-              openToWork: true,
-              rating: true,
-              reviewCount: true,
-              experienceYears: true,
-              serviceDetails: true,
-            },
-          },
-        },
-      },
+      freelancerProfile: true
     },
     orderBy: [
-      { isFeatured: "desc" },
-      { freelancer: { freelancerProfile: { rating: "desc" } } },
-      { freelancer: { freelancerProfile: { reviewCount: "desc" } } },
+      { freelancerProfile: { rating: "desc" } },
+      { freelancerProfile: { reviewCount: "desc" } },
       { updatedAt: "desc" },
     ],
+  });
+
+  const marketplaceRows = rawUsers.map(user => {
+    return {
+      id: user.id,
+      freelancerId: user.id,
+      serviceKey: user.freelancerProfile.serviceCategory || "",
+      service: user.freelancerProfile.serviceTitle || user.freelancerProfile.services?.[0] || "",
+      serviceDetails: user.freelancerProfile.serviceDetails || {},
+      isFeatured: false,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      freelancer: {
+        id: user.id,
+        fullName: user.fullName,
+        avatar: user.avatar,
+        isVerified: user.isVerified,
+        status: user.status,
+        freelancerProfile: {
+          openToWork: user.freelancerProfile.openToWork,
+          rating: user.freelancerProfile.rating,
+          reviewCount: user.freelancerProfile.reviewCount,
+          experienceYears: user.freelancerProfile.experienceYears,
+          serviceDetails: user.freelancerProfile.serviceDetails,
+        }
+      }
+    };
   });
 
   const tier1Candidates = marketplaceRows

@@ -895,7 +895,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                   const tabMeta = tabCopy[tabValue] || tabCopy.pending;
 
                   return isLoading ? (
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                       {Array.from({ length: 4 }).map((_, index) => (
                         <Skeleton
                           key={index}
@@ -913,7 +913,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                         processingId={processingId}
                       />
                     ) : (
-                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {tabItems.map((proposal) => (
                           <ProposalRowCard
                             key={proposal.id}

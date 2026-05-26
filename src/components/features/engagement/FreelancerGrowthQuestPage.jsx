@@ -20,6 +20,7 @@ import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Crown from "lucide-react/dist/esm/icons/crown";
 import Activity from "lucide-react/dist/esm/icons/activity";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/components/providers/theme-provider";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
@@ -192,6 +193,9 @@ const GROWTH_QUEST_SERVICE_FALLBACKS = [
 ];
 
 const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
+  const { theme } = useTheme();
+  const isDark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
   if (loading) {
     return (
       <div className="flex min-h-[420px] items-center justify-center">
@@ -652,6 +656,12 @@ const GrowthQuestLiveDashboard = ({
   savingServiceSelection = false,
 }) => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const isDark =
+    theme === "dark" ||
+    (theme === "system" &&
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
   const [sidePanel, setSidePanel] = useState("ranking");
   const intelSectionRef = useRef(null);
   const topicScrollRef = useRef(null);
@@ -1564,28 +1574,28 @@ const GrowthQuestLiveDashboard = ({
 
           <div style={{ display: "grid", gap: "1.25rem" }}>
             {strongAreaLabel && (
-              <article className="growth-quest-panel" style={{ padding: "1.25rem", position: "relative", overflow: "hidden", background: "linear-gradient(135deg,rgba(8,10,24,0.98),rgba(12,8,28,0.97))" }}>
+              <article className="growth-quest-panel" style={{ padding: "1.25rem", position: "relative", overflow: "hidden", background: isDark ? "linear-gradient(135deg,rgba(8,10,24,0.98),rgba(12,8,28,0.97))" : "linear-gradient(180deg,#ffffff 0%,#faf7f0 100%)" }}>
                 <svg style={{ position: "absolute", right: "-0.5rem", top: "50%", transform: "translateY(-50%)", width: "90px", height: "90px", opacity: 0.7, pointerEvents: "none" }} viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="45" cy="45" r="38" stroke="rgba(120,60,220,0.3)" strokeWidth="1" />
-                  <circle cx="45" cy="45" r="28" stroke="rgba(140,80,240,0.4)" strokeWidth="1" />
-                  <line x1="20" y1="20" x2="43" y2="43" stroke="rgba(180,130,255,0.8)" strokeWidth="2" strokeLinecap="round" />
-                  <polygon points="20,10 28,22 12,22" fill="rgba(180,130,255,0.8)" transform="rotate(-45 20 18)" />
+                  <circle cx="45" cy="45" r="38" stroke={isDark ? "rgba(120,60,220,0.3)" : "rgba(214,174,64,0.22)"} strokeWidth="1" />
+                  <circle cx="45" cy="45" r="28" stroke={isDark ? "rgba(140,80,240,0.4)" : "rgba(214,174,64,0.28)"} strokeWidth="1" />
+                  <line x1="20" y1="20" x2="43" y2="43" stroke={isDark ? "rgba(180,130,255,0.8)" : "rgba(194,126,0,0.78)"} strokeWidth="2" strokeLinecap="round" />
+                  <polygon points="20,10 28,22 12,22" fill={isDark ? "rgba(180,130,255,0.8)" : "rgba(194,126,0,0.78)"} transform="rotate(-45 20 18)" />
                 </svg>
                 <div style={{ position: "relative", zIndex: 1, maxWidth: "calc(100% - 70px)" }}>
-                  <span style={{ fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(180,190,210,0.45)", display: "block", marginBottom: "0.5rem" }}>Best Topic</span>
+                  <span style={{ fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.15em", textTransform: "uppercase", color: isDark ? "rgba(180,190,210,0.45)" : "rgba(28,27,31,0.50)", display: "block", marginBottom: "0.5rem" }}>Best Topic</span>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.5rem" }}>
-                    <h4 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>{strongAreaLabel}</h4>
+                    <h4 style={{ fontSize: "1.4rem", fontWeight: 800, color: isDark ? "#fff" : "#1C1B1F", letterSpacing: "-0.01em" }}>{strongAreaLabel}</h4>
                     <span className="growth-quest-chip growth-quest-chip--violet" style={{ flexShrink: 0, fontSize: "0.6rem" }}>Strongest</span>
                   </div>
-                  <p style={{ fontSize: "0.82rem", color: "rgba(170,185,215,0.65)", lineHeight: 1.6, marginBottom: "0.85rem" }}>This shows your strongest freelancing topic based on your recorded answers.</p>
+                  <p style={{ fontSize: "0.82rem", color: isDark ? "rgba(170,185,215,0.65)" : "rgba(28,27,31,0.68)", lineHeight: 1.6, marginBottom: "0.85rem" }}>This shows your strongest freelancing topic based on your recorded answers.</p>
                   <div style={{ display: "flex", gap: "1.5rem" }}>
                     <div>
                       <p style={{ fontSize: "1.4rem", fontWeight: 800, color: "#cdbdff", fontFamily: "'Hanken Grotesk',sans-serif" }}>{rollingAccuracy}%</p>
-                      <p style={{ fontSize: "0.7rem", color: "rgba(180,190,210,0.45)" }}>lifetime</p>
+                      <p style={{ fontSize: "0.7rem", color: isDark ? "rgba(180,190,210,0.45)" : "rgba(28,27,31,0.45)" }}>lifetime</p>
                     </div>
                     <div>
                       <p style={{ fontSize: "1.4rem", fontWeight: 800, color: "#cdbdff", fontFamily: "'Hanken Grotesk',sans-serif" }}>{rolling7DayAccuracy}%</p>
-                      <p style={{ fontSize: "0.7rem", color: "rgba(180,190,210,0.45)" }}>7-day</p>
+                      <p style={{ fontSize: "0.7rem", color: isDark ? "rgba(180,190,210,0.45)" : "rgba(28,27,31,0.45)" }}>7-day</p>
                     </div>
                   </div>
                 </div>
@@ -1599,21 +1609,21 @@ const GrowthQuestLiveDashboard = ({
                   padding: "1.25rem",
                   position: "relative",
                   overflow: "hidden",
-                  background: "linear-gradient(135deg,rgba(8,10,24,0.98),rgba(12,8,28,0.97))",
+                  background: isDark ? "linear-gradient(135deg,rgba(8,10,24,0.98),rgba(12,8,28,0.97))" : "linear-gradient(180deg,#ffffff 0%,#faf7f0 100%)",
                 }}
               >
                 <svg style={{ position: "absolute", right: "-0.5rem", top: "1.1rem", width: "84px", height: "84px", opacity: 0.7, pointerEvents: "none" }} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M40 8 L60 18 L60 42 C60 55 50 64 40 68 C30 64 20 55 20 42 L20 18 Z" fill="rgba(60,80,200,0.15)" stroke="rgba(100,130,255,0.4)" strokeWidth="1.5" />
-                  <path d="M40 18 L52 25 L52 41 C52 50 46 56 40 59 C34 56 28 50 28 41 L28 25 Z" fill="rgba(80,100,220,0.2)" stroke="rgba(120,150,255,0.5)" strokeWidth="1" />
-                  <line x1="34" y1="40" x2="38" y2="44" stroke="rgba(180,200,255,0.8)" strokeWidth="2" strokeLinecap="round" />
-                  <line x1="38" y1="44" x2="46" y2="34" stroke="rgba(180,200,255,0.8)" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M40 8 L60 18 L60 42 C60 55 50 64 40 68 C30 64 20 55 20 42 L20 18 Z" fill={isDark ? "rgba(60,80,200,0.15)" : "rgba(255,193,7,0.10)"} stroke={isDark ? "rgba(100,130,255,0.4)" : "rgba(214,174,64,0.40)"} strokeWidth="1.5" />
+                  <path d="M40 18 L52 25 L52 41 C52 50 46 56 40 59 C34 56 28 50 28 41 L28 25 Z" fill={isDark ? "rgba(80,100,220,0.2)" : "rgba(255,224,138,0.35)"} stroke={isDark ? "rgba(120,150,255,0.5)" : "rgba(214,174,64,0.55)"} strokeWidth="1" />
+                  <line x1="34" y1="40" x2="38" y2="44" stroke={isDark ? "rgba(180,200,255,0.8)" : "rgba(194,126,0,0.85)"} strokeWidth="2" strokeLinecap="round" />
+                  <line x1="38" y1="44" x2="46" y2="34" stroke={isDark ? "rgba(180,200,255,0.8)" : "rgba(194,126,0,0.85)"} strokeWidth="2" strokeLinecap="round" />
                 </svg>
                 <div style={{ position: "relative", zIndex: 1 }}>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.85rem", marginBottom: "0.8rem" }}>
                     <div style={{ maxWidth: "calc(100% - 74px)" }}>
-                      <span style={{ fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(180,190,210,0.45)", display: "block", marginBottom: "0.5rem" }}>Practice Next</span>
-                      <h4 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.01em", marginBottom: "0.35rem" }}>{weakAreaLabel}</h4>
-                      <p style={{ fontSize: "0.8rem", color: "rgba(170,185,215,0.72)", lineHeight: 1.55 }}>
+                      <span style={{ fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.15em", textTransform: "uppercase", color: isDark ? "rgba(180,190,210,0.45)" : "rgba(28,27,31,0.50)", display: "block", marginBottom: "0.5rem" }}>Practice Next</span>
+                      <h4 style={{ fontSize: "1.4rem", fontWeight: 800, color: isDark ? "#fff" : "#1C1B1F", letterSpacing: "-0.01em", marginBottom: "0.35rem" }}>{weakAreaLabel}</h4>
+                      <p style={{ fontSize: "0.8rem", color: isDark ? "rgba(170,185,215,0.72)" : "rgba(28,27,31,0.72)", lineHeight: 1.55 }}>
                         {weakAreaGuide?.headline || "This topic is currently pulling down your results. Practice here next to improve faster."}
                       </p>
                     </div>
@@ -1623,22 +1633,22 @@ const GrowthQuestLiveDashboard = ({
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "0.65rem", marginBottom: "0.85rem" }}>
-                    <div style={{ borderRadius: "12px", border: "1px solid rgba(100,130,255,0.18)", background: "rgba(16,20,40,0.68)", padding: "0.8rem" }}>
-                      <p style={{ fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(180,190,210,0.5)", marginBottom: "0.35rem" }}>Accuracy</p>
+                    <div style={{ borderRadius: "12px", border: isDark ? "1px solid rgba(100,130,255,0.18)" : "1px solid rgba(28,27,31,0.10)", background: isDark ? "rgba(16,20,40,0.68)" : "rgba(255,255,255,0.92)", padding: "0.8rem", boxShadow: isDark ? "none" : "0 10px 28px -22px rgba(28,27,31,0.22)" }}>
+                      <p style={{ fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", color: isDark ? "rgba(180,190,210,0.5)" : "rgba(28,27,31,0.45)", marginBottom: "0.35rem" }}>Accuracy</p>
                       <p style={{ fontSize: "1.25rem", fontWeight: 800, color: "#cdbdff", fontFamily: "'Hanken Grotesk',sans-serif" }}>{weakAreaAccuracy}%</p>
                     </div>
-                    <div style={{ borderRadius: "12px", border: "1px solid rgba(100,130,255,0.18)", background: "rgba(16,20,40,0.68)", padding: "0.8rem" }}>
-                      <p style={{ fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(180,190,210,0.5)", marginBottom: "0.35rem" }}>Attempts</p>
-                      <p style={{ fontSize: "1.25rem", fontWeight: 800, color: "#fff", fontFamily: "'Hanken Grotesk',sans-serif" }}>{weakAreaAttempted}</p>
+                    <div style={{ borderRadius: "12px", border: isDark ? "1px solid rgba(100,130,255,0.18)" : "1px solid rgba(28,27,31,0.10)", background: isDark ? "rgba(16,20,40,0.68)" : "rgba(255,255,255,0.92)", padding: "0.8rem", boxShadow: isDark ? "none" : "0 10px 28px -22px rgba(28,27,31,0.22)" }}>
+                      <p style={{ fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", color: isDark ? "rgba(180,190,210,0.5)" : "rgba(28,27,31,0.45)", marginBottom: "0.35rem" }}>Attempts</p>
+                      <p style={{ fontSize: "1.25rem", fontWeight: 800, color: isDark ? "#fff" : "#1C1B1F", fontFamily: "'Hanken Grotesk',sans-serif" }}>{weakAreaAttempted}</p>
                     </div>
-                    <div style={{ borderRadius: "12px", border: "1px solid rgba(100,130,255,0.18)", background: "rgba(16,20,40,0.68)", padding: "0.8rem" }}>
-                      <p style={{ fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(180,190,210,0.5)", marginBottom: "0.35rem" }}>Missed</p>
+                    <div style={{ borderRadius: "12px", border: isDark ? "1px solid rgba(100,130,255,0.18)" : "1px solid rgba(28,27,31,0.10)", background: isDark ? "rgba(16,20,40,0.68)" : "rgba(255,255,255,0.92)", padding: "0.8rem", boxShadow: isDark ? "none" : "0 10px 28px -22px rgba(28,27,31,0.22)" }}>
+                      <p style={{ fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", color: isDark ? "rgba(180,190,210,0.5)" : "rgba(28,27,31,0.45)", marginBottom: "0.35rem" }}>Missed</p>
                       <p style={{ fontSize: "1.25rem", fontWeight: 800, color: "#fda4af", fontFamily: "'Hanken Grotesk',sans-serif" }}>{weakAreaMissed}</p>
                     </div>
                   </div>
 
                   <div style={{ marginBottom: "0.85rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.45rem", fontSize: "0.74rem", color: "rgba(180,190,210,0.65)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.45rem", fontSize: "0.74rem", color: isDark ? "rgba(180,190,210,0.65)" : "rgba(28,27,31,0.62)" }}>
                       <span>Weak-topic recovery progress</span>
                       <span>{weakAreaAccuracy}%</span>
                     </div>
@@ -1647,16 +1657,16 @@ const GrowthQuestLiveDashboard = ({
                     </div>
                   </div>
 
-                  <div style={{ borderRadius: "12px", border: "1px solid rgba(100,130,255,0.16)", background: "rgba(14,18,34,0.72)", padding: "0.9rem" }}>
-                    <p style={{ fontSize: "0.66rem", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#9fb1ff", marginBottom: "0.55rem" }}>How To Improve</p>
+                  <div style={{ borderRadius: "12px", border: isDark ? "1px solid rgba(100,130,255,0.16)" : "1px solid rgba(28,27,31,0.10)", background: isDark ? "rgba(14,18,34,0.72)" : "rgba(255,255,255,0.94)", padding: "0.9rem", boxShadow: isDark ? "none" : "0 10px 28px -22px rgba(28,27,31,0.22)" }}>
+                    <p style={{ fontSize: "0.66rem", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: isDark ? "#9fb1ff" : "#6b7280", marginBottom: "0.55rem" }}>How To Improve</p>
                     <div style={{ display: "grid", gap: "0.45rem" }}>
                       {(weakAreaGuide?.tips || [
                         "Review the questions you miss most often in this topic.",
                         "Retry this area before moving back to stronger categories.",
                         "Use the next few sessions to build consistency here.",
                       ]).map((tip) => (
-                        <p key={tip} style={{ fontSize: "0.78rem", color: "rgba(215,224,245,0.78)", lineHeight: 1.55, display: "flex", alignItems: "flex-start", gap: "0.45rem" }}>
-                          <span style={{ color: "#818cf8", marginTop: "0.05rem" }}>-</span>
+                        <p key={tip} style={{ fontSize: "0.78rem", color: isDark ? "rgba(215,224,245,0.78)" : "rgba(28,27,31,0.76)", lineHeight: 1.55, display: "flex", alignItems: "flex-start", gap: "0.45rem" }}>
+                          <span style={{ color: isDark ? "#818cf8" : "#d97706", marginTop: "0.05rem" }}>-</span>
                           <span>{tip}</span>
                         </p>
                       ))}
@@ -1673,7 +1683,7 @@ const GrowthQuestLiveDashboard = ({
         <section className="mt-10" style={{ position: "relative" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <div style={{ width: "3.2rem", height: "3.2rem", borderRadius: "0.75rem", background: "linear-gradient(145deg,rgba(255,193,7,0.2),rgba(180,130,0,0.1))", border: "1px solid rgba(200,160,50,0.4)", display: "grid", placeItems: "center", flexShrink: 0, boxShadow: "0 0 20px rgba(255,193,7,0.12)" }}>
+              <div style={{ width: "3.2rem", height: "3.2rem", borderRadius: "0.75rem", background: isDark ? "linear-gradient(145deg,rgba(255,193,7,0.2),rgba(180,130,0,0.1))" : "linear-gradient(145deg,rgba(255,193,7,0.14),rgba(255,224,138,0.35))", border: isDark ? "1px solid rgba(200,160,50,0.4)" : "1px solid rgba(214,174,64,0.28)", display: "grid", placeItems: "center", flexShrink: 0, boxShadow: isDark ? "0 0 20px rgba(255,193,7,0.12)" : "0 8px 24px rgba(255,193,7,0.10)" }}>
                 <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
                   <rect x="2" y="12" width="4" height="6" rx="0.5" fill="#ffc107" />
                   <rect x="8" y="7" width="4" height="11" rx="0.5" fill="#ffc107" opacity="0.85" />
@@ -1681,11 +1691,11 @@ const GrowthQuestLiveDashboard = ({
                 </svg>
               </div>
               <div>
-                <h3 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>Topic Performance</h3>
-                <p style={{ fontSize: "0.84rem", color: "rgba(170,185,215,0.6)", marginTop: "0.2rem" }}>This shows which freelancing topics you are strong or weak in.</p>
+                <h3 style={{ fontSize: "1.5rem", fontWeight: 800, color: isDark ? "#fff" : "#1C1B1F", letterSpacing: "-0.01em" }}>Topic Performance</h3>
+                <p style={{ fontSize: "0.84rem", color: isDark ? "rgba(170,185,215,0.6)" : "rgba(28,27,31,0.68)", marginTop: "0.2rem" }}>This shows which freelancing topics you are strong or weak in.</p>
               </div>
             </div>
-            <button type="button" style={{ display: "flex", alignItems: "center", gap: "0.45rem", padding: "0.5rem 1rem", borderRadius: "999px", border: "1px solid rgba(255,193,7,0.25)", background: "rgba(255,193,7,0.08)", color: "#ffc107", fontSize: "0.8rem", fontWeight: 700, cursor: "default", flexShrink: 0 }}>
+            <button type="button" style={{ display: "flex", alignItems: "center", gap: "0.45rem", padding: "0.5rem 1rem", borderRadius: "999px", border: isDark ? "1px solid rgba(255,193,7,0.25)" : "1px solid rgba(255,193,7,0.18)", background: isDark ? "rgba(255,193,7,0.08)" : "rgba(255,193,7,0.10)", color: "#c58a00", fontSize: "0.8rem", fontWeight: 700, cursor: "default", flexShrink: 0 }}>
               <Target className="size-3.5" style={{ color: "#ffc107" }} />
               {topicPerformance.length} tracked categories
             </button>
@@ -1702,12 +1712,12 @@ const GrowthQuestLiveDashboard = ({
                 const col = getTopicColor(acc);
                 const dash = (acc / 100) * topic_circ;
                 return (
-                  <article key={topic.key} className="growth-quest-topic-card flex-shrink-0 w-[280px] snap-start rounded-2xl border bg-gradient-to-br from-slate-900/90 to-slate-950/90 overflow-hidden relative flex flex-col" style={{ borderColor: col.border, boxShadow: `0 8px 24px -8px ${col.glow}` }}>
+                  <article key={topic.key} className="growth-quest-topic-card flex-shrink-0 w-[280px] snap-start rounded-2xl border overflow-hidden relative flex flex-col" style={{ borderColor: isDark ? col.border : "rgba(28,27,31,0.10)", background: isDark ? "linear-gradient(135deg,rgba(15,18,32,0.98),rgba(8,10,24,0.96))" : "linear-gradient(180deg,#ffffff 0%,#f6f7fb 100%)", boxShadow: isDark ? `0 8px 24px -8px ${col.glow}` : "0 14px 40px -24px rgba(28,27,31,0.18)" }}>
                     <div className="flex items-start justify-between p-4 pb-2">
-                      <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-white/30">Topic Performance</span>
+                      <span className="text-[10px] font-bold tracking-[0.15em] uppercase" style={{ color: isDark ? "rgba(255,255,255,0.30)" : "rgba(28,27,31,0.45)" }}>Topic Performance</span>
                       <div className="relative size-14 shrink-0">
                         <svg viewBox="0 0 72 72" className="size-full">
-                          <circle cx="36" cy="36" r={topic_r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
+                          <circle cx="36" cy="36" r={topic_r} fill="none" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(28,27,31,0.08)"} strokeWidth="6" />
                           <circle cx="36" cy="36" r={topic_r} fill="none" stroke={col.stroke} strokeWidth="6"
                             strokeDasharray={`${dash} ${topic_circ - dash}`} strokeLinecap="round"
                             transform="rotate(-90 36 36)"
@@ -1723,19 +1733,19 @@ const GrowthQuestLiveDashboard = ({
                       <div className="size-11 rounded-xl border grid place-items-center mb-3" style={{ background: col.bg, borderColor: col.border }}>
                         {getTopicIcon(topic.key, col.icon)}
                       </div>
-                      <h4 className="text-[1.2rem] font-bold text-white leading-tight mb-2">{topic.label}</h4>
-                      <p className="text-[0.8rem] text-white/50 leading-relaxed mb-4">
+                      <h4 className="text-[1.2rem] font-bold leading-tight mb-2" style={{ color: isDark ? "#fff" : "#1C1B1F" }}>{topic.label}</h4>
+                      <p className="text-[0.8rem] leading-relaxed mb-4" style={{ color: isDark ? "rgba(255,255,255,0.50)" : "rgba(28,27,31,0.60)" }}>
                         {topic.correct} correct answers from {topic.attempted} attempts.
                       </p>
                       <div className="flex flex-wrap gap-2 mb-4">
-                        <span className="flex items-center gap-1.5 text-[0.75rem] font-bold text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/5">
+                        <span className="flex items-center gap-1.5 text-[0.75rem] font-bold px-2.5 py-1 rounded-full border" style={{ color: isDark ? "#34d399" : "#0f766e", borderColor: isDark ? "rgba(16,185,129,0.20)" : "rgba(16,185,129,0.18)", background: isDark ? "rgba(16,185,129,0.05)" : "rgba(16,185,129,0.08)" }}>
                           <CheckCircle2 className="size-3" />{topic.correct} correct
                         </span>
-                        <span className="flex items-center gap-1.5 text-[0.75rem] font-bold text-rose-400 px-2.5 py-1 rounded-full border border-rose-500/20 bg-rose-500/5">
+                        <span className="flex items-center gap-1.5 text-[0.75rem] font-bold px-2.5 py-1 rounded-full border" style={{ color: isDark ? "#fb7185" : "#be123c", borderColor: isDark ? "rgba(244,63,94,0.20)" : "rgba(244,63,94,0.18)", background: isDark ? "rgba(244,63,94,0.05)" : "rgba(244,63,94,0.08)" }}>
                           <XCircle className="size-3" />{missed} missed
                         </span>
                       </div>
-                      <div className="h-[5px] rounded-full bg-white/5 overflow-hidden">
+                      <div className="h-[5px] rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.05)" : "rgba(28,27,31,0.08)" }}>
                         <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${acc}%`, background: `linear-gradient(90deg, ${col.stroke}, ${col.stroke}dd)`, boxShadow: `0 0 10px ${col.glow}` }} />
                       </div>
                     </div>
@@ -1931,117 +1941,12 @@ const GrowthQuestLiveDashboard = ({
         </section>
       ) : null}
 
-      {/* ─── Premium Footer ─── */}
-      <footer className="growth-quest-footer mt-20 relative pt-12 pb-8 px-8 rounded-[32px] border border-white/5 bg-slate-950/40 backdrop-blur-xl overflow-hidden shadow-3xl">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 size-1.5 rounded-full bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,1)] z-10" />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 mb-12">
-          {/* Brand Info */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="size-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shadow-lg shadow-amber-500/5">
-                <Flame className="size-7 text-amber-500" />
-              </div>
-              <h4 className="text-xl font-black text-white tracking-tight leading-tight">How Daily<br />Practice Works</h4>
-            </div>
-            <p className="text-sm text-white/40 leading-relaxed max-w-[240px]">
-              Daily practice quiz designed to help you build skills, improve weak topics, and stay consistent.
-            </p>
-            <div className="h-20 w-full rounded-2xl bg-gradient-to-br from-amber-500/5 to-transparent border border-white/5 relative overflow-hidden">
-              <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <path d="M0 50 Q25 40 50 50 T100 50" fill="none" stroke="#fbbf24" strokeWidth="0.5" />
-                <path d="M0 60 Q25 50 50 60 T100 60" fill="none" stroke="#fbbf24" strokeWidth="0.5" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Progress */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="size-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                <Zap className="size-4 text-blue-500" />
-              </div>
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">Your Progress</span>
-            </div>
-            <ul className="space-y-4">
-              {[
-                "Complete 1 practice quiz per day",
-                "Earn XP & loyalty coins",
-                "Track category accuracy",
-                "Maintain your streak"
-              ].map((item, i) => (
-                <li key={i} className="flex items-center gap-3 text-sm text-white/50 group cursor-default">
-                  <div className="size-5 rounded-md bg-white/5 border border-white/10 flex items-center justify-center transition-colors group-hover:border-blue-500/40">
-                    <ChevronRight className="size-3 text-white/30 group-hover:text-blue-400" />
-                  </div>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Mechanics */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="size-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-                <Target className="size-4 text-violet-500" />
-              </div>
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-violet-400">How It Works</span>
-            </div>
-            <ul className="space-y-4">
-              {[
-                "6 questions per session",
-                "Resets daily at midnight UTC",
-                "One scored attempt per day",
-                "Badges unlock at milestones"
-              ].map((item, i) => (
-                <li key={i} className="flex items-center gap-3 text-sm text-white/50 group cursor-default">
-                  <div className="size-5 rounded-md bg-white/5 border border-white/10 flex items-center justify-center transition-colors group-hover:border-violet-500/40">
-                    <ChevronRight className="size-3 text-white/30 group-hover:text-violet-400" />
-                  </div>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Levels */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="size-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                <Medal className="size-4 text-amber-500" />
-              </div>
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-amber-500">Level System</span>
-            </div>
-            <ul className="space-y-4">
-              {[
-                "Starter → Apprentice",
-                "Apprentice → Skilled",
-                "Skilled → Professional",
-                "Professional → Expert"
-              ].map((item, i) => (
-                <li key={i} className="flex items-center gap-3 text-sm text-white/50 group cursor-default">
-                  <div className="size-5 rounded-md bg-white/5 border border-white/10 flex items-center justify-center transition-colors group-hover:border-amber-500/40">
-                    <ChevronRight className="size-3 text-white/30 group-hover:text-amber-500" />
-                  </div>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* Bottom bar */}
-        <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4 text-white/20 text-[11px] font-bold">
-            <Shield className="size-4" />
-            <span>© 2026 CATALANCE · GROWTH QUEST SYSTEM</span>
-          </div>
-
-
-        </div>
-      </footer>
+      {false && (
+        <footer className="growth-quest-footer mt-20 relative pt-12 pb-8 px-8 rounded-[32px] border border-white/5 bg-slate-950/40 backdrop-blur-xl overflow-hidden shadow-3xl">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 size-1.5 rounded-full bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,1)] z-10" />
+        </footer>
+      )}
     </div>
   );
 };
@@ -2448,3 +2353,5 @@ const FreelancerGrowthQuestPage = () => {
 };
 
 export default FreelancerGrowthQuestPage;
+
+
