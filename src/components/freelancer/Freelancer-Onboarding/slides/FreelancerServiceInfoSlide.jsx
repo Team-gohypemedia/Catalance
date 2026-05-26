@@ -99,6 +99,13 @@ const CategoryMultiSelect = ({
     () => options.filter((option) => selectedSet.has(String(option.value))),
     [options, selectedSet],
   );
+  const optionLabelByValue = useMemo(
+    () =>
+      new Map(
+        options.map((option) => [String(option.value || "").trim(), String(option.label || "").trim()]),
+      ),
+    [options],
+  );
 
   const activeCategoryValue = useMemo(() => {
     const normalizedActive = String(activeCategoryKey || "").trim();
@@ -204,6 +211,59 @@ const CategoryMultiSelect = ({
 
   const activeSelectionCount =
     activeSelectedToolEntries.length + activeSelectedCustomSkills.length;
+
+  const selectedSkillEntries = useMemo(() => {
+    const normalizedEntries = Array.isArray(selectedSubcategories) ? selectedSubcategories : [];
+
+    return normalizedEntries.flatMap((entry) => {
+      const categoryKey = getSubcategorySelectionKey(entry);
+      if (!categoryKey || !selectedSet.has(categoryKey)) {
+        return [];
+      }
+
+      const categoryLabel =
+        optionLabelByValue.get(categoryKey) ||
+        String(entry?.label || entry?.subCategoryKey || "").trim() ||
+        "Category";
+      const subCategoryId = toPositiveInteger(entry?.subCategoryId);
+      const toolOptions = subCategoryId
+        ? toolOptionsByCategory[String(subCategoryId)] || []
+        : [];
+      const toolLabelById = new Map(
+        (Array.isArray(toolOptions) ? toolOptions : []).map((tool) => [
+          toPositiveInteger(tool?.id),
+          String(tool?.label || tool?.name || "").trim(),
+        ]),
+      );
+
+      const toolEntries = (Array.isArray(entry?.selectedToolIds) ? entry.selectedToolIds : [])
+        .map((toolId) => {
+          const normalizedToolId = toPositiveInteger(toolId);
+          if (!normalizedToolId) {
+            return null;
+          }
+
+          return {
+            type: "tool",
+            categoryKey,
+            categoryLabel,
+            value: String(normalizedToolId),
+            label: toolLabelById.get(normalizedToolId) || `Skill ${normalizedToolId}`,
+          };
+        })
+        .filter(Boolean);
+
+      const customEntries = normalizeStringArray(entry?.customSkillNames).map((skillName) => ({
+        type: "custom",
+        categoryKey,
+        categoryLabel,
+        value: skillName,
+        label: skillName,
+      }));
+
+      return [...toolEntries, ...customEntries];
+    });
+  }, [optionLabelByValue, selectedSet, selectedSubcategories, toolOptionsByCategory]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -389,6 +449,46 @@ const CategoryMultiSelect = ({
     handleSkillSelectionChange(activeSelectedToolIds, nextCustomSkillNames);
   };
 
+  const handleRemoveSkillEntry = (entry) => {
+    if (!entry?.categoryKey || !onSubcategorySkillChange) {
+      return;
+    }
+
+    const currentSubcategory =
+      (Array.isArray(selectedSubcategories) ? selectedSubcategories : []).find(
+        (subcategory) => getSubcategorySelectionKey(subcategory) === entry.categoryKey,
+      ) || null;
+
+    if (!currentSubcategory) {
+      return;
+    }
+
+    const currentToolIds = (Array.isArray(currentSubcategory.selectedToolIds)
+      ? currentSubcategory.selectedToolIds
+      : []
+    )
+      .map((value) => toPositiveInteger(value))
+      .filter(Boolean);
+    const currentCustomSkills = normalizeStringArray(currentSubcategory.customSkillNames);
+
+    if (entry.type === "tool") {
+      const nextToolIds = currentToolIds.filter((value) => String(value) !== String(entry.value));
+      onSubcategorySkillChange(entry.categoryKey, {
+        selectedToolIds: nextToolIds,
+        customSkillNames: currentCustomSkills,
+      });
+      return;
+    }
+
+    const nextCustomSkills = currentCustomSkills.filter(
+      (value) => value.toLowerCase() !== String(entry.value || "").trim().toLowerCase(),
+    );
+    onSubcategorySkillChange(entry.categoryKey, {
+      selectedToolIds: currentToolIds,
+      customSkillNames: nextCustomSkills,
+    });
+  };
+
   const summaryText = useMemo(
     () => (isLoading ? loadingMessage : placeholder),
     [isLoading, loadingMessage, placeholder],
@@ -427,19 +527,45 @@ const CategoryMultiSelect = ({
             {selectedOptions.map((option) => (
               <span
                 key={option.value}
-                className="inline-flex max-w-full items-center gap-1.5 rounded-sm border border-primary/35 bg-primary/10 px-3 py-1.5 text-[12px] font-medium text-primary"
+                className="inline-flex max-w-full items-center gap-1.5 rounded-sm border border-border px-3 py-1.5 text-[12px] font-medium text-foreground"
               >
                 <span className="min-w-0 truncate">{option.label}</span>
                 <button
                   type="button"
                   onClick={() => removeOption(option.value)}
-                  className="rounded p-0.5 transition-colors hover:bg-primary/15"
+                  className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
                   aria-label={`Remove ${option.label}`}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               </span>
             ))}
+          </div>
+        ) : null}
+
+        {selectedSkillEntries.length > 0 ? (
+          <div className="mt-4 space-y-2">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Skills
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {selectedSkillEntries.map((entry) => (
+                <span
+                  key={`${entry.categoryKey}-${entry.type}-${entry.value}`}
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-sm border border-border px-3 py-1.5 text-[12px] font-medium text-foreground"
+                >
+                  <span className="truncate">{entry.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSkillEntry(entry)}
+                    className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label={`Remove ${entry.label}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
           </div>
         ) : null}
 
