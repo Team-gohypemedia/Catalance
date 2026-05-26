@@ -44,6 +44,14 @@ const toPositiveInteger = (value) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+const normalizeOptionEntries = (options = []) =>
+  (Array.isArray(options) ? options : [])
+    .map((option) => ({
+      value: String(option?.value || "").trim(),
+      label: String(option?.label || option?.value || "").trim(),
+    }))
+    .filter((option) => option.value && option.label);
+
 const buildStringSignature = (values = []) => normalizeStringArray(values).join("|");
 
 const CategoryMultiSelect = ({
@@ -62,6 +70,7 @@ const CategoryMultiSelect = ({
   onActiveCategoryChange,
   selectedSubcategories = [],
   toolOptionsByCategory = {},
+  skillSuggestionsByCategory = {},
   onSubcategorySkillChange,
   isToolsLoading = false,
   toolFetchError = "",
@@ -129,6 +138,14 @@ const CategoryMultiSelect = ({
         .filter((tool) => tool.id && tool.label),
     [activeToolSource],
   );
+  const activeSuggestedSkills = useMemo(() => {
+    const rawSkills = skillSuggestionsByCategory?.[activeCategoryValue];
+    return normalizeStringArray(
+      (Array.isArray(rawSkills) ? rawSkills : []).map(
+        (entry) => entry?.label || entry?.value || entry,
+      ),
+    );
+  }, [activeCategoryValue, skillSuggestionsByCategory]);
 
   const activeSelectedToolIds = useMemo(() => {
     const rawIds = Array.isArray(activeSubcategory?.selectedToolIds)
@@ -355,6 +372,23 @@ const CategoryMultiSelect = ({
     );
   };
 
+  const handleToggleSuggestedSkill = (skillName) => {
+    const normalizedSkillName = String(skillName || "").trim();
+    if (!normalizedSkillName) {
+      return;
+    }
+
+    const nextCustomSkillNames = activeSelectedCustomSkills.some(
+      (value) => value.toLowerCase() === normalizedSkillName.toLowerCase(),
+    )
+      ? activeSelectedCustomSkills.filter(
+          (value) => value.toLowerCase() !== normalizedSkillName.toLowerCase(),
+        )
+      : [...activeSelectedCustomSkills, normalizedSkillName];
+
+    handleSkillSelectionChange(activeSelectedToolIds, nextCustomSkillNames);
+  };
+
   const summaryText = useMemo(
     () => (isLoading ? loadingMessage : placeholder),
     [isLoading, loadingMessage, placeholder],
@@ -523,7 +557,8 @@ const CategoryMultiSelect = ({
                           <div className="min-h-0 flex-1 overflow-y-auto subtle-scrollbar pr-0">
                             <div className="flex flex-col gap-2">
                               {isToolsLoading &&
-                              activeToolOptions.length === 0 ? (
+                              activeToolOptions.length === 0 &&
+                              activeSuggestedSkills.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">
                                   Loading skills...
                                 </p>
@@ -545,6 +580,37 @@ const CategoryMultiSelect = ({
                                     >
                                       <span className="min-w-0 flex-1 truncate font-medium">
                                         {tool.label}
+                                      </span>
+                                      <Check
+                                        className={cn(
+                                          "ml-3 h-4 w-4 shrink-0 transition-colors",
+                                          isSelected ? "text-primary" : "text-muted-foreground/50",
+                                        )}
+                                      />
+                                    </button>
+                                  );
+                                })
+                              ) : activeSuggestedSkills.length > 0 ? (
+                                activeSuggestedSkills.map((skill) => {
+                                  const isSelected = activeSelectedCustomSkills.some(
+                                    (value) => value.toLowerCase() === skill.toLowerCase(),
+                                  );
+
+                                  return (
+                                    <button
+                                      key={skill}
+                                      type="button"
+                                      onClick={() => handleToggleSuggestedSkill(skill)}
+                                      className={cn(
+                                        "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors",
+                                        isSelected
+                                          ? "border-primary/60 bg-primary/10 text-primary"
+                                          : "border-border bg-muted text-foreground hover:border-primary/50 hover:bg-muted/80",
+                                      )}
+                                      aria-pressed={isSelected}
+                                    >
+                                      <span className="min-w-0 flex-1 truncate font-medium">
+                                        {skill}
                                       </span>
                                       <Check
                                         className={cn(
@@ -648,6 +714,17 @@ const FreelancerServiceInfoSlide = ({
     fieldMap.experience?.options ||
     serviceInfoContent?.fields?.experience?.options ||
     EXPERIENCE_OPTIONS;
+  const configuredCategoryOptions = useMemo(
+    () =>
+      normalizeOptionEntries(
+        fieldMap.categories?.options || serviceInfoContent?.fields?.categories?.options || [],
+      ),
+    [fieldMap.categories?.options, serviceInfoContent?.fields?.categories?.options],
+  );
+  const configuredSkillSuggestionsByCategory =
+    fieldMap.categories?.skillSuggestionsByCategory ||
+    serviceInfoContent?.fields?.categories?.skillSuggestionsByCategory ||
+    {};
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
   const [toolOptionsByCategory, setToolOptionsByCategory] = useState({});
@@ -684,8 +761,8 @@ const FreelancerServiceInfoSlide = ({
     [normalizedSubcategories],
   );
   const allCategoryOptions = useMemo(() => {
-    return [...categoryOptions];
-  }, [categoryOptions]);
+    return configuredCategoryOptions.length > 0 ? configuredCategoryOptions : [...categoryOptions];
+  }, [categoryOptions, configuredCategoryOptions]);
   const activeSkillCategoryId = useMemo(() => {
     const requested = String(serviceDraft?.activeSkillCategory || "").trim();
     if (
@@ -710,10 +787,16 @@ const FreelancerServiceInfoSlide = ({
   );
 
   useEffect(() => {
+    if (configuredCategoryOptions.length > 0) {
+      setCategoryOptions(configuredCategoryOptions);
+      setIsCategoriesLoading(false);
+      return undefined;
+    }
+
     if (!resolvedServiceId) {
       setCategoryOptions([]);
       setIsCategoriesLoading(false);
-      return;
+      return undefined;
     }
 
     let cancelled = false;
@@ -755,11 +838,15 @@ const FreelancerServiceInfoSlide = ({
     return () => {
       cancelled = true;
     };
-  }, [resolvedServiceId]);
+  }, [configuredCategoryOptions, resolvedServiceId]);
 
   useEffect(() => {
+    if (configuredCategoryOptions.length > 0) {
+      return undefined;
+    }
+
     if (!normalizedSubcategories.some((entry) => entry?.isCustom)) {
-      return;
+      return undefined;
     }
 
     onUpdateServiceDraft((draft) => ({
@@ -769,16 +856,20 @@ const FreelancerServiceInfoSlide = ({
       ),
       pendingCategoryLabels: [],
     }));
-  }, [normalizedSubcategories, onUpdateServiceDraft]);
+  }, [configuredCategoryOptions, normalizedSubcategories, onUpdateServiceDraft]);
 
   useEffect(() => {
+    if (configuredCategoryOptions.length > 0) {
+      return undefined;
+    }
+
     if (
       !normalizedSubcategories.some(
         (entry) =>
           Array.isArray(entry?.customSkillNames) && entry.customSkillNames.length > 0,
       )
     ) {
-      return;
+      return undefined;
     }
 
     onUpdateServiceDraft((draft) => ({
@@ -790,9 +881,16 @@ const FreelancerServiceInfoSlide = ({
         }),
       ),
     }));
-  }, [normalizedSubcategories, onUpdateServiceDraft]);
+  }, [configuredCategoryOptions, normalizedSubcategories, onUpdateServiceDraft]);
 
   useEffect(() => {
+    if (configuredCategoryOptions.length > 0) {
+      setToolOptionsByCategory({});
+      setToolFetchError("");
+      setIsToolsLoading(false);
+      return undefined;
+    }
+
     const selectedIds = selectedCatalogCategoryIds;
     toolFetchRequestIdRef.current += 1;
     const requestId = toolFetchRequestIdRef.current;
@@ -896,7 +994,7 @@ const FreelancerServiceInfoSlide = ({
     return () => {
       abortController.abort();
     };
-  }, [selectedCatalogCategoryIds]);
+  }, [configuredCategoryOptions, selectedCatalogCategoryIds]);
 
   useEffect(() => {
     const currentSkillsSignature = buildStringSignature(
@@ -919,10 +1017,67 @@ const FreelancerServiceInfoSlide = ({
   ]);
 
   const handleSelectedCategoriesChange = (nextValues) => {
+    if (configuredCategoryOptions.length > 0) {
+      const normalizedNextValues = normalizeStringArray(nextValues);
+      const labelByValue = new Map(
+        configuredCategoryOptions.map((option) => [option.value, option.label]),
+      );
+
+      onUpdateServiceDraft((draft) => {
+        const existingSubcategories = Array.isArray(draft?.subcategories) ? draft.subcategories : [];
+        const existingByKey = new Map(
+          existingSubcategories.map((entry) => [getSubcategorySelectionKey(entry), entry]),
+        );
+        const nextSubcategories = normalizedNextValues.map((value) => {
+          const existingEntry = existingByKey.get(value);
+          return {
+            subCategoryId: null,
+            subCategoryKey: value,
+            label: labelByValue.get(value) || existingEntry?.label || value,
+            isCustom: true,
+            selectedToolIds: [],
+            customSkillNames: normalizeStringArray(existingEntry?.customSkillNames),
+          };
+        });
+
+        return {
+          ...draft,
+          subcategories: nextSubcategories,
+          activeSkillCategory: nextSubcategories.some(
+            (entry) => entry.subCategoryKey === draft?.activeSkillCategory,
+          )
+            ? draft.activeSkillCategory
+            : nextSubcategories[0]?.subCategoryKey || null,
+        };
+      });
+      return;
+    }
+
     onUpdateServiceDraft((draft) => syncDraftSubcategories(draft, nextValues));
   };
 
   const handleSubcategorySkillChange = (subCategoryKey, nextSelection = {}) => {
+    if (configuredCategoryOptions.length > 0) {
+      const normalizedCustomSkills = normalizeStringArray(
+        Array.isArray(nextSelection?.customSkillNames) ? nextSelection.customSkillNames : [],
+      );
+
+      onUpdateServiceDraft((draft) => ({
+        ...draft,
+        subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
+          (entry) =>
+            entry?.subCategoryKey === subCategoryKey
+              ? {
+                  ...entry,
+                  selectedToolIds: [],
+                  customSkillNames: normalizedCustomSkills,
+                }
+              : entry,
+        ),
+      }));
+      return;
+    }
+
     const normalizedToolIds = normalizeStringArray(
       Array.isArray(nextSelection?.selectedToolIds)
         ? nextSelection.selectedToolIds
@@ -1083,6 +1238,7 @@ const FreelancerServiceInfoSlide = ({
                 }
                 selectedSubcategories={normalizedSubcategories}
                 toolOptionsByCategory={toolOptionsByCategory}
+                skillSuggestionsByCategory={configuredSkillSuggestionsByCategory}
                 onSubcategorySkillChange={handleSubcategorySkillChange}
                 isToolsLoading={isToolsLoading}
                 toolFetchError={toolFetchError}

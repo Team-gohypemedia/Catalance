@@ -127,6 +127,8 @@ export const DEFAULT_SERVICE_INFO_FIELDS = [
     label: "Select Category",
     placeholder: "Search here",
     searchPlaceholder: "Search here",
+    options: [],
+    skillSuggestionsByCategory: {},
     required: true,
     visible: true,
     system: true,
@@ -341,6 +343,8 @@ export const DEFAULT_FREELANCER_ONBOARDING_CONTENT = {
         label: "Select Category",
         placeholder: "Search here",
         searchPlaceholder: "Search here",
+        options: [],
+        skillSuggestionsByCategory: {},
       },
       experience: {
         label: "Experience",
@@ -418,6 +422,7 @@ export const DEFAULT_FREELANCER_ONBOARDING_CONTENT = {
         label: "Niche",
         placeholder: "Select niche",
         searchPlaceholder: "Search niches",
+        options: [],
       },
       projectLink: {
         label: "Project Link (Optional)",

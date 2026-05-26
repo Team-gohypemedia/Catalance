@@ -78,6 +78,10 @@ const STEPPER_EMPTY = { id: "", label: "", step: 1 };
 const CUSTOM_PROFILE_FIELD_TYPES = BASIC_PROFILE_FIELD_TYPES.filter(
   (type) => type !== "file" && type !== "image",
 );
+const EMPTY_MARKETPLACE_FILTERS = {
+  services: [],
+  niches: [],
+};
 
 const normalizeEditorContent = (value) => {
   const merged = mergeOnboardingContent(
@@ -92,6 +96,67 @@ const normalizeEditorContent = (value) => {
       fields: resolveBasicProfileFields(merged),
     },
   };
+};
+
+const normalizeMarketplaceFilters = (value, availableServices = []) => {
+  const payload =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : EMPTY_MARKETPLACE_FILTERS;
+  const serviceNameById = new Map(
+    (Array.isArray(availableServices) ? availableServices : []).map((service) => [
+      Number(service?.id),
+      String(service?.name || "").trim(),
+    ]),
+  );
+
+  const seenServiceIds = new Set();
+  const services = [];
+
+  for (const service of Array.isArray(payload.services) ? payload.services : []) {
+    const serviceId = Number(service?.id);
+    if (!Number.isInteger(serviceId) || serviceId <= 0 || seenServiceIds.has(serviceId)) {
+      continue;
+    }
+
+    seenServiceIds.add(serviceId);
+    services.push({
+      id: serviceId,
+      key: String(service?.key || "").trim(),
+      name: String(service?.name || serviceNameById.get(serviceId) || "").trim(),
+      subCategories: (Array.isArray(service?.subCategories) ? service.subCategories : []).map(
+        (subCategory) => ({
+          id: Number.isInteger(Number(subCategory?.id)) ? Number(subCategory.id) : null,
+          name: String(subCategory?.name || "").trim(),
+          tools: (Array.isArray(subCategory?.tools) ? subCategory.tools : []).map((tool) => ({
+            id: Number.isInteger(Number(tool?.id)) ? Number(tool.id) : null,
+            name: String(tool?.name || "").trim(),
+          })),
+        }),
+      ),
+    });
+  }
+
+  for (const service of Array.isArray(availableServices) ? availableServices : []) {
+    const serviceId = Number(service?.id);
+    if (!Number.isInteger(serviceId) || serviceId <= 0 || seenServiceIds.has(serviceId)) {
+      continue;
+    }
+
+    services.push({
+      id: serviceId,
+      key: String(service?.key || "").trim(),
+      name: String(service?.name || "").trim(),
+      subCategories: [],
+    });
+  }
+
+  const niches = (Array.isArray(payload.niches) ? payload.niches : []).map((niche) => ({
+    id: Number.isInteger(Number(niche?.id)) ? Number(niche.id) : null,
+    name: String(niche?.name || "").trim(),
+  }));
+
+  return { services, niches };
 };
 
 const setNestedValue = (source, path, nextValue) => {
@@ -579,6 +644,239 @@ const OptionListEditor = ({ title, description, options = [], onChange }) => {
   );
 };
 
+const KeyedOptionMapEditor = ({
+  title,
+  description,
+  options = [],
+  value = {},
+  onChange,
+  emptyLabel = "No items yet.",
+}) => {
+  const normalizedOptions = Array.isArray(options) ? options : [];
+  const normalizedValue =
+    value && typeof value === "object" && !Array.isArray(value) ? value : {};
+
+  const handleItemChange = (optionValue, nextItems) => {
+    onChange({
+      ...normalizedValue,
+      [optionValue]: nextItems,
+    });
+  };
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-white/10 bg-black/15 p-4">
+      <div>
+        <h4 className="text-sm font-semibold text-white">{title}</h4>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+      </div>
+
+      {normalizedOptions.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-muted-foreground">
+          Add category options first.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {normalizedOptions.map((option) => {
+            const optionValue = String(option?.value || "").trim();
+            const optionLabel = String(option?.label || optionValue).trim() || optionValue;
+            if (!optionValue) {
+              return null;
+            }
+
+            return (
+              <OptionListEditor
+                key={optionValue}
+                title={optionLabel}
+                description={emptyLabel}
+                options={Array.isArray(normalizedValue[optionValue]) ? normalizedValue[optionValue] : []}
+                onChange={(nextItems) => handleItemChange(optionValue, nextItems)}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const NameListEditor = ({
+  title,
+  description,
+  items = [],
+  onChange,
+  addLabel = "Add Item",
+  emptyLabel = "No items yet.",
+  inputPlaceholder = "Name",
+}) => {
+  const handleItemChange = (index, value) => {
+    onChange(
+      items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, name: value } : item,
+      ),
+    );
+  };
+
+  const handleAdd = () => {
+    onChange([...(Array.isArray(items) ? items : []), { id: null, name: "" }]);
+  };
+
+  const handleRemove = (index) => {
+    onChange(items.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-white/10 bg-black/15 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold text-white">{title}</h4>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleAdd}
+          className="border-white/10 bg-white/[0.04]"
+        >
+          {addLabel}
+        </Button>
+      </div>
+
+      <div className="space-y-3">
+        {items.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-muted-foreground">
+            {emptyLabel}
+          </div>
+        ) : (
+          items.map((item, index) => (
+            <div
+              key={`${item?.id || "item"}-${index}`}
+              className="grid gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 md:grid-cols-[minmax(0,1fr)_auto]"
+            >
+              <Input
+                value={item?.name || ""}
+                onChange={(event) => handleItemChange(index, event.target.value)}
+                placeholder={inputPlaceholder}
+                className="border-white/10 bg-transparent text-white placeholder:text-white/35"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => handleRemove(index)}
+                className="text-white/60 hover:text-white"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+const MarketplaceServiceTaxonomyEditor = ({ service, onChange }) => {
+  const subCategories = Array.isArray(service?.subCategories) ? service.subCategories : [];
+
+  const handleCategoryChange = (index, nextPatch) => {
+    onChange({
+      ...service,
+      subCategories: subCategories.map((subCategory, subCategoryIndex) =>
+        subCategoryIndex === index ? { ...subCategory, ...nextPatch } : subCategory,
+      ),
+    });
+  };
+
+  const handleCategoryToolsChange = (index, nextTools) => {
+    handleCategoryChange(index, { tools: nextTools });
+  };
+
+  const handleAddCategory = () => {
+    onChange({
+      ...service,
+      subCategories: [...subCategories, { id: null, name: "", tools: [] }],
+    });
+  };
+
+  const handleRemoveCategory = (index) => {
+    onChange({
+      ...service,
+      subCategories: subCategories.filter((_, subCategoryIndex) => subCategoryIndex !== index),
+    });
+  };
+
+  return (
+    <div className="space-y-4 rounded-2xl border border-white/10 bg-black/15 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold text-white">Marketplace Categories</h4>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            These categories and skills come from the real marketplace tables and drive onboarding for this service.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleAddCategory}
+          className="border-white/10 bg-white/[0.04]"
+        >
+          Add Category
+        </Button>
+      </div>
+
+      {subCategories.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-muted-foreground">
+          No marketplace categories for this service yet.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {subCategories.map((subCategory, index) => (
+            <div
+              key={`${subCategory?.id || "subcategory"}-${index}`}
+              className="space-y-4 rounded-[22px] border border-white/10 bg-black/20 p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Label className="text-sm font-medium text-white">Category Name</Label>
+                  <Input
+                    value={subCategory?.name || ""}
+                    onChange={(event) =>
+                      handleCategoryChange(index, { name: event.target.value })
+                    }
+                    placeholder="Category name"
+                    className="border-white/10 bg-transparent text-white placeholder:text-white/35"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveCategory(index)}
+                  className="mt-7 text-white/60 hover:text-white"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <NameListEditor
+                title="Skills"
+                description="Add, edit, or remove the skills users can pick under this category."
+                items={Array.isArray(subCategory?.tools) ? subCategory.tools : []}
+                onChange={(nextTools) => handleCategoryToolsChange(index, nextTools)}
+                addLabel="Add Skill"
+                emptyLabel="No skills yet."
+                inputPlaceholder="Skill name"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const StepperListEditor = ({ steps = [], onChange }) => {
   const handleStepChange = (index, field, value) => {
     const nextSteps = steps.map((step, stepIndex) =>
@@ -686,6 +984,7 @@ const AdminFreelancerOnboardingContent = () => {
   const [selectedServiceKey, setSelectedServiceKey] = useState("global");
   const [activeSection, setActiveSection] = useState("basicProfile");
   const [availableServices, setAvailableServices] = useState([]);
+  const [marketplaceFilters, setMarketplaceFilters] = useState(EMPTY_MARKETPLACE_FILTERS);
   const [globalContent, setGlobalContent] = useState(
     cloneContent(DEFAULT_FREELANCER_ONBOARDING_CONTENT),
   );
@@ -707,6 +1006,9 @@ const AdminFreelancerOnboardingContent = () => {
         }
 
         const content = payload?.data || {};
+        const nextAvailableServices = Array.isArray(content.availableServices)
+          ? content.availableServices
+          : [];
         const nextGlobal = normalizeEditorContent(content.global);
         const nextServices = {};
 
@@ -716,7 +1018,10 @@ const AdminFreelancerOnboardingContent = () => {
           );
         });
 
-        setAvailableServices(Array.isArray(content.availableServices) ? content.availableServices : []);
+        setAvailableServices(nextAvailableServices);
+        setMarketplaceFilters(
+          normalizeMarketplaceFilters(content.marketplaceFilters, nextAvailableServices),
+        );
         setGlobalContent(nextGlobal);
         setServiceOverrides(nextServices);
       })
@@ -747,6 +1052,11 @@ const AdminFreelancerOnboardingContent = () => {
   }, [availableServices, selectedServiceKey]);
 
   const hasSelectedOverride = selectedServiceKey !== "global" && Boolean(serviceOverrides[selectedServiceKey]);
+  const selectedMarketplaceService = useMemo(
+    () =>
+      marketplaceFilters.services.find((service) => service.key === selectedServiceKey) || null,
+    [marketplaceFilters.services, selectedServiceKey],
+  );
 
   const editorContent = useMemo(() => {
     if (selectedServiceKey === "global") {
@@ -775,6 +1085,26 @@ const AdminFreelancerOnboardingContent = () => {
     });
   };
 
+  const handleMarketplaceServiceChange = (nextService) => {
+    if (!nextService?.id) {
+      return;
+    }
+
+    setMarketplaceFilters((current) => ({
+      ...current,
+      services: current.services.map((service) =>
+        service.id === nextService.id ? nextService : service,
+      ),
+    }));
+  };
+
+  const handleMarketplaceNichesChange = (nextNiches) => {
+    setMarketplaceFilters((current) => ({
+      ...current,
+      niches: Array.isArray(nextNiches) ? nextNiches : [],
+    }));
+  };
+
   const handleSave = async () => {
     try {
       setIsSaving(true);
@@ -784,13 +1114,35 @@ const AdminFreelancerOnboardingContent = () => {
         body: JSON.stringify({
           global: globalContent,
           services: serviceOverrides,
+          marketplaceFilters,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save onboarding content.");
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.message || payload?.error || "Failed to save onboarding content.");
       }
 
+      const payload = await response.json();
+      const content = payload?.data || {};
+      const nextAvailableServices = Array.isArray(content.availableServices)
+        ? content.availableServices
+        : [];
+      const nextGlobal = normalizeEditorContent(content.global);
+      const nextServices = {};
+
+      Object.entries(content.services || {}).forEach(([serviceKey, serviceValue]) => {
+        nextServices[serviceKey] = normalizeEditorContent(
+          mergeOnboardingContent(nextGlobal, serviceValue),
+        );
+      });
+
+      setAvailableServices(nextAvailableServices);
+      setMarketplaceFilters(
+        normalizeMarketplaceFilters(content.marketplaceFilters, nextAvailableServices),
+      );
+      setGlobalContent(nextGlobal);
+      setServiceOverrides(nextServices);
       toast.success("Onboarding content saved.");
     } catch (error) {
       console.error("Failed to save onboarding content:", error);
@@ -936,6 +1288,23 @@ const AdminFreelancerOnboardingContent = () => {
                 onChange={(value) => handleEditorChange("serviceInfo.fields.experience.placeholder", value)}
               />
             </FieldGrid>
+            {selectedServiceKey === "global" ? (
+              <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-sm leading-6 text-white/85">
+                Category and skill management is service-specific. Pick a service scope on the left to edit the real marketplace categories and skills used by onboarding and the marketplace.
+              </div>
+            ) : (
+              <MarketplaceServiceTaxonomyEditor
+                service={
+                  selectedMarketplaceService || {
+                    id: null,
+                    key: selectedServiceKey,
+                    name: selectedServiceName,
+                    subCategories: [],
+                  }
+                }
+                onChange={handleMarketplaceServiceChange}
+              />
+            )}
             <OptionListEditor
               title="Experience Options"
               description="Options shown in the experience dropdown."
@@ -1101,6 +1470,15 @@ const AdminFreelancerOnboardingContent = () => {
                 onChange={(value) => handleEditorChange("caseStudy.fields.title.placeholder", value)}
               />
             </FieldGrid>
+            <NameListEditor
+              title="Marketplace Niches"
+              description="These niche options come from the real marketplace table and are reused in the onboarding case-study step."
+              items={marketplaceFilters.niches}
+              onChange={handleMarketplaceNichesChange}
+              addLabel="Add Niche"
+              emptyLabel="No niches yet."
+              inputPlaceholder="Niche name"
+            />
 
             <FieldGrid>
               <TextField

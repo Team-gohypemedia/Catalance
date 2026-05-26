@@ -132,6 +132,13 @@ const FreelancerCaseStudySlide = ({
     fieldMap.timeline?.options ||
     caseStudyContent?.fields?.timeline?.options ||
     TIMELINE_OPTIONS;
+  const resolvedNicheOptions =
+    Array.isArray(fieldMap.niche?.options) && fieldMap.niche.options.length > 0
+      ? fieldMap.niche.options
+      : Array.isArray(caseStudyContent?.fields?.niche?.options) &&
+          caseStudyContent.fields.niche.options.length > 0
+        ? caseStudyContent.fields.niche.options
+        : nicheOptions;
   const activeCaseStudyLabel =
     toTitleCase(caseStudyForm?.title) ||
     `Case Study ${Number.isInteger(activeCaseStudyIndex) ? activeCaseStudyIndex + 1 : 1}`;
@@ -403,7 +410,7 @@ const FreelancerCaseStudySlide = ({
               <CustomSelect
                 value={caseStudyForm.niche}
                 onChange={(val) => onCaseStudyFieldChange("niche", val)}
-                options={nicheOptions}
+                options={resolvedNicheOptions}
                 placeholder={
                   fieldMap.niche?.placeholder || caseStudyContent?.fields?.niche?.placeholder || "Select niche"
                 }
