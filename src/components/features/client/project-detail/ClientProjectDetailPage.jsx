@@ -227,12 +227,12 @@ const resolveProjectMarketplaceLiveState = (project = {}) => {
 };
 
 const projectPanelClassName =
-  "rounded-[26px] border border-white/[0.08] bg-[#171717] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+  "rounded-[26px] border border-border bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] dark:border-white/[0.08] dark:bg-[#171717]";
 const projectInsetPanelClassName =
-  "rounded-[20px] border border-white/[0.08] bg-[#111111] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
+  "rounded-[20px] border border-border bg-muted px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] dark:border-white/[0.08] dark:bg-[#111111]";
 const projectSectionEyebrowClassName =
   "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
-const projectSectionSubheadingClassName = "text-white";
+const projectSectionSubheadingClassName = "text-foreground dark:text-white";
 const projectDetailFieldNames = [
   "Client Name",
   "Business Name",
@@ -2627,7 +2627,7 @@ const ProjectDashboard = () => {
   // Show skeleton while loading
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background text-[#f1f5f9]">
+      <div className="min-h-screen bg-background text-foreground dark:text-[#f1f5f9]">
         <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <ClientWorkspaceHeader
             profile={{
@@ -2646,7 +2646,7 @@ const ProjectDashboard = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-background text-[#f1f5f9]">
+      <div className="min-h-screen bg-background text-foreground dark:text-[#f1f5f9]">
         <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-5 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <ClientWorkspaceHeader
             profile={{

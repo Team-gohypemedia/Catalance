@@ -1168,7 +1168,7 @@ const FreelancerMetricCardSkeleton = ({ item }) => {
     <FreelancerDashboardPanel
       className={cn(
         "group relative min-h-[136px] border border-transparent bg-card px-3.5 py-4 sm:min-h-[110px] sm:p-5",
-        shouldSpanFullWidth && "col-span-2 xl:col-span-1",
+        shouldSpanFullWidth && "col-span-2 lg:col-span-1",
       )}
     >
       <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
@@ -1205,7 +1205,7 @@ const FreelancerMetricCardSkeleton = ({ item }) => {
 };
 
 const FreelancerMetricCardsSkeleton = () => (
-  <section className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+  <section className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
     {freelancerMetricSkeletonItems.map((item) => (
       <FreelancerMetricCardSkeleton
         key={`freelancer-metric-skeleton-${item.id}`}
@@ -1228,7 +1228,7 @@ const FreelancerActiveProjectsSkeleton = () => (
       </div>
     </div>
 
-    <div className="grid items-start gap-5 sm:gap-6 xl:gap-7 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid items-start gap-5 sm:gap-6 lg:gap-6 xl:gap-7 md:grid-cols-2 lg:grid-cols-3">
       {[0, 1, 2].map((item) => (
         <ProjectCardSkeleton key={`freelancer-active-project-skeleton-${item}`} />
       ))}
@@ -3813,7 +3813,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
           {metricsLoading ? (
             <FreelancerMetricCardsSkeleton />
           ) : (
-            <section className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+            <section className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
               <FreelancerMetricCard
                 icon={FolderKanban}
                 title="Active Projects"
@@ -3834,7 +3834,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                 value={String(metrics.pendingProposals.length).padStart(2, "0")}
                 onClick={() => navigate("/freelancer/proposals?tab=pending")}
                 aria-label="Open pending proposals"
-                className="col-span-2 xl:col-span-1"
+                className="col-span-2 lg:col-span-1"
               />
               <FreelancerMetricCard
                 icon={CreditCard}
@@ -3846,7 +3846,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                 }
                 onClick={() => navigate("/freelancer/payments")}
                 aria-label="Open payments"
-                className="col-span-2 xl:col-span-1"
+                className="col-span-2 lg:col-span-1"
                 control={
                   <button
                     type="button"
@@ -3956,7 +3956,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                     {runningProjectCards.map((projectCard) => (
                       <CarouselItem
                         key={projectCard.id}
-                        className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
+                        className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
                       >
                         <div
                           ref={(node) => {
@@ -3974,7 +3974,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                     {freelancerProjectRedirectCards.map((item) => (
                       <CarouselItem
                         key={item.id}
-                        className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
+                        className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
                       >
                         <div
                           style={
@@ -4001,7 +4001,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                 />
               </div>
             ) : (
-              <div className="grid items-start gap-5 sm:gap-6 xl:gap-7 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid items-start gap-5 sm:gap-6 lg:gap-6 xl:gap-7 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                   {runningProjectCards.map((projectCard) => (
                     <ProjectProposalCard
                       key={projectCard.id}
@@ -4309,8 +4309,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                   visibleRunningProjects.length === 1
                                     ? "md:basis-full xl:basis-full"
                                     : visibleRunningProjects.length === 2
-                                      ? "md:basis-[calc((100%-1rem)/2)] xl:basis-[calc((100%-1rem)/2)]"
-                                      : "md:basis-[calc((100%-1rem)/2)] xl:basis-[calc((100%-2rem)/3)]",
+                                      ? "md:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-1rem)/2)] xl:basis-[calc((100%-1rem)/2)]"
+                                      : "md:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-2rem)/3)] xl:basis-[calc((100%-2rem)/3)]",
                                 )}
                               >
                                 <FreelancerRunningProjectCard
@@ -4336,7 +4336,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                   <div
                     className={cn(
                       "grid gap-4",
-                      visibleRunningProjects.length > 1 && "md:grid-cols-2 xl:grid-cols-3",
+                      visibleRunningProjects.length > 1 && "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3",
                     )}
                   >
                     {visibleRunningProjects.map((item) => (
@@ -4349,7 +4349,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                       />
                     ))}
                     {visibleRunningProjects.length === 0 ? (
-                      <Card className="md:col-span-2 xl:col-span-3 rounded-[18px] border border-dashed border-white/[0.12] bg-background/20 shadow-none">
+                      <Card className="md:col-span-2 lg:col-span-3 xl:col-span-3 rounded-[18px] border border-dashed border-white/[0.12] bg-background/20 shadow-none">
                         <CardContent className="flex min-h-[140px] flex-col items-center justify-center p-6 text-center">
                           <p className="text-sm font-medium dark:text-white text-[#1C1B1F]">No projects in this filter</p>
                           <p className="mt-2 text-xs text-zinc-400">

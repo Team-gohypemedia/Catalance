@@ -401,11 +401,11 @@ const ClientProjectDetailDialogs = ({
     </Dialog>
 
     <Dialog open={assetsDialogOpen} onOpenChange={setAssetsDialogOpen}>
-      <DialogContent className="sm:max-w-2xl border border-white/[0.08] bg-[#171717] p-0 text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
-        <div className="border-b border-white/[0.06] px-6 py-5">
+      <DialogContent className="sm:max-w-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#171717] p-0 text-foreground dark:text-white shadow-[0_24px_80px_rgba(0,0,0,0.15)] dark:shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+        <div className="border-b border-border dark:border-white/[0.06] px-6 py-5">
           <DialogHeader className="text-left">
             <DialogTitle className={eyebrowClassName}>Shared Assets</DialogTitle>
-            <DialogDescription className="text-sm text-white/78">
+            <DialogDescription className="text-sm text-muted-foreground dark:text-white/78">
               {clientDocs.length} {clientDocs.length === 1 ? "asset" : "assets"} shared by client
             </DialogDescription>
           </DialogHeader>
@@ -430,25 +430,25 @@ const ClientProjectDetailDialogs = ({
                     getProjectDocumentPresentation={getProjectDocumentPresentation}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-white">
+                    <p className="truncate text-sm font-semibold text-foreground dark:text-white">
                       {doc.name || "Shared document"}
                     </p>
-                    <p className="mt-1 text-xs text-white/60">
+                    <p className="mt-1 text-xs text-muted-foreground dark:text-white/60">
                       {formatProjectDocumentTimestamp(doc.createdAt)}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/68">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-white/68">
                       {extensionLabel}
                     </p>
-                    <p className="mt-1 text-xs text-white/60">{fileSize}</p>
+                    <p className="mt-1 text-xs text-muted-foreground dark:text-white/60">{fileSize}</p>
                   </div>
                   {doc.url ? (
                     <Button
                       asChild
                       variant="outline"
                       size="sm"
-                      className="ml-2 rounded-full border-white/[0.08] bg-[#111111] text-white/82 shadow-none hover:bg-[#1b1b1b] hover:text-white"
+                      className="ml-2 rounded-full border border-border bg-muted dark:bg-[#111111] dark:border-white/[0.08] text-foreground dark:text-white/82 shadow-none hover:bg-accent dark:hover:bg-[#1b1b1b] hover:text-foreground dark:hover:text-white"
                     >
                       <a
                         href={doc.url}
@@ -463,7 +463,7 @@ const ClientProjectDetailDialogs = ({
               );
             })
           ) : (
-            <div className={cn(insetPanelClassName, "text-sm text-white/72")}>
+            <div className={cn(insetPanelClassName, "text-sm text-muted-foreground dark:text-white/72")}>
               No shared assets are available yet.
             </div>
           )}

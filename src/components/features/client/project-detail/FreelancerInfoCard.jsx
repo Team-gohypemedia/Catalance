@@ -14,7 +14,7 @@ const FreelancerAboutCard = ({ freelancer, project }) => {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-white">About</h3>
+      <h3 className="text-sm font-semibold text-foreground dark:text-white">About</h3>
 
       <div className="space-y-3">
         {projectLink ? (
@@ -49,11 +49,11 @@ const FreelancerAboutCard = ({ freelancer, project }) => {
             : null;
 
           return summary ? (
-            <div className="border-t border-white/[0.06] pt-3">
+            <div className="border-t border-border dark:border-white/[0.06] pt-3">
               <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[#8f96a3]">
                 Project Summary
               </span>
-              <p className="text-sm leading-6 text-white/80">{summary}</p>
+              <p className="text-sm leading-6 text-foreground/80 dark:text-white/80">{summary}</p>
             </div>
           ) : null;
         })()}
@@ -79,15 +79,15 @@ const FreelancerInfoCard = ({
       </CardHeader>
       <CardContent className="space-y-5 pt-0">
         <div className="flex items-center gap-3">
-          <Avatar className="h-11 w-11 border border-white/[0.08] bg-[#111111]">
+          <Avatar className="h-11 w-11 border border-border dark:border-white/[0.08] bg-muted dark:bg-[#111111]">
             <AvatarImage src={freelancer.avatar} alt={freelancer.fullName} />
-            <AvatarFallback className="bg-[#111111] text-white">
+            <AvatarFallback className="bg-muted dark:bg-[#111111] text-foreground dark:text-white">
               {(freelancer.fullName || "F").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <span className="text-base font-semibold text-white">
+              <span className="text-base font-semibold text-foreground dark:text-white">
                 {freelancer.fullName || "Freelancer Name"}
               </span>
               {freelancer.isVerified ? (
@@ -105,7 +105,7 @@ const FreelancerInfoCard = ({
             ) : null}
           </div>
         </div>
-        <div className="border-t border-white/[0.06] pt-4">
+        <div className="border-t border-border dark:border-white/[0.06] pt-4">
           <FreelancerAboutCard freelancer={freelancer} project={project} />
         </div>
       </CardContent>

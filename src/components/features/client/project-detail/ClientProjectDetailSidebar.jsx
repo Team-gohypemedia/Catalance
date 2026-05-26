@@ -283,7 +283,7 @@ const ClientProjectDetailSidebar = ({
     <Card className={panelClassName}>
       <CardHeader className="pb-3">
         <CardTitle className={eyebrowClassName}>Client Documents</CardTitle>
-        <CardDescription className={cn(subheadingClassName, "text-sm text-white/78")}>
+        <CardDescription className={cn(subheadingClassName, "text-sm text-muted-foreground dark:text-white/78")}>
           {clientDocs.length} {clientDocs.length === 1 ? "document" : "documents"} shared by client
         </CardDescription>
       </CardHeader>
@@ -308,18 +308,18 @@ const ClientProjectDetailSidebar = ({
                     getProjectDocumentPresentation={getProjectDocumentPresentation}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[1rem] font-semibold leading-tight text-[#f1efed]">
+                    <p className="truncate text-[1rem] font-semibold leading-tight text-foreground dark:text-[#f1efed]">
                       {doc.name || "Shared document"}
                     </p>
-                    <p className="mt-1 text-[0.96rem] text-[#a9a39d]">
+                    <p className="mt-1 text-[0.96rem] text-muted-foreground dark:text-[#a9a39d]">
                       {formatProjectDocumentTimestamp(doc.createdAt)}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-[0.95rem] font-semibold uppercase text-[#b7b1ab]">
+                    <p className="text-[0.95rem] font-semibold uppercase text-muted-foreground dark:text-[#b7b1ab]">
                       {extensionLabel}
                     </p>
-                    <p className="mt-1 text-[0.96rem] text-[#a9a39d]">
+                    <p className="mt-1 text-[0.96rem] text-muted-foreground dark:text-[#a9a39d]">
                       {fileSize}
                     </p>
                   </div>
@@ -328,7 +328,7 @@ const ClientProjectDetailSidebar = ({
             })}
           </div>
         ) : (
-          <div className={cn(insetPanelClassName, "!bg-card text-sm text-white/72")}>
+          <div className={cn(insetPanelClassName, "!bg-card text-sm text-muted-foreground dark:text-white/72")}>
             No documents attached yet. Upload project documentation here.
           </div>
         )}
@@ -338,7 +338,7 @@ const ClientProjectDetailSidebar = ({
             type="button"
             variant="outline"
             onClick={() => setAssetsDialogOpen(true)}
-            className="mt-6 h-12 w-full rounded-full border-white/[0.08] bg-[#111111] text-xs font-medium uppercase tracking-[0.22em] text-white/78 shadow-none hover:bg-[#181818] hover:text-white"
+            className="mt-6 h-12 w-full rounded-full border border-border bg-muted dark:bg-[#111111] dark:border-white/[0.08] text-xs font-medium uppercase tracking-[0.22em] text-foreground dark:text-white/78 shadow-none hover:bg-accent dark:hover:bg-[#181818] hover:text-foreground dark:hover:text-white"
           >
             View all shared assets
           </Button>
@@ -353,7 +353,7 @@ const ClientProjectDetailSidebar = ({
           Budget Summary
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 text-sm text-white">
+      <CardContent className="space-y-3 text-sm text-foreground dark:text-white">
         <div className="flex items-center justify-between border-b border-border/60 pb-2">
           <span>Total Budget</span>
           <span className="font-semibold text-foreground">
@@ -401,7 +401,7 @@ const ClientProjectDetailSidebar = ({
                     <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       {installment.label}
                     </p>
-                    <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white">
+                    <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-foreground dark:text-white">
                       ₹{Number(installment.amount || 0).toLocaleString()}
                     </p>
                   </div>
@@ -409,10 +409,10 @@ const ClientProjectDetailSidebar = ({
                     className={cn(
                       "border px-2.5 py-1 text-[10px] font-medium",
                       installment.isPaid
-                        ? "border-emerald-500/10 bg-emerald-500/15 text-emerald-200"
+                        ? "border-emerald-500/20 dark:border-emerald-500/10 bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-200"
                         : installment.isDue
                           ? "border-primary/10 bg-primary/15 text-primary"
-                          : "border-white/[0.08] bg-[#111111] text-muted-foreground",
+                          : "border-border dark:border-white/[0.08] bg-muted dark:bg-[#111111] text-muted-foreground",
                     )}
                   >
                     {installment.isPaid

@@ -462,7 +462,7 @@ const ClientWorkspaceHeader = ({
         </div>
 
         <div className="mt-7 border-b border-border pb-3">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mx-auto w-full flex flex-col gap-4 px-4 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between xl:w-[85%] xl:px-0">
             <div className="space-y-3">
               <HeaderNav
                 items={workspaceNavItems}

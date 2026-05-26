@@ -85,12 +85,12 @@ const ClientProjectDetailMainColumn = ({
         <div
           key={item.label}
           className={cn(
-            `${insetPanelClassName} min-w-0 bg-[#171717]`,
+            `${insetPanelClassName} min-w-0 bg-muted dark:bg-[#171717]`,
             item.label === "Timeline" ? "col-span-2 lg:col-span-1" : "",
           )}
         >
           <p className={eyebrowClassName}>{item.label}</p>
-          <p className="mt-3 break-words text-sm font-semibold tracking-[-0.02em] text-white sm:text-[15px]">
+          <p className="mt-3 break-words text-sm font-semibold tracking-[-0.02em] text-foreground dark:text-white sm:text-[15px]">
             {item.value || "Not specified"}
           </p>
         </div>
@@ -112,7 +112,7 @@ const ClientProjectDetailMainColumn = ({
       </CardHeader>
       <CardContent className="pt-0">
         <div className="px-2 py-1">
-          <p className="text-justify text-sm leading-7 text-[#d4d4d8]">
+          <p className="text-justify text-sm leading-7 text-muted-foreground dark:text-[#d4d4d8]">
             {projectDetailSnapshot.overview ||
               "Project scope, priorities, and delivery context will appear here once the brief is fully structured."}
           </p>
@@ -131,7 +131,7 @@ const ClientProjectDetailMainColumn = ({
               {projectDetailSnapshot.deliverablesItems.map((item) => (
                 <li
                   key={item}
-                  className="flex min-w-0 items-start gap-3 text-sm leading-7 text-[#e4e4e7]"
+                  className="flex min-w-0 items-start gap-3 text-sm leading-7 text-foreground dark:text-[#e4e4e7]"
                 >
                   <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#ffd400]" />
                   <span>{item}</span>
@@ -139,7 +139,7 @@ const ClientProjectDetailMainColumn = ({
               ))}
             </ul>
           ) : (
-            <p className="px-2 pb-1 text-sm leading-7 text-[#d4d4d8]">
+            <p className="px-2 pb-1 text-sm leading-7 text-muted-foreground dark:text-[#d4d4d8]">
               Feature and deliverable details will appear once the brief is
               structured.
             </p>
@@ -166,12 +166,12 @@ const ClientProjectDetailMainColumn = ({
               .map((item) => (
                 <div
                   key={item.label}
-                  className="min-h-[98px] min-w-0 rounded-[12px] bg-[#262626] px-4 py-4"
+                  className="min-h-[98px] min-w-0 rounded-[12px] bg-muted border border-border dark:border-transparent dark:bg-[#262626] px-4 py-4"
                 >
-                  <p className="text-[0.66rem] font-medium uppercase tracking-[0.15em] text-white/45">
+                  <p className="text-[0.66rem] font-medium uppercase tracking-[0.15em] text-muted-foreground/75 dark:text-white/45">
                     {item.label}
                   </p>
-                  <p className="mt-5 break-words text-[1.05rem] font-semibold leading-6 text-white sm:text-[1.08rem]">
+                  <p className="mt-5 break-words text-[1.05rem] font-semibold leading-6 text-foreground dark:text-white sm:text-[1.08rem]">
                     {item.value || "Not specified"}
                   </p>
                 </div>
@@ -190,14 +190,14 @@ const ClientProjectDetailMainColumn = ({
       </CardHeader>
       <CardContent className="space-y-8 px-6 pb-6 pt-0">
         <div className="relative pt-2">
-          <div className="h-[6px] w-full overflow-hidden rounded-full bg-white/[0.06]">
+          <div className="h-[6px] w-full overflow-hidden rounded-full bg-muted-foreground/15 dark:bg-white/[0.06]">
             <div
               className="h-full rounded-full bg-primary/10 transition-all duration-300"
               style={{ width: `${overallProgress}%` }}
             />
           </div>
           <div
-            className="absolute top-1/2 h-3.5 w-3.5 -translate-y-[calc(50%-4px)] rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all duration-300"
+            className="absolute top-1/2 h-3.5 w-3.5 -translate-y-[calc(50%-4px)] rounded-full bg-white border border-border dark:border-transparent shadow-sm dark:shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all duration-300"
             style={{ left: `calc(${overallProgress}% - 7px)` }}
           />
         </div>
@@ -221,11 +221,11 @@ const ClientProjectDetailMainColumn = ({
                 }}
                 aria-expanded={isExpanded}
                 className={cn(
-                  "relative flex w-full flex-col justify-between overflow-hidden rounded-[20px] border border-white/[0.08] bg-card p-5 text-left transition-all",
+                  "relative flex w-full flex-col justify-between overflow-hidden rounded-[20px] border border-border dark:border-white/[0.08] bg-card p-5 text-left transition-all",
                   phaseValue
                     ? isExpanded
-                      ? "cursor-pointer border-white/[0.14] ring-1 ring-white/[0.10] hover:border-white/[0.14] hover:ring-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 focus-visible:ring-offset-0"
-                      : "cursor-pointer hover:border-white/[0.14] hover:ring-1 hover:ring-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 focus-visible:ring-offset-0"
+                      ? "cursor-pointer border-border dark:border-white/[0.14] ring-1 ring-border/50 dark:ring-white/[0.10] hover:border-border dark:hover:border-white/[0.14] hover:ring-border/50 dark:hover:ring-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 dark:focus-visible:ring-white/20 focus-visible:ring-offset-0"
+                      : "cursor-pointer hover:border-border dark:hover:border-white/[0.14] hover:ring-1 hover:ring-border/50 dark:hover:ring-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 dark:focus-visible:ring-white/20 focus-visible:ring-offset-0"
                     : "",
                   isCompleted ? "shadow-[inset_2px_0_0_0_#10b981]" : "",
                 )}
@@ -242,7 +242,7 @@ const ClientProjectDetailMainColumn = ({
                   </div>
                   <div
                     className={`mb-4 text-[15px] font-semibold leading-[1.4] ${
-                      isPending ? "text-white/40" : "text-white/95"
+                      isPending ? "text-foreground/45 dark:text-white/40" : "text-foreground/95 dark:text-white/95"
                     }`}
                   >
                     {phase?.name || "Phase"}
@@ -285,7 +285,7 @@ const ClientProjectDetailMainColumn = ({
           <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
                   Final Step
                 </p>
                 <p className="mt-1 text-sm text-foreground">
@@ -344,9 +344,9 @@ const ClientProjectDetailMainColumn = ({
         {isInitialPaymentPaid ? (
           <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
             <div className="flex items-start gap-2.5">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
                   Initial Payment Confirmed
                 </p>
                 <p className="mt-1 text-sm text-foreground">
@@ -552,7 +552,7 @@ const ClientProjectDetailMainColumn = ({
                                 className={cn(
                                   "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border sm:mt-0 sm:h-8 sm:w-8",
                                   isPaid || isDueNow
-                                    ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-400"
+                                    ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-600 dark:text-emerald-400"
                                     : "border-border/60 bg-background/70 text-muted-foreground",
                                 )}
                               >
@@ -568,9 +568,9 @@ const ClientProjectDetailMainColumn = ({
                                     className={cn(
                                       "shrink-0 sm:hidden",
                                       isPaid
-                                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                                        ? "border-emerald-500/20 dark:border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
                                         : isDueNow
-                                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                                          ? "border-emerald-500/20 dark:border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                                           : "border-border/60 bg-background/70 text-muted-foreground",
                                     )}
                                   >
@@ -596,9 +596,9 @@ const ClientProjectDetailMainColumn = ({
                                 className={cn(
                                   "hidden shrink-0 sm:inline-flex sm:self-center",
                                   isPaid
-                                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                                    ? "border-emerald-500/20 dark:border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
                                     : isDueNow
-                                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                                      ? "border-emerald-500/20 dark:border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                                       : "border-border/60 bg-background/70 text-muted-foreground",
                                 )}
                               >

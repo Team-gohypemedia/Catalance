@@ -88,7 +88,7 @@ const OverviewMetricCardSkeleton = memo(function OverviewMetricCardSkeleton({
     <DashboardPanel
       className={cn(
         "group relative min-h-[136px] border border-transparent bg-card px-3.5 py-4 sm:min-h-[110px] sm:p-5",
-        shouldSpanFullWidth && "col-span-2 xl:col-span-1",
+        shouldSpanFullWidth && "col-span-2 lg:col-span-1",
       )}
     >
       <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
@@ -217,7 +217,7 @@ const OverviewMetricCard = memo(function OverviewMetricCard({ item }) {
         isInteractive
           ? "cursor-pointer hover:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           : "hover:border-primary/70",
-        shouldSpanFullWidth && "col-span-2 xl:col-span-1",
+        shouldSpanFullWidth && "col-span-2 lg:col-span-1",
       )}
     >
       <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
@@ -318,7 +318,7 @@ const OverviewMetricsGrid = memo(function OverviewMetricsGrid({
   return (
     <section
       className={cn(
-        "mt-12 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4",
+        "mt-12 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4",
         className,
       )}
     >

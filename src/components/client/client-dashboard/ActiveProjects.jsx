@@ -245,7 +245,7 @@ const ActiveProjects = memo(function ActiveProjects({
       </div>
 
       {resolvedIsLoading ? (
-        <div className="grid gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3 xl:gap-7">
+        <div className="grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-6 xl:grid-cols-3 xl:gap-7">
           {[0, 1, 2].map((item) => (
             <ProjectCardSkeleton key={`active-project-skeleton-${item}`} />
           ))}
@@ -268,7 +268,7 @@ const ActiveProjects = memo(function ActiveProjects({
                   {items.map((item) => (
                     <CarouselItem
                       key={item.id}
-                      className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
+                      className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
                     >
                       <div
                         ref={(node) => {
@@ -288,7 +288,7 @@ const ActiveProjects = memo(function ActiveProjects({
                   {projectRedirectCards.map((item) => (
                     <CarouselItem
                       key={item.id}
-                      className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
+                      className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
                     >
                       <div
                         style={
@@ -315,7 +315,7 @@ const ActiveProjects = memo(function ActiveProjects({
               />
             </div>
           ) : (
-            <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3 xl:gap-7">
+            <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-6 xl:grid-cols-3 xl:gap-7">
               {items.map((item) => (
                 <ProjectProposalCard
                   key={item.id}

@@ -24,10 +24,10 @@ const ClientProjectDetailHeader = ({
 }) => (
   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
     <div className="space-y-1.5">
-      <h1 className="text-[clamp(1.85rem,4vw,2.75rem)] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
+      <h1 className="text-[clamp(1.85rem,4vw,2.75rem)] font-semibold leading-[1.02] tracking-[-0.05em] text-foreground dark:text-white">
         {pageTitle}
       </h1>
-      <p className="text-xs text-[#717784]">
+      <p className="text-xs text-muted-foreground dark:text-[#717784]">
         {activeProjectManager
           ? `Project Catalyst: ${activeProjectManager.fullName}`
           : "Project Catalyst: Not assigned yet"}
@@ -45,8 +45,8 @@ const ClientProjectDetailHeader = ({
                 onClick={onToggleMarketplaceLive}
                 className={`h-9 rounded-full border px-4 ${
                   isMarketplaceLive
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
-                    : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                    ? "border-emerald-500/20 dark:border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15"
+                    : "border-border dark:border-white/15 bg-muted dark:bg-white/5 text-foreground dark:text-slate-200 hover:bg-accent dark:hover:bg-white/10"
                 }`}
               >
                 {isUpdatingMarketplaceLive ? (
