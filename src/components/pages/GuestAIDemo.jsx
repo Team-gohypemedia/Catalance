@@ -5277,7 +5277,6 @@ const GuestAIDemo = () => {
                                 <div className="absolute left-[-2rem] top-[-2rem] h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
                                 <div className="absolute right-[-4rem] top-[-3rem] h-48 w-48 rounded-full border border-primary/10 bg-primary/[0.03]" />
                                 <div className="absolute bottom-[-5rem] right-[12%] h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
-                                <div className="absolute right-4 top-4 text-[clamp(4rem,11vw,9rem)] font-semibold uppercase tracking-[0.22em] text-white/[0.03]">CATA</div>
                             </div>
 
                             <div className="relative z-10 space-y-6">

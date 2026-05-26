@@ -1239,6 +1239,7 @@ const ProjectDashboard = () => {
     }
 
     let isActive = true;
+    let timeoutId = null;
 
     const initChat = async () => {
       try {
@@ -1259,10 +1260,15 @@ const ProjectDashboard = () => {
         console.error("Chat init error:", e);
       }
     };
-    initChat();
+    timeoutId = window.setTimeout(() => {
+      initChat();
+    }, 250);
 
     return () => {
       isActive = false;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     };
   }, [authFetch, chatServiceKey, isChatLockedUntilPayment, project?.title]);
 
