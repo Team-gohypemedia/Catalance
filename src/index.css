@@ -515,9 +515,9 @@ html.marketplace-page:not(.dark) main p {
 }
 
 /* ── All spans ── */
-html.home-page:not(.dark) main span:not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]),
-html.onboarding-page:not(.dark) main span:not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]),
-html.marketplace-page:not(.dark) main span:not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]) {
+html.home-page:not(.dark) main span:not(.keep-white):not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]),
+html.onboarding-page:not(.dark) main span:not(.keep-white):not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]),
+html.marketplace-page:not(.dark) main span:not(.keep-white):not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]) {
   color: #1C1B1F !important;
 }
 
@@ -532,6 +532,9 @@ html:not(.dark) [data-active="true"] span {
 /* ── Catch all hardcoded text-white utility classes ── */
 html.home-page:not(.dark) main [class*="text-white"]:not(.keep-white):not(.dark-card *),
 html.onboarding-page:not(.dark) main [class*="text-white"]:not(.keep-white):not(.dark-card *) {
+  color: #1C1B1F !important;
+}
+html.marketplace-page:not(.dark) main [class*="text-white"]:not(.keep-white):not(.dark-card *) {
   color: #1C1B1F !important;
 }
 
@@ -554,6 +557,9 @@ html:not(.dark) a[class*="bg-primary/"]:not([class*="bg-primary/5"]):not([class*
 /* Softer muted variants for text-white/55 etc */
 html.home-page:not(.dark) main [class*="text-white/"]:not(.keep-white):not(.dark-card *),
 html.onboarding-page:not(.dark) main [class*="text-white/"]:not(.keep-white):not(.dark-card *) {
+  color: #7C778A !important;
+}
+html.marketplace-page:not(.dark) main [class*="text-white/"]:not(.keep-white):not(.dark-card *) {
   color: #7C778A !important;
 }
 
@@ -842,6 +848,34 @@ html:not(.dark) .ServiceRailCard img {
 html:not(.dark) footer a[aria-label] {
   background-color: #FFFFFF !important;
   box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
+}
+
+html:not(.dark) footer a[aria-label].keep-orange-social {
+  background-color: #e56a28 !important;
+  border-color: #e56a28 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 5px rgba(229, 106, 40, 0.18) !important;
+}
+
+html.dark footer a[aria-label].keep-orange-social {
+  background-color: #facc15 !important;
+  border-color: #facc15 !important;
+  color: #09090b !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 8px 24px rgba(250, 204, 21, 0.22) !important;
+}
+
+html.dark footer a[aria-label].keep-orange-social:hover {
+  background-color: #fde047 !important;
+  border-color: #fde047 !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 10px 28px rgba(253, 224, 71, 0.28) !important;
+}
+
+html.dark footer a[aria-label].keep-orange-social .footer-social-icon path {
+  fill: #09090b !important;
 }
 
 html:not(.dark) footer a[aria-label]:hover {

@@ -56,12 +56,10 @@ const Footer = () => {
                 {
                   href: "https://www.facebook.com/profile.php?id=61586800500990",
                   label: "Facebook",
-                  color: "border-[#1877F2]/20 hover:bg-[#1877F2]/5",
                   icon: (props) => (
                     <svg viewBox="0 0 24 24" {...props}>
-                      <circle cx="12" cy="12" r="12" fill="#1877F2" />
                       <path
-                        d="M15.12 12.32H13.12V21H9.58V12.32H8.11V9.29H9.58V7.33C9.58 4.76 11.04 3 13.8 3C14.73 3 15.65 3.07 15.65 3.07V6.04H14.13C12.87 6.04 12.35 6.82 12.35 7.62V9.29H15.42L15.12 12.32Z"
+                        d="M9.101 23.69h4.837v-10.74h3.244l.477-4.185H13.938v-2.67c0-1.127.265-1.9 1.83-1.9h2.24V.5C17.624.444 16.03 0 14.28 0 10.623 0 8.007 2.23 8.007 6.31v3.454H4.898v4.185H8.01V23.69H9.1z"
                         fill="white"
                       />
                     </svg>
@@ -70,12 +68,10 @@ const Footer = () => {
                 {
                   href: "https://www.linkedin.com/company/catalance/?viewAsMember=true",
                   label: "LinkedIn",
-                  color: "border-[#0A66C2]/20 hover:bg-[#0A66C2]/5",
                   icon: (props) => (
                     <svg viewBox="0 0 24 24" {...props}>
-                      <rect width="24" height="24" rx="4" fill="#0A66C2" />
                       <path
-                        d="M6.12 19.5H3.18V10.14H6.12V19.5ZM4.65 8.86C3.71 8.86 2.95 8.1 2.95 7.16C2.95 6.22 3.71 5.46 4.65 5.46C5.59 5.46 6.35 6.22 6.35 7.16C6.35 8.1 5.59 8.86 4.65 8.86ZM21.05 19.5H18.11V14.89C18.11 13.79 18.09 12.38 16.58 12.38C15.05 12.38 14.81 13.58 14.81 14.81V19.5H11.87V10.14H14.7V11.42H14.74C15.13 10.67 16.1 9.88 17.54 9.88C20.55 9.88 21.11 11.86 21.11 14.44V19.5H21.05Z"
+                        d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"
                         fill="white"
                       />
                     </svg>
@@ -84,21 +80,10 @@ const Footer = () => {
                 {
                   href: "https://www.instagram.com/catalance_official/",
                   label: "Instagram",
-                  color: "border-[#E4405F]/20 hover:bg-[#E4405F]/5",
                   icon: (props) => (
                     <svg viewBox="0 0 24 24" {...props}>
-                      <defs>
-                        <linearGradient id="instagram-grad" x1="0%" y1="100%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#feda75" />
-                          <stop offset="25%" stopColor="#fa7e1e" />
-                          <stop offset="50%" stopColor="#d62976" />
-                          <stop offset="75%" stopColor="#962fbf" />
-                          <stop offset="100%" stopColor="#4f5bd5" />
-                        </linearGradient>
-                      </defs>
-                      <rect width="24" height="24" rx="5" fill="url(#instagram-grad)" />
                       <path
-                        d="M12 6.81C9.14 6.81 6.81 9.14 6.81 12C6.81 14.86 9.14 17.19 12 17.19C14.86 17.19 17.19 14.86 17.19 12C17.19 9.14 14.86 6.81 12 6.81ZM12 15.38C10.13 15.38 8.62 13.87 8.62 12C8.62 10.13 10.13 8.62 12 8.62C13.87 8.62 15.38 10.13 15.38 12C15.38 13.87 13.87 15.38 12 15.38ZM18.59 6.66C18.59 7.33 18.05 7.87 17.38 7.87C16.71 7.87 16.17 7.33 16.17 6.66C16.17 5.99 16.71 5.45 17.38 5.45C18.05 5.45 18.59 5.99 18.59 6.66Z"
+                        d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.33.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.33 0 8.74 0 12s.014 3.67.072 4.947c.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.257 0 3.666-.014 4.947-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.257-.014-3.67-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.666.014 15.257 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"
                         fill="white"
                       />
                     </svg>
@@ -107,16 +92,18 @@ const Footer = () => {
               ].map((social) => (
                 <a
                   key={social.label}
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-background transition-all duration-300",
-                    social.color
-                  )}
+                  className="keep-orange-social flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-300"
+                  style={{
+                    backgroundColor: "#e56a28",
+                    borderColor: "#e56a28",
+                    color: "#ffffff",
+                  }}
                   href={social.href}
                   aria-label={social.label}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <social.icon className="h-5 w-5" />
+                  <social.icon className="h-5 w-5 footer-social-icon" />
                 </a>
               ))}
             </div>
@@ -229,8 +216,8 @@ const Footer = () => {
         </div>
       </div>
       {/* Large Background Text */}
-      <div className="pointer-events-none absolute bottom-0 left-4 sm:left-6 lg:left-8 xl:left-[calc((100%-80rem)/2+2rem)] z-0 select-none overflow-hidden pb-4 opacity-[0.025] dark:opacity-[0.015]">
-        <span className="whitespace-nowrap text-[15vw] font-black leading-none tracking-tighter text-foreground sm:text-[18vw] lg:text-[22vw]">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 select-none overflow-hidden pb-4 opacity-[0.025] dark:opacity-[0.015]">
+        <span className="block whitespace-nowrap text-center text-[12vw] font-black leading-none tracking-tighter text-foreground sm:text-[16vw] lg:text-[20vw]">
           Catalance
         </span>
       </div>

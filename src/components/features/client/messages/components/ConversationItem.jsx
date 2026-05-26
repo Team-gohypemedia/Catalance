@@ -37,19 +37,19 @@ const ConversationItem = React.memo(function ConversationItem({
       className={cn(
         "relative flex w-full items-center gap-4 rounded-[18px] border bg-card px-4 py-3.5 text-left transition",
         isActive
-          ? "border-[var(--primary)]/60 text-white shadow-[0_0_0_1px_rgba(255,193,7,0.2),inset_0_1px_0_rgba(255,255,255,0.03)]"
-          : "border-white/[0.06] text-white hover:border-white/[0.08]",
+          ? "border-[var(--primary)]/60 text-foreground dark:text-white shadow-[0_0_0_1px_rgba(255,193,7,0.2),inset_0_1px_0_rgba(255,255,255,0.03)]"
+          : "border-border text-foreground dark:border-white/[0.06] dark:text-white hover:border-border/80 dark:hover:border-white/[0.08]",
       )}
     >
       <div className="relative shrink-0">
-        <Avatar className={cn("size-12 border", isActive ? "border-white/[0.12]" : "border-white/10")}>
+        <Avatar className={cn("size-12 border", isActive ? "border-white/[0.12]" : "border-border dark:border-white/10")}>
           <AvatarImage src={conversation.avatar || undefined} alt={projectName} />
-          <AvatarFallback className="bg-[#2b2b31] text-sm font-semibold text-white">
+          <AvatarFallback className="bg-muted text-sm font-semibold text-foreground dark:bg-[#2b2b31] dark:text-white">
             {getInitials(projectName)}
           </AvatarFallback>
         </Avatar>
         {showOnline ? (
-          <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#171717] bg-[#22c55e]" />
+          <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-card bg-[#22c55e]" />
         ) : null}
       </div>
 
@@ -58,7 +58,7 @@ const ConversationItem = React.memo(function ConversationItem({
           <p
             className={cn(
               "truncate text-[0.98rem] font-semibold",
-              isActive ? "text-[var(--primary)]" : "text-white",
+              isActive ? "text-[var(--primary)]" : "text-foreground dark:text-white",
             )}
           >
             {projectName}

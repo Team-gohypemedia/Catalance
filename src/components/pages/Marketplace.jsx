@@ -2201,11 +2201,12 @@ const Marketplace = () => {
           <div className="flex justify-center pt-8">
             <Button
               size="lg"
-              className="group relative h-16 overflow-hidden rounded-full bg-primary px-10 text-lg font-bold text-primary-foreground shadow-xl transition-all hover:scale-105 hover:shadow-primary/20"
+              className="group relative h-16 overflow-hidden rounded-full bg-primary px-10 text-lg font-bold text-white shadow-xl transition-all hover:scale-105 hover:shadow-primary/20"
+              style={{ color: "#fff" }}
               onClick={() => navigate("/contact")}
             >
-              <span className="relative z-10 mr-4">Book a 15-min call</span>
-              <div className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white text-primary transition-all duration-300 group-hover:-rotate-45 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+              <span className="relative z-10 mr-4 keep-white" style={{ color: "#fff" }}>Book a 15-min call</span>
+              <div className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white text-primary transition-all duration-300 group-hover:-rotate-45 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 keep-white">
                 <ArrowRight className="h-4 w-4" />
               </div>
             </Button>
@@ -2298,7 +2299,7 @@ const Marketplace = () => {
               <div className="flex flex-col gap-4 sm:flex-row">
                 <Button
                   size="lg"
-                  className="h-16 rounded-full bg-primary px-10 text-lg font-bold text-primary-foreground shadow-xl transition-all hover:scale-105 hover:bg-primary/90"
+                  className="h-16 rounded-full bg-primary px-10 text-lg font-bold text-white shadow-xl transition-all hover:scale-105 hover:bg-primary/90"
                   onClick={() => scrollToSection("marketplace-results")}
                 >
                   Explore services

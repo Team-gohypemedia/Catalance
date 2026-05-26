@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, LayoutGrid, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutGrid, CheckCircle2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
 /* ─── Service Card ─── */
@@ -243,7 +243,7 @@ const ServiceCategoryCarousel = ({
           disabled={!canScrollLeft}
           className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-slate-300 transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white disabled:opacity-25 disabled:cursor-not-allowed"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" />
         </button>
         <button
           type="button"
@@ -251,7 +251,7 @@ const ServiceCategoryCarousel = ({
           disabled={!canScrollRight}
           className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-slate-300 transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white disabled:opacity-25 disabled:cursor-not-allowed"
         >
-          <ArrowRight className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
     </div>

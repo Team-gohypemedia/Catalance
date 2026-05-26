@@ -4,6 +4,44 @@ import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import Settings from "lucide-react/dist/esm/icons/settings";
+import Files from "lucide-react/dist/esm/icons/files";
+import Palette from "lucide-react/dist/esm/icons/palette";
+import Cloud from "lucide-react/dist/esm/icons/cloud";
+import Code2 from "lucide-react/dist/esm/icons/code-2";
+import Terminal from "lucide-react/dist/esm/icons/terminal";
+import Database from "lucide-react/dist/esm/icons/database";
+import HelpCircle from "lucide-react/dist/esm/icons/help-circle";
+
+const getMetadataIcon = (label) => {
+  const normalized = String(label || "").toLowerCase();
+  if (normalized.includes("website type") || normalized.includes("type")) {
+    return Globe;
+  }
+  if (normalized.includes("build")) {
+    return Settings;
+  }
+  if (normalized.includes("page")) {
+    return Files;
+  }
+  if (normalized.includes("design") || normalized.includes("style")) {
+    return Palette;
+  }
+  if (normalized.includes("hosting")) {
+    return Cloud;
+  }
+  if (normalized.includes("frontend") || normalized.includes("framework") || normalized.includes("tech stack")) {
+    return Code2;
+  }
+  if (normalized.includes("backend") || normalized.includes("technology")) {
+    return Terminal;
+  }
+  if (normalized.includes("database")) {
+    return Database;
+  }
+  return HelpCircle;
+};
 import {
   Accordion,
   AccordionContent,
@@ -150,23 +188,31 @@ const FreelancerProjectDetailMainColumn = ({
 
         <Card className={panelClassName}>
           <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
-            <CardTitle className={eyebrowClassName}>Website Type</CardTitle>
+            <CardTitle className={eyebrowClassName}>Website Specifications</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {projectDetailSnapshot.websiteDetails.map((item) => (
-                <div
-                  key={item.label}
-                  className="min-h-[98px] rounded-[12px] bg-[#262626] px-4 py-4"
-                >
-                  <p className="text-[0.66rem] font-medium uppercase tracking-[0.15em] text-white/45">
-                    {item.label}
-                  </p>
-                  <p className="mt-5 break-words text-[1.05rem] font-semibold leading-6 text-white sm:text-[1.08rem]">
-                    {item.value || "Not specified"}
-                  </p>
-                </div>
-              ))}
+          <CardContent className="px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
+            <div className="flex flex-col gap-3.5">
+              {projectDetailSnapshot.websiteDetails.map((item) => {
+                const IconComponent = getMetadataIcon(item.label);
+                return (
+                  <div
+                    key={item.label}
+                    className="flex items-center gap-4 rounded-[16px] border border-white/[0.04] bg-[#262626]/40 px-4 py-3.5"
+                  >
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                      <IconComponent className="size-5" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="text-[0.66rem] font-bold uppercase tracking-[0.15em] text-white/45">
+                        {item.label}
+                      </p>
+                      <p className="break-words text-[0.95rem] font-semibold leading-relaxed text-white/90">
+                        {item.value || "Not specified"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

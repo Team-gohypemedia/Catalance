@@ -54,7 +54,7 @@ const ChatIconButton = ({ className, children, ...props }) => (
   <button
     type="button"
     className={cn(
-      "flex size-9 items-center justify-center rounded-full text-[#8f96a3] transition hover:bg-white/[0.03] hover:text-white disabled:pointer-events-none disabled:opacity-50",
+      "flex size-9 items-center justify-center rounded-full text-[#8f96a3] transition hover:bg-muted hover:text-foreground dark:hover:bg-white/[0.03] dark:hover:text-white disabled:pointer-events-none disabled:opacity-50",
       className,
     )}
     {...props}
@@ -328,7 +328,7 @@ const ChatArea = React.memo(function ChatArea({
 
       if (isPdfAttachment(attachment)) {
         return (
-          <div className="group relative max-w-[340px] overflow-hidden rounded-[12px] border border-white/[0.06] bg-[#1d1d1d] p-1.5">
+          <div className="group relative max-w-[340px] overflow-hidden rounded-[12px] border border-border bg-muted/50 dark:border-white/[0.06] dark:bg-[#1d1d1d] p-1.5">
             <a href={attachment.url} target="_blank" rel="noopener noreferrer">
               <Suspense
                 fallback={
@@ -354,10 +354,10 @@ const ChatArea = React.memo(function ChatArea({
                 PDF
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[#f8fafc]">
+                <p className="truncate text-sm font-semibold text-foreground dark:text-[#f8fafc]">
                   {attachment.name || "PDF attachment"}
                 </p>
-                <p className="text-xs text-[#9ba3af]">
+                <p className="text-xs text-muted-foreground dark:text-[#9ba3af]">
                   {["PDF", formatFileSize(attachment.size)].filter(Boolean).join(" • ")}
                 </p>
               </div>
@@ -376,7 +376,7 @@ const ChatArea = React.memo(function ChatArea({
               "flex items-center gap-3 rounded-2xl border px-4 py-3",
               ownsMessage
                 ? "border-black/10 bg-black/10 text-black/80"
-                : "border-white/[0.06] bg-white/[0.03] text-[#f1f5f9]",
+                : "border-border bg-muted text-foreground dark:border-white/[0.06] dark:bg-white/[0.03] dark:text-[#f1f5f9]",
             )}
           >
             <Paperclip className="size-4 shrink-0" />
@@ -410,7 +410,7 @@ const ChatArea = React.memo(function ChatArea({
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-card">
       <div
         className={cn(
-          "sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-white/[0.06] bg-card",
+          "sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-card dark:border-white/[0.06]",
           mobileView ? "px-4 py-3" : "px-5 py-4 md:px-7",
         )}
       >
@@ -419,16 +419,16 @@ const ChatArea = React.memo(function ChatArea({
             <button
               type="button"
               onClick={onBack}
-              className="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-white transition hover:bg-white/[0.06]"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-foreground transition hover:bg-accent dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-white dark:hover:bg-white/[0.06]"
               aria-label="Back to conversations"
             >
               <ChevronLeft className="size-5" />
             </button>
           ) : null}
           <div className="relative shrink-0">
-            <Avatar className={cn("border border-white/10", mobileView ? "size-11" : "size-12")}>
+            <Avatar className={cn("border border-border dark:border-white/10", mobileView ? "size-11" : "size-12")}>
               <AvatarImage src={conversation?.avatar || undefined} alt={conversationTitle} />
-              <AvatarFallback className="bg-[#2b2b31] text-sm font-semibold text-white">
+              <AvatarFallback className="bg-muted text-sm font-semibold text-foreground dark:bg-[#2b2b31] dark:text-white">
                 {getInitials(conversationTitle)}
               </AvatarFallback>
             </Avatar>
@@ -442,7 +442,7 @@ const ChatArea = React.memo(function ChatArea({
           <div className="min-w-0 flex-1">
             <p
               className={cn(
-                "truncate font-semibold tracking-[-0.3px] text-white",
+                "truncate font-semibold tracking-[-0.3px] text-foreground dark:text-white",
                 mobileView ? "text-[1rem]" : "text-[1.15rem]",
               )}
             >
@@ -461,7 +461,7 @@ const ChatArea = React.memo(function ChatArea({
               onChange={(event) => setMessageSearch(event.target.value)}
               placeholder="Search in chat..."
               className={cn(
-                "h-9 rounded-[14px] border-white/[0.1] bg-white/[0.03] px-3 text-sm text-white placeholder:text-[#6b7280] focus-visible:ring-0",
+                "h-9 rounded-[14px] border-border bg-muted px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0 dark:border-white/[0.1] dark:bg-white/[0.03] dark:text-white",
                 mobileView
                   ? "w-[38vw] min-w-[116px] max-w-[180px]"
                   : "w-[220px]",
@@ -481,12 +481,12 @@ const ChatArea = React.memo(function ChatArea({
             <Search className="size-4.5" />
           </ChatIconButton>
           <DropdownMenu modal={false}>
-            <DropdownMenuTrigger className="flex size-9 items-center justify-center rounded-full text-[#8f96a3] transition hover:bg-white/[0.03] hover:text-white">
+            <DropdownMenuTrigger className="flex size-9 items-center justify-center rounded-full text-[#8f96a3] transition hover:bg-muted hover:text-foreground dark:hover:bg-white/[0.03] dark:hover:text-white">
               <MoreVertical className="size-4.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-44 rounded-[16px] border-white/[0.08] bg-[#1c1c1c] p-1.5 text-white"
+              className="w-44 rounded-[16px] border-border bg-popover p-1.5 text-foreground dark:border-white/[0.08] dark:bg-[#1c1c1c] dark:text-white"
             >
               <DropdownMenuItem
                 onSelect={(event) => {
@@ -494,7 +494,7 @@ const ChatArea = React.memo(function ChatArea({
                   void onClearChat?.();
                 }}
                 disabled={isClearingChat}
-                className="rounded-[12px] px-3 py-2 text-sm text-[#fca5a5] focus:bg-white/[0.05] focus:text-[#fecaca] data-[disabled]:opacity-50"
+                className="rounded-[12px] px-3 py-2 text-sm text-destructive focus:bg-destructive/10 focus:text-destructive dark:text-[#fca5a5] dark:focus:bg-white/[0.05] dark:focus:text-[#fecaca] data-[disabled]:opacity-50"
               >
                 {isClearingChat ? "Clearing..." : "Clear chat"}
               </DropdownMenuItem>
@@ -506,11 +506,11 @@ const ChatArea = React.memo(function ChatArea({
       <div
         ref={messagesViewportRef}
         onScroll={handleMessagesScroll}
-        className="relative min-h-0 flex-1 overflow-y-scroll bg-card px-3 py-6 [scrollbar-gutter:stable] [scrollbar-color:rgba(255,255,255,0.18)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.16] [&::-webkit-scrollbar-track]:bg-transparent"
+        className="relative min-h-0 flex-1 overflow-y-scroll bg-card px-3 py-6 [scrollbar-gutter:stable] [scrollbar-color:rgba(0,0,0,0.15)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.18)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/[0.12] dark:[&::-webkit-scrollbar-thumb]:bg-white/[0.16] [&::-webkit-scrollbar-track]:bg-transparent"
       >
         {loadingMessages ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center py-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-[#1a1a1a]/95 px-4 py-1.5 text-xs text-[#9ba3af] backdrop-blur">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/95 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur dark:border-white/[0.06] dark:bg-[#1a1a1a]/95 dark:text-[#9ba3af]">
               <Loader2 className="size-3.5 animate-spin" />
               Loading conversation...
             </div>
@@ -541,16 +541,16 @@ const ChatArea = React.memo(function ChatArea({
               <React.Fragment key={message.id || `${message.createdAt || index}-${index}`}>
                 {showDateDivider ? (
                   <div className="flex justify-center py-2">
-                    <span className="inline-flex h-7 items-center justify-center rounded-full border border-white/[0.06] bg-[#1a1a1a] px-4 text-center text-[11px] font-semibold uppercase leading-none tracking-[0.18em] text-muted-foreground">
+                    <span className="inline-flex h-7 items-center justify-center rounded-full border border-border bg-muted px-4 text-center text-[11px] font-semibold uppercase leading-none tracking-[0.18em] text-muted-foreground dark:border-white/[0.06] dark:bg-[#1a1a1a]">
                       {formatDayDivider(messageDate)}
                     </span>
                   </div>
                 ) : null}
                 <div className={cn("flex items-end gap-3", ownsMessage ? "justify-end" : "justify-start")}>
                   {!ownsMessage ? (
-                    <Avatar className="hidden size-8 shrink-0 self-end border border-white/10 sm:flex">
+                    <Avatar className="hidden size-8 shrink-0 self-end border border-border dark:border-white/10 sm:flex">
                       <AvatarImage src={conversation?.avatar || undefined} alt={conversationTitle} />
-                      <AvatarFallback className="bg-[#2b2b31] text-[11px] font-semibold text-white">
+                      <AvatarFallback className="bg-muted text-[11px] font-semibold text-foreground dark:bg-[#2b2b31] dark:text-white">
                         {getInitials(conversationTitle)}
                       </AvatarFallback>
                     </Avatar>
@@ -562,14 +562,14 @@ const ChatArea = React.memo(function ChatArea({
                       </p>
                     ) : null}
                     {message.deleted || message.isDeleted ? (
-                      <div className={cn("rounded-[14px] border px-4 py-3 text-sm italic", ownsMessage ? "border-black/10 bg-primary text-primary-foreground" : "border-white/[0.06] bg-[#1d1d1d] text-[#8f96a3]")}>
+                      <div className={cn("rounded-[14px] border px-4 py-3 text-sm italic", ownsMessage ? "border-black/10 bg-primary text-primary-foreground" : "border-border bg-muted text-muted-foreground dark:border-white/[0.06] dark:bg-[#1d1d1d] dark:text-[#8f96a3]")}>
                         <div className="flex items-start gap-2">
                           <Clock4 className="mt-0.5 size-4 shrink-0 opacity-70" />
                           <span>{ownsMessage ? "You deleted this message." : "This message was deleted."}</span>
                         </div>
                       </div>
                     ) : (
-                      <div className={cn("rounded-[14px] border px-3 py-2 shadow-[0_18px_45px_-38px_rgba(0,0,0,0.8)]", ownsMessage ? "border-black/10 bg-primary text-primary-foreground" : "border-white/[0.06] bg-[#1d1d1d] text-[#f1f5f9]")}>
+                      <div className={cn("rounded-[14px] border px-3 py-2 shadow-[0_18px_45px_-38px_rgba(0,0,0,0.8)]", ownsMessage ? "border-black/10 bg-primary text-primary-foreground" : "border-border bg-muted text-foreground dark:border-white/[0.06] dark:bg-[#1d1d1d] dark:text-[#f1f5f9]")}>
                         {message.attachment ? renderAttachmentBlock(message, ownsMessage) : null}
                         {message.content ? (
                           <p className="mt-2 whitespace-pre-wrap text-[0.96rem] leading-6" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>
@@ -589,7 +589,7 @@ const ChatArea = React.memo(function ChatArea({
 
           {typingUsers.length > 0 && !deferredMessageSearch.trim() ? (
             <div className="flex justify-start">
-              <div className="rounded-[20px] border border-white/[0.06] bg-[#1d1d1d] px-4 py-3 text-sm text-[#8f96a3]">
+              <div className="rounded-[20px] border border-border bg-muted px-4 py-3 text-sm text-muted-foreground dark:border-white/[0.06] dark:bg-[#1d1d1d] dark:text-[#8f96a3]">
                 {typingUsers[0]} {typingUsers.length > 1 ? "and others are" : "is"} typing...
               </div>
             </div>
@@ -599,32 +599,32 @@ const ChatArea = React.memo(function ChatArea({
 
       <div
         className={cn(
-          "border-t border-white/[0.06] bg-card py-4 md:px-6",
+          "border-t border-border bg-card py-4 md:px-6 dark:border-white/[0.06]",
           mobileView ? "px-3" : "px-4",
         )}
       >
         {!chatUnlocked ? (
-          <div className="mb-4 rounded-[18px] border border-[#5a3b0d] bg-[#2f1e05] px-4 py-3 text-sm text-[#f4d37c]">
+          <div className="mb-4 rounded-[18px] border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:border-[#5a3b0d] dark:bg-[#2f1e05] dark:text-[#f4d37c]">
             Chat will unlock after the initial 20% payment is completed.
           </div>
         ) : null}
         {selectedFile ? (
-          <div className="mb-4 flex items-center gap-3 rounded-[22px] border border-white/[0.06] bg-card px-4 py-3">
+          <div className="mb-4 flex items-center gap-3 rounded-[22px] border border-border bg-muted/30 px-4 py-3 dark:border-white/[0.06] dark:bg-card">
             {filePreview ? (
               <img src={filePreview} alt="Preview" className="size-14 rounded-2xl object-cover" />
             ) : (
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/[0.04] text-[var(--primary)]">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-muted text-[var(--primary)] dark:bg-white/[0.04]">
                 <Paperclip className="size-5" />
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-white">{selectedFile.name}</p>
+              <p className="truncate text-sm font-semibold text-foreground dark:text-white">{selectedFile.name}</p>
               <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
             </div>
             <button
               type="button"
               onClick={clearFile}
-              className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-muted-foreground transition hover:border-white/20 hover:text-white"
+              className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground transition hover:border-border/80 hover:text-foreground dark:border-white/10 dark:hover:border-white/20 dark:hover:text-white"
             >
               Remove
             </button>
@@ -643,7 +643,7 @@ const ChatArea = React.memo(function ChatArea({
               aria-label="Emoji picker"
               disabled={!chatUnlocked || sending || uploading}
               className={cn(
-                "flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-white/[0.03] hover:text-white disabled:pointer-events-none disabled:opacity-50",
+                "flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground dark:hover:bg-white/[0.03] dark:hover:text-white disabled:pointer-events-none disabled:opacity-50",
                 mobileView ? "size-7" : "size-9",
               )}
             >
@@ -653,7 +653,7 @@ const ChatArea = React.memo(function ChatArea({
               align="start"
               side="top"
               sideOffset={12}
-              className="w-[240px] rounded-[18px] border-white/[0.08] bg-[#1c1c1c] p-3 text-white"
+              className="w-[240px] rounded-[18px] border-border bg-popover p-3 text-foreground dark:border-white/[0.08] dark:bg-[#1c1c1c] dark:text-white"
             >
               <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Insert emoji
@@ -672,7 +672,7 @@ const ChatArea = React.memo(function ChatArea({
                       handleInputChange(nextValue);
                       setEmojiPickerOpen(false);
                     }}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl text-lg transition hover:bg-white/[0.06]"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-lg transition hover:bg-muted dark:hover:bg-white/[0.06]"
                   >
                     {emoji}
                   </button>
@@ -692,7 +692,7 @@ const ChatArea = React.memo(function ChatArea({
           ) : null}
           <div
             className={cn(
-              "flex min-w-0 flex-1 items-center rounded-[22px] border border-white/[0.08] bg-card",
+              "flex min-w-0 flex-1 items-center rounded-[22px] border border-border bg-card dark:border-white/[0.08]",
               mobileView ? "h-11 gap-1 px-2" : "h-12 gap-3 px-4",
             )}
           >
@@ -702,7 +702,7 @@ const ChatArea = React.memo(function ChatArea({
                 aria-label="Attach file"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!chatUnlocked || sending || uploading}
-                className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-white/[0.03] hover:text-white disabled:pointer-events-none disabled:opacity-50"
+                className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground dark:hover:bg-white/[0.03] dark:hover:text-white disabled:pointer-events-none disabled:opacity-50"
               >
                 <Paperclip className="size-4.5" />
               </button>
@@ -719,7 +719,7 @@ const ChatArea = React.memo(function ChatArea({
               }}
               placeholder={chatUnlocked ? "Type your message..." : "Chat unlocks after the initial 20% payment."}
               className={cn(
-                "min-w-0 h-full flex-1 rounded-none border-0 bg-transparent px-0 text-[15px] text-white shadow-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent",
+                "min-w-0 h-full flex-1 rounded-none border-0 bg-transparent px-0 text-[15px] text-foreground dark:text-white shadow-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent",
               )}
               disabled={!chatUnlocked || sending || uploading}
             />

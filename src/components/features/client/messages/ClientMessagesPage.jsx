@@ -268,7 +268,7 @@ const ClientMessagesPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background text-[#f1f5f9]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
         <ClientWorkspaceHeader
           profile={{
@@ -316,11 +316,11 @@ const ClientMessagesPage = () => {
             )}
           >
             {isMobile ? (
-              <div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden rounded-[28px] border border-white/[0.05] bg-card">
+              <div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden rounded-[28px] border border-border dark:border-white/[0.05] bg-card">
                 {isMobileDetailOpen ? renderActiveDetail() : renderSidebar()}
               </div>
             ) : (
-              <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-white/[0.05] bg-card md:h-[680px] lg:h-[720px] lg:flex-row">
+              <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-border dark:border-white/[0.05] bg-card md:h-[680px] lg:h-[720px] lg:flex-row">
                 {renderSidebar()}
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                   {renderActiveDetail()}
