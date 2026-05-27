@@ -82,10 +82,10 @@ const ProposalRowCard = ({
   const showRecipientSection = isDraft || recipientCount > 0;
 
   return (
-    <Card className={cn("h-full w-full overflow-hidden shadow-none", proposalPanelClassName)}>
+    <Card className={cn("h-full w-full max-w-[340px] mx-auto overflow-hidden shadow-none", proposalPanelClassName)}>
       <CardContent className="p-0">
-        <div className="flex h-full flex-col gap-5 p-3.5 xs:p-4 sm:gap-6 sm:p-5 xl:p-6">
-          <div className="flex items-center justify-between gap-4">
+        <div className="flex h-full w-full flex-col gap-4 p-3 xs:p-3.5 sm:gap-5 sm:p-4 xl:p-5">
+          <div className="flex w-full items-center justify-between gap-3">
             <Badge
               variant="outline"
               className={cn(
@@ -106,7 +106,7 @@ const ProposalRowCard = ({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+                className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => onDelete(proposal)}
               >
                 <Trash2 className="h-4 w-4" />
@@ -114,10 +114,10 @@ const ProposalRowCard = ({
             ) : null}
           </div>
 
-          <div className="space-y-5">
-            <div className="space-y-2">
+          <div className="space-y-3">
+            <div className="space-y-1">
               <h3
-                className="w-full truncate text-[clamp(1.4rem,1.9vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white"
+                className="w-full truncate text-[clamp(1.05rem,1.3vw,1.4rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-foreground"
                 title={cardTitle}
               >
                 {cardTitle}
@@ -201,9 +201,9 @@ const ProposalRowCard = ({
             )}
 
             {showRecipientSection ? (
-              <div className="rounded-[18px] border border-border/70 bg-background/35 p-4">
-                <div className="mb-4 flex items-start justify-between gap-4">
-                  <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <div className="rounded-[14px] border border-border/70 bg-background/35 p-3">
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                     Proposal Sent To
                   </p>
                   {canViewFreelancerDetails ? (
@@ -238,12 +238,12 @@ const ProposalRowCard = ({
             ) : null}
           </div>
 
-          <div className="mt-auto flex flex-col gap-3">
+          <div className="mt-auto flex flex-col gap-2">
             {showPrimaryAction ? (
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2 w-full">
                 <Button
                   type="button"
-                  className="h-11 rounded-[14px] border border-border bg-background/35 px-2 text-[11px] sm:px-4 sm:text-xs md:text-sm font-semibold text-foreground shadow-none hover:bg-background"
+                  className="h-10 w-full rounded-[12px] border border-border bg-background/35 px-2 tracking-tight text-[10px] font-semibold text-foreground shadow-none hover:bg-background xl:px-3 xl:text-[0.75rem]"
                   onClick={() => onOpen?.(proposal)}
                 >
                   View Details
@@ -251,7 +251,7 @@ const ProposalRowCard = ({
 
                 <Button
                   type="button"
-                  className="h-11 rounded-[14px] bg-primary px-2 text-[11px] sm:px-4 sm:text-xs md:text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
+                  className="h-10 w-full rounded-[12px] bg-primary px-2 tracking-tight text-[10px] font-semibold text-primary-foreground shadow-none hover:bg-primary/90 xl:px-3 xl:text-[0.75rem]"
                   onClick={() => {
                     if (canSendToFreelancers) {
                       if (canIncreaseBudget) {
@@ -278,10 +278,12 @@ const ProposalRowCard = ({
             ) : (
               <Button
                 type="button"
-                className="h-14 rounded-[14px] bg-primary px-4 text-[clamp(0.85rem,1vw,1rem)] font-semibold text-primary-foreground shadow-none hover:bg-primary/90 sm:px-6"
+                className="h-10 w-full rounded-[12px] bg-primary px-3 tracking-tight text-[0.8rem] font-semibold text-primary-foreground shadow-none hover:bg-primary/90 xl:px-5"
                 onClick={() => onOpen?.(proposal)}
               >
-                View Details
+                {proposal.status === "rejected"
+                  ? "View Details"
+                  : "View Proposal"}
               </Button>
             )}
           </div>

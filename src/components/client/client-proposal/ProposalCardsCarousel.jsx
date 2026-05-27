@@ -96,7 +96,7 @@ const ProposalCardsCarousel = ({
 
   if (!shouldUseProposalCarousel) {
     return (
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
         {proposals.map((proposal) => (
           <ProposalRowCard
             key={proposal.id}
@@ -187,11 +187,11 @@ const ProposalCardsCarousel = ({
           </>
         ) : null}
 
-        <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform]">
+        <CarouselContent className="ml-0 items-stretch gap-4 [backface-visibility:hidden] [will-change:transform]">
           {proposals.map((proposal) => (
             <CarouselItem
               key={proposal.id}
-              className="pl-0 basis-full md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)] xl:basis-[calc((100%-3.75rem)/4)]"
+              className="pl-0 basis-full md:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-3rem)/4)]"
             >
               <ProposalRowCard
                 proposal={proposal}

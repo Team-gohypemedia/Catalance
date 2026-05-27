@@ -364,7 +364,7 @@ const HeaderNav = ({ activeKey, items, mobile = false, onSelect, variant = "mark
         ? "flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden"
         : cn(
             "hidden items-center lg:flex",
-            variant === "workspace" ? "gap-4 lg:gap-6 xl:gap-10" : "gap-6 lg:gap-8 xl:gap-12",
+            variant === "workspace" ? "gap-5 lg:gap-7 xl:gap-12" : "gap-6 lg:gap-8 xl:gap-12",
           )
     }
   >
@@ -448,7 +448,7 @@ const ClientWorkspaceHeader = ({
               onSelect={onSiteNav}
             />
 
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
               {/* <ThemeToggle /> */}
               <WorkspaceProfileDropdown
                 profile={profile}
@@ -461,7 +461,7 @@ const ClientWorkspaceHeader = ({
         </div>
 
         <div className="mt-7 border-b border-border pb-3">
-          <div className="mx-auto w-full flex flex-col gap-4 px-3 sm:px-4 lg:px-4 lg:flex-row lg:items-center lg:justify-between xl:w-[85%] xl:px-0">
+          <div className="mx-auto w-full flex flex-col gap-4 px-3 sm:px-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6 xl:w-[85%] xl:px-0">
             <div className="space-y-3">
               <HeaderNav
                 items={workspaceNavItems}
@@ -471,7 +471,7 @@ const ClientWorkspaceHeader = ({
               />
             </div>
 
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4 lg:gap-5">
               {typeof onPrimaryAction === "function" ? (
                 <button
                   type="button"
