@@ -1,6 +1,14 @@
 import { Router } from "express";
-import { getProfile, saveProfile, saveFcmToken, migrateBioData, saveResume } from "../controllers/profile.controller.js";
+import {
+  autofillProfileFromResume,
+  getProfile,
+  saveProfile,
+  saveFcmToken,
+  migrateBioData,
+  saveResume,
+} from "../controllers/profile.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
+import { resumeAutofillUpload } from "./profile-autofill-upload.js";
 
 export const profileRouter = Router();
 
@@ -13,6 +21,12 @@ profileRouter.use((req, res, next) => {
 profileRouter.get("/", requireAuth, getProfile);
 profileRouter.post("/", requireAuth, saveProfile);
 profileRouter.post("/resume", requireAuth, saveResume);
+profileRouter.post(
+  "/resume-autofill",
+  requireAuth,
+  resumeAutofillUpload.single("file"),
+  autofillProfileFromResume,
+);
 profileRouter.post("/migrate-bio", migrateBioData); // One-time migration
 profileRouter.post("/fcm-token", requireAuth, saveFcmToken);
 

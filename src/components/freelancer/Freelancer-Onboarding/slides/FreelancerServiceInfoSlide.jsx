@@ -53,6 +53,21 @@ const normalizeOptionEntries = (options = []) =>
     .filter((option) => option.value && option.label);
 
 const buildStringSignature = (values = []) => normalizeStringArray(values).join("|");
+const buildIntegerSignature = (values = []) =>
+  Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [])
+        .map((value) => toPositiveInteger(value))
+        .filter(Boolean),
+    ),
+  )
+    .sort((left, right) => left - right)
+    .join("|");
+const normalizeSkillMatchKey = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 
 const CategoryMultiSelect = ({
   options = [],
@@ -180,6 +195,19 @@ const CategoryMultiSelect = ({
     () => normalizeStringArray(activeSubcategory?.customSkillNames),
     [activeSubcategory?.customSkillNames],
   );
+  const activeVisibleCustomSkills = useMemo(() => {
+    if (!activeSelectedCustomSkills.length) {
+      return [];
+    }
+
+    const toolLabelKeys = new Set(
+      activeToolOptions.map((tool) => normalizeSkillMatchKey(tool.label)),
+    );
+
+    return activeSelectedCustomSkills.filter(
+      (skill) => !toolLabelKeys.has(normalizeSkillMatchKey(skill)),
+    );
+  }, [activeSelectedCustomSkills, activeToolOptions]);
 
   const filteredOptions = useMemo(() => {
     const normalizedQuery = String(searchQuery || "").trim().toLowerCase();
@@ -684,38 +712,72 @@ const CategoryMultiSelect = ({
                             <div className="flex flex-col gap-2">
                               {isToolsLoading &&
                               activeToolOptions.length === 0 &&
-                              activeSuggestedSkills.length === 0 ? (
+                              activeSuggestedSkills.length === 0 &&
+                              activeVisibleCustomSkills.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">
                                   Loading skills...
                                 </p>
-                              ) : activeToolOptions.length > 0 ? (
-                                activeToolOptions.map((tool) => {
-                                  const isSelected = activeSelectedToolIdSet.has(tool.id);
-                                  return (
-                                    <button
-                                      key={tool.id}
-                                      type="button"
-                                      onClick={() => handleToggleTool(tool.id)}
-                                      className={cn(
-                                        "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors",
-                                        isSelected
-                                          ? "border-primary/60 bg-primary/10 text-primary"
-                                          : "border-border bg-muted text-foreground hover:border-primary/50 hover:bg-muted/80",
-                                      )}
-                                      aria-pressed={isSelected}
-                                    >
-                                      <span className="min-w-0 flex-1 truncate font-medium">
-                                        {tool.label}
-                                      </span>
-                                      <Check
-                                        className={cn(
-                                          "ml-3 h-4 w-4 shrink-0 transition-colors",
-                                          isSelected ? "text-primary" : "text-muted-foreground/50",
-                                        )}
-                                      />
-                                    </button>
-                                  );
-                                })
+                              ) : activeToolOptions.length > 0 ||
+                                activeVisibleCustomSkills.length > 0 ? (
+                                <>
+                                  {activeVisibleCustomSkills.length > 0 ? (
+                                    <div className="space-y-2">
+                                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                        Resume Skills
+                                      </p>
+                                      {activeVisibleCustomSkills.map((skill) => (
+                                        <button
+                                          key={skill}
+                                          type="button"
+                                          onClick={() => handleToggleSuggestedSkill(skill)}
+                                          className="flex w-full items-center justify-between rounded-xl border border-primary/60 bg-primary/10 px-4 py-3 text-left text-sm text-primary transition-colors hover:bg-primary/15"
+                                          aria-pressed
+                                        >
+                                          <span className="min-w-0 flex-1 truncate font-medium">
+                                            {skill}
+                                          </span>
+                                          <Check className="ml-3 h-4 w-4 shrink-0 text-primary" />
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                  {activeToolOptions.length > 0 ? (
+                                    <div className="space-y-2">
+                                      {activeVisibleCustomSkills.length > 0 ? (
+                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                          Marketplace Skills
+                                        </p>
+                                      ) : null}
+                                      {activeToolOptions.map((tool) => {
+                                        const isSelected = activeSelectedToolIdSet.has(tool.id);
+                                        return (
+                                          <button
+                                            key={tool.id}
+                                            type="button"
+                                            onClick={() => handleToggleTool(tool.id)}
+                                            className={cn(
+                                              "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors",
+                                              isSelected
+                                                ? "border-primary/60 bg-primary/10 text-primary"
+                                                : "border-border bg-muted text-foreground hover:border-primary/50 hover:bg-muted/80",
+                                            )}
+                                            aria-pressed={isSelected}
+                                          >
+                                            <span className="min-w-0 flex-1 truncate font-medium">
+                                              {tool.label}
+                                            </span>
+                                            <Check
+                                              className={cn(
+                                                "ml-3 h-4 w-4 shrink-0 transition-colors",
+                                                isSelected ? "text-primary" : "text-muted-foreground/50",
+                                              )}
+                                            />
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : null}
+                                </>
                               ) : activeSuggestedSkills.length > 0 ? (
                                 activeSuggestedSkills.map((skill) => {
                                   const isSelected = activeSelectedCustomSkills.some(
@@ -986,31 +1048,6 @@ const FreelancerServiceInfoSlide = ({
 
   useEffect(() => {
     if (configuredCategoryOptions.length > 0) {
-      return undefined;
-    }
-
-    if (
-      !normalizedSubcategories.some(
-        (entry) =>
-          Array.isArray(entry?.customSkillNames) && entry.customSkillNames.length > 0,
-      )
-    ) {
-      return undefined;
-    }
-
-    onUpdateServiceDraft((draft) => ({
-      ...draft,
-      subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
-        (entry) => ({
-          ...entry,
-          customSkillNames: [],
-        }),
-      ),
-    }));
-  }, [configuredCategoryOptions, normalizedSubcategories, onUpdateServiceDraft]);
-
-  useEffect(() => {
-    if (configuredCategoryOptions.length > 0) {
       setToolOptionsByCategory({});
       setToolFetchError("");
       setIsToolsLoading(false);
@@ -1141,6 +1178,92 @@ const FreelancerServiceInfoSlide = ({
     onUpdateServiceDraft,
     serviceDraft?.skillsAndTechnologies,
   ]);
+
+  useEffect(() => {
+    if (!normalizedSubcategories.length) {
+      return;
+    }
+
+    const normalizedToolOptionsByCategory = Object.fromEntries(
+      Object.entries(toolOptionsByCategory || {}).map(([key, options]) => [
+        String(key),
+        Array.isArray(options) ? options : [],
+      ]),
+    );
+
+    let hasAnyMappingChange = false;
+
+    const nextSubcategories = normalizedSubcategories.map((entry) => {
+      const subCategoryId = toPositiveInteger(entry?.subCategoryId);
+      if (!subCategoryId) {
+        return entry;
+      }
+
+      const toolOptions = normalizedToolOptionsByCategory[String(subCategoryId)] || [];
+      if (!toolOptions.length) {
+        return entry;
+      }
+
+      const toolIdByName = new Map();
+      const toolIdByLooseName = new Map();
+
+      toolOptions.forEach((tool) => {
+        const toolLabel = String(tool?.label || tool?.name || "").trim();
+        const toolId = toPositiveInteger(tool?.id);
+        if (!toolId || !toolLabel) {
+          return;
+        }
+
+        toolIdByName.set(toolLabel.toLowerCase(), toolId);
+        toolIdByLooseName.set(normalizeSkillMatchKey(toolLabel), toolId);
+      });
+
+      const currentToolIds = Array.isArray(entry?.selectedToolIds)
+        ? entry.selectedToolIds.map((value) => toPositiveInteger(value)).filter(Boolean)
+        : [];
+      const currentCustomSkillNames = normalizeStringArray(entry?.customSkillNames);
+      const nextToolIds = [...currentToolIds];
+      const remainingCustomSkillNames = [];
+
+      currentCustomSkillNames.forEach((skillName) => {
+        const normalizedSkillName = String(skillName || "").trim();
+        const matchingToolId =
+          toolIdByName.get(normalizedSkillName.toLowerCase()) ||
+          toolIdByLooseName.get(normalizeSkillMatchKey(normalizedSkillName));
+        if (matchingToolId) {
+          if (!nextToolIds.includes(matchingToolId)) {
+            nextToolIds.push(matchingToolId);
+          }
+          hasAnyMappingChange = true;
+          return;
+        }
+
+        remainingCustomSkillNames.push(skillName);
+      });
+
+      if (
+        buildIntegerSignature(currentToolIds) === buildIntegerSignature(nextToolIds) &&
+        buildStringSignature(currentCustomSkillNames) === buildStringSignature(remainingCustomSkillNames)
+      ) {
+        return entry;
+      }
+
+      return {
+        ...entry,
+        selectedToolIds: nextToolIds,
+        customSkillNames: remainingCustomSkillNames,
+      };
+    });
+
+    if (!hasAnyMappingChange) {
+      return;
+    }
+
+    onUpdateServiceDraft((draft) => ({
+      ...draft,
+      subcategories: nextSubcategories,
+    }));
+  }, [normalizedSubcategories, onUpdateServiceDraft, toolOptionsByCategory]);
 
   const handleSelectedCategoriesChange = (nextValues) => {
     if (configuredCategoryOptions.length > 0) {
