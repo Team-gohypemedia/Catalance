@@ -364,7 +364,7 @@ const HeaderNav = ({ activeKey, items, mobile = false, onSelect, variant = "mark
         ? "flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden"
         : cn(
             "hidden items-center lg:flex",
-            variant === "workspace" ? "gap-5 lg:gap-7 xl:gap-12" : "gap-6 lg:gap-8 xl:gap-12",
+            variant === "workspace" ? "-ml-3 gap-2 lg:gap-3 xl:gap-4" : "gap-6 lg:gap-8 xl:gap-12",
           )
     }
   >
@@ -460,8 +460,8 @@ const ClientWorkspaceHeader = ({
           </div>
         </div>
 
-        <div className="mt-7 border-b border-border pb-3">
-          <div className="mx-auto w-full flex flex-col gap-4 px-3 sm:px-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6 xl:w-[85%] xl:px-0">
+        <div className="mt-7">
+          <div className="mx-auto w-full flex flex-col gap-4 border-b border-border px-3 pb-3 sm:px-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6 xl:w-[85%] xl:px-0">
             <div className="space-y-3">
               <HeaderNav
                 items={workspaceNavItems}
