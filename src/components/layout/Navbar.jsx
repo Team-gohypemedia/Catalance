@@ -25,8 +25,6 @@ import WorkspaceProfileDropdown from "@/components/layout/WorkspaceProfileDropdo
 import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
-import { useTheme } from "@/components/providers/theme-provider";
-import ThemeToggle from "@/components/common/ThemeToggle";
 
 const buildNavItems = ({
   isFreelancer = false,
@@ -219,18 +217,7 @@ const Navbar = () => {
   );
 
   const closeMobileMenu = () => {};
-  const { theme } = useTheme();
-  
-  // On homepage, we use the theme state to decide if the glass navbar should look dark or light.
-  // We treat 'system' as dark if the OS preference matches.
-  const isDark = useMemo(() => {
-    if (theme === "dark") return true;
-    if (theme === "light") return false;
-    if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches;
-    }
-    return false;
-  }, [theme]);
+  const isDark = false;
 
   return (
     <ResizableNavbar isHome={isHome} isDark={isDark}>
@@ -244,7 +231,6 @@ const Navbar = () => {
           currentPath={currentPath}
         />
         <div className="flex shrink-0 items-center justify-end gap-3 pl-2 lg:min-w-[12rem]">
-          <ThemeToggle />
           <AuthButtons
             showAuthenticatedNav={shouldShowAuthenticatedNav}
             currentDashboard={currentDashboard}
@@ -294,7 +280,6 @@ const PublicMobileSidebar = ({ navItems, currentPath, isHome }) => {
         </Link>
 
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <button
@@ -357,13 +342,6 @@ const PublicMobileSidebar = ({ navItems, currentPath, isHome }) => {
                   );
                 })}
               </nav>
-
-              <div className="mt-4 border-t border-white/[0.05] pt-4">
-                <div className="flex items-center justify-between px-2 py-1.5">
-                  <span className="text-[0.85rem] font-medium text-muted-foreground">Theme</span>
-                  <ThemeToggle />
-                </div>
-              </div>
 
               <div className="mt-auto space-y-2 pt-6">
                 <SheetClose asChild>

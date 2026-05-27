@@ -19,7 +19,6 @@ import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import logo from "@/assets/logos/logo.svg";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
-import ThemeToggle from "@/components/common/ThemeToggle";
 
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
@@ -344,7 +343,7 @@ const FreelancerWorkspaceHeader = ({
             />
 
             <div className="flex items-center gap-3">
-              <ThemeToggle />
+              {/* <ThemeToggle /> */}
               <WorkspaceProfileDropdown
                 profile={profile}
                 displayName={displayName}
