@@ -75,14 +75,14 @@ const ClientCTA = () => {
                 asChild
                 size="lg"
                 aria-label={CTA_WORDS.join(', ')}
-                className="mt-10 h-12 rounded-xl px-8 text-lg font-semibold shadow-[0_14px_36px_rgba(var(--brand-rgb), 0.22)]"
+                className="mt-10 h-12 rounded-xl px-8 text-lg font-semibold !text-white shadow-[0_14px_36px_rgba(var(--brand-rgb), 0.22)]"
               >
                 <Link to="/service">
                   <span
                     aria-hidden="true"
-                    className="relative inline-grid h-[1.1em] min-w-[11ch] place-items-center overflow-hidden leading-none"
+                    className="relative inline-grid h-[1.1em] min-w-[11ch] place-items-center overflow-hidden leading-none !text-current"
                   >
-                    <span className="invisible col-start-1 row-start-1">{CTA_LONGEST_WORD}</span>
+                    <span className="invisible col-start-1 row-start-1 !text-current">{CTA_LONGEST_WORD}</span>
                     <AnimatePresence initial={false} mode="sync">
                       <motion.span
                         key={CTA_WORDS[activeWordIndex]}
@@ -90,7 +90,7 @@ const ClientCTA = () => {
                         animate={{ y: '0%', opacity: 1 }}
                         exit={{ y: '-115%', opacity: 0 }}
                         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                        className="absolute inset-0 flex items-center justify-center whitespace-nowrap"
+                        className="absolute inset-0 flex items-center justify-center whitespace-nowrap !text-current"
                       >
                         {CTA_WORDS[activeWordIndex]}
                       </motion.span>
