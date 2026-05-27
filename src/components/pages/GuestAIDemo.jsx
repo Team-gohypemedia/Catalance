@@ -5201,50 +5201,50 @@ const GuestAIDemo = () => {
         : isCurrentBriefingStepValid;
     const briefingBackdropClasses = isDark
         ? 'bg-[radial-gradient(circle_at_top,rgba(var(--brand-rgb),0.14),transparent_30%),radial-gradient(circle_at_bottom,rgba(var(--brand-rgb),0.08),transparent_24%),linear-gradient(180deg,rgba(24,24,27,1)_0%,rgba(15,15,18,1)_100%)]'
-        : 'bg-[radial-gradient(circle_at_top,rgba(var(--brand-rgb),0.22),transparent_40%),radial-gradient(circle_at_bottom,rgba(var(--brand-rgb),0.12),transparent_30%),linear-gradient(180deg,#ffffff_0%,#fffaf0_100%)]';
+        : 'bg-[radial-gradient(circle_at_top,rgba(var(--brand-rgb),0.12),transparent_40%),radial-gradient(circle_at_bottom,rgba(var(--brand-rgb),0.08),transparent_30%),linear-gradient(180deg,rgba(var(--background-rgb),1)_0%,rgba(var(--brand-rgb),0.08)_100%)]';
     const briefingGlowClasses = isDark ? 'bg-primary/14' : 'bg-primary/15';
-    const briefingEyebrowClasses = isDark ? 'text-[#d6c4a2]' : 'text-[#7c6a4d]';
+    const briefingEyebrowClasses = isDark ? 'text-primary/70' : 'text-primary/80';
     const briefingDotClasses = isDark ? 'bg-primary shadow-[0_0_0_5px_rgba(var(--brand-rgb),0.12)]' : 'bg-primary shadow-[0_0_0_5px_rgba(var(--brand-rgb),0.10)]';
-    const briefingHeadingClasses = isDark ? 'text-white' : 'text-[#1c1b1f]';
+    const briefingHeadingClasses = isDark ? 'text-white' : 'text-foreground';
     const briefingHeadingSizeClasses = isDark
         ? 'text-[clamp(1.55rem,2.5vw,2.55rem)] leading-[1.16] tracking-[-0.024em] [text-shadow:0_0_28px_rgba(255,255,255,0.04)]'
         : 'text-[clamp(1.85rem,3.5vw,3.1rem)] leading-[1.14] tracking-[-0.024em]';
-    const briefingMutedSentenceClasses = isDark ? 'text-white/28' : 'text-[#c6b8a8]';
-    const briefingAccentTextClasses = isDark ? 'text-[#ffd75a] [text-shadow:0_0_24px_rgba(var(--brand-rgb),0.16)]' : 'text-[#ba7a07]';
-    const briefingAccentPillClasses = isDark ? 'bg-primary/12 text-[#ffd75a]' : 'bg-[#fff0bf] text-[#ba7a07]';
-    const briefingBodyClasses = isDark ? 'text-muted-foreground' : 'text-[#5c544b]';
+    const briefingMutedSentenceClasses = isDark ? 'text-white/28' : 'text-muted-foreground/50';
+    const briefingAccentTextClasses = isDark ? '!text-primary' : '!text-[#D9692A]';
+    const briefingAccentPillClasses = isDark ? 'bg-primary/12 text-primary' : 'bg-primary/10 text-primary';
+    const briefingBodyClasses = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
     const briefingHeroStageClasses = isDark
         ? 'border-primary/14 bg-[linear-gradient(135deg,rgba(var(--brand-rgb),0.08)_0%,rgba(255,255,255,0.02)_22%,rgba(16,16,19,0.96)_70%)] shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.04),0_45px_120px_-70px_rgba(var(--brand-rgb),0.45)]'
-        : 'border-[#eadfce] bg-[linear-gradient(135deg,rgba(var(--brand-rgb),0.08)_0%,rgba(255,255,255,0.95)_35%,rgba(255,250,242,0.98)_100%)] shadow-[0_30px_90px_-50px_rgba(98,77,36,0.22)]';
+        : 'border-transparent bg-transparent';
     const briefingCardClasses = isDark
         ? 'border-primary/16 bg-[linear-gradient(180deg,rgba(23,23,27,0.96)_0%,rgba(14,14,18,0.98)_100%)] shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.05),0_0_44px_rgba(var(--brand-rgb),0.08),0_55px_120px_-70px_rgba(0,0,0,0.88)]'
-        : 'border-[#eadfce] bg-white/95 shadow-[0_35px_80px_-50px_rgba(98,77,36,0.18)]';
-    const briefingCardDividerClasses = isDark ? 'border-border/70' : 'border-[#efe2d3]';
-    const briefingStepEyebrowClasses = isDark ? 'text-[#f0cc6b]' : 'text-[#9c6a0f]';
-    const briefingStepTitleClasses = isDark ? 'text-white' : 'text-[#1c1b1f]';
-    const briefingInputBorderClasses = isDark ? 'border-border/70' : 'border-[#eadbc9]';
-    const briefingFieldTextClasses = isDark ? 'text-white placeholder:text-white/30' : 'text-[#1c1b1f] placeholder:text-[#b5a99c]';
-    const briefingMicroLabelClasses = isDark ? 'text-[#c4b38f]' : 'text-[#947b66]';
+        : 'bg-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-transparent';
+    const briefingCardDividerClasses = isDark ? 'border-border/70' : 'border-border/40';
+    const briefingStepEyebrowClasses = isDark ? 'text-primary/90' : 'text-muted-foreground';
+    const briefingStepTitleClasses = isDark ? 'text-white' : 'text-foreground';
+    const briefingInputBorderClasses = isDark ? 'border-border/70' : 'border-transparent';
+    const briefingFieldTextClasses = isDark ? 'text-white placeholder:text-white/30' : 'text-foreground placeholder:text-muted-foreground/50';
+    const briefingMicroLabelClasses = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
     const briefingChipClasses = isDark
-        ? 'border-border/70 bg-transparent text-zinc-200 hover:border-[#ffc800]/50 hover:bg-[#ffc800]/10 hover:text-white'
-        : 'border-[#e8d7c4] text-[#5c544b] hover:border-[#ffc800]/50 hover:bg-[#fff8e8]';
-    const briefingSelectedChipClasses = isDark ? 'border-[#ffc800] bg-[#ffc800] text-black' : 'border-[#1c1b1f] bg-[#1c1b1f] text-white';
-    const briefingBudgetFieldClasses = isDark ? 'border-border/70 bg-white/[0.04]' : 'border-[#e9dac7] bg-white/70';
+        ? 'border-border/70 bg-transparent text-zinc-200 hover:border-primary/50 hover:bg-primary/10 hover:text-white'
+        : 'border-border bg-white text-foreground hover:border-primary/50 hover:bg-primary/5';
+    const briefingSelectedChipClasses = isDark ? 'border-primary bg-primary text-primary-foreground' : 'border-foreground bg-foreground text-background';
+    const briefingBudgetFieldClasses = isDark ? 'border-border/70 bg-white/[0.04]' : 'border-border bg-background/50';
     const briefingUploadClasses = isDark
-        ? 'border-border/70 bg-white/[0.03] text-zinc-300 hover:border-[#ffc800]/50 hover:bg-[#ffc800]/10'
-        : 'border-[#e5d1ba] bg-[#fffaf2] text-[#6b523a] hover:border-[#ffc800]/50 hover:bg-[#fff4de]';
-    const briefingTagClasses = isDark ? 'border-border/70 bg-white/[0.04]' : 'border-[#eadac8] bg-white/70';
-    const briefingTagTextClasses = isDark ? 'text-zinc-200' : 'text-[#1c1b1f]';
-    const briefingTagSubtleClasses = isDark ? 'text-zinc-400' : 'text-[#8d7d6c]';
-    const briefingIconButtonClasses = isDark ? 'text-zinc-400 hover:bg-white/10 hover:text-white' : 'text-[#8b6c50] hover:bg-[#f6e7d2] hover:text-[#39261a]';
+        ? 'border-border/70 bg-white/[0.03] text-zinc-300 hover:border-primary/50 hover:bg-primary/10'
+        : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/50 hover:bg-primary/5';
+    const briefingTagClasses = isDark ? 'border-border/70 bg-white/[0.04]' : 'border-border bg-background/70';
+    const briefingTagTextClasses = isDark ? 'text-zinc-200' : 'text-foreground';
+    const briefingTagSubtleClasses = isDark ? 'text-zinc-400' : 'text-muted-foreground';
+    const briefingIconButtonClasses = isDark ? 'text-zinc-400 hover:bg-white/10 hover:text-white' : 'text-muted-foreground hover:bg-muted hover:text-foreground';
     const briefingBackButtonClasses = briefingStepIndex === 0
-        ? (isDark ? 'cursor-not-allowed border-border/60 text-zinc-600' : 'cursor-not-allowed border-[#ece2d7] text-[#d2c6b9]')
-        : (isDark ? 'border-border/70 text-zinc-200 hover:border-[#ffc800]/50 hover:bg-[#ffc800]/10' : 'border-[#e8d7c4] text-[#5c544b] hover:border-[#ffc800]/50 hover:bg-[#fff5e4]');
-    const briefingHintClasses = isDark ? 'text-zinc-400' : 'text-[#8d7257]';
-    const briefingLikelyMatchClasses = isDark ? 'text-zinc-300' : 'text-[#7f6249]';
+        ? (isDark ? 'cursor-not-allowed border-border/60 text-zinc-600' : 'cursor-not-allowed text-muted-foreground/50')
+        : (isDark ? 'border-border/70 text-zinc-200 hover:border-primary/50 hover:bg-primary/10' : 'text-foreground hover:text-primary');
+    const briefingHintClasses = isDark ? 'text-zinc-400' : 'text-muted-foreground';
+    const briefingLikelyMatchClasses = isDark ? 'text-zinc-300' : 'text-muted-foreground';
     const briefingPrimaryButtonClasses = canContinueBriefing
-        ? 'bg-primary text-primary-foreground hover:-translate-y-0.5 hover:brightness-95'
-        : (isDark ? 'cursor-not-allowed bg-zinc-700 text-zinc-300' : 'cursor-not-allowed bg-[#d2ccc4] text-white');
+        ? (isDark ? 'bg-primary text-primary-foreground hover:-translate-y-0.5 hover:brightness-95' : 'bg-foreground text-background hover:-translate-y-0.5 hover:opacity-90')
+        : (isDark ? 'cursor-not-allowed bg-zinc-700 text-zinc-300' : 'cursor-not-allowed bg-muted text-muted-foreground');
     const briefingInputTypographyClasses = isDark
         ? 'text-[clamp(1.05rem,1.8vw,1.35rem)]'
         : 'text-[clamp(1.2rem,2.3vw,1.65rem)]';
@@ -5271,35 +5271,22 @@ const GuestAIDemo = () => {
 
                     <div className={`relative z-10 mx-auto w-full px-5 py-8 sm:px-8 lg:px-10 ${isDark ? 'max-w-[1280px]' : 'max-w-[1360px]'}`}>
                         <div className="mx-auto flex min-h-[calc(100vh-6.5rem)] w-full max-w-[980px] flex-col justify-center sm:min-h-[calc(100vh-7rem)]">
-                        <div className={`relative overflow-hidden rounded-[2rem] border px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10 ${briefingHeroStageClasses}`}>
-                            <div className="pointer-events-none absolute inset-0">
-                                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/55 to-transparent" />
-                                <div className="absolute left-[-2rem] top-[-2rem] h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
-                                <div className="absolute right-[-4rem] top-[-3rem] h-48 w-48 rounded-full border border-primary/10 bg-primary/[0.03]" />
-                                <div className="absolute bottom-[-5rem] right-[12%] h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
-                            </div>
-
-                            <div className="relative z-10 space-y-6">
-                                <div className={`inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.35em] ${briefingEyebrowClasses}`}>
-                                    <span className={`h-2.5 w-2.5 rounded-full ${briefingDotClasses}`} />
-                                    Briefing CATA
-                                </div>
-
+                        <div className={`relative px-5 py-2 sm:px-8 sm:py-4 lg:px-10 ${briefingHeroStageClasses}`}>
+                            <div className="relative z-10 flex flex-col items-center text-center">
                                 <div className={`${isDark ? 'max-w-[860px]' : 'max-w-[940px]'}`}>
                                     <h1 className={`font-serif ${briefingHeadingSizeClasses} ${briefingHeadingClasses}`}>
                                         <span>I&apos;m looking for </span>
-                                        <span className={`${briefingSentence.role ? briefingAccentTextClasses : briefingMutedSentenceClasses} italic`}>
+                                        <span className={`${briefingAccentTextClasses} !italic`}>
                                             {briefingSentence.role || 'the right freelancer'}
                                         </span>
-                                        <span className={showBriefingGoal ? briefingHeadingClasses : briefingMutedSentenceClasses}>
+                                        <span>
                                             {' '}to help me with{' '}
                                         </span>
-                                        <span className={`${showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses} italic`}>
-                                            {showBriefingGoal && briefingSentence.goal ? briefingSentence.goal : 'my project'}
+                                        <span className={`${briefingAccentTextClasses} !italic`}>
+                                            {briefingSentence.goal || 'my project'}.
                                         </span>
-                                        <span className={showBriefingGoal && briefingSentence.goal ? briefingAccentTextClasses : briefingMutedSentenceClasses}>.</span>
                                     </h1>
-                                    <p className={`mt-4 max-w-2xl text-sm leading-7 sm:text-[15px] ${briefingBodyClasses}`}>
+                                    <p className={`mx-auto mt-4 max-w-2xl text-sm leading-7 sm:text-[15px] ${briefingBodyClasses}`}>
                                         Shape the brief fast, keep the message sharp, and move directly toward the right specialist.
                                     </p>
                                 </div>
@@ -5321,18 +5308,18 @@ const GuestAIDemo = () => {
                                     goToNextBriefingStep();
                                 }
                             }}
-                            className={`relative z-10 mt-[-0.75rem] overflow-hidden border backdrop-blur sm:mt-[-1rem] ${isDark ? 'rounded-[1.7rem]' : 'rounded-[2rem]'} ${briefingCardClasses}`}
+                            className={`relative z-10 mt-4 overflow-hidden backdrop-blur sm:mt-6 ${isDark ? 'rounded-[1.7rem]' : 'rounded-[2rem]'} ${briefingCardClasses}`}
                         >
-                            <div className={`border-b ${isDark ? 'px-5 py-4 sm:px-6' : 'px-6 py-5 sm:px-8'} ${briefingCardDividerClasses}`}>
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <span className="inline-flex rounded-full bg-primary px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-black">
+                            <div className={`${isDark ? 'px-5 pt-5 pb-2 sm:px-6 sm:pt-6' : 'px-6 pt-8 pb-4 sm:px-8 sm:pt-10'}`}>
+                                <div className="flex flex-wrap items-center gap-4">
+                                    <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-[15px] font-bold text-primary-foreground">
                                         {String(briefingStepIndex + 1).padStart(2, '0')}
                                     </span>
-                                    <div>
-                                        <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingStepEyebrowClasses}`}>
+                                    <div className="flex flex-col gap-0.5">
+                                        <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${briefingStepEyebrowClasses}`}>
                                             {currentBriefingStep.eyebrow}
                                         </p>
-                                        <h2 className={`mt-1 text-lg font-semibold sm:text-xl ${briefingStepTitleClasses}`}>
+                                        <h2 className={`text-xl font-medium sm:text-2xl ${briefingStepTitleClasses}`}>
                                             {currentBriefingStep.label}
                                         </h2>
                                     </div>
@@ -5346,9 +5333,9 @@ const GuestAIDemo = () => {
                                             value={briefingAnswers.role}
                                             onChange={(event) => updateBriefingAnswer('role', event.target.value)}
                                             placeholder={currentBriefingStep.placeholder}
-                                            className={`w-full border-b bg-transparent ${isDark ? 'pb-3' : 'pb-4'} font-serif italic outline-none ${briefingInputTypographyClasses} ${briefingInputBorderClasses} ${briefingFieldTextClasses}`}
+                                            className={`w-full bg-transparent ${isDark ? 'pb-3' : 'pb-4'} font-medium italic outline-none ${briefingInputTypographyClasses} ${briefingFieldTextClasses}`}
                                         />
-                                        <div className="space-y-3">
+                                        <div className="space-y-4 pt-4">
                                             <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Popular directions</p>
                                             <div className="flex flex-wrap gap-3">
                                                 {visibleRoleServices.map((service) => (
@@ -5382,9 +5369,9 @@ const GuestAIDemo = () => {
                                             onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
                                             rows={2}
                                             placeholder={currentBriefingStep.placeholder}
-                                            className={`w-full resize-none border-b bg-transparent ${isDark ? 'min-h-[78px] pb-3' : 'min-h-[98px] pb-4'} font-serif italic outline-none ${briefingTextareaTypographyClasses} ${briefingInputBorderClasses} ${briefingFieldTextClasses}`}
+                                            className={`w-full resize-none bg-transparent ${isDark ? 'min-h-[78px] pb-3' : 'min-h-[98px] pb-4'} font-medium italic outline-none ${briefingTextareaTypographyClasses} ${briefingFieldTextClasses}`}
                                         />
-                                        <div className="space-y-3">
+                                        <div className="space-y-4 pt-4">
                                             <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Suggested phrasing</p>
                                             <div className="flex flex-wrap gap-3">
                                                 {briefingGoalSuggestions.map((suggestion) => (
@@ -5548,34 +5535,32 @@ const GuestAIDemo = () => {
                                 ) : null}
                             </div>
 
-                            <div className={`flex flex-col gap-4 border-t sm:flex-row sm:items-center sm:justify-between ${isDark ? 'px-5 py-4 sm:px-6' : 'px-6 py-5 sm:px-8'} ${briefingCardDividerClasses}`}>
-                                <div className={`flex items-center gap-3 text-sm ${briefingHintClasses}`}>
-                                    <button
-                                        type="button"
-                                        onClick={goToPreviousBriefingStep}
-                                        disabled={briefingStepIndex === 0}
-                                        className={`inline-flex items-center justify-center rounded-full border transition-colors ${isDark ? 'h-10 w-10' : 'h-11 w-11'} ${briefingBackButtonClasses}`}
-                                    >
-                                        <ArrowLeft className="h-4 w-4" />
-                                    </button>
+                            <div className={`flex flex-col gap-4 border-t sm:flex-row sm:items-center sm:justify-between ${isDark ? 'px-5 py-4 sm:px-6' : 'px-6 pb-6 pt-5 sm:px-8 sm:pb-8 sm:pt-6'} ${briefingCardDividerClasses}`}>
+                                <button
+                                    type="button"
+                                    onClick={goToPreviousBriefingStep}
+                                    disabled={briefingStepIndex === 0}
+                                    className={`flex items-center gap-2 text-[12px] font-semibold transition-colors disabled:opacity-50 ${briefingHintClasses} ${briefingBackButtonClasses}`}
+                                >
+                                    <ArrowLeft className="h-4 w-4" />
                                     <span>Press Enter to continue</span>
-                                </div>
+                                </button>
 
-                                <div className="flex flex-col items-start gap-3 sm:items-end">
-                                    <div className={`text-sm ${briefingLikelyMatchClasses}`}>
+                                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                                    <div className={`text-[13px] font-semibold tracking-wide ${briefingLikelyMatchClasses}`}>
                                         {loading
                                             ? 'Loading service intelligence...'
                                             : inferredBriefingService
-                                                ? <>Likely match: <span className={`font-semibold ${briefingAccentTextClasses}`}>{inferredBriefingService?.name || inferredBriefingService?.title}</span></>
+                                                ? <>Likely match: <span className={`font-medium ${briefingAccentTextClasses}`}>{inferredBriefingService?.name || inferredBriefingService?.title}</span></>
                                                 : (servicesError || 'We will infer the best fit once the brief is clearer.')}
                                     </div>
                                     <button
                                         type="submit"
                                         disabled={!canContinueBriefing}
-                                        className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all ${isDark ? 'h-11 px-5 text-sm' : 'h-12 px-6 text-sm'} ${briefingPrimaryButtonClasses}`}
+                                        className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all ${isDark ? 'h-11 px-5 text-sm' : 'h-12 px-8 text-[15px]'} ${briefingPrimaryButtonClasses}`}
                                     >
                                         <span>{isLastBriefingStep ? (briefingSubmitting ? 'Starting...' : 'Continue') : 'Continue'}</span>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                                     </button>
                                 </div>
                             </div>
