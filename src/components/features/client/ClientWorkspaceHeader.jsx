@@ -364,7 +364,7 @@ const HeaderNav = ({ activeKey, items, mobile = false, onSelect, variant = "mark
         ? "flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden"
         : cn(
             "hidden items-center lg:flex",
-            variant === "workspace" ? "gap-8 xl:gap-10" : "gap-10 xl:gap-12",
+            variant === "workspace" ? "gap-4 lg:gap-6 xl:gap-10" : "gap-6 lg:gap-8 xl:gap-12",
           )
     }
   >
@@ -461,7 +461,7 @@ const ClientWorkspaceHeader = ({
         </div>
 
         <div className="mt-7 border-b border-border pb-3">
-          <div className="mx-auto w-full flex flex-col gap-4 px-4 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between xl:w-[85%] xl:px-0">
+          <div className="mx-auto w-full flex flex-col gap-4 px-3 sm:px-4 lg:px-4 lg:flex-row lg:items-center lg:justify-between xl:w-[85%] xl:px-0">
             <div className="space-y-3">
               <HeaderNav
                 items={workspaceNavItems}
@@ -476,14 +476,14 @@ const ClientWorkspaceHeader = ({
                 <button
                   type="button"
                   onClick={onPrimaryAction}
-                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
+                  className="flex items-center whitespace-nowrap gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
                 >
                   {primaryActionContent}
                 </button>
               ) : (
                 <Link
                   to={primaryActionTo}
-                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
+                  className="flex items-center whitespace-nowrap gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
                 >
                   {primaryActionContent}
                 </Link>

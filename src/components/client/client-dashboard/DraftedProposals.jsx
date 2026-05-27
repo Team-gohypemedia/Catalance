@@ -331,37 +331,37 @@ const buildProjectUpsertPayload = (proposal, normalizedBudget) => {
 };
 
 const DraftProposalRow = memo(function DraftProposalRow({ item }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isTopExpanded, setIsTopExpanded] = useState(false);
   const serviceEntries = resolveDraftRowServiceEntries(item);
   const shouldShowAgencyServiceCards =
     (Boolean(item.isAgencyProposal) || serviceEntries.length > 1)
     && serviceEntries.length > 0;
 
   const actionButtons = (
-    <div className="flex w-full flex-col gap-2.5 lg:h-full lg:items-stretch lg:gap-2">
+    <div className="mt-5 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end border-t border-border pt-4 dark:border-white/[0.06]">
+      <button
+        type="button"
+        onClick={item.onView}
+        className={cn(
+          draftProposalActionButtonClassName,
+          `${draftProposalSurfaceToneClassName} h-11 w-full justify-center gap-2 text-[0.92rem] text-foreground hover:bg-muted/60 sm:w-auto sm:px-6`,
+        )}
+      >
+        <FileText className="size-4 shrink-0" />
+        View Details
+      </button>
+
       <button
         type="button"
         onClick={item.onSend}
         className={cn(
           draftProposalActionButtonClassName,
-          "bg-[var(--primary)] px-7 text-white shadow-[0_18px_34px_-18px_rgba(230,108,32,0.78)] hover:bg-primary/80 dark:text-[#141414] lg:h-auto lg:flex-1 lg:px-8",
+          "h-11 w-full justify-center bg-[var(--primary)] px-7 text-[0.92rem] text-white shadow-[0_12px_24px_-12px_rgba(230,108,32,0.78)] hover:bg-primary/80 dark:text-[#141414] sm:w-auto",
         )}
       >
         Send Proposal
       </button>
-
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-2.5 lg:h-auto lg:flex-1 lg:gap-2">
-        <button
-          type="button"
-          onClick={item.onView}
-          className={cn(
-            draftProposalActionButtonClassName,
-            `${draftProposalSurfaceToneClassName} justify-center gap-3 text-[0.98rem] text-foreground hover:bg-muted/60 lg:h-full`,
-          )}
-        >
-          <FileText className="size-4.5 shrink-0" />
-          View Details
-        </button>
-      </div>
     </div>
   );
 
@@ -390,9 +390,20 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
     </div>
   ) : (
     <div className="space-y-4">
-      <p className="max-w-[42rem] text-[1.05rem] leading-7 text-muted-foreground">
-        {item.summary || "Draft proposal ready to review and send."}
-      </p>
+      <div className="flex flex-col items-start gap-1">
+        <p className={cn("max-w-[42rem] text-[1.05rem] leading-7 text-muted-foreground", !isExpanded && "line-clamp-3")}>
+          {item.summary || "Draft proposal ready to review and send."}
+        </p>
+        {item.summary?.length > 150 && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-[0.88rem] font-semibold text-primary hover:underline"
+          >
+            {isExpanded ? "Read less" : "Read more"}
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div className={draftProposalDetailBlockClassName}>
@@ -443,14 +454,25 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
         {item.title}
       </p>
 
-      <div className="mt-2 max-w-[28rem] text-[0.78rem] leading-5 text-muted-foreground sm:text-[0.82rem]">
-        {item.summary || "Draft proposal ready to send to selected freelancers."}
+      <div className="mt-2 flex flex-col items-start gap-1">
+        <div className={cn("max-w-[28rem] text-[0.78rem] leading-5 text-muted-foreground sm:text-[0.82rem]", !isTopExpanded && "line-clamp-2")}>
+          {item.summary || "Draft proposal ready to send to selected freelancers."}
+        </div>
+        {item.summary?.length > 100 && (
+          <button
+            type="button"
+            onClick={() => setIsTopExpanded(!isTopExpanded)}
+            className="text-[0.75rem] font-semibold text-primary hover:underline"
+          >
+            {isTopExpanded ? "Read less" : "Read more"}
+          </button>
+        )}
       </div>
 
-      <div className="mt-4 grid w-full min-w-0 gap-2.5 lg:grid-cols-[minmax(0,1fr)_176px] lg:items-stretch">
+      <div className="mt-4 w-full min-w-0">
         {contentPanels}
-        {actionButtons}
       </div>
+      {actionButtons}
     </div>
   );
 });

@@ -25,7 +25,7 @@ import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
 
-const activeProjectCardClassName = "w-full";
+const activeProjectCardClassName = "w-full h-full";
 const activeProjectRedirectCardClassName = "w-full h-full md:min-h-[506px]";
 
 const ActiveProjects = memo(function ActiveProjects({
@@ -264,13 +264,14 @@ const ActiveProjects = memo(function ActiveProjects({
                 }}
                 className="w-full"
               >
-                <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
                   {items.map((item) => (
                     <CarouselItem
                       key={item.id}
                       className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
                     >
                       <div
+                        className="h-full"
                         ref={(node) => {
                           projectCardRefs.current[item.id] = node;
                         }}
@@ -291,6 +292,7 @@ const ActiveProjects = memo(function ActiveProjects({
                       className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
                     >
                       <div
+                        className="h-full"
                         style={
                           isMobile && mobileProjectCardHeight > 0
                             ? { height: `${mobileProjectCardHeight}px` }
@@ -315,7 +317,7 @@ const ActiveProjects = memo(function ActiveProjects({
               />
             </div>
           ) : (
-            <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-6 xl:grid-cols-3 xl:gap-7">
+            <div className="grid items-stretch gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-6 xl:grid-cols-3 xl:gap-7">
               {items.map((item) => (
                 <ProjectProposalCard
                   key={item.id}

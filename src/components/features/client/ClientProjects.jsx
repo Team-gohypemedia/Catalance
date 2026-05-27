@@ -1014,39 +1014,25 @@ export const ProjectProposalCard = ({
         className,
       )}
     >
-      <div className="flex min-w-0 flex-col">
+      <div className="flex h-full min-w-0 flex-1 flex-col">
         <div className="flex items-start justify-between gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="flex min-w-0 items-center gap-2">
-            {replaceSectionBadgeWithStatus ? (
-              statusBadge
-            ) : (
+            {!replaceSectionBadgeWithStatus ? (
               <span className="inline-flex h-7 shrink-0 items-center justify-center whitespace-nowrap rounded-[8px] bg-white/[0.06] px-2.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#23d18b] sm:h-8 sm:px-3 sm:text-[11px] sm:tracking-[0.22em]">
                 {project.sectionLabel}
               </span>
-            )}
+            ) : null}
           </div>
 
           <div className="flex min-w-0 items-start justify-end gap-2">
-            {!replaceSectionBadgeWithStatus ? statusBadge : null}
-            <button
-              type="button"
-              onClick={() => setShowPhaseDetails((current) => !current)}
-              aria-expanded={showPhaseDetails}
-              aria-label={showPhaseDetails ? "Hide phases" : "Show phases"}
-              title={showPhaseDetails ? "Hide phases" : "Show phases"}
-              className="inline-flex h-7 w-7 shrink-0 self-start items-center justify-center rounded-[8px] border border-border bg-card text-foreground transition-colors hover:bg-muted sm:h-8 sm:w-8"
-            >
-              <ChevronDown
-                className={cn(
-                  "size-3.5 transition-transform duration-200 sm:size-4",
-                  showPhaseDetails ? "rotate-180" : "rotate-0",
-                )}
-              />
-            </button>
+            {statusBadge}
           </div>
         </div>
 
-        <h2 className="mt-4 text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-foreground sm:mt-5">
+        <h2 
+          className="mt-4 line-clamp-1 text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-foreground sm:mt-5"
+          title={project.title}
+        >
           {project.title}
         </h2>
         {showServiceType ? (
@@ -1097,10 +1083,24 @@ export const ProjectProposalCard = ({
           </div>
         </div>
 
-        <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
-          <span className="text-sm text-muted-foreground">Current Phase Progress</span>
+        <button 
+          type="button"
+          onClick={() => setShowPhaseDetails((current) => !current)}
+          aria-expanded={showPhaseDetails}
+          aria-label={showPhaseDetails ? "Hide phase details" : "Show phase details"}
+          className="group mt-7 flex w-full flex-wrap items-center justify-between gap-3 text-left outline-none"
+        >
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors group-hover:text-foreground">
+            Current Phase Progress
+            <ChevronDown
+              className={cn(
+                "size-4 transition-transform duration-200",
+                showPhaseDetails ? "rotate-180" : "rotate-0",
+              )}
+            />
+          </span>
           <span className="text-sm font-semibold text-[var(--primary)]">{progressText}</span>
-        </div>
+        </button>
 
         <div className="mt-3 h-2 rounded-full bg-white/[0.08]">
           <div
@@ -1109,15 +1109,13 @@ export const ProjectProposalCard = ({
           />
         </div>
 
-        {showPhaseDetails ? (
-          <>
-            <div
-              ref={detailPanelRef}
-              className={cn(
-                "mt-5 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[18px] p-3 sm:p-3.5",
-                detailPanelClassName,
-              )}
-            >
+        <div
+          ref={detailPanelRef}
+          className={cn(
+            "mt-5 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[18px] p-3 sm:p-3.5",
+            detailPanelClassName,
+          )}
+        >
               <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Current Phase
@@ -1141,6 +1139,8 @@ export const ProjectProposalCard = ({
                 </p>
               ) : null}
 
+          {showPhaseDetails ? (
+            <>
               {phaseSteps.length > 0 ? (
                 <div className="mt-3 max-h-[104px] min-w-0 space-y-2 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [overscroll-behavior:contain] touch-pan-y [&::-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]">
                   {phaseSteps.map((step) => (
@@ -1155,9 +1155,9 @@ export const ProjectProposalCard = ({
                   No subpoints are available for this phase yet.
                 </p>
               )}
-            </div>
-          </>
-        ) : null}
+            </>
+          ) : null}
+        </div>
 
         <div ref={actionSectionRef} className="mt-auto min-w-0 pt-5 sm:pt-6">
           {project.actionType === "pay" ? (
