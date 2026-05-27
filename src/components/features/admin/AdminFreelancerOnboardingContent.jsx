@@ -185,20 +185,20 @@ const SummaryChip = ({ label, value, tone = "default" }) => (
     className={`rounded-2xl border px-3.5 py-3 ${
       tone === "accent"
         ? "border-primary/25 bg-primary/10"
-        : "border-white/10 bg-black/20"
+        : "border-border bg-card"
     }`}
   >
     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">
       {label}
     </p>
-    <p className="mt-2 text-xl font-semibold tracking-tight text-white">{value}</p>
+    <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">{value}</p>
   </div>
 );
 
 const SectionCard = ({ title, description, children }) => (
-  <Card className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-    <CardHeader className="space-y-2 border-b border-white/10 pb-4">
-      <CardTitle className="text-lg font-semibold tracking-tight text-white">{title}</CardTitle>
+  <Card className="rounded-[24px] border border-border bg-card shadow-[0_18px_44px_rgba(0,0,0,0.08)]">
+    <CardHeader className="space-y-2 border-b border-border pb-4">
+      <CardTitle className="text-lg font-semibold tracking-tight text-foreground">{title}</CardTitle>
       <CardDescription className="text-sm leading-6 text-muted-foreground">
         {description}
       </CardDescription>
@@ -213,42 +213,42 @@ const FieldGrid = ({ children }) => (
 
 const TextField = ({ label, value, onChange, placeholder = "", disabled = false }) => (
   <div className="space-y-2">
-    <Label className="text-sm font-medium text-white">{label}</Label>
+    <Label className="text-sm font-medium text-foreground">{label}</Label>
     <Input
       value={value || ""}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
       disabled={disabled}
-      className="border-white/10 bg-black/20 text-white placeholder:text-white/35"
+      className="border-border bg-card text-foreground placeholder:text-muted-foreground"
     />
   </div>
 );
 
 const TextAreaField = ({ label, value, onChange, placeholder = "", rows = 4 }) => (
   <div className="space-y-2">
-    <Label className="text-sm font-medium text-white">{label}</Label>
+    <Label className="text-sm font-medium text-foreground">{label}</Label>
     <Textarea
       value={value || ""}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="border-white/10 bg-black/20 text-white placeholder:text-white/35"
+      className="border-border bg-card text-foreground placeholder:text-muted-foreground"
     />
   </div>
 );
 
 const ToggleField = ({ label, checked, onChange }) => (
-  <label className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/15 px-4 py-3">
-    <span className="text-sm font-medium text-white">{label}</span>
+  <label className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-muted/40 px-4 py-3">
+    <span className="text-sm font-medium text-foreground">{label}</span>
     <button
       type="button"
       onClick={() => onChange(!checked)}
       className={`inline-flex h-7 w-12 items-center rounded-full p-1 transition ${
-        checked ? "bg-primary" : "bg-white/15"
+        checked ? "bg-primary" : "bg-muted"
       }`}
     >
       <span
-        className={`size-5 rounded-full bg-white transition ${
+        className={`size-5 rounded-full bg-background transition ${
           checked ? "translate-x-5" : "translate-x-0"
         }`}
       />
@@ -306,9 +306,9 @@ const BasicProfileFieldBuilder = ({ fields = [], onChange }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/15 px-4 py-4">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-muted/40 px-4 py-4">
         <div>
-          <h4 className="text-sm font-semibold text-white">Profile Fields</h4>
+          <h4 className="text-sm font-semibold text-foreground">Profile Fields</h4>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Reorder fields, hide system fields, and add new custom text/select fields.
           </p>
@@ -328,13 +328,13 @@ const BasicProfileFieldBuilder = ({ fields = [], onChange }) => {
           return (
             <div
               key={`${field.id}-${index}`}
-              className="space-y-4 rounded-[24px] border border-white/10 bg-black/20 p-4"
+              className="space-y-4 rounded-[24px] border border-border bg-card p-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <Badge
                     variant="outline"
-                    className="rounded-full border-white/10 bg-white/[0.04] text-white/70"
+                    className="rounded-full border-border bg-muted/40 text-muted-foreground"
                   >
                     {field.type}
                   </Badge>
@@ -345,12 +345,12 @@ const BasicProfileFieldBuilder = ({ fields = [], onChange }) => {
                   ) : (
                     <Badge
                       variant="outline"
-                      className="rounded-full border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                      className="rounded-full border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
                     >
                       Custom
                     </Badge>
                   )}
-                  <span className="truncate text-sm font-semibold text-white">
+                  <span className="truncate text-sm font-semibold text-foreground">
                     {field.label || field.id}
                   </span>
                 </div>
@@ -362,7 +362,7 @@ const BasicProfileFieldBuilder = ({ fields = [], onChange }) => {
                     size="icon"
                     onClick={() => handleMove(index, -1)}
                     disabled={index === 0}
-                    className="border-white/10 bg-white/[0.04]"
+                    className="border-border bg-muted/40"
                   >
                     <MoveUp className="h-4 w-4" />
                   </Button>
@@ -372,7 +372,7 @@ const BasicProfileFieldBuilder = ({ fields = [], onChange }) => {
                     size="icon"
                     onClick={() => handleMove(index, 1)}
                     disabled={index === fields.length - 1}
-                    className="border-white/10 bg-white/[0.04]"
+                    className="border-border bg-muted/40"
                   >
                     <MoveDown className="h-4 w-4" />
                   </Button>
@@ -382,7 +382,7 @@ const BasicProfileFieldBuilder = ({ fields = [], onChange }) => {
                     size="icon"
                     onClick={() => handleDelete(index)}
                     disabled={!field.canDelete}
-                    className="text-white/60 hover:text-white"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -405,7 +405,7 @@ const BasicProfileFieldBuilder = ({ fields = [], onChange }) => {
 
               <FieldGrid>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-white">Field Type</Label>
+                  <Label className="text-sm font-medium text-foreground">Field Type</Label>
                   <Select
                     value={field.type}
                     onValueChange={(value) =>
@@ -419,7 +419,7 @@ const BasicProfileFieldBuilder = ({ fields = [], onChange }) => {
                     }
                     disabled={isSystem}
                   >
-                    <SelectTrigger className="border-white/10 bg-black/20 text-white">
+                    <SelectTrigger className="border-border bg-card text-foreground">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -523,16 +523,16 @@ const BasicProfileFieldBuilder = ({ fields = [], onChange }) => {
               ) : null}
 
               {supportsOptions ? (
-                <div className="space-y-4 rounded-2xl border border-white/10 bg-black/15 p-4">
+                <div className="space-y-4 rounded-2xl border border-border bg-muted/40 p-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-white">Options Source</Label>
+                    <Label className="text-sm font-medium text-foreground">Options Source</Label>
                     <Select
                       value={field.dataSource || "manual"}
                       onValueChange={(value) =>
                         handleFieldChange(index, { dataSource: value })
                       }
                     >
-                      <SelectTrigger className="border-white/10 bg-black/20 text-white">
+                      <SelectTrigger className="border-border bg-card text-foreground">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -593,46 +593,46 @@ const OptionListEditor = ({ title, description, options = [], onChange }) => {
   };
 
   return (
-    <div className="space-y-3 rounded-2xl border border-white/10 bg-black/15 p-4">
+    <div className="space-y-3 rounded-2xl border border-border bg-muted/40 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h4 className="text-sm font-semibold text-white">{title}</h4>
+          <h4 className="text-sm font-semibold text-foreground">{title}</h4>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={handleAdd} className="border-white/10 bg-white/[0.04]">
+        <Button type="button" variant="outline" size="sm" onClick={handleAdd} className="border-border bg-muted/40">
           Add Option
         </Button>
       </div>
 
       <div className="space-y-3">
         {options.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-muted-foreground">
+          <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
             No options yet.
           </div>
         ) : (
           options.map((option, index) => (
             <div
               key={`${option?.value || "option"}-${index}`}
-              className="grid gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+              className="grid gap-3 rounded-2xl border border-border bg-card p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
             >
               <Input
                 value={option?.label || ""}
                 onChange={(event) => handleOptionChange(index, "label", event.target.value)}
                 placeholder="Option label"
-                className="border-white/10 bg-transparent text-white placeholder:text-white/35"
+                className="border-border bg-transparent text-foreground placeholder:text-muted-foreground"
               />
               <Input
                 value={option?.value || ""}
                 onChange={(event) => handleOptionChange(index, "value", event.target.value)}
                 placeholder="Option value"
-                className="border-white/10 bg-transparent text-white placeholder:text-white/35"
+                className="border-border bg-transparent text-foreground placeholder:text-muted-foreground"
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={() => handleRemove(index)}
-                className="text-white/60 hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -664,14 +664,14 @@ const KeyedOptionMapEditor = ({
   };
 
   return (
-    <div className="space-y-3 rounded-2xl border border-white/10 bg-black/15 p-4">
+    <div className="space-y-3 rounded-2xl border border-border bg-muted/40 p-4">
       <div>
-        <h4 className="text-sm font-semibold text-white">{title}</h4>
+        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
 
       {normalizedOptions.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
           Add category options first.
         </div>
       ) : (
@@ -725,10 +725,10 @@ const NameListEditor = ({
   };
 
   return (
-    <div className="space-y-3 rounded-2xl border border-white/10 bg-black/15 p-4">
+    <div className="space-y-3 rounded-2xl border border-border bg-muted/40 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h4 className="text-sm font-semibold text-white">{title}</h4>
+          <h4 className="text-sm font-semibold text-foreground">{title}</h4>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
         </div>
         <Button
@@ -736,7 +736,7 @@ const NameListEditor = ({
           variant="outline"
           size="sm"
           onClick={handleAdd}
-          className="border-white/10 bg-white/[0.04]"
+          className="border-border bg-muted/40"
         >
           {addLabel}
         </Button>
@@ -744,27 +744,27 @@ const NameListEditor = ({
 
       <div className="space-y-3">
         {items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-muted-foreground">
+          <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
             {emptyLabel}
           </div>
         ) : (
           items.map((item, index) => (
             <div
               key={`${item?.id || "item"}-${index}`}
-              className="grid gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 md:grid-cols-[minmax(0,1fr)_auto]"
+              className="grid gap-3 rounded-2xl border border-border bg-card p-3 md:grid-cols-[minmax(0,1fr)_auto]"
             >
               <Input
                 value={item?.name || ""}
                 onChange={(event) => handleItemChange(index, event.target.value)}
                 placeholder={inputPlaceholder}
-                className="border-white/10 bg-transparent text-white placeholder:text-white/35"
+                className="border-border bg-transparent text-foreground placeholder:text-muted-foreground"
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={() => handleRemove(index)}
-                className="text-white/60 hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -807,10 +807,10 @@ const MarketplaceServiceTaxonomyEditor = ({ service, onChange }) => {
   };
 
   return (
-    <div className="space-y-4 rounded-2xl border border-white/10 bg-black/15 p-4">
+    <div className="space-y-4 rounded-2xl border border-border bg-muted/40 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h4 className="text-sm font-semibold text-white">Marketplace Categories</h4>
+          <h4 className="text-sm font-semibold text-foreground">Marketplace Categories</h4>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             These categories and skills come from the real marketplace tables and drive onboarding for this service.
           </p>
@@ -820,14 +820,14 @@ const MarketplaceServiceTaxonomyEditor = ({ service, onChange }) => {
           variant="outline"
           size="sm"
           onClick={handleAddCategory}
-          className="border-white/10 bg-white/[0.04]"
+          className="border-border bg-muted/40"
         >
           Add Category
         </Button>
       </div>
 
       {subCategories.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
           No marketplace categories for this service yet.
         </div>
       ) : (
@@ -835,18 +835,18 @@ const MarketplaceServiceTaxonomyEditor = ({ service, onChange }) => {
           {subCategories.map((subCategory, index) => (
             <div
               key={`${subCategory?.id || "subcategory"}-${index}`}
-              className="space-y-4 rounded-[22px] border border-white/10 bg-black/20 p-4"
+              className="space-y-4 rounded-[22px] border border-border bg-card p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1 space-y-2">
-                  <Label className="text-sm font-medium text-white">Category Name</Label>
+                  <Label className="text-sm font-medium text-foreground">Category Name</Label>
                   <Input
                     value={subCategory?.name || ""}
                     onChange={(event) =>
                       handleCategoryChange(index, { name: event.target.value })
                     }
                     placeholder="Category name"
-                    className="border-white/10 bg-transparent text-white placeholder:text-white/35"
+                    className="border-border bg-transparent text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
                 <Button
@@ -854,7 +854,7 @@ const MarketplaceServiceTaxonomyEditor = ({ service, onChange }) => {
                   variant="ghost"
                   size="icon"
                   onClick={() => handleRemoveCategory(index)}
-                  className="mt-7 text-white/60 hover:text-white"
+                  className="mt-7 text-muted-foreground hover:text-foreground"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -902,15 +902,15 @@ const StepperListEditor = ({ steps = [], onChange }) => {
   };
 
   return (
-    <div className="space-y-3 rounded-2xl border border-white/10 bg-black/15 p-4">
+    <div className="space-y-3 rounded-2xl border border-border bg-muted/40 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h4 className="text-sm font-semibold text-white">Stepper Steps</h4>
+          <h4 className="text-sm font-semibold text-foreground">Stepper Steps</h4>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Control the step ids and labels shown inside the service-details wizard.
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={handleAdd} className="border-white/10 bg-white/[0.04]">
+        <Button type="button" variant="outline" size="sm" onClick={handleAdd} className="border-border bg-muted/40">
           Add Step
         </Button>
       </div>
@@ -919,7 +919,7 @@ const StepperListEditor = ({ steps = [], onChange }) => {
         {steps.map((step, index) => (
           <div
             key={`${step?.id || "step"}-${index}`}
-            className="grid gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 md:grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)_auto]"
+            className="grid gap-3 rounded-2xl border border-border bg-card p-3 md:grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)_auto]"
           >
             <Input
               type="number"
@@ -927,26 +927,26 @@ const StepperListEditor = ({ steps = [], onChange }) => {
               value={step?.step ?? index + 1}
               onChange={(event) => handleStepChange(index, "step", event.target.value)}
               placeholder="Step"
-              className="border-white/10 bg-transparent text-white"
+              className="border-border bg-transparent text-foreground"
             />
             <Input
               value={step?.id || ""}
               onChange={(event) => handleStepChange(index, "id", event.target.value)}
               placeholder="Step id"
-              className="border-white/10 bg-transparent text-white placeholder:text-white/35"
+              className="border-border bg-transparent text-foreground placeholder:text-muted-foreground"
             />
             <Input
               value={step?.label || ""}
               onChange={(event) => handleStepChange(index, "label", event.target.value)}
               placeholder="Step label"
-              className="border-white/10 bg-transparent text-white placeholder:text-white/35"
+              className="border-border bg-transparent text-foreground placeholder:text-muted-foreground"
             />
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={() => handleRemove(index)}
-              className="text-white/60 hover:text-white"
+              className="text-muted-foreground hover:text-foreground"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -964,12 +964,12 @@ const ScopeRailCard = ({ title, subtitle, active, onClick, badge }) => (
     className={`w-full rounded-2xl border px-4 py-4 text-left transition-all ${
       active
         ? "border-primary/30 bg-primary/10 shadow-[0_12px_28px_rgba(255,199,0,0.1)]"
-        : "border-white/10 bg-black/15 hover:border-white/20 hover:bg-white/[0.03]"
+        : "border-border bg-card/70 hover:border-border/80 hover:bg-card"
     }`}
   >
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-white">{title}</p>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">{subtitle}</p>
       </div>
       {badge ? <Badge className="rounded-full">{badge}</Badge> : null}
@@ -1289,7 +1289,7 @@ const AdminFreelancerOnboardingContent = () => {
               />
             </FieldGrid>
             {selectedServiceKey === "global" ? (
-              <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-sm leading-6 text-white/85">
+              <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-sm leading-6 text-foreground/80">
                 Category and skill management is service-specific. Pick a service scope on the left to edit the real marketplace categories and skills used by onboarding and the marketplace.
               </div>
             ) : (
@@ -1570,25 +1570,25 @@ const AdminFreelancerOnboardingContent = () => {
           subtitle="Manage onboarding copy through a structured editor instead of raw JSON."
         />
 
-        <section className="relative overflow-hidden rounded-[26px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(255,199,0,0.12),transparent_34%),linear-gradient(135deg,rgba(24,24,24,0.96),rgba(8,8,8,1))] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.3)] lg:p-6">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(255,199,0,0.08),transparent)] opacity-60" />
+        <section className="relative overflow-hidden rounded-[26px] border border-border bg-card p-5 shadow-[0_22px_60px_rgba(0,0,0,0.08)] lg:p-6">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(217,105,42,0.08),transparent)] opacity-60" />
           <div className="relative flex flex-col gap-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div className="max-w-3xl">
                 <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
                   Onboarding CMS
                 </div>
-                <h1 className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                   {selectedServiceName}
                 </h1>
                 <p className="mt-2.5 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
                   Update the actual onboarding copy used in the freelancer flow. Global defaults cover every service, and service scopes can override them when needed.
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] text-white/70">
+                  <Badge variant="outline" className="rounded-full border-border bg-muted/40 text-muted-foreground">
                     {selectedServiceKey === "global" ? "Default Scope" : "Service Scope"}
                   </Badge>
-                  <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] text-white/70">
+                  <Badge variant="outline" className="rounded-full border-border bg-muted/40 text-muted-foreground">
                     {SECTION_META[activeSection]?.title}
                   </Badge>
                   {hasSelectedOverride ? (
@@ -1602,7 +1602,7 @@ const AdminFreelancerOnboardingContent = () => {
                   variant="outline"
                   onClick={handleResetSelectedOverride}
                   disabled={selectedServiceKey === "global" || isSaving}
-                  className="rounded-full border-white/10 bg-white/[0.04] px-4"
+                  className="rounded-full border-border bg-muted/40 px-4"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Reset Override
@@ -1628,9 +1628,9 @@ const AdminFreelancerOnboardingContent = () => {
         </section>
 
         <div className="grid items-start gap-5 xl:grid-cols-[290px_340px_minmax(0,1fr)]">
-          <Card className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-            <CardHeader className="space-y-3 border-b border-white/10 p-4">
-              <CardTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-white">
+          <Card className="rounded-[24px] border border-border bg-card shadow-[0_18px_44px_rgba(0,0,0,0.08)]">
+            <CardHeader className="space-y-3 border-b border-border p-4">
+              <CardTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
                 <Layers3 className="h-5 w-5 text-primary" />
                 Scope
               </CardTitle>
@@ -1660,9 +1660,9 @@ const AdminFreelancerOnboardingContent = () => {
             </CardContent>
           </Card>
 
-          <Card className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-            <CardHeader className="space-y-3 border-b border-white/10 p-4">
-              <CardTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-white">
+          <Card className="rounded-[24px] border border-border bg-card shadow-[0_18px_44px_rgba(0,0,0,0.08)]">
+            <CardHeader className="space-y-3 border-b border-border p-4">
+              <CardTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
                 <Settings2 className="h-5 w-5 text-primary" />
                 Sections
               </CardTitle>
@@ -1679,10 +1679,10 @@ const AdminFreelancerOnboardingContent = () => {
                   className={`w-full rounded-2xl border px-4 py-4 text-left transition-all ${
                     activeSection === sectionKey
                       ? "border-primary/30 bg-primary/10 shadow-[0_12px_28px_rgba(255,199,0,0.08)]"
-                      : "border-white/10 bg-black/15 hover:border-white/20 hover:bg-white/[0.03]"
+                      : "border-border bg-card/70 hover:border-border/80 hover:bg-card"
                   }`}
                 >
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-sm font-semibold text-foreground">
                     {SECTION_META[sectionKey].title}
                   </p>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -1696,9 +1696,9 @@ const AdminFreelancerOnboardingContent = () => {
           <div className="space-y-5">
             {renderActiveSection()}
 
-            <Card className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-              <CardHeader className="space-y-2 border-b border-white/10 pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white">
+            <Card className="rounded-[24px] border border-border bg-card shadow-[0_18px_44px_rgba(0,0,0,0.08)]">
+              <CardHeader className="space-y-2 border-b border-border pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
                   <Eye className="h-5 w-5 text-primary" />
                   Preview Snapshot
                 </CardTitle>
@@ -1708,55 +1708,55 @@ const AdminFreelancerOnboardingContent = () => {
               </CardHeader>
               <CardContent className="space-y-4 pt-5">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="rounded-2xl border border-border bg-muted/30 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">
                       Profile Title
                     </p>
-                    <p className="mt-2 text-sm text-white">{previewContent?.basicProfile?.title}</p>
+                    <p className="mt-2 text-sm text-foreground">{previewContent?.basicProfile?.title}</p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="rounded-2xl border border-border bg-muted/30 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">
                       Profile Username Label
                     </p>
-                    <p className="mt-2 text-sm text-white">{previewContent?.basicProfile?.fields?.username?.label}</p>
+                    <p className="mt-2 text-sm text-foreground">{previewContent?.basicProfile?.fields?.username?.label}</p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="rounded-2xl border border-border bg-muted/30 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">
                       Setup Title
                     </p>
-                    <p className="mt-2 text-sm text-white">{previewContent?.serviceSetup?.titleTemplate}</p>
+                    <p className="mt-2 text-sm text-foreground">{previewContent?.serviceSetup?.titleTemplate}</p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="rounded-2xl border border-border bg-muted/30 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">
                       Info Heading
                     </p>
-                    <p className="mt-2 text-sm text-white">{previewContent?.serviceInfo?.headingTitleTemplate}</p>
+                    <p className="mt-2 text-sm text-foreground">{previewContent?.serviceInfo?.headingTitleTemplate}</p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="rounded-2xl border border-border bg-muted/30 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">
                       Pricing Heading
                     </p>
-                    <p className="mt-2 text-sm text-white">{previewContent?.servicePricing?.headingTitleTemplate}</p>
+                    <p className="mt-2 text-sm text-foreground">{previewContent?.servicePricing?.headingTitleTemplate}</p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="rounded-2xl border border-border bg-muted/30 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">
                       Case Study CTA
                     </p>
-                    <p className="mt-2 text-sm text-white">{previewContent?.caseStudy?.addButtonLabel}</p>
+                    <p className="mt-2 text-sm text-foreground">{previewContent?.caseStudy?.addButtonLabel}</p>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="rounded-2xl border border-border bg-muted/30 p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-semibold text-white">Stepper labels</p>
+                    <p className="text-sm font-semibold text-foreground">Stepper labels</p>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {(previewContent?.stepper?.steps || []).map((step) => (
                       <Badge
                         key={`${step?.id}-${step?.step}`}
                         variant="outline"
-                        className="rounded-full border-white/10 bg-white/[0.04] text-white/80"
+                        className="rounded-full border-border bg-muted/40 text-muted-foreground"
                       >
                         {step?.step}. {step?.label}
                       </Badge>
@@ -1765,7 +1765,7 @@ const AdminFreelancerOnboardingContent = () => {
                 </div>
 
                 {selectedServiceKey !== "global" ? (
-                  <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-sm leading-6 text-white/85">
+                  <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-sm leading-6 text-foreground/80">
                     Editing a service scope stores a full override for this service. If you want it to fall back to the global copy again, use <span className="font-semibold text-primary">Reset Override</span>.
                   </div>
                 ) : null}
