@@ -4,6 +4,7 @@ import Check from "lucide-react/dist/esm/icons/check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 
@@ -28,11 +29,11 @@ import { cn } from "@/shared/lib/utils";
 import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 
 const inputClassName =
-  "h-14 rounded-[18px] border border-input bg-card px-5 !text-[14px] !leading-5 text-foreground shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15";
+  "h-[46px] rounded-[10px] border border-input bg-card px-5 !text-[14px] !leading-5 text-foreground shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15";
 const selectTriggerClassName =
-  "flex h-14 w-full appearance-none items-center justify-between gap-3 rounded-[18px] border border-input !bg-card px-5 text-left !text-[14px] !leading-5 text-foreground shadow-none outline-none transition-[border-color,box-shadow] data-[size=default]:!h-14 data-[placeholder]:!text-[14px] data-[placeholder]:!leading-5 data-[placeholder]:text-muted-foreground hover:!bg-card focus-visible:border-primary/45 focus-visible:ring-3 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-50 [&_[data-slot=select-value]]:!text-[14px] [&_[data-slot=select-value]]:!leading-5";
+  "flex h-[46px] w-full appearance-none items-center justify-between gap-3 rounded-[10px] border border-input !bg-card px-5 text-left !text-[14px] !leading-5 text-foreground shadow-none outline-none transition-[border-color,box-shadow] data-[size=default]:!h-[46px] data-[placeholder]:!text-[14px] data-[placeholder]:!leading-5 data-[placeholder]:text-muted-foreground hover:!bg-card focus-visible:border-primary/45 focus-visible:ring-3 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-50 [&_[data-slot=select-value]]:!text-[14px] [&_[data-slot=select-value]]:!leading-5";
 const textAreaClassName =
-  "min-h-[120px] rounded-[24px] border border-input bg-card px-5 py-4 !text-[14px] !leading-5 text-foreground shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15 md:min-h-[80px]";
+  "min-h-[120px] rounded-[10px] border border-input bg-card px-5 py-4 !text-[14px] !leading-5 text-foreground shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15 md:min-h-[80px]";
 const dangerFieldClassName =
   "border-destructive/75 text-destructive focus-visible:border-destructive focus-visible:ring-destructive/20";
 
@@ -134,9 +135,11 @@ const FreelancerBasicProfileSlide = ({
   isResumeAutofillRunning = false,
   resumeAutofillTone = "muted",
   resumeAutofillMessage = "",
+  resumeUploadRequestId = 0,
   onboardingContent,
 }) => {
   const deviceInputRef = useRef(null);
+  const resumeInputRef = useRef(null);
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [photoLoadError, setPhotoLoadError] = useState(false);
@@ -206,6 +209,14 @@ const FreelancerBasicProfileSlide = ({
   useEffect(() => {
     setPhotoLoadError(false);
   }, [profilePhotoPreviewUrl]);
+
+  useEffect(() => {
+    if (!resumeUploadRequestId || isResumeAutofillRunning) {
+      return;
+    }
+
+    resumeInputRef.current?.click();
+  }, [resumeUploadRequestId, isResumeAutofillRunning]);
 
   const toggleLanguage = (field, optionValue) => {
     const currentValues = Array.isArray(getFieldValue(basicProfileForm, field.id))
@@ -452,71 +463,100 @@ const FreelancerBasicProfileSlide = ({
         : resumeAutofillTone === "success"
           ? "text-emerald-600 dark:text-emerald-400"
           : "text-muted-foreground";
+    const isOptional = field?.required === false;
+    const resumeHeadline = hasResume ? "Resume attached" : "Upload your CV";
+    const resumeSupportingText =
+      field.helperText || "PDF or DOCX file, max 5MB";
 
     return (
       <div key={field.id} className="space-y-3">
-        <Label className={getFieldLabelClasses(Boolean(fieldError))}>
-          {field.label}
-        </Label>
+        <div className="flex items-center justify-between gap-3">
+          <Label className={getFieldLabelClasses(Boolean(fieldError))}>
+            <span className="inline-flex items-center gap-2">
+              <Sparkles className="size-4 text-primary" />
+              {field.label}
+            </span>
+          </Label>
+          {isOptional ? (
+            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Optional
+            </span>
+          ) : null}
+        </div>
 
         <div
           className={cn(
-            "flex flex-row items-center gap-3 rounded-[20px] border border-input bg-card p-3",
+            "flex flex-col gap-4 rounded-[24px] border border-input bg-card p-4 shadow-[0_20px_60px_rgba(0,0,0,0.08)] sm:flex-row sm:items-center sm:justify-between sm:p-5",
             fieldError && "border-destructive/70 bg-destructive/5",
           )}
         >
-          <label className="inline-flex">
-            <input
-              type="file"
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="hidden"
-              disabled={isResumeAutofillRunning}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) {
-                  onResumeSelect(file);
-                }
-                event.target.value = "";
-              }}
-            />
-            <span className="inline-flex h-10 min-w-[128px] shrink-0 items-center justify-center gap-2 rounded-[14px] border border-border bg-muted px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted/80 max-sm:!text-sm">
-              {isResumeAutofillRunning ? (
-                <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+          <div className="flex min-w-0 flex-1 items-start gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-border bg-background text-muted-foreground shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
+              {hasResume ? (
+                <FileText className="size-5 text-primary" />
               ) : (
-                <Upload className="size-3.5 text-muted-foreground" />
+                <Upload className="size-5" />
               )}
-              {isResumeAutofillRunning
-                ? field.loadingLabel || "Reading CV"
-                : field.browseLabel || "Browse"}
-            </span>
-          </label>
-
-          <div className="min-w-0 flex-1">
-            {hasResume ? (
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <FileText className="size-4 shrink-0 text-primary" />
-                <span className="truncate">{resumeLabel}</span>
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">{resumeHeadline}</p>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                  <Sparkles className="size-3.5" />
+                  AI Autofill
+                </span>
               </div>
-            ) : null}
-            <p
-              className={cn(
-                "truncate text-sm font-normal leading-5 text-muted-foreground",
-                hasResume && "mt-1",
-              )}
-            >
-              {field.helperText || "PDF or DOCX file, max 5MB"}
-            </p>
+              <p className="text-sm text-muted-foreground">{resumeSupportingText}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Uploading your CV lets AI prefill your profile and service details.
+              </p>
+              {hasResume ? (
+                <div className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-foreground">
+                  <FileText className="size-3.5 shrink-0 text-primary" />
+                  <span className="truncate">{resumeLabel}</span>
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          {hasResume ? (
-            <button
-              type="button"
-              onClick={onResumeRemove}
-              className="self-start text-xs font-medium text-muted-foreground transition-colors hover:text-foreground sm:self-center"
-            >
-              {field.removeLabel || "Remove"}
-            </button>
-          ) : null}
+          <div className="flex w-full items-center gap-3 sm:w-auto">
+            <label className="inline-flex flex-1 sm:flex-none">
+              <input
+                ref={resumeInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+                disabled={isResumeAutofillRunning}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    onResumeSelect(file);
+                  }
+                  event.target.value = "";
+                }}
+              />
+              <span className="inline-flex h-11 w-full min-w-[150px] items-center justify-center gap-2 rounded-[16px] border border-primary/30 bg-primary/10 text-sm font-semibold text-primary shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:bg-primary/15">
+                {isResumeAutofillRunning ? (
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                ) : (
+                  <Upload className="size-4 text-primary" />
+                )}
+                {isResumeAutofillRunning
+                  ? field.loadingLabel || "Reading CV"
+                  : field.browseLabel || "Browse"}
+              </span>
+            </label>
+
+            {hasResume ? (
+              <button
+                type="button"
+                onClick={onResumeRemove}
+                className="h-11 rounded-[16px] border border-border px-4 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              >
+                {field.removeLabel || "Remove"}
+              </button>
+            ) : null}
+          </div>
         </div>
 
         {fieldError ? <p className="text-sm text-destructive">{fieldError}</p> : null}
@@ -745,7 +785,7 @@ const FreelancerBasicProfileSlide = ({
         </p>
       </div>
 
-      <div className="relative w-full overflow-hidden rounded-[32px] border border-border bg-card px-5 py-7 shadow-[0_28px_100px_rgba(0,0,0,0.08)] dark:shadow-[0_28px_100px_rgba(0,0,0,0.34)] sm:px-10 sm:py-10 lg:px-16 lg:py-12">
+      <div className="relative w-full overflow-hidden rounded-[32px] border border-border bg-card px-3 py-4 shadow-[0_28px_100px_rgba(0,0,0,0.08)] dark:shadow-[0_28px_100px_rgba(0,0,0,0.34)] sm:px-6 sm:py-7 lg:px-10 lg:py-9">
         <div className="relative space-y-8">
           {profilePhotoField || primaryIdentityFields.length ? (
             <div className="grid gap-5 md:grid-cols-[max-content_minmax(0,1fr)] md:items-start md:gap-6">

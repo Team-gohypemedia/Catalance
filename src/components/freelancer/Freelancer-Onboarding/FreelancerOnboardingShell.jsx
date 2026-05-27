@@ -2,6 +2,7 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Settings from "lucide-react/dist/esm/icons/settings";
 import { toast } from "sonner";
 
@@ -952,6 +953,7 @@ const FreelancerOnboardingShell = () => {
   const [resumeAutofillState, setResumeAutofillState] = useState(
     createInitialResumeAutofillState(),
   );
+  const [resumeUploadRequestId, setResumeUploadRequestId] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResettingOnboarding, setIsResettingOnboarding] = useState(false);
   const [onboardingContentConfig, setOnboardingContentConfig] = useState(null);
@@ -1018,6 +1020,9 @@ const FreelancerOnboardingShell = () => {
   const serviceSetupSlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "serviceSetup",
   );
+  const basicProfileSlideIndex = onboardingSlides.findIndex(
+    (slide) => slide.id === "basicProfile",
+  );
   const serviceInfoSlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "serviceInfo",
   );
@@ -1043,6 +1048,13 @@ const FreelancerOnboardingShell = () => {
   const communicationPolicySlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "communicationPolicy",
   );
+  const handleAiResumeUpload = useCallback(() => {
+    if (basicProfileSlideIndex >= 0 && currentSlideIndex !== basicProfileSlideIndex) {
+      setCurrentSlideIndex(basicProfileSlideIndex);
+    }
+
+    setResumeUploadRequestId((value) => value + 1);
+  }, [basicProfileSlideIndex, currentSlideIndex]);
   const currentServiceKey = selectedServices[currentServiceIndex] || "";
   const currentService = resolveServiceCatalogEntry(dbServices, currentServiceKey);
   const currentServiceName = String(
@@ -3800,7 +3812,7 @@ const FreelancerOnboardingShell = () => {
 
   return (
     <DarkGradientBg className="text-[#f1f5f9]">
-      <main className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-transparent h-[100dvh]">
+      <main className="onboarding-radius-10 relative flex h-screen min-h-screen flex-col overflow-hidden bg-transparent h-[100dvh]">
       <header className="relative z-20 shrink-0 border-b border-white/8 bg-card">
         <div
           className="absolute left-0 top-0 h-1 bg-[var(--primary)] transition-all duration-300"
@@ -3891,7 +3903,7 @@ const FreelancerOnboardingShell = () => {
         ref={onboardingScrollContainerRef}
         className="subtle-scrollbar relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
       >
-        <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+        <div className="min-h-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
           <AnimatePresence initial={false} mode="wait">
             <motion.div
               key={currentSlide.id}
@@ -3926,6 +3938,7 @@ const FreelancerOnboardingShell = () => {
                 isResumeAutofillRunning={isResumeAutofillRunning}
                 resumeAutofillTone={resumeAutofillState.tone}
                 resumeAutofillMessage={resumeAutofillState.message}
+                resumeUploadRequestId={resumeUploadRequestId}
                 selectedServices={selectedServices}
                 onToggleService={handleServiceToggle}
                 dbServices={dbServices}
@@ -3977,6 +3990,19 @@ const FreelancerOnboardingShell = () => {
           </AnimatePresence>
         </div>
       </section>
+
+      <button
+        type="button"
+        onClick={handleAiResumeUpload}
+        className="group fixed bottom-6 right-5 z-40 flex max-w-[18rem] items-center gap-3 rounded-[18px] border border-primary/30 bg-primary/10 px-4 py-3 text-left text-sm font-semibold text-primary shadow-[0_20px_60px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5 hover:bg-primary/15 sm:right-8"
+      >
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-background text-primary shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
+          <Sparkles className="size-5" />
+        </span>
+        <span className="leading-5">
+          Got stuck? Use AI to complete your profile.
+        </span>
+      </button>
 
       {isFooterHidden ? null : (
         <footer className="relative z-20 shrink-0 px-4 py-4 sm:px-6">
