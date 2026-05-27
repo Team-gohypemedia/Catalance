@@ -202,17 +202,17 @@ export const NavItems = ({
             className={cn(
               "relative inline-flex min-w-[7.25rem] shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 py-2 transition-all duration-300",
               isActive
-                ? "shadow-[0_0_24px_rgba(34,42,53,0.06),0_1px_1px_rgba(0,0,0,0.05),0_0_0_1px_rgba(34,42,53,0.04),0_0_4px_rgba(34,42,53,0.08),0_16px_68px_rgba(47,48,55,0.05),0_1px_0_rgba(255,255,255,0.1)_inset]"
+                ? "bg-primary text-primary-foreground shadow-[0_0_24px_rgba(34,42,53,0.06),0_1px_1px_rgba(0,0,0,0.05),0_0_0_1px_rgba(34,42,53,0.04),0_0_4px_rgba(34,42,53,0.08),0_16px_68px_rgba(47,48,55,0.05),0_1px_0_rgba(255,255,255,0.1)_inset]"
                 : "text-foreground/85 hover:text-foreground",
             )}
             style={isActive ? { backgroundColor: isDark ? "#F9D949" : "#D9692A" } : {}}
           >
             <span className="relative z-20">
               <motion.span
-                style={{ color: isActive ? (isDark ? "#1C1B1F" : "#FFFFFF") : textColor }}
+                style={{ color: isActive ? "var(--primary-foreground)" : textColor }}
                 className={cn(
                   "transition-colors duration-200",
-                  isActive ? "font-bold" : "font-medium",
+                  isActive ? "font-bold keep-white text-primary-foreground" : "font-medium",
                 )}
               >
                 {item.name}

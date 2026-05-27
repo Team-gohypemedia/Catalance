@@ -92,16 +92,14 @@ const MobileMenuLink = ({
         className={cn(
           "flex w-full items-center gap-2.5 rounded-[15px] px-3 py-1 text-left transition-colors duration-200",
           active
-            ? "bg-primary text-background shadow-[inset_0_0_0_1px_rgba(255,193,7,0.32)]"
+            ? "bg-primary text-primary-foreground shadow-[inset_0_0_0_1px_rgba(255,193,7,0.32)]"
             : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground",
         )}
       >
         <span
           className={cn(
             "flex size-6 shrink-0 items-center justify-center rounded-[10px] transition-colors duration-200",
-            active
-              ? "bg-background/15 text-background shadow-[inset_0_0_0_1px_rgba(20,20,20,0.12)]"
-              : "text-muted-foreground",
+            active ? "text-primary-foreground" : "text-muted-foreground",
           )}
         >
           {Icon ? <Icon className="size-3.5" /> : null}
@@ -113,14 +111,14 @@ const MobileMenuLink = ({
         className={cn(
           "flex min-h-9 items-center gap-2 rounded-[15px] border px-3 py-1 text-left transition-colors duration-200",
           active
-            ? "border-primary bg-primary text-background"
+            ? "border-primary bg-primary text-primary-foreground"
             : "text-muted-foreground hover:text-foreground",
         )}
       >
         <span
           className={cn(
             "flex size-5.5 shrink-0 items-center justify-center rounded-[10px]",
-            active ? "text-background" : "text-muted-foreground",
+            active ? "text-primary-foreground" : "text-muted-foreground",
           )}
         >
           {Icon ? <Icon className="size-3.5" /> : null}
