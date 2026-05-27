@@ -13,6 +13,7 @@ import {
   FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
 } from "../modules/users/freelancer-profile.select.js";
 import { updateUserProfile } from "../modules/users/user.service.js";
+import { generateResumeAutofill } from "../services/freelancer-onboarding-ai.service.js";
 
 const parseExtras = (value) => {
   try {
@@ -889,6 +890,60 @@ export const saveResume = asyncHandler(async (req, res) => {
   });
 
   res.json({ data: { success: true, resume } });
+});
+
+export const autofillProfileFromResume = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  if (!req.file) {
+    throw new AppError("Resume file is required.", 400);
+  }
+
+  let fields = [];
+  let schema = null;
+  try {
+    fields = JSON.parse(req.body?.fields || "[]");
+    schema = req.body?.schema ? JSON.parse(req.body.schema) : null;
+  } catch {
+    throw new AppError("Invalid onboarding schema payload.", 400);
+  }
+
+  const result = await generateResumeAutofill({
+    file: req.file,
+    schema: schema || fields,
+  });
+
+  console.log(
+    "[ResumeAutofill][Request Summary]",
+    JSON.stringify(
+      {
+        userId,
+        fileName: req.file?.originalname || "",
+        mimeType: req.file?.mimetype || "",
+        requestedSchema: schema || fields,
+      },
+      null,
+      2,
+    ),
+  );
+
+  console.log(
+    "[ResumeAutofill][Response Summary]",
+    JSON.stringify(
+      {
+        extractedTextPreview: result.extractedTextPreview,
+        basicProfileFields: result.basicProfileFields,
+        suggestedServices: result.suggestedServices,
+      },
+      null,
+      2,
+    ),
+  );
+
+  res.json({ data: result });
 });
 
 // Save FCM token for push notifications

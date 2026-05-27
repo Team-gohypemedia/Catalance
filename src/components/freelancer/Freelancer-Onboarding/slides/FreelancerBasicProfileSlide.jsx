@@ -131,6 +131,9 @@ const FreelancerBasicProfileSlide = ({
   resumeFile = null,
   onResumeSelect,
   onResumeRemove,
+  isResumeAutofillRunning = false,
+  resumeAutofillTone = "muted",
+  resumeAutofillMessage = "",
   onboardingContent,
 }) => {
   const deviceInputRef = useRef(null);
@@ -443,6 +446,12 @@ const FreelancerBasicProfileSlide = ({
 
   const renderResumeField = (field) => {
     const fieldError = basicProfileErrors[field.id];
+    const resumeAutofillMessageClassName =
+      resumeAutofillTone === "error"
+        ? "text-destructive"
+        : resumeAutofillTone === "success"
+          ? "text-emerald-600 dark:text-emerald-400"
+          : "text-muted-foreground";
 
     return (
       <div key={field.id} className="space-y-3">
@@ -461,6 +470,7 @@ const FreelancerBasicProfileSlide = ({
               type="file"
               accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="hidden"
+              disabled={isResumeAutofillRunning}
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) {
@@ -470,8 +480,14 @@ const FreelancerBasicProfileSlide = ({
               }}
             />
             <span className="inline-flex h-10 min-w-[128px] shrink-0 items-center justify-center gap-2 rounded-[14px] border border-border bg-muted px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted/80 max-sm:!text-sm">
-              <Upload className="size-3.5 text-muted-foreground" />
-              {field.browseLabel || "Browse"}
+              {isResumeAutofillRunning ? (
+                <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+              ) : (
+                <Upload className="size-3.5 text-muted-foreground" />
+              )}
+              {isResumeAutofillRunning
+                ? field.loadingLabel || "Reading CV"
+                : field.browseLabel || "Browse"}
             </span>
           </label>
 
@@ -504,6 +520,11 @@ const FreelancerBasicProfileSlide = ({
         </div>
 
         {fieldError ? <p className="text-sm text-destructive">{fieldError}</p> : null}
+        {!fieldError && resumeAutofillMessage ? (
+          <p className={cn("text-sm", resumeAutofillMessageClassName)}>
+            {resumeAutofillMessage}
+          </p>
+        ) : null}
       </div>
     );
   };
