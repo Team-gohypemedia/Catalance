@@ -38,11 +38,12 @@ const StepperItem = ({
       className={cn(
         "relative flex h-9 w-full min-w-0 items-center rounded-full border text-sm transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10",
         isActive
-          ? "justify-center gap-0 border-primary bg-primary px-3 text-primary-foreground shadow-[0_0_16px_rgba(var(--brand-rgb),0.22)] sm:gap-2 sm:px-4"
+          ? "justify-center gap-0 border-primary bg-primary px-3 !text-white shadow-[0_0_16px_rgba(var(--brand-rgb),0.22)] sm:gap-2 sm:px-4"
           : isCompleted
             ? "justify-center gap-0 border-border bg-muted/80 px-2 text-foreground hover:border-primary/30 hover:bg-muted sm:gap-2 sm:px-4"
             : "justify-center gap-0 border-border/40 bg-muted/30 px-2 text-muted-foreground/85 hover:border-border/85 hover:bg-muted/60 hover:text-foreground sm:gap-2 sm:px-4",
       )}
+      style={isActive ? { color: "white", WebkitTextFillColor: "white" } : undefined}
       aria-current={isActive ? "step" : undefined}
       aria-label={`${step.step}. ${step.label}`}
     >
@@ -50,15 +51,24 @@ const StepperItem = ({
         className={cn(
           ONBOARDING_STEP_LABEL_CLASS,
           isActive
-            ? "max-w-none whitespace-nowrap text-sm font-medium text-primary-foreground"
+            ? "max-w-none whitespace-nowrap text-sm font-medium !text-white keep-white"
             : "max-w-full truncate text-sm font-normal text-inherit",
         )}
+        style={isActive ? { color: "white" } : undefined}
       >
         {/* Mobile: active -> show label, inactive -> show step number. Desktop (sm+): always show full label. */}
-        <span className={cn(isActive ? "block sm:hidden" : "block sm:hidden")}>
+        <span 
+          className={cn(isActive ? "block sm:hidden !text-white keep-white" : "block sm:hidden")}
+          style={isActive ? { color: "white" } : undefined}
+        >
           {isActive ? step.label : String(step.step)}
         </span>
-        <span className="hidden sm:inline">{step.label}</span>
+        <span 
+          className={cn("hidden sm:inline", isActive && "!text-white keep-white")}
+          style={isActive ? { color: "white" } : undefined}
+        >
+          {step.label}
+        </span>
       </span>
     </button>
   </div>
