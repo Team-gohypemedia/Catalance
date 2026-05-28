@@ -3994,14 +3994,17 @@ const FreelancerOnboardingShell = () => {
       <button
         type="button"
         onClick={handleAiResumeUpload}
-        className="group fixed bottom-6 right-5 z-40 flex max-w-[18rem] items-center gap-3 rounded-[18px] border border-primary/30 bg-primary/10 px-4 py-3 text-left text-sm font-semibold text-primary shadow-[0_20px_60px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5 hover:bg-primary/15 sm:right-8"
+        className="group fixed bottom-6 right-5 z-40 flex max-w-[20rem] items-center gap-3 rounded-full border border-border/50 bg-background p-2 pr-5 text-left text-sm font-medium shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_12px_40px_rgba(0,0,0,0.16)] sm:right-8"
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-background text-primary shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
-          <Sparkles className="size-5" />
-        </span>
-        <span className="leading-5">
-          Got stuck? Use AI to complete your profile.
-        </span>
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+          <Sparkles className="size-4" />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs font-bold uppercase tracking-wider text-primary">Got stuck?</span>
+          <span className="text-[13px] leading-snug text-muted-foreground group-hover:text-foreground transition-colors">
+            Upload your resume & use AI to complete your profile.
+          </span>
+        </div>
       </button>
 
       {isFooterHidden ? null : (

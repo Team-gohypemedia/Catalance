@@ -486,41 +486,26 @@ const FreelancerBasicProfileSlide = ({
 
         <div
           className={cn(
-            "flex flex-col gap-4 rounded-[24px] border border-input bg-card p-4 shadow-[0_20px_60px_rgba(0,0,0,0.08)] sm:flex-row sm:items-center sm:justify-between sm:p-5",
+            "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-[12px] border border-dashed border-primary/40 bg-primary/5 px-4 py-3 sm:px-5 sm:py-3.5",
             fieldError && "border-destructive/70 bg-destructive/5",
           )}
         >
-          <div className="flex min-w-0 flex-1 items-start gap-4">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-border bg-background text-muted-foreground shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
-              {hasResume ? (
-                <FileText className="size-5 text-primary" />
-              ) : (
-                <Upload className="size-5" />
-              )}
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+              <Sparkles className="size-4" />
             </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">{resumeHeadline}</p>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                  <Sparkles className="size-3.5" />
-                  AI Autofill
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">{resumeSupportingText}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Uploading your CV lets AI prefill your profile and service details.
-              </p>
-              {hasResume ? (
-                <div className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-foreground">
-                  <FileText className="size-3.5 shrink-0 text-primary" />
-                  <span className="truncate">{resumeLabel}</span>
-                </div>
-              ) : null}
+            <div className="flex min-w-0 flex-col text-left">
+              <span className="truncate text-sm font-medium text-foreground">
+                {hasResume ? resumeLabel : "AI Autofill"}
+              </span>
+              <span className="truncate text-xs text-muted-foreground">
+                {hasResume ? "Resume attached" : resumeSupportingText}
+              </span>
             </div>
           </div>
 
-          <div className="flex w-full items-center gap-3 sm:w-auto">
-            <label className="inline-flex flex-1 sm:flex-none">
+          <div className="flex shrink-0 items-center gap-2">
+            <label className="inline-flex">
               <input
                 ref={resumeInputRef}
                 type="file"
@@ -535,14 +520,14 @@ const FreelancerBasicProfileSlide = ({
                   event.target.value = "";
                 }}
               />
-              <span className="inline-flex h-11 w-full min-w-[150px] items-center justify-center gap-2 rounded-[16px] border border-primary/30 bg-primary/10 text-sm font-semibold text-primary shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:bg-primary/15">
+              <span className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90">
                 {isResumeAutofillRunning ? (
-                  <Loader2 className="size-4 animate-spin text-primary" />
+                  <Loader2 className="size-3.5 animate-spin" />
                 ) : (
-                  <Upload className="size-4 text-primary" />
+                  <Upload className="size-3.5" />
                 )}
                 {isResumeAutofillRunning
-                  ? field.loadingLabel || "Reading CV"
+                  ? field.loadingLabel || "Reading..."
                   : field.browseLabel || "Browse"}
               </span>
             </label>
@@ -551,7 +536,7 @@ const FreelancerBasicProfileSlide = ({
               <button
                 type="button"
                 onClick={onResumeRemove}
-                className="h-11 rounded-[16px] border border-border px-4 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                className="flex h-8 items-center justify-center rounded-full border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 {field.removeLabel || "Remove"}
               </button>
@@ -786,30 +771,39 @@ const FreelancerBasicProfileSlide = ({
       </div>
 
       <div className="relative w-full overflow-hidden rounded-[32px] border border-border bg-card px-3 py-4 shadow-[0_28px_100px_rgba(0,0,0,0.08)] dark:shadow-[0_28px_100px_rgba(0,0,0,0.34)] sm:px-6 sm:py-7 lg:px-10 lg:py-9">
-        <div className="relative space-y-8">
-          {profilePhotoField || primaryIdentityFields.length ? (
-            <div className="grid gap-5 md:grid-cols-[max-content_minmax(0,1fr)] md:items-start md:gap-6">
-              {renderProfilePhotoField()}
+        <div className="relative grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
+          
+          <div className="space-y-6 lg:space-y-8">
+            {profilePhotoField || primaryIdentityFields.length ? (
+              <div className="grid gap-5 md:grid-cols-[max-content_minmax(0,1fr)] md:items-start md:gap-6">
+                {renderProfilePhotoField()}
 
-              <div className="h-full space-y-6">
-                {primaryIdentityFields.map((field) => renderField(field))}
+                <div className="flex h-full w-full flex-col justify-center space-y-5">
+                  {primaryIdentityFields.map((field) => renderField(field))}
+                </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
 
-          {bioField ? renderField(bioField) : null}
+            {bioField ? renderField(bioField) : null}
+          </div>
 
-          {resumeField?.visible !== false ? renderField(resumeField) : null}
+          <div className="space-y-6 lg:space-y-8">
+            {resumeField?.visible !== false ? renderField(resumeField) : null}
 
-          {countryStateFields.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-2">
-              {countryStateFields.map((field) => renderField(field))}
-            </div>
-          ) : null}
+            {(countryStateFields.length > 0 || languageField?.visible !== false) ? (
+              <div className="grid gap-5 sm:grid-cols-2">
+                {countryStateFields.map((field) => renderField(field))}
+                {languageField?.visible !== false ? (
+                  <div className="sm:col-span-2">
+                    {renderField(languageField)}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
-          {languageField?.visible !== false ? renderField(languageField) : null}
-
-          {remainingFields.map((field) => renderField(field))}
+            {remainingFields.map((field) => renderField(field))}
+          </div>
+          
         </div>
       </div>
     </section>
