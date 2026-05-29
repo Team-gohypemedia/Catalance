@@ -222,15 +222,41 @@
       "serviceTitleTooltip": "Write a clear title that shows what you can build and the result you deliver.",
       "fields": {
         "title": {
+          "id": "title",
+          "type": "text",
           "label": "Service Title",
-          "placeholder": "I will do something I'm really good at you "
+          "placeholder": "I will do something I'm really good at you ",
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         "categories": {
+          "id": "categories",
+          "type": "multiselect",
           "label": "Select Category",
           "placeholder": "Search here",
-          "searchPlaceholder": "Search here"
+          "searchPlaceholder": "Search here",
+          "options": [],
+          "skillSuggestionsByCategory": {},
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         },
         "experience": {
+          "id": "experience",
+          "type": "select",
           "label": "Experience",
           "placeholder": "Select experience level",
           "options": [
@@ -250,7 +276,41 @@
               "value": "expert",
               "label": "Expert (5-10 years +)"
             }
-          ]
+          ],
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
+        },
+        "custom_field_4": {
+          "id": "custom_field_4",
+          "type": "select",
+          "label": "New Question",
+          "placeholder": "",
+          "helperText": "",
+          "searchPlaceholder": "",
+          "required": false,
+          "visible": true,
+          "system": false,
+          "canDelete": true,
+          "options": [
+            {
+              "value": "",
+              "label": ""
+            },
+            {
+              "value": "",
+              "label": ""
+            }
+          ],
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         }
       },
       "fieldList": [
@@ -258,11 +318,17 @@
           "id": "title",
           "type": "text",
           "label": "Service Title",
-          "placeholder": "I will do something I'm really good at",
+          "placeholder": "I will do something I'm really good at you ",
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         {
           "id": "categories",
@@ -270,10 +336,16 @@
           "label": "Select Category",
           "placeholder": "Search here",
           "searchPlaceholder": "Search here",
+          "options": [],
+          "skillSuggestionsByCategory": {},
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "helperText": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         },
         {
           "id": "experience",
@@ -295,17 +367,43 @@
             },
             {
               "value": "expert",
-              "label": "Expert (5-10 years)"
-            },
-            {
-              "value": "veteran",
-              "label": "Veteran (10+ years)"
+              "label": "Expert (5-10 years +)"
             }
           ],
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
+        },
+        {
+          "id": "custom_field_4",
+          "type": "select",
+          "label": "New Question",
+          "placeholder": "",
+          "helperText": "",
+          "searchPlaceholder": "",
+          "required": false,
+          "visible": true,
+          "system": false,
+          "canDelete": true,
+          "options": [
+            {
+              "value": "",
+              "label": ""
+            },
+            {
+              "value": "",
+              "label": ""
+            }
+          ],
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         }
       ]
     },
@@ -315,10 +413,24 @@
       "sectionDescription": "Provide the details of the service you will offer.",
       "fields": {
         "description": {
+          "id": "description",
+          "type": "textarea",
           "label": "Service Description",
-          "placeholder": "Description..."
+          "placeholder": "Description...",
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         "deliveryTimeline": {
+          "id": "deliveryTimeline",
+          "type": "select",
           "label": "Delivery Timeline",
           "placeholder": "Select delivery time",
           "options": [
@@ -354,12 +466,33 @@
               "value": "ongoing",
               "label": "Ongoing / Retainer"
             }
-          ]
+          ],
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         },
         "priceRange": {
+          "id": "priceRange",
+          "type": "text",
           "label": "Starting Price",
           "placeholder": "Enter starting price",
-          "currencySymbol": "₹"
+          "prefix": "₹",
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "currencySymbol": "₹",
+          "helperText": "",
+          "searchPlaceholder": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         }
       },
       "fieldList": [
@@ -371,7 +504,13 @@
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         {
           "id": "deliveryTimeline",
@@ -415,7 +554,12 @@
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         },
         {
           "id": "priceRange",
@@ -426,7 +570,13 @@
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "currencySymbol": "₹",
+          "helperText": "",
+          "searchPlaceholder": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         }
       ]
     },
@@ -445,7 +595,13 @@
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "placeholder": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         }
       ]
     },
@@ -457,26 +613,87 @@
       "limitMessage": "Onboarding limit reached: 5 case studies. Add more later from your profile.",
       "fields": {
         "title": {
+          "id": "title",
+          "type": "text",
           "label": "Case Study Title",
-          "placeholder": "e.g. E-commerce Platform Redesign"
+          "placeholder": "e.g. E-commerce Platform Redesign",
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         "description": {
+          "id": "description",
+          "type": "textarea",
           "label": "Description",
-          "placeholder": "Briefly describe the project and its goals..."
+          "placeholder": "Briefly describe the project and its goals...",
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         "niche": {
+          "id": "niche",
+          "type": "select",
           "label": "Niche",
           "placeholder": "Select niche",
-          "searchPlaceholder": "Search niches"
+          "searchPlaceholder": "Search niches",
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         },
         "projectLink": {
+          "id": "projectLink",
+          "type": "text",
           "label": "Project Link (Optional)",
-          "placeholder": "https://..."
+          "placeholder": "https://...",
+          "required": false,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         "projectFile": {
-          "label": "Project File (Optional)"
+          "id": "projectFile",
+          "type": "file",
+          "label": "Project File (Optional)",
+          "required": false,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "placeholder": "",
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         "role": {
+          "id": "role",
+          "type": "select",
           "label": "Your Role",
           "placeholder": "Select role",
           "options": [
@@ -492,9 +709,20 @@
               "value": "team_project",
               "label": "Team project"
             }
-          ]
+          ],
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         },
         "timeline": {
+          "id": "timeline",
+          "type": "select",
           "label": "Timeline",
           "placeholder": "Select duration",
           "options": [
@@ -526,11 +754,32 @@
               "value": "12_plus_weeks",
               "label": "12+ Weeks"
             }
-          ]
+          ],
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         },
         "budget": {
+          "id": "budget",
+          "type": "text",
           "label": "Budget",
-          "placeholder": "e.g. 5000"
+          "placeholder": "e.g. 5000",
+          "prefix": "₹",
+          "required": true,
+          "visible": true,
+          "system": true,
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         }
       },
       "fieldList": [
@@ -542,7 +791,13 @@
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         {
           "id": "description",
@@ -552,7 +807,13 @@
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         {
           "id": "niche",
@@ -563,7 +824,12 @@
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "options": [],
+          "helperText": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         },
         {
           "id": "projectLink",
@@ -573,7 +839,13 @@
           "required": false,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         {
           "id": "projectFile",
@@ -582,7 +854,14 @@
           "required": false,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "placeholder": "",
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         },
         {
           "id": "role",
@@ -606,7 +885,12 @@
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         },
         {
           "id": "timeline",
@@ -646,7 +930,12 @@
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "prefix": "",
+          "browseLabel": "",
+          "removeLabel": ""
         },
         {
           "id": "budget",
@@ -657,10 +946,953 @@
           "required": true,
           "visible": true,
           "system": true,
-          "canDelete": false
+          "canDelete": false,
+          "helperText": "",
+          "searchPlaceholder": "",
+          "browseLabel": "",
+          "removeLabel": "",
+          "options": []
         }
       ]
     }
   },
-  "services": {}
+  "services": {
+    "software_development": {
+      "basicProfile": {
+        "title": "Complete Your Profile",
+        "description": "Let's establish your professional presence",
+        "fields": [
+          {
+            "id": "profilePhoto",
+            "type": "image",
+            "label": "Profile Photo",
+            "helperText": "JPG, PNG or GIF. Max 5MB.",
+            "menuCameraLabel": "Take a picture",
+            "menuUploadLabel": "Choose from device",
+            "required": false,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "placeholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "selectCountryFirstLabel": "",
+            "loadingLabel": "",
+            "selectPlaceholder": "",
+            "inputPlaceholder": "",
+            "dataSource": "manual",
+            "options": []
+          },
+          {
+            "id": "fullName",
+            "type": "text",
+            "label": "Name",
+            "placeholder": "Enter your full name",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "menuCameraLabel": "",
+            "menuUploadLabel": "",
+            "selectCountryFirstLabel": "",
+            "loadingLabel": "",
+            "selectPlaceholder": "",
+            "inputPlaceholder": "",
+            "dataSource": "manual",
+            "options": []
+          },
+          {
+            "id": "username",
+            "type": "text",
+            "label": "Username",
+            "prefix": "@",
+            "placeholder": "yourname",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "menuCameraLabel": "",
+            "menuUploadLabel": "",
+            "selectCountryFirstLabel": "",
+            "loadingLabel": "",
+            "selectPlaceholder": "",
+            "inputPlaceholder": "",
+            "dataSource": "manual",
+            "options": []
+          },
+          {
+            "id": "professionalBio",
+            "type": "textarea",
+            "label": "Professional Bio",
+            "placeholder": "Tell us about your background, expertise, and what makes you unique...",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "menuCameraLabel": "",
+            "menuUploadLabel": "",
+            "selectCountryFirstLabel": "",
+            "loadingLabel": "",
+            "selectPlaceholder": "",
+            "inputPlaceholder": "",
+            "dataSource": "manual",
+            "options": []
+          },
+          {
+            "id": "resume",
+            "type": "file",
+            "label": "Upload Your CV",
+            "browseLabel": "Browse",
+            "helperText": "PDF or DOCX file, max 5MB",
+            "removeLabel": "Remove",
+            "required": false,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "placeholder": "",
+            "prefix": "",
+            "menuCameraLabel": "",
+            "menuUploadLabel": "",
+            "selectCountryFirstLabel": "",
+            "loadingLabel": "",
+            "selectPlaceholder": "",
+            "inputPlaceholder": "",
+            "dataSource": "manual",
+            "options": []
+          },
+          {
+            "id": "country",
+            "type": "select",
+            "label": "Country",
+            "placeholder": "Select country",
+            "dataSource": "countryOptions",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "menuCameraLabel": "",
+            "menuUploadLabel": "",
+            "selectCountryFirstLabel": "",
+            "loadingLabel": "",
+            "selectPlaceholder": "",
+            "inputPlaceholder": "",
+            "options": []
+          },
+          {
+            "id": "state",
+            "type": "select",
+            "label": "State / Province",
+            "selectCountryFirstLabel": "Select country first",
+            "loadingLabel": "Loading states...",
+            "selectPlaceholder": "Select state",
+            "inputPlaceholder": "Type your state",
+            "dataSource": "stateOptions",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "placeholder": "",
+            "helperText": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "menuCameraLabel": "",
+            "menuUploadLabel": "",
+            "options": []
+          },
+          {
+            "id": "languages",
+            "type": "multiselect",
+            "label": "Select Language",
+            "placeholder": "Select language",
+            "dataSource": "languageOptions",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "menuCameraLabel": "",
+            "menuUploadLabel": "",
+            "selectCountryFirstLabel": "",
+            "loadingLabel": "",
+            "selectPlaceholder": "",
+            "inputPlaceholder": "",
+            "options": []
+          }
+        ]
+      },
+      "stepper": {
+        "steps": [
+          {
+            "id": "overview",
+            "label": "Overview",
+            "step": 1
+          },
+          {
+            "id": "pricing",
+            "label": "Pricing",
+            "step": 2
+          },
+          {
+            "id": "visuals",
+            "label": "Add Visuals",
+            "step": 3
+          },
+          {
+            "id": "caseStudy",
+            "label": "Case Study",
+            "step": 4
+          },
+          {
+            "id": "preview",
+            "label": "Preview",
+            "step": 5
+          }
+        ]
+      },
+      "serviceSetup": {
+        "titleTemplate": "Let's Start Your {serviceName} Setup",
+        "description": "Describe your services to get matched with clients."
+      },
+      "serviceInfo": {
+        "headingTitleTemplate": "Fill Your {serviceName} Service Info in this",
+        "sectionTitle": "Tell clients what you offer in this services ",
+        "sectionDescription": "Capture the title, category, and experience you want shown for this service.",
+        "serviceTitleTooltip": "Write a clear title that shows what you can build and the result you deliver.",
+        "fields": {
+          "title": {
+            "id": "title",
+            "type": "text",
+            "label": "Service Title",
+            "placeholder": "I will do something I'm really good at you ",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          "categories": {
+            "id": "categories",
+            "type": "multiselect",
+            "label": "Select Category",
+            "placeholder": "Search here",
+            "searchPlaceholder": "Search here",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          "experience": {
+            "id": "experience",
+            "type": "select",
+            "label": "Experience",
+            "placeholder": "Select experience level",
+            "options": [
+              {
+                "value": "entry",
+                "label": "Entry Level (0-1 years)"
+              },
+              {
+                "value": "intermediate",
+                "label": "Intermediate (1-3 years)"
+              },
+              {
+                "value": "experienced",
+                "label": "Experienced (3-5 years)"
+              },
+              {
+                "value": "expert",
+                "label": "Expert (5-10 years +)"
+              }
+            ],
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          "custom_field_4": {
+            "id": "custom_field_4",
+            "type": "text",
+            "label": "New Question",
+            "placeholder": "test",
+            "helperText": "test",
+            "searchPlaceholder": "",
+            "required": false,
+            "visible": true,
+            "system": false,
+            "canDelete": true,
+            "options": [],
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          }
+        },
+        "fieldList": [
+          {
+            "id": "title",
+            "type": "text",
+            "label": "Service Title",
+            "placeholder": "I will do something I'm really good at you ",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          {
+            "id": "categories",
+            "type": "multiselect",
+            "label": "Select Category",
+            "placeholder": "Search here",
+            "searchPlaceholder": "Search here",
+            "options": [],
+            "skillSuggestionsByCategory": {},
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          {
+            "id": "experience",
+            "type": "select",
+            "label": "Experience",
+            "placeholder": "Select experience level",
+            "options": [
+              {
+                "value": "entry",
+                "label": "Entry Level (0-1 years)"
+              },
+              {
+                "value": "intermediate",
+                "label": "Intermediate (1-3 years)"
+              },
+              {
+                "value": "experienced",
+                "label": "Experienced (3-5 years)"
+              },
+              {
+                "value": "expert",
+                "label": "Expert (5-10 years +)"
+              }
+            ],
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          {
+            "id": "custom_field_4",
+            "type": "text",
+            "label": "New Question",
+            "placeholder": "test",
+            "helperText": "test",
+            "searchPlaceholder": "",
+            "required": false,
+            "visible": true,
+            "system": false,
+            "canDelete": true,
+            "options": [],
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          }
+        ]
+      },
+      "servicePricing": {
+        "headingTitleTemplate": "Set Your {serviceName} Service Price",
+        "sectionTitle": "Set Your Price",
+        "sectionDescription": "Provide the details of the service you will offer.",
+        "fields": {
+          "description": {
+            "id": "description",
+            "type": "textarea",
+            "label": "Service Description",
+            "placeholder": "Description...",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          "deliveryTimeline": {
+            "id": "deliveryTimeline",
+            "type": "select",
+            "label": "Delivery Timeline",
+            "placeholder": "Select delivery time",
+            "options": [
+              {
+                "value": "1_week",
+                "label": "1 Week"
+              },
+              {
+                "value": "2_weeks",
+                "label": "2 Weeks"
+              },
+              {
+                "value": "3_weeks",
+                "label": "3 Weeks"
+              },
+              {
+                "value": "4_weeks",
+                "label": "4 Weeks"
+              },
+              {
+                "value": "6_weeks",
+                "label": "6 Weeks"
+              },
+              {
+                "value": "8_weeks",
+                "label": "8 Weeks"
+              },
+              {
+                "value": "12_weeks",
+                "label": "12 Weeks"
+              },
+              {
+                "value": "ongoing",
+                "label": "Ongoing / Retainer"
+              }
+            ],
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          "priceRange": {
+            "id": "priceRange",
+            "type": "text",
+            "label": "Starting Price",
+            "placeholder": "Enter starting price",
+            "prefix": "₹",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "currencySymbol": "₹",
+            "helperText": "",
+            "searchPlaceholder": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          }
+        },
+        "fieldList": [
+          {
+            "id": "description",
+            "type": "textarea",
+            "label": "Service Description",
+            "placeholder": "Description...",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          {
+            "id": "deliveryTimeline",
+            "type": "select",
+            "label": "Delivery Timeline",
+            "placeholder": "Select delivery time",
+            "options": [
+              {
+                "value": "1_week",
+                "label": "1 Week"
+              },
+              {
+                "value": "2_weeks",
+                "label": "2 Weeks"
+              },
+              {
+                "value": "3_weeks",
+                "label": "3 Weeks"
+              },
+              {
+                "value": "4_weeks",
+                "label": "4 Weeks"
+              },
+              {
+                "value": "6_weeks",
+                "label": "6 Weeks"
+              },
+              {
+                "value": "8_weeks",
+                "label": "8 Weeks"
+              },
+              {
+                "value": "12_weeks",
+                "label": "12 Weeks"
+              },
+              {
+                "value": "ongoing",
+                "label": "Ongoing / Retainer"
+              }
+            ],
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          {
+            "id": "priceRange",
+            "type": "text",
+            "label": "Starting Price",
+            "placeholder": "Enter starting price",
+            "prefix": "₹",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "currencySymbol": "₹",
+            "helperText": "",
+            "searchPlaceholder": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          }
+        ]
+      },
+      "serviceVisuals": {
+        "headingTitle": "Add Media",
+        "sectionTitle": "Enhance Your Service",
+        "sectionDescription": "Add media for better visibility.",
+        "uploadRuleWithMedia": "Upload rule: up to 2 images and 1 video (max 5MB each).",
+        "uploadRuleEmpty": "Upload rule: add one file to start, then add up to 2 images and 1 video total.",
+        "fieldList": [
+          {
+            "id": "mediaFiles",
+            "type": "media",
+            "label": "Upload Media",
+            "helperText": "Add one image or video to create the primary preview.",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "placeholder": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          }
+        ]
+      },
+      "caseStudy": {
+        "headingTitle": "Tell Us About Your Previous Work",
+        "sectionTitle": "Case Studies",
+        "sectionDescription": "Add multiple case studies and switch between them while filling the details.",
+        "addButtonLabel": "Add Case Study",
+        "limitMessage": "Onboarding limit reached: 5 case studies. Add more later from your profile.",
+        "fields": {
+          "title": {
+            "id": "title",
+            "type": "text",
+            "label": "Case Study Title",
+            "placeholder": "e.g. E-commerce Platform Redesign",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          "description": {
+            "id": "description",
+            "type": "textarea",
+            "label": "Description",
+            "placeholder": "Briefly describe the project and its goals...",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          "niche": {
+            "id": "niche",
+            "type": "select",
+            "label": "Niche",
+            "placeholder": "Select niche",
+            "searchPlaceholder": "Search niches",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          "projectLink": {
+            "id": "projectLink",
+            "type": "text",
+            "label": "Project Link (Optional)",
+            "placeholder": "https://...",
+            "required": false,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          "projectFile": {
+            "id": "projectFile",
+            "type": "file",
+            "label": "Project File (Optional)",
+            "required": false,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "placeholder": "",
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          "role": {
+            "id": "role",
+            "type": "select",
+            "label": "Your Role",
+            "placeholder": "Select role",
+            "options": [
+              {
+                "value": "full_execution",
+                "label": "Full execution"
+              },
+              {
+                "value": "partial_contribution",
+                "label": "Partial contribution"
+              },
+              {
+                "value": "team_project",
+                "label": "Team project"
+              }
+            ],
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          "timeline": {
+            "id": "timeline",
+            "type": "select",
+            "label": "Timeline",
+            "placeholder": "Select duration",
+            "options": [
+              {
+                "value": "under_1_week",
+                "label": "Under 1 Week"
+              },
+              {
+                "value": "1_2_weeks",
+                "label": "1-2 Weeks"
+              },
+              {
+                "value": "2_4_weeks",
+                "label": "2-4 Weeks"
+              },
+              {
+                "value": "4_6_weeks",
+                "label": "4-6 Weeks"
+              },
+              {
+                "value": "6_8_weeks",
+                "label": "6-8 Weeks"
+              },
+              {
+                "value": "8_12_weeks",
+                "label": "8-12 Weeks"
+              },
+              {
+                "value": "12_plus_weeks",
+                "label": "12+ Weeks"
+              }
+            ],
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          "budget": {
+            "id": "budget",
+            "type": "text",
+            "label": "Budget",
+            "placeholder": "e.g. 5000",
+            "prefix": "₹",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          }
+        },
+        "fieldList": [
+          {
+            "id": "title",
+            "type": "text",
+            "label": "Case Study Title",
+            "placeholder": "e.g. E-commerce Platform Redesign",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          {
+            "id": "description",
+            "type": "textarea",
+            "label": "Description",
+            "placeholder": "Briefly describe the project and its goals...",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          {
+            "id": "niche",
+            "type": "select",
+            "label": "Niche",
+            "placeholder": "Select niche",
+            "searchPlaceholder": "Search niches",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "options": [],
+            "helperText": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          {
+            "id": "projectLink",
+            "type": "text",
+            "label": "Project Link (Optional)",
+            "placeholder": "https://...",
+            "required": false,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          {
+            "id": "projectFile",
+            "type": "file",
+            "label": "Project File (Optional)",
+            "required": false,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "placeholder": "",
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          },
+          {
+            "id": "role",
+            "type": "select",
+            "label": "Your Role",
+            "placeholder": "Select role",
+            "options": [
+              {
+                "value": "full_execution",
+                "label": "Full execution"
+              },
+              {
+                "value": "partial_contribution",
+                "label": "Partial contribution"
+              },
+              {
+                "value": "team_project",
+                "label": "Team project"
+              }
+            ],
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          {
+            "id": "timeline",
+            "type": "select",
+            "label": "Timeline",
+            "placeholder": "Select duration",
+            "options": [
+              {
+                "value": "under_1_week",
+                "label": "Under 1 Week"
+              },
+              {
+                "value": "1_2_weeks",
+                "label": "1-2 Weeks"
+              },
+              {
+                "value": "2_4_weeks",
+                "label": "2-4 Weeks"
+              },
+              {
+                "value": "4_6_weeks",
+                "label": "4-6 Weeks"
+              },
+              {
+                "value": "6_8_weeks",
+                "label": "6-8 Weeks"
+              },
+              {
+                "value": "8_12_weeks",
+                "label": "8-12 Weeks"
+              },
+              {
+                "value": "12_plus_weeks",
+                "label": "12+ Weeks"
+              }
+            ],
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "prefix": "",
+            "browseLabel": "",
+            "removeLabel": ""
+          },
+          {
+            "id": "budget",
+            "type": "text",
+            "label": "Budget",
+            "placeholder": "e.g. 5000",
+            "prefix": "₹",
+            "required": true,
+            "visible": true,
+            "system": true,
+            "canDelete": false,
+            "helperText": "",
+            "searchPlaceholder": "",
+            "browseLabel": "",
+            "removeLabel": "",
+            "options": []
+          }
+        ]
+      }
+    }
+  }
 }

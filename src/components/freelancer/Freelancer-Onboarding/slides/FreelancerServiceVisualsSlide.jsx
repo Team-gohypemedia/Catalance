@@ -8,7 +8,10 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
-import { DEFAULT_FREELANCER_ONBOARDING_CONTENT } from "@/shared/lib/freelancer-onboarding-content";
+import {
+  DEFAULT_FREELANCER_ONBOARDING_CONTENT,
+  resolveServiceVisualFields,
+} from "@/shared/lib/freelancer-onboarding-content";
 import {
   ONBOARDING_FIELD_LABEL_CLASS,
   ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
@@ -643,6 +646,7 @@ const UploadArea = ({
 const FreelancerServiceVisualsSlide = ({
   onboardingContent,
   serviceVisualsForm,
+  serviceVisualFields = [],
   onServiceVisualsFieldChange,
   onServiceStepChange,
   onUploadServiceMediaFile,
@@ -655,7 +659,14 @@ const FreelancerServiceVisualsSlide = ({
   const stepperSteps =
     onboardingContent?.stepper?.steps ||
     DEFAULT_FREELANCER_ONBOARDING_CONTENT.stepper.steps;
+  const resolvedFields =
+    Array.isArray(serviceVisualFields) && serviceVisualFields.length > 0
+      ? serviceVisualFields
+      : resolveServiceVisualFields(onboardingContent);
   const mediaFilesError = String(serviceVisualsValidationErrors.mediaFiles || "").trim();
+  const customVisualFields = resolvedFields.filter(
+    (field) => field?.id !== "mediaFiles" && field?.visible !== false,
+  );
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
@@ -724,6 +735,85 @@ const FreelancerServiceVisualsSlide = ({
               <p className="text-sm text-destructive">{mediaFilesError}</p>
             ) : null}
           </div>
+
+          {customVisualFields.length > 0 ? (
+            <div className="space-y-5 rounded-2xl border border-border bg-card p-4 sm:p-5">
+              {customVisualFields.map((field) => {
+                const value = serviceVisualsForm?.customFields?.serviceVisuals?.[field.id] ?? "";
+                const error = String(serviceVisualsValidationErrors[field.id] || "").trim();
+
+                if (field.type === "textarea") {
+                  return (
+                    <div key={field.id} className="space-y-2">
+                      <label className="block text-sm font-medium text-foreground">
+                        {field.label}
+                      </label>
+                      <textarea
+                        value={value}
+                        onChange={(event) =>
+                          onServiceVisualsFieldChange(field.id, event.target.value)
+                        }
+                        placeholder={field.placeholder || ""}
+                        rows={4}
+                        className={cn(
+                          "w-full resize-none rounded-xl border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-1",
+                          error
+                            ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                            : "border-border focus:border-primary/50 focus:ring-primary/20",
+                        )}
+                      />
+                      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+                    </div>
+                  );
+                }
+
+                if (field.type === "select") {
+                  return (
+                    <div key={field.id} className="space-y-2">
+                      <label className="block text-sm font-medium text-foreground">
+                        {field.label}
+                      </label>
+                      <CustomSelect
+                        value={value}
+                        onChange={(nextValue) =>
+                          onServiceVisualsFieldChange(field.id, nextValue)
+                        }
+                        options={field.options || []}
+                        placeholder={field.placeholder || "Select option"}
+                        isSearchable={Boolean(field.searchPlaceholder)}
+                        searchPlaceholder={field.searchPlaceholder || "Search"}
+                        hasError={Boolean(error)}
+                      />
+                      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={field.id} className="space-y-2">
+                    <label className="block text-sm font-medium text-foreground">
+                      {field.label}
+                    </label>
+                    <input
+                      type="text"
+                      value={value}
+                      onChange={(event) =>
+                        onServiceVisualsFieldChange(field.id, event.target.value)
+                      }
+                      placeholder={field.placeholder || ""}
+                      className={cn(
+                        "h-12 w-full rounded-xl border bg-card px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-1",
+                        error
+                          ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                          : "border-border focus:border-primary/50 focus:ring-primary/20",
+                      )}
+                    />
+                    {error ? <p className="text-sm text-destructive">{error}</p> : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

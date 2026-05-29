@@ -680,8 +680,8 @@ const resolveSectionFields = ({
 
       return normalizeSchemaField(
         {
-          ...field,
           ...legacyOverride,
+          ...field,
         },
         defaultField,
         index,
