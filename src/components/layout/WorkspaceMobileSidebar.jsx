@@ -335,7 +335,7 @@ const WorkspaceMobileSidebar = ({
             <SheetContent
               side="right"
               showCloseButton={false}
-              className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-foreground shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
+              className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 gap-0 overflow-hidden text-foreground shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
             >
               <SheetHeader className="sr-only">
                 <SheetTitle>Navigation menu</SheetTitle>
