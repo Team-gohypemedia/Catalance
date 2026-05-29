@@ -99,6 +99,9 @@ const buildFieldMapById = (fields = []) =>
     return accumulator;
   }, {});
 
+const createEmptyOptions = (count = 2) =>
+  Array.from({ length: count }, () => ({ ...OPTION_EMPTY }));
+
 const normalizeEditorContent = (value) => {
   const merged = mergeOnboardingContent(
     DEFAULT_FREELANCER_ONBOARDING_CONTENT,
@@ -458,16 +461,21 @@ const SchemaFieldListEditor = ({
                       onValueChange={(value) =>
                         handleFieldChange(index, {
                           type: value,
-                          options: value === "select" ? field.options || [] : [],
+                          options:
+                            value === "select"
+                              ? Array.isArray(field.options) && field.options.length > 0
+                                ? field.options
+                                : createEmptyOptions()
+                              : [],
                           searchPlaceholder: value === "select" ? field.searchPlaceholder || "" : "",
                         })
                       }
                       disabled={isSystem}
                     >
-                      <SelectTrigger className="border-border bg-card text-foreground">
-                        <SelectValue />
+                      <SelectTrigger className="w-full border-border bg-card text-foreground">
+                        <SelectValue placeholder="Choose field type" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" className="z-[120]">
                         {(isSystem
                           ? BASIC_PROFILE_FIELD_TYPES
                           : CUSTOM_SERVICE_FIELD_TYPES
@@ -1712,6 +1720,12 @@ const AdminFreelancerOnboardingContent = () => {
               label="Upload Rule Empty State"
               value={editorContent?.serviceVisuals?.uploadRuleEmpty}
               onChange={(value) => handleEditorChange("serviceVisuals.uploadRuleEmpty", value)}
+            />
+            <SchemaFieldListEditor
+              title="Visuals Questions"
+              description="Control the questions shown in the visuals step for this service."
+              fields={editorContent?.serviceVisuals?.fieldList || []}
+              onChange={(nextValue) => handleEditorChange("serviceVisuals.fieldList", nextValue)}
             />
           </SectionCard>
         );
