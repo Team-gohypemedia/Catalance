@@ -200,7 +200,7 @@ const NotificationSheetController = ({ notificationTo = "/client/project" }) => 
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
         side="right"
-        className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-white shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
+        className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-foreground shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
       >
         <div className="flex h-full flex-col">
           <SheetHeader className="border-b border-border px-4 py-3 pr-12">

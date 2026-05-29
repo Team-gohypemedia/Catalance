@@ -201,10 +201,10 @@ const BillingToolRow = ({
       {loading ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
     </div>
     <div className="min-w-0 flex-1">
-      <p className="text-sm font-semibold text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold text-foreground">{label}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
     </div>
-    <ArrowRight className="size-4 text-muted-foreground transition group-hover:text-white" />
+    <ArrowRight className="size-4 text-muted-foreground transition group-hover:text-foreground" />
   </button>
 );
 
@@ -223,7 +223,7 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[10px] bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-primary/80 dark:text-[#141414] sm:w-auto"
+          className="inline-flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[10px] bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-primary/80 sm:w-auto"
         >
           <div className="flex min-w-0 items-center gap-2">
             <FolderOpen className="size-4 shrink-0" />
@@ -573,19 +573,19 @@ const getBillingStatusMeta = (invoice) => {
 const BillingAmountCell = ({ label, value, visible, tone = "default", className = "" }) => {
   const valueClass =
     tone === "success"
-      ? "text-[#86efac]"
+      ? "text-emerald-500 dark:text-[#34d399]"
       : tone === "warning"
         ? "text-[var(--primary)]"
         : tone === "muted"
           ? "text-muted-foreground"
-          : "text-white";
+          : "text-foreground";
 
   return (
-    <div className={cn("min-w-0 px-1 py-1", className)}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+    <div className="min-w-0 px-1 py-1">
+      <p className="text-[8px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
       <p
         className={cn(
-          "mt-1.5 text-[1.2rem] font-semibold tracking-[-0.03em] sm:text-[1.45rem]",
+          "mt-1.5 text-[0.95rem] font-semibold tracking-[-0.03em] sm:text-[1.05rem]",
           valueClass,
         )}
       >
@@ -630,17 +630,17 @@ const ProjectBillingList = ({
         return (
           <article
             key={invoice.id}
-            className="rounded-[18px] border border-border bg-card px-4 py-4 sm:px-5 sm:py-5"
+            className="rounded-[18px] border border-border bg-card px-4 py-4 sm:px-5 sm:py-5 overflow-hidden"
           >
-            <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.95fr)_190px] xl:items-center">
-              <div className="min-w-0 rounded-[16px] p-0 sm:px-4 sm:py-4">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <h3 className="truncate text-[1.05rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.2rem]">
+            <div className="flex flex-col gap-2 lg:flex-row lg:flex-nowrap lg:items-center lg:gap-3">
+              <div className="min-w-[130px] flex-1 rounded-[16px] p-0 sm:px-2 sm:py-2 overflow-hidden">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="truncate text-[0.95rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.05rem]">
                     {invoice.projectLabel}
                   </h3>
                   <span
                     className={cn(
-                      "inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold",
+                      "inline-flex rounded-lg px-2 py-0.5 text-[10px] font-semibold",
                       statusMeta.badgeClass,
                     )}
                   >
@@ -648,24 +648,27 @@ const ProjectBillingList = ({
                   </span>
                 </div>
 
-                <p className="mt-2 truncate text-sm font-semibold text-muted-foreground sm:text-[1.02rem]">
+                <p className="mt-2 truncate text-[13px] font-semibold text-muted-foreground sm:text-[0.95rem]">
                   {invoice.installmentLabel}
                 </p>
 
-                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-2 text-xs">
-                  <span className="inline-flex rounded-lg bg-muted px-2.5 py-1 font-medium text-muted-foreground">
+                <div className="mt-2 flex items-center gap-x-1.5 text-[11px]">
+                  <span className="inline-flex whitespace-nowrap rounded-lg bg-muted px-2 py-0.5 font-medium text-muted-foreground">
                     {invoice.serviceType || "Project service"}
                   </span>
                   <span className="text-muted-foreground">•</span>
-                  <span className="truncate text-muted-foreground">{invoice.freelancerName}</span>
                 </div>
+                
+                <p className="mt-1.5 truncate text-[11px] text-muted-foreground">
+                  {invoice.freelancerName}
+                </p>
 
-                <p className="mt-3 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                <p className="mt-3 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                   Issued {formatShortDate(invoice.issuedAt)}
                 </p>
               </div>
 
-              <div className="grid flex-1 gap-4 rounded-[16px] border border-border bg-muted/30 px-4 py-4 sm:grid-cols-3">
+              <div className="grid w-full shrink-0 gap-1 rounded-[16px] border border-border px-2 py-2 sm:w-auto sm:grid-cols-3 sm:gap-2">
                 <BillingAmountCell
                   label="Scheduled"
                   value={invoice.amountDue}
@@ -685,19 +688,19 @@ const ProjectBillingList = ({
                 />
               </div>
 
-              <div className="flex shrink-0 flex-col gap-2 rounded-[16px] p-0 sm:flex-row sm:p-2 xl:flex-col">
+              <div className="flex w-full shrink-0 flex-col gap-1.5 rounded-[16px] p-0 sm:ml-auto sm:w-[115px] sm:p-2">
                 <button
                   type="button"
                   onClick={() => onDownloadInvoice(invoice)}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-border px-4 text-sm font-semibold text-foreground transition hover:bg-muted sm:w-auto xl:w-full"
+                  className="inline-flex h-8 w-full items-center justify-center gap-2 rounded-[12px] border border-border px-2 text-[11px] font-semibold text-foreground transition hover:bg-muted sm:w-auto xl:w-full"
                 >
-                  <Download className="size-4" />
+                  <Download className="size-3.5" />
                   Download invoice
                 </button>
                 <button
                   type="button"
                   onClick={() => onOpenProject(invoice.projectId)}
-                  className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/80 sm:w-auto xl:w-full"
+                  className="inline-flex h-8 w-full items-center justify-center rounded-[12px] bg-primary px-2 text-[11px] font-semibold text-primary-foreground transition hover:bg-primary/80 sm:w-auto xl:w-full"
                 >
                   View details
                 </button>
@@ -751,7 +754,7 @@ const MonthlyPaymentsChart = ({ points, visible, compact = false }) => {
   const lastPoint = coordinates[coordinates.length - 1];
 
   return (
-    <div className={cn("relative", compact ? "mt-4" : "mt-7")}>
+    <div className={cn("relative", compact ? "mt-10" : "mt-12")}>
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className={cn(
@@ -809,15 +812,15 @@ const MonthlyPaymentsChart = ({ points, visible, compact = false }) => {
 
       {lastPoint ? (
         <div
-          className="pointer-events-none absolute rounded-[12px] bg-[#111214] px-3 py-2 shadow-[0_18px_35px_-28px_rgba(0,0,0,0.8)]"
+          className="pointer-events-none absolute rounded-[10px] border border-border bg-card px-3 py-2 shadow-md"
           style={{
             left: `${(lastPoint.x / width) * 100}%`,
             top: `${(lastPoint.y / height) * 100}%`,
-            transform: "translate(-76%, -115%)",
+            transform: "translate(-85%, -125%)",
           }}
         >
           <p className="text-[10px] text-muted-foreground">{lastPoint.fullLabel}</p>
-          <p className={cn(compact ? "text-sm" : "text-lg", "font-semibold text-white") }>
+          <p className={cn(compact ? "text-sm" : "text-lg", "font-semibold text-foreground") }>
             {visible ? formatCurrency(lastPoint.value) : "Rs. --,--"}
           </p>
         </div>
@@ -1346,7 +1349,7 @@ const ClientPaymentsContent = () => {
                 />
               </section>
 
-              <section className="mt-7 grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.78fr)]">
+              <section className="mt-7 grid items-stretch gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,0.78fr)]">
                 <div className="flex h-full flex-col gap-6">
                   <ActiveProjectPaymentsPanel
                     project={activeProject}
@@ -1361,7 +1364,7 @@ const ClientPaymentsContent = () => {
                   <div className="flex-1 rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
                     <div className="flex flex-col gap-3">
                       <div className="space-y-2">
-                        <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[2rem]">Project billing</h2>
+                        <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[2rem]">Project billing</h2>
                         <p className="text-sm text-muted-foreground">
                           {selectedProject
                             ? `Showing every invoice, paid amount, and outstanding balance for ${selectedProject.projectLabel}.`
@@ -1382,7 +1385,7 @@ const ClientPaymentsContent = () => {
 
                 <div className="space-y-6">
                   <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
-                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">
+                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">
                       Recent Transactions
                     </h2>
 
@@ -1411,7 +1414,7 @@ const ClientPaymentsContent = () => {
                           handleOpenProject(recentTransactions[0].projectId);
                         }
                       }}
-                      className="mt-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-white"
+                      className="mt-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
                     >
                       View all
                       <ArrowRight className="size-3.5" />
@@ -1419,7 +1422,7 @@ const ClientPaymentsContent = () => {
                   </div>
 
                   <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
-                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">Billing tools</h2>
+                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">Billing tools</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Quick access to payment methods, invoices, and escrow visibility.
                     </p>
@@ -1444,7 +1447,7 @@ const ClientPaymentsContent = () => {
                       type="button"
                       onClick={() => void handleOpenCustomerPortal()}
                       disabled={portalLoading}
-                      className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/[0.05] text-sm text-muted-foreground transition hover:border-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/[0.05] text-sm text-muted-foreground transition hover:border-white/[0.1] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Plus className="size-4 text-primary" />
                       Open billing portal
@@ -1452,7 +1455,7 @@ const ClientPaymentsContent = () => {
                   </div>
 
                   <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
-                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.8rem]">Monthly spend</h2>
+                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">Monthly spend</h2>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {selectedProject
                         ? `Showing spend only for ${selectedProject.title}.`

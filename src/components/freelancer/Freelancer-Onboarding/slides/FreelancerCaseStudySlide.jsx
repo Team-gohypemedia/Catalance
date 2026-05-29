@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
 import Plus from "lucide-react/dist/esm/icons/plus";
@@ -42,6 +42,14 @@ const TIMELINE_OPTIONS = [
   { value: "12_plus_weeks", label: "12+ Weeks" },
 ];
 
+const GRADIENT_OPTIONS = [
+  { value: "bg-[linear-gradient(135deg,#090909,#131313_55%,#111111)]", label: "Sleek Dark" },
+  { value: "bg-[linear-gradient(135deg,#0a192f,#112240_55%,#020c1b)]", label: "Midnight Blue" },
+  { value: "bg-[linear-gradient(135deg,#1f0c2a,#2d153e_55%,#14071c)]", label: "Deep Purple" },
+  { value: "bg-[linear-gradient(135deg,#2b1510,#3d2019_55%,#1c0c08)]", label: "Warm Cocoa" },
+  { value: "bg-[linear-gradient(135deg,#081b15,#0c2a21_55%,#040f0c)]", label: "Forest Night" },
+];
+
 const toTitleCase = (value) =>
   String(value || "")
     .trim()
@@ -60,7 +68,8 @@ const FileUploadButton = ({ file, onChange, hasError = false }) => {
         type="button"
         onClick={() => inputRef.current?.click()}
         className={cn(
-          "flex h-12 w-full items-center justify-center gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-muted-foreground/45 transition-colors",
+          "flex h-12 w-full items-center justify-start gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors",
+          file ? "text-foreground" : "text-muted-foreground",
           hasError
             ? "border-destructive/70 hover:border-destructive/80"
             : "border-border hover:border-border/80",
@@ -68,7 +77,13 @@ const FileUploadButton = ({ file, onChange, hasError = false }) => {
         aria-invalid={hasError}
       >
         <Upload className="h-4 w-4" />
-        <span>{file ? file.name : "Upload file"}</span>
+        <span className="truncate">
+          {file 
+            ? typeof file === "string" 
+              ? "File Uploaded" 
+              : file.name 
+            : "Upload file"}
+        </span>
       </button>
       {file && (
         <button
@@ -110,7 +125,9 @@ const FreelancerCaseStudySlide = ({
   onServiceStepChange,
   onSkipServices,
   caseStudyValidationErrors = {},
+  onUploadMediaFile,
 }) => {
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const caseStudyContent =
     onboardingContent?.caseStudy ||
     DEFAULT_FREELANCER_ONBOARDING_CONTENT.caseStudy;
@@ -153,7 +170,7 @@ const FreelancerCaseStudySlide = ({
   const budgetError = String(caseStudyValidationErrors.budget || "").trim();
   const customCaseStudyFields = resolvedFields.filter(
     (field) =>
-      !["title", "description", "niche", "projectLink", "projectFile", "role", "timeline", "budget"].includes(field.id) &&
+      !["title", "description", "niche", "projectLink", "projectFile", "role", "timeline", "budget", "previewImage", "previewGradient"].includes(field.id) &&
       field.visible !== false,
   );
 
@@ -212,7 +229,7 @@ const FreelancerCaseStudySlide = ({
                   disabled={isCaseStudyLimitReached}
                   className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted sm:w-auto"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4 !text-white keep-white" />
                   {caseStudyContent?.addButtonLabel || "Add Case Study"}
                 </button>
 
@@ -238,77 +255,46 @@ const FreelancerCaseStudySlide = ({
                 disabled={isCaseStudyLimitReached}
                 className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4 !text-white keep-white" />
                 {caseStudyContent?.addButtonLabel || "Add Case Study"}
               </button>
             </div>
 
             {normalizedCaseStudies.length > 0 ? (
-              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
                 {normalizedCaseStudies.map((caseStudy, index) => {
                   const caseStudyId = String(caseStudy?.id || "").trim();
                   const isActive = caseStudyId && caseStudyId === activeCaseStudyId;
                   const caseStudyLabel =
                     toTitleCase(caseStudy?.title) ||
                     `Case Study ${index + 1}`;
-                  const shouldSpanFullWidthOnMobile =
-                    normalizedCaseStudies.length % 2 === 1 &&
-                    index === normalizedCaseStudies.length - 1;
 
                   return (
                     <div
                       key={caseStudyId || `case-study-${index}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onActiveCaseStudyChange?.(caseStudyId)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onActiveCaseStudyChange?.(caseStudyId);
+                        }
+                      }}
                       className={cn(
-                        "relative w-full",
-                        shouldSpanFullWidthOnMobile ? "col-span-2 sm:col-span-1" : "col-span-1",
+                        "flex h-10 items-center justify-center gap-2 rounded-full border pl-4 pr-1.5 text-center text-sm font-semibold transition-colors cursor-pointer",
+                        isActive
+                          ? "border-primary bg-primary !text-white"
+                          : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
                       )}
+                      style={isActive ? { color: "white", WebkitTextFillColor: "white" } : undefined}
                     >
-                      <button
-                        type="button"
-                        onClick={() => onActiveCaseStudyChange?.(caseStudyId)}
-                        className={cn(
-                          "hidden h-10 w-full items-center rounded-full border py-0 pl-3 pr-12 text-xs font-semibold transition-colors sm:inline-flex sm:justify-start sm:text-left lg:text-sm",
-                          isActive
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
-                        )}
+                      <span 
+                        className={cn("truncate max-w-[11rem]", isActive && "!text-white keep-white")}
+                        style={isActive ? { color: "white" } : undefined}
                       >
-                        <span className="truncate max-w-[9rem]">{caseStudyLabel}</span>
-                      </button>
-
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => onActiveCaseStudyChange?.(caseStudyId)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            onActiveCaseStudyChange?.(caseStudyId);
-                          }
-                        }}
-                        className={cn(
-                          "flex h-10 w-full items-center justify-center gap-2 rounded-full border px-4 text-center text-sm font-semibold transition-colors sm:hidden",
-                          isActive
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        <span className="truncate max-w-[11rem]">{caseStudyLabel}</span>
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRemoveCaseStudy?.(caseStudyId);
-                          }}
-                          className={cn(
-                            "shrink-0 rounded-full bg-background p-1.5 text-primary transition-colors hover:bg-background/90",
-                          )}
-                          aria-label={`Remove ${caseStudyLabel}`}
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
+                        {caseStudyLabel}
+                      </span>
 
                       <button
                         type="button"
@@ -317,11 +303,11 @@ const FreelancerCaseStudySlide = ({
                           onRemoveCaseStudy?.(caseStudyId);
                         }}
                         className={cn(
-                          "absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-full bg-background p-1.5 text-primary transition-colors hover:bg-background/90 sm:block",
+                          "shrink-0 rounded-full bg-background p-1 text-primary transition-colors hover:bg-background/90",
                         )}
                         aria-label={`Remove ${caseStudyLabel}`}
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   );
@@ -538,6 +524,54 @@ const FreelancerCaseStudySlide = ({
                 {budgetError ? (
                   <p className="mt-1 text-sm text-destructive">{budgetError}</p>
                 ) : null}
+              </div>
+            </div>
+
+            {/* 2-column row: Banner Image, Gradient */}
+            <div className="grid gap-5 sm:grid-cols-2">
+              {/* Banner Image */}
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                  Banner Image (Optional)
+                </label>
+                <FileUploadButton
+                  file={caseStudyForm.previewImage}
+                  isLoading={isUploadingBanner}
+                  onChange={async (file) => {
+                    if (!file) {
+                      onCaseStudyFieldChange("previewImage", null);
+                      return;
+                    }
+                    if (typeof file === "string") {
+                      onCaseStudyFieldChange("previewImage", file);
+                      return;
+                    }
+                    try {
+                      setIsUploadingBanner(true);
+                      const uploaded = await onUploadMediaFile(file);
+                      if (uploaded?.url) {
+                        onCaseStudyFieldChange("previewImage", uploaded.url);
+                      }
+                    } catch (err) {
+                      console.error("Banner upload error:", err);
+                    } finally {
+                      setIsUploadingBanner(false);
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Background Gradient */}
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                  Background Gradient
+                </label>
+                <CustomSelect
+                  value={caseStudyForm.previewGradient}
+                  onChange={(val) => onCaseStudyFieldChange("previewGradient", val)}
+                  options={GRADIENT_OPTIONS}
+                  placeholder="Select gradient"
+                />
               </div>
             </div>
             {customCaseStudyFields.map((field) => {

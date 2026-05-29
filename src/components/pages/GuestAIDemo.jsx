@@ -2970,7 +2970,7 @@ const inferBriefingService = (services = [], answers = {}) => {
         answers?.role,
         answers?.goal,
     ].filter(Boolean).join(' '));
-    if (!source) return Array.isArray(services) ? services[0] || null : null;
+    if (!source) return null;
 
     const normalizedServices = Array.isArray(services)
         ? services.map((service) => ({
@@ -3007,11 +3007,7 @@ const inferBriefingService = (services = [], answers = {}) => {
         });
     });
 
-    if (bestMatch) return bestMatch;
-
-    return normalizedServices.find((entry) =>
-        /\bwebsite development\b|\bweb development\b|\bsoftware development\b|\bapp development\b/.test(entry.haystack)
-    )?.service || normalizedServices[0]?.service || null;
+    return bestMatch;
 };
 
 const GuestAIDemo = () => {
@@ -5243,7 +5239,7 @@ const GuestAIDemo = () => {
     const briefingHintClasses = isDark ? 'text-zinc-400' : 'text-muted-foreground';
     const briefingLikelyMatchClasses = isDark ? 'text-zinc-300' : 'text-muted-foreground';
     const briefingPrimaryButtonClasses = canContinueBriefing
-        ? 'bg-primary text-white hover:-translate-y-0.5 hover:brightness-95'
+        ? 'bg-primary !text-white hover:-translate-y-0.5 hover:brightness-95'
         : (isDark ? 'cursor-not-allowed bg-zinc-700 text-zinc-300' : 'cursor-not-allowed bg-muted text-muted-foreground');
     const briefingInputTypographyClasses = isDark
         ? 'text-[clamp(1.05rem,1.8vw,1.35rem)]'
@@ -5308,9 +5304,9 @@ const GuestAIDemo = () => {
                                     goToNextBriefingStep();
                                 }
                             }}
-                            className={`relative z-10 mt-4 overflow-hidden backdrop-blur sm:mt-6 ${isDark ? 'rounded-[1.7rem]' : 'rounded-[2rem]'} ${briefingCardClasses}`}
+                            className={`relative z-10 mt-4 overflow-hidden backdrop-blur sm:mt-6 ${isDark ? 'rounded-[1.25rem] sm:rounded-[1.7rem]' : 'rounded-[1.25rem] sm:rounded-[2rem]'} ${briefingCardClasses}`}
                         >
-                            <div className={`${isDark ? 'px-5 pt-5 pb-2 sm:px-6 sm:pt-6' : 'px-6 pt-8 pb-4 sm:px-8 sm:pt-10'}`}>
+                            <div className={`${isDark ? 'px-4 pt-5 pb-2 sm:px-6 sm:pt-6' : 'px-4 pt-6 pb-4 sm:px-8 sm:pt-10'}`}>
                                 <div className="flex flex-wrap items-center gap-4">
                                     <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-[15px] font-bold text-primary-foreground">
                                         {String(briefingStepIndex + 1).padStart(2, '0')}
@@ -5332,6 +5328,16 @@ const GuestAIDemo = () => {
                                         <input
                                             value={briefingAnswers.role}
                                             onChange={(event) => updateBriefingAnswer('role', event.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    if (canContinueBriefing) {
+                                                        startTransition(() => {
+                                                            setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
+                                                        });
+                                                    }
+                                                }
+                                            }}
                                             placeholder={currentBriefingStep.placeholder}
                                             className={`w-full bg-transparent ${isDark ? 'pb-3' : 'pb-4'} font-medium italic outline-none ${briefingInputTypographyClasses} ${briefingFieldTextClasses}`}
                                         />
@@ -5342,7 +5348,12 @@ const GuestAIDemo = () => {
                                                     <button
                                                         key={getServiceIdentifier(service)}
                                                         type="button"
-                                                        onClick={() => updateBriefingAnswer('role', service?.name || service?.title || '')}
+                                                        onClick={() => {
+                                                            updateBriefingAnswer('role', service?.name || service?.title || '');
+                                                            startTransition(() => {
+                                                                setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
+                                                            });
+                                                        }}
                                                         className={`rounded-full border px-4 py-2 text-sm transition-colors ${briefingChipClasses}`}
                                                     >
                                                         {service?.name || service?.title}
@@ -5367,6 +5378,16 @@ const GuestAIDemo = () => {
                                         <textarea
                                             value={briefingAnswers.goal}
                                             onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    if (canContinueBriefing) {
+                                                        startTransition(() => {
+                                                            setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
+                                                        });
+                                                    }
+                                                }
+                                            }}
                                             rows={2}
                                             placeholder={currentBriefingStep.placeholder}
                                             className={`w-full resize-none bg-transparent ${isDark ? 'min-h-[78px] pb-3' : 'min-h-[98px] pb-4'} font-medium italic outline-none ${briefingTextareaTypographyClasses} ${briefingFieldTextClasses}`}
@@ -5429,7 +5450,12 @@ const GuestAIDemo = () => {
                                                     <button
                                                         key={option}
                                                         type="button"
-                                                        onClick={() => updateBriefingAnswer('kickoff', option)}
+                                                        onClick={() => {
+                                                            updateBriefingAnswer('kickoff', option);
+                                                            startTransition(() => {
+                                                                setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
+                                                            });
+                                                        }}
                                                         className={`rounded-full border px-4 py-2.5 text-sm transition-colors ${isSelected ? briefingSelectedChipClasses : briefingChipClasses}`}
                                                     >
                                                         {option}
@@ -5450,7 +5476,12 @@ const GuestAIDemo = () => {
                                                     <button
                                                         key={option}
                                                         type="button"
-                                                        onClick={() => updateBriefingAnswer('duration', option)}
+                                                        onClick={() => {
+                                                            updateBriefingAnswer('duration', option);
+                                                            startTransition(() => {
+                                                                setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
+                                                            });
+                                                        }}
                                                         className={`rounded-full border px-4 py-2.5 text-sm transition-colors ${isSelected ? briefingSelectedChipClasses : briefingChipClasses}`}
                                                     >
                                                         {option}
@@ -5543,7 +5574,7 @@ const GuestAIDemo = () => {
                                     className={`flex items-center gap-2 text-[12px] font-semibold transition-colors disabled:opacity-50 ${briefingHintClasses} ${briefingBackButtonClasses}`}
                                 >
                                     <ArrowLeft className="h-4 w-4" />
-                                    <span>Press Enter to continue</span>
+                                    <span>Back</span>
                                 </button>
 
                                 <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
@@ -5552,16 +5583,18 @@ const GuestAIDemo = () => {
                                             ? 'Loading service intelligence...'
                                             : inferredBriefingService
                                                 ? <>Likely match: <span className={`font-medium ${briefingAccentTextClasses}`}>{inferredBriefingService?.name || inferredBriefingService?.title}</span></>
-                                                : (servicesError || 'We will infer the best fit once the brief is clearer.')}
+                                                : (servicesError || '')}
                                     </div>
-                                    <button
-                                        type="submit"
-                                        disabled={!canContinueBriefing}
-                                        className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all ${isDark ? 'h-11 px-5 text-sm' : 'h-12 px-8 text-[15px]'} ${briefingPrimaryButtonClasses}`}
-                                    >
-                                        <span className="!text-current">{isLastBriefingStep ? (briefingSubmitting ? 'Starting...' : 'Continue') : 'Continue'}</span>
-                                        <svg className="!text-current" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
-                                    </button>
+                                    {!['role', 'kickoff', 'duration'].includes(currentBriefingStep.key) && (currentBriefingStep.key !== 'goal' || canContinueBriefing) && (
+                                        <button
+                                            type="submit"
+                                            disabled={!canContinueBriefing}
+                                            className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all ${isDark ? 'h-11 px-5 text-sm' : 'h-12 px-8 text-[15px]'} ${briefingPrimaryButtonClasses}`}
+                                        >
+                                            {isLastBriefingStep ? (briefingSubmitting ? 'Starting...' : 'Continue') : 'Continue'}
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </form>

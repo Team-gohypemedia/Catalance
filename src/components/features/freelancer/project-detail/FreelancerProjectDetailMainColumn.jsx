@@ -118,7 +118,7 @@ const FreelancerProjectDetailMainColumn = ({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
         {[
           { label: "Service Type", value: projectDetailSnapshot.service },
           { label: "Budget", value: projectDetailSnapshot.budget },
@@ -219,13 +219,13 @@ const FreelancerProjectDetailMainColumn = ({
       </div>
 
       <Card className={panelClassName}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-5 px-6">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-5">
           <CardTitle className={eyebrowClassName}>Project Progress</CardTitle>
           <span className="text-[1.1rem] font-semibold text-primary">
-            {Math.round(overallProgress)}% Complete
+            {overallProgress}%
           </span>
         </CardHeader>
-        <CardContent className="space-y-8 px-6 pb-6 pt-0">
+        <CardContent className="space-y-6 px-4 pb-4 pt-0 sm:space-y-8 sm:px-6 sm:pb-6">
           <div className="relative pt-2">
             <div className="h-[6px] w-full overflow-hidden rounded-full bg-white/[0.06]">
               <div
@@ -239,7 +239,7 @@ const FreelancerProjectDetailMainColumn = ({
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => {
               const phase = derivedPhases[index];
               const phaseValue = phase?.id != null ? String(phase.id) : "";

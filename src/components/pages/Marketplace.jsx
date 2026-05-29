@@ -1524,11 +1524,11 @@ const Marketplace = () => {
         <div className="relative z-10 w-full pt-12 pb-8">
           <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
             <div className="relative z-10 mb-32 flex flex-col items-center gap-7 px-4 text-center">
-              <h1 className="max-w-[900px] text-[44px] font-medium tracking-tight text-white sm:text-[56px] md:text-[64px] lg:text-[76px] lg:leading-[1.05]">
+              <h1 className="w-full max-w-[900px] text-[32px] font-medium tracking-tight text-white sm:text-[48px] md:text-[64px] lg:text-[76px] lg:leading-[1.05]">
                 <AnimatedHeroText 
                   staticText="Hire experts for" 
                   titles={["High-Impact Work", "Strategic Growth", "Expert Execution", "Verified Results", "Vetted Quality"]}
-                  className="flex flex-col items-center"
+                  className="flex w-full flex-col items-center"
                 />
               </h1>
               <p className="mx-auto max-w-xl text-[17px] leading-relaxed text-[#c9c9c9]">
@@ -2288,7 +2288,7 @@ const Marketplace = () => {
                 <Badge className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-primary">
                   Get Started
                 </Badge>
-                <h2 className="text-4xl font-bold tracking-[-0.04em] text-foreground dark:text-white sm:text-5xl lg:leading-[1.1]">
+                <h2 className="text-[28px] sm:text-4xl md:text-5xl font-bold tracking-[-0.04em] text-foreground dark:text-white leading-[1.15] lg:leading-[1.1]">
                   Need a marketplace that feels fast for buyers and credible for specialists?
                 </h2>
                 <p className="text-lg leading-relaxed text-muted-foreground dark:text-white/70">
@@ -2299,7 +2299,7 @@ const Marketplace = () => {
               <div className="flex flex-col gap-4 sm:flex-row">
                 <Button
                   size="lg"
-                  className="h-16 rounded-full bg-primary px-10 text-lg font-bold text-white shadow-xl transition-all hover:scale-105 hover:bg-primary/90"
+                  className="h-16 rounded-full bg-primary px-10 text-lg font-bold !text-white shadow-xl transition-all hover:scale-105 hover:bg-primary/90"
                   onClick={() => scrollToSection("marketplace-results")}
                 >
                   Explore services

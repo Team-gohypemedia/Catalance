@@ -88,21 +88,20 @@ const OverviewMetricCardSkeleton = memo(function OverviewMetricCardSkeleton({
     <DashboardPanel
       className={cn(
         "group relative min-h-[136px] border border-transparent bg-card px-3.5 py-4 sm:min-h-[110px] sm:p-5",
-        shouldSpanFullWidth && "col-span-2 lg:col-span-1",
+        shouldSpanFullWidth && "col-span-1",
       )}
     >
-      <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
-        {item.hasValueSwitch ? (
-          <div className="flex w-full items-center justify-between">
-            <span className="size-10 shrink-0" aria-hidden="true" />
-            <DashboardSkeletonBlock className="size-10 rounded-[16px]" />
-            <DashboardSkeletonBlock className="size-10 rounded-[16px]" />
-          </div>
-        ) : (
-          <DashboardSkeletonBlock className="size-10 rounded-[16px]" />
-        )}
-        <DashboardSkeletonBlock className="mt-4 h-8 w-16 rounded-full" />
-        <DashboardSkeletonBlock className="mt-3 h-3 w-24 rounded-full" />
+      <div className="flex h-full flex-col items-start text-left sm:hidden">
+        <div className="flex w-full items-start justify-between">
+          <DashboardSkeletonBlock className="size-9 rounded-lg" />
+          {item.hasValueSwitch ? (
+            <DashboardSkeletonBlock className="size-9 rounded-lg" />
+          ) : null}
+        </div>
+        <div className="mt-3 flex flex-col items-start gap-1 w-full">
+          <DashboardSkeletonBlock className="h-8 w-16 rounded-full" />
+          <DashboardSkeletonBlock className="h-3 w-20 rounded-full" />
+        </div>
       </div>
 
       <div className="hidden h-full flex-col gap-2.5 sm:flex sm:gap-3">
@@ -217,37 +216,34 @@ const OverviewMetricCard = memo(function OverviewMetricCard({ item }) {
         isInteractive
           ? "cursor-pointer hover:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           : "hover:border-primary/70",
-        shouldSpanFullWidth && "col-span-2 lg:col-span-1",
+        shouldSpanFullWidth && "col-span-1",
       )}
     >
-      <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
-        {hasValueSwitch ? (
-          <div className="flex w-full items-center justify-between">
-            <span className="size-10 shrink-0 sm:size-14" aria-hidden="true" />
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-muted text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
-              <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
-            </div>
-            {renderSwitchButton(
-              "inline-flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-muted text-muted-foreground/75 transition-colors hover:bg-muted-foreground/10 hover:text-primary",
+      <div className="flex h-full flex-col items-start text-left sm:hidden">
+        <div className="flex w-full items-start justify-between">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground/75">
+            <Icon className="size-4 text-muted-foreground/75" />
+          </div>
+          {hasValueSwitch
+            ? renderSwitchButton(
+              "inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground/75 transition-colors hover:bg-muted-foreground/10 hover:text-primary",
               "size-4 text-muted-foreground/75",
-            )}
-          </div>
-        ) : (
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-muted text-muted-foreground/75">
-            <Icon className="size-[18px] text-muted-foreground/75" />
-          </div>
-        )}
-        <p className="mt-4 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-foreground transition-colors group-hover:text-primary">
-          {displayedValue}
-        </p>
-        <p className="mt-3 text-center text-[8px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-          {displayedTitle}
-        </p>
-        {item.detail ? (
-          <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            {item.detail}
+            )
+            : null}
+        </div>
+        <div className="mt-3 flex flex-col items-start gap-0.5">
+          <p className="text-[1.5rem] font-semibold leading-none tracking-[-0.02em] text-foreground transition-colors group-hover:text-primary">
+            {displayedValue}
           </p>
-        ) : null}
+          <p className="mt-1 line-clamp-2 text-[9px] font-medium uppercase leading-[1.1] tracking-[0.1em] text-muted-foreground">
+            {displayedTitle}
+          </p>
+          {item.detail ? (
+            <p className="mt-1 text-[10px] leading-4 text-muted-foreground">
+              {item.detail}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="hidden h-full flex-col gap-2.5 sm:flex sm:gap-3">

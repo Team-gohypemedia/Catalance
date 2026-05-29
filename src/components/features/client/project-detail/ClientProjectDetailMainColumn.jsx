@@ -165,7 +165,7 @@ const ClientProjectDetailMainColumn = ({
         </CardHeader>
         <CardContent className="pt-0">
           {projectDetailSnapshot.deliverablesItems.length > 0 ? (
-            <ul className="grid grid-cols-2 gap-4 px-2 pb-2 sm:block sm:space-y-5 sm:px-2">
+            <ul className="flex flex-col gap-3 px-2 pb-2 sm:space-y-5 sm:px-2">
               {projectDetailSnapshot.deliverablesItems.map((item) => (
                 <li
                   key={item}
@@ -267,7 +267,7 @@ const ClientProjectDetailMainColumn = ({
                 }}
                 aria-expanded={isExpanded}
                 className={cn(
-                  "relative flex w-full flex-col justify-between overflow-hidden rounded-[20px] border border-border dark:border-white/[0.08] bg-card p-5 text-left transition-all",
+                  "relative flex w-full flex-col justify-between overflow-hidden rounded-[20px] border border-border dark:border-white/[0.08] bg-card p-3.5 sm:p-5 text-left transition-all",
                   phaseValue
                     ? isExpanded
                       ? "cursor-pointer border-border dark:border-white/[0.14] ring-1 ring-border/50 dark:ring-white/[0.10] hover:border-border dark:hover:border-white/[0.14] hover:ring-border/50 dark:hover:ring-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 dark:focus-visible:ring-white/20 focus-visible:ring-offset-0"
@@ -287,7 +287,7 @@ const ClientProjectDetailMainColumn = ({
                     Phase {index + 1}
                   </div>
                   <div
-                    className={`mb-4 text-[15px] font-semibold leading-[1.4] ${
+                    className={`mb-2 sm:mb-4 text-[13px] sm:text-[15px] font-semibold leading-[1.3] sm:leading-[1.4] ${
                       isPending ? "text-foreground/45 dark:text-white/40" : "text-foreground/95 dark:text-white/95"
                     }`}
                   >

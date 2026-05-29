@@ -106,7 +106,7 @@ const aboutAccordionItems = [
           {expertiseItems.map((item) => (
             <li
               key={item}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+              className="rounded-xl border border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5 px-4 py-3"
             >
               {item}
             </li>
@@ -128,7 +128,7 @@ const aboutAccordionItems = [
           {industriesAndNiches.map((item) => (
             <li
               key={item}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+              className="rounded-xl border border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5 px-4 py-3"
             >
               {item}
             </li>
@@ -144,10 +144,10 @@ const aboutAccordionItems = [
         {differentiators.map((item) => (
           <div
             key={item.title}
-            className="rounded-2xl border border-white/10 bg-black/20 p-4"
+            className="rounded-2xl border border-black/10 bg-black/5 dark:border-white/10 dark:bg-black/20 p-4"
           >
-            <p className="text-base font-semibold text-white">{item.title}</p>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-300">
+            <p className="text-base font-semibold text-foreground dark:text-white">{item.title}</p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-neutral-300">
               {item.description}
             </p>
           </div>
@@ -174,7 +174,7 @@ const aboutAccordionItems = [
 
 const About = () => {
   return (
-    <main className="min-h-screen bg-background text-white">
+    <main className="min-h-screen bg-background text-foreground">
       <section className="mx-auto w-full max-w-5xl px-4 py-20 md:px-8 md:py-24">
         <header className="mb-12 space-y-6">
           <p className="text-sm uppercase tracking-[0.24em] text-primary">
@@ -185,23 +185,23 @@ const About = () => {
             <br />
             We Build Momentum.
           </h1>
-          <p className="max-w-4xl text-lg leading-relaxed text-neutral-300">
+          <p className="max-w-4xl text-lg leading-relaxed text-muted-foreground dark:text-neutral-300">
             Catalance was built on a simple belief - businesses do not need more
             agencies. They need partners who think ahead, move fast, and execute
             with precision.
           </p>
-          <p className="max-w-4xl text-lg leading-relaxed text-neutral-300">
+          <p className="max-w-4xl text-lg leading-relaxed text-muted-foreground dark:text-neutral-300">
             We are a performance-driven digital growth partner helping brands
             scale through strategy, creativity, and technology.
           </p>
-          <p className="max-w-4xl text-lg leading-relaxed text-neutral-300">
+          <p className="max-w-4xl text-lg leading-relaxed text-muted-foreground dark:text-neutral-300">
             From CGI videos and 3D modeling to SEO, performance marketing, and
             brand storytelling - we combine innovation with execution. Because
             ideas are easy. Results are not.
           </p>
         </header>
 
-        <section className="mb-12 rounded-3xl border border-white/10 bg-white/5 p-6 md:p-8">
+        <section className="mb-12 rounded-3xl border border-black/10 bg-black/5 p-6 md:p-8 dark:border-white/10 dark:bg-white/5">
           <div className="mb-6 max-w-3xl space-y-4">
             <p className="text-sm uppercase tracking-[0.24em] text-primary">
               Inside Catalance
@@ -209,7 +209,7 @@ const About = () => {
             <h2 className="text-3xl font-semibold md:text-4xl">
               A quick look at what we build and why it matters
             </h2>
-            <p className="text-lg leading-relaxed text-neutral-300">
+            <p className="text-lg leading-relaxed text-muted-foreground dark:text-neutral-300">
               Our work is organized around one idea: clarity creates momentum.
               Expand any section below to explore how Catalance thinks, builds,
               and grows.
@@ -226,12 +226,12 @@ const About = () => {
               <AccordionItem
                 key={item.title}
                 value={`item-${index}`}
-                className="overflow-hidden rounded-2xl border border-white/10 bg-black/20 px-2"
+                className="overflow-hidden rounded-2xl border border-black/10 bg-black/5 px-2 dark:border-white/10 dark:bg-black/20"
               >
                 <AccordionTrigger className="px-4 text-left text-lg font-semibold hover:no-underline hover:text-primary">
                   {item.title}
                 </AccordionTrigger>
-                <AccordionContent className="px-4 pb-6 text-base leading-relaxed text-neutral-300">
+                <AccordionContent className="px-4 pb-6 text-base leading-relaxed text-muted-foreground dark:text-neutral-300">
                   {item.content}
                 </AccordionContent>
               </AccordionItem>
@@ -243,16 +243,16 @@ const About = () => {
           <h2 className="text-3xl font-semibold text-primary">
             Let&apos;s Build Something That Compounds
           </h2>
-          <p className="mt-4 text-lg leading-relaxed text-neutral-200">
+          <p className="mt-4 text-lg leading-relaxed text-foreground/80 dark:text-neutral-200">
             Growth is not accidental.
             <br />
             It is engineered.
           </p>
-          <p className="mt-4 text-lg leading-relaxed text-neutral-200">
+          <p className="mt-4 text-lg leading-relaxed text-foreground/80 dark:text-neutral-200">
             If you are ready to stop experimenting and start scaling, Catalance
             is ready to partner with you.
           </p>
-          <p className="mt-4 text-lg leading-relaxed text-neutral-200">
+          <p className="mt-4 text-lg leading-relaxed text-foreground/80 dark:text-neutral-200">
             Let&apos;s accelerate your brand.
           </p>
           <Link to="/contact" className="mt-6 inline-block">

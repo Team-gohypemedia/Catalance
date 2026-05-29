@@ -168,7 +168,7 @@ const Contact = () => {
             <path d="M45 80 L 45 60 C 45 45 60 45 60 30 L 60 10" stroke="currentColor" strokeWidth="16" strokeLinecap="round" opacity="0.5" />
             <path d="M70 80 L 70 60 C 70 45 85 45 85 30 L 85 10" stroke="currentColor" strokeWidth="16" strokeLinecap="round" opacity="0.85" />
           </svg>
-          <div className="md:w-1/2 flex flex-col items-start gap-4 relative z-10">
+          <div className="md:w-1/2 flex flex-col items-start gap-4 relative z-10 pt-12 md:pt-16">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-[1.2] tracking-tight">
               We Would Love to Hear <br />
               <span className={`inline-block px-4 py-1 mt-2 rounded-xl italic font-semibold ${brandBgClass} ${brandTextOnBgClass}`}>
@@ -235,7 +235,7 @@ const Contact = () => {
         </div>
 
         {/* 2. Contact Grid (4 horizontal cards) */}
-        <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="w-full grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {[
             { title: "Address", value: "New Delhi, India", link: null },
             { title: "You Can Email Here", value: "support@catalance.com", link: "mailto:support@catalance.com" },
@@ -249,16 +249,16 @@ const Contact = () => {
               <CardElement
                 key={idx}
                 {...extraProps}
-                className={`contact-card flex items-center justify-between p-5 rounded-xl border ${borderColor} ${cardBg} backdrop-blur-md group hover:-translate-y-1 transition-transform cursor-pointer`}
+                className={`contact-card flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-5 gap-2 sm:gap-0 rounded-xl border ${borderColor} ${cardBg} backdrop-blur-md group hover:-translate-y-1 transition-transform cursor-pointer relative overflow-hidden`}
               >
-                <div className="flex flex-col gap-1 overflow-hidden pr-2 text-left">
-                  <span className={`text-[11px] md:text-xs uppercase tracking-wider font-semibold ${mutedText}`}>{item.title}</span>
-                  <span className={`text-sm md:text-base font-bold truncate transition-colors ${item.link ? `${brandTextClass} group-hover:opacity-80` : ""}`}>
+                <div className="flex flex-col gap-1 overflow-hidden pr-8 sm:pr-2 text-left">
+                  <span className={`text-[9px] sm:text-[11px] md:text-xs uppercase tracking-wider font-semibold ${mutedText}`}>{item.title}</span>
+                  <span className={`text-[11px] sm:text-sm md:text-base font-bold truncate transition-colors ${item.link ? `${brandTextClass} group-hover:opacity-80` : ""}`}>
                     {item.value}
                   </span>
                 </div>
-                <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center bg-neutral-900 text-white dark:bg-white dark:text-black transition-transform group-hover:scale-110`}>
-                  <ArrowUpRight className="w-4 h-4" />
+                <div className={`absolute top-3 right-3 sm:relative sm:top-auto sm:right-auto w-6 h-6 sm:w-8 sm:h-8 shrink-0 rounded-full flex items-center justify-center bg-neutral-900 text-white dark:bg-white dark:text-black transition-transform group-hover:scale-110`}>
+                  <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4" />
                 </div>
               </CardElement>
             );

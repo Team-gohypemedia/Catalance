@@ -181,7 +181,7 @@ const MediaThumbnail = ({ item, previewUrl, index, isActive, onSelect }) => (
     type="button"
     onClick={() => onSelect(index)}
     className={cn(
-      "group relative aspect-[3/4] overflow-hidden rounded-2xl border bg-muted text-left transition-all duration-200 dark-card",
+      "group relative aspect-[4/3] overflow-hidden rounded-2xl border bg-muted text-left transition-all duration-200 dark-card",
       isActive
         ? "border-primary/80 shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.35),0_16px_40px_rgba(0,0,0,0.28)]"
         : "border-border hover:border-primary/40",
@@ -517,7 +517,7 @@ const UploadArea = ({
         </div>
 
         {!hasMedia ? (
-          <div className="space-y-3">
+          <div className="space-y-3 min-w-0">
             <MediaHeroPreview
               item={activePreview}
               previewUrl={activePreview?.previewUrl}
@@ -525,59 +525,81 @@ const UploadArea = ({
             />
           </div>
         ) : (
-          <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-            <MediaHeroPreview
-              item={activePreview}
-              previewUrl={activePreview?.previewUrl}
-              onUpload={openFilePicker}
-            />
+          <div className="grid items-start gap-6 lg:gap-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <div className="min-w-0 w-full">
+              <MediaHeroPreview
+                item={activePreview}
+                previewUrl={activePreview?.previewUrl}
+                onUpload={openFilePicker}
+              />
+            </div>
 
-            <div className="flex h-full min-w-0 flex-col gap-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <p className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+            <div className="w-full min-w-0 lg:py-4">
+              <div className="grid grid-cols-2 gap-4">
+                {resolvedPreviewItems[0] ? (
+                  <MediaThumbnail
+                    key={resolvedPreviewItems[0].id}
+                    item={resolvedPreviewItems[0]}
+                    previewUrl={resolvedPreviewItems[0].previewUrl}
+                    index={0}
+                    isActive={0 === activePreviewIndex}
+                    onSelect={setActivePreviewIndex}
+                  />
+                ) : (
+                  <div className="aspect-[4/3] rounded-2xl bg-muted/20" />
+                )}
+
+                <div className="flex flex-col items-center justify-center gap-1 text-center">
+                  <p className="text-lg font-semibold tracking-tight text-foreground">
                     {currentPreviewLabel}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Images: {imageCount} &bull; Video: {videoCount}
                   </p>
                 </div>
-              </div>
 
-              <div className="h-px w-full bg-border" />
+                {resolvedPreviewItems[1] ? (
+                  <MediaThumbnail
+                    key={resolvedPreviewItems[1].id}
+                    item={resolvedPreviewItems[1]}
+                    previewUrl={resolvedPreviewItems[1].previewUrl}
+                    index={1}
+                    isActive={1 === activePreviewIndex}
+                    onSelect={setActivePreviewIndex}
+                  />
+                ) : (
+                  <div className="aspect-[4/3] rounded-2xl bg-muted/30" />
+                )}
 
-              <div className="relative">
-                <div className="grid grid-cols-3 gap-3">
-                  {resolvedPreviewItems.map((item, index) => (
-                    <MediaThumbnail
-                      key={item.id}
-                      item={item}
-                      previewUrl={item.previewUrl}
-                      index={index}
-                      isActive={index === activePreviewIndex}
-                      onSelect={setActivePreviewIndex}
-                    />
-                  ))}
-
-                  {canAdd ? (
-                    <button
-                      type="button"
-                      onClick={openFilePicker}
-                      className="group relative aspect-[3/4] overflow-hidden rounded-2xl border border-dashed border-border bg-muted/40 transition-colors hover:border-primary/45 hover:bg-primary/5"
-                    >
-                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-                        {isUploading ? (
-                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                        ) : (
-                          <Plus className="h-5 w-5 text-primary" />
-                        )}
-                        <span className="text-xs font-medium">
-                          {isUploading ? "Uploading" : "Add another"}
-                        </span>
-                      </div>
-                    </button>
-                  ) : null}
-                </div>
+                {resolvedPreviewItems[2] ? (
+                  <MediaThumbnail
+                    key={resolvedPreviewItems[2].id}
+                    item={resolvedPreviewItems[2]}
+                    previewUrl={resolvedPreviewItems[2].previewUrl}
+                    index={2}
+                    isActive={2 === activePreviewIndex}
+                    onSelect={setActivePreviewIndex}
+                  />
+                ) : canAdd ? (
+                  <button
+                    type="button"
+                    onClick={openFilePicker}
+                    className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-primary/40 bg-card transition-colors hover:border-primary hover:bg-primary/5 shadow-sm"
+                  >
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-primary">
+                      {isUploading ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      ) : (
+                        <Plus className="h-6 w-6 text-primary" />
+                      )}
+                      <span className="text-sm font-medium text-primary">
+                        {isUploading ? "Uploading" : "Add another"}
+                      </span>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="aspect-[4/3] rounded-2xl bg-muted/30" />
+                )}
               </div>
             </div>
           </div>

@@ -13,7 +13,7 @@ const ProjectDetailSkeleton = () => (
         <Skeleton className="h-4 w-80" />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
         {[1, 2, 3].map((item) => (
           <Card
             key={`meta-${item}`}
@@ -86,7 +86,7 @@ const ProjectDetailSkeleton = () => (
             </CardHeader>
             <CardContent className="space-y-6 pt-0">
               <Skeleton className="h-2 w-full" />
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {[1, 2, 3, 4].map((item) => (
                   <div
                     key={`phase-${item}`}

@@ -950,7 +950,7 @@ export const ProjectProposalCard = ({
     "border border-border bg-card shadow-none";
   const phaseSteps = Array.isArray(project.currentPhaseSteps) ? project.currentPhaseSteps : [];
   const actionClassName = cn(
-    "flex w-full items-center justify-center rounded-[14px] px-3 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80 sm:px-4 sm:py-3.5 sm:text-base",
+    "flex w-full items-center justify-center rounded-[14px] px-4 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80",
     projectActionToneMap[project.actionTone] || projectActionToneMap.slate,
   );
   const canRenderFreelancerAvatar =
@@ -1184,7 +1184,7 @@ export const ProjectProposalCard = ({
               <Link
                 to={project.actionHref || `/client/project/${project.id}`}
                 className={cn(
-                  "flex w-full items-center justify-center rounded-[14px] px-3 py-3 text-sm font-semibold transition-colors sm:px-4 sm:py-3.5 sm:text-base",
+                  "flex w-full items-center justify-center rounded-[14px] px-4 py-3 text-sm font-semibold transition-colors",
                   projectActionToneMap.slate,
                 )}
               >

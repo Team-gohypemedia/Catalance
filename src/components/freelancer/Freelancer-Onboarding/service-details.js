@@ -222,6 +222,15 @@ const normalizeServiceCaseStudy = (value = {}, { fallbackId } = {}) => {
     niche: toOptionalString(source.niche),
     customFields:
       isPlainObject(source.customFields) ? { ...source.customFields } : {},
+    previewImage:
+      typeof source.previewImage === "string" || source.previewImage instanceof File
+        ? source.previewImage
+        : null,
+    previewGradient: toOptionalString(source.previewGradient) || "",
+    projectFile:
+      typeof source.projectFile === "string" || source.projectFile instanceof File
+        ? source.projectFile
+        : null,
   };
 };
 

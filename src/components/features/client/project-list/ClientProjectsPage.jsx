@@ -95,7 +95,7 @@ const ProjectCarouselDots = ({ count, activeIndex, onSelect, ariaLabel, getDotLa
               "h-2.5 rounded-full transition-all duration-200",
               isActive
                 ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
-                : "w-2.5 bg-muted hover:bg-muted-foreground/40",
+                : "w-2.5 bg-foreground/20 hover:bg-foreground/40",
             )}
           />
         );

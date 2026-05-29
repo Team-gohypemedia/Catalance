@@ -63,7 +63,7 @@ const CARD_VALUE_CLASS = "mt-3 text-xl font-semibold tracking-[-0.03em] text-for
 const BADGE_CLASS =
   "inline-flex items-center rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground";
 const CASE_STUDY_META_PILL_CLASS =
-  "inline-flex items-center rounded-full border border-white/10 bg-white/8 px-2.5 py-1 text-xs font-medium text-white/70";
+  "inline-flex items-center rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm";
 const CASE_STUDY_PREVIEW_CACHE = new Map();
 
 const normalizeStringArray = (values) => {
@@ -911,6 +911,9 @@ const FreelancerServiceReviewSlide = ({
           displayTitle,
           projectHost,
           previewImage:
+            (typeof File !== "undefined" && caseStudy?.previewImage instanceof File
+              ? URL.createObjectURL(caseStudy.previewImage)
+              : resolveAvatarUrl(caseStudy?.previewImage, { allowBlob: true })) ||
             resolveAvatarUrl(preview?.image, { allowBlob: true }) ||
             resolveAvatarUrl(preview?.sourceImage, { allowBlob: true }) ||
             "",
@@ -1003,10 +1006,10 @@ const FreelancerServiceReviewSlide = ({
           <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.58fr)_300px] xl:grid-cols-[minmax(0,1.62fr)_332px]">
             <article className="space-y-7">
               <div className="space-y-4">
-                <div className="group relative overflow-hidden rounded-[30px] border border-border bg-[#0d0d0d] shadow-[0_20px_80px_rgba(0,0,0,0.45)] dark-card">
+                <div className="group relative overflow-hidden rounded-[30px] border border-border bg-neutral-950 shadow-[0_20px_80px_rgba(0,0,0,0.45)] dark-card">
                   {mediaPreview?.url ? (
                     mediaPreview.kind === "video" ? (
-                      <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010] dark-card">
+                      <div className="relative aspect-[16/10] w-full overflow-hidden bg-neutral-950 dark-card keep-white">
                         <video
                           key={mediaPreview.url}
                           src={mediaPreview.url}
@@ -1024,7 +1027,7 @@ const FreelancerServiceReviewSlide = ({
                         </div>
                       </div>
                     ) : (
-                      <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010] dark-card">
+                      <div className="relative aspect-[16/10] w-full overflow-hidden bg-neutral-950 dark-card keep-white">
                         <img
                           key={mediaPreview.url}
                           src={mediaPreview.url}
@@ -1034,7 +1037,7 @@ const FreelancerServiceReviewSlide = ({
                       </div>
                     )
                   ) : (
-                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#101010] dark-card">
+                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-neutral-950 dark-card">
                       <p className="mt-2 max-w-sm text-sm text-white/65">
                         Add service images or a video in the media step to replace this placeholder.
                       </p>
@@ -1105,50 +1108,55 @@ const FreelancerServiceReviewSlide = ({
                                 alt={`${caseStudy.displayTitle} preview`}
                                 className="aspect-[16/9] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                               />
-                              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.08)_0%,rgba(5,5,5,0.22)_38%,rgba(5,5,5,0.86)_100%)]" />
+                              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.08)_0%,rgba(5,5,5,0.22)_38%,rgba(5,5,5,0.86)_100%)] keep-white" />
                             </>
                           ) : (
-                            <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#101010] dark-card">
-                              <div className="absolute inset-y-0 left-[26%] w-px bg-white/8" />
-                              <div className="absolute inset-y-0 right-[26%] w-px bg-white/8" />
-                              <div className="absolute left-6 top-6 flex h-20 w-20 items-center justify-center rounded-[24px] border border-white/10 bg-white/[0.06] shadow-[0_10px_40px_rgba(0,0,0,0.28)] backdrop-blur-sm">
-                                <span className="text-2xl font-semibold tracking-[-0.08em] text-white">
-                                  {caseStudy.previewInitials}
-                                </span>
-                              </div>
-                              <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.82))]" />
+                            <div className={cn("relative aspect-[16/9] w-full overflow-hidden dark-card keep-white", caseStudy.previewGradient || "bg-[linear-gradient(135deg,#090909,#131313_55%,#111111)]")}>
+                              <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.82))] keep-white" />
                             </div>
                           )}
 
                           <div className="absolute left-5 right-5 top-5 flex items-start justify-between gap-3">
-                            <span className="rounded-full border border-white/12 bg-black/45 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/78 backdrop-blur-md keep-white">
-                              Case Study {caseStudy.order}
-                            </span>
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[20px] bg-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.15)] backdrop-blur-md">
+                              {caseStudy.projectHost ? (
+                                <img
+                                  src={`https://www.google.com/s2/favicons?domain=${caseStudy.projectHost}&sz=128`}
+                                  alt={`${caseStudy.projectHost} logo`}
+                                  className="h-8 w-8 object-contain"
+                                />
+                              ) : (
+                                <div className="text-xl font-bold tracking-[-0.08em] text-[#111111]">
+                                  {caseStudy.previewInitials}
+                                </div>
+                              )}
+                            </div>
 
                             {caseStudy.niche ? (
-                              <span className="max-w-[70%] truncate rounded-full border border-primary/25 bg-black/35 px-3 py-1 text-xs font-medium text-primary backdrop-blur-md keep-white">
+                              <div 
+                                className="max-w-[70%] truncate rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-primary shadow-[0_4px_20px_rgba(0,0,0,0.1)] backdrop-blur-md"
+                              >
                                 {caseStudy.niche}
-                              </span>
+                              </div>
                             ) : null}
                           </div>
 
                           <div className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-4">
                             <div className="min-w-0">
-                              <h4 className="truncate text-2xl font-semibold tracking-[-0.04em] text-white keep-white">
+                              <div className="truncate text-2xl font-semibold tracking-[-0.04em] text-white keep-white drop-shadow-md">
                                 {caseStudy.displayTitle}
-                              </h4>
+                              </div>
                               {caseStudy.projectHost ? (
-                                <p className="mt-1 truncate text-xs font-medium uppercase tracking-[0.16em] text-white/58 keep-white">
+                                <div className="mt-1 truncate text-xs font-medium uppercase tracking-[0.16em] text-white/80 keep-white drop-shadow-md">
                                   {caseStudy.projectHost}
-                                </p>
+                                </div>
                               ) : null}
                             </div>
                           </div>
                         </div>
 
                         <div className="space-y-4 p-5">
-                          <p
-                            className="overflow-hidden text-sm leading-7 text-white/72"
+                          <div
+                            className="overflow-hidden text-sm leading-7 text-muted-foreground"
                             style={{
                               display: "-webkit-box",
                               WebkitLineClamp: 3,
@@ -1158,7 +1166,7 @@ const FreelancerServiceReviewSlide = ({
                             {caseStudy.description ||
                               caseStudy.previewDescription ||
                               "Add a short case study description in the case-study step to strengthen this service preview."}
-                          </p>
+                          </div>
 
                           <div className="flex flex-wrap gap-2">
                             {caseStudy.role ? (

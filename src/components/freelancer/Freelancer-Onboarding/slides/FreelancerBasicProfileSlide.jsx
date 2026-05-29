@@ -522,9 +522,9 @@ const FreelancerBasicProfileSlide = ({
               />
               <span className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90">
                 {isResumeAutofillRunning ? (
-                  <Loader2 className="size-3.5 animate-spin" />
+                  <Loader2 className="size-3.5 animate-spin !text-white keep-white" />
                 ) : (
-                  <Upload className="size-3.5" />
+                  <Upload className="size-3.5 !text-white keep-white" />
                 )}
                 {isResumeAutofillRunning
                   ? field.loadingLabel || "Reading..."

@@ -64,6 +64,8 @@ const CARD_VALUE_CLASS = "mt-3 text-xl font-semibold tracking-[-0.03em] text-for
 const BADGE_CLASS =
   "inline-flex items-center rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground";
 const CASE_STUDY_PREVIEW_CACHE = new Map();
+const CASE_STUDY_META_PILL_CLASS =
+  "inline-flex items-center rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm";
 
 const normalizeStringArray = (values) => {
   if (!Array.isArray(values)) {
@@ -866,6 +868,9 @@ const AgencyServiceReviewSlide = ({
           displayTitle,
           projectHost,
           previewImage:
+            (typeof File !== "undefined" && caseStudy?.previewImage instanceof File
+              ? URL.createObjectURL(caseStudy.previewImage)
+              : resolveAvatarUrl(caseStudy?.previewImage, { allowBlob: true })) ||
             resolveAvatarUrl(preview?.image, { allowBlob: true }) ||
             resolveAvatarUrl(preview?.sourceImage, { allowBlob: true }) ||
             "",
@@ -1030,7 +1035,7 @@ const AgencyServiceReviewSlide = ({
             ) : null}
 
             <div className="space-y-4">
-              <div className="group relative overflow-hidden rounded-[30px] border border-border bg-[#0d0d0d] shadow-[0_20px_80px_rgba(0,0,0,0.45)] dark-card">
+              <div className="group relative overflow-hidden rounded-[30px] border border-border bg-neutral-950 shadow-[0_20px_80px_rgba(0,0,0,0.45)] dark-card">
                 {mediaPreview?.url ? (
                   <img
                     src={mediaPreview.url}
@@ -1038,18 +1043,18 @@ const AgencyServiceReviewSlide = ({
                     className="aspect-[16/10] w-full object-cover transition-transform duration-500 group-hover:scale-[1.015]"
                   />
                 ) : (
-                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(255,214,10,0.12),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.06),transparent_22%),linear-gradient(135deg,#090909,#131313_55%,#111111)] dark-card">
-                    <div className="absolute inset-y-0 left-[30%] w-px bg-white/10" />
-                    <div className="absolute inset-y-0 right-[30%] w-px bg-white/10" />
-                    <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/35 shadow-[0_0_60px_rgba(var(--brand-rgb),0.1)]" />
-                    <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/12" />
-                    <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25" />
-                    <div className="absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.78))]" />
-                    <div className="absolute inset-x-6 top-6 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 backdrop-blur-sm">
-                      <p className="text-xs uppercase tracking-[0.2em] text-white/45">
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(255,214,10,0.12),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.06),transparent_22%),linear-gradient(135deg,#090909,#131313_55%,#111111)] dark-card keep-white">
+                    <div className="absolute inset-y-0 left-[30%] w-px bg-white/10 keep-white" />
+                    <div className="absolute inset-y-0 right-[30%] w-px bg-white/10 keep-white" />
+                    <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/35 shadow-[0_0_60px_rgba(var(--brand-rgb),0.1)] keep-white" />
+                    <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/12 keep-white" />
+                    <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25 keep-white" />
+                    <div className="absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.78))] keep-white" />
+                    <div className="absolute inset-x-6 top-6 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 backdrop-blur-sm keep-white">
+                      <p className="text-xs uppercase tracking-[0.2em] text-white/45 keep-white">
                         Visual Preview
                       </p>
-                      <p className="mt-2 max-w-sm text-sm text-white/65">
+                      <p className="mt-2 max-w-sm text-sm text-white/65 keep-white">
                         Add service images in the media step to replace this placeholder.
                       </p>
                     </div>
@@ -1119,50 +1124,55 @@ const AgencyServiceReviewSlide = ({
                                 alt={`${caseStudy.displayTitle} preview`}
                                 className="aspect-[16/9] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                               />
-                              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.08)_0%,rgba(5,5,5,0.22)_38%,rgba(5,5,5,0.86)_100%)]" />
+                              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.08)_0%,rgba(5,5,5,0.22)_38%,rgba(5,5,5,0.86)_100%)] keep-white" />
                             </>
                           ) : (
-                            <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#101010] dark-card">
-                              <div className="absolute inset-y-0 left-[26%] w-px bg-white/8" />
-                              <div className="absolute inset-y-0 right-[26%] w-px bg-white/8" />
-                              <div className="absolute left-6 top-6 flex h-20 w-20 items-center justify-center rounded-[24px] border border-white/10 bg-white/[0.06] shadow-[0_10px_40px_rgba(0,0,0,0.28)] backdrop-blur-sm">
-                                <span className="text-2xl font-semibold tracking-[-0.08em] text-white">
-                                  {caseStudy.previewInitials}
-                                </span>
-                              </div>
-                              <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.82))]" />
+                            <div className={cn("relative aspect-[16/9] w-full overflow-hidden dark-card keep-white", caseStudy.previewGradient || "bg-[linear-gradient(135deg,#090909,#131313_55%,#111111)]")}>
+                              <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.82))] keep-white" />
                             </div>
                           )}
 
                           <div className="absolute left-5 right-5 top-5 flex items-start justify-between gap-3">
-                            <span className="rounded-full border border-white/12 bg-black/45 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/78 backdrop-blur-md keep-white">
-                              Case Study {caseStudy.order}
-                            </span>
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[20px] bg-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.15)] backdrop-blur-md">
+                              {caseStudy.projectHost ? (
+                                <img
+                                  src={`https://www.google.com/s2/favicons?domain=${caseStudy.projectHost}&sz=128`}
+                                  alt={`${caseStudy.projectHost} logo`}
+                                  className="h-8 w-8 object-contain"
+                                />
+                              ) : (
+                                <div className="text-xl font-bold tracking-[-0.08em] text-[#111111]">
+                                  {caseStudy.previewInitials}
+                                </div>
+                              )}
+                            </div>
 
                             {caseStudy.niche ? (
-                              <span className="max-w-[70%] truncate rounded-full border border-primary/25 bg-black/35 px-3 py-1 text-xs font-medium text-primary backdrop-blur-md keep-white">
+                              <div 
+                                className="max-w-[70%] truncate rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-primary shadow-[0_4px_20px_rgba(0,0,0,0.1)] backdrop-blur-md"
+                              >
                                 {caseStudy.niche}
-                              </span>
+                              </div>
                             ) : null}
                           </div>
 
                           <div className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-4">
                             <div className="min-w-0">
-                              <h4 className="truncate text-2xl font-semibold tracking-[-0.04em] text-white keep-white">
+                              <div className="truncate text-2xl font-semibold tracking-[-0.04em] text-white keep-white drop-shadow-md">
                                 {caseStudy.displayTitle}
-                              </h4>
+                              </div>
                               {caseStudy.projectHost ? (
-                                <p className="mt-1 truncate text-xs font-medium uppercase tracking-[0.16em] text-white/58 keep-white">
+                                <div className="mt-1 truncate text-xs font-medium uppercase tracking-[0.16em] text-white/80 keep-white drop-shadow-md">
                                   {caseStudy.projectHost}
-                                </p>
+                                </div>
                               ) : null}
                             </div>
                           </div>
                         </div>
 
                         <div className="space-y-4 p-5">
-                          <p
-                            className="overflow-hidden text-sm leading-7 text-white/72"
+                          <div
+                            className="overflow-hidden text-sm leading-7 text-muted-foreground"
                             style={{
                               display: "-webkit-box",
                               WebkitLineClamp: 3,
@@ -1172,7 +1182,7 @@ const AgencyServiceReviewSlide = ({
                             {caseStudy.description ||
                               caseStudy.previewDescription ||
                               "Add a short case study description in the case-study step to strengthen this service preview."}
-                          </p>
+                          </div>
 
                           <div className="flex flex-wrap gap-2">
                             {caseStudy.role ? (

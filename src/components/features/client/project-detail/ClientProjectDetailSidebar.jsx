@@ -385,44 +385,45 @@ const ClientProjectDetailSidebar = ({
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
         {Array.isArray(paymentPlan?.installments) && paymentPlan.installments.length > 0 ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-1">
             {paymentPlan.installments.map((installment) => (
               <div
                 key={installment.sequence}
                 className={cn(
                   insetPanelClassName,
-                  "space-y-3 p-4 bg-card",
+                  "relative flex flex-col justify-between space-y-2 p-3.5 sm:p-4 bg-card",
                   installment.isDue && "border-primary/25 bg-primary/10",
                   installment.isPaid && "border-emerald-500/20 bg-emerald-500/10",
                 )}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      {installment.label}
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-foreground dark:text-white">
-                      ₹{Number(installment.amount || 0).toLocaleString()}
-                    </p>
-                  </div>
-                  <Badge
-                    className={cn(
-                      "border px-2.5 py-1 text-[10px] font-medium",
-                      installment.isPaid
-                        ? "border-emerald-500/20 dark:border-emerald-500/10 bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-200"
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1.5">
+                    <Badge
+                      className={cn(
+                        "border px-2 py-0.5 text-[9px] font-medium sm:px-2.5 sm:py-1 sm:text-[10px]",
+                        installment.isPaid
+                          ? "border-emerald-500/20 dark:border-emerald-500/10 bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-200"
+                          : installment.isDue
+                            ? "border-primary/10 bg-primary/15 text-primary"
+                            : "border-border dark:border-white/[0.08] bg-muted dark:bg-[#111111] text-muted-foreground",
+                      )}
+                    >
+                      {installment.isPaid
+                        ? "Paid"
                         : installment.isDue
-                          ? "border-primary/10 bg-primary/15 text-primary"
-                          : "border-border dark:border-white/[0.08] bg-muted dark:bg-[#111111] text-muted-foreground",
-                    )}
-                  >
-                    {installment.isPaid
-                      ? "Paid"
-                      : installment.isDue
-                        ? "Next Payment"
-                        : "Upcoming"}
-                  </Badge>
+                          ? "Next Payment"
+                          : "Upcoming"}
+                    </Badge>
+                    <span className="text-[10px] sm:text-[11px] font-semibold uppercase leading-[1.4] tracking-[0.1em] text-muted-foreground break-words">
+                      {installment.label}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xl sm:text-2xl font-semibold tracking-[-0.03em] text-foreground dark:text-white">
+                    ₹{Number(installment.amount || 0).toLocaleString()}
+                  </p>
                 </div>
-                <p className="text-xs leading-5 text-muted-foreground">
+                
+                <p className="text-[11px] leading-[1.35] text-muted-foreground">
                   {getInstallmentScheduleNote(
                     installment,
                     paymentPlan.installments,

@@ -1852,6 +1852,8 @@ const FreelancerOnboardingShell = () => {
       description: String(currentActiveCaseStudy?.description ?? ""),
       projectLink: String(currentActiveCaseStudy?.projectLink || "").trim(),
       projectFile: currentActiveCaseStudy?.projectFile || null,
+      previewImage: currentActiveCaseStudy?.previewImage || null,
+      previewGradient: String(currentActiveCaseStudy?.previewGradient || "").trim(),
       role: String(currentActiveCaseStudy?.role || "").trim(),
       timeline: String(currentActiveCaseStudy?.timeline || "").trim(),
       budget: String(currentActiveCaseStudy?.budget || "").trim(),
@@ -2728,6 +2730,8 @@ const FreelancerOnboardingShell = () => {
           ...caseStudy,
           projectFile:
             (await persistCaseStudyProjectFile(caseStudy?.projectFile)) || null,
+          previewImage:
+            (await persistCaseStudyProjectFile(caseStudy?.previewImage)) || null,
         })),
       ),
     ]);
@@ -3976,6 +3980,7 @@ const FreelancerOnboardingShell = () => {
                 onAddCaseStudy={handleAddCaseStudy}
                 onRemoveCaseStudy={handleRemoveCaseStudy}
                 onActiveCaseStudyChange={handleActiveCaseStudyChange}
+                onUploadMediaFile={uploadServiceMediaFile}
                 caseStudyValidationErrors={caseStudyValidationErrors}
                 acceptInProgressProjectsValue={acceptInProgressProjectsValue}
                 onAcceptInProgressProjectsChange={handleAcceptInProgressProjectsSelect}
