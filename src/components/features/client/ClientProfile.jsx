@@ -213,7 +213,7 @@ const getProfileCompletionPercentage = (formData = emptyFormData) => {
 const ProfileSurface = ({ className, children }) => (
   <section
     className={cn(
-      "rounded-[24px] border border-border bg-card sm:rounded-[32px]",
+      "rounded-[20px] border border-border bg-card sm:rounded-[28px]",
       className,
     )}
   >
@@ -222,14 +222,14 @@ const ProfileSurface = ({ className, children }) => (
 );
 
 const SectionHeader = ({ icon: Icon, title, description, onEdit }) => (
-  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div className="flex items-start gap-4">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:size-11">
-        <Icon className="size-5" />
+  <div className="flex items-start justify-between gap-3">
+    <div className="flex min-w-0 items-start gap-3">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:size-10">
+        <Icon className="size-4 sm:size-5" />
       </div>
-      <div className="space-y-1">
-        <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-foreground sm:text-[1.1rem]">{title}</h2>
-        {description ? <p className="text-sm leading-6 text-muted-foreground">{description}</p> : null}
+      <div className="min-w-0 space-y-1">
+        <h2 className="text-[0.95rem] font-semibold tracking-[-0.02em] text-foreground sm:text-[1.05rem]">{title}</h2>
+        {description ? <p className="text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">{description}</p> : null}
       </div>
     </div>
     {onEdit ? (
@@ -237,9 +237,9 @@ const SectionHeader = ({ icon: Icon, title, description, onEdit }) => (
         type="button"
         variant="outline"
         onClick={onEdit}
-        className="h-10 self-start rounded-full border-border bg-muted px-4 text-foreground hover:bg-muted/80"
+        className="h-8 shrink-0 self-start rounded-full border-border bg-muted px-3 text-xs text-foreground hover:bg-muted/80 sm:h-10 sm:px-4 sm:text-sm"
       >
-        <Edit2 className="mr-2 size-4 text-primary" />
+        <Edit2 className="mr-1.5 size-3.5 text-primary sm:size-4" />
         Edit
       </Button>
     ) : null}
@@ -247,16 +247,16 @@ const SectionHeader = ({ icon: Icon, title, description, onEdit }) => (
 );
 
 const StatBlock = ({ value, label, tone = "default" }) => (
-  <div className="min-w-0 space-y-1">
+  <div className="min-w-0 overflow-hidden space-y-1">
     <p
       className={cn(
-        "text-[1.55rem] font-semibold leading-none tracking-[-0.05em] sm:text-[1.9rem]",
+        "truncate text-[1.1rem] font-semibold leading-none tracking-[-0.04em] sm:text-[1.5rem]",
         tone === "accent" ? "text-primary" : "text-foreground",
       )}
     >
       {value}
     </p>
-    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px] sm:tracking-[0.22em]">
+    <p className="line-clamp-2 text-[7px] font-semibold uppercase leading-tight tracking-[0.08em] text-muted-foreground sm:text-[9px] sm:tracking-[0.14em]">
       {label}
     </p>
   </div>
@@ -295,11 +295,11 @@ const ProfileField = ({
 );
 
 const ProfileDisplayField = ({ icon: Icon, label, value, placeholder }) => (
-  <div className="space-y-3">
+  <div className="min-w-0 w-full space-y-3">
     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
       {label}
     </p>
-    <div className="flex min-h-12 items-center gap-3 rounded-[14px] border border-border bg-muted/50 px-4 sm:px-5">
+    <div className="flex min-w-0 w-full min-h-12 items-center gap-3 rounded-[14px] border border-border bg-muted/50 px-4 sm:px-5">
       <Icon className="size-4 shrink-0 text-primary" />
       <span
         className="min-w-0 flex-1 truncate text-sm text-muted-foreground"
@@ -311,7 +311,7 @@ const ProfileDisplayField = ({ icon: Icon, label, value, placeholder }) => (
 );
 
 const ProfileTextDisplay = ({ label, value, placeholder, className }) => (
-  <div className="space-y-3">
+  <div className="min-w-0 w-full space-y-3">
     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
       {label}
     </p>
@@ -328,7 +328,7 @@ const ProfileTextDisplay = ({ label, value, placeholder, className }) => (
 );
 
 const ReadonlyActionField = ({ icon: Icon, label, value, actionLabel, onClick }) => (
-  <div className="space-y-3">
+  <div className="min-w-0 w-full space-y-3">
     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
       {label}
     </p>
@@ -362,29 +362,29 @@ const BillingShortcutCard = ({
   <button
     type="button"
     onClick={onClick}
-    className="group flex w-full flex-col rounded-[24px] border border-border bg-card p-4 text-left transition hover:bg-muted/50 sm:rounded-[28px] sm:p-5"
+    className="group flex w-full flex-col rounded-[18px] border border-border bg-card p-4 text-left transition hover:bg-muted/50 sm:rounded-[24px] sm:p-5"
   >
     <div
       className={cn(
-        "flex size-12 items-center justify-center rounded-full",
+        "flex size-10 items-center justify-center rounded-full sm:size-12",
         accent === "primary"
           ? "bg-primary text-primary-foreground"
           : "border border-primary/25 bg-primary/10 text-primary",
       )}
     >
-      {loading ? <Loader2 className="size-5 animate-spin" /> : <Icon className="size-5" />}
+      {loading ? <Loader2 className="size-4 animate-spin sm:size-5" /> : <Icon className="size-4 sm:size-5" />}
     </div>
 
-    <div className="mt-6">
-      <p className="text-[1.4rem] font-semibold tracking-[-0.04em] text-foreground sm:text-[1.75rem]">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+    <div className="mt-4 sm:mt-5">
+      <p className="text-[1.1rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.35rem]">{title}</p>
+      <p className="mt-1.5 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">{description}</p>
     </div>
 
-    <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-sm text-muted-foreground">{meta}</p>
-      <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary sm:justify-end">
+    <div className="mt-4 flex items-center justify-between gap-2 sm:mt-6">
+      <p className="min-w-0 truncate text-xs text-muted-foreground sm:text-sm">{meta}</p>
+      <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary sm:text-sm">
         {actionLabel}
-        <ExternalLink className="size-3.5 transition group-hover:translate-x-0.5" />
+        <ExternalLink className="size-3 transition group-hover:translate-x-0.5 sm:size-3.5" />
       </span>
     </div>
   </button>
@@ -398,28 +398,26 @@ const NotificationToggleRow = ({
   onCheckedChange,
   readOnly = false,
 }) => (
-  <div className="flex flex-col gap-4 rounded-[14px] border border-border bg-muted/50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-    <div className="flex min-w-0 items-start gap-4">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] border border-primary/20 bg-primary/10 text-primary">
-        <Icon className="size-4" />
+  <div className="flex items-center justify-between gap-3 rounded-[14px] border border-border bg-muted/50 px-4 py-3.5 sm:px-5 sm:py-4">
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-primary/20 bg-primary/10 text-primary sm:size-10 sm:rounded-[12px]">
+        <Icon className="size-3.5 sm:size-4" />
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-muted-foreground">{title}</p>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{description}</p>
       </div>
     </div>
 
-    <div className="flex justify-end sm:justify-start">
-      <Switch
-        checked={checked}
-        disabled={readOnly}
-        onCheckedChange={readOnly ? undefined : onCheckedChange}
-        className={cn(
-          "scale-125 data-[state=unchecked]:bg-muted-foreground/30",
-          readOnly && "pointer-events-none",
-        )}
-      />
-    </div>
+    <Switch
+      checked={checked}
+      disabled={readOnly}
+      onCheckedChange={readOnly ? undefined : onCheckedChange}
+      className={cn(
+        "shrink-0 data-[state=unchecked]:bg-muted-foreground/30",
+        readOnly && "pointer-events-none",
+      )}
+    />
   </div>
 );
 
@@ -934,7 +932,7 @@ const ClientProfileContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-muted-foreground">
+    <div className="min-h-screen w-full overflow-x-clip bg-background text-muted-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
         <ClientWorkspaceHeader
           profile={{
@@ -952,35 +950,35 @@ const ClientProfileContent = () => {
             dateLabel={false}
           />
 
-          <div className="mt-8 space-y-8">
-            <section className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
-              <div className="space-y-6">
-                <ProfileSurface className="overflow-hidden p-5 sm:p-6 lg:p-7">
-                  <div className="flex flex-col items-center text-center">
-                    <Avatar className="h-28 w-28 border-2 border-[#334155] shadow-[0_24px_60px_-34px_rgba(0,0,0,0.65)] sm:h-32 sm:w-32 lg:h-36 lg:w-36">
+          <div className="mt-6 space-y-5 sm:mt-8 sm:space-y-8">
+            <section className="grid w-full min-w-0 gap-5 sm:gap-6 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
+              <div className="min-w-0 space-y-6">
+                <ProfileSurface className="overflow-hidden p-4 sm:p-5 lg:p-7">
+                  <div className="flex w-full flex-col items-center text-center">
+                    <Avatar className="h-20 w-20 border-2 border-[#334155] shadow-[0_24px_60px_-34px_rgba(0,0,0,0.65)] sm:h-28 sm:w-28 lg:h-32 lg:w-32">
                       <AvatarImage
                         src={formData.avatar || user?.avatar}
                         alt={formData.fullName || headerDisplayName}
                         className="object-cover"
                       />
-                      <AvatarFallback className="bg-muted text-3xl font-semibold text-foreground sm:text-[2.2rem] lg:text-4xl">
+                      <AvatarFallback className="bg-muted text-2xl font-semibold text-foreground sm:text-3xl lg:text-4xl">
                         {getInitials(formData.fullName || headerDisplayName)}
                       </AvatarFallback>
                     </Avatar>
 
-                    <h2 className="mt-6 text-[1.8rem] font-semibold tracking-[-0.05em] text-foreground sm:mt-7 sm:text-[2rem] lg:mt-8 lg:text-[2.15rem]">
+                    <h2 className="mt-4 w-full truncate text-[1.3rem] font-semibold tracking-[-0.04em] text-foreground sm:mt-6 sm:text-[1.7rem] lg:text-[1.9rem]">
                       {formData.fullName || headerDisplayName}
                     </h2>
-                    <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+                    <p className="mt-1.5 w-full truncate text-xs text-muted-foreground sm:mt-2 sm:text-sm">
                       {formData.email || "Add an email address"}
                     </p>
-                    <p className="mt-5 text-sm text-muted-foreground">
+                    <p className="mt-2 w-full truncate text-xs text-muted-foreground sm:mt-3 sm:text-sm">
                       {formData.companyName || "Workspace identity ready for new client projects."}
                     </p>
                   </div>
 
-                  <div className="mt-8 border-t border-border pt-6">
-                    <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                  <div className="mt-5 border-t border-border pt-4 sm:mt-6 sm:pt-5">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4">
                       {identityStats.map((item, index) => (
                         <StatBlock
                           key={item.label}
@@ -993,14 +991,14 @@ const ClientProfileContent = () => {
                   </div>
                 </ProfileSurface>
 
-                <ProfileSurface className="p-5 sm:p-6">
+                <ProfileSurface className="p-4 sm:p-5 lg:p-6">
                   <SectionHeader
                     icon={CreditCard}
                     title="Billing & Payments"
                     description="Open your billing hub to manage cards, invoices, and escrow visibility."
                   />
 
-                  <div className="mt-6 space-y-4">
+                  <div className="mt-4 space-y-3 sm:mt-5 sm:space-y-4">
                     <BillingShortcutCard
                       icon={CreditCard}
                       title="Billing Hub"
@@ -1026,8 +1024,8 @@ const ClientProfileContent = () => {
                 </ProfileSurface>
               </div>
 
-              <div className="space-y-6">
-                <ProfileSurface className="p-5 sm:p-6 lg:p-8">
+              <div className="min-w-0 space-y-6">
+                <ProfileSurface className="p-4 sm:p-5 lg:p-8">
                   <SectionHeader
                     icon={User}
                     title="Personal Information"
@@ -1035,7 +1033,7 @@ const ClientProfileContent = () => {
                     onEdit={() => openSectionEditor("personal")}
                   />
 
-                  <div className="mt-6 grid gap-5 md:mt-8 md:grid-cols-2">
+                  <div className="mt-4 grid w-full min-w-0 gap-4 sm:mt-6 sm:gap-5 md:grid-cols-2">
                     <ProfileDisplayField
                       icon={User}
                       label="Full Name"
@@ -1063,7 +1061,7 @@ const ClientProfileContent = () => {
                   </div>
                 </ProfileSurface>
 
-                <ProfileSurface className="p-5 sm:p-6 lg:p-8">
+                <ProfileSurface className="p-4 sm:p-5 lg:p-8">
                   <SectionHeader
                     icon={FileText}
                     title="Bio & Expertise"
@@ -1071,7 +1069,7 @@ const ClientProfileContent = () => {
                     onEdit={() => openSectionEditor("bio")}
                   />
 
-                  <div className="mt-6 sm:mt-8">
+                  <div className="mt-4 sm:mt-6">
                     <ProfileTextDisplay
                       label="Professional Bio"
                       value={formData.bio}
@@ -1080,7 +1078,7 @@ const ClientProfileContent = () => {
                   </div>
                 </ProfileSurface>
 
-                <ProfileSurface className="p-5 sm:p-6 lg:p-8">
+                <ProfileSurface className="p-4 sm:p-5 lg:p-8">
                   <SectionHeader
                     icon={Building2}
                     title="Company & Presence"
@@ -1088,7 +1086,7 @@ const ClientProfileContent = () => {
                     onEdit={() => openSectionEditor("company")}
                   />
 
-                  <div className="mt-6 space-y-5 sm:mt-8">
+                  <div className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
                     <ProfileDisplayField
                       icon={Building2}
                       label="Company Name"
@@ -1113,14 +1111,14 @@ const ClientProfileContent = () => {
               </div>
             </section>
 
-            <ProfileSurface className="p-5 sm:p-6 lg:p-8">
+            <ProfileSurface className="p-4 sm:p-5 lg:p-8">
               <SectionHeader
                 icon={Bell}
                 title="Notification Preferences"
                 description="Configure how you receive project updates."
               />
 
-              <div className="mt-6 space-y-7 sm:mt-8 sm:space-y-8">
+              <div className="mt-4 space-y-5 sm:mt-6 sm:space-y-7">
                 <div className="space-y-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                     Project Notifications
@@ -1198,23 +1196,23 @@ const ClientProfileContent = () => {
           }
         }}
       >
-        <DialogContent className="max-w-3xl gap-0 overflow-hidden rounded-[32px] border-border bg-card p-0 text-muted-foreground">
-          <div className="border-b border-border px-6 py-5 sm:px-8">
+        <DialogContent className="max-h-[90dvh] w-[calc(100vw-24px)] max-w-3xl gap-0 overflow-hidden rounded-[24px] border-border bg-card p-0 text-muted-foreground sm:w-full sm:rounded-[32px]">
+          <div className="border-b border-border px-5 py-4 sm:px-8 sm:py-5">
             <DialogHeader>
-              <DialogTitle className="text-xl font-semibold tracking-[-0.03em] text-foreground">
+              <DialogTitle className="text-base font-semibold tracking-[-0.02em] text-foreground sm:text-xl sm:tracking-[-0.03em]">
                 {activeEditor ? activeEditorMeta[activeEditor]?.title : ""}
               </DialogTitle>
-              <DialogDescription className="text-sm leading-6 text-muted-foreground">
+              <DialogDescription className="text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
                 {activeEditor ? activeEditorMeta[activeEditor]?.description : ""}
               </DialogDescription>
             </DialogHeader>
           </div>
 
-          <div className="max-h-[70vh] overflow-y-auto px-6 py-6 sm:px-8">
+          <div className="max-h-[60dvh] overflow-y-auto px-5 py-5 sm:max-h-[70vh] sm:px-8 sm:py-6">
             {renderEditorContent()}
           </div>
 
-          <DialogFooter className="border-t border-border px-6 py-5 sm:px-8">
+          <DialogFooter className="border-t border-border px-5 py-4 sm:px-8 sm:py-5">
             <Button
               type="button"
               variant="outline"

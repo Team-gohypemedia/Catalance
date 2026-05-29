@@ -1066,14 +1066,14 @@ export const ProjectProposalCard = ({
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
-          <div className={cn("rounded-[14px] p-4", detailPanelClassName)}>
+          <div className={cn("rounded-[14px] p-3 sm:p-4", detailPanelClassName)}>
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">Budget</p>
             <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
               {project.budgetLabel}
             </p>
           </div>
 
-          <div className={cn("rounded-[14px] p-4", detailPanelClassName)}>
+          <div className={cn("rounded-[14px] p-3 sm:p-4", detailPanelClassName)}>
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
               {project.dateLabel}
             </p>
@@ -1442,7 +1442,7 @@ const ClientProjects = () => {
                       type="button"
                       onClick={() => handleSelectFilter(option.key)}
                       className={cn(
-                        "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
+                        "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-2.5 text-center text-[0.68rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
                         isActive
                           ? "border-[var(--primary)]/70 bg-[var(--primary)] text-[#141414]"
                           : "text-muted-foreground hover:text-foreground",
@@ -1499,9 +1499,9 @@ const ClientProjects = () => {
                       <ChevronRight className="size-4" />
                     </Button>
 
-                    <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                    <CarouselContent className="items-start [backface-visibility:hidden] [will-change:transform]">
                       {visibleProjectCards.map((project) => (
-                        <CarouselItem key={project.id} className="basis-full pl-[2px] pr-[2px] pt-1">
+                        <CarouselItem key={project.id} className="pt-1">
                           <ProjectProposalCard
                             project={project}
                             onPay={handleApproveAndPay}

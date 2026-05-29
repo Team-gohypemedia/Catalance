@@ -37,6 +37,40 @@
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
       })(window, document, "clarity", "script", "wgo8kk4h5z");
     </script>
+
+    <!-- Global SPA Chunk Loading Error Recovery -->
+    <script type="text/javascript">
+      (function() {
+        var handleChunkError = function(error) {
+          var errorText = String(error && (error.message || error) || "").toLowerCase();
+          if (
+            errorText.indexOf("failed to fetch dynamically imported module") !== -1 ||
+            errorText.indexOf("failed to load module script") !== -1 ||
+            errorText.indexOf("expected a javascript-or-wasm module script") !== -1 ||
+            errorText.indexOf("strict mime type checking is enforced") !== -1 ||
+            errorText.indexOf("typeerror: failed to fetch") !== -1
+          ) {
+            console.warn("Dynamic module loading failed. A new version of the website has been deployed. Reloading page to fetch the latest changes...", error);
+            
+            // Limit reload loops within 10 seconds
+            var lastReload = window.sessionStorage.getItem("catalance:last-chunk-reload");
+            var now = Date.now();
+            if (!lastReload || now - Number(lastReload) > 10000) {
+              window.sessionStorage.setItem("catalance:last-chunk-reload", String(now));
+              window.location.reload();
+            }
+          }
+        };
+
+        window.addEventListener("error", function(event) {
+          handleChunkError(event.error);
+        });
+        
+        window.addEventListener("unhandledrejection", function(event) {
+          handleChunkError(event.reason);
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

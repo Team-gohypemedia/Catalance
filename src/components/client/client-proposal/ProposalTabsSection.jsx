@@ -179,7 +179,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
             <div
               className={cn(
                 segmentedControlClassName,
-                "w-full max-w-none shrink-0 sm:w-auto sm:max-w-none",
+                "w-auto self-start shrink-0 sm:self-auto",
               )}
               role="tablist"
               aria-label="Proposal type"
@@ -221,10 +221,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
             </div>
 
             <TabsList
-              className={cn(
-                segmentedControlClassName,
-                "w-full max-w-full shrink-0 sm:w-auto sm:max-w-none",
-              )}
+              className="flex h-auto w-full items-center justify-start gap-2 border-0 bg-transparent p-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto sm:justify-end"
             >
               {statusTabConfig.map((item) => {
                 const isStatusActive = item.value === activeTab;
@@ -233,9 +230,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                   <TabsTrigger
                     key={item.value}
                     value={item.value}
-                    className={cn(
-                      "h-9 min-w-0 flex-1 rounded-full border border-transparent px-2 text-center text-[clamp(0.56rem,0.9vw,0.78rem)] font-semibold leading-none tracking-[-0.02em] whitespace-nowrap text-muted-foreground shadow-none transition hover:text-foreground sm:h-10 sm:px-3 sm:text-[clamp(0.64rem,0.8vw,0.88rem)] lg:h-11 lg:px-4 lg:text-[0.92rem] sm:flex-none data-[state=active]:!border-primary/70 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-none",
-                    )}
+                    className="h-9 shrink-0 rounded-full border border-border bg-card px-4 text-center text-xs font-semibold leading-none tracking-[-0.02em] whitespace-nowrap text-muted-foreground shadow-none transition hover:text-foreground sm:h-10 sm:px-5 sm:text-sm data-[state=active]:border-primary/40 data-[state=active]:!bg-primary/10 data-[state=active]:!text-primary data-[state=active]:shadow-none lg:h-11 lg:text-[0.92rem]"
                   >
                     <span className="inline-flex items-center justify-center gap-1.5">
                       <span>{item.label}</span>
