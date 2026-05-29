@@ -5702,7 +5702,7 @@ const GuestAIDemo = () => {
                                                 : 'cursor-not-allowed bg-muted text-muted-foreground'
                                                 }`}
                                         >
-                                            <span className="!text-white">Continue with Agency</span>
+                                            <span className={agencySelectedServices.length > 0 ? "!text-white" : "!text-muted-foreground"}>Continue with Agency</span>
                                             <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0 ? 'bg-white/20 !text-white' : 'bg-background text-zinc-500'}`}>
                                                 {agencySelectedServices.length}
                                             </span>
@@ -5921,7 +5921,7 @@ const GuestAIDemo = () => {
                                                         : 'cursor-not-allowed border-white/10 bg-background text-zinc-500'
                                                     }`}
                                             >
-                                                <span className="!text-white">Continue</span>
+                                                <span className={agencySelectedServices.length > 0 ? "!text-white" : "!text-muted-foreground"}>Continue</span>
                                                 <span
                                                     className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0
                                                             ? 'bg-white/20 !text-white'
