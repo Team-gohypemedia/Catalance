@@ -28,6 +28,10 @@ import {
   DEFAULT_FREELANCER_ONBOARDING_CONTENT,
   mergeOnboardingContent,
   resolveBasicProfileFields,
+  resolveCaseStudyFields,
+  resolveServiceInfoFields,
+  resolveServicePricingFields,
+  resolveServiceVisualFields,
 } from "@/shared/lib/freelancer-onboarding-content";
 
 const cloneContent = (value) => JSON.parse(JSON.stringify(value));
@@ -78,22 +82,57 @@ const STEPPER_EMPTY = { id: "", label: "", step: 1 };
 const CUSTOM_PROFILE_FIELD_TYPES = BASIC_PROFILE_FIELD_TYPES.filter(
   (type) => type !== "file" && type !== "image",
 );
+const CUSTOM_SERVICE_FIELD_TYPES = ["text", "textarea", "select"];
 const EMPTY_MARKETPLACE_FILTERS = {
   services: [],
   niches: [],
 };
+
+const buildFieldMapById = (fields = []) =>
+  (Array.isArray(fields) ? fields : []).reduce((accumulator, field) => {
+    const fieldId = String(field?.id || "").trim();
+    if (!fieldId) {
+      return accumulator;
+    }
+
+    accumulator[fieldId] = { ...field };
+    return accumulator;
+  }, {});
 
 const normalizeEditorContent = (value) => {
   const merged = mergeOnboardingContent(
     DEFAULT_FREELANCER_ONBOARDING_CONTENT,
     value || {},
   );
+  const serviceInfoFieldList = resolveServiceInfoFields(merged);
+  const servicePricingFieldList = resolveServicePricingFields(merged);
+  const serviceVisualFieldList = resolveServiceVisualFields(merged);
+  const caseStudyFieldList = resolveCaseStudyFields(merged);
 
   return {
     ...merged,
     basicProfile: {
       ...(merged.basicProfile || {}),
       fields: resolveBasicProfileFields(merged),
+    },
+    serviceInfo: {
+      ...(merged.serviceInfo || {}),
+      fields: buildFieldMapById(serviceInfoFieldList),
+      fieldList: serviceInfoFieldList,
+    },
+    servicePricing: {
+      ...(merged.servicePricing || {}),
+      fields: buildFieldMapById(servicePricingFieldList),
+      fieldList: servicePricingFieldList,
+    },
+    serviceVisuals: {
+      ...(merged.serviceVisuals || {}),
+      fieldList: serviceVisualFieldList,
+    },
+    caseStudy: {
+      ...(merged.caseStudy || {}),
+      fields: buildFieldMapById(caseStudyFieldList),
+      fieldList: caseStudyFieldList,
     },
   };
 };
@@ -255,6 +294,245 @@ const ToggleField = ({ label, checked, onChange }) => (
     </button>
   </label>
 );
+
+const SchemaFieldListEditor = ({
+  title,
+  description,
+  fields = [],
+  onChange,
+  allowAdd = true,
+  emptyLabel = "No questions yet.",
+}) => {
+  const handleFieldChange = (index, nextPatch) => {
+    onChange(
+      fields.map((field, fieldIndex) =>
+        fieldIndex === index ? { ...field, ...nextPatch } : field,
+      ),
+    );
+  };
+
+  const handleMove = (index, direction) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= fields.length) {
+      return;
+    }
+
+    const nextFields = [...fields];
+    const [field] = nextFields.splice(index, 1);
+    nextFields.splice(nextIndex, 0, field);
+    onChange(nextFields);
+  };
+
+  const handleDelete = (index) => {
+    onChange(fields.filter((_, fieldIndex) => fieldIndex !== index));
+  };
+
+  const handleAdd = () => {
+    onChange([
+      ...fields,
+      {
+        id: `custom_field_${fields.length + 1}`,
+        type: "text",
+        label: "New Question",
+        placeholder: "",
+        helperText: "",
+        searchPlaceholder: "",
+        required: false,
+        visible: true,
+        system: false,
+        canDelete: true,
+        options: [],
+      },
+    ]);
+  };
+
+  return (
+    <div className="space-y-4 rounded-2xl border border-border bg-muted/40 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+        </div>
+        {allowAdd ? (
+          <Button type="button" onClick={handleAdd} className="rounded-full px-4">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Question
+          </Button>
+        ) : null}
+      </div>
+
+      {fields.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
+          {emptyLabel}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {fields.map((field, index) => {
+            const supportsOptions =
+              field.type === "select" || field.type === "multiselect";
+            const isSystem = Boolean(field.system);
+
+            return (
+              <div
+                key={`${field.id}-${index}`}
+                className="space-y-4 rounded-[22px] border border-border bg-card p-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className="rounded-full border-border bg-muted/40 text-muted-foreground"
+                    >
+                      {field.type}
+                    </Badge>
+                    {isSystem ? (
+                      <Badge className="rounded-full bg-primary/15 text-primary">
+                        System
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="rounded-full border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+                      >
+                        Custom
+                      </Badge>
+                    )}
+                    <span className="truncate text-sm font-semibold text-foreground">
+                      {field.label || field.id}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleMove(index, -1)}
+                      disabled={index === 0}
+                      className="border-border bg-muted/40"
+                    >
+                      <MoveUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleMove(index, 1)}
+                      disabled={index === fields.length - 1}
+                      className="border-border bg-muted/40"
+                    >
+                      <MoveDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(index)}
+                      disabled={!field.canDelete}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <FieldGrid>
+                  <TextField
+                    label="Question Id"
+                    value={field.id}
+                    onChange={(value) => handleFieldChange(index, { id: value })}
+                    disabled={isSystem}
+                  />
+                  <TextField
+                    label="Label"
+                    value={field.label}
+                    onChange={(value) => handleFieldChange(index, { label: value })}
+                  />
+                </FieldGrid>
+
+                <FieldGrid>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-foreground">Field Type</Label>
+                    <Select
+                      value={field.type}
+                      onValueChange={(value) =>
+                        handleFieldChange(index, {
+                          type: value,
+                          options: value === "select" ? field.options || [] : [],
+                          searchPlaceholder: value === "select" ? field.searchPlaceholder || "" : "",
+                        })
+                      }
+                      disabled={isSystem}
+                    >
+                      <SelectTrigger className="border-border bg-card text-foreground">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(isSystem
+                          ? BASIC_PROFILE_FIELD_TYPES
+                          : CUSTOM_SERVICE_FIELD_TYPES
+                        ).map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <TextField
+                    label="Placeholder"
+                    value={field.placeholder}
+                    onChange={(value) => handleFieldChange(index, { placeholder: value })}
+                  />
+                </FieldGrid>
+
+                <TextAreaField
+                  label="Helper Text"
+                  value={field.helperText}
+                  onChange={(value) => handleFieldChange(index, { helperText: value })}
+                  rows={3}
+                />
+
+                {supportsOptions ? (
+                  <>
+                    <TextField
+                      label="Search Placeholder"
+                      value={field.searchPlaceholder}
+                      onChange={(value) =>
+                        handleFieldChange(index, { searchPlaceholder: value })
+                      }
+                    />
+                    <OptionListEditor
+                      title="Options"
+                      description="Selectable answers for this question."
+                      options={field.options || []}
+                      onChange={(nextOptions) =>
+                        handleFieldChange(index, { options: nextOptions })
+                      }
+                    />
+                  </>
+                ) : null}
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <ToggleField
+                    label="Visible In Onboarding"
+                    checked={field.visible !== false}
+                    onChange={(value) => handleFieldChange(index, { visible: value })}
+                  />
+                  <ToggleField
+                    label="Required"
+                    checked={Boolean(field.required)}
+                    onChange={(value) => handleFieldChange(index, { required: value })}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const BasicProfileFieldBuilder = ({ fields = [], onChange }) => {
   const handleFieldChange = (index, nextPatch) => {
@@ -1071,7 +1349,9 @@ const AdminFreelancerOnboardingContent = () => {
 
   const handleEditorChange = (path, value) => {
     if (selectedServiceKey === "global") {
-      setGlobalContent((current) => setNestedValue(current, path, value));
+      setGlobalContent((current) =>
+        normalizeEditorContent(setNestedValue(current, path, value)),
+      );
       return;
     }
 
@@ -1080,7 +1360,9 @@ const AdminFreelancerOnboardingContent = () => {
         current[selectedServiceKey] || normalizeEditorContent(globalContent);
       return {
         ...current,
-        [selectedServiceKey]: setNestedValue(existing, path, value),
+        [selectedServiceKey]: normalizeEditorContent(
+          setNestedValue(existing, path, value),
+        ),
       };
     });
   };
@@ -1311,6 +1593,12 @@ const AdminFreelancerOnboardingContent = () => {
               options={editorContent?.serviceInfo?.fields?.experience?.options || []}
               onChange={(nextValue) => handleEditorChange("serviceInfo.fields.experience.options", nextValue)}
             />
+            <SchemaFieldListEditor
+              title="Service Questions"
+              description="Add, remove, reorder, or edit the questions shown for this service in the Service Info step."
+              fields={editorContent?.serviceInfo?.fieldList || []}
+              onChange={(nextValue) => handleEditorChange("serviceInfo.fieldList", nextValue)}
+            />
           </SectionCard>
         );
       case "servicePricing":
@@ -1383,6 +1671,12 @@ const AdminFreelancerOnboardingContent = () => {
               description="Options shown in the delivery timeline dropdown."
               options={editorContent?.servicePricing?.fields?.deliveryTimeline?.options || []}
               onChange={(nextValue) => handleEditorChange("servicePricing.fields.deliveryTimeline.options", nextValue)}
+            />
+            <SchemaFieldListEditor
+              title="Pricing Questions"
+              description="Control the questions shown in the pricing step for this service."
+              fields={editorContent?.servicePricing?.fieldList || []}
+              onChange={(nextValue) => handleEditorChange("servicePricing.fieldList", nextValue)}
             />
           </SectionCard>
         );
@@ -1556,6 +1850,12 @@ const AdminFreelancerOnboardingContent = () => {
               description="Options shown in the case study timeline dropdown."
               options={editorContent?.caseStudy?.fields?.timeline?.options || []}
               onChange={(nextValue) => handleEditorChange("caseStudy.fields.timeline.options", nextValue)}
+            />
+            <SchemaFieldListEditor
+              title="Case Study Questions"
+              description="Control the questions shown when freelancers add case studies for this service."
+              fields={editorContent?.caseStudy?.fieldList || []}
+              onChange={(nextValue) => handleEditorChange("caseStudy.fieldList", nextValue)}
             />
           </SectionCard>
         );

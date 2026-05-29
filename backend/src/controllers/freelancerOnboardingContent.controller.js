@@ -457,12 +457,14 @@ const buildAdminResponse = async (content) => {
 
 export const getFreelancerOnboardingContent = asyncHandler(async (req, res) => {
   const serviceKey = normalizeServiceKey(req.query?.serviceKey);
-  const [content, marketplaceFilters] = await Promise.all([
+  const [content, marketplaceFilters] = await Promise.all(
     serviceKey
-      ? getFreelancerOnboardingContentForService(serviceKey)
-      : loadFreelancerOnboardingContent().then((value) => value.global || value),
-    loadMarketplaceFilterData(),
-  ]);
+      ? [
+          getFreelancerOnboardingContentForService(serviceKey),
+          loadMarketplaceFilterData(),
+        ]
+      : [loadFreelancerOnboardingContent(), loadMarketplaceFilterData()],
+  );
 
   const serviceFilter = marketplaceFilters.services.find((service) => service.key === serviceKey);
   const mergedContent = serviceKey
@@ -470,7 +472,7 @@ export const getFreelancerOnboardingContent = asyncHandler(async (req, res) => {
         { global: content, services: { [serviceKey]: content } },
         { ...marketplaceFilters, services: serviceFilter ? [serviceFilter] : [] },
       ).services?.[serviceKey] || content
-    : applyMarketplaceFiltersToContent({ global: content, services: {} }, marketplaceFilters).global;
+    : applyMarketplaceFiltersToContent(content, marketplaceFilters);
 
   if (serviceKey) {
     return res.json({ data: { serviceKey, content: mergedContent } });
