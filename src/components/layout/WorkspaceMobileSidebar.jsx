@@ -370,7 +370,7 @@ const WorkspaceMobileSidebar = ({
                 </div>
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4.5 pb-4 overscroll-contain">
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto subtle-scrollbar px-4.5 pb-4 overscroll-contain">
                 <div className="flex min-h-full flex-col gap-2.5 py-2">
                   <section>
                     <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
