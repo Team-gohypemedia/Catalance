@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Settings from "lucide-react/dist/esm/icons/settings";
+import X from "lucide-react/dist/esm/icons/x";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -956,6 +957,7 @@ const FreelancerOnboardingShell = () => {
   const [resumeUploadRequestId, setResumeUploadRequestId] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResettingOnboarding, setIsResettingOnboarding] = useState(false);
+  const [isAiHelperExpanded, setIsAiHelperExpanded] = useState(false);
   const [onboardingContentConfig, setOnboardingContentConfig] = useState(null);
   const countryOptions = COUNTRY_OPTIONS;
   const languageOptions = LANGUAGE_OPTIONS.filter(
@@ -3996,21 +3998,53 @@ const FreelancerOnboardingShell = () => {
         </div>
       </section>
 
-      <button
-        type="button"
-        onClick={handleAiResumeUpload}
-        className="group fixed bottom-6 right-5 z-40 flex max-w-[20rem] items-center gap-3 rounded-full border border-border/50 bg-background p-2 pr-5 text-left text-sm font-medium shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_12px_40px_rgba(0,0,0,0.16)] sm:right-8"
-      >
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-          <Sparkles className="size-4" />
+      {isAiHelperExpanded ? (
+        <div
+          className="fixed bottom-6 right-5 z-40 flex max-w-[20rem] items-center gap-3 rounded-[24px] border border-border/50 bg-background p-2 pr-4 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all sm:right-8"
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAiHelperExpanded(false);
+            }}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+            aria-label="Collapse helper"
+          >
+            <Sparkles className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleAiResumeUpload}
+            className="flex flex-1 flex-col text-left outline-none cursor-pointer group"
+          >
+            <span className="text-xs font-bold uppercase tracking-wider text-primary">Got stuck?</span>
+            <span className="text-[12px] leading-snug text-muted-foreground group-hover:text-foreground transition-colors">
+              Upload resume & use AI.
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAiHelperExpanded(false);
+            }}
+            className="flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            aria-label="Close helper"
+          >
+            <X className="size-4" />
+          </button>
         </div>
-        <div className="flex flex-col">
-          <span className="text-xs font-bold uppercase tracking-wider text-primary">Got stuck?</span>
-          <span className="text-[13px] leading-snug text-muted-foreground group-hover:text-foreground transition-colors">
-            Upload your resume & use AI to complete your profile.
-          </span>
-        </div>
-      </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsAiHelperExpanded(true)}
+          className="fixed bottom-6 right-5 z-40 flex size-12 items-center justify-center rounded-full border border-border/50 bg-background text-primary shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all hover:scale-110 hover:border-primary/40 hover:shadow-[0_12px_40px_rgba(0,0,0,0.16)] sm:right-8 cursor-pointer"
+          aria-label="Get help completing profile"
+        >
+          <Sparkles className="size-5 animate-pulse" />
+        </button>
+      )}
 
       {isFooterHidden ? null : (
         <footer className="relative z-20 shrink-0 px-4 py-4 sm:px-6">

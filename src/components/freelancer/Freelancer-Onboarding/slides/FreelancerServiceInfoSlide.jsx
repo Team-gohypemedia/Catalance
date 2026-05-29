@@ -1436,7 +1436,7 @@ const FreelancerServiceInfoSlide = ({
                     "I will do something I'm really good at"
                   }
                   className={cn(
-                    "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                    "h-12 w-full rounded-xl border bg-card px-4 !pr-24 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                     titleError
                       ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                       : "border-border focus:border-primary/50 focus:ring-primary/20",

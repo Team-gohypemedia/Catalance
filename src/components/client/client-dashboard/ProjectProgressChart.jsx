@@ -409,15 +409,19 @@ const ProjectProgressChartCard = ({
                     dataKey={entry.key}
                     stroke={entry.color}
                     strokeWidth={index === 0 ? 3.5 : 3}
-                    dot={(props) => (
-                      <ProjectProgressSeriesDot
-                        {...props}
-                        color={entry.color}
-                        compact={isMobile}
-                        markerTypeKey={`${entry.key}Marker`}
-                        highlightToday={index === 0}
-                      />
-                    )}
+                    dot={(props) => {
+                      const { key, ...restProps } = props;
+                      return (
+                        <ProjectProgressSeriesDot
+                          key={key}
+                          {...restProps}
+                          color={entry.color}
+                          compact={isMobile}
+                          markerTypeKey={`${entry.key}Marker`}
+                          highlightToday={index === 0}
+                        />
+                      );
+                    }}
                     activeDot={false}
                     connectNulls={false}
                     strokeLinecap="round"

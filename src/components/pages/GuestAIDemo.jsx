@@ -1703,7 +1703,7 @@ const AssistantMessageBody = ({
             )}
 
             {questionText && (
-                <div className={`rounded-2xl border px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isDark ? 'border-primary/20/35 bg-primary/10/[0.08]' : 'border-primary/20/30 bg-primary/10/80'}`}>
+                <div className={`rounded-2xl border px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isDark ? 'border-primary/20 bg-primary/5' : 'border-primary/25 bg-primary/5'}`}>
                     <div className={`prose prose-sm max-w-none text-[0.95rem] font-medium leading-7 prose-p:my-1 ${isDark ? 'prose-invert prose-p:text-primary' : 'prose-p:text-slate-800'}`}>
                         <ReactMarkdown>{questionText}</ReactMarkdown>
                     </div>
@@ -5654,7 +5654,7 @@ const GuestAIDemo = () => {
                                             type="button"
                                             onClick={() => setServiceSelectionMode(modeOption.key)}
                                             className={`inline-flex h-11 items-center justify-center rounded-full border px-6 text-sm font-semibold transition-all duration-300 ${isActive
-                                                ? 'border-primary bg-primary text-black shadow-[0_12px_30px_-18px_rgba(249,217,73,0.9)]'
+                                                ? 'border-primary bg-primary !text-white shadow-[0_12px_30px_-18px_rgba(249,217,73,0.9)]'
                                                 : isDark
                                                     ? 'border-white/12 bg-card/80 text-zinc-200 hover:border-primary/50'
                                                     : 'border-[#dccfb8] bg-white text-[#1c1b1f] shadow-[0_10px_30px_-20px_rgba(0,0,0,0.14)] hover:border-primary/50'
@@ -5698,12 +5698,12 @@ const GuestAIDemo = () => {
                                             onClick={() => startAgencyFlow()}
                                             disabled={agencySelectedServices.length === 0}
                                             className={`inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-all ${agencySelectedServices.length > 0
-                                                ? 'bg-primary text-black shadow-[0_12px_30px_-18px_rgba(249,217,73,0.9)] hover:-translate-y-0.5'
+                                                ? 'bg-primary !text-white shadow-[0_12px_30px_-18px_rgba(249,217,73,0.9)] hover:-translate-y-0.5'
                                                 : 'cursor-not-allowed bg-muted text-muted-foreground'
                                                 }`}
                                         >
-                                            <span>Continue with Agency</span>
-                                            <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0 ? 'bg-black/10 text-black' : 'bg-background text-zinc-500'}`}>
+                                            <span className="!text-white">Continue with Agency</span>
+                                            <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0 ? 'bg-white/20 !text-white' : 'bg-background text-zinc-500'}`}>
                                                 {agencySelectedServices.length}
                                             </span>
                                         </button>
@@ -5740,7 +5740,7 @@ const GuestAIDemo = () => {
                                         {isAgencySelectionMode ? (
                                             <div className="absolute right-4 top-4 z-20">
                                                 <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${agencySelectedServiceIds.includes(getServiceIdentifier(feature))
-                                                    ? 'bg-primary text-black'
+                                                    ? 'bg-primary !text-white'
                                                     : isDark
                                                         ? 'border border-white/10 bg-black/40 text-zinc-400'
                                                         : 'border border-[#e8dfcf] bg-white/90 text-[#7c6f5d]'
@@ -5871,16 +5871,16 @@ const GuestAIDemo = () => {
                                                     type="button"
                                                     onClick={() => setServiceSelectionMode(modeOption.key)}
                                                     className={`rounded-[1.5rem] border px-5 py-4 text-left transition-all duration-300 ${isActive
-                                                            ? 'border-primary bg-primary text-black shadow-[0_16px_36px_-20px_rgba(249,217,73,0.8)]'
+                                                            ? 'border-primary bg-primary !text-white shadow-[0_16px_36px_-20px_rgba(249,217,73,0.8)]'
                                                             : 'border-white/10 bg-black/20 text-zinc-200 hover:border-primary/40 hover:bg-white/[0.04]'
                                                         }`}
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div>
-                                                            <p className={`text-xs font-bold uppercase tracking-[0.22em] ${isActive ? 'text-black/70' : 'text-primary'}`}>
+                                                            <p className={`text-xs font-bold uppercase tracking-[0.22em] ${isActive ? '!text-white/80' : 'text-primary'}`}>
                                                                 {modeOption.label}
                                                             </p>
-                                                            <h3 className={`mt-2 text-lg font-bold ${isActive ? 'text-black' : 'text-white'}`}>
+                                                            <h3 className={`mt-2 text-lg font-bold ${isActive ? '!text-white' : 'text-white'}`}>
                                                                 {modeOption.title}
                                                             </h3>
                                                             <p className={`mt-2 text-sm leading-relaxed ${isActive ? 'text-black/75' : 'text-zinc-400'}`}>
@@ -5917,14 +5917,14 @@ const GuestAIDemo = () => {
                                                         : 'Select services to continue'
                                                 }
                                                 className={`inline-flex h-9 items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold whitespace-nowrap transition-all ${agencySelectedServices.length > 0
-                                                        ? 'border-primary/40 bg-primary text-black hover:-translate-y-0.5 hover:opacity-90'
+                                                        ? 'border-primary/40 bg-primary !text-white hover:-translate-y-0.5 hover:opacity-90'
                                                         : 'cursor-not-allowed border-white/10 bg-background text-zinc-500'
                                                     }`}
                                             >
-                                                <span>Continue</span>
+                                                <span className="!text-white">Continue</span>
                                                 <span
                                                     className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0
-                                                            ? 'bg-black/10 text-black'
+                                                            ? 'bg-white/20 !text-white'
                                                             : 'bg-background text-zinc-500'
                                                         }`}
                                                 >
@@ -6014,7 +6014,7 @@ const GuestAIDemo = () => {
                                             {isAgencySelectionMode ? (
                                                 <div className="absolute right-4 top-4 z-20">
                                                     <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isAgencyCardSelected
-                                                            ? 'bg-primary text-black'
+                                                            ? 'bg-primary !text-white'
                                                             : 'border border-white/10 bg-black/40 text-zinc-400'
                                                         }`}>
                                                         {isAgencyCardSelected ? 'Selected' : 'Select'}
@@ -6670,7 +6670,7 @@ const GuestAIDemo = () => {
                 <div className={`shrink-0 border-t px-3 py-3 ${isDark ? 'border-white/5' : 'border-slate-200/70'}`}>
                     {isAuthLoading ? (
                         <div className="flex items-center gap-2 px-2">
-                            <span className={`h-2 w-2 animate-pulse rounded-full ${isDark ? 'bg-primary/10/50' : 'bg-primary/10/50'}`} />
+                            <span className={`h-2 w-2 animate-pulse rounded-full bg-primary`} />
                             <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Checking...</p>
                         </div>
                     ) : isUserLoggedIn ? (

@@ -412,22 +412,22 @@ export const AuthProvider = ({ children }) => {
         open={Boolean(pendingLogoutOptions)}
         onOpenChange={handleLogoutDialogOpenChange}
       >
-        <AlertDialogContent className="border border-white/10 bg-[#121212] text-white shadow-[0_28px_84px_-48px_rgba(0,0,0,1)] sm:max-w-md">
+        <AlertDialogContent className="border border-border bg-background text-foreground shadow-[0_28px_84px_-48px_rgba(0,0,0,0.4)] dark:shadow-[0_28px_84px_-48px_rgba(0,0,0,1)] sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-semibold text-white">
+            <AlertDialogTitle className="text-xl font-semibold text-foreground">
               Log out of Catalance?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm leading-6 text-white/60">
+            <AlertDialogDescription className="text-sm leading-6 text-muted-foreground">
               You will need to sign in again to access your workspace.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-2">
-            <AlertDialogCancel className="border-white/12 bg-white/[0.03] text-white hover:bg-white/[0.06] hover:text-white">
+            <AlertDialogCancel className="border border-border bg-background text-foreground hover:bg-muted hover:text-foreground dark:border-white/12 dark:bg-white/[0.03] dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmLogout}
-              className="border border-red-500/20 bg-red-500/[0.14] text-[#ff6d6d] hover:bg-red-500/[0.20] hover:text-[#ff8585]"
+              className="border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 dark:border-red-500/20 dark:bg-red-500/[0.14] dark:text-[#ff6d6d] dark:hover:bg-red-500/[0.20] dark:hover:text-[#ff8585]"
             >
               Log out
             </AlertDialogAction>
