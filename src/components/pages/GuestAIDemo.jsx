@@ -54,7 +54,7 @@ import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import { useTheme } from '@/components/providers/theme-provider';
 import { API_BASE_URL, request } from '@/shared/lib/api-client';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/context/AuthContext';
 import { getSession } from '@/shared/lib/auth-storage';
 import {
@@ -3084,6 +3084,7 @@ const GuestAIDemo = () => {
             typeof window.matchMedia === 'function' &&
             window.matchMedia('(prefers-color-scheme: dark)').matches);
     const navigate = useNavigate();
+    const location = useLocation();
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
     useEffect(() => {
@@ -3156,6 +3157,15 @@ const GuestAIDemo = () => {
     const agencySelectedServices = agencySelectedServiceIds
         .map((serviceId) => services.find((service) => getServiceIdentifier(service) === serviceId))
         .filter(Boolean);
+    const agencyFlowProgressLabel = isAgencyFlowActive
+        ? `${Math.min(
+            agencyFlowState.currentServiceIndex + (isAgencyFlowCompleted ? 1 : 0),
+            agencyFlowState.selectedServices.length || 0
+        )}/${agencyFlowState.selectedServices.length || 0}`
+        : '';
+    const agencySelectionSummary = agencySelectedServices
+        .map((service) => String(service?.name || service?.title || '').trim())
+        .filter(Boolean);
     const isMultiInput = normalizedInputType === 'multi_select'
         || normalizedInputType === 'multi_option'
         || normalizedInputType === 'grouped_multi_select';
@@ -3223,6 +3233,22 @@ const GuestAIDemo = () => {
     useEffect(() => {
         agencyFlowStateRef.current = agencyFlowState;
     }, [agencyFlowState]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const requestedMode = String(
+            params.get('mode') || params.get('flow') || ''
+        ).trim().toLowerCase();
+
+        if (requestedMode === SERVICE_SELECTION_MODES.AGENCY) {
+            setServiceSelectionMode(SERVICE_SELECTION_MODES.AGENCY);
+            return;
+        }
+
+        if (requestedMode === SERVICE_SELECTION_MODES.FREELANCER) {
+            setServiceSelectionMode(SERVICE_SELECTION_MODES.FREELANCER);
+        }
+    }, [location.search]);
 
     const replaceMessages = useCallback((nextValue) => {
         const resolvedMessages = typeof nextValue === 'function'
@@ -5150,6 +5176,7 @@ const GuestAIDemo = () => {
         replaceMessages([]);
         resetChatComposerState();
         resetAgencyFlow();
+        setAgencySelectedServiceIds([]);
         resetBriefingState();
     };
 
@@ -5609,14 +5636,98 @@ const GuestAIDemo = () => {
                                 </p>
                             </div>
 
+                            <div className="mx-auto mb-6 flex max-w-5xl flex-wrap items-center justify-center gap-3">
+                                {[
+                                    {
+                                        key: SERVICE_SELECTION_MODES.FREELANCER,
+                                        label: 'Freelancer',
+                                    },
+                                    {
+                                        key: SERVICE_SELECTION_MODES.AGENCY,
+                                        label: 'Agency',
+                                    },
+                                ].map((modeOption) => {
+                                    const isActive = serviceSelectionMode === modeOption.key;
+                                    return (
+                                        <button
+                                            key={modeOption.key}
+                                            type="button"
+                                            onClick={() => setServiceSelectionMode(modeOption.key)}
+                                            className={`inline-flex h-11 items-center justify-center rounded-full border px-6 text-sm font-semibold transition-all duration-300 ${isActive
+                                                ? 'border-primary bg-primary text-black shadow-[0_12px_30px_-18px_rgba(249,217,73,0.9)]'
+                                                : isDark
+                                                    ? 'border-white/12 bg-card/80 text-zinc-200 hover:border-primary/50'
+                                                    : 'border-[#dccfb8] bg-white text-[#1c1b1f] shadow-[0_10px_30px_-20px_rgba(0,0,0,0.14)] hover:border-primary/50'
+                                                }`}
+                                        >
+                                            {modeOption.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {isAgencySelectionMode ? (
+                                <div className={`mx-auto mb-8 flex max-w-5xl flex-col gap-3 rounded-[1.5rem] border px-4 py-4 sm:flex-row sm:items-center sm:justify-between ${isDark ? 'border-primary/20 bg-primary/8' : 'border-[#eddc9c] bg-[#fffaf0]'}`}>
+                                    <div className="flex flex-wrap gap-2">
+                                        {agencySelectionSummary.length > 0 ? (
+                                            agencySelectionSummary.map((label) => (
+                                                <span
+                                                    key={label}
+                                                    className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                                                >
+                                                    {label}
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className={`text-sm ${briefingBodyClasses}`}>
+                                                Select services below.
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-3">
+                                        {agencySelectedServices.length > 0 ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setAgencySelectedServiceIds([])}
+                                                className={`inline-flex h-10 items-center justify-center rounded-full border px-4 text-sm font-semibold transition-colors ${isDark ? 'border-white/10 text-zinc-300 hover:text-white' : 'border-[#dccfb8] text-[#5f5567] hover:text-[#1c1b1f]'}`}
+                                            >
+                                                Clear
+                                            </button>
+                                        ) : null}
+                                        <button
+                                            type="button"
+                                            onClick={() => startAgencyFlow()}
+                                            disabled={agencySelectedServices.length === 0}
+                                            className={`inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-all ${agencySelectedServices.length > 0
+                                                ? 'bg-primary text-black shadow-[0_12px_30px_-18px_rgba(249,217,73,0.9)] hover:-translate-y-0.5'
+                                                : 'cursor-not-allowed bg-muted text-muted-foreground'
+                                                }`}
+                                        >
+                                            <span>Continue with Agency</span>
+                                            <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0 ? 'bg-black/10 text-black' : 'bg-background text-zinc-500'}`}>
+                                                {agencySelectedServices.length}
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : null}
+
                             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
                                 {orderedServices.map((feature, index) => (
                                     <div
                                         key={feature.id || index}
-                                        onClick={() => handleServiceSelect(feature)}
+                                        onClick={() => (
+                                            isAgencySelectionMode
+                                                ? toggleAgencyServiceSelection(feature)
+                                                : handleServiceSelect(feature)
+                                        )}
                                         onMouseMove={handleCardGlowMouseMove}
                                         style={{ '--card-glow-x': '50%', '--card-glow-y': '50%', '--primary': isDark ? '#F9D949' : '#D9692A' }}
-                                        className={`group relative h-full cursor-pointer overflow-hidden rounded-3xl border transition-all duration-500 hover:-translate-y-2 ${isDark ? 'border-white/10 bg-card/85 hover:border-primary/50' : 'border-[#e8dfcf] bg-white hover:border-primary/60 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.08)]'}`}
+                                        className={`group relative h-full cursor-pointer overflow-hidden rounded-3xl border transition-all duration-500 hover:-translate-y-2 ${agencySelectedServiceIds.includes(getServiceIdentifier(feature))
+                                            ? 'border-primary'
+                                            : isDark
+                                                ? 'border-white/10 bg-card/85 hover:border-primary/50'
+                                                : 'border-[#e8dfcf] bg-white hover:border-primary/60 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.08)]'
+                                            }`}
                                     >
                                         <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                                         <div
@@ -5626,6 +5737,18 @@ const GuestAIDemo = () => {
                                                     'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), hsl(var(--primary) / 0.18) 0%, hsl(var(--primary) / 0.08) 30%, transparent 65%)',
                                             }}
                                         />
+                                        {isAgencySelectionMode ? (
+                                            <div className="absolute right-4 top-4 z-20">
+                                                <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${agencySelectedServiceIds.includes(getServiceIdentifier(feature))
+                                                    ? 'bg-primary text-black'
+                                                    : isDark
+                                                        ? 'border border-white/10 bg-black/40 text-zinc-400'
+                                                        : 'border border-[#e8dfcf] bg-white/90 text-[#7c6f5d]'
+                                                    }`}>
+                                                    {agencySelectedServiceIds.includes(getServiceIdentifier(feature)) ? 'Selected' : 'Select'}
+                                                </span>
+                                            </div>
+                                        ) : null}
                                         <div className="relative z-10 flex h-full flex-col p-5">
                                             <div className="relative mb-3 flex h-32 w-full items-center justify-center">
                                                 <img
@@ -5710,72 +5833,149 @@ const GuestAIDemo = () => {
                                         : 'Freelancer mode keeps the current flow unchanged. Pick one service to start the guided chat immediately.'}
                                 </p>
                             </div>
-                            <div className="mx-auto grid w-full max-w-[90rem] grid-cols-[1fr_auto_1fr] items-center gap-3 py-1">
-                                <div aria-hidden="true" />
-                                <div className="flex justify-center">
+                            <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 py-1">
+                                <div className="text-center">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
+                                        Choose Your Flow
+                                    </p>
+                                    <p className="mt-2 text-sm text-zinc-400">
+                                        Pick one mode before selecting services.
+                                    </p>
+                                </div>
+                                <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
                                     <div
                                         ref={modeTabsContainerRef}
-                                        className={`inline-flex shrink-0 rounded-full p-1 transition-all duration-300 ${isModeTabsNearGlow
+                                        className={`grid gap-3 rounded-[2rem] p-2 transition-all duration-300 sm:grid-cols-2 ${isModeTabsNearGlow
                                                 ? 'border border-white/8 bg-white/[0.025] shadow-[0_14px_36px_-24px_rgba(0,0,0,0.85)] backdrop-blur-md'
-                                                : 'border border-transparent bg-background'
+                                                : 'border border-white/8 bg-background'
                                             }`}
                                     >
                                         {[
-                                            { key: SERVICE_SELECTION_MODES.FREELANCER, label: 'Freelancer' },
-                                            { key: SERVICE_SELECTION_MODES.AGENCY, label: 'Agency' },
-                                        ].map((modeOption) => (
-                                            <button
-                                                key={modeOption.key}
-                                                type="button"
-                                                onClick={() => setServiceSelectionMode(modeOption.key)}
-                                                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors sm:px-5 ${serviceSelectionMode === modeOption.key
-                                                        ? 'bg-primary text-black'
-                                                        : 'text-zinc-300 hover:text-white'
-                                                    }`}
-                                            >
-                                                {modeOption.label}
-                                            </button>
-                                        ))}
+                                            {
+                                                key: SERVICE_SELECTION_MODES.FREELANCER,
+                                                label: 'Freelancer',
+                                                title: 'Single-service proposal',
+                                                description: 'Choose one service and generate one proposal for that service only.',
+                                            },
+                                            {
+                                                key: SERVICE_SELECTION_MODES.AGENCY,
+                                                label: 'Agency',
+                                                title: 'Multi-service proposal',
+                                                description: 'Select multiple services, answer each flow, and receive one combined proposal.',
+                                            },
+                                        ].map((modeOption) => {
+                                            const isActive = serviceSelectionMode === modeOption.key;
+                                            return (
+                                                <button
+                                                    key={modeOption.key}
+                                                    type="button"
+                                                    onClick={() => setServiceSelectionMode(modeOption.key)}
+                                                    className={`rounded-[1.5rem] border px-5 py-4 text-left transition-all duration-300 ${isActive
+                                                            ? 'border-primary bg-primary text-black shadow-[0_16px_36px_-20px_rgba(249,217,73,0.8)]'
+                                                            : 'border-white/10 bg-black/20 text-zinc-200 hover:border-primary/40 hover:bg-white/[0.04]'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className={`text-xs font-bold uppercase tracking-[0.22em] ${isActive ? 'text-black/70' : 'text-primary'}`}>
+                                                                {modeOption.label}
+                                                            </p>
+                                                            <h3 className={`mt-2 text-lg font-bold ${isActive ? 'text-black' : 'text-white'}`}>
+                                                                {modeOption.title}
+                                                            </h3>
+                                                            <p className={`mt-2 text-sm leading-relaxed ${isActive ? 'text-black/75' : 'text-zinc-400'}`}>
+                                                                {modeOption.description}
+                                                            </p>
+                                                        </div>
+                                                        <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isActive
+                                                                ? 'bg-black/10 text-black'
+                                                                : 'border border-white/10 text-zinc-400'
+                                                            }`}>
+                                                            {isActive ? 'Active' : 'Select'}
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
-                                </div>
-                                <div className="flex justify-end">
-                                    <div
-                                        aria-hidden={!isAgencySelectionMode}
-                                        className={`flex shrink-0 items-center transition-opacity duration-200 ${isAgencySelectionMode
-                                                ? 'pointer-events-auto opacity-100'
-                                                : 'pointer-events-none opacity-0'
-                                            }`}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() => startAgencyFlow()}
-                                            disabled={agencySelectedServices.length === 0 || !isAgencySelectionMode}
-                                            tabIndex={isAgencySelectionMode ? 0 : -1}
-                                            aria-label={
-                                                agencySelectedServices.length > 0
-                                                    ? `Continue with ${agencySelectedServices.length} selected service${agencySelectedServices.length === 1 ? '' : 's'}`
-                                                    : 'Select services to continue'
-                                            }
-                                            className={`inline-flex h-9 items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold whitespace-nowrap transition-all ${agencySelectedServices.length > 0
-                                                    ? 'border-primary/40 bg-primary text-black hover:-translate-y-0.5 hover:opacity-90'
-                                                    : 'cursor-not-allowed border-white/10 bg-background text-zinc-500'
+                                    <div className="flex justify-center lg:justify-end">
+                                        <div
+                                            aria-hidden={!isAgencySelectionMode}
+                                            className={`flex shrink-0 items-center transition-opacity duration-200 ${isAgencySelectionMode
+                                                    ? 'pointer-events-auto opacity-100'
+                                                    : 'pointer-events-none opacity-0'
                                                 }`}
                                         >
-                                            <span>Continue</span>
-                                            <span
-                                                className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0
-                                                        ? 'bg-black/10 text-black'
-                                                        : 'bg-background text-zinc-500'
+                                            <button
+                                                type="button"
+                                                onClick={() => startAgencyFlow()}
+                                                disabled={agencySelectedServices.length === 0 || !isAgencySelectionMode}
+                                                tabIndex={isAgencySelectionMode ? 0 : -1}
+                                                aria-label={
+                                                    agencySelectedServices.length > 0
+                                                        ? `Continue with ${agencySelectedServices.length} selected service${agencySelectedServices.length === 1 ? '' : 's'}`
+                                                        : 'Select services to continue'
+                                                }
+                                                className={`inline-flex h-9 items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold whitespace-nowrap transition-all ${agencySelectedServices.length > 0
+                                                        ? 'border-primary/40 bg-primary text-black hover:-translate-y-0.5 hover:opacity-90'
+                                                        : 'cursor-not-allowed border-white/10 bg-background text-zinc-500'
                                                     }`}
                                             >
-                                                {agencySelectedServices.length}
+                                                <span>Continue</span>
+                                                <span
+                                                    className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0
+                                                            ? 'bg-black/10 text-black'
+                                                            : 'bg-background text-zinc-500'
+                                                        }`}
+                                                >
+                                                    {agencySelectedServices.length}
+                                                </span>
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                            </div>
+                            {isAgencySelectionMode ? (
+                                <div className="mx-auto mt-4 flex w-full max-w-5xl flex-col gap-3 rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-4 text-left shadow-[0_18px_44px_-28px_rgba(0,0,0,0.85)] backdrop-blur-md">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                                                Agency Selection
+                                            </p>
+                                            <p className="mt-1 text-sm text-zinc-300">
+                                                Choose multiple services and CATA AI will collect each scope, then return one combined proposal.
+                                            </p>
+                                        </div>
+                                        {agencySelectedServices.length > 0 ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setAgencySelectedServiceIds([])}
+                                                className="inline-flex h-9 items-center justify-center rounded-full border border-white/10 px-4 text-xs font-semibold text-zinc-300 transition-colors hover:border-primary/40 hover:text-white"
+                                            >
+                                                Clear selection
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {agencySelectionSummary.length > 0 ? (
+                                            agencySelectionSummary.map((label) => (
+                                                <span
+                                                    key={label}
+                                                    className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                                                >
+                                                    {label}
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className="text-sm text-zinc-500">
+                                                No services selected yet.
                                             </span>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
-                                        </button>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
+                            ) : null}
                         </div>
+                    </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 relative z-10">
                             {orderedServices.length === 0 ? (
@@ -6201,6 +6401,50 @@ const GuestAIDemo = () => {
                 </div>
 
                 {/* ── Back to services ── */}
+                {isAgencyFlowActive ? (
+                    <div className="px-4 pb-2">
+                        <div className={`rounded-2xl border px-3 py-3 ${isDark ? 'border-[#ffc800]/15 bg-[#ffc800]/[0.07]' : 'border-primary/15 bg-primary/10'}`}>
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-[#ffd54a]' : 'text-primary'}`}>
+                                        Agency Flow
+                                    </p>
+                                    <p className={`mt-1 text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                        {isAgencyFlowCompleted
+                                            ? 'Combined proposal ready for refinement.'
+                                            : 'Collecting requirements service by service.'}
+                                    </p>
+                                </div>
+                                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${isDark ? 'bg-black/20 text-[#ffd54a]' : 'bg-white text-primary'}`}>
+                                    {agencyFlowProgressLabel}
+                                </span>
+                            </div>
+                            {agencyFlowState.selectedServices.length > 0 ? (
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                    {agencyFlowState.selectedServices.map((service, index) => {
+                                        const isCurrentService = !isAgencyFlowCompleted
+                                            && index === agencyFlowState.currentServiceIndex;
+                                        return (
+                                            <span
+                                                key={`${getServiceIdentifier(service)}-${index}`}
+                                                className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${isCurrentService
+                                                    ? isDark
+                                                        ? 'bg-[#ffc800] text-black'
+                                                        : 'bg-primary text-white'
+                                                    : isDark
+                                                        ? 'bg-white/8 text-slate-300'
+                                                        : 'bg-white text-slate-600'
+                                                    }`}
+                                            >
+                                                {service?.name || service?.title || `Service ${index + 1}`}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                ) : null}
                 <div className="flex flex-col gap-1 px-3 pb-3 pt-2">
                     <button
                         type="button"
