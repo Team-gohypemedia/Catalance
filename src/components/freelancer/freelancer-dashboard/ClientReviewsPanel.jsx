@@ -85,11 +85,11 @@ const ClientReviewsPanel = ({ reviews = [], meta = {}, isLoading = false }) => {
             {reviews.map((review) => (
               <li
                 key={review.id}
-                className="rounded-[16px] border border-white/[0.08] bg-white/[0.03] p-3.5"
+                className="rounded-[16px] border dark:border-white/[0.08] border-black/[0.04] dark:bg-white/[0.03] bg-black/[0.03] p-3.5"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-zinc-100">
+                    <p className="truncate text-sm font-semibold dark:text-white text-[#1C1B1F]">
                       {review.clientName || "Client"}
                     </p>
                     <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-zinc-400">
@@ -113,7 +113,7 @@ const ClientReviewsPanel = ({ reviews = [], meta = {}, isLoading = false }) => {
                     />
                   ))}
                 </div>
-                <p className="mt-2.5 text-sm leading-5 text-zinc-200">
+                <p className="mt-2.5 text-sm leading-5 dark:text-zinc-200 text-muted-foreground">
                   {review.comment}
                 </p>
               </li>

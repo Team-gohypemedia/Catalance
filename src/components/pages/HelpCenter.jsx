@@ -334,6 +334,13 @@ const HelpCenter = () => {
   const { theme } = useTheme();
   const isDark = theme !== "light";
 
+  useEffect(() => {
+    document.documentElement.classList.add("home-page");
+    return () => {
+      document.documentElement.classList.remove("home-page");
+    };
+  }, []);
+
   const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState("all");

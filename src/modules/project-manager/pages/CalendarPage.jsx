@@ -166,7 +166,7 @@ const CalendarPage = () => {
       subtitle="View all upcoming, current, and previous meetings with project-wise filters."
       className="overflow-x-clip"
     >
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_360px]">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-6">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -174,7 +174,7 @@ const CalendarPage = () => {
               placeholder="Search meetings, projects..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="h-12 rounded-2xl border-slate-100 bg-white pl-12 text-xs font-medium placeholder:text-slate-400 focus-visible:ring-4 focus-visible:ring-blue-100 shadow-sm"
+              className="h-12 rounded-2xl border-slate-100 bg-white pl-12 text-xs font-medium placeholder:text-slate-400 focus-visible:ring-4 focus-visible:ring-orange-100 shadow-sm"
             />
           </div>
 
@@ -212,7 +212,7 @@ const CalendarPage = () => {
                   onClick={() => setTimeFilter(filter.value)}
                   className={`flex w-full items-center justify-between rounded-2xl border px-5 py-4 text-left transition-all ${
                     active
-                      ? "bg-slate-900 border-slate-900 shadow-lg shadow-slate-900/10"
+                      ? "bg-[#D9692A] border-[#D9692A] shadow-lg shadow-orange-500/10"
                       : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
                   }`}
                 >
@@ -225,7 +225,7 @@ const CalendarPage = () => {
                   </span>
                   <Badge
                     className={`rounded-xl px-2.5 py-0.5 text-[10px] font-black border-none ${
-                      active ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400"
+                      active ? "bg-[#D9692A] text-white" : "bg-slate-100 text-slate-400"
                     }`}
                   >
                     {counts[filter.value]}
@@ -236,7 +236,7 @@ const CalendarPage = () => {
           </div>
 
           <Button
-            className="h-14 w-full rounded-2xl bg-blue-600 text-[10px] font-black tracking-[0.2em] uppercase text-white shadow-xl shadow-blue-500/20 hover:bg-blue-700 hover:scale-[1.02] transition-all"
+            className="h-14 w-full rounded-2xl bg-[#D9692A] text-[10px] font-black tracking-[0.2em] uppercase text-white shadow-xl shadow-orange-500/20 hover:bg-[#B85A24] hover:scale-[1.02] transition-all"
             onClick={() => navigate("/project-manager/projects")}
           >
             <Plus className="mr-3 h-4 w-4" />
@@ -297,17 +297,17 @@ const CalendarPage = () => {
                   "w-10 text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] sm:w-12 lg:w-14 xl:w-16",
                 row: "mt-1.5 flex w-full justify-between sm:mt-2 lg:mt-3",
                 cell: "relative h-12 w-10 p-0 text-center text-sm focus-within:z-20 sm:h-14 sm:w-12 lg:h-16 lg:w-14 xl:h-20 xl:w-16",
-                day: "flex h-10 w-10 items-center justify-center rounded-2xl border-2 border-transparent p-0 font-black transition-all hover:bg-blue-50 hover:text-blue-600 aria-selected:opacity-100 sm:h-12 sm:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 xl:rounded-[28px]",
+                day: "flex h-10 w-10 items-center justify-center rounded-2xl border-2 border-transparent p-0 font-black transition-all hover:bg-orange-50 hover:text-slate-900 aria-selected:opacity-100 sm:h-12 sm:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 xl:rounded-[28px]",
                 day_selected:
-                  "rounded-2xl border-slate-900 bg-slate-900 text-white shadow-lg hover:bg-slate-950 xl:rounded-[28px]",
-                day_today: "rounded-2xl border-blue-100 bg-blue-50 text-blue-600 xl:rounded-[28px]",
+                  "rounded-2xl border-[#D9692A] bg-[#D9692A] text-white shadow-lg hover:bg-[#B85A24] xl:rounded-[28px]",
+                day_today: "rounded-2xl border-orange-100 bg-orange-50 text-slate-900 xl:rounded-[28px]",
                 day_outside: "text-slate-300 opacity-30",
               }}
             />
           </Card>
         </div>
 
-        <div className="min-w-0 space-y-6 lg:col-span-2 xl:col-span-1">
+        <div className="min-w-0 space-y-6 lg:col-span-2 2xl:col-span-1">
           <div className="px-2">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">
               Meeting Timeline
@@ -386,7 +386,7 @@ const CalendarPage = () => {
                                   type === "CURRENT"
                                     ? "bg-emerald-600 text-white"
                                     : type === "UPCOMING"
-                                      ? "bg-blue-600 text-white"
+                                      ? "bg-[#D9692A] text-white"
                                       : "bg-slate-200 text-slate-700"
                                 }`}
                               >
@@ -401,7 +401,7 @@ const CalendarPage = () => {
 
                             <div className="flex flex-wrap items-center gap-2">
                               <div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1">
-                                <Clock className="h-3.5 w-3.5 text-blue-600" />
+                                <Clock className="h-3.5 w-3.5 text-slate-900" />
                                 <span className="text-[11px] font-black text-slate-800">
                                   {new Date(session.startsAt).toLocaleString([], {
                                     day: "2-digit",

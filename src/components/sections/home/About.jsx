@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -173,6 +174,13 @@ const aboutAccordionItems = [
 ];
 
 const About = () => {
+  useEffect(() => {
+    document.documentElement.classList.add("home-page");
+    return () => {
+      document.documentElement.classList.remove("home-page");
+    };
+  }, []);
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <section className="mx-auto w-full max-w-5xl px-4 py-20 md:px-8 md:py-24">

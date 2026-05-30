@@ -178,15 +178,15 @@ const ProjectsPage = () => {
     >
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
          <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
-               <Funnel className="h-4 w-4 text-slate-400" />
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#64748b]">
+               <Funnel className="h-4 w-4 text-[#D9692A]" />
                Project Filters
             </div>
             <div className="grid w-full gap-3 sm:grid-cols-3">
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700"
+                className="h-11 rounded-xl border border-[#dbe3ef] bg-white px-3 text-xs font-bold uppercase tracking-wider text-[#334155] focus:outline-none focus:ring-2 focus:ring-[#D9692A]/30"
               >
                 <option value="ALL">All Status</option>
                 <option value="Started">Started</option>
@@ -198,7 +198,7 @@ const ProjectsPage = () => {
               <select
                 value={assignmentFilter}
                 onChange={(event) => setAssignmentFilter(event.target.value)}
-                className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700"
+                className="h-11 rounded-xl border border-[#dbe3ef] bg-white px-3 text-xs font-bold uppercase tracking-wider text-[#334155] focus:outline-none focus:ring-2 focus:ring-[#D9692A]/30"
               >
                 <option value="ALL">All Assignment</option>
                 <option value="ASSIGNED">Assigned Freelancer</option>
@@ -207,7 +207,7 @@ const ProjectsPage = () => {
               <select
                 value={syncFilter}
                 onChange={(event) => setSyncFilter(event.target.value)}
-                className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700"
+                className="h-11 rounded-xl border border-[#dbe3ef] bg-white px-3 text-xs font-bold uppercase tracking-wider text-[#334155] focus:outline-none focus:ring-2 focus:ring-[#D9692A]/30"
               >
                 <option value="ALL">Any Sync Date</option>
                 <option value="LAST_7_DAYS">Synced in 7 days</option>
@@ -216,7 +216,7 @@ const ProjectsPage = () => {
             </div>
             <Button
               variant="outline"
-              className="h-11 rounded-xl border-slate-200 px-4 text-xs font-black uppercase tracking-wider text-slate-600"
+              className="h-11 rounded-xl border-[#dbe3ef] px-4 text-xs font-black uppercase tracking-wider text-[#D9692A] hover:bg-orange-50 hover:border-[#D9692A] transition-colors"
               onClick={() => {
                 setStatusFilter("ALL");
                 setAssignmentFilter("ALL");
@@ -230,12 +230,12 @@ const ProjectsPage = () => {
          </div>
          <div className="flex items-center gap-2">
             {presetFilter !== "ALL" ? (
-              <Badge className="bg-blue-50 text-[10px] font-black text-blue-700 hover:bg-blue-50">
+              <Badge className="bg-orange-50 text-[10px] font-black text-[#D9692A] hover:bg-orange-50 border border-orange-200">
                 {presetFilter === "ACTIVE" ? "Active Projects View" : "Issue Queue View"}
               </Badge>
             ) : null}
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Managed:</span>
-            <Badge className="bg-slate-900 text-[10px] font-black">{rows.length}</Badge>
+            <span className="text-[10px] font-black text-[#64748b] uppercase tracking-widest">Total Managed:</span>
+            <Badge className="bg-[#0f172a] text-[10px] font-black">{rows.length}</Badge>
          </div>
       </div>
 
@@ -269,37 +269,37 @@ const ProjectsPage = () => {
              {filteredRows.map((row) => (
                <div 
                  key={row.id} 
-                 className="group relative flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 rounded-[32px] border border-slate-100 bg-white shadow-sm transition-all hover:shadow-xl hover:border-blue-100 hover:-translate-y-1"
+                 className="group relative flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm transition-all hover:shadow-xl hover:border-[#D9692A]/30 hover:-translate-y-1"
                >
                  <div className="flex items-center gap-6">
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[24px] bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[24px] bg-orange-50 text-[#D9692A] group-hover:bg-[#D9692A] group-hover:text-white transition-colors">
                        <Plus className="h-8 w-8 rotate-45" />
                     </div>
                     <div className="space-y-1">
-                       <h3 className="text-base font-black text-slate-900 leading-tight group-hover:text-blue-600 transition-colors">{row.title}</h3>
+                       <h3 className="text-base font-black text-[#0f172a] leading-tight group-hover:text-[#D9692A] transition-colors">{row.title}</h3>
                        <div className="flex items-center gap-4">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">CLIENT: <span className="text-slate-600">{row.clientName}</span></p>
-                          <div className="h-1 w-1 rounded-full bg-slate-200" />
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">ROLE: <span className="text-slate-600">{row.freelancerName}</span></p>
+                          <p className="text-[10px] font-bold text-[#64748b] uppercase tracking-tighter">CLIENT: <span className="text-[#334155]">{row.clientName}</span></p>
+                          <div className="h-1 w-1 rounded-full bg-[#dbe3ef]" />
+                          <p className="text-[10px] font-bold text-[#64748b] uppercase tracking-tighter">ROLE: <span className="text-[#334155]">{row.freelancerName}</span></p>
                        </div>
                     </div>
                  </div>
 
                  <div className="flex flex-wrap items-center gap-8 md:gap-12">
                     <div className="space-y-1">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">STATUS</p>
+                       <p className="text-[10px] font-black text-[#64748b] uppercase tracking-widest">STATUS</p>
                        <StatusBadge status={row.status} />
                     </div>
                     <div className="space-y-1">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">BUDGET</p>
-                       <p className="text-sm font-black text-slate-900">INR {row.budget.toLocaleString("en-IN")}</p>
+                       <p className="text-[10px] font-black text-[#64748b] uppercase tracking-widest">BUDGET</p>
+                       <p className="text-sm font-black text-[#0f172a]">INR {row.budget.toLocaleString("en-IN")}</p>
                     </div>
                     <div className="space-y-1">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">LAST SYNC</p>
-                       <p className="text-xs font-bold text-slate-500">{row.updatedAt ? new Date(row.updatedAt).toLocaleDateString() : "Pending"}</p>
+                       <p className="text-[10px] font-black text-[#64748b] uppercase tracking-widest">LAST SYNC</p>
+                       <p className="text-xs font-bold text-[#64748b]">{row.updatedAt ? new Date(row.updatedAt).toLocaleDateString() : "Pending"}</p>
                     </div>
                     <Button
-                      className="h-12 w-12 md:w-auto md:px-6 rounded-2xl bg-slate-900 text-[10px] font-black tracking-widest uppercase text-white shadow-lg shadow-slate-900/10 hover:bg-blue-600 transition-all hover:scale-105 active:scale-95"
+                      className="h-12 w-12 md:w-auto md:px-6 rounded-2xl bg-[#D9692A] text-[10px] font-black tracking-widest uppercase text-white shadow-lg shadow-orange-900/10 hover:bg-[#B85A24] transition-all hover:scale-105 active:scale-95"
                       onClick={() => navigate(`/project-manager/projects/${row.id}`)}
                     >
                       <span className="hidden md:inline">Open Project</span>

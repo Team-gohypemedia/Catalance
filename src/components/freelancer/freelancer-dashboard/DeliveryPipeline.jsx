@@ -443,7 +443,7 @@ const DeliveryPipeline = ({
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <span className="inline-flex rounded-full bg-[var(--primary)] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-black">
+                    <span className="inline-flex rounded-full bg-[var(--primary)] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-white">
                       Today
                     </span>
                     <p className="mt-1 text-[10px] font-medium text-[var(--primary)]">
@@ -834,7 +834,7 @@ const DeliveryPipeline = ({
                                       <span className="text-[9px] font-semibold text-muted-foreground">
                                         {scheduleTodayDateLabel}
                                       </span>
-                                      <span className="mt-1 rounded-[6px] bg-primary px-2 py-0.5 text-[9px] font-semibold text-black">
+                                      <span className="mt-1 rounded-[6px] bg-primary px-2 py-0.5 text-[9px] font-semibold text-white">
                                         TODAY
                                       </span>
                                     </div>

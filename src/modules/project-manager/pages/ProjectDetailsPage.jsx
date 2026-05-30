@@ -535,12 +535,12 @@ const ProjectDetailsPage = () => {
   return (
     <PmShell 
       title={project.title}
-      className="overflow-x-clip bg-gradient-to-b from-slate-50 via-white to-blue-50/30"
+      className="overflow-x-clip bg-gradient-to-b from-slate-50 via-white to-orange-50/30"
       actions={
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            className="h-10 rounded-xl !border-blue-300 !bg-blue-100 px-5 text-xs font-bold !text-blue-700 shadow-sm hover:!bg-blue-200"
+            className="h-10 rounded-xl !border-orange-300 !bg-orange-100 px-5 text-xs font-bold !text-[#B85A24] shadow-sm hover:!bg-orange-200"
             onClick={() => setMeetingDialogOpen(true)}
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -558,15 +558,15 @@ const ProjectDetailsPage = () => {
       }
     >
       <div className="mb-6 flex items-center gap-2 text-xs font-medium text-slate-600">
-        <Link to="/project-manager" className="hover:text-blue-600">Dashboard</Link>
+        <Link to="/project-manager" className="hover:text-[#D9692A]">Dashboard</Link>
         <ChevronRight className="h-3 w-3" />
-        <Link to="/project-manager/projects" className="hover:text-blue-600">Projects</Link>
+        <Link to="/project-manager/projects" className="hover:text-[#D9692A]">Projects</Link>
         <ChevronRight className="h-3 w-3" />
         <span className="text-slate-900">{project.title}</span>
       </div>
 
       <div className="mb-6 flex items-center gap-3">
-        <Badge className={`${project.status?.color === 'red' ? 'bg-rose-600' : 'bg-blue-600'} text-[10px] font-bold text-white px-2 py-0.5 rounded uppercase`}>
+        <Badge className={`${project.status?.color === 'red' ? 'bg-rose-600' : 'bg-[#D9692A]'} text-[10px] font-bold text-white px-2 py-0.5 rounded uppercase`}>
             {project.status?.label || "ACTIVE"}
         </Badge>
         <span className="text-xs font-medium text-slate-600">Project ID: #{project.id}</span>
@@ -574,22 +574,22 @@ const ProjectDetailsPage = () => {
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="mb-6 h-auto w-full justify-start gap-2 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
-          <TabsTrigger value="overview" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-blue-200 data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Overview</TabsTrigger>
-          <TabsTrigger value="messages" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-blue-200 data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Messages</TabsTrigger>
-          <TabsTrigger value="milestones" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-blue-200 data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Milestones</TabsTrigger>
-          <TabsTrigger value="notifications" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-blue-200 data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Notifications</TabsTrigger>
+          <TabsTrigger value="overview" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Overview</TabsTrigger>
+          <TabsTrigger value="messages" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Messages</TabsTrigger>
+          <TabsTrigger value="milestones" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Milestones</TabsTrigger>
+          <TabsTrigger value="notifications" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Notifications</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-0 overflow-x-clip">
-          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_340px]">
             <div className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
-                <Card className="rounded-3xl border-slate-200 shadow-sm bg-white overflow-hidden group transition-all hover:shadow-lg hover:shadow-blue-100/70">
+                <Card className="rounded-3xl border-slate-200 shadow-sm bg-white overflow-hidden group transition-all hover:shadow-lg hover:shadow-orange-100/70">
                   <CardContent className="p-6">
                     <div className="mb-6 flex items-center justify-between">
                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-2xl bg-blue-50 flex items-center justify-center">
-                             <FileText className="h-5 w-5 text-blue-600" />
+                          <div className="h-10 w-10 rounded-2xl bg-orange-50 flex items-center justify-center">
+                             <FileText className="h-5 w-5 text-[#D9692A]" />
                           </div>
                           <h3 className="text-sm font-bold text-slate-900">Client Profile</h3>
                        </div>
@@ -616,14 +616,14 @@ const ProjectDetailsPage = () => {
                        <div className="grid gap-2 sm:grid-cols-2">
                           <Button
                              variant="outline"
-                             className="h-11 rounded-xl !border-blue-200 !bg-blue-50 text-[10px] font-black tracking-widest !text-blue-700 hover:!bg-blue-100 uppercase shadow-sm"
+                             className="h-11 rounded-xl !border-orange-200 !bg-orange-50 text-[10px] font-black tracking-widest !text-[#B85A24] hover:!bg-orange-100 uppercase shadow-sm"
                              onClick={handleViewProject}
                           >
                              VIEW PROJECT
                           </Button>
                           <Button
                              variant="outline"
-                             className="h-11 rounded-xl !border-blue-200 !bg-blue-50 text-[10px] font-black tracking-widest !text-blue-700 hover:!bg-blue-100 uppercase shadow-sm"
+                             className="h-11 rounded-xl !border-orange-200 !bg-orange-50 text-[10px] font-black tracking-widest !text-[#B85A24] hover:!bg-orange-100 uppercase shadow-sm"
                              onClick={handleViewClientProfile}
                           >
                              VIEW CLIENT PROFILE
@@ -638,7 +638,7 @@ const ProjectDetailsPage = () => {
                     <div className="mb-6 flex items-center justify-between">
                        <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                             <Users className="h-5 w-5 text-indigo-600" />
+                             <Users className="h-5 w-5 text-[#D9692A]" />
                           </div>
                           <h3 className="text-sm font-bold text-slate-900">Freelancer</h3>
                        </div>
@@ -723,7 +723,7 @@ const ProjectDetailsPage = () => {
                                <Plus className="h-5 w-5 text-slate-600" />
                             </div>
                             <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">NO TALENT ASSIGNED</p>
-                            <Button variant="default" className="h-9 rounded-lg bg-blue-600 text-[10px] font-black tracking-widest uppercase px-4" onClick={() => navigate("/project-manager/marketplace")}>Browse Marketplace</Button>
+                            <Button variant="default" className="h-9 rounded-lg bg-[#D9692A] text-[10px] font-black tracking-widest uppercase px-4" onClick={() => navigate("/project-manager/marketplace")}>Browse Marketplace</Button>
                         </div>
                     )}
                   </CardContent>
@@ -754,7 +754,7 @@ const ProjectDetailsPage = () => {
                     </Badge>
                   </div>
 
-                  <div className="rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-emerald-50/70 p-4">
+                  <div className="rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 via-white to-emerald-50/70 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-slate-900">Phases Overview</p>
@@ -817,7 +817,7 @@ const ProjectDetailsPage = () => {
               </Card>
 
               <Card className="rounded-3xl border-slate-200 shadow-sm bg-white overflow-hidden">
-                <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-blue-50/70 to-white p-6 pb-5">
+                <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-orange-50/70 to-white p-6 pb-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <CardTitle className="text-base font-bold text-slate-900">
                       All Phase Task Matrix
@@ -831,7 +831,7 @@ const ProjectDetailsPage = () => {
                   </p>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="grid gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-blue-50/40 p-5 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-orange-50/40 p-5 sm:grid-cols-2 lg:grid-cols-4">
                     {[totalTaskSummary, ...roleProgressRows].map((roleRow) => {
                       const roleKey = roleRow.role;
                       const isActive = activeTaskRoleFilter === roleKey;
@@ -848,8 +848,8 @@ const ProjectDetailsPage = () => {
                         onClick={() => setActiveTaskRoleFilter(roleKey)}
                         className={`rounded-2xl border bg-white p-4 text-left transition-colors ${
                           isActive
-                            ? "border-blue-200 bg-blue-50/60 shadow-sm"
-                            : "border-slate-200/80 hover:bg-blue-50/40"
+                            ? "border-orange-200 bg-orange-50/60 shadow-sm"
+                            : "border-slate-200/80 hover:bg-orange-50/40"
                         }`}
                       >
                         <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-700">
@@ -885,7 +885,7 @@ const ProjectDetailsPage = () => {
                               task.status === "VERIFIED"
                                 ? "bg-emerald-500 text-white"
                                 : task.status === "COMPLETED"
-                                  ? "bg-blue-600 text-white"
+                                  ? "bg-[#D9692A] text-white"
                                   : "bg-primary/10 text-primary border border-primary/20"
                             }`}
                           >
@@ -900,7 +900,7 @@ const ProjectDetailsPage = () => {
                           <Badge
                             className={`text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-0.5 ${
                               task.leadRole === "CLIENT"
-                                ? "bg-blue-50 text-blue-700 border border-blue-100"
+                                ? "bg-orange-50 text-[#B85A24] border border-orange-100"
                                 : task.leadRole === "FREELANCER"
                                   ? "bg-indigo-50 text-indigo-700 border border-indigo-100"
                                   : "bg-emerald-50 text-emerald-700 border border-emerald-100"
@@ -919,8 +919,8 @@ const ProjectDetailsPage = () => {
                     ) : null}
                   </div>
 
-                  <div className="hidden overflow-hidden md:block">
-                    <table className="w-full table-fixed">
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="w-full min-w-[800px] table-fixed">
                       <colgroup>
                         <col className="w-16" />
                         <col className="w-[170px]" />
@@ -941,7 +941,7 @@ const ProjectDetailsPage = () => {
                       </thead>
                       <tbody className="bg-white">
                         {visibleSopTaskRows.map((task) => (
-                          <tr key={task.id} className="border-t border-slate-100 align-top transition-colors hover:bg-blue-50/30">
+                          <tr key={task.id} className="border-t border-slate-100 align-top transition-colors hover:bg-orange-50/30">
                             <td className="px-4 py-3 text-sm font-semibold text-slate-800">{task.serial}</td>
                             <td className="px-4 py-3 text-sm font-semibold text-slate-700">
                               Phase {task.phaseId}
@@ -956,7 +956,7 @@ const ProjectDetailsPage = () => {
                               <Badge
                                 className={`text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-0.5 ${
                                   task.leadRole === "CLIENT"
-                                    ? "bg-blue-50 text-blue-700 border border-blue-100"
+                                    ? "bg-orange-50 text-[#B85A24] border border-orange-100"
                                     : task.leadRole === "FREELANCER"
                                       ? "bg-indigo-50 text-indigo-700 border border-indigo-100"
                                       : "bg-emerald-50 text-emerald-700 border border-emerald-100"
@@ -972,7 +972,7 @@ const ProjectDetailsPage = () => {
                                   task.status === "VERIFIED"
                                     ? "bg-emerald-500 text-white"
                                     : task.status === "COMPLETED"
-                                      ? "bg-blue-600 text-white"
+                                      ? "bg-[#D9692A] text-white"
                                       : "bg-primary/10 text-primary border border-primary/20"
                                 }`}
                               >
@@ -998,7 +998,7 @@ const ProjectDetailsPage = () => {
                     <div className="flex justify-end border-t border-slate-100 bg-white px-4 py-3">
                       <Button
                         variant="outline"
-                        className="h-9 rounded-lg !border-blue-200 !bg-blue-50 px-3 text-[11px] font-semibold !text-blue-700 shadow-sm hover:!bg-blue-100"
+                        className="h-9 rounded-lg !border-orange-200 !bg-orange-50 px-3 text-[11px] font-semibold !text-[#B85A24] shadow-sm hover:!bg-orange-100"
                         onClick={() => setShowAllTaskRows((current) => !current)}
                       >
                         {showAllTaskRows
@@ -1010,12 +1010,12 @@ const ProjectDetailsPage = () => {
                 </CardContent>
               </Card>
 
-              <div className="group relative overflow-hidden rounded-3xl border border-blue-200/70 bg-gradient-to-r from-blue-50 via-white to-indigo-50/70 p-8 shadow-sm">
+              <div className="group relative overflow-hidden rounded-3xl border border-orange-200/70 bg-gradient-to-r from-orange-50 via-white to-indigo-50/70 p-8 shadow-sm">
                  <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none group-hover:opacity-100 transition-opacity">
-                    <CheckCircle className="h-48 w-48 text-blue-600" />
+                    <CheckCircle className="h-48 w-48 text-[#D9692A]" />
                  </div>
                  <div className="flex flex-col lg:flex-row items-center gap-10">
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[30px] bg-white text-blue-600 shadow-xl shadow-blue-600/5">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[30px] bg-white text-[#D9692A] shadow-xl shadow-[#D9692A]/5">
                        <Download className="h-8 w-8" />
                     </div>
                     <div className="flex-1 text-center lg:text-left">
@@ -1024,27 +1024,27 @@ const ProjectDetailsPage = () => {
                           Ensure all deliverables, source files, and credentials have been securely verified by you before initiating Final Release.
                        </p>
                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-blue-50/60 transition-colors border border-blue-100 shadow-sm">
+                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-orange-50/60 transition-colors border border-orange-100 shadow-sm">
                              <Checkbox 
                                 checked={checklist.sourceCodeTransferred} 
                                 onCheckedChange={(v) => setChecklist(p => ({...p, sourceCodeTransferred: !!v}))}
-                                className="h-5 w-5 rounded-md border-blue-300 bg-white data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shadow-sm" 
+                                className="h-5 w-5 rounded-md border-orange-300 bg-white data-[state=checked]:bg-[#D9692A] data-[state=checked]:border-[#D9692A] shadow-sm" 
                              />
                              <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Sources</span>
                           </label>
-                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-blue-50/60 transition-colors border border-blue-100 shadow-sm">
+                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-orange-50/60 transition-colors border border-orange-100 shadow-sm">
                              <Checkbox 
                                 checked={checklist.documentationFinalized} 
                                 onCheckedChange={(v) => setChecklist(p => ({...p, documentationFinalized: !!v}))}
-                                className="h-5 w-5 rounded-md border-blue-300 bg-white data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shadow-sm" 
+                                className="h-5 w-5 rounded-md border-orange-300 bg-white data-[state=checked]:bg-[#D9692A] data-[state=checked]:border-[#D9692A] shadow-sm" 
                              />
                              <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Docs</span>
                           </label>
-                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-blue-50/60 transition-colors border border-blue-100 shadow-sm">
+                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-orange-50/60 transition-colors border border-orange-100 shadow-sm">
                              <Checkbox 
                                 checked={checklist.credentialsShared} 
                                 onCheckedChange={(v) => setChecklist(p => ({...p, credentialsShared: !!v}))}
-                                className="h-5 w-5 rounded-md border-blue-300 bg-white data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shadow-sm" 
+                                className="h-5 w-5 rounded-md border-orange-300 bg-white data-[state=checked]:bg-[#D9692A] data-[state=checked]:border-[#D9692A] shadow-sm" 
                              />
                              <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Access</span>
                           </label>
@@ -1052,7 +1052,7 @@ const ProjectDetailsPage = () => {
                        <Button 
                            onClick={handleFinalizeHandover}
                            disabled={!checklist.sourceCodeTransferred || !checklist.documentationFinalized || !checklist.credentialsShared}
-                           className="h-14 rounded-2xl bg-blue-600 px-10 text-xs font-black tracking-widest uppercase text-white shadow-xl shadow-blue-600/30 hover:bg-blue-700 disabled:bg-blue-300 disabled:text-white/95 disabled:opacity-100 disabled:grayscale-0 transition-all hover:scale-105 active:scale-95"
+                           className="h-14 rounded-2xl bg-[#D9692A] px-10 text-xs font-black tracking-widest uppercase text-white shadow-xl shadow-[#D9692A]/30 hover:bg-[#B85A24] disabled:bg-orange-300 disabled:text-white/95 disabled:opacity-100 disabled:grayscale-0 transition-all hover:scale-105 active:scale-95"
                        >
                           Finalize Project Closure
                        </Button>
@@ -1061,7 +1061,7 @@ const ProjectDetailsPage = () => {
               </div>
             </div>
 
-            <div className="space-y-6 xl:sticky xl:top-24 xl:self-start">
+            <div className="space-y-6 2xl:sticky 2xl:top-24 2xl:self-start">
                <Card className="rounded-3xl border-slate-200/80 shadow-sm bg-white">
                   <CardContent className="p-5">
                      <div className="mb-4 flex items-center justify-between">
@@ -1071,7 +1071,7 @@ const ProjectDetailsPage = () => {
                         </div>
                         <Button
                           variant="outline"
-                          className="h-8 rounded-lg !border-blue-300 !bg-blue-100 px-3 text-[10px] font-black uppercase tracking-widest !text-blue-700 hover:!bg-blue-200 shadow-sm"
+                          className="h-8 rounded-lg !border-orange-300 !bg-orange-100 px-3 text-[10px] font-black uppercase tracking-widest !text-[#B85A24] hover:!bg-orange-200 shadow-sm"
                           onClick={() => setMeetingDialogOpen(true)}
                         >
                           Schedule
@@ -1124,7 +1124,7 @@ const ProjectDetailsPage = () => {
                               <p className="mb-1 text-[9px] font-black text-slate-600 uppercase tracking-tighter">
                                  {msg.senderLabel} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </p>
-                              <div className={`max-w-[90%] rounded-2xl p-4 text-sm font-medium ${msg.senderRole === 'PROJECT_MANAGER' ? 'bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-500/10' : 'bg-white border border-slate-100 text-slate-900 rounded-tl-none shadow-sm'}`}>
+                              <div className={`max-w-[90%] rounded-2xl p-4 text-sm font-medium ${msg.senderRole === 'PROJECT_MANAGER' ? 'bg-[#D9692A] text-white rounded-tr-none shadow-lg shadow-orange-500/10' : 'bg-white border border-slate-100 text-slate-900 rounded-tl-none shadow-sm'}`}>
                                  {msg.content}
                               </div>
                            </div>
@@ -1142,14 +1142,14 @@ const ProjectDetailsPage = () => {
                         <Input 
                            value={composer}
                            onChange={(e) => setComposer(e.target.value)}
-                           className="h-14 w-full rounded-2xl border !border-blue-200 !bg-white px-6 pr-14 text-sm font-medium !text-slate-800 placeholder:text-slate-600 shadow-sm focus-visible:ring-2 focus-visible:ring-blue-600/20" 
+                           className="h-14 w-full rounded-2xl border !border-orange-200 !bg-white px-6 pr-14 text-sm font-medium !text-slate-800 placeholder:text-slate-600 shadow-sm focus-visible:ring-2 focus-visible:ring-[#D9692A]/20" 
                            placeholder="Drop an update or ask a question..."
                            disabled={sending}
                         />
                         <button 
                             type="submit"
                             disabled={sending || !composer.trim()}
-                            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-700 disabled:opacity-50 transition-all"
+                            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-[#D9692A] text-white shadow-lg shadow-orange-500/30 hover:bg-[#B85A24] disabled:opacity-50 transition-all"
                         >
                             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                         </button>
@@ -1206,7 +1206,7 @@ const ProjectDetailsPage = () => {
                     <div
                       className={`max-w-[85%] rounded-2xl p-3 text-sm font-medium ${
                         msg.senderRole === "PROJECT_MANAGER"
-                          ? "bg-blue-600 text-white rounded-tr-none"
+                          ? "bg-[#D9692A] text-white rounded-tr-none"
                           : "bg-white border border-slate-100 text-slate-900 rounded-tl-none"
                       }`}
                     >
@@ -1235,14 +1235,14 @@ const ProjectDetailsPage = () => {
                 <Input
                   value={composer}
                   onChange={(e) => setComposer(e.target.value)}
-                  className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-12 text-sm font-medium placeholder:text-slate-600 focus-visible:ring-2 focus-visible:ring-blue-600/20"
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-12 text-sm font-medium placeholder:text-slate-600 focus-visible:ring-2 focus-visible:ring-[#D9692A]/20"
                   placeholder="Type message as Project Manager..."
                   disabled={sending}
                 />
                 <button
                   type="submit"
                   disabled={sending || !composer.trim()}
-                  className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40"
+                  className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg bg-[#D9692A] text-white hover:bg-[#B85A24] disabled:opacity-40"
                 >
                   {sending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1264,7 +1264,7 @@ const ProjectDetailsPage = () => {
                  </Card>
                  <Card className="rounded-3xl border-slate-100 p-8 shadow-sm bg-white">
                     <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">ESCROW HOLD</p>
-                    <p className="text-2xl font-black text-blue-600">INR {milestoneRows.filter(m => m.status === 'Locked' || m.status === 'Pending Approval').reduce((acc, m) => acc + (m.amount || 0), 0).toLocaleString("en-IN")}</p>
+                    <p className="text-2xl font-black text-[#D9692A]">INR {milestoneRows.filter(m => m.status === 'Locked' || m.status === 'Pending Approval').reduce((acc, m) => acc + (m.amount || 0), 0).toLocaleString("en-IN")}</p>
                  </Card>
                  <Card className="rounded-3xl border-slate-100 p-8 shadow-sm bg-white">
                     <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">TOTAL BUDGET</p>
@@ -1351,16 +1351,16 @@ const ProjectDetailsPage = () => {
                           <div className="flex items-start gap-4">
                             <div
                               className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${
-                                alert.read ? "bg-slate-300" : "bg-blue-600"
+                                alert.read ? "bg-slate-300" : "bg-[#D9692A]"
                               }`}
                             />
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-[#D9692A]">
                                   {alert.type || "General"}
                                 </span>
                                 {!alert.read ? (
-                                  <Badge className="bg-blue-600 text-[9px] font-black uppercase tracking-wider text-white">
+                                  <Badge className="bg-[#D9692A] text-[9px] font-black uppercase tracking-wider text-white">
                                     New
                                   </Badge>
                                 ) : null}
@@ -1462,7 +1462,7 @@ const ProjectDetailsPage = () => {
                 onChange={(e) => setMeetingForm((prev) => ({ ...prev, notes: e.target.value }))}
                 rows={3}
                 placeholder="Agenda or instructions..."
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 focus:border-blue-300 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 focus:border-orange-300 focus:outline-none"
               />
             </div>
 
@@ -1477,7 +1477,7 @@ const ProjectDetailsPage = () => {
               </Button>
               <Button
                 type="button"
-                className="h-10 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-700"
+                className="h-10 rounded-xl bg-[#D9692A] px-4 text-xs font-bold text-white hover:bg-[#B85A24]"
                 disabled={meetingSubmitting}
                 onClick={handleScheduleMeeting}
               >
@@ -1574,7 +1574,7 @@ const ProjectDetailsPage = () => {
                 View Client Profile
               </Button>
               <Button
-                className="h-10 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
+                className="h-10 rounded-xl bg-[#D9692A] px-4 text-xs font-bold text-white shadow-sm hover:bg-[#B85A24]"
                 onClick={() => {
                   setProjectSummaryOpen(false);
                   navigate(`/project-manager/projects/${projectId}`);
@@ -1595,7 +1595,7 @@ const ProjectDetailsPage = () => {
 
       <Dialog open={clientProfileOpen} onOpenChange={setClientProfileOpen}>
         <DialogContent className="max-w-3xl rounded-[2rem] border-slate-200 p-0 shadow-2xl">
-          <DialogHeader className="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50 p-6 pb-5">
+          <DialogHeader className="border-b border-slate-100 bg-gradient-to-r from-orange-50 via-white to-indigo-50 p-6 pb-5">
             <DialogTitle className="text-xl font-black text-slate-900">
               Client Profile
             </DialogTitle>
@@ -1605,11 +1605,11 @@ const ProjectDetailsPage = () => {
           </DialogHeader>
 
           <div className="space-y-6 p-6">
-            <div className="flex flex-col gap-4 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-white p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 to-white p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12 rounded-xl border border-blue-100">
+                <Avatar className="h-12 w-12 rounded-xl border border-orange-100">
                   <AvatarImage src={clientProfile.avatar || ""} />
-                  <AvatarFallback className="bg-blue-600 text-sm font-black text-white">
+                  <AvatarFallback className="bg-[#D9692A] text-sm font-black text-white">
                     {(clientProfile.clientName || "Client")
                       .split(" ")
                       .map((part) => part?.[0] || "")
@@ -1622,12 +1622,12 @@ const ProjectDetailsPage = () => {
                   <p className="text-base font-black text-slate-900">
                     {clientProfile.clientName || "Unknown Client"}
                   </p>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-blue-700">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-[#B85A24]">
                     {clientProfile.company || "Direct Client"}
                   </p>
                 </div>
               </div>
-              <Badge className="w-fit rounded-full bg-blue-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+              <Badge className="w-fit rounded-full bg-[#D9692A] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
                 Active Engagement
               </Badge>
             </div>
@@ -1724,7 +1724,7 @@ const ProjectDetailsPage = () => {
                 View Project
               </Button>
               <Button
-                className="h-11 rounded-xl bg-blue-600 px-4 text-xs font-black tracking-widest text-white uppercase hover:bg-blue-700"
+                className="h-11 rounded-xl bg-[#D9692A] px-4 text-xs font-black tracking-widest text-white uppercase hover:bg-[#B85A24]"
                 onClick={() => {
                   setClientProfileOpen(false);
                   navigate(`/project-manager/projects/${projectId}`);
@@ -1739,7 +1739,7 @@ const ProjectDetailsPage = () => {
       
       <div className="mt-10 flex items-center justify-between border-t border-slate-100 pt-6 pb-1">
          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 bg-blue-600 rounded flex items-center justify-center">
+            <div className="h-6 w-6 bg-[#D9692A] rounded flex items-center justify-center">
                <span className="text-white text-[10px] font-bold">C</span>
             </div>
             <span className="text-xs text-slate-600">(c) 2024 Catalance Platform. All rights reserved.</span>

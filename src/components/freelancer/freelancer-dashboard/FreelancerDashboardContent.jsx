@@ -1168,7 +1168,6 @@ const FreelancerMetricCardSkeleton = ({ item }) => {
     <FreelancerDashboardPanel
       className={cn(
         "group relative min-h-[136px] border border-transparent bg-card px-3.5 py-4 sm:min-h-[110px] sm:p-5",
-        shouldSpanFullWidth && "col-span-2 lg:col-span-1",
       )}
     >
       <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
@@ -1653,20 +1652,16 @@ const FreelancerMetricCard = ({
       tabIndex={onClick ? 0 : undefined}
       aria-label={ariaLabel}
     >
+      {control ? (
+        <div className="absolute right-3.5 top-3.5 z-20 sm:hidden">
+          {control}
+        </div>
+      ) : null}
+
       <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
-        {control ? (
-          <div className="flex w-full items-center justify-between">
-            <span className="size-10 shrink-0 sm:size-14" aria-hidden="true" />
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
-              <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
-            </div>
-            <div className="shrink-0">{control}</div>
-          </div>
-        ) : (
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
-            <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
-          </div>
-        )}
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
+          <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
+        </div>
         <p className="mt-4 shrink-0 text-[2rem] font-semibold leading-none tracking-[-0.05em] dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F] transition-colors group-hover:text-[var(--primary)] sm:mt-6 sm:text-[3rem]">
           {value}
         </p>
@@ -3655,7 +3650,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
         value: String(metrics.pendingProposals.length).padStart(2, "0"),
         onClick: () => navigate("/freelancer/proposals?tab=pending"),
         ariaLabel: "Open pending proposals",
-        className: "col-span-2 xl:col-span-1",
+        className: "col-span-1",
       },
       {
         id: "total-earnings",
@@ -3666,7 +3661,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
           : formatFreelancerDashboardCurrency(metrics.earnings),
         onClick: () => navigate("/freelancer/payments"),
         ariaLabel: "Open payments",
-        className: "col-span-2 xl:col-span-1",
+        className: "col-span-1",
         control: (
           <button
             type="button"
@@ -3834,7 +3829,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                 value={String(metrics.pendingProposals.length).padStart(2, "0")}
                 onClick={() => navigate("/freelancer/proposals?tab=pending")}
                 aria-label="Open pending proposals"
-                className="col-span-2 lg:col-span-1"
+                className="col-span-1"
               />
               <FreelancerMetricCard
                 icon={CreditCard}
@@ -3846,7 +3841,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                 }
                 onClick={() => navigate("/freelancer/payments")}
                 aria-label="Open payments"
-                className="col-span-2 lg:col-span-1"
+                className="col-span-1"
                 control={
                   <button
                     type="button"
@@ -4078,7 +4073,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                             {previewMessages.map((message) => (
                               <li
                                 key={message.id}
-                                className="rounded-[18px] bg-white/[0.03] px-3.5 py-3.5"
+                                className="rounded-[18px] dark:bg-white/[0.03] bg-black/[0.03] border dark:border-white/[0.04] border-black/[0.04] px-3.5 py-3.5"
                               >
                                 <div className="flex items-start gap-3">
                                   <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#272a31] text-[11px] font-bold text-zinc-100">
@@ -4088,16 +4083,16 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                       <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
-                                          <p className="truncate text-sm font-semibold dark:text-zinc-100 dark:text-white text-[#1C1B1F]">
+                                          <p className="truncate text-sm font-semibold dark:text-white text-[#1C1B1F]">
                                             {message.senderName}
                                           </p>
                                           {message.projectLabel ? (
-                                            <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[#94a3b8]">
+                                            <span className="rounded-full dark:bg-white/[0.06] bg-black/[0.05] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] dark:text-[#94a3b8] text-zinc-500">
                                               {message.projectLabel}
                                             </span>
                                           ) : null}
                                         </div>
-                                        <p className="mt-2 text-sm leading-5 dark:text-zinc-200 dark:text-white text-[#1C1B1F]">
+                                        <p className="mt-2 text-sm leading-5 dark:text-zinc-200 text-muted-foreground">
                                           {message.previewText}
                                         </p>
                                       </div>
@@ -4113,7 +4108,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                           <button
                             type="button"
                             onClick={() => navigate("/freelancer/messages")}
-                            className="mt-8 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-[#8f8f8f] transition-colors hover:dark:text-white text-[#1C1B1F]"
+                            className="mt-8 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:dark:text-white hover:text-[#1C1B1F]"
                           >
                             <span>Open Messages ({previewMessages.length})</span>
                             <ChevronRight className="size-[15px] stroke-[1.75]" />
@@ -4156,11 +4151,11 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                           {clientReviews.map((review) => (
                             <li
                               key={review.id}
-                              className="rounded-[16px] border border-white/[0.08] bg-white/[0.03] p-3.5"
+                              className="rounded-[16px] border dark:border-white/[0.08] border-black/[0.04] dark:bg-white/[0.03] bg-black/[0.03] p-3.5"
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                  <p className="truncate text-sm font-semibold dark:text-zinc-100 dark:text-white text-[#1C1B1F]">
+                                  <p className="truncate text-sm font-semibold dark:text-white text-[#1C1B1F]">
                                     {review.clientName || "Client"}
                                   </p>
                                   <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-zinc-400">
@@ -4184,7 +4179,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                   />
                                 ))}
                               </div>
-                              <p className="mt-2.5 text-sm leading-5 dark:text-zinc-200 dark:text-white text-[#1C1B1F]">
+                              <p className="mt-2.5 text-sm leading-5 dark:text-zinc-200 text-muted-foreground">
                                 {review.comment}
                               </p>
                             </li>
@@ -4473,7 +4468,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                         <span className="text-[9px] font-semibold text-muted-foreground">
                                           {scheduleTodayDateLabel}
                                         </span>
-                                        <span className="mt-1 rounded-[6px] bg-primary px-2 py-0.5 text-[9px] font-semibold text-black">
+                                        <span className="mt-1 rounded-[6px] bg-primary px-2 py-0.5 text-[9px] font-semibold text-white">
                                           TODAY
                                         </span>
                                       </div>

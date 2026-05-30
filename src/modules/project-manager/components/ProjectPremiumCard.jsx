@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 
 const statusConfig = {
   "ISSUE RAISED": "bg-rose-100 text-rose-700 border border-rose-200",
-  "IN PROGRESS": "bg-blue-100 text-blue-700 border border-blue-200",
-  "PROPOSAL": "bg-slate-100 text-slate-700 border border-slate-200",
-  "STARTED": "bg-indigo-100 text-indigo-700 border border-indigo-200",
+  "IN PROGRESS": "bg-orange-50 text-[#D9692A] border border-orange-200",
+  "PROPOSAL": "bg-slate-100 text-slate-600 border border-slate-200",
+  "STARTED": "bg-amber-50 text-amber-700 border border-amber-200",
   "COMPLETED": "bg-emerald-100 text-emerald-700 border border-emerald-200",
 };
 
@@ -42,7 +42,7 @@ export const ProjectPremiumCard = ({ project, onOpen }) => {
   }, [project.lastActivityFriendly, project.lastActivityTime]);
 
   return (
-    <div className="border-b border-slate-200 px-4 py-5 last:border-b-0 md:px-6">
+    <div className="border-b border-[#dbe3ef] px-4 py-5 last:border-b-0 md:px-6">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-center">
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
@@ -51,9 +51,9 @@ export const ProjectPremiumCard = ({ project, onOpen }) => {
             >
               {project.status.toUpperCase()}
             </Badge>
-            <div className="flex items-center gap-2 rounded-md border border-slate-200 px-2.5 py-1.5">
-              <MessageSquare className="h-4 w-4 text-slate-500" />
-              <span className="text-xs font-semibold text-slate-700">
+            <div className="flex items-center gap-2 rounded-md border border-[#dbe3ef] px-2.5 py-1.5">
+              <MessageSquare className="h-4 w-4 text-[#D9692A]" />
+              <span className="text-xs font-semibold text-[#334155]">
                 {project.totalMessages}
               </span>
             </div>
@@ -61,40 +61,40 @@ export const ProjectPremiumCard = ({ project, onOpen }) => {
 
           <div>
             <h3
-              className="text-xl font-bold text-slate-900 leading-tight cursor-pointer"
+              className="text-xl font-bold text-[#0f172a] leading-tight cursor-pointer hover:text-[#D9692A] transition-colors"
               onClick={() => onOpen(project.id)}
             >
               {project.projectName}
             </h3>
-            <p className="mt-1 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-              Client Hub: <span className="text-slate-800">{project.clientName}</span>
+            <p className="mt-1 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+              Client Hub: <span className="text-[#334155]">{project.clientName}</span>
             </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2.5">
+            <div className="flex items-center gap-3 rounded-md border border-[#dbe3ef] bg-[#f8fafc] px-3 py-2.5">
               <Avatar className="h-10 w-10 rounded-lg">
-                <AvatarImage src={project.freelancerAvatar} />
-                <AvatarFallback className="bg-slate-200 text-slate-600 font-semibold">
+                <AvatarImage src={project.freelancerAvatar?.replace(/background(Color)?=[^&]+/, "background=D9692A&backgroundColor=d9692a")} />
+                <AvatarFallback className="bg-orange-100 text-[#D9692A] font-semibold">
                   {project.assignedFreelancer?.[0]}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                <p className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">
                   Freelancer
                 </p>
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-sm font-semibold text-[#0f172a]">
                   {project.assignedFreelancer || "Unassigned"}
                 </p>
               </div>
             </div>
 
-            <div className="rounded-md border border-slate-200 px-3 py-2.5">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className="rounded-md border border-[#dbe3ef] bg-[#f8fafc] px-3 py-2.5">
+              <p className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">
                 Last Activity
               </p>
-              <div className="mt-1.5 flex items-center gap-2 text-sm font-semibold text-slate-900">
-                <Clock className="h-4 w-4 text-slate-500" />
+              <div className="mt-1.5 flex items-center gap-2 text-sm font-semibold text-[#0f172a]">
+                <Clock className="h-4 w-4 text-[#D9692A]" />
                 <span>{activityLabel}</span>
               </div>
             </div>
@@ -102,17 +102,17 @@ export const ProjectPremiumCard = ({ project, onOpen }) => {
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              <p className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">
                 Execution Velocity
               </p>
-              <span className="text-xs font-semibold text-slate-700">
+              <span className="text-xs font-semibold text-[#D9692A]">
                 {project.milestoneProgress}%
               </span>
             </div>
-            <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+            <div className="h-2 w-full rounded-full bg-[#e2e8f0] overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  project.status === "COMPLETED" ? "bg-emerald-500" : "bg-blue-600"
+                  project.status === "COMPLETED" ? "bg-emerald-500" : "bg-[#D9692A]"
                 }`}
                 style={{ width: `${project.milestoneProgress}%` }}
               />
@@ -130,7 +130,7 @@ export const ProjectPremiumCard = ({ project, onOpen }) => {
             )}
 
             {project.upcomingMeeting && (
-              <Badge className="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 text-[10px] font-semibold">
+              <Badge className="bg-orange-50 text-[#D9692A] border border-orange-200 px-2.5 py-1 text-[10px] font-semibold">
                 <MessageCircle className="mr-1 h-3.5 w-3.5" />
                 {new Date(project.upcomingMeeting).toLocaleTimeString([], {
                   hour: "2-digit",
@@ -141,7 +141,7 @@ export const ProjectPremiumCard = ({ project, onOpen }) => {
           </div>
 
           <Button
-            className="h-10 rounded-md bg-slate-900 px-4 text-xs font-semibold text-white hover:bg-slate-800 lg:min-w-[140px]"
+            className="h-10 rounded-md bg-[#D9692A] px-4 text-xs font-semibold text-white hover:bg-[#B85A24] transition-colors lg:min-w-[140px]"
             onClick={() => onOpen(project.id)}
           >
             Open Project

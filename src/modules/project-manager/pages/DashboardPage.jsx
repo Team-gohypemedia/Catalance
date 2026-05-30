@@ -19,10 +19,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const STAT_COLOR_CLASS = {
-  blue: { bg: "bg-blue-50", text: "text-blue-600" },
+  blue: { bg: "bg-[#f8fafc]", text: "text-[#D9692A]" },
   rose: { bg: "bg-rose-50", text: "text-rose-600" },
-  indigo: { bg: "bg-indigo-50", text: "text-indigo-600" },
-  amber: { bg: "bg-primary/10", text: "text-primary" },
+  indigo: { bg: "bg-orange-50", text: "text-[#D9692A]" },
+  amber: { bg: "bg-amber-50", text: "text-amber-600" },
 };
 
 const DashboardPage = () => {
@@ -119,22 +119,22 @@ const DashboardPage = () => {
       <section className="mb-12">
         <div className="flex items-center justify-between mb-8">
            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-[7px] bg-slate-900 text-white flex items-center justify-center">
-                 <CalendarIcon className="h-5 w-5" />
-              </div>
+              <div className="h-10 w-10 rounded-[7px] bg-[#D9692A] text-white flex items-center justify-center">
+                <CalendarIcon className="h-5 w-5" />
+             </div>
               <div>
                  <h2 className="text-xl font-black text-slate-900 leading-tight">Meeting Pipeline</h2>
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Vetting & Sync Schedules</p>
               </div>
            </div>
            <Button 
-             variant="link" 
-             className="text-[10px] font-black text-blue-600 uppercase tracking-widest p-0 h-auto hover:text-blue-700 transition-colors flex items-center gap-2 group" 
-             onClick={() => navigate("/project-manager/appointments?time=UPCOMING")}
-           >
-              Expanded View
-              <ArrowUpRight className="h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-           </Button>
+            variant="link" 
+            className="text-[10px] font-black text-[#D9692A] uppercase tracking-widest p-0 h-auto hover:text-[#B85A24] transition-colors flex items-center gap-2 group" 
+            onClick={() => navigate("/project-manager/appointments?time=UPCOMING")}
+          >
+            Expanded View
+            <ArrowUpRight className="h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </Button>
         </div>
         
         {loading ? (
@@ -168,7 +168,7 @@ const DashboardPage = () => {
       <section className="space-y-6">
         <div className="flex items-center justify-between">
            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-[7px] bg-slate-900 text-white flex items-center justify-center">
+              <div className="h-10 w-10 rounded-[7px] bg-[#D9692A] text-white flex items-center justify-center">
                  <LayoutGrid className="h-5 w-5" />
               </div>
               <div>
@@ -199,7 +199,7 @@ const DashboardPage = () => {
              </div>
              <Button
                variant="link"
-               className="h-auto p-0 text-[10px] font-black text-blue-600 uppercase tracking-widest"
+               className="h-auto p-0 text-[10px] font-black text-[#D9692A] uppercase tracking-widest hover:text-[#B85A24] transition-colors"
                onClick={() => navigate("/project-manager/projects")}
              >
                Full List
@@ -244,7 +244,7 @@ const DashboardPage = () => {
                           ? "bg-rose-600 text-white"
                           : project.statusColor === "green"
                             ? "bg-emerald-600 text-white"
-                            : "bg-blue-600 text-white"
+                            : "bg-[#D9692A] text-white"
                       }`}
                     >
                       {project.status}
@@ -259,14 +259,14 @@ const DashboardPage = () => {
           )
         ) : (
           <div className="flex flex-col items-center justify-center py-12 text-center space-y-6 rounded-[7px] bg-white border-2 border-dashed border-slate-100 shadow-inner">
-            <div className="h-20 w-20 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center animate-bounce">
+            <div className="h-20 w-20 rounded-full bg-orange-50 text-[#D9692A] flex items-center justify-center animate-bounce">
               <Plus className="h-10 w-10" />
             </div>
             <div className="space-y-3">
-              <h3 className="text-xl font-black text-slate-900">Zero Active Deployments</h3>
-              <p className="text-sm font-medium text-slate-400 max-w-sm mx-auto leading-relaxed">Initiate your first secure project workspace to begin orchestrating high-level digital talent.</p>
+              <h3 className="text-xl font-black text-[#0f172a]">Zero Active Deployments</h3>
+              <p className="text-sm font-medium text-[#64748b] max-w-sm mx-auto leading-relaxed">Initiate your first secure project workspace to begin orchestrating high-level digital talent.</p>
             </div>
-            <Button className="h-12 rounded-[7px] bg-blue-600 px-8 text-[10px] font-black tracking-widest uppercase text-white shadow-xl shadow-blue-600/20 hover:bg-blue-700 hover:scale-[1.03] transition-all" onClick={() => navigate("/project-manager/create-project")}>
+            <Button className="h-12 rounded-[7px] bg-[#D9692A] px-8 text-[10px] font-black tracking-widest uppercase text-white shadow-xl shadow-orange-600/20 hover:bg-[#B85A24] hover:scale-[1.03] transition-all" onClick={() => navigate("/project-manager/create-project")}>
                Spawn Operation
             </Button>
           </div>

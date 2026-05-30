@@ -44,7 +44,7 @@ const Footer = () => {
           <div className="flex flex-col gap-7">
             <a className="flex w-fit items-center gap-2" href="#">
               <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-primary">
-                <img src={logo} alt="Catalance logo" className="h-9 w-9 object-contain" />
+                <img src={logo} alt="Catalance logo" className="h-9 w-9 object-contain invert dark:invert-0" />
               </div>
               <span className="text-2xl font-semibold tracking-tight text-primary">
                 Catalance

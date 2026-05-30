@@ -1,18 +1,26 @@
+import { useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import Shield from "lucide-react/dist/esm/icons/shield";
 
 const Section = ({ title, children }) => (
-  <section className="mb-10">
+  <div className="mb-10">
     <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
       {title}
     </h2>
     <div className="space-y-4 leading-relaxed text-gray-700 dark:text-neutral-300">
       {children}
     </div>
-  </section>
+  </div>
 );
 
 const PrivacyPolicy = () => {
+  useEffect(() => {
+    document.documentElement.classList.add("home-page");
+    return () => {
+      document.documentElement.classList.remove("home-page");
+    };
+  }, []);
+
   return (
     <main
       className="relative min-h-screen w-full overflow-hidden bg-background text-gray-900 dark:text-white selection:bg-primary/30"
@@ -28,7 +36,7 @@ const PrivacyPolicy = () => {
         }}
       />
 
-      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(253,200,0,0.18),transparent_45%)] dark:bg-[radial-gradient(circle_at_top,rgba(253,200,0,0.12),transparent_45%)]" />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(217,105,42,0.15),transparent_45%)] dark:bg-[radial-gradient(circle_at_top,rgba(253,200,0,0.12),transparent_45%)]" />
 
       <div className="relative z-10 mx-auto max-w-4xl px-6 pb-20 pt-24">
         <div className="text-center mb-16">

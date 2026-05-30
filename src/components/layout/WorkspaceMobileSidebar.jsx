@@ -53,7 +53,7 @@ const WorkspaceBrandMark = () => (
       <img
         src={logo}
         alt=""
-        className="h-6.5 w-6.5 object-contain"
+        className="h-6.5 w-6.5 object-contain invert dark:invert-0"
       />
     </div>
     <span className="text-[0.96rem] font-bold tracking-[-0.04em] text-foreground">

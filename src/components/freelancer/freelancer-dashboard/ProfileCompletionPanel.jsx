@@ -28,7 +28,7 @@ const ProfileCompletionPanel = ({
     <section>
       <FreelancerDashboardPanel className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <h2 className="min-w-0 text-[1.2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white sm:text-[1.35rem] lg:text-[1.55rem]">
+          <h2 className="min-w-0 text-[1.2rem] font-semibold leading-[1.08] tracking-[-0.03em] dark:text-white text-[#1C1B1F] sm:text-[1.35rem] lg:text-[1.55rem]">
             {isComplete
               ? "Your Catalance profile is ready"
               : "Finish setting up your Catalance profile"}

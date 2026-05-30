@@ -55,7 +55,7 @@ const BrandMark = () => (
       <img
         src={logo}
         alt=""
-        className="h-7 w-7 object-contain"
+        className="h-7 w-7 object-contain invert dark:invert-0"
       />
     </div>
     <span className="text-base font-bold tracking-[-0.5px] text-foreground">
@@ -355,8 +355,8 @@ const FreelancerWorkspaceHeader = ({
           </div>
         </div>
 
-        <div className="mt-7 border-b border-border pb-3">
-          <div className="mx-auto w-full flex flex-col gap-4 px-4 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between xl:w-[85%] xl:px-0">
+        <div className="mt-7">
+          <div className="mx-auto w-full flex flex-col gap-4 border-b border-border px-4 pb-3 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between xl:w-[85%] xl:px-0">
             <div className="space-y-3">
               <HeaderNav
                 items={workspaceNavItems}
@@ -371,14 +371,14 @@ const FreelancerWorkspaceHeader = ({
                 <button
                   type="button"
                   onClick={onPrimaryAction}
-                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-primary/80"
+                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/80"
                 >
                   {primaryActionContent}
                 </button>
               ) : (
                 <Link
                   to={primaryActionTo}
-                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-primary/80"
+                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/80"
                 >
                   {primaryActionContent}
                 </Link>

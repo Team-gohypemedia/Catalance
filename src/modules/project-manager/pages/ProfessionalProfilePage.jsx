@@ -403,25 +403,25 @@ const ProfessionalProfilePage = () => {
   return (
     <PmShell title={profile.name || "Professional Profile"} subtitle={profile.title || ""} hideHeader className="p-0">
       {/* Hero Section */}
-      <div className="relative h-[450px] w-full overflow-hidden">
-         <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-rose-500" />
+      <div className="relative h-[380px] w-full overflow-hidden">
+         <div className="absolute inset-0 bg-[#D9692A]" />
          <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
          
-         <div className="relative z-10 flex h-full flex-col items-center justify-center text-center px-4">
-            <div className="group relative mb-6">
-                <Avatar className="h-32 w-32 rounded-[2.5rem] border-4 border-white/30 shadow-2xl transition-transform group-hover:scale-105">
+         <div className="relative z-10 flex h-full flex-col items-center justify-center text-center px-4 pb-4">
+            <div className="group relative mb-4">
+                <Avatar className="h-24 w-24 rounded-3xl border-4 border-white/30 shadow-2xl transition-transform group-hover:scale-105">
                    <AvatarImage src={profile.avatar} />
                    <AvatarFallback>{profile.name ? profile.name[0] : 'AR'}</AvatarFallback>
                 </Avatar>
-                <div className="absolute -bottom-1 -right-1 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 border-4 border-white text-white shadow-lg">
-                   <CheckCircle2 className="h-5 w-5" />
+                <div className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 border-[3px] border-white text-white shadow-lg">
+                   <CheckCircle2 className="h-4 w-4" />
                 </div>
             </div>
             
-            <h1 className="mb-2 text-4xl font-bold text-white tracking-tight">{profile.name}</h1>
-            <p className="mb-8 text-xl font-medium text-white/80">{profile.title}</p>
+            <h1 className="mb-1 text-3xl font-bold text-white tracking-tight">{profile.name}</h1>
+            <p className="mb-4 text-lg font-medium text-white/80">{profile.title}</p>
             {!isFreelancerProfile ? (
-              <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+              <div className="mb-5 flex flex-wrap items-center justify-center gap-2">
                 <Badge className="border border-white/40 bg-white/20 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white">
                   {completedChecklist}/{pmChecklist.length} onboarding complete
                 </Badge>
@@ -438,14 +438,14 @@ const ProfessionalProfilePage = () => {
                 <>
                   <Button
                     onClick={handlePrimaryAction}
-                    className="h-14 rounded-2xl bg-white px-8 text-base font-bold text-indigo-600 shadow-xl hover:bg-white/90"
+                    className="h-12 rounded-2xl bg-white px-6 text-sm font-bold text-[#D9692A] shadow-xl hover:bg-white/90"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     Hire for Project
                   </Button>
                   <Button
                     onClick={handleSecondaryAction}
-                    className="h-14 rounded-2xl border-2 border-white/30 bg-white/10 px-8 text-base font-bold text-white backdrop-blur-md hover:bg-white/20"
+                    className="h-12 rounded-2xl border-2 border-white/30 bg-white/10 px-6 text-sm font-bold text-white backdrop-blur-md hover:bg-white/20"
                   >
                     <MessageSquare className="mr-2 h-4 w-4" />
                     Send Message
@@ -456,7 +456,7 @@ const ProfessionalProfilePage = () => {
                   <Button
                     type="button"
                     onClick={() => setEditMode((current) => !current)}
-                    className="h-14 rounded-2xl bg-white px-8 text-base font-bold text-indigo-600 shadow-xl hover:bg-white/90"
+                    className="h-12 rounded-2xl bg-white px-6 text-sm font-bold text-[#D9692A] shadow-xl hover:bg-white/90"
                   >
                     <ArrowUpRight className="mr-2 h-4 w-4" />
                     {editMode ? "Preview Profile" : "Edit Profile"}
@@ -465,7 +465,7 @@ const ProfessionalProfilePage = () => {
                     type="button"
                     onClick={submitPmProfileRequest}
                     disabled={savingProfile}
-                    className="h-14 rounded-2xl border-2 border-white/40 bg-white/10 px-8 text-base font-bold text-white backdrop-blur-md hover:bg-white/20 disabled:opacity-60"
+                    className="h-12 rounded-2xl border-2 border-white/40 bg-white/10 px-6 text-sm font-bold text-white backdrop-blur-md hover:bg-white/20 disabled:opacity-60"
                   >
                     {savingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
                     Submit for Approval
@@ -475,13 +475,13 @@ const ProfessionalProfilePage = () => {
             </div>
          </div>
          
-         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
+         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-bold text-white/90 uppercase tracking-widest">{profile.availability}</span>
+            <span className="text-[10px] font-bold text-white/90 uppercase tracking-widest">{profile.availability}</span>
          </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-8 -mt-20 relative z-20 pb-20">
+      <div className="mx-auto max-w-7xl px-8 -mt-10 relative z-20 pb-20">
          <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
             {/* Main Content */}
             <div className="space-y-8">
@@ -491,10 +491,10 @@ const ProfessionalProfilePage = () => {
                        <button 
                          key={tab}
                          onClick={() => setActiveTab(tab.toLowerCase().split(' ')[0])}
-                         className={`px-8 pb-4 text-sm font-bold transition-all relative ${activeTab === tab.toLowerCase().split(' ')[0] ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                         className={`px-8 pb-4 text-sm font-bold transition-all relative ${activeTab === tab.toLowerCase().split(' ')[0] ? 'text-[#D9692A]' : 'text-slate-400 hover:text-slate-600'}`}
                        >
                          {tab}
-                         {activeTab === tab.toLowerCase().split(' ')[0] && <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
+                         {activeTab === tab.toLowerCase().split(' ')[0] && <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#D9692A] rounded-full" />}
                        </button>
                      ))}
                   </div>
@@ -515,7 +515,7 @@ const ProfessionalProfilePage = () => {
                             {resolveList(profile.skills).length ? (
                               <div className="flex flex-wrap gap-2">
                                 {resolveList(profile.skills).map(skill => (
-                                  <Badge key={skill} variant="secondary" className="bg-slate-50 text-slate-600 text-xs font-bold rounded-xl px-4 py-2 border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all cursor-default">
+                                  <Badge key={skill} variant="secondary" className="bg-slate-50 text-slate-600 text-xs font-bold rounded-xl px-4 py-2 border border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all cursor-default">
                                     {skill}
                                   </Badge>
                                 ))}
@@ -530,7 +530,7 @@ const ProfessionalProfilePage = () => {
                               <h3 className="text-lg font-bold text-slate-900">Featured Projects</h3>
                               <Button
                                 variant="link"
-                                className="font-bold text-blue-600"
+                                className="font-bold text-[#D9692A]"
                                 onClick={() => setActiveTab("portfolio")}
                               >
                                 View Gallery
@@ -563,24 +563,24 @@ const ProfessionalProfilePage = () => {
                         </>
                       ) : (
                         <div className="space-y-8">
-                          <section className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+                          <section className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                               <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
                                 PM Onboarding Flow
                               </h3>
-                              <Badge className="bg-white text-slate-700 border border-blue-200 text-[10px] font-black uppercase tracking-wider">
+                              <Badge className="bg-white text-slate-700 border border-orange-200 text-[10px] font-black uppercase tracking-wider">
                                 {completedChecklist} / {pmChecklist.length} complete
                               </Badge>
                             </div>
                             <div className="mt-3 grid gap-2 sm:grid-cols-2">
                               {pmChecklist.map((item) => (
-                                <div key={item.key} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${item.complete ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-primary/20 bg-primary/10 text-primary"}`}>
+                                <div key={item.key} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${item.complete ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-[#D9692A]/20 bg-[#D9692A]/10 text-[#D9692A]"}`}>
                                   {item.label}
                                 </div>
                               ))}
                             </div>
                             {pendingRequest ? (
-                              <p className="mt-3 text-xs font-semibold text-primary">
+                              <p className="mt-3 text-xs font-semibold text-[#D9692A]">
                                 Latest update is pending Admin approval. You can still update and resubmit.
                               </p>
                             ) : null}
@@ -763,7 +763,7 @@ const ProfessionalProfilePage = () => {
                                 type="button"
                                 onClick={submitPmProfileRequest}
                                 disabled={savingProfile}
-                                className="h-10 rounded-xl bg-blue-600 px-4 text-xs font-black uppercase tracking-wider text-white hover:bg-blue-700"
+                                className="h-10 rounded-xl bg-[#D9692A] px-4 text-xs font-black uppercase tracking-wider text-white hover:bg-[#B85A24]"
                               >
                                 {savingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 Save & Send to Admin
@@ -779,12 +779,12 @@ const ProfessionalProfilePage = () => {
                     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-500">
                        {experienceRows.length > 0 ? experienceRows.map((exp, i) => (
                          <div key={i} className="relative pl-10 before:absolute before:left-3 before:top-2 before:bottom-0 before:w-0.5 before:bg-slate-100">
-                            <div className="absolute left-0 top-1 h-6 w-6 rounded-full bg-blue-600 border-4 border-white shadow-sm z-10" />
+                            <div className="absolute left-0 top-1 h-6 w-6 rounded-full bg-[#D9692A] border-4 border-white shadow-sm z-10" />
                             <div className="mb-2 flex items-center justify-between">
                                <h4 className="text-lg font-bold text-slate-900">{exp.role || exp.title}</h4>
                                <Badge variant="outline" className="rounded-lg border-slate-200 bg-slate-50 text-slate-500 font-bold text-[10px]">{exp.period}</Badge>
                             </div>
-                            <p className="mb-4 text-sm font-bold text-blue-600 uppercase tracking-widest">{exp.company || "Onboarding"}</p>
+                            <p className="mb-4 text-sm font-bold text-[#D9692A] uppercase tracking-widest">{exp.company || "Onboarding"}</p>
                             <p className="text-sm font-medium text-slate-500 leading-relaxed">{exp.description}</p>
                          </div>
                        )) : (
@@ -840,7 +840,7 @@ const ProfessionalProfilePage = () => {
             {/* Sidebar Cards */}
             <div className="space-y-6">
                <Card className="rounded-[40px] border-slate-100 p-8 shadow-lg bg-white overflow-hidden relative">
-                  <div className="absolute top-0 right-0 h-24 w-24 -translate-y-1/2 translate-x-1/2 rounded-full bg-blue-600/5" />
+                  <div className="absolute top-0 right-0 h-24 w-24 -translate-y-1/2 translate-x-1/2 rounded-full bg-[#D9692A]/5" />
                   <div className="mb-6 flex items-center justify-between">
                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base Rate</p>
                      <div className="flex items-center gap-1">

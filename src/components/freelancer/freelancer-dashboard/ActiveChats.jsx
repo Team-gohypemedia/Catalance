@@ -68,7 +68,7 @@ const ActiveChats = ({ previewMessages, onOpenMessages }) => (
             {previewMessages.map((message) => (
               <li
                 key={message.id}
-                className="rounded-[18px] bg-white/[0.03] px-3.5 py-3.5"
+                className="rounded-[18px] dark:bg-white/[0.03] bg-black/[0.03] border dark:border-white/[0.04] border-black/[0.04] px-3.5 py-3.5"
               >
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#272a31] text-[11px] font-bold text-zinc-100">
@@ -78,16 +78,16 @@ const ActiveChats = ({ previewMessages, onOpenMessages }) => (
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-zinc-100">
+                          <p className="truncate text-sm font-semibold dark:text-white text-[#1C1B1F]">
                             {message.senderName}
                           </p>
                           {message.projectLabel ? (
-                            <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[#94a3b8]">
+                            <span className="rounded-full dark:bg-white/[0.06] bg-black/[0.05] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] dark:text-[#94a3b8] text-zinc-500">
                               {message.projectLabel}
                             </span>
                           ) : null}
                         </div>
-                        <p className="mt-2 text-sm leading-5 text-zinc-200">
+                        <p className="mt-2 text-sm leading-5 dark:text-zinc-200 text-muted-foreground">
                           {message.previewText}
                         </p>
                       </div>
@@ -103,7 +103,7 @@ const ActiveChats = ({ previewMessages, onOpenMessages }) => (
           <button
             type="button"
             onClick={onOpenMessages}
-            className="mt-8 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-[#8f8f8f] transition-colors hover:dark:text-white text-[#1C1B1F]"
+            className="mt-8 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:dark:text-white hover:text-[#1C1B1F]"
           >
             <span>Open Messages ({previewMessages.length})</span>
             <ChevronRight className="size-[15px] stroke-[1.75]" />

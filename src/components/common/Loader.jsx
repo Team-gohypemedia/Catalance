@@ -61,14 +61,14 @@ export default function Loader({ size = "full", className = "" }) {
         <img
           src={loaderOuter}
           alt="Loading outer"
-          className={`absolute ${config.outer} animate-spin-clockwise`}
+          className={`absolute ${config.outer} animate-spin-clockwise invert dark:invert-0`}
         />
         
         {/* Inner loader - rotates counter-clockwise */}
         <img
           src={loaderInner}
           alt="Loading inner"
-          className={`absolute ${config.inner} animate-spin-counter-clockwise`}
+          className={`absolute ${config.inner} animate-spin-counter-clockwise invert dark:invert-0`}
         />
       </div>
     </div>

@@ -91,7 +91,7 @@ export const ManagerTopBar = () => {
                 variant="ghost"
                 size="icon"
                 aria-label="Open notifications"
-                className="relative h-9 w-9 rounded-[7px] border-0 bg-transparent text-slate-500 transition-all hover:bg-white hover:text-blue-600 hover:shadow-sm"
+                className="relative h-9 w-9 rounded-[7px] border-0 bg-transparent text-slate-500 transition-all hover:bg-white hover:text-[#D9692A] hover:shadow-sm"
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 ? (
@@ -107,7 +107,7 @@ export const ManagerTopBar = () => {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-auto p-0 text-xs text-blue-600 hover:bg-transparent hover:text-blue-700"
+                    className="h-auto p-0 text-xs text-[#D9692A] hover:bg-transparent hover:text-[#B85A24]"
                     onClick={markAllAsRead}
                   >
                     Mark all as read
@@ -128,12 +128,12 @@ export const ManagerTopBar = () => {
                         type="button"
                         onClick={() => handleNotificationClick(notification)}
                         className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-slate-50 ${
-                          !notification.read ? "bg-blue-50/50" : "bg-white"
+                          !notification.read ? "bg-orange-50/50" : "bg-white"
                         }`}
                       >
                         <div
                           className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
-                            !notification.read ? "bg-blue-600" : "bg-slate-200"
+                            !notification.read ? "bg-[#D9692A]" : "bg-slate-200"
                           }`}
                         />
                         <div className="min-w-0 flex-1">
@@ -158,7 +158,7 @@ export const ManagerTopBar = () => {
             size="icon"
             aria-label="Open settings"
             onClick={() => navigate("/project-manager/profile")}
-            className="h-9 w-9 rounded-[7px] border-0 bg-transparent text-slate-500 transition-all hover:bg-white hover:text-blue-600 hover:shadow-sm"
+            className="h-9 w-9 rounded-[7px] border-0 bg-transparent text-slate-500 transition-all hover:bg-white hover:text-[#D9692A] hover:shadow-sm"
           >
             <Settings className="h-5 w-5" />
           </Button>
@@ -181,7 +181,7 @@ export const ManagerTopBar = () => {
           </div>
           <Avatar className="h-10 w-10 rounded-2xl border-2 border-white shadow-md ring-1 ring-slate-100 transition-transform group-hover:scale-105 sm:h-11 sm:w-11">
             <AvatarImage src={sessionUser?.avatar} />
-            <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-700 text-[10px] font-bold uppercase text-white">
+            <AvatarFallback className="bg-[#D9692A] text-[10px] font-bold uppercase text-white">
               {sessionUser?.fullName?.split(" ").map((name) => name[0]).join("") || "PM"}
             </AvatarFallback>
           </Avatar>

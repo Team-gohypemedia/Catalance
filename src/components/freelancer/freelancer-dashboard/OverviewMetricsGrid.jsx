@@ -23,7 +23,6 @@ const FreelancerMetricCardSkeleton = ({ item }) => {
     <FreelancerDashboardPanel
       className={cn(
         "group relative min-h-[136px] border border-transparent bg-card px-3.5 py-4 sm:min-h-[110px] sm:p-5",
-        shouldSpanFullWidth && "col-span-2 xl:col-span-1",
       )}
     >
       <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
@@ -97,20 +96,16 @@ const FreelancerMetricCard = ({
       tabIndex={onClick ? 0 : undefined}
       aria-label={ariaLabel}
     >
+      {control ? (
+        <div className="absolute right-3.5 top-3.5 z-20 sm:hidden">
+          {control}
+        </div>
+      ) : null}
+
       <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
-        {control ? (
-          <div className="flex w-full items-center justify-between">
-            <span className="size-10 shrink-0 sm:size-14" aria-hidden="true" />
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
-              <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
-            </div>
-            <div className="shrink-0">{control}</div>
-          </div>
-        ) : (
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
-            <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
-          </div>
-        )}
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
+          <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
+        </div>
         <p className="mt-4 shrink-0 text-[2rem] font-semibold leading-none tracking-[-0.05em] dark:text-white text-[#1C1B1F] transition-colors group-hover:text-[var(--primary)] sm:mt-6 sm:text-[3rem]">
           {value}
         </p>

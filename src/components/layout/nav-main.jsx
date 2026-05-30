@@ -71,13 +71,13 @@ export function NavMain({ items }) {
                 >
                   <Link
                     to={item.url ?? "#"}
-                    className={`relative ${isActive ? "text-primary font-medium" : ""}`}
+                    className={`relative ${isActive ? "!text-primary font-medium" : ""}`}
                     onClick={handleClick}
                   >
                     {Icon && (
-                      <Icon className={isActive ? "text-primary" : ""} />
+                      <Icon className={isActive ? "!text-primary" : ""} />
                     )}
-                    <span>{item.title}</span>
+                    <span className={isActive ? "!text-[#D9692A]" : ""}>{item.title}</span>
                     {showMessageBadge && (
                       <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white animate-pulse">
                         {chatUnreadCount > 99 ? "99+" : chatUnreadCount}

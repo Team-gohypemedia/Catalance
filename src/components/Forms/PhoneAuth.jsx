@@ -845,7 +845,7 @@ function PhoneAuth() {
                 <img
                   src={logo}
                   alt="Catalance logo"
-                  className="h-7 w-7 object-contain"
+                  className="h-7 w-7 object-contain invert dark:invert-0"
                 />
               </div>
 
@@ -931,7 +931,7 @@ function PhoneAuth() {
                 <img
                   src={logo}
                   alt="Catalance logo"
-                  className="h-14 w-14 object-contain sm:h-25 sm:w-25"
+                  className="h-14 w-14 object-contain sm:h-25 sm:w-25 invert dark:invert-0"
                 />
               </div>
 
