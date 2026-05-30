@@ -18,6 +18,7 @@ import {
   resolveAvatarUrl,
 } from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
 import { useAuth } from "@/shared/context/AuthContext";
+import { cn } from "@/shared/lib/utils";
 import { getSubcategorySelectionKey } from "@/components/freelancer/Freelancer-Onboarding/service-details";
 import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";
@@ -750,6 +751,7 @@ const AgencyServiceReviewSlide = ({
         timeline: toDisplayName(caseStudy?.timeline),
         budget: formatCaseStudyBudget(caseStudy?.budget),
         projectLink: normalizeProjectLinkValue(caseStudy?.projectLink),
+        previewImage: caseStudy?.previewImage || "",
         projectFileName: String(caseStudy?.projectFile?.name || "").trim(),
       }))
       .filter((caseStudy) =>
