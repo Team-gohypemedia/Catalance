@@ -255,6 +255,15 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
       freelancer?.matchedService?.serviceKey ||
       freelancer?.serviceKey ||
       null;
+    const profileRole =
+      String(
+        freelancer?.profileRole ||
+          freelancer?.profileDetails?.profileRole ||
+          freelancer?.profileDetails?.role ||
+          "",
+      )
+        .trim()
+        .toLowerCase() || null;
 
     return {
       ...freelancer,
@@ -297,6 +306,13 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
       score: matchPercent,
       rawMatchScore,
       serviceMatch: Boolean(freelancer?.serviceMatch),
+      profileRole,
+      isAgencyProfile: profileRole === "agency",
+      coveredServices: Array.isArray(freelancer?.coveredServices) ? freelancer.coveredServices : [],
+      coveredServiceKeys: Array.isArray(freelancer?.coveredServiceKeys)
+        ? freelancer.coveredServiceKeys
+        : [],
+      serviceMatches: Array.isArray(freelancer?.serviceMatches) ? freelancer.serviceMatches : [],
       isOpenToWork:
         freelancer?.openToWork === undefined
           ? freelancer?.available ?? null

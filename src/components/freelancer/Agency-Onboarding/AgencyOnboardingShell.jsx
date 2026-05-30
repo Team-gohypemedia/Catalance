@@ -17,6 +17,13 @@ import {
 import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
 import { DarkGradientBg } from "@/components/elegant-dark-pattern";
 import {
+  DEFAULT_BASIC_PROFILE_FIELDS,
+  resolveBasicProfileFields,
+  resolveCaseStudyFields,
+  resolveServiceInfoFields,
+  resolveServicePricingFields,
+} from "@/shared/lib/freelancer-onboarding-content";
+import {
   API_BASE_URL,
   fetchStatesByCountry,
   listFreelancers,
@@ -101,6 +108,7 @@ const slideRegistry = {
 
 const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const RESUME_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const RESUME_AUTOFILL_CONFIDENCE_THRESHOLD = 0.9;
 const MIN_USERNAME_LENGTH = 3;
 const RESUME_UPLOAD_ALLOWED_MIME_TYPES = new Set([
   "application/pdf",
@@ -108,6 +116,9 @@ const RESUME_UPLOAD_ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 const RESUME_UPLOAD_ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx"];
+const SYSTEM_BASIC_PROFILE_FIELD_IDS = new Set(
+  DEFAULT_BASIC_PROFILE_FIELDS.map((field) => field.id),
+);
 const BASIC_PROFILE_FIELD_ORDER = [
   "fullName",
   "username",
@@ -127,6 +138,91 @@ const createInitialBasicProfileForm = () => ({
   profilePhoto: null,
   resume: null,
 });
+
+const createInitialResumeAutofillState = () => ({
+  tone: "muted",
+  message: "",
+});
+
+const getBasicProfileFieldValue = (form, fieldId) => {
+  const normalizedFieldId = String(fieldId || "").trim();
+  if (!normalizedFieldId) {
+    return "";
+  }
+
+  if (SYSTEM_BASIC_PROFILE_FIELD_IDS.has(normalizedFieldId)) {
+    return form?.[normalizedFieldId];
+  }
+
+  return "";
+};
+
+const hasAutofillableFieldValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
+  return Boolean(String(value ?? "").trim());
+};
+
+const isCaseStudyEffectivelyEmpty = (caseStudy = {}) =>
+  ![
+    caseStudy?.title,
+    caseStudy?.description,
+    caseStudy?.projectLink,
+    caseStudy?.role,
+    caseStudy?.timeline,
+    caseStudy?.budget,
+    caseStudy?.niche,
+  ].some((value) => hasAutofillableFieldValue(value));
+
+const findMatchingOptionValue = (options = [], candidate) => {
+  const normalizedCandidate = String(candidate || "").trim().toLowerCase();
+  if (!normalizedCandidate) {
+    return "";
+  }
+
+  const matchingOption = options.find((option) => {
+    const value = String(option?.value || "").trim().toLowerCase();
+    const label = String(option?.label || option?.value || "").trim().toLowerCase();
+    return value === normalizedCandidate || label === normalizedCandidate;
+  });
+
+  return matchingOption?.value || "";
+};
+
+const normalizeConfidenceValue = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return 0;
+  }
+
+  return Math.min(Math.max(numericValue, 0), 1);
+};
+
+const normalizeResumeAutofillFieldOptions = ({
+  field,
+  countryOptions,
+  stateOptions,
+  languageOptions,
+}) => {
+  if (field.dataSource === "countryOptions") {
+    return countryOptions.map((option) => ({ value: option, label: option }));
+  }
+
+  if (field.dataSource === "stateOptions") {
+    return stateOptions.map((option) => ({ value: option, label: option }));
+  }
+
+  if (field.dataSource === "languageOptions") {
+    return languageOptions.map((option) => ({
+      value: option.value,
+      label: option.label,
+    }));
+  }
+
+  return Array.isArray(field.options) ? field.options : [];
+};
 
 const extractProfilePhotoUrl = (value) => {
   if (!value) return "";
@@ -812,6 +908,11 @@ const AgencyOnboardingShell = ({
   const [isProfileCropOpen, setIsProfileCropOpen] = useState(false);
   const [hasHydratedFromUser, setHasHydratedFromUser] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState("idle");
+  const [isResumeAutofillRunning, setIsResumeAutofillRunning] = useState(false);
+  const [resumeAutofillState, setResumeAutofillState] = useState(
+    createInitialResumeAutofillState(),
+  );
+  const [resumeUploadRequestId, setResumeUploadRequestId] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResettingOnboarding, setIsResettingOnboarding] = useState(false);
   const shouldUseEmbeddedExit =
@@ -844,6 +945,13 @@ const AgencyOnboardingShell = ({
   const currentSlide =
     onboardingSlides[currentSlideIndex] || onboardingSlides[0];
   const ActiveSlide = slideRegistry[currentSlide.id];
+  const basicProfileFields = useMemo(() => resolveBasicProfileFields(), []);
+  const globalServiceInfoFields = useMemo(() => resolveServiceInfoFields(), []);
+  const globalServicePricingFields = useMemo(
+    () => resolveServicePricingFields(),
+    [],
+  );
+  const globalCaseStudyFields = useMemo(() => resolveCaseStudyFields(), []);
   const progressValue =
     currentSlide.progressValue ??
     ((currentSlideIndex + 1) / Math.max(totalSlides, 1)) * 100;
@@ -1819,6 +1927,525 @@ const AgencyOnboardingShell = ({
     return uploadedUrl;
   };
 
+  const buildResumeAutofillFieldPayload = () =>
+    basicProfileFields
+      .filter((field) => field?.visible !== false)
+      .map((field) => ({
+        id: field.id,
+        label: field.label,
+        type: field.type,
+        required: Boolean(field.required),
+        options:
+          field.id === "state"
+            ? []
+            : normalizeResumeAutofillFieldOptions({
+                field,
+                countryOptions,
+                stateOptions,
+                languageOptions,
+              }),
+      }));
+
+  const buildSectionAutofillFieldPayload = (fields = [], nicheOptions = dbNiches) =>
+    (Array.isArray(fields) ? fields : [])
+      .filter((field) => field?.visible !== false)
+      .map((field) => ({
+        id: field.id,
+        label: field.label,
+        type: field.type,
+        required: Boolean(field.required),
+        options:
+          field.id === "niche"
+            ? nicheOptions
+            : Array.isArray(field.options)
+              ? field.options
+              : [],
+      }));
+
+  const buildResumeAutofillSchemaPayload = (nicheOptions = dbNiches) => ({
+    basicProfile: buildResumeAutofillFieldPayload(),
+    serviceInfo: buildSectionAutofillFieldPayload(globalServiceInfoFields, nicheOptions),
+    servicePricing: buildSectionAutofillFieldPayload(globalServicePricingFields, nicheOptions),
+    caseStudy: buildSectionAutofillFieldPayload(globalCaseStudyFields, nicheOptions),
+  });
+
+  const applyResumeAutofillSuggestions = (suggestions = []) => {
+    const fieldMap = new Map(basicProfileFields.map((field) => [field.id, field]));
+    const fieldOrder = new Map(
+      basicProfileFields.map((field, index) => [field.id, index]),
+    );
+    const normalizedSuggestions = (Array.isArray(suggestions) ? suggestions : []).toSorted(
+      (left, right) =>
+        (fieldOrder.get(String(left?.fieldId || "").trim()) ?? Number.MAX_SAFE_INTEGER) -
+        (fieldOrder.get(String(right?.fieldId || "").trim()) ?? Number.MAX_SAFE_INTEGER),
+    );
+    let nextForm = { ...basicProfileForm };
+    let appliedCount = 0;
+
+    normalizedSuggestions.forEach((suggestion) => {
+      const fieldId = String(suggestion?.fieldId || "").trim();
+      const confidence = Number(suggestion?.confidence);
+      const schemaField = fieldMap.get(fieldId);
+
+      if (
+        !schemaField ||
+        !Number.isFinite(confidence) ||
+        confidence < RESUME_AUTOFILL_CONFIDENCE_THRESHOLD ||
+        fieldId === "username" ||
+        fieldId === "profilePhoto" ||
+        fieldId === "resume"
+      ) {
+        return;
+      }
+
+      const currentValue = getBasicProfileFieldValue(nextForm, fieldId);
+      if (hasAutofillableFieldValue(currentValue)) {
+        return;
+      }
+
+      const resolvedOptions = normalizeResumeAutofillFieldOptions({
+        field: schemaField,
+        countryOptions,
+        stateOptions:
+          schemaField.id === "state" && nextForm.country
+            ? resolveStateOptionsForCountry(nextForm.country)
+            : stateOptions,
+        languageOptions,
+      });
+
+      let nextValue = suggestion?.value;
+      if (schemaField.type === "multiselect") {
+        const rawValues = Array.isArray(nextValue) ? nextValue : [nextValue];
+        nextValue = Array.from(
+          new Set(
+            rawValues
+              .map((value) => findMatchingOptionValue(resolvedOptions, value))
+              .filter(Boolean),
+          ),
+        );
+      } else if (schemaField.type === "select") {
+        nextValue = findMatchingOptionValue(resolvedOptions, nextValue);
+      } else {
+        nextValue = String(nextValue || "").trim();
+      }
+
+      if (!hasAutofillableFieldValue(nextValue)) {
+        return;
+      }
+
+      if (SYSTEM_BASIC_PROFILE_FIELD_IDS.has(fieldId)) {
+        nextForm =
+          fieldId === "country"
+            ? { ...nextForm, country: nextValue, state: "" }
+            : { ...nextForm, [fieldId]: nextValue };
+        appliedCount += 1;
+      }
+    });
+
+    if (!appliedCount) {
+      return 0;
+    }
+
+    startTransition(() => {
+      setBasicProfileForm(nextForm);
+      syncBasicProfileValidationErrors(buildBasicProfileValidationErrors(nextForm));
+    });
+
+    return appliedCount;
+  };
+
+  const applyServiceAutofillSuggestions = ({
+    suggestions = [],
+    availableServices = [],
+    availableNiches = [],
+  }) => {
+    const serviceInfoFieldMap = new Map(
+      globalServiceInfoFields.map((field) => [field.id, field]),
+    );
+    const servicePricingFieldMap = new Map(
+      globalServicePricingFields.map((field) => [field.id, field]),
+    );
+    const caseStudyFieldMap = new Map(
+      globalCaseStudyFields.map((field) => [field.id, field]),
+    );
+    const nicheOptions = Array.isArray(availableNiches) ? availableNiches : [];
+    const normalizedSuggestions = Array.isArray(suggestions) ? suggestions : [];
+    const nextSelectedServices = [...selectedServices];
+    const selectedServiceSet = new Set(nextSelectedServices);
+    const nextDrafts = { ...serviceDraftsByKey };
+    let appliedCount = 0;
+    let addedServicesCount = 0;
+
+    normalizedSuggestions.forEach((suggestion) => {
+      const serviceConfidence = normalizeConfidenceValue(suggestion?.confidence);
+      if (serviceConfidence < RESUME_AUTOFILL_CONFIDENCE_THRESHOLD) {
+        return;
+      }
+
+      const resolvedServiceKey = resolveServiceKey(
+        availableServices,
+        suggestion?.serviceKey || suggestion?.serviceName,
+      );
+      if (!resolvedServiceKey) {
+        return;
+      }
+
+      const serviceMeta = getServiceCatalogMeta(availableServices, resolvedServiceKey);
+      let draft = normalizeServiceDraft(nextDrafts[resolvedServiceKey], {
+        serviceKey: resolvedServiceKey,
+        serviceId: serviceMeta.serviceId,
+      });
+
+      if (!selectedServiceSet.has(resolvedServiceKey)) {
+        nextSelectedServices.push(resolvedServiceKey);
+        selectedServiceSet.add(resolvedServiceKey);
+        addedServicesCount += 1;
+      }
+
+      const titleConfidence = normalizeConfidenceValue(suggestion?.serviceInfo?.title?.confidence);
+      if (
+        !hasAutofillableFieldValue(draft.title) &&
+        titleConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD
+      ) {
+        draft.title = String(suggestion?.serviceInfo?.title?.value || "").trim();
+        if (draft.title) {
+          appliedCount += 1;
+        }
+      }
+
+      const experienceOptions = serviceInfoFieldMap.get("experience")?.options || [];
+      const experienceConfidence = normalizeConfidenceValue(
+        suggestion?.serviceInfo?.experience?.confidence,
+      );
+      if (
+        !hasAutofillableFieldValue(draft.experience) &&
+        experienceConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD
+      ) {
+        const nextExperience = findMatchingOptionValue(
+          experienceOptions,
+          suggestion?.serviceInfo?.experience?.value,
+        );
+        if (nextExperience) {
+          draft.experience = nextExperience;
+          appliedCount += 1;
+        }
+      }
+
+      if (
+        (!Array.isArray(draft.subcategories) || draft.subcategories.length === 0) &&
+        Array.isArray(suggestion?.serviceInfo?.categories) &&
+        suggestion.serviceInfo.categories.length > 0
+      ) {
+        const nextSubcategories = suggestion.serviceInfo.categories
+          .map((entry) => {
+            const subCategoryId = Number(entry?.subCategoryId);
+            const label = String(entry?.subCategoryName || "").trim();
+            const customSkillNames = normalizeDraftSkillList(entry?.customSkillNames || []);
+            if (!subCategoryId && !label) {
+              return null;
+            }
+
+            return {
+              subCategoryId: Number.isInteger(subCategoryId) && subCategoryId > 0 ? subCategoryId : null,
+              subCategoryKey:
+                Number.isInteger(subCategoryId) && subCategoryId > 0
+                  ? `catalog:${subCategoryId}`
+                  : label.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+              label,
+              isCustom: !(Number.isInteger(subCategoryId) && subCategoryId > 0),
+              selectedToolIds: [],
+              customSkillNames,
+            };
+          })
+          .filter(Boolean);
+
+        if (nextSubcategories.length > 0) {
+          draft.subcategories = nextSubcategories;
+          draft.activeSkillCategory = nextSubcategories[0].subCategoryKey || null;
+          draft.skillsAndTechnologies = normalizeDraftSkillList(
+            nextSubcategories.flatMap((entry) => entry.customSkillNames || []),
+          );
+          appliedCount += 1;
+        }
+      }
+
+      const descriptionConfidence = normalizeConfidenceValue(
+        suggestion?.servicePricing?.description?.confidence,
+      );
+      if (
+        !hasAutofillableFieldValue(draft.description) &&
+        descriptionConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD
+      ) {
+        draft.description = String(suggestion?.servicePricing?.description?.value || "").trim();
+        if (draft.description) {
+          appliedCount += 1;
+        }
+      }
+
+      const deliveryOptions = servicePricingFieldMap.get("deliveryTimeline")?.options || [];
+      const deliveryConfidence = normalizeConfidenceValue(
+        suggestion?.servicePricing?.deliveryTimeline?.confidence,
+      );
+      if (
+        !hasAutofillableFieldValue(draft.deliveryTimeline) &&
+        deliveryConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD
+      ) {
+        const nextDeliveryTimeline = findMatchingOptionValue(
+          deliveryOptions,
+          suggestion?.servicePricing?.deliveryTimeline?.value,
+        );
+        if (nextDeliveryTimeline) {
+          draft.deliveryTimeline = nextDeliveryTimeline;
+          appliedCount += 1;
+        }
+      }
+
+      const priceConfidence = normalizeConfidenceValue(
+        suggestion?.servicePricing?.priceRange?.confidence,
+      );
+      if (
+        !hasAutofillableFieldValue(draft.priceRange) &&
+        priceConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD
+      ) {
+        const nextPriceRange = String(
+          suggestion?.servicePricing?.priceRange?.value || "",
+        ).trim();
+        if (nextPriceRange) {
+          draft.priceRange = nextPriceRange;
+          appliedCount += 1;
+        }
+      }
+
+      const keywordConfidence = normalizeConfidenceValue(
+        suggestion?.visuals?.keywords?.confidence,
+      );
+      if (
+        (!Array.isArray(draft.keywords) || draft.keywords.length === 0) &&
+        keywordConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD
+      ) {
+        const nextKeywords = normalizeDraftSkillList(
+          suggestion?.visuals?.keywords?.value || [],
+        );
+        if (nextKeywords.length > 0) {
+          draft.keywords = nextKeywords;
+          appliedCount += 1;
+        }
+      }
+
+      const caseStudies = Array.isArray(draft.caseStudies) && draft.caseStudies.length > 0
+        ? [...draft.caseStudies]
+        : [createEmptyServiceCaseStudy()];
+      const activeCaseStudyIndex = caseStudies.findIndex(
+        (entry) => String(entry?.id || "").trim() === String(draft.activeCaseStudyId || "").trim(),
+      );
+      const targetCaseStudyIndex = activeCaseStudyIndex >= 0 ? activeCaseStudyIndex : 0;
+      const targetCaseStudy = caseStudies[targetCaseStudyIndex] || createEmptyServiceCaseStudy();
+
+      if (isCaseStudyEffectivelyEmpty(targetCaseStudy)) {
+        const nextCaseStudy = { ...targetCaseStudy };
+        let didApplyCaseStudyField = false;
+
+        const caseStudyTitleConfidence = normalizeConfidenceValue(
+          suggestion?.caseStudy?.title?.confidence,
+        );
+        if (caseStudyTitleConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD) {
+          const nextTitle = String(suggestion?.caseStudy?.title?.value || "").trim();
+          if (nextTitle) {
+            nextCaseStudy.title = nextTitle;
+            didApplyCaseStudyField = true;
+          }
+        }
+
+        const caseStudyDescriptionConfidence = normalizeConfidenceValue(
+          suggestion?.caseStudy?.description?.confidence,
+        );
+        if (caseStudyDescriptionConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD) {
+          const nextDescription = String(
+            suggestion?.caseStudy?.description?.value || "",
+          ).trim();
+          if (nextDescription) {
+            nextCaseStudy.description = nextDescription;
+            didApplyCaseStudyField = true;
+          }
+        }
+
+        const projectLinkConfidence = normalizeConfidenceValue(
+          suggestion?.caseStudy?.projectLink?.confidence,
+        );
+        if (projectLinkConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD) {
+          const nextProjectLink = String(
+            suggestion?.caseStudy?.projectLink?.value || "",
+          ).trim();
+          if (nextProjectLink) {
+            nextCaseStudy.projectLink = nextProjectLink;
+            didApplyCaseStudyField = true;
+          }
+        }
+
+        const roleOptions = caseStudyFieldMap.get("role")?.options || [];
+        const roleConfidence = normalizeConfidenceValue(
+          suggestion?.caseStudy?.role?.confidence,
+        );
+        if (roleConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD) {
+          const nextRole = findMatchingOptionValue(roleOptions, suggestion?.caseStudy?.role?.value);
+          if (nextRole) {
+            nextCaseStudy.role = nextRole;
+            didApplyCaseStudyField = true;
+          }
+        }
+
+        const timelineOptions = caseStudyFieldMap.get("timeline")?.options || [];
+        const timelineConfidence = normalizeConfidenceValue(
+          suggestion?.caseStudy?.timeline?.confidence,
+        );
+        if (timelineConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD) {
+          const nextTimeline = findMatchingOptionValue(
+            timelineOptions,
+            suggestion?.caseStudy?.timeline?.value,
+          );
+          if (nextTimeline) {
+            nextCaseStudy.timeline = nextTimeline;
+            didApplyCaseStudyField = true;
+          }
+        }
+
+        const budgetConfidence = normalizeConfidenceValue(
+          suggestion?.caseStudy?.budget?.confidence,
+        );
+        if (budgetConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD) {
+          const nextBudget = String(suggestion?.caseStudy?.budget?.value || "").trim();
+          if (nextBudget) {
+            nextCaseStudy.budget = nextBudget;
+            didApplyCaseStudyField = true;
+          }
+        }
+
+        const nicheConfidence = normalizeConfidenceValue(
+          suggestion?.caseStudy?.niche?.confidence,
+        );
+        if (nicheConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD) {
+          const nextNiche = findMatchingOptionValue(
+            nicheOptions,
+            suggestion?.caseStudy?.niche?.value,
+          );
+          if (nextNiche) {
+            nextCaseStudy.niche = nextNiche;
+            didApplyCaseStudyField = true;
+          }
+        }
+
+        if (didApplyCaseStudyField) {
+          caseStudies[targetCaseStudyIndex] = nextCaseStudy;
+          draft.caseStudies = caseStudies;
+          draft.caseStudy = caseStudies[0];
+          draft.activeCaseStudyId =
+            String(draft.activeCaseStudyId || caseStudies[targetCaseStudyIndex]?.id || "").trim() ||
+            caseStudies[targetCaseStudyIndex]?.id ||
+            draft.activeCaseStudyId;
+          appliedCount += 1;
+        }
+      }
+
+      nextDrafts[resolvedServiceKey] = normalizeServiceDraft(draft, {
+        serviceKey: resolvedServiceKey,
+        serviceId: serviceMeta.serviceId,
+      });
+    });
+
+    if (!appliedCount && !addedServicesCount) {
+      return { appliedCount: 0, addedServicesCount: 0 };
+    }
+
+    startTransition(() => {
+      setSelectedServices(nextSelectedServices);
+      setServiceDraftsByKey(nextDrafts);
+    });
+
+    return { appliedCount, addedServicesCount };
+  };
+
+  const autofillBasicProfileFromResume = async (file) => {
+    setIsResumeAutofillRunning(true);
+    setResumeAutofillState({
+      tone: "muted",
+      message: "AI is reading your CV and checking high-confidence profile fields.",
+    });
+
+    try {
+      const [availableServices, availableNiches] = await Promise.all([
+        ensureMarketplaceServicesLoaded(),
+        ensureMarketplaceNichesLoaded(),
+      ]);
+      const payload = new FormData();
+      payload.append("file", file);
+      payload.append(
+        "schema",
+        JSON.stringify(buildResumeAutofillSchemaPayload(availableNiches)),
+      );
+
+      const response = await authFetch("/profile/resume-autofill", {
+        method: "POST",
+        body: payload,
+      });
+
+      if (!response.ok) {
+        const errorPayload = await response
+          .json()
+          .catch(() => ({ message: "Could not analyze the uploaded CV." }));
+        throw new Error(
+          errorPayload?.error?.message ||
+            errorPayload?.message ||
+            "Could not analyze the uploaded CV.",
+        );
+      }
+
+      const data = await response.json().catch(() => ({}));
+      const basicProfileSuggestions = Array.isArray(data?.data?.basicProfileFields)
+        ? data.data.basicProfileFields
+        : [];
+      const serviceSuggestions = Array.isArray(data?.data?.suggestedServices)
+        ? data.data.suggestedServices
+        : [];
+      const basicProfileAppliedCount = applyResumeAutofillSuggestions(
+        basicProfileSuggestions,
+      );
+      const serviceAutofillSummary = applyServiceAutofillSuggestions({
+        suggestions: serviceSuggestions,
+        availableServices,
+        availableNiches,
+      });
+      const totalAppliedCount =
+        basicProfileAppliedCount + Number(serviceAutofillSummary?.appliedCount || 0);
+      const addedServicesCount = Number(serviceAutofillSummary?.addedServicesCount || 0);
+
+      if (totalAppliedCount > 0 || addedServicesCount > 0) {
+        setResumeAutofillState({
+          tone: "success",
+          message:
+            `AI filled ${totalAppliedCount} field${totalAppliedCount === 1 ? "" : "s"} with 90%+ confidence` +
+            (addedServicesCount > 0
+              ? ` and added ${addedServicesCount} service${addedServicesCount === 1 ? "" : "s"} from your CV.`
+              : ".") +
+            " Review them before continuing.",
+        });
+        return;
+      }
+
+      setResumeAutofillState({
+        tone: "muted",
+        message: "AI reviewed the CV but did not find any 90%+ confidence fields to fill automatically.",
+      });
+    } catch (error) {
+      console.error("Resume autofill failed:", error);
+      setResumeAutofillState({
+        tone: "error",
+        message: error?.message || "Could not analyze the uploaded CV.",
+      });
+    } finally {
+      setIsResumeAutofillRunning(false);
+    }
+  };
+
   const uploadServiceMediaFile = async (file) => {
     const uploadData = new FormData();
     uploadData.append("file", file);
@@ -2207,6 +2834,16 @@ const AgencyOnboardingShell = ({
     setDbServices(services);
     return services;
   }, [dbServices]);
+
+  const ensureMarketplaceNichesLoaded = useCallback(async () => {
+    if (dbNiches.length) {
+      return dbNiches;
+    }
+
+    const niches = await fetchMarketplaceNiches();
+    setDbNiches(niches);
+    return niches;
+  }, [dbNiches]);
 
   const submitOnboardingAndNavigate = ({
     deliveryPolicyAcceptedOverride,
@@ -2890,12 +3527,14 @@ const AgencyOnboardingShell = ({
         file,
       },
     }));
+    setResumeAutofillState(createInitialResumeAutofillState());
     setProfileError("");
     setBasicProfileErrors((currentErrors) => {
       const nextErrors = { ...currentErrors };
       delete nextErrors.resume;
       return nextErrors;
     });
+    void autofillBasicProfileFromResume(file);
   };
 
   const handleResumeRemove = () => {
@@ -2903,6 +3542,8 @@ const AgencyOnboardingShell = ({
       ...currentForm,
       resume: null,
     }));
+    setIsResumeAutofillRunning(false);
+    setResumeAutofillState(createInitialResumeAutofillState());
     setProfileError("");
     setBasicProfileErrors((currentErrors) => {
       const nextErrors = { ...currentErrors };
@@ -2975,6 +3616,8 @@ const AgencyOnboardingShell = ({
     setPendingProfilePhotoFile(null);
     setIsProfileCropOpen(false);
     setUsernameStatus("idle");
+    setIsResumeAutofillRunning(false);
+    setResumeAutofillState(createInitialResumeAutofillState());
     setAgencyValidationErrorsByStep({});
     setServiceValidationErrorsByStep({});
   }, [basicProfileForm.profilePhoto]);
@@ -3186,6 +3829,10 @@ const AgencyOnboardingShell = ({
                 resumeFile={basicProfileForm.resume}
                 onResumeSelect={handleResumeSelect}
                 onResumeRemove={handleResumeRemove}
+                isResumeAutofillRunning={isResumeAutofillRunning}
+                resumeAutofillTone={resumeAutofillState.tone}
+                resumeAutofillMessage={resumeAutofillState.message}
+                resumeUploadRequestId={resumeUploadRequestId}
                 agencyProfileForm={agencyProfileForm}
                 onAgencyFieldChange={handleAgencyFieldChange}
                 agencyValidationErrors={agencyValidationErrors}

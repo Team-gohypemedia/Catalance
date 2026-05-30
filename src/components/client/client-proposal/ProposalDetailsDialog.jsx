@@ -34,6 +34,8 @@ import {
   normalizeProposalStatus,
   resolveProposalServiceLabel,
   resolveProposalTitle,
+  resolveProposalAgencyFlag,
+  extractAgencyProposalServiceEntries,
   statusColors,
   statusLabels,
 } from "./proposal-utils.js";
@@ -64,6 +66,8 @@ const ProposalDetailsDialog = ({
 
   const headerDisplayName = getDisplayName(user);
   const activeProposalDetails = activeProposal ? extractProposalDetails(activeProposal) : null;
+  const isAgency = activeProposal ? resolveProposalAgencyFlag(activeProposal) : false;
+  const agencyServiceEntries = isAgency ? extractAgencyProposalServiceEntries(activeProposal) : [];
   const activeProposalStructuredData = useMemo(
     () =>
       activeProposal
@@ -173,7 +177,7 @@ const ProposalDetailsDialog = ({
                       startEditingProposal();
                       setIsAIChatOpen(true);
                     }}
-                    className="h-11 rounded-full border-primary/25 bg-background/30 px-5 text-white hover:bg-primary/20 hover:text-primary transition-colors"
+                    className="h-11 rounded-full border-primary/25 bg-background/30 px-5 text-foreground hover:bg-primary/20 hover:text-primary transition-colors"
                   >
                     <Sparkles className="mr-2 h-4 w-4 text-primary" />
                     Edit with AI
@@ -199,7 +203,7 @@ const ProposalDetailsDialog = ({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#64748b]">
                   01 Project Summary
                 </p>
-                <h3 className="text-lg font-semibold tracking-tight text-white">
+                <h3 className="text-lg font-semibold tracking-tight text-foreground">
                   Start with the essentials
                 </h3>
                 <p className="text-sm leading-6 text-[#94a3b8]">
@@ -219,7 +223,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("title", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder="Project name"
                       />
                     ) : (
@@ -237,7 +241,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("clientName", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder="Client name"
                       />
                     ) : (
@@ -255,7 +259,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("service", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder="Service"
                       />
                     ) : (
@@ -267,13 +271,15 @@ const ProposalDetailsDialog = ({
                   icon={CreditCard}
                   label="Budget"
                   value={
-                    isEditingProposal ? (
+                    isAgency ? (
+                      <span className="text-muted-foreground">Multiple Budgets</span>
+                    ) : isEditingProposal ? (
                       <Input
                         value={editableProposalDraft.budget}
                         onChange={(event) =>
                           handleEditableProposalDraftChange("budget", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder="e.g. 40000"
                       />
                     ) : (
@@ -282,6 +288,34 @@ const ProposalDetailsDialog = ({
                   }
                 />
               </div>
+
+              {agencyServiceEntries.length > 0 && (
+                <div className="mt-5 overflow-hidden rounded-[18px] border border-white/10 bg-background/35">
+                  <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.9fr)] gap-3 px-4 py-3 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:px-5">
+                    <p className="min-w-0">Service</p>
+                    <p className="min-w-0">Budget</p>
+                    <p className="min-w-0">Timeline</p>
+                  </div>
+                  <div className="divide-y divide-white/10">
+                    {agencyServiceEntries.map((entry, index) => (
+                      <div
+                        key={`${entry.name}-${index}`}
+                        className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.9fr)] gap-3 px-4 py-3 sm:px-5"
+                      >
+                        <p className="min-w-0 break-words text-[0.72rem] font-medium leading-5 text-foreground sm:text-[0.78rem]">
+                          {entry.name}
+                        </p>
+                        <p className="min-w-0 break-words text-[0.72rem] font-semibold leading-5 text-foreground sm:text-[0.78rem]">
+                          {entry.budget}
+                        </p>
+                        <p className="min-w-0 break-words text-[0.72rem] font-semibold leading-5 text-foreground sm:text-[0.78rem]">
+                          {entry.timeline}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </section>
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.95fr)]">
@@ -290,7 +324,7 @@ const ProposalDetailsDialog = ({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#64748b]">
                     02 Project Scope
                   </p>
-                  <h3 className="text-lg font-semibold tracking-tight text-white">
+                  <h3 className="text-lg font-semibold tracking-tight text-foreground">
                     What the project includes
                   </h3>
                 </div>
@@ -309,11 +343,11 @@ const ProposalDetailsDialog = ({
                       onChange={(event) =>
                         handleEditableProposalDraftChange("projectOverview", event.target.value)
                       }
-                      className="min-h-[180px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                      className="min-h-[180px] border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                       placeholder="Summarize the project, business context, and intended outcome."
                     />
                   ) : (
-                    <p className="text-sm leading-7 text-white">
+                    <p className="text-sm leading-7 text-foreground">
                       {activeProposalStructuredData?.projectOverview || "No overview added yet."}
                     </p>
                   )}
@@ -331,7 +365,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("objectivesText", event.target.value)
                         }
-                        className="min-h-[220px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="min-h-[220px] border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder={"One objective per line\nExample: Launch MVP for internal testing"}
                       />
                     ) : (
@@ -353,7 +387,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("deliverablesText", event.target.value)
                         }
-                        className="min-h-[220px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="min-h-[220px] border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                         placeholder={"One deliverable per line\nExample: Admin dashboard with analytics"}
                       />
                     ) : (
@@ -371,7 +405,7 @@ const ProposalDetailsDialog = ({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#64748b]">
                     03 Technical And Delivery
                   </p>
-                  <h3 className="text-lg font-semibold tracking-tight text-white">
+                  <h3 className="text-lg font-semibold tracking-tight text-foreground">
                     Supporting details
                   </h3>
                 </div>
@@ -390,14 +424,18 @@ const ProposalDetailsDialog = ({
                           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
                             Timeline
                           </p>
-                          <Input
-                            value={editableProposalDraft.timeline}
-                            onChange={(event) =>
-                              handleEditableProposalDraftChange("timeline", event.target.value)
-                            }
-                            className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
-                            placeholder="e.g. 3+ months"
-                          />
+                          {isAgency ? (
+                            <p className="h-11 flex items-center text-sm font-medium text-muted-foreground">Multiple Timelines</p>
+                          ) : (
+                            <Input
+                              value={editableProposalDraft.timeline}
+                              onChange={(event) =>
+                                handleEditableProposalDraftChange("timeline", event.target.value)
+                              }
+                              className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                              placeholder="e.g. 3+ months"
+                            />
+                          )}
                         </div>
                       </div>
                       <div className="grid gap-4 border-t border-white/8 pt-4 sm:grid-cols-2">
@@ -419,7 +457,7 @@ const ProposalDetailsDialog = ({
                       />
                       <ProposalSummaryItem
                         label="Timeline"
-                        value={activeProposalDetails?.delivery || "Not set"}
+                        value={isAgency ? "Multiple Timelines" : (activeProposalDetails?.delivery || "Not set")}
                       />
                       <ProposalSummaryItem
                         label="Current Status"
@@ -443,7 +481,7 @@ const ProposalDetailsDialog = ({
                       onChange={(event) =>
                         handleEditableProposalDraftChange("techStackText", event.target.value)
                       }
-                      className="min-h-[160px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                      className="min-h-[160px] border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                       placeholder={"One technology per line\nExample: Next.js"}
                     />
                   ) : Array.isArray(activeProposalStructuredData?.techStack) &&
@@ -476,11 +514,11 @@ const ProposalDetailsDialog = ({
                       onChange={(event) =>
                         handleEditableProposalDraftChange("notes", event.target.value)
                       }
-                      className="min-h-[180px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                      className="min-h-[180px] border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
                       placeholder="Add any assumptions, dependencies, or special notes."
                     />
                   ) : (
-                    <p className="text-sm leading-7 text-white">
+                    <p className="text-sm leading-7 text-foreground">
                       {activeProposalStructuredData?.notes || "No delivery notes added yet."}
                     </p>
                   )}

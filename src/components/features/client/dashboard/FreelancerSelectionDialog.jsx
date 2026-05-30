@@ -1,6 +1,7 @@
 import { memo } from "react";
 
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Layers3 from "lucide-react/dist/esm/icons/layers-3";
 import Search from "lucide-react/dist/esm/icons/search";
 import Send from "lucide-react/dist/esm/icons/send";
 import Star from "lucide-react/dist/esm/icons/star";
@@ -162,6 +163,67 @@ const getMatchedServiceLabel = (freelancer = {}) =>
       "",
   );
 
+const getCoveredServiceLabels = (freelancer = {}) => {
+  const directValues = Array.isArray(freelancer?.coveredServices)
+    ? freelancer.coveredServices
+    : [];
+  if (directValues.length > 0) {
+    return Array.from(
+      new Set(directValues.map((entry) => formatDisplayLabel(entry)).filter(Boolean)),
+    );
+  }
+
+  const serviceMatches = Array.isArray(freelancer?.serviceMatches)
+    ? freelancer.serviceMatches
+    : [];
+  return Array.from(
+    new Set(
+      serviceMatches
+        .map((entry) => formatDisplayLabel(entry?.serviceName || entry?.serviceKey || ""))
+        .filter(Boolean),
+    ),
+  );
+};
+
+const isAgencyMatch = (freelancer = {}) =>
+  freelancer?.isAgencyProfile === true || String(freelancer?.profileRole || "").toLowerCase() === "agency";
+
+const isMultiServiceMatch = (freelancer = {}) => getCoveredServiceLabels(freelancer).length > 1;
+
+const groupFreelancersForDisplay = (freelancers = []) => {
+  const normalized = Array.isArray(freelancers) ? freelancers : [];
+  const multiServiceMatches = [];
+  const standardMatches = [];
+
+  normalized.forEach((freelancer) => {
+    if (isMultiServiceMatch(freelancer)) {
+      multiServiceMatches.push(freelancer);
+      return;
+    }
+
+    standardMatches.push(freelancer);
+  });
+
+  return [
+    multiServiceMatches.length > 0
+      ? {
+          key: "multi-service",
+          title: "Multi-Service Matches",
+          description: "These freelancers cover every required service in this proposal.",
+          freelancers: multiServiceMatches,
+        }
+      : null,
+    standardMatches.length > 0
+      ? {
+          key: "standard",
+          title: "Other Matches",
+          description: "Strong service-aligned matches ranked by the standard proposal matcher.",
+          freelancers: standardMatches,
+        }
+      : null,
+  ].filter(Boolean);
+};
+
 const getBudgetFitLabel = (freelancer = {}) => {
   const budget = freelancer?.budgetCompatibility || {};
   const percentage = Number.isFinite(Number(freelancer?.budgetFitPercent))
@@ -265,7 +327,7 @@ const FreelancerSelectionDialog = ({
                       {Array.from({ length: 6 }).map((_, index) => (
                         <Card
                           key={`freelancer-loading-${index}`}
-                          className="h-113 rounded-[20px] border border-border/60 bg-card/90 p-2.5"
+                          className="min-h-[25rem] rounded-[20px] border border-border/60 bg-card/90 p-2.5"
                         >
                           <Skeleton className="h-28 w-full rounded-xl" />
                           <div className="mt-10 space-y-2">
@@ -336,7 +398,24 @@ const FreelancerSelectionDialog = ({
                 );
               }
 
-              return filteredFreelancers.map((freelancer) => {
+              const freelancerGroups = groupFreelancersForDisplay(filteredFreelancers);
+
+              return freelancerGroups.map((group) => (
+                <div key={group.key} className="col-span-full">
+                  <div className="mb-3 flex flex-col gap-1 rounded-2xl border border-border/60 bg-background/40 px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      {group.key === "multi-service" ? (
+                        <Layers3 className="h-4 w-4 text-muted-foreground" />
+                      ) : null}
+                      <p className="text-sm font-semibold text-foreground">{group.title}</p>
+                      <Badge variant="outline" className="border-border/70 bg-transparent text-[10px] text-muted-foreground">
+                        {group.freelancers.length}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{group.description}</p>
+                  </div>
+                  <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {group.freelancers.map((freelancer) => {
                 const displayName =
                   freelancer.fullName || freelancer.name || "Freelancer";
                 const displayInitials = getDisplayInitials(displayName);
@@ -356,6 +435,8 @@ const FreelancerSelectionDialog = ({
                 const matchedSkillBadges = getMatchedSkillBadges(freelancer);
                 const budgetFitLabel = getBudgetFitLabel(freelancer);
                 const matchSourceLabel = getMatchSourceLabel(freelancer);
+                const coveredServiceLabels = getCoveredServiceLabels(freelancer);
+                const showAgencyBadge = isAgencyMatch(freelancer);
                 const isVerified = freelancer?.isVerified === true;
                 const deliveredProjectCount = getDeliveredProjectCount(freelancer);
                 const cardBio = String(
@@ -386,11 +467,11 @@ const FreelancerSelectionDialog = ({
                 return (
                   <Card
                     key={freelancer.id}
-                    className="group relative flex h-113 cursor-pointer flex-col overflow-hidden rounded-[20px] border border-border/65 bg-card/95 p-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(0,0,0,0.2)]"
+                    className="group relative flex min-h-[22.5rem] cursor-pointer flex-col overflow-hidden rounded-[20px] border border-border/70 bg-background/40 p-2.5 shadow-none transition-colors duration-200 hover:border-border hover:bg-background/55"
                     onClick={() => onViewFreelancer(freelancer)}
                   >
                     <div
-                      className="relative isolate h-28 min-h-28 shrink-0 overflow-visible rounded-xl border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_16px_34px_rgba(0,0,0,0.34)]"
+                      className="relative isolate h-24 min-h-24 shrink-0 overflow-visible rounded-xl border border-border/70 shadow-none"
                       style={coverImage ? undefined : bannerStyle}
                     >
                       {coverImage ? (
@@ -411,12 +492,12 @@ const FreelancerSelectionDialog = ({
                         </div>
                       )}
                       {isBestMatch && (
-                        <div className="absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-full border border-primary/20/70 bg-[linear-gradient(120deg,rgba(17,24,39,0.82),rgba(88,28,135,0.56))] px-2.5 py-0.5 text-[10px] font-semibold text-primary shadow-[0_0_0_1px_rgba(251,191,36,0.34),0_0_22px_rgba(251,191,36,0.38)] backdrop-blur-sm">
-                          <Star className="h-2.5 w-2.5 fill-current text-primary" />
+                        <div className="absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-full border border-border/80 bg-background/80 px-2.5 py-0.5 text-[10px] font-semibold text-foreground backdrop-blur-sm">
+                          <Star className="h-2.5 w-2.5 fill-current text-muted-foreground" />
                           Best Match
                         </div>
                       )}
-                      <Avatar className="absolute -bottom-10 left-3 z-10 h-20.5 w-20.5 border-4 border-card shadow-md">
+                      <Avatar className="absolute -bottom-6 left-3 z-10 h-16 w-16 border-4 border-card shadow-md">
                         <AvatarImage
                           src={freelancer.avatar}
                           alt={displayName}
@@ -428,13 +509,21 @@ const FreelancerSelectionDialog = ({
                       </Avatar>
                     </div>
 
-                    <div className="mt-10 flex min-h-0 flex-1 flex-col px-0.5">
-                      <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2">
+                    <div className="mt-6 flex min-h-0 flex-1 flex-col px-0.5">
+                      <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-1.5">
                         <div className="min-w-0">
-                          <div className="flex min-w-0 items-end gap-1.5">
+                          <div className="flex min-w-0 items-center gap-1">
                             <h3 className="min-w-0 truncate text-base leading-tight font-semibold tracking-tight text-foreground">
                               {displayName}
                             </h3>
+                            {showAgencyBadge ? (
+                              <Badge
+                                variant="outline"
+                                className="h-5 shrink-0 border-border/80 bg-transparent px-2 text-[9px] whitespace-nowrap text-foreground"
+                              >
+                                Agency Match
+                              </Badge>
+                            ) : null}
                             {matchScore !== null && (
                               <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
                                 {matchScore}% Match
@@ -442,16 +531,16 @@ const FreelancerSelectionDialog = ({
                             )}
                           </div>
                           <p
-                            className="mt-1 min-h-8 pr-1 text-[11px] leading-4 text-muted-foreground line-clamp-2"
+                            className="mt-0.5 pr-1 text-[11px] leading-4 text-muted-foreground line-clamp-1"
                             title={cardBio || "No bio available."}
                           >
                             {cardBio || "No bio available."}
                           </p>
-                          <div className="mt-2 flex flex-wrap gap-1.5">
+                          <div className="mt-0.5 flex flex-wrap gap-1">
                             {matchedServiceLabel ? (
                               <Badge
                                 variant="outline"
-                                className="h-5 border-primary/30 bg-primary/5 px-2 text-[9px] whitespace-nowrap text-primary"
+                                className="h-5 border-border/80 bg-transparent px-2 text-[9px] whitespace-nowrap text-foreground"
                               >
                                 {matchedServiceLabel}
                               </Badge>
@@ -459,7 +548,7 @@ const FreelancerSelectionDialog = ({
                             {isVerified ? (
                               <Badge
                                 variant="outline"
-                                className="h-5 border-sky-400/25 bg-sky-500/10 px-2 text-[9px] whitespace-nowrap text-sky-300"
+                                className="h-5 border-border/80 bg-transparent px-2 text-[9px] whitespace-nowrap text-foreground"
                               >
                                 Verified
                               </Badge>
@@ -467,7 +556,7 @@ const FreelancerSelectionDialog = ({
                             {matchSourceLabel ? (
                               <Badge
                                 variant="outline"
-                                className="h-5 border-emerald-500/25 bg-emerald-500/10 px-2 text-[9px] whitespace-nowrap text-emerald-300"
+                                className="h-5 border-border/80 bg-transparent px-2 text-[9px] whitespace-nowrap text-foreground"
                               >
                                 {matchSourceLabel}
                               </Badge>
@@ -477,20 +566,20 @@ const FreelancerSelectionDialog = ({
 
                       </div>
 
-                      <div className="mt-2">
-                        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/90">
+                      <div className="mt-1">
+                        <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/90">
                           Project Skills Match
                         </p>
-                        <div className="flex min-h-5 flex-wrap gap-1.5">
+                        <div className="flex min-h-5 flex-wrap gap-1">
                           {matchedSkillBadges.length > 0 ? (
                             matchedSkillBadges.map((skill, index) => (
-                              <Badge
-                                key={`${freelancer.id}-matched-${index}`}
-                                variant="outline"
-                                className="h-4 px-1.5 text-[9px] whitespace-nowrap border-primary/45 bg-transparent text-primary"
-                              >
-                                {skill}
-                              </Badge>
+                                <Badge
+                                  key={`${freelancer.id}-matched-${index}`}
+                                  variant="outline"
+                                  className="h-4 border-border/80 bg-transparent px-1 text-[9px] whitespace-nowrap text-foreground"
+                                >
+                                  {skill}
+                                </Badge>
                             ))
                           ) : (
                             <span className="text-[11px] text-muted-foreground">
@@ -500,24 +589,24 @@ const FreelancerSelectionDialog = ({
                         </div>
                       </div>
 
-                      <div className="mt-2 flex min-h-0 flex-1 items-center px-2 py-2">
+                      <div className="mt-1 flex min-h-0 items-center px-1 py-0.5">
                         <div className="grid w-full grid-cols-3">
                           {performanceStats.map((stat, index) => (
                             <div
                               key={`${freelancer.id}-${stat.key}`}
-                              className={`flex min-w-0 flex-col items-center justify-center px-2 py-3 text-center ${
+                              className={`flex min-w-0 flex-col items-center justify-center px-1 py-1 text-center ${
                                 index < performanceStats.length - 1
                                   ? "border-r border-white/10"
                                   : ""
                               }`}
                             >
-                              <div className="flex items-center gap-1 text-[15px] font-semibold tracking-tight text-foreground">
+                                <div className="flex items-center gap-1 text-[13px] font-semibold tracking-tight text-foreground">
                                 {stat.showStar && (
                                   <Star className="h-3.5 w-3.5 shrink-0 fill-primary text-primary" />
                                 )}
                                 <span className="truncate">{stat.value}</span>
                               </div>
-                              <p className="mt-1 max-w-[84px] text-[10px] leading-3 font-medium text-muted-foreground/85">
+                                <p className="mt-0.5 max-w-[84px] text-[9px] leading-3 font-medium text-muted-foreground/85">
                                 {stat.label}
                               </p>
                             </div>
@@ -525,10 +614,10 @@ const FreelancerSelectionDialog = ({
                         </div>
                       </div>
 
-                      <div className="mt-2 shrink-0 grid grid-cols-2 gap-2.5">
+                      <div className="mt-auto pt-2 shrink-0 grid grid-cols-2 gap-2">
                         <Button
                           variant="outline"
-                          className="h-9 rounded-full border-white/15 bg-white/5 text-xs font-semibold text-white/90 hover:bg-white/10"
+                          className="h-8 rounded-[12px] border border-border bg-background/35 text-xs font-semibold text-foreground shadow-none hover:bg-background"
                           onClick={(event) => {
                             event.stopPropagation();
                             onViewFreelancer(freelancer);
@@ -537,7 +626,7 @@ const FreelancerSelectionDialog = ({
                           View Profile
                         </Button>
                         <Button
-                          className="h-9 rounded-full bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                          className="h-8 rounded-[12px] bg-primary text-xs font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
                           onClick={(event) => {
                             event.stopPropagation();
                             onSendProposal(freelancer);
@@ -557,7 +646,10 @@ const FreelancerSelectionDialog = ({
                     </div>
                   </Card>
                 );
-              });
+                    })}
+                  </div>
+                </div>
+              ));
             })()}
           </div>
         </div>

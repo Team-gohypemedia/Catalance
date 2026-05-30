@@ -22,7 +22,7 @@ const ClientDashboardContent = () => {
   const useEmptyWorkspaceLayout = !isLoading && activeProjectCount === 0;
 
   return (
-    <div className="min-h-screen bg-background text-[#f1f5f9]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
         <ClientDashboardHeader />
 

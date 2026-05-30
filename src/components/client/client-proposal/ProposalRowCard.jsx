@@ -159,13 +159,13 @@ const ProposalRowCard = ({
                       key={`${entry.name}-${index}`}
                       className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.9fr)] gap-3 px-4 py-3 sm:px-5"
                     >
-                      <p className="min-w-0 break-words text-[0.72rem] font-medium leading-5 text-white sm:text-[0.78rem]">
+                      <p className="min-w-0 break-words text-[0.72rem] font-medium leading-5 text-foreground sm:text-[0.78rem]">
                         {entry.name}
                       </p>
-                      <p className="min-w-0 break-words text-[0.72rem] font-semibold leading-5 text-white sm:text-[0.78rem]">
+                      <p className="min-w-0 break-words text-[0.72rem] font-semibold leading-5 text-foreground sm:text-[0.78rem]">
                         {entry.budget}
                       </p>
-                      <p className="min-w-0 break-words text-[0.72rem] font-semibold leading-5 text-white sm:text-[0.78rem]">
+                      <p className="min-w-0 break-words text-[0.72rem] font-semibold leading-5 text-foreground sm:text-[0.78rem]">
                         {entry.timeline}
                       </p>
                     </div>
@@ -181,7 +181,7 @@ const ProposalRowCard = ({
                   <p className="whitespace-nowrap text-[0.68rem] sm:text-[0.72rem] font-semibold uppercase tracking-[0.08em] sm:tracking-[0.16em] text-muted-foreground">
                     Budget
                   </p>
-                  <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
+                  <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-foreground">
                     {details.budget}
                   </div>
                 </div>
@@ -193,7 +193,7 @@ const ProposalRowCard = ({
                   <p className="whitespace-nowrap text-[0.68rem] sm:text-[0.72rem] font-semibold uppercase tracking-[0.08em] sm:tracking-[0.16em] text-muted-foreground">
                     Timeline
                   </p>
-                  <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
+                  <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-foreground">
                     {details.delivery}
                   </div>
                 </div>

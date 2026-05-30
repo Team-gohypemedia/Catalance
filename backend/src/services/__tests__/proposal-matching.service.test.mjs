@@ -13,6 +13,7 @@ const { __testables } = await import("../proposal-matching.service.js");
 const {
   buildTargetProfileFromPayload,
   normalizeMatchPercentage,
+  rankAgencyFreelancersFromData,
   rankFreelancersFromData,
 } = __testables;
 
@@ -124,6 +125,10 @@ const createServiceDetailsProfile = ({
       caseStudy,
     },
   },
+});
+
+const createMultiServiceDetailsProfile = (serviceDetails = {}) => ({
+  serviceDetails,
 });
 
 test("Level 1 matching uses completed projects", () => {
@@ -270,6 +275,126 @@ test("Level 3 fallback does not treat unrelated service profiles as a direct ser
   });
 
   assert.equal(ranked.results.length, 0);
+});
+
+test("agency multi-service matching intersects freelancers across all requested services", () => {
+  const targetProfile = buildTargetProfileFromPayload({
+    title: "Growth stack buildout",
+    serviceKey: "web-development",
+    serviceType: "Web Development",
+    budget: 90000,
+    isAgencyProposal: true,
+    proposalContext: {
+      flowMode: "agency",
+      selectedServiceIds: ["web-development", "seo"],
+    },
+    proposalContent: `
+Service Type: Web Development
+Project Overview: Need both a marketing site and SEO growth setup.
+Features/Deliverables Included:
+- Website build
+- On-page SEO
+Launch Timeline: 8 weeks
+Budget: INR 90,000
+Frontend Framework: Next.js
+    `,
+  });
+
+  const freelancers = [
+    createFreelancer({
+      id: "agency-fit",
+      fullName: "Agency Fit",
+      services: ["web-development", "seo"],
+      profileDetails: {
+        profileRole: "agency",
+        ...createMultiServiceDetailsProfile({
+          "web-development": {
+            startingPrice: "70000",
+            skillsAndTechnologies: ["Next.js", "Node.js"],
+            serviceSpecializations: ["Marketing website"],
+            deliverables: ["Website build"],
+          },
+          seo: {
+            startingPrice: "20000",
+            skillsAndTechnologies: ["Technical SEO", "On-page SEO"],
+            serviceSpecializations: ["SEO"],
+            deliverables: ["On-page SEO"],
+          },
+        }),
+      },
+      skills: ["Next.js", "Technical SEO"],
+    }),
+    createFreelancer({
+      id: "web-only",
+      fullName: "Web Only",
+      services: ["web-development"],
+      profileDetails: {
+        profileRole: "individual",
+        ...createMultiServiceDetailsProfile({
+          "web-development": {
+            startingPrice: "60000",
+            skillsAndTechnologies: ["Next.js", "Node.js"],
+            serviceSpecializations: ["Marketing website"],
+            deliverables: ["Website build"],
+          },
+        }),
+      },
+      skills: ["Next.js"],
+    }),
+    createFreelancer({
+      id: "seo-only",
+      fullName: "SEO Only",
+      services: ["seo"],
+      profileDetails: {
+        profileRole: "individual",
+        ...createMultiServiceDetailsProfile({
+          seo: {
+            startingPrice: "15000",
+            skillsAndTechnologies: ["Technical SEO", "On-page SEO"],
+            serviceSpecializations: ["SEO"],
+            deliverables: ["On-page SEO"],
+          },
+        }),
+      },
+      skills: ["Technical SEO"],
+    }),
+  ];
+
+  const ranked = rankAgencyFreelancersFromData({
+    targetProfile,
+    freelancers,
+    completedProjectsByService: new Map([
+      ["web_development", []],
+      ["seo", []],
+    ]),
+    activeProjectCounts: new Map(),
+    limit: 20,
+    minResults: 5,
+  });
+
+  assert.equal(ranked.results.length, 1);
+  assert.equal(ranked.results[0].id, "agency-fit");
+  assert.equal(ranked.results[0].profileRole, "agency");
+  assert.deepEqual(ranked.meta.agencyServiceKeys, ["web_development", "seo"]);
+  assert.equal(ranked.meta.intersectionStrategy, "all_services");
+  assert.equal(ranked.results[0].serviceMatches.length, 2);
+});
+
+test("agency service ids are normalized so alias duplicates do not create phantom intersection failures", () => {
+  const targetProfile = buildTargetProfileFromPayload({
+    title: "Agency app plus web build",
+    serviceKey: "Web Development, Mobile App Development",
+    serviceType: "Web Development, Mobile App Development",
+    budget: 90000,
+    isAgencyProposal: true,
+    proposalContext: {
+      flowMode: "agency",
+      selectedServiceIds: ["Web_dev", "app_dev"],
+      selectedServiceNames: ["Web Development", "Mobile App Development"],
+    },
+  });
+
+  assert.deepEqual(targetProfile.agencyServiceKeys, ["web_development", "app_development"]);
 });
 
 test("filtering excludes unavailable or overloaded freelancers", () => {
@@ -635,11 +760,9 @@ test("service-aligned candidates rank ahead of mismatched fallback candidates", 
     activeProjectCounts: new Map([["freelancer-service-fit", 2]]),
   });
 
-  assert.equal(ranked.results.length, 2);
+  assert.equal(ranked.results.length, 1);
   assert.equal(ranked.results[0].id, "freelancer-service-fit");
   assert.equal(ranked.results[0].serviceMatch, true);
-  assert.equal(ranked.results[1].id, "freelancer-service-mismatch-strong");
-  assert.equal(ranked.results[1].serviceMatch, false);
   ranked.results.forEach((result) => {
     assert.ok(result.matchScore >= 0 && result.matchScore <= 100);
   });

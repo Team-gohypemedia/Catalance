@@ -29,7 +29,7 @@ const ProposalBudgetDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border border-white/10 bg-accent text-white sm:max-w-md">
+      <DialogContent className="border border-white/10 bg-accent text-foreground sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Increase Budget</DialogTitle>
           <DialogDescription className="text-sm leading-6 text-muted-foreground">
@@ -43,7 +43,7 @@ const ProposalBudgetDialog = ({
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Current Budget
             </p>
-            <p className="mt-1 text-lg font-semibold text-white">
+            <p className="mt-1 text-lg font-semibold text-foreground">
               {currentBudgetValue > 0 ? formatINR(currentBudgetValue) : "Not set"}
             </p>
           </div>
@@ -51,7 +51,7 @@ const ProposalBudgetDialog = ({
           <div className="space-y-2">
             <label
               htmlFor="proposal-budget-increase-input"
-              className="text-sm font-medium text-white"
+              className="text-sm font-medium text-foreground"
             >
               New Budget
             </label>
@@ -60,7 +60,7 @@ const ProposalBudgetDialog = ({
               value={budgetInput}
               onChange={(event) => onBudgetInputChange?.(event.target.value)}
               placeholder="e.g. 60000 or INR 60,000"
-              className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+              className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
             />
           </div>
         </div>

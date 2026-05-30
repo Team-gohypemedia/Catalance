@@ -35,7 +35,13 @@ const MATCH_SCORE_MAX_RAW =
 
 const SERVICE_EQUIVALENCE_GROUPS = Object.freeze([
   ["web_development", "website_development", "web_dev", "web_design_development"],
-  ["app_development", "mobile_app_development", "android_app_development", "ios_app_development"],
+  [
+    "app_development",
+    "app_dev",
+    "mobile_app_development",
+    "android_app_development",
+    "ios_app_development",
+  ],
   ["seo", "search_engine_optimization"],
   ["social_media_marketing", "smm"],
   ["ui_ux_design", "ux_ui_design", "product_design"],
@@ -194,6 +200,12 @@ const uniqueItems = (items = []) => {
   return result;
 };
 
+const splitCombinedServiceLookupValue = (value = "") =>
+  String(value || "")
+    .split(/[,|]/)
+    .map((item) => cleanText(item))
+    .filter(Boolean);
+
 const normalizeToken = (value = "") =>
   cleanText(value)
     .toLowerCase()
@@ -224,7 +236,8 @@ const humanizeServiceLabel = (value = "") =>
 const collectServiceSignals = (...values) =>
   uniqueItems(values.flatMap((value) => normalizeList(value)))
     .map((value) => normalizeServiceSignal(value))
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((value, index, collection) => collection.indexOf(value) === index);
 
 const splitListValue = (value = "") =>
   String(value || "")
@@ -256,6 +269,71 @@ const collectTextValues = (value) => {
 
 const normalizeList = (value) => {
   return uniqueItems(collectTextValues(value));
+};
+
+const collectAgencyServiceCandidates = (source = {}) => {
+  const proposalContext =
+    source?.proposalContext && isPlainObject(source.proposalContext)
+      ? source.proposalContext
+      : source?.proposalJson && isPlainObject(source.proposalJson?.contextSnapshot)
+        ? source.proposalJson.contextSnapshot
+        : {};
+  const candidates = [];
+  const pushCandidate = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach((entry) => pushCandidate(entry));
+      return;
+    }
+
+    if (isPlainObject(value)) {
+      pushCandidate(value.id);
+      pushCandidate(value.slug);
+      pushCandidate(value.name);
+      pushCandidate(value.serviceId);
+      pushCandidate(value.serviceName);
+      return;
+    }
+
+    splitCombinedServiceLookupValue(value).forEach((entry) => {
+      candidates.push(entry);
+    });
+  };
+
+  [
+    source?.serviceKey,
+    source?.serviceType,
+    source?.service,
+    source?.serviceName,
+    source?.category,
+    source?.services,
+    proposalContext?.selectedServiceIds,
+    proposalContext?.selectedServiceNames,
+    proposalContext?.serviceIds,
+    proposalContext?.serviceNames,
+  ].forEach((value) => pushCandidate(value));
+
+  if (Array.isArray(proposalContext?.selectedServices)) {
+    proposalContext.selectedServices.forEach((service) => pushCandidate(service));
+  }
+
+  return collectServiceSignals(candidates);
+};
+
+const resolveAgencyProposalFlag = (source = {}) => {
+  if (typeof source?.isAgencyProposal === "boolean") {
+    return source.isAgencyProposal;
+  }
+
+  const proposalContext =
+    source?.proposalContext && isPlainObject(source.proposalContext)
+      ? source.proposalContext
+      : source?.proposalJson && isPlainObject(source.proposalJson?.contextSnapshot)
+        ? source.proposalJson.contextSnapshot
+        : {};
+  const flowMode = cleanText(proposalContext?.flowMode).toLowerCase();
+  if (flowMode === "agency") return true;
+  if (flowMode === "freelancer" || flowMode === "individual") return false;
+  return collectAgencyServiceCandidates(source).length > 1;
 };
 
 const inferTechnologySkills = (...values) => {
@@ -432,6 +510,20 @@ const buildMatchingProfile = (source = {}) => {
     project?.serviceType,
     matchingQuery?.category,
   );
+  const agencyServiceKeys = uniqueItems([
+    ...collectAgencyServiceCandidates(source),
+    ...serviceKeys,
+  ]);
+  const isAgencyProposal = resolveAgencyProposalFlag({
+    ...source,
+    proposalJson: source?.proposalJson,
+    proposalContext:
+      source?.proposalContext && isPlainObject(source.proposalContext)
+        ? source.proposalContext
+        : source?.proposalJson && isPlainObject(source.proposalJson?.contextSnapshot)
+          ? source.proposalJson.contextSnapshot
+          : undefined,
+  });
 
   return {
     id: source?.id || null,
@@ -442,6 +534,8 @@ const buildMatchingProfile = (source = {}) => {
       "Proposal",
     serviceKey: serviceKeys[0] || "",
     serviceKeys,
+    agencyServiceKeys,
+    isAgencyProposal,
     serviceType:
       cleanText(source?.serviceType) ||
       cleanText(source?.service) ||
@@ -1559,6 +1653,22 @@ const evaluateCandidateMatch = ({
   };
 };
 
+const buildServiceSpecificTargetProfile = (targetProfile = {}, serviceKey = "") => {
+  const normalizedServiceKey = normalizeServiceSignal(serviceKey);
+  if (!normalizedServiceKey) return targetProfile;
+
+  const matchingServiceLabel = Array.isArray(targetProfile?.serviceKeys)
+    ? targetProfile.serviceKeys.find((entry) => normalizeServiceSignal(entry) === normalizedServiceKey)
+    : "";
+
+  return {
+    ...targetProfile,
+    serviceKey: normalizedServiceKey,
+    serviceKeys: [normalizedServiceKey],
+    serviceType: matchingServiceLabel || humanizeServiceLabel(normalizedServiceKey),
+  };
+};
+
 const preferCandidate = (currentCandidate = null, nextCandidate = null) => {
   if (!currentCandidate) return nextCandidate;
   if (!nextCandidate) return currentCandidate;
@@ -1599,6 +1709,13 @@ const mapFreelancerToMatchResult = (freelancer = {}, candidate = {}) => ({
   ...freelancer,
   freelancerId: freelancer?.id || null,
   name: freelancer?.fullName || freelancer?.name || null,
+  profileRole:
+    cleanText(
+      freelancer?.profileRole ||
+        freelancer?.profileDetails?.profileRole ||
+        freelancer?.profileDetails?.role ||
+        "",
+    ).toLowerCase() || null,
   title:
     freelancer?.jobTitle ||
     freelancer?.professionalTitle ||
@@ -2011,6 +2128,208 @@ export const rankFreelancersFromData = ({
   };
 };
 
+const aggregateAgencyLevelCounts = (serviceRankings = []) =>
+  serviceRankings.reduce(
+    (accumulator, ranking) => {
+      const levelCounts = ranking?.levelCounts || {};
+      accumulator.level1 += Number(levelCounts.level1 || 0);
+      accumulator.level2 += Number(levelCounts.level2 || 0);
+      accumulator.level3 += Number(levelCounts.level3 || 0);
+      return accumulator;
+    },
+    { level1: 0, level2: 0, level3: 0 },
+  );
+
+const mergeAgencyCandidateResults = ({
+  baseResult = {},
+  serviceResults = [],
+} = {}) => {
+  const candidateMap = new Map();
+
+  serviceResults.forEach((serviceResult) => {
+    if (!serviceResult?.id) return;
+    const existing = candidateMap.get(serviceResult.id);
+    if (!existing) {
+      candidateMap.set(serviceResult.id, {
+        ...serviceResult,
+        serviceMatches: [
+          {
+            serviceKey: serviceResult?.matchedService?.serviceKey || serviceResult?.serviceKey || null,
+            serviceName:
+              serviceResult?.matchedService?.serviceName || serviceResult?.serviceType || null,
+            sourceLevel: serviceResult?.sourceLevel || null,
+            matchSource: serviceResult?.matchSource || null,
+            matchPercent: serviceResult?.matchPercent ?? null,
+            matchedSkills: Array.isArray(serviceResult?.matchedSkills)
+              ? serviceResult.matchedSkills
+              : [],
+            matchedCaseStudyTitles: Array.isArray(serviceResult?.matchedCaseStudyTitles)
+              ? serviceResult.matchedCaseStudyTitles
+              : [],
+          },
+        ],
+      });
+      return;
+    }
+
+    existing.serviceMatches = [
+      ...(Array.isArray(existing.serviceMatches) ? existing.serviceMatches : []),
+      {
+        serviceKey: serviceResult?.matchedService?.serviceKey || serviceResult?.serviceKey || null,
+        serviceName:
+          serviceResult?.matchedService?.serviceName || serviceResult?.serviceType || null,
+        sourceLevel: serviceResult?.sourceLevel || null,
+        matchSource: serviceResult?.matchSource || null,
+        matchPercent: serviceResult?.matchPercent ?? null,
+        matchedSkills: Array.isArray(serviceResult?.matchedSkills)
+          ? serviceResult.matchedSkills
+          : [],
+        matchedCaseStudyTitles: Array.isArray(serviceResult?.matchedCaseStudyTitles)
+          ? serviceResult.matchedCaseStudyTitles
+          : [],
+      },
+    ];
+
+    const nextScore = Number(serviceResult?.scoreMetadata?.rawMatchScore ?? serviceResult?.rawMatchScore);
+    const currentScore = Number(existing?.scoreMetadata?.rawMatchScore ?? existing?.rawMatchScore);
+    if (Number.isFinite(nextScore) && (!Number.isFinite(currentScore) || nextScore > currentScore)) {
+      Object.assign(existing, {
+        ...existing,
+        ...serviceResult,
+        serviceMatches: existing.serviceMatches,
+      });
+    }
+  });
+
+  return {
+    ...baseResult,
+    results: Array.from(candidateMap.values())
+      .map((result) => {
+        const serviceMatches = Array.isArray(result.serviceMatches) ? result.serviceMatches : [];
+        const averageMatchPercent =
+          serviceMatches.length > 0
+            ? Math.round(
+                serviceMatches.reduce(
+                  (sum, entry) => sum + (Number.isFinite(Number(entry.matchPercent)) ? Number(entry.matchPercent) : 0),
+                  0,
+                ) / serviceMatches.length,
+              )
+            : result.matchPercent;
+        return {
+          ...result,
+          serviceMatches,
+          coveredServiceKeys: uniqueItems(serviceMatches.map((entry) => entry?.serviceKey).filter(Boolean)),
+          coveredServices: uniqueItems(serviceMatches.map((entry) => entry?.serviceName).filter(Boolean)),
+          matchPercent: averageMatchPercent,
+          matchScore: averageMatchPercent,
+          projectRelevanceScore: averageMatchPercent,
+          score: averageMatchPercent,
+        };
+      })
+      .sort(sortMatches)
+      .slice(0, Number(baseResult?.meta?.limit || DEFAULT_MATCH_LIMIT)),
+  };
+};
+
+const rankAgencyFreelancersFromData = ({
+  targetProfile = {},
+  freelancers = [],
+  activeProjectCounts = new Map(),
+  limit = DEFAULT_MATCH_LIMIT,
+  minResults = DEFAULT_MIN_RESULTS,
+  completedProjectsByService = new Map(),
+  now = new Date(),
+} = {}) => {
+  const serviceKeys = uniqueItems(
+    (Array.isArray(targetProfile?.agencyServiceKeys) ? targetProfile.agencyServiceKeys : [])
+      .map((serviceKey) => normalizeServiceSignal(serviceKey))
+      .filter(Boolean),
+  );
+
+  if (serviceKeys.length <= 1) {
+    return rankFreelancersFromData({
+      targetProfile,
+      freelancers,
+      completedProjects: Array.isArray(completedProjectsByService)
+        ? completedProjectsByService
+        : completedProjectsByService instanceof Map
+          ? completedProjectsByService.get(serviceKeys[0] || "") || []
+          : [],
+      activeProjectCounts,
+      limit,
+      minResults,
+      now,
+    });
+  }
+
+  const perServiceRankings = serviceKeys.map((serviceKey) => {
+    const serviceTargetProfile = buildServiceSpecificTargetProfile(targetProfile, serviceKey);
+    return {
+      serviceKey,
+      ranking: rankFreelancersFromData({
+        targetProfile: serviceTargetProfile,
+        freelancers,
+        completedProjects:
+          completedProjectsByService instanceof Map
+            ? completedProjectsByService.get(serviceKey) || []
+            : [],
+        activeProjectCounts,
+        limit,
+        minResults,
+        now,
+      }),
+    };
+  });
+
+  const intersectionIds = perServiceRankings.reduce((accumulator, entry, index) => {
+    const ids = new Set(
+      (Array.isArray(entry?.ranking?.results) ? entry.ranking.results : [])
+        .map((result) => result?.id || result?.freelancerId)
+        .filter(Boolean),
+    );
+    if (index === 0) {
+      return ids;
+    }
+
+    return new Set(Array.from(accumulator).filter((id) => ids.has(id)));
+  }, new Set());
+
+  const mergedResults = mergeAgencyCandidateResults({
+    baseResult: {
+      levelCounts: aggregateAgencyLevelCounts(perServiceRankings.map((entry) => entry.ranking)),
+      meta: {
+        limit,
+        minResults,
+      },
+    },
+    serviceResults: perServiceRankings.flatMap((entry) =>
+      (Array.isArray(entry?.ranking?.results) ? entry.ranking.results : []).filter((result) =>
+        intersectionIds.has(result?.id || result?.freelancerId),
+      ),
+    ),
+  });
+
+  return {
+    results: mergedResults.results,
+    levelCounts: mergedResults.levelCounts || aggregateAgencyLevelCounts(
+      perServiceRankings.map((entry) => entry.ranking),
+    ),
+    meta: {
+      limit,
+      minResults,
+      totalCandidates: Array.isArray(mergedResults.results) ? mergedResults.results.length : 0,
+      agencyServiceKeys: serviceKeys,
+      agencyServiceCount: serviceKeys.length,
+      perServiceMatchCounts: perServiceRankings.map((entry) => ({
+        serviceKey: entry.serviceKey,
+        matched: Array.isArray(entry?.ranking?.results) ? entry.ranking.results.length : 0,
+      })),
+      intersectionCount: intersectionIds.size,
+      intersectionStrategy: "all_services",
+    },
+  };
+};
+
 export const resolveProposalMatchingSource = async (proposalId) => {
   const normalizedProposalId = String(proposalId || "").trim();
   if (!normalizedProposalId) {
@@ -2113,25 +2432,63 @@ export const matchFreelancersForProposalPayload = async (
   { limit = DEFAULT_MATCH_LIMIT, minResults = DEFAULT_MIN_RESULTS } = {},
 ) => {
   const targetProfile = buildTargetProfileFromPayload(proposal);
-  const [freelancers, completedProjects, activeProjectCounts] = await Promise.all([
+  const agencyServiceKeys = uniqueItems(
+    (Array.isArray(targetProfile?.agencyServiceKeys) ? targetProfile.agencyServiceKeys : [])
+      .map((serviceKey) => normalizeServiceSignal(serviceKey))
+      .filter(Boolean),
+  );
+  const shouldUseAgencyMatching =
+    Boolean(targetProfile?.isAgencyProposal) && agencyServiceKeys.length > 1;
+  const [freelancers, activeProjectCounts, completedProjectEntries] = await Promise.all([
     loadFreelancerPool(),
-    loadCompletedProjectPool({
-      serviceKey: targetProfile.serviceKey,
-      projectTypes: targetProfile.projectTypes,
-      niches: targetProfile.niches,
-      limit: 150,
-    }),
     collectActiveProjectCounts(),
+    shouldUseAgencyMatching
+      ? Promise.all(
+          agencyServiceKeys.map(async (serviceKey) => ([
+            serviceKey,
+            await loadCompletedProjectPool({
+              serviceKey,
+              projectTypes: targetProfile.projectTypes,
+              niches: targetProfile.niches,
+              limit: 150,
+            }),
+          ])),
+        )
+      : loadCompletedProjectPool({
+          serviceKey: targetProfile.serviceKey,
+          projectTypes: targetProfile.projectTypes,
+          niches: targetProfile.niches,
+          limit: 150,
+        }),
   ]);
 
-  const ranking = rankFreelancersFromData({
-    targetProfile,
-    freelancers,
-    completedProjects,
-    activeProjectCounts,
-    limit,
-    minResults,
-  });
+  const completedProjectsByService = shouldUseAgencyMatching
+    ? new Map(Array.isArray(completedProjectEntries) ? completedProjectEntries : [])
+    : new Map([[targetProfile.serviceKey, Array.isArray(completedProjectEntries) ? completedProjectEntries : []]]);
+
+  const ranking = shouldUseAgencyMatching
+    ? rankAgencyFreelancersFromData({
+        targetProfile,
+        freelancers,
+        completedProjectsByService,
+        activeProjectCounts,
+        limit,
+        minResults,
+      })
+    : rankFreelancersFromData({
+        targetProfile,
+        freelancers,
+        completedProjects: completedProjectsByService.get(targetProfile.serviceKey) || [],
+        activeProjectCounts,
+        limit,
+        minResults,
+      });
+  const completedProjectPoolCount = shouldUseAgencyMatching
+    ? Array.from(completedProjectsByService.values()).reduce(
+        (sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0),
+        0,
+      )
+    : (completedProjectsByService.get(targetProfile.serviceKey) || []).length;
 
   return {
     ...ranking,
@@ -2139,9 +2496,7 @@ export const matchFreelancersForProposalPayload = async (
       ...(ranking.meta || {}),
       sourceType: "payload",
       freelancerPoolCount: Array.isArray(freelancers) ? freelancers.length : 0,
-      completedProjectPoolCount: Array.isArray(completedProjects)
-        ? completedProjects.length
-        : 0,
+      completedProjectPoolCount,
       activeProjectCountEntries:
         activeProjectCounts instanceof Map ? activeProjectCounts.size : 0,
       openToWorkCount: Array.isArray(freelancers)
@@ -2150,6 +2505,7 @@ export const matchFreelancersForProposalPayload = async (
       closedToWorkCount: Array.isArray(freelancers)
         ? freelancers.filter((freelancer) => freelancer?.openToWork === false).length
         : 0,
+      matchingMode: shouldUseAgencyMatching ? "agency_multi_service" : "single_service",
     },
   };
 };
@@ -2160,25 +2516,63 @@ export const matchFreelancersForProposal = async (
 ) => {
   const resolvedSource = await resolveProposalMatchingSource(proposalId);
   const targetProfile = buildMatchingProfile(resolvedSource.source);
-  const [freelancers, completedProjects, activeProjectCounts] = await Promise.all([
+  const agencyServiceKeys = uniqueItems(
+    (Array.isArray(targetProfile?.agencyServiceKeys) ? targetProfile.agencyServiceKeys : [])
+      .map((serviceKey) => normalizeServiceSignal(serviceKey))
+      .filter(Boolean),
+  );
+  const shouldUseAgencyMatching =
+    Boolean(targetProfile?.isAgencyProposal) && agencyServiceKeys.length > 1;
+  const [freelancers, activeProjectCounts, completedProjectEntries] = await Promise.all([
     loadFreelancerPool(),
-    loadCompletedProjectPool({
-      serviceKey: targetProfile.serviceKey,
-      projectTypes: targetProfile.projectTypes,
-      niches: targetProfile.niches,
-      limit: 150,
-    }),
     collectActiveProjectCounts(),
+    shouldUseAgencyMatching
+      ? Promise.all(
+          agencyServiceKeys.map(async (serviceKey) => ([
+            serviceKey,
+            await loadCompletedProjectPool({
+              serviceKey,
+              projectTypes: targetProfile.projectTypes,
+              niches: targetProfile.niches,
+              limit: 150,
+            }),
+          ])),
+        )
+      : loadCompletedProjectPool({
+          serviceKey: targetProfile.serviceKey,
+          projectTypes: targetProfile.projectTypes,
+          niches: targetProfile.niches,
+          limit: 150,
+        }),
   ]);
 
-  const ranking = rankFreelancersFromData({
-    targetProfile,
-    freelancers,
-    completedProjects,
-    activeProjectCounts,
-    limit,
-    minResults,
-  });
+  const completedProjectsByService = shouldUseAgencyMatching
+    ? new Map(Array.isArray(completedProjectEntries) ? completedProjectEntries : [])
+    : new Map([[targetProfile.serviceKey, Array.isArray(completedProjectEntries) ? completedProjectEntries : []]]);
+
+  const ranking = shouldUseAgencyMatching
+    ? rankAgencyFreelancersFromData({
+        targetProfile,
+        freelancers,
+        completedProjectsByService,
+        activeProjectCounts,
+        limit,
+        minResults,
+      })
+    : rankFreelancersFromData({
+        targetProfile,
+        freelancers,
+        completedProjects: completedProjectsByService.get(targetProfile.serviceKey) || [],
+        activeProjectCounts,
+        limit,
+        minResults,
+      });
+  const completedProjectPoolCount = shouldUseAgencyMatching
+    ? Array.from(completedProjectsByService.values()).reduce(
+        (sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0),
+        0,
+      )
+    : (completedProjectsByService.get(targetProfile.serviceKey) || []).length;
 
   return {
     ...resolvedSource,
@@ -2187,9 +2581,7 @@ export const matchFreelancersForProposal = async (
       ...(ranking.meta || {}),
       sourceType: resolvedSource?.sourceType || "project",
       freelancerPoolCount: Array.isArray(freelancers) ? freelancers.length : 0,
-      completedProjectPoolCount: Array.isArray(completedProjects)
-        ? completedProjects.length
-        : 0,
+      completedProjectPoolCount,
       activeProjectCountEntries:
         activeProjectCounts instanceof Map ? activeProjectCounts.size : 0,
       openToWorkCount: Array.isArray(freelancers)
@@ -2198,6 +2590,7 @@ export const matchFreelancersForProposal = async (
       closedToWorkCount: Array.isArray(freelancers)
         ? freelancers.filter((freelancer) => freelancer?.openToWork === false).length
         : 0,
+      matchingMode: shouldUseAgencyMatching ? "agency_multi_service" : "single_service",
     },
   };
 };
@@ -2207,13 +2600,16 @@ export const __testables = {
   clampPercentage,
   buildCompletedProjectProfile,
   buildMatchingProfile,
+  buildServiceSpecificTargetProfile,
   buildProfileSkillsSource,
   buildTargetProfileFromPayload,
+  collectAgencyServiceCandidates,
   evaluateCandidateMatch,
   normalizeMatchPercentage,
   parseBudgetPoint,
   parseBudgetRange,
   preferCandidate,
+  rankAgencyFreelancersFromData,
   rankFreelancersFromData,
   rangesOverlap,
   scoreAvailability,

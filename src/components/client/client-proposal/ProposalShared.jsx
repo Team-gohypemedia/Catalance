@@ -17,7 +17,7 @@ export const ProposalSectionCard = memo(function ProposalSectionCard({
     <Card className={cn("border-border/60 bg-background/35 shadow-none", className)}>
       <CardContent className="space-y-4 p-5 sm:p-6">
         <div className="space-y-1">
-          <h4 className="text-base font-semibold tracking-tight text-white">{title}</h4>
+          <h4 className="text-base font-semibold tracking-tight text-foreground">{title}</h4>
           {description ? (
             <p className="text-sm leading-6 text-[#94a3b8]">{description}</p>
           ) : null}
@@ -46,7 +46,7 @@ export const ProposalStructuredList = memo(function ProposalStructuredList({
           <span className="mt-0.5 text-xs font-semibold text-[var(--primary)]">
             {String(index + 1).padStart(2, "0")}
           </span>
-          <p className="text-sm leading-6 text-white">{item}</p>
+          <p className="text-sm leading-6 text-foreground">{item}</p>
         </div>
       ))}
     </div>
@@ -90,7 +90,7 @@ export const ProposalSummaryItem = memo(function ProposalSummaryItem({
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
         {label}
       </p>
-      <div className={cn("text-sm font-medium leading-6 text-white", valueClassName)}>
+      <div className={cn("text-sm font-medium leading-6 text-foreground", valueClassName)}>
         {value}
       </div>
     </div>

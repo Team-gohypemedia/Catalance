@@ -13,7 +13,7 @@ It reflects the current implementation in:
 
 ## 1) Main Entry Points
 
-There are 3 related backend flows.
+There are 4 related backend flows.
 
 ### A. Match freelancers from a saved project or proposal
 
@@ -55,6 +55,17 @@ Behavior:
 Important current limitation:
 
 - The ranking logic exists, but project or proposal creation does not automatically return matched freelancers in the same request.
+
+### D. Match freelancers for agency multi-service proposals
+
+Behavior:
+
+- If proposal is marked as agency flow or contains more than one selected service, backend now uses a separate multi-service matching branch.
+- The existing single-service matcher is reused per service.
+- Backend runs one full match for each requested service.
+- Only freelancers who appear in all service result sets are kept in final output.
+- Agencies are not forced exclusively; both individuals and agencies can match if they cover every requested service.
+- If matched freelancer has `FreelancerProfile.profileRole = agency`, response includes that label so UI can show it.
 
 ## 2) Source Resolution Logic
 
@@ -138,7 +149,34 @@ Fallback behavior:
 
 This is a resilience fallback, not a fatal error.
 
-## 6) Three Matching Levels
+## 6) Matching Modes
+
+There are 2 matching modes now.
+
+### Single-service mode
+
+- Used for the normal freelancer flow.
+- Uses one target service and the standard 3 matching levels.
+
+### Agency multi-service mode
+
+- Used when `isAgencyProposal = true`, `proposalContext.flowMode = agency`, or selected services contain more than one service.
+- Backend keeps the exact current single-service matching logic for each service separately.
+- After per-service ranking finishes, backend intersects freelancer ids across all requested services.
+- Final output contains only freelancers who matched every service in the proposal.
+- Response metadata includes:
+  - `matchingMode = agency_multi_service`
+  - `agencyServiceKeys`
+  - `agencyServiceCount`
+  - `perServiceMatchCounts`
+  - `intersectionCount`
+  - `intersectionStrategy = all_services`
+
+Important:
+
+- Single-service ranking behavior is unchanged.
+
+## 7) Three Matching Levels
 
 Ranking is performed in 3 levels.
 
@@ -208,7 +246,7 @@ Rule difference from Level 1:
 - service-only matches are rejected here too
 - profile match needs concrete overlap, not just same service label
 
-## 7) Min Result Expansion Logic
+## 8) Min Result Expansion Logic
 
 Current defaults:
 
@@ -229,7 +267,7 @@ Important effect:
 - `levelCounts` are counts per level before final deduped output.
 - Final `matched` count can be lower than `level1 + level2 + level3` because the same freelancer can pass more than one level.
 
-## 8) Availability Logic
+## 9) Availability Logic
 
 A freelancer is immediately rejected if either condition is true:
 
@@ -249,7 +287,7 @@ Failure reason used:
 
 - `availability_not_eligible`
 
-## 9) Budget Logic
+## 10) Budget Logic
 
 Budget logic is intentionally asymmetric.
 
@@ -277,7 +315,7 @@ Important consequence:
 - A higher project budget does not hurt the match.
 - A too-low project budget can fully remove the candidate.
 
-## 10) Service Matching Logic
+## 11) Service Matching Logic
 
 Service values are normalized into canonical service signals.
 
@@ -301,7 +339,7 @@ Failure reason used for explicit mismatch:
 
 - `service_category_mismatch`
 
-## 11) Concrete Overlap Logic
+## 12) Concrete Overlap Logic
 
 For Level 2 and Level 3, service match by itself is not enough.
 
@@ -316,7 +354,7 @@ If service matches but none of the above overlaps exist, candidate fails with:
 
 - `service_only_without_concrete_overlap`
 
-## 12) No-Signal Logic
+## 13) No-Signal Logic
 
 If candidate has no meaningful overlap at all, backend rejects it.
 
@@ -332,7 +370,7 @@ If none match, failure reason is:
 
 - `no_signal_match`
 
-## 13) Scoring Inputs
+## 14) Scoring Inputs
 
 Current scoring components include:
 
@@ -350,7 +388,7 @@ Current scoring components include:
 
 There are also penalties for weak or low-evidence matches.
 
-## 14) Diagnostics Logging Logic
+## 15) Diagnostics Logging Logic
 
 In non-production, backend logs:
 
@@ -376,7 +414,7 @@ Each diagnostics entry can include:
 
 This is for debugging only and does not change ranking logic.
 
-## 15) All Current Failure Cases
+## 16) All Current Failure Cases
 
 The current explicit failure reasons in the ranking engine are:
 
@@ -435,7 +473,7 @@ What happens:
 
 - candidate is removed from that evaluation path
 
-## 16) What Happens When Logic Fails
+## 17) What Happens When Logic Fails
 
 There are 3 different meanings of "fail" in current flow.
 
@@ -479,7 +517,7 @@ What happens:
 - only that candidate is removed from that level
 - whole request still succeeds
 
-## 17) How Results Are Returned
+## 18) How Results Are Returned
 
 Controller normalizes returned freelancer records into response-friendly objects.
 
@@ -497,6 +535,11 @@ Returned fields include examples like:
 - `startingPrice`
 - `matchedSkills`
 - `matchedCaseStudyTitles`
+- `profileRole`
+- `isAgencyProfile`
+- `coveredServices`
+- `coveredServiceKeys`
+- `serviceMatches`
 - match percentage and scoring metadata
 
 Route response includes:
@@ -509,7 +552,13 @@ Route response includes:
 - `levelCounts`
 - `meta`
 
-## 18) Current Project Creation Logic Around Matching
+For agency multi-service matches:
+
+- `serviceMatches` contains one match summary per required service
+- `coveredServiceKeys` shows which services were covered in the intersection result
+- `coveredServices` shows the human-readable matched services
+
+## 19) Current Project Creation Logic Around Matching
 
 When client creates a project with `POST /api/projects`:
 
@@ -528,7 +577,7 @@ Important:
 
 This explains why a later explicit call to `/api/proposals/match-freelancers` is still needed today.
 
-## 19) Current Project Manager Assignment Logic
+## 20) Current Project Manager Assignment Logic
 
 During project creation, backend logs:
 
@@ -548,7 +597,7 @@ If no eligible PM is found:
 
 - project can still be created with `managerId = null`
 
-## 20) What Your Shared Logs Mean
+## 21) What Your Shared Logs Mean
 
 Based on the log sample you pasted:
 
@@ -618,19 +667,21 @@ Meaning:
 - frontend was refreshing project and owner proposal lists
 - these are not the matching engine itself
 
-## 21) Current Behavior Summary
+## 22) Current Behavior Summary
 
 Today the system behaves like this:
 
 1. Client or frontend can send proposal/project-like payload to `/api/proposals/match-freelancers`.
 2. Backend normalizes the payload.
-3. Backend loads freelancer pool and completed-project pool.
-4. Backend ranks freelancers through Level 1, then Level 2, then Level 3 until minimum result threshold is met.
-5. Backend logs detailed diagnostics in non-production.
-6. Backend returns normalized freelancer matches.
-7. Creating a project later stores matching context and assigns a PM, but does not auto-run ranking.
+3. Backend decides whether this is single-service mode or agency multi-service mode.
+4. Backend loads freelancer pool and completed-project pool.
+5. Single-service mode ranks freelancers through Level 1, then Level 2, then Level 3 until minimum result threshold is met.
+6. Agency multi-service mode runs that same ranking separately per service, then keeps only freelancer ids present in every service result set.
+7. Backend logs detailed diagnostics in non-production.
+8. Backend returns normalized freelancer matches.
+9. Creating a project later stores matching context and assigns a PM, but does not auto-run ranking.
 
-## 22) Practical Current Gaps
+## 23) Practical Current Gaps
 
 Current implementation gaps:
 
@@ -639,7 +690,7 @@ Current implementation gaps:
 - matching result is computed on demand, not persisted as a final match snapshot
 - Level 1 depends on completed-project data quality and availability
 
-## 23) Recommended Next Step If You Want Full Automation
+## 24) Recommended Next Step If You Want Full Automation
 
 If you want the flow to be fully automatic after client proposal or project creation, backend should do this:
 
