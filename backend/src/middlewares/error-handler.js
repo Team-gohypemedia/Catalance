@@ -1,3 +1,4 @@
+import multer from "multer";
 import { ZodError } from "zod";
 import { AppError } from "../utils/app-error.js";
 
@@ -6,6 +7,18 @@ export const errorHandler = (error, _req, res, _next) => {
     return res.status(400).json({
       message: "Validation failed",
       issues: error.flatten()
+    });
+  }
+
+  if (error instanceof multer.MulterError) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        message: "File too large"
+      });
+    }
+
+    return res.status(400).json({
+      message: error.message || "Upload failed"
     });
   }
 

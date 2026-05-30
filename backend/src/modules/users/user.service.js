@@ -37,6 +37,8 @@ const WHATSAPP_OTP_MAX_REQUESTS_PER_WINDOW = 5;
 const WHATSAPP_OTP_MAX_VERIFY_ATTEMPTS_PER_WINDOW = 8;
 const PHONE_ONLY_EMAIL_DOMAIN = "phone.catalance.local";
 const EMAIL_SIGNIN_DEFAULT_ROLE = "CLIENT";
+const UPDATE_USER_PROFILE_TRANSACTION_MAX_WAIT_MS = 10_000;
+const UPDATE_USER_PROFILE_TRANSACTION_TIMEOUT_MS = 20_000;
 const whatsappOtpRequestAttempts = new Map();
 const whatsappOtpVerifyAttempts = new Map();
 const marketplaceSupportsServiceDetails = (() => {
@@ -2929,6 +2931,9 @@ export const updateUserProfile = async (userId, updates) => {
         where: { id: user.id }
       })
     );
+    }, {
+      maxWait: UPDATE_USER_PROFILE_TRANSACTION_MAX_WAIT_MS,
+      timeout: UPDATE_USER_PROFILE_TRANSACTION_TIMEOUT_MS
     });
   } catch (error) {
     if (

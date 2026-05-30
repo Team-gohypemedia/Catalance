@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
 import Plus from "lucide-react/dist/esm/icons/plus";
@@ -20,6 +20,8 @@ import {
   DEFAULT_FREELANCER_ONBOARDING_CONTENT,
   resolveCaseStudyFields,
 } from "@/shared/lib/freelancer-onboarding-content";
+
+const CASE_STUDY_BANNER_MAX_BYTES = 5 * 1024 * 1024;
 
 const ONBOARDING_PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
@@ -57,9 +59,54 @@ const toTitleCase = (value) =>
       word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
     );
 
+const getCaseStudyBannerPreviewUrl = (value) => {
+  if (typeof value === "string") {
+    return String(value).trim();
+  }
+
+  if (typeof File !== "undefined" && value instanceof File) {
+    return URL.createObjectURL(value);
+  }
+
+  return "";
+};
+
+const getCaseStudyProjectFileMeta = (value) => {
+  if (!value) {
+    return { name: "", url: "" };
+  }
+
+  if (typeof value === "string") {
+    const trimmedValue = String(value).trim();
+    const fallbackName =
+      trimmedValue.split("/").filter(Boolean).pop()?.split("?")[0] || "Uploaded file";
+    return {
+      name: decodeURIComponent(fallbackName),
+      url: trimmedValue,
+    };
+  }
+
+  if (typeof File !== "undefined" && value instanceof File) {
+    return {
+      name: String(value.name || "Selected file").trim(),
+      url: "",
+    };
+  }
+
+  return {
+    name: String(value?.name || value?.fileName || "").trim(),
+    url: String(value?.url || value?.uploadedUrl || "").trim(),
+  };
+};
+
 /* ──────────────────── File Upload Button ──────────────────── */
 
-const FileUploadButton = ({ file, onChange, hasError = false }) => {
+const FileUploadButton = ({
+  file,
+  onChange,
+  hasError = false,
+  accept = undefined,
+}) => {
   const inputRef = useRef(null);
 
   return (
@@ -97,6 +144,7 @@ const FileUploadButton = ({ file, onChange, hasError = false }) => {
       <input
         ref={inputRef}
         type="file"
+        accept={accept}
         onChange={(e) => {
           const selected = e.target.files?.[0] || null;
           onChange(selected);
@@ -128,6 +176,7 @@ const FreelancerCaseStudySlide = ({
   onUploadMediaFile,
 }) => {
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [bannerUploadError, setBannerUploadError] = useState("");
   const caseStudyContent =
     onboardingContent?.caseStudy ||
     DEFAULT_FREELANCER_ONBOARDING_CONTENT.caseStudy;
@@ -162,6 +211,26 @@ const FreelancerCaseStudySlide = ({
   const normalizedCaseStudies = Array.isArray(caseStudies) ? caseStudies : [];
   const isCaseStudyLimitReached =
     normalizedCaseStudies.length >= MAX_ONBOARDING_CASE_STUDIES;
+  const bannerPreviewUrl = useMemo(
+    () => getCaseStudyBannerPreviewUrl(caseStudyForm.previewImage),
+    [caseStudyForm.previewImage],
+  );
+  const projectFileMeta = useMemo(
+    () => getCaseStudyProjectFileMeta(caseStudyForm.projectFile),
+    [caseStudyForm.projectFile],
+  );
+  useEffect(() => {
+    if (
+      typeof caseStudyForm.previewImage === "string" ||
+      !bannerPreviewUrl.startsWith("blob:")
+    ) {
+      return undefined;
+    }
+
+    return () => {
+      URL.revokeObjectURL(bannerPreviewUrl);
+    };
+  }, [bannerPreviewUrl, caseStudyForm.previewImage]);
   const titleError = String(caseStudyValidationErrors.title || "").trim();
   const descriptionError = String(caseStudyValidationErrors.description || "").trim();
   const nicheError = String(caseStudyValidationErrors.niche || "").trim();
@@ -412,8 +481,8 @@ const FreelancerCaseStudySlide = ({
               ) : null}
             </div>
 
-            {/* 3-column row: Project Link, Project File, Your Role */}
-            <div className="grid gap-5 sm:grid-cols-3">
+            {/* 2-column row: Project Link, Your Role */}
+            <div className="grid gap-5 sm:grid-cols-2">
               {/* Project Link */}
               <div className="space-y-0">
                 <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
@@ -437,20 +506,6 @@ const FreelancerCaseStudySlide = ({
                     )}
                   />
                 </div>
-              </div>
-
-              {/* Project File */}
-              <div className="space-y-0">
-                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                  {fieldMap.projectFile?.label || caseStudyContent?.fields?.projectFile?.label ||
-                    "Project File (Optional)"}
-                </label>
-                <FileUploadButton
-                  file={caseStudyForm.projectFile}
-                  onChange={(file) =>
-                    onCaseStudyFieldChange("projectFile", file)
-                  }
-                />
               </div>
 
               {/* Your Role */}
@@ -527,8 +582,54 @@ const FreelancerCaseStudySlide = ({
               </div>
             </div>
 
-            {/* 2-column row: Banner Image, Gradient */}
+            {/* 2-column row: Project File, Banner Image */}
             <div className="grid gap-5 sm:grid-cols-2">
+              {/* Project File */}
+              <div className="space-y-0">
+                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                  {fieldMap.projectFile?.label || caseStudyContent?.fields?.projectFile?.label ||
+                    "Project File (Optional)"}
+                </label>
+                <FileUploadButton
+                  file={caseStudyForm.projectFile}
+                  onChange={(file) =>
+                    onCaseStudyFieldChange("projectFile", file)
+                  }
+                />
+                {projectFileMeta.name ? (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {projectFileMeta.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Project file ready
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {projectFileMeta.url ? (
+                        <a
+                          href={projectFileMeta.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                        >
+                          View
+                        </a>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onCaseStudyFieldChange("projectFile", null)}
+                      >
+                        Remove file
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
               {/* Banner Image */}
               <div className="space-y-0">
                 <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
@@ -537,42 +638,91 @@ const FreelancerCaseStudySlide = ({
                 <FileUploadButton
                   file={caseStudyForm.previewImage}
                   isLoading={isUploadingBanner}
+                  accept="image/*"
+                  hasError={Boolean(bannerUploadError)}
                   onChange={async (file) => {
                     if (!file) {
+                      setBannerUploadError("");
                       onCaseStudyFieldChange("previewImage", null);
                       return;
                     }
                     if (typeof file === "string") {
+                      setBannerUploadError("");
                       onCaseStudyFieldChange("previewImage", file);
                       return;
                     }
+                    const fileType = String(file.type || "").trim().toLowerCase();
+                    if (!fileType.startsWith("image/")) {
+                      setBannerUploadError("Banner image must be an image file.");
+                      return;
+                    }
+                    if (Number(file.size) > CASE_STUDY_BANNER_MAX_BYTES) {
+                      setBannerUploadError("Banner image must be 5MB or smaller.");
+                      return;
+                    }
                     try {
+                      setBannerUploadError("");
                       setIsUploadingBanner(true);
                       const uploaded = await onUploadMediaFile(file);
                       if (uploaded?.url) {
                         onCaseStudyFieldChange("previewImage", uploaded.url);
                       }
                     } catch (err) {
+                      setBannerUploadError(
+                        err?.message || "Failed to upload the banner image.",
+                      );
                       console.error("Banner upload error:", err);
                     } finally {
                       setIsUploadingBanner(false);
                     }
                   }}
                 />
+                {bannerPreviewUrl ? (
+                  <div className="mt-3 space-y-3">
+                    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                      <img
+                        src={bannerPreviewUrl}
+                        alt="Case study banner preview"
+                        className="aspect-[16/9] w-full object-cover"
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setBannerUploadError("");
+                          onCaseStudyFieldChange("previewImage", null);
+                        }}
+                      >
+                        Remove photo
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+                <p
+                  className={cn(
+                    "mt-2 px-1 text-xs",
+                    bannerUploadError ? "text-destructive" : "text-muted-foreground",
+                  )}
+                >
+                  {bannerUploadError || "JPG, PNG, GIF, or WebP. Max 5MB."}
+                </p>
               </div>
+            </div>
 
-              {/* Background Gradient */}
-              <div className="space-y-0">
-                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                  Background Gradient
-                </label>
-                <CustomSelect
-                  value={caseStudyForm.previewGradient}
-                  onChange={(val) => onCaseStudyFieldChange("previewGradient", val)}
-                  options={GRADIENT_OPTIONS}
-                  placeholder="Select gradient"
-                />
-              </div>
+            {/* Background Gradient */}
+            <div className="space-y-0">
+              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                Background Gradient
+              </label>
+              <CustomSelect
+                value={caseStudyForm.previewGradient}
+                onChange={(val) => onCaseStudyFieldChange("previewGradient", val)}
+                options={GRADIENT_OPTIONS}
+                placeholder="Select gradient"
+              />
             </div>
             {customCaseStudyFields.map((field) => {
               const customValue = caseStudyForm?.customFields?.[field.id] ?? "";

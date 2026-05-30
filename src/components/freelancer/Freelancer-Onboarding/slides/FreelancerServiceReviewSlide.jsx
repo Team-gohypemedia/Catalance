@@ -793,6 +793,7 @@ const FreelancerServiceReviewSlide = ({
         timeline: toDisplayName(caseStudy?.timeline),
         budget: formatCaseStudyBudget(caseStudy?.budget),
         projectLink: normalizeProjectLinkValue(caseStudy?.projectLink),
+        previewImage: caseStudy?.previewImage || "",
         projectFileName: String(caseStudy?.projectFile?.name || "").trim(),
       }))
       .filter((caseStudy) =>
