@@ -3964,8 +3964,9 @@ const FreelancerProfile = () => {
                   </SelectTrigger>
                   <SelectContent
                     position="popper"
+                    side="bottom"
                     sideOffset={6}
-                    className="max-h-[26rem] rounded-xl border-border/70 bg-card text-foreground"
+                    className="max-h-[16rem] rounded-xl border-border/70 bg-card text-foreground"
                   >
                     {availableServiceOptions.map((option) => (
                       <SelectItem
