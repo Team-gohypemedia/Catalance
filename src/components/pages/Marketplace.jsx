@@ -1516,7 +1516,7 @@ const Marketplace = () => {
               <h1 className="w-full max-w-[900px] text-[32px] font-medium tracking-tight text-white sm:text-[48px] md:text-[64px] lg:text-[76px] lg:leading-[1.05]">
                 <AnimatedHeroText 
                   staticText="Hire experts for" 
-                  titles={["High-Impact Work", "Strategic Growth", "Expert Execution", "Verified Results", "Vetted Quality"]}
+                  titles={["your next big idea", "professional solutions", "Achieving Results"]}
                   className="flex w-full flex-col items-center"
                 />
               </h1>
