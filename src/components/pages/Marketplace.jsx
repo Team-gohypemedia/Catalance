@@ -1623,7 +1623,7 @@ const Marketplace = () => {
               <AnimatePresence mode="wait">
                 {loading ? (
                   <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                       {Array.from({ length: MARKETPLACE_PAGE_SIZE }).map((_, index) => (
                         <Card key={`skeleton-${index}`} className={cn(glassCardClass, "overflow-hidden rounded-[28px]")}>
                           <Skeleton className="h-44 w-full rounded-none" />
@@ -1663,7 +1663,7 @@ const Marketplace = () => {
                   </motion.div>
                 ) : (
                   <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                       {data.map((item) => {
                         const image = item.serviceDetails?.coverImage || item.serviceDetails?.image || null;
                         const rating = Number(item.rating || 0);
@@ -1784,7 +1784,7 @@ const Marketplace = () => {
                       Client project listings
                     </h3>
                   </div>
-                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {Array.from({ length: MARKETPLACE_PAGE_SIZE }).map((_, index) => (
                       <Card key={`project-skeleton-${index}`} className={cn(glassCardClass, "overflow-hidden rounded-[28px]")}>
                         <Skeleton className="h-44 w-full rounded-none" />
@@ -1828,7 +1828,7 @@ const Marketplace = () => {
                         : "."}
                     </p>
                   </div>
-                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {projectData.map((item) => {
                       const timeline = String(item?.timeline || item?.duration || "").trim();
                       const clientLabel = String(item?.companyName || item?.clientName || "").trim();
@@ -1978,7 +1978,7 @@ const Marketplace = () => {
             ) : null}
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {openProjectsShowcase.items.map((project) => (
               <article key={project.id} className="h-full">
                 <Card className="group h-full rounded-[28px] border border-border bg-card shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)]">
