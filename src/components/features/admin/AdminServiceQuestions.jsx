@@ -20,8 +20,8 @@ import ServiceQuestionFlow from "./ServiceQuestionFlow";
 const QUESTION_TYPE_META = {
     input: {
         label: "Text Input",
-        badgeClassName: "border-white/10 bg-white/5 text-slate-100",
-        accentClassName: "bg-slate-300"
+        badgeClassName: "border-border bg-background/80 text-foreground",
+        accentClassName: "bg-muted-foreground/70"
     },
     single_option: {
         label: "Single Select",
@@ -36,7 +36,7 @@ const QUESTION_TYPE_META = {
 };
 
 const SummaryMetric = ({ label, value, note }) => (
-    <div className="rounded-2xl border border-white/10 bg-black/20 px-3.5 py-3.5 backdrop-blur">
+    <div className="rounded-2xl border border-border bg-background/70 px-3.5 py-3.5 backdrop-blur">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">{label}</p>
         <p className="mt-2 text-2xl font-medium tracking-tight [font-variant-numeric:tabular-nums]">{value}</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">{note}</p>
@@ -326,13 +326,13 @@ const AdminServiceQuestions = () => {
 
                 <div className="grid items-start gap-5 xl:grid-cols-[290px_minmax(0,1fr)]">
 
-                    <Card className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-                        <CardHeader className="space-y-4 border-b border-white/10 p-4">
+                    <Card className="rounded-[24px] border border-border bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--muted)))] shadow-[0_18px_44px_rgba(15,23,42,0.12)] dark:bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
+                        <CardHeader className="space-y-4 border-b border-border p-4">
                             <div className="space-y-1">
                                 <CardTitle className="text-xl font-semibold tracking-tight">Services</CardTitle>
                                 <p className="text-sm leading-6 text-muted-foreground">Select a service to manage its interview flow, branching, and AI context capture.</p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
+                            <div className="rounded-2xl border border-border bg-background/70 px-3 py-2.5">
                                 <Label htmlFor="service-search" className="sr-only">Search Services</Label>
                                 <div className="flex items-center gap-3">
                                     <LucideIcons.Search className="h-4 w-4 text-muted-foreground" />
@@ -357,11 +357,11 @@ const AdminServiceQuestions = () => {
                         <CardContent className="p-3">
                             <div className="space-y-2">
                                     {loadingServices ? (
-                                        <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">
+                                        <div className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                                             Loading services...
                                         </div>
                                     ) : visibleServices.length === 0 ? (
-                                        <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">
+                                        <div className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                                             No services match this search yet.
                                         </div>
                                     ) : (
@@ -377,21 +377,21 @@ const AdminServiceQuestions = () => {
                                                     className={`w-full rounded-2xl border px-3.5 py-3.5 text-left transition-all duration-200 ${
                                                         isSelected
                                                             ? "border-primary/30 bg-primary/10 shadow-[0_12px_28px_rgba(255,199,0,0.1)]"
-                                                            : "border-white/10 bg-black/15 hover:border-white/20 hover:bg-white/[0.03]"
+                                                            : "border-border bg-background/70 hover:border-primary/25 hover:bg-accent/40"
                                                     }`}
                                                 >
                                                     <div className="flex items-start gap-3">
                                                         <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
                                                             isSelected
                                                                 ? "border-primary/35 bg-primary/15 text-primary"
-                                                                : "border-white/10 bg-white/[0.03] text-muted-foreground"
+                                                                : "border-border bg-background/70 text-muted-foreground"
                                                         }`}>
                                                             <Icon className="h-[18px] w-[18px]" />
                                                         </div>
                                                         <div className="min-w-0 flex-1">
                                                             <div className="flex items-start justify-between gap-3">
                                                                 <div className="min-w-0">
-                                                                    <p className="line-clamp-2 text-sm font-medium leading-5 text-white">{service.name}</p>
+                                                                    <p className="line-clamp-2 text-sm font-medium leading-5 text-foreground">{service.name}</p>
                                                                     <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{service.id}</p>
                                                                 </div>
                                                                 {isSelected ? <LucideIcons.ChevronRight className="mt-1 h-4 w-4 shrink-0 text-primary" /> : null}
@@ -415,15 +415,15 @@ const AdminServiceQuestions = () => {
                     </Card>
 
                     <div className="flex flex-col gap-5">
-                        <section className="relative overflow-hidden rounded-[26px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(255,199,0,0.12),transparent_34%),linear-gradient(135deg,rgba(24,24,24,0.96),rgba(8,8,8,1))] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.3)] lg:p-6">
-                            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(255,199,0,0.08),transparent)] opacity-60" />
+                        <section className="relative overflow-hidden rounded-[26px] border border-border bg-[radial-gradient(circle_at_top_left,rgba(255,199,0,0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)))] p-5 shadow-[0_22px_60px_rgba(15,23,42,0.12)] dark:bg-[radial-gradient(circle_at_top_left,rgba(255,199,0,0.12),transparent_34%),linear-gradient(135deg,rgba(24,24,24,0.96),rgba(8,8,8,1))] dark:shadow-[0_22px_60px_rgba(0,0,0,0.3)] lg:p-6">
+                            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(255,199,0,0.1),transparent)] opacity-50 dark:opacity-60" />
                             <div className="relative flex flex-col gap-5">
                                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                                     <div className="max-w-3xl">
                                         <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
                                             Interview Design
                                         </div>
-                                        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-white [text-wrap:balance] sm:text-3xl">
+                                        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground [text-wrap:balance] sm:text-3xl">
                                             {selectedService ? selectedService.name : "Question Manager"}
                                         </h1>
                                         <p className="mt-2.5 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
@@ -433,7 +433,7 @@ const AdminServiceQuestions = () => {
                                         </p>
                                         {selectedService ? (
                                             <div className="mt-4 flex flex-wrap items-center gap-2">
-                                                <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                                <Badge variant="outline" className="rounded-full border-border bg-background/70 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                                                     {selectedService.id}
                                                 </Badge>
                                                 <Badge variant={selectedService.active ? "default" : "secondary"} className="rounded-full">
@@ -444,15 +444,15 @@ const AdminServiceQuestions = () => {
                                     </div>
 
                                     <div className="flex flex-wrap gap-2.5">
-                                        <div className="inline-flex rounded-full border border-white/10 bg-black/20 p-1">
+                                        <div className="inline-flex rounded-full border border-border bg-background/70 p-1">
                                             <button
                                                 type="button"
                                                 onClick={() => setViewMode("list")}
                                                 aria-pressed={viewMode === "list"}
                                                 className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
                                                     viewMode === "list"
-                                                        ? "bg-white text-black shadow-sm"
-                                                        : "text-muted-foreground hover:text-white"
+                                                        ? "bg-foreground text-background shadow-sm"
+                                                        : "text-muted-foreground hover:text-foreground"
                                                 }`}
                                             >
                                                 <LucideIcons.List className="mr-2 h-4 w-4" />
@@ -464,8 +464,8 @@ const AdminServiceQuestions = () => {
                                                 aria-pressed={viewMode === "flow"}
                                                 className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
                                                     viewMode === "flow"
-                                                        ? "bg-white text-black shadow-sm"
-                                                        : "text-muted-foreground hover:text-white"
+                                                        ? "bg-foreground text-background shadow-sm"
+                                                        : "text-muted-foreground hover:text-foreground"
                                                 }`}
                                             >
                                                 <LucideIcons.GitGraph className="mr-2 h-4 w-4" />
@@ -476,7 +476,7 @@ const AdminServiceQuestions = () => {
                                             variant="outline"
                                             onClick={handleCopyFlow}
                                             disabled={!selectedServiceId || questions.length === 0}
-                                            className="rounded-full border-white/10 bg-white/[0.04] px-4"
+                                            className="rounded-full border-border bg-background/70 px-4 hover:bg-accent"
                                         >
                                             <LucideIcons.Copy className="mr-2 h-4 w-4" />
                                             Copy Flow
@@ -500,20 +500,20 @@ const AdminServiceQuestions = () => {
                                             <SummaryMetric label="Branches" value={branchingRuleCount} note="Conditional rules that reroute the flow" />
                                             <SummaryMetric label="Selections" value={selectionQuestionCount} note="Choice-based prompts in this flow" />
                                         </div>
-                                        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-black/15 px-3.5 py-2.5 text-sm text-muted-foreground">
+                                        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-background/70 px-3.5 py-2.5 text-sm text-muted-foreground">
                                             <LucideIcons.GripVertical className="h-4 w-4 text-primary" />
                                             Drag cards to reorder. Click a card or flow node to edit it.
-                                            <span className="text-white/50">Optional prompts: {optionalCount}</span>
+                                            <span className="text-muted-foreground">Optional prompts: {optionalCount}</span>
                                         </div>
                                     </>
                                 ) : null}
                             </div>
                         </section>
 
-                        <Card className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(24,24,24,0.95),rgba(10,10,10,0.98))]">
+                        <Card className="rounded-[24px] border border-border bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)))] dark:bg-[linear-gradient(180deg,rgba(24,24,24,0.95),rgba(10,10,10,0.98))]">
                             {viewMode === "flow" && selectedServiceId && questions.length > 0 ? (
                                 <>
-                                    <div className="border-b border-white/10 px-4 py-3 text-sm text-muted-foreground">
+                                    <div className="border-b border-border px-4 py-3 text-sm text-muted-foreground">
                                         Inspect branches visually. Click any node to open the editor for that question.
                                     </div>
                                     <div className="h-[680px] p-3.5">
@@ -527,7 +527,7 @@ const AdminServiceQuestions = () => {
                                 <div className="p-5">
                                     <div className="space-y-4">
                                         {!selectedServiceId ? (
-                                            <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[28px] border border-dashed border-white/10 bg-black/15 px-6 text-center">
+                                            <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[28px] border border-dashed border-border bg-muted/30 px-6 text-center">
                                                 <div className="mb-5 rounded-full border border-primary/20 bg-primary/10 p-4 text-primary">
                                                     <LucideIcons.MousePointer2 className="h-12 w-12" />
                                                 </div>
@@ -539,11 +539,11 @@ const AdminServiceQuestions = () => {
                                         ) : loading ? (
                                             <div className="space-y-3.5">
                                                 {[1, 2, 3].map((item) => (
-                                                    <div key={item} className="h-36 animate-pulse rounded-[22px] border border-white/10 bg-white/[0.03]" />
+                                                    <div key={item} className="h-36 animate-pulse rounded-[22px] border border-border bg-card/50" />
                                                 ))}
                                             </div>
                                         ) : questions.length === 0 ? (
-                                            <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[28px] border border-dashed border-white/10 bg-black/15 px-6 text-center">
+                                            <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[28px] border border-dashed border-border bg-muted/30 px-6 text-center">
                                                 <div className="mb-5 rounded-full border border-primary/20 bg-primary/10 p-4 text-primary">
                                                     <LucideIcons.FileQuestion className="h-10 w-10" />
                                                 </div>
@@ -568,12 +568,12 @@ const AdminServiceQuestions = () => {
                                                             value={question}
                                                             onDragEnd={handleDragEnd}
                                                         >
-                                                            <Card className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(31,31,31,0.98),rgba(13,13,13,0.98))] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_16px_34px_rgba(0,0,0,0.28)]">
+                                                            <Card className="group relative overflow-hidden rounded-[22px] border border-border bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--muted)))] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_16px_34px_rgba(15,23,42,0.12)] dark:bg-[linear-gradient(180deg,rgba(31,31,31,0.98),rgba(13,13,13,0.98))] dark:hover:shadow-[0_16px_34px_rgba(0,0,0,0.28)]">
                                                                 <div className={`absolute left-0 top-0 h-full w-1.5 ${typeMeta.accentClassName}`} />
                                                                 <CardContent className="p-5">
                                                                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
                                                                         <div className="flex items-center gap-3 lg:w-[72px] lg:flex-col lg:items-center lg:justify-start">
-                                                                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] font-mono text-sm font-semibold text-white">
+                                                                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-background/70 font-mono text-sm font-semibold text-foreground">
                                                                                 {index + 1}
                                                                             </div>
                                                                             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground lg:flex-col lg:gap-1">
@@ -586,7 +586,7 @@ const AdminServiceQuestions = () => {
                                                                             <div className="flex flex-col gap-3.5 xl:flex-row xl:items-start xl:justify-between">
                                                                                 <div className="min-w-0 space-y-3">
                                                                                     <div className="flex flex-wrap gap-2">
-                                                                                        <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.03] font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                                                                        <Badge variant="outline" className="rounded-full border-border bg-background/70 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                                                                                             {question.id}
                                                                                         </Badge>
                                                                                         <Badge variant="outline" className={`rounded-full ${typeMeta.badgeClassName}`}>
@@ -602,7 +602,7 @@ const AdminServiceQuestions = () => {
                                                                                         ) : null}
                                                                                     </div>
                                                                                     <div className="space-y-2">
-                                                                                        <h3 className="text-xl font-semibold leading-tight tracking-tight text-white [text-wrap:balance]">
+                                                                                        <h3 className="text-xl font-semibold leading-tight tracking-tight text-foreground [text-wrap:balance]">
                                                                                             {question.question}
                                                                                         </h3>
                                                                                         <p className="text-sm text-muted-foreground">
@@ -620,7 +620,7 @@ const AdminServiceQuestions = () => {
                                                                                         variant="outline"
                                                                                         size="icon"
                                                                                         onClick={() => handleOpenDialog(question)}
-                                                                                        className="rounded-full border-white/10 bg-white/[0.04]"
+                                                                                        className="rounded-full border-border bg-background/70 hover:bg-accent"
                                                                                         aria-label={`Edit ${question.id}`}
                                                                                     >
                                                                                         <LucideIcons.Pencil className="h-4 w-4" />
@@ -629,7 +629,7 @@ const AdminServiceQuestions = () => {
                                                                                         variant="outline"
                                                                                         size="icon"
                                                                                         onClick={() => handleDelete(question)}
-                                                                                        className="rounded-full border-white/10 bg-white/[0.04] hover:border-destructive/40 hover:bg-destructive/10"
+                                                                                        className="rounded-full border-border bg-background/70 hover:border-destructive/40 hover:bg-destructive/10"
                                                                                         aria-label={`Delete ${question.id}`}
                                                                                     >
                                                                                         <LucideIcons.Trash2 className="h-4 w-4" />
@@ -638,19 +638,19 @@ const AdminServiceQuestions = () => {
                                                                             </div>
 
                                                                             <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.9fr)]">
-                                                                                <div className="rounded-2xl border border-white/10 bg-black/20 p-3.5">
+                                                                                <div className="rounded-2xl border border-border bg-muted/30 p-3.5">
                                                                                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">AI Context</p>
                                                                                     <p className="mt-3 text-sm leading-7 text-muted-foreground">
                                                                                         {question.subtitle || "No hidden guidance yet. Add context here to help the AI interpret and reuse this answer."}
                                                                                     </p>
                                                                                 </div>
 
-                                                                                <div className="rounded-2xl border border-white/10 bg-black/20 p-3.5">
+                                                                                <div className="rounded-2xl border border-border bg-muted/30 p-3.5">
                                                                                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">Answer Format</p>
                                                                                     {question.options && question.options.length > 0 ? (
                                                                                         <div className="mt-3 flex flex-wrap gap-2">
                                                                                             {question.options.map((option, optionIndex) => (
-                                                                                                <Badge key={optionIndex} variant="outline" className="rounded-full border-white/10 bg-white/[0.03]">
+                                                                                                <Badge key={optionIndex} variant="outline" className="rounded-full border-border bg-background/70">
                                                                                                     {option.label || option}
                                                                                                 </Badge>
                                                                                             ))}
@@ -660,12 +660,12 @@ const AdminServiceQuestions = () => {
                                                                                     )}
                                                                                 </div>
 
-                                                                                <div className="rounded-2xl border border-white/10 bg-black/20 p-3.5">
+                                                                                <div className="rounded-2xl border border-border bg-muted/30 p-3.5">
                                                                                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">Flow Control</p>
                                                                                     <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-                                                                                        <p>Default next: <span className="text-white">{question.nextQuestionSlug || "Sequential"}</span></p>
-                                                                                        <p>Branch rules: <span className="text-white">{logicRuleCount}</span></p>
-                                                                                        <p>Stored for AI: <span className="text-white">{question.saveResponse ? "Yes" : "No"}</span></p>
+                                                                                        <p>Default next: <span className="text-foreground">{question.nextQuestionSlug || "Sequential"}</span></p>
+                                                                                        <p>Branch rules: <span className="text-foreground">{logicRuleCount}</span></p>
+                                                                                        <p>Stored for AI: <span className="text-foreground">{question.saveResponse ? "Yes" : "No"}</span></p>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -686,8 +686,8 @@ const AdminServiceQuestions = () => {
                 </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent className="flex max-h-[min(90vh,860px)] w-[96vw] max-w-[960px] flex-col gap-0 overflow-hidden overscroll-contain border border-white/10 bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] p-0 shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
-                        <DialogHeader className="border-b border-white/10 p-5 pb-4">
+                    <DialogContent className="flex max-h-[min(90vh,860px)] w-[96vw] max-w-[960px] flex-col gap-0 overflow-hidden overscroll-contain border border-border bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)))] p-0 shadow-[0_28px_80px_rgba(15,23,42,0.18)] dark:bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] dark:shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+                        <DialogHeader className="border-b border-border p-5 pb-4">
                             <DialogTitle className="text-xl font-semibold">{currentQuestion ? "Edit Question" : "Add New Question"}</DialogTitle>
                             <DialogDescription className="max-w-2xl text-sm leading-6 text-muted-foreground">
                                 Build the interview step, decide whether the answer is saved into AI context, and configure where the flow should go next.
@@ -794,7 +794,7 @@ const AdminServiceQuestions = () => {
                                 </div>
 
                                 {(formData.type === "single_option" || formData.type === "multi_option") && (
-                                    <div className="space-y-4 rounded-2xl border border-white/10 bg-black/15 p-4">
+                                    <div className="space-y-4 rounded-2xl border border-border bg-muted/30 p-4">
                                         <div className="flex justify-between items-center">
                                             <Label className="text-sm font-medium">Answer Options</Label>
                                             <Button type="button" variant="secondary" size="sm" className="rounded-full" onClick={addOption}>
@@ -804,7 +804,7 @@ const AdminServiceQuestions = () => {
                                         <div className="max-h-[220px] space-y-3 overflow-y-auto overscroll-contain pr-2 custom-scrollbar">
                                             {formData.options.map((opt, idx) => (
                                                 <div key={idx} className="flex gap-2 items-center">
-                                                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-xs text-muted-foreground">
+                                                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-background/70 text-xs text-muted-foreground">
                                                         {String.fromCharCode(65 + idx)}
                                                     </div>
                                                     <Input
@@ -827,7 +827,7 @@ const AdminServiceQuestions = () => {
                                                 </div>
                                             ))}
                                             {formData.options.length === 0 && (
-                                                <div className="rounded-xl border border-dashed border-white/10 py-7 text-center text-muted-foreground">
+                                                <div className="rounded-xl border border-dashed border-border py-7 text-center text-muted-foreground">
                                                     <LucideIcons.ListChecks className="h-8 w-8 mx-auto mb-2 opacity-50" />
                                                     <p className="text-sm">No options added yet.</p>
                                                     <Button type="button" variant="link" onClick={addOption} className="h-auto p-0 mt-1">
@@ -840,7 +840,7 @@ const AdminServiceQuestions = () => {
                                 )}
 
                                 {/* Logic Configuration Section */}
-                                <div className="space-y-4 border-t border-white/10 pt-4">
+                                <div className="space-y-4 border-t border-border pt-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="q-next">Default Next Question (Optional)</Label>
                                         <Select
@@ -868,15 +868,15 @@ const AdminServiceQuestions = () => {
 
                                     <div className="flex items-center justify-between gap-3 pt-1">
                                         <Label className="text-sm font-medium">Branching Logic (Advanced)</Label>
-                                        <Button type="button" variant="outline" size="sm" className="rounded-full border-white/10 bg-white/[0.03]" onClick={addLogicRule}>
+                                        <Button type="button" variant="outline" size="sm" className="rounded-full border-border bg-background/70 hover:bg-accent" onClick={addLogicRule}>
                                             <LucideIcons.GitBranch className="h-3 w-3 mr-1" /> Add Rule
                                         </Button>
                                     </div>
 
                                     {formData.logic && formData.logic.length > 0 ? (
-                                        <div className="space-y-3 rounded-2xl border border-white/10 bg-black/15 p-3">
+                                        <div className="space-y-3 rounded-2xl border border-border bg-muted/30 p-3">
                                             {formData.logic.map((rule, idx) => (
-                                                <div key={idx} className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 p-3">
+                                                <div key={idx} className="flex flex-col gap-3 rounded-xl border border-border bg-background/70 p-3">
                                                     <div className="flex items-center gap-2">
                                                         <span className="w-20 text-sm font-medium text-muted-foreground">If Answer</span>
                                                         <Select value={rule.condition} onValueChange={(val) => updateLogicRule(idx, 'condition', val)}>
@@ -942,14 +942,14 @@ const AdminServiceQuestions = () => {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="rounded-2xl border border-dashed border-white/10 bg-black/15 p-4 text-center">
+                                        <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-4 text-center">
                                             <p className="text-sm text-muted-foreground">No branching rules defined.</p>
                                             <p className="text-xs text-muted-foreground mt-1">Flow will proceed to the next question in order.</p>
                                         </div>
                                     )}
                                 </div>
 
-                                <DialogFooter className="border-t border-white/10 pt-4">
+                                <DialogFooter className="border-t border-border pt-4">
                                     <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                                     <Button type="submit">Save Question</Button>
                                 </DialogFooter>
