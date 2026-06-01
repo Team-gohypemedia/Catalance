@@ -2695,7 +2695,7 @@ const ProposalPreview = ({ content, isDark }) => {
     return (
         <div className="space-y-5">
             {presentMetaFields.length > 0 && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
                     {presentMetaFields.map((field) => (
                         <div
                             key={field.key}
@@ -5711,7 +5711,7 @@ const GuestAIDemo = () => {
                                 </div>
                             ) : null}
 
-                            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                                 {orderedServices.map((feature, index) => (
                                     <div
                                         key={feature.id || index}
@@ -6072,7 +6072,7 @@ const GuestAIDemo = () => {
                                 <h2 className="text-4xl font-bold text-white">Why Catalance AI?</h2>
                                 <p className="text-muted-foreground mt-3 text-base max-w-xl mx-auto">We&apos;ve reimagined how businesses discover and hire freelance talent.</p>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
                                 {[
                                     { icon: '⚡', title: 'Instant Qualification', desc: 'AI filters your requirements in real-time — no back-and-forth emails, no wasted calls.' },
                                     { icon: '🔒', title: 'Verified Professionals', desc: 'Every freelancer is vetted with portfolio review, skill assessments, and client references.' },

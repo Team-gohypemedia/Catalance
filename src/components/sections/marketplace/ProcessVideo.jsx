@@ -70,7 +70,7 @@ const ProcessVideo = () => {
   return (
     <section
       id="how-it-works"
-      className="relative w-full overflow-hidden bg-background py-24 sm:py-32"
+      className="relative w-full overflow-hidden bg-background py-10 sm:py-14"
     >
       {/* Ambient background glow */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">

@@ -183,7 +183,7 @@ const Hero = () => {
         <h1 className="max-w-4xl text-[2.1rem] font-medium leading-[1.1] tracking-tight text-foreground dark:text-white sm:text-[2.75rem] md:text-[3.4rem] lg:text-[4.4rem]">
           <AnimatedHeroText
             staticText="Find Talent You Can"
-            titles={["Expertly Trust", "Verify Today", "Safely Hire", "Clearly Vetted", "Top-Tier Only"]}
+            titles={["Rely on", "Grow with", "Trust in"]}
             className="flex flex-col items-center"
           />
         </h1>

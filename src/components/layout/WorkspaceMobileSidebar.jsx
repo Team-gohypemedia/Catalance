@@ -174,6 +174,7 @@ const MobileProfileSwitchCard = ({
   profile,
   profileInitial,
   profileTo,
+  onLogout,
 }) => {
   const navigate = useNavigate();
   const {
@@ -189,7 +190,7 @@ const MobileProfileSwitchCard = ({
 
   return (
     <div className="rounded-2xl border border-border bg-card/65 backdrop-blur-md p-3.5 shadow-sm">
-      <div className="flex items-start justify-between gap-2.5">
+      <div className="flex items-center gap-2.5">
         <SheetClose asChild>
           <button
             type="button"
@@ -213,6 +214,17 @@ const MobileProfileSwitchCard = ({
                 Current: <span className="font-semibold text-foreground/80">{currentDashboardLabel}</span> dashboard
               </p>
             </div>
+          </button>
+        </SheetClose>
+
+        <SheetClose asChild>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="shrink-0 flex items-center gap-1.5 rounded-xl border border-orange-500/20 bg-orange-500/5 px-2.5 py-1.5 text-orange-500 hover:bg-orange-500/10 dark:border-orange-400/20 dark:bg-orange-400/5 dark:text-orange-400 dark:hover:bg-orange-400/10 transition-colors shadow-2xs"
+          >
+            <LogOut className="size-3.5" />
+            <span className="text-[0.75rem] font-bold tracking-tight">Sign Out</span>
           </button>
         </SheetClose>
       </div>
@@ -267,6 +279,7 @@ MobileProfileSwitchCard.propTypes = {
   }),
   profileInitial: PropTypes.string.isRequired,
   profileTo: PropTypes.string.isRequired,
+  onLogout: PropTypes.func,
 };
 
 const navItemShape = PropTypes.shape({
@@ -374,23 +387,6 @@ const WorkspaceMobileSidebar = ({
                 <div className="flex min-h-full flex-col gap-2.5 py-2">
                   <section>
                     <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
-                      Main
-                    </p>
-                    <div className="mt-1 space-y-0">
-                      {workspaceNavItems.map((item) => (
-                        <MobileMenuLink
-                          key={item.key}
-                          item={item}
-                          active={item.key === activeWorkspaceKey}
-                          onSelect={onWorkspaceNav}
-                          priority="primary"
-                        />
-                      ))}
-                    </div>
-                  </section>
-
-                  <section>
-                    <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
                       Home
                     </p>
                     <div className="mt-1 grid grid-cols-2 gap-1.5">
@@ -418,24 +414,31 @@ const WorkspaceMobileSidebar = ({
                     </div>
                   </section>
 
-                  <div className="mt-auto space-y-1.5 pb-0">
-                    <SheetClose asChild>
-                      <button
-                        type="button"
-                        onClick={onLogout}
-                        className="flex items-center gap-2.5 px-1 text-[0.84rem] font-medium text-muted-foreground transition hover:text-foreground"
-                      >
-                        <LogOut className="size-4" />
-                        <span>Sign Out</span>
-                      </button>
-                    </SheetClose>
+                  <section>
+                    <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
+                      Main
+                    </p>
+                    <div className="mt-1 space-y-0">
+                      {workspaceNavItems.map((item) => (
+                        <MobileMenuLink
+                          key={item.key}
+                          item={item}
+                          active={item.key === activeWorkspaceKey}
+                          onSelect={onWorkspaceNav}
+                          priority="primary"
+                        />
+                      ))}
+                    </div>
+                  </section>
 
+                  <div className="mt-auto space-y-1.5 pb-0">
                     <MobileProfileSwitchCard
                       currentDashboard={currentDashboard}
                       displayName={displayName}
                       profile={profile}
                       profileInitial={profileInitial}
                       profileTo={profileTo}
+                      onLogout={onLogout}
                     />
                   </div>
                 </div>
