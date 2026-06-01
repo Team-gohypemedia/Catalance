@@ -453,7 +453,7 @@ const ActiveProjectPaymentsPanel = ({
           <button
             type="button"
             onClick={() => onOpenProject(project.id)}
-            className="inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-[var(--primary)] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] sm:w-auto"
+            className="inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-[var(--primary)] px-5 text-sm font-semibold text-white transition hover:bg-primary/80 sm:w-auto"
           >
             View details
           </button>
