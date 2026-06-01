@@ -256,28 +256,28 @@ const StickySidebar = ({
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="overflow-hidden rounded-2xl border border-white/10 bg-[#111113] shadow-[0_20px_40px_-28px_rgba(0,0,0,0.85)]">
+      <Card className="overflow-hidden rounded-2xl border border-border bg-white dark:border-white/10 dark:bg-[#111113] shadow-[0_20px_40px_-28px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_40px_-28px_rgba(0,0,0,0.85)]">
         <div className="space-y-4 p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8f8f95]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Starting Price
               </p>
-              <p className="mt-1 text-[28px] font-bold leading-none text-white">{priceValue}</p>
+              <p className="mt-1 text-[28px] font-bold leading-none text-foreground dark:text-white">{priceValue}</p>
             </div>
           </div>
 
           {serviceSummary ? (
-            <p className="line-clamp-3 text-sm leading-6 text-[#a1a1aa]">{serviceSummary}</p>
+            <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">{serviceSummary}</p>
           ) : null}
 
-          <div className="inline-flex items-center gap-2 text-sm font-medium text-[#e4e4e7]">
+          <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80 dark:text-[#e4e4e7]">
             <Clock className="h-3.5 w-3.5 text-primary" />
             <span>{deliveryTime}</span>
           </div>
 
           <Button
-            className="h-11 w-full rounded-full bg-primary text-sm font-semibold text-black hover:bg-primary/90"
+            className="h-11 w-full rounded-full bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             onClick={handleCTAClick}
           >
             Continue ({priceValue})
@@ -285,21 +285,21 @@ const StickySidebar = ({
         </div>
       </Card>
 
-      <div className="space-y-4 rounded-2xl border border-white/8 bg-[#0d0d10] p-4">
+      <div className="space-y-4 rounded-2xl border border-border bg-white p-4 dark:border-white/8 dark:bg-[#0d0d10]">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8f8f95]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Experience Level
           </p>
-          <p className="mt-1 text-sm font-semibold text-[#f4f4f5]">{experienceLevel}</p>
+          <p className="mt-1 text-sm font-semibold text-foreground dark:text-[#f4f4f5]">{experienceLevel}</p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8f8f95]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Service Location
           </p>
-          <p className="mt-1 text-sm font-semibold text-[#f4f4f5]">{serviceLocation}</p>
+          <p className="mt-1 text-sm font-semibold text-foreground dark:text-[#f4f4f5]">{serviceLocation}</p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8f8f95]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Positive Keywords
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -307,13 +307,13 @@ const StickySidebar = ({
               positiveKeywords.map((item) => (
                 <span
                   key={item}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-[#d4d4d8]"
+                  className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] text-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-[#d4d4d8]"
                 >
                   {item}
                 </span>
               ))
             ) : (
-              <span className="text-xs text-[#8f8f95]">No keywords available</span>
+              <span className="text-xs text-muted-foreground">No keywords available</span>
             )}
           </div>
         </div>

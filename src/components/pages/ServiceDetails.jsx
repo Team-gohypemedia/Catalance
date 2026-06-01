@@ -582,16 +582,16 @@ const ServiceDetails = () => {
           <div className="min-w-0 flex-1 space-y-6">
             <header className="space-y-3">
               {normalized.categoryLabel ? (
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8f8f95]">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                   {normalized.categoryLabel}
                 </p>
               ) : null}
 
-              <h1 className="text-4xl font-extrabold tracking-tight text-white lg:text-5xl">
+              <h1 className="text-4xl font-extrabold tracking-tight text-foreground dark:text-white lg:text-5xl">
                 {normalized.serviceName}
               </h1>
 
-              <p className="max-w-3xl text-sm leading-7 text-[#a1a1aa]">{normalized.shortDescription}</p>
+              <p className="max-w-3xl text-sm leading-7 text-muted-foreground">{normalized.shortDescription}</p>
 
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2.5">
@@ -602,25 +602,25 @@ const ServiceDetails = () => {
                       className="h-9 w-9 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#27272a]">
-                      <span className="text-xs font-bold text-[#a1a1aa]">{freelancerInitial}</span>
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                      <span className="text-xs font-bold text-muted-foreground">{freelancerInitial}</span>
                     </div>
                   )}
 
                   <div className="flex items-center gap-1.5">
-                    <p className="text-sm font-semibold text-white">{normalized.freelancer.name}</p>
+                    <p className="text-sm font-semibold text-foreground dark:text-white">{normalized.freelancer.name}</p>
                     {normalized.freelancer.isVerified ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase text-black">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase text-primary-foreground">
                         <BadgeCheck className="h-3 w-3" />
                         Verified
                       </span>
                     ) : null}
                   </div>
                 </div>
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-[#d4d4d8]">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-[#d4d4d8]">
                   <Star className="h-3.5 w-3.5 fill-primary text-primary" />
                   <span className="font-semibold">{reviewStats.average > 0 ? reviewStats.average : "New"}</span>
-                  <span className="text-[#8f8f95]">({reviewStats.total} reviews)</span>
+                  <span className="text-muted-foreground">({reviewStats.total} reviews)</span>
                 </div>
               </div>
             </header>
@@ -642,8 +642,8 @@ const ServiceDetails = () => {
               categoryLabel={normalized.categoryLabel}
             />
 
-            <section className="space-y-4 rounded-2xl border border-white/8 bg-[#111113] p-4 md:p-5">
-              <h2 className="text-xl font-bold text-white">Skills Category</h2>
+            <section className="space-y-4 rounded-2xl border border-border bg-white p-4 md:p-5 dark:border-white/8 dark:bg-[#111113]">
+              <h2 className="text-xl font-bold text-foreground dark:text-white">Skills Category</h2>
               {normalized.skillCategories.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {normalized.skillCategories.map((item) => (
@@ -660,52 +660,52 @@ const ServiceDetails = () => {
               )}
             </section>
 
-            <section className="space-y-4 rounded-2xl border border-white/8 bg-[#111113] p-4 md:p-5">
-              <h2 className="text-xl font-bold text-white">Skills</h2>
+            <section className="space-y-4 rounded-2xl border border-border bg-white p-4 md:p-5 dark:border-white/8 dark:bg-[#111113]">
+              <h2 className="text-xl font-bold text-foreground dark:text-white">Skills</h2>
               {normalized.skills.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {normalized.skills.map((item) => (
                     <span
                       key={item}
-                      className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-[#d4d4d8]"
+                      className="rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-[#d4d4d8]"
                     >
                       {item}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm italic text-[#8f8f95]">No skills provided yet.</p>
+                <p className="text-sm italic text-muted-foreground dark:text-[#8f8f95]">No skills provided yet.</p>
               )}
             </section>
 
-            <section className="space-y-4 rounded-2xl border border-white/8 bg-[#111113] p-4 md:p-5">
-              <h2 className="text-3xl font-bold text-white">About This Service</h2>
+            <section className="space-y-4 rounded-2xl border border-border bg-white p-4 md:p-5 dark:border-white/8 dark:bg-[#111113]">
+              <h2 className="text-3xl font-bold text-foreground dark:text-white">About This Service</h2>
 
-              <p className="whitespace-pre-wrap text-sm leading-7 text-[#d4d4d8]">
+              <p className="whitespace-pre-wrap text-sm leading-7 text-foreground/80 dark:text-[#d4d4d8]">
                 {normalized.description || "Service description is not available yet."}
               </p>
 
               <div className="space-y-2 pt-1">
-                <h3 className="text-2xl font-bold text-white">Why Choose Me</h3>
+                <h3 className="text-2xl font-bold text-foreground dark:text-white">Why Choose Me</h3>
                 {normalized.whyChooseItems.length > 0 ? (
                   <ul className="space-y-2.5">
                     {normalized.whyChooseItems.map((item) => (
-                      <li key={item} className="flex items-start gap-2.5 text-sm text-[#e4e4e7]">
+                      <li key={item} className="flex items-start gap-2.5 text-sm text-foreground/90 dark:text-[#e4e4e7]">
                         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                         <span>{item}</span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm italic text-[#8f8f95]">Highlights are not available yet.</p>
+                  <p className="text-sm italic text-muted-foreground dark:text-[#8f8f95]">Highlights are not available yet.</p>
                 )}
               </div>
             </section>
 
-            <section className="space-y-4 rounded-2xl border border-white/8 bg-[#111113] p-4 md:p-5">
-              <h2 className="text-3xl font-bold text-white">Get to know the seller</h2>
+            <section className="space-y-4 rounded-2xl border border-border bg-white p-4 md:p-5 dark:border-white/8 dark:bg-[#111113]">
+              <h2 className="text-3xl font-bold text-foreground dark:text-white">Get to know the seller</h2>
 
-              <div className="space-y-4 rounded-2xl border border-white/10 bg-[#151519] p-4">
+              <div className="space-y-4 rounded-2xl border border-border bg-muted/20 p-4 dark:border-white/10 dark:bg-[#151519]">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     {normalized.freelancer.avatar ? (
@@ -715,26 +715,26 @@ const ServiceDetails = () => {
                         className="h-14 w-14 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#27272a] text-lg font-bold text-[#a1a1aa]">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-lg font-bold text-muted-foreground dark:bg-[#27272a] dark:text-[#a1a1aa]">
                         {freelancerInitial}
                       </div>
                     )}
 
                     <div>
-                      <p className="text-base font-bold text-white">{normalized.freelancer.name}</p>
+                      <p className="text-base font-bold text-foreground dark:text-white">{normalized.freelancer.name}</p>
                       {normalized.freelancer.title ? (
-                        <p className="text-xs text-[#a1a1aa]">{normalized.freelancer.title}</p>
+                        <p className="text-xs text-muted-foreground dark:text-[#a1a1aa]">{normalized.freelancer.title}</p>
                       ) : null}
                       <div className="mt-1 inline-flex items-center gap-1.5 text-xs text-primary">
                         <Star className="h-3.5 w-3.5 fill-primary text-primary" />
                         <span className="font-semibold">{reviewStats.average > 0 ? reviewStats.average : "New"}</span>
-                        <span className="text-[#8f8f95]">({reviewStats.total} reviews)</span>
+                        <span className="text-muted-foreground dark:text-[#8f8f95]">({reviewStats.total} reviews)</span>
                       </div>
                     </div>
                   </div>
                   <Button
                     type="button"
-                    className="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-black hover:bg-primary/90"
+                    className="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                     onClick={() => setChatModalOpen(true)}
                   >
                     Contact Me
@@ -742,96 +742,96 @@ const ServiceDetails = () => {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-[#8f8f95]">From</p>
-                    <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-white">
+                  <div className="rounded-lg border border-border bg-background p-3 dark:border-white/10 dark:bg-black/30">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground dark:text-[#8f8f95]">From</p>
+                    <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground dark:text-white">
                       <MapPin className="h-3.5 w-3.5 text-primary" />
                       {normalized.freelancer.location || "Remote"}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-[#8f8f95]">Member Since</p>
-                    <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-white">
+                  <div className="rounded-lg border border-border bg-background p-3 dark:border-white/10 dark:bg-black/30">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground dark:text-[#8f8f95]">Member Since</p>
+                    <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground dark:text-white">
                       <CalendarDays className="h-3.5 w-3.5 text-primary" />
                       {normalized.freelancer.memberSince}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-[#8f8f95]">Experience</p>
-                    <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-white">
+                  <div className="rounded-lg border border-border bg-background p-3 dark:border-white/10 dark:bg-black/30">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground dark:text-[#8f8f95]">Experience</p>
+                    <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground dark:text-white">
                       <BriefcaseBusiness className="h-3.5 w-3.5 text-primary" />
                       {normalized.freelancer.experienceYears > 0
                         ? `${normalized.freelancer.experienceYears}+ years`
                         : "Not specified"}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-[#8f8f95]">Delivery Timeline</p>
-                    <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-white">
+                  <div className="rounded-lg border border-border bg-background p-3 dark:border-white/10 dark:bg-black/30">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground dark:text-[#8f8f95]">Delivery Timeline</p>
+                    <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground dark:text-white">
                       <Clock3 className="h-3.5 w-3.5 text-primary" />
                       {normalized.deliveryLabel}
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-white/10 bg-black/30 p-3.5">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-[#8f8f95]">About me</p>
-                  <p className="mt-2 text-sm leading-7 text-[#d4d4d8]">
+                <div className="rounded-lg border border-border bg-background p-3.5 dark:border-white/10 dark:bg-black/30">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground dark:text-[#8f8f95]">About me</p>
+                  <p className="mt-2 text-sm leading-7 text-foreground/80 dark:text-[#d4d4d8]">
                     {normalized.freelancer.bio || "Freelancer bio is not available yet."}
                   </p>
                 </div>
               </div>
             </section>
 
-            <section className="space-y-4 rounded-2xl border border-white/8 bg-[#111113] p-4 md:p-5">
+            <section className="space-y-4 rounded-2xl border border-border bg-white p-4 md:p-5 dark:border-white/8 dark:bg-[#111113]">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold text-white">What people loved about this freelancer</h2>
-                <div className="flex items-center gap-2 text-xs text-[#8f8f95]">
+                <h2 className="text-2xl font-bold text-foreground dark:text-white">What people loved about this freelancer</h2>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground dark:text-[#8f8f95]">
                   <span>{reviewStats.total} reviews</span>
-                  <button type="button" className="rounded-full border border-white/10 p-1.5 text-[#a1a1aa]">
+                  <button type="button" className="rounded-full border border-border p-1.5 text-muted-foreground hover:bg-muted dark:border-white/10 dark:text-[#a1a1aa]">
                     <ChevronLeft className="h-3.5 w-3.5" />
                   </button>
-                  <button type="button" className="rounded-full border border-white/10 p-1.5 text-[#a1a1aa]">
+                  <button type="button" className="rounded-full border border-border p-1.5 text-muted-foreground hover:bg-muted dark:border-white/10 dark:text-[#a1a1aa]">
                     <ChevronRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
 
               {featuredReview ? (
-                <article className="rounded-xl border border-white/10 bg-[#17171c] p-4">
+                <article className="rounded-xl border border-border bg-muted/20 p-4 dark:border-white/10 dark:bg-[#17171c]">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-500/90 text-xs font-semibold text-white">
                         {(featuredReview.clientName || "U").charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-white">{featuredReview.clientName || "Client"}</p>
-                        <p className="text-[11px] text-[#8f8f95]">{formatReviewDate(featuredReview.createdAt)}</p>
+                        <p className="text-sm font-semibold text-foreground dark:text-white">{featuredReview.clientName || "Client"}</p>
+                        <p className="text-[11px] text-muted-foreground dark:text-[#8f8f95]">{formatReviewDate(featuredReview.createdAt)}</p>
                       </div>
                     </div>
                     <div className="inline-flex items-center gap-1.5">
                       <Star className="h-4 w-4 fill-primary text-primary" />
-                      <span className="text-sm font-semibold text-white">{Number(featuredReview.rating || 0).toFixed(1)}</span>
+                      <span className="text-sm font-semibold text-foreground dark:text-white">{Number(featuredReview.rating || 0).toFixed(1)}</span>
                     </div>
                   </div>
-                  <p className="mt-3 line-clamp-4 text-sm leading-6 text-[#d4d4d8]">
+                  <p className="mt-3 line-clamp-4 text-sm leading-6 text-foreground/80 dark:text-[#d4d4d8]">
                     {featuredReview.comment || "No review comment available."}
                   </p>
                 </article>
               ) : (
-                <div className="rounded-xl border border-dashed border-white/10 bg-[#17171c] p-6 text-center text-sm text-[#8f8f95]">
+                <div className="rounded-xl border border-dashed border-border bg-muted/10 p-6 text-center text-sm text-muted-foreground dark:border-white/10 dark:bg-[#17171c] dark:text-[#8f8f95]">
                   {reviewsLoading ? "Loading reviews..." : "No reviews yet for this service."}
                 </div>
               )}
             </section>
 
-            <section className="space-y-4 rounded-2xl border border-white/8 bg-[#111113] p-4 md:p-5">
-              <h2 className="text-3xl font-bold text-white">My Portfolio</h2>
+            <section className="space-y-4 rounded-2xl border border-border bg-white p-4 md:p-5 dark:border-white/8 dark:bg-[#111113]">
+              <h2 className="text-3xl font-bold text-foreground dark:text-white">My Portfolio</h2>
 
               {normalized.featuredProject || normalized.caseStudy.projectTitle ? (
-                <article className="rounded-2xl border border-white/10 bg-[#17171c] p-4">
+                <article className="rounded-2xl border border-border bg-muted/20 p-4 dark:border-white/10 dark:bg-[#17171c]">
                   <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
-                    <div className="overflow-hidden rounded-xl border border-white/10 bg-[#111113]">
+                    <div className="overflow-hidden rounded-xl border border-border bg-background dark:border-white/10 dark:bg-[#111113]">
                       {normalized.featuredProject?.imageUrl ? (
                         <img
                           src={normalized.featuredProject.imageUrl}
@@ -839,20 +839,20 @@ const ServiceDetails = () => {
                           className="h-full min-h-[220px] w-full object-cover"
                         />
                       ) : (
-                        <div className="flex min-h-[220px] w-full items-center justify-center text-[#6b6b72]">
+                        <div className="flex min-h-[220px] w-full items-center justify-center text-muted-foreground dark:text-[#6b6b72]">
                           <ImageIcon className="h-8 w-8" />
                         </div>
                       )}
                     </div>
 
                     <div className="space-y-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-[#8f8f95]">
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground dark:text-[#8f8f95]">
                         From {normalized.freelancer.memberSince}
                       </p>
-                      <h3 className="text-2xl font-bold leading-tight text-white">
+                      <h3 className="text-2xl font-bold leading-tight text-foreground dark:text-white">
                         {normalized.caseStudy.projectTitle || normalized.featuredProject?.title || "Case Study"}
                       </h3>
-                      <p className="line-clamp-4 text-sm leading-7 text-[#c4c4cc]">
+                      <p className="line-clamp-4 text-sm leading-7 text-foreground/80 dark:text-[#c4c4cc]">
                         {normalized.caseStudy.goal ||
                           normalized.featuredProject?.description ||
                           "Project details are available on request."}
@@ -860,19 +860,19 @@ const ServiceDetails = () => {
 
                       <div className="flex flex-wrap gap-2 text-xs">
                         {normalized.caseStudy.timeline ? (
-                          <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[#d4d4d8]">
+                          <span className="rounded-full border border-border bg-background px-2.5 py-1 text-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-[#d4d4d8]">
                             {normalized.caseStudy.timeline}
                           </span>
                         ) : null}
                         {normalized.caseStudy.budgetRange ? (
-                          <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[#d4d4d8]">
+                          <span className="rounded-full border border-border bg-background px-2.5 py-1 text-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-[#d4d4d8]">
                             {formatMoney(normalized.caseStudy.budgetRange)}
                           </span>
                         ) : null}
                         {normalized.caseStudy.techStack.map((item) => (
                           <span
                             key={item}
-                            className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[#d4d4d8]"
+                            className="rounded-full border border-border bg-background px-2.5 py-1 text-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-[#d4d4d8]"
                           >
                             {item}
                           </span>
@@ -884,14 +884,14 @@ const ServiceDetails = () => {
                           href={normalized.featuredProject.link}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-black hover:bg-primary/90"
+                          className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                         >
                           View Case Study
                         </a>
                       ) : (
                         <Button
                           type="button"
-                          className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-black hover:bg-primary/90"
+                          className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                           onClick={handleShare}
                         >
                           Share Service
@@ -902,12 +902,12 @@ const ServiceDetails = () => {
 
                   {normalized.recentProjects.length > 0 ? (
                     <div className="mt-4">
-                      <p className="mb-2 text-xs uppercase tracking-[0.18em] text-[#8f8f95]">Recent Projects</p>
+                      <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground dark:text-[#8f8f95]">Recent Projects</p>
                       <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                         {normalized.recentProjects.slice(0, 6).map((item) => (
                           <article
                             key={item.id}
-                            className="group overflow-hidden rounded-lg border border-white/10 bg-[#111113]"
+                            className="group overflow-hidden rounded-lg border border-border bg-background dark:border-white/10 dark:bg-[#111113]"
                           >
                             <div className="aspect-square">
                               {item.imageUrl ? (
@@ -917,7 +917,7 @@ const ServiceDetails = () => {
                                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                 />
                               ) : (
-                                <div className="flex h-full w-full items-center justify-center text-[#6b6b72]">
+                                <div className="flex h-full w-full items-center justify-center text-muted-foreground dark:text-[#6b6b72]">
                                   <ImageIcon className="h-4 w-4" />
                                 </div>
                               )}
@@ -929,38 +929,38 @@ const ServiceDetails = () => {
                   ) : null}
                 </article>
               ) : (
-                <div className="rounded-xl border border-dashed border-white/10 bg-[#17171c] p-6 text-center text-sm text-[#8f8f95]">
+                <div className="rounded-xl border border-dashed border-border bg-muted/10 p-6 text-center text-sm text-muted-foreground dark:border-white/10 dark:bg-[#17171c] dark:text-[#8f8f95]">
                   No portfolio projects added yet.
                 </div>
               )}
             </section>
 
-            <section className="rounded-2xl border border-white/8 bg-[#111113] p-4 md:p-5">
-              <h2 className="text-3xl font-bold text-white">Reviews</h2>
+            <section className="rounded-2xl border border-border bg-white p-4 md:p-5 dark:border-white/8 dark:bg-[#111113]">
+              <h2 className="text-3xl font-bold text-foreground dark:text-white">Reviews</h2>
 
               <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr_1fr]">
-                <div className="rounded-xl border border-white/10 bg-[#17171c] p-4">
+                <div className="rounded-xl border border-border bg-muted/20 p-4 dark:border-white/10 dark:bg-[#17171c]">
                   {[5, 4, 3, 2, 1].map((rating) => {
                     const count = reviewStats.counts[rating] || 0;
                     const percentage = reviewStats.total > 0 ? Math.round((count / reviewStats.total) * 100) : 0;
                     return (
                       <div key={rating} className="mb-2 flex items-center gap-2 text-xs">
-                        <span className="w-10 text-[#a1a1aa]">{rating} Star</span>
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+                        <span className="w-10 text-muted-foreground dark:text-[#a1a1aa]">{rating} Star</span>
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted dark:bg-white/10">
                           <div
                             className="h-full rounded-full bg-primary"
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
-                        <span className="w-8 text-right text-[#a1a1aa]">{count}</span>
+                        <span className="w-8 text-right text-muted-foreground dark:text-[#a1a1aa]">{count}</span>
                       </div>
                     );
                   })}
                 </div>
 
-                <div className="space-y-3 rounded-xl border border-white/10 bg-[#17171c] p-4">
+                <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4 dark:border-white/10 dark:bg-[#17171c]">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-[#d4d4d8]">Rating Breakdown</span>
+                    <span className="text-sm text-foreground/80 dark:text-[#d4d4d8]">Rating Breakdown</span>
                     <span className="inline-flex items-center gap-1 text-primary">
                       <Star className="h-4 w-4 fill-primary text-primary" />
                       {reviewStats.average > 0 ? reviewStats.average.toFixed(1) : "0.0"}
@@ -972,14 +972,14 @@ const ServiceDetails = () => {
                     { label: "Value of delivery", value: reviewStats.average || 0 },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center justify-between text-sm">
-                      <span className="text-[#a1a1aa]">{item.label}</span>
+                      <span className="text-muted-foreground dark:text-[#a1a1aa]">{item.label}</span>
                       <span className="inline-flex items-center gap-1 text-primary">
                         <Star className="h-3.5 w-3.5 fill-primary text-primary" />
                         {item.value > 0 ? Number(item.value).toFixed(1) : "0.0"}
                       </span>
                     </div>
                   ))}
-                  <div className="rounded-lg border border-white/10 bg-black/30 p-3 text-xs text-[#8f8f95]">
+                  <div className="rounded-lg border border-border bg-background p-3 text-xs text-muted-foreground dark:border-white/10 dark:bg-black/30 dark:text-[#8f8f95]">
                     {reviewStats.total > 0
                       ? `${reviewStats.total} verified review${reviewStats.total > 1 ? "s" : ""}`
                       : "No reviews yet. Be the first to rate this service."}

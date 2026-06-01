@@ -122,18 +122,7 @@ const Hero = () => {
   return (
     <section className="relative flex w-full flex-col items-center overflow-hidden bg-background pt-32 pb-10">
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        {/* Diagonal Grid Background */}
-        <div
-          className="absolute inset-0 z-0 opacity-[0.4] dark:opacity-[0.1]"
-          style={{
-            backgroundImage: `
-              repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 20px),
-              repeating-linear-gradient(-45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 20px)
-            `,
-            backgroundSize: "40px 40px",
-            color: isDarkMode ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.15)"
-          }}
-        />
+
 
         <div className="absolute inset-0 opacity-80">
           <BlackholeParticles />
@@ -165,7 +154,7 @@ const Hero = () => {
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center px-4 text-center sm:px-6">
         <Badge
           variant="outline"
-          className="mb-3 inline-flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 rounded-full bg-background/35 px-4 py-1.5 text-[0.64rem] font-medium leading-none backdrop-blur-md sm:mb-9 sm:max-w-none sm:gap-2 sm:px-5 sm:text-sm border-black/10 dark:border-white/10"
+          className="mb-6 inline-flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 rounded-full bg-background/35 px-4 py-1.5 text-[0.64rem] font-medium leading-none backdrop-blur-md sm:mb-9 sm:max-w-none sm:gap-2 sm:px-5 sm:text-sm border-black/10 dark:border-white/10"
         >
           <ShinyText
             speed={4}

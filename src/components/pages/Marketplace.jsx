@@ -1474,18 +1474,7 @@ const Marketplace = () => {
     <div className="relative min-h-screen bg-background text-foreground">
       {/* Full Screen Hero Section */}
       <section className="relative flex w-full flex-col items-center justify-start overflow-hidden bg-background pt-24 pb-0">
-        {/* Diagonal Grid Background */}
-        <div
-          className="absolute inset-0 z-0 opacity-[0.4] dark:opacity-[0.1]"
-          style={{
-            backgroundImage: `
-              repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 20px),
-              repeating-linear-gradient(-45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 20px)
-            `,
-            backgroundSize: "40px 40px",
-            color: isDarkMode ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.15)"
-          }}
-        />
+
 
         {/* Sparkles Background */}
         {sparklesEnabled ? (

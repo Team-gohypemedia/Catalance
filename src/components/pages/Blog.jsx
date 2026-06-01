@@ -84,7 +84,7 @@ const Blog = () => {
     typeof window !== "undefined" ? `${window.location.origin}/blog` : "/blog";
 
   return (
-    <main className="min-h-screen bg-[#090909] text-white">
+    <main className="min-h-screen bg-background text-foreground">
       <SeoMeta
         title={BLOG_PAGE_TITLE}
         description={BLOG_PAGE_DESCRIPTION}
@@ -99,27 +99,27 @@ const Blog = () => {
         }}
       />
 
-      <section className="relative overflow-hidden border-b border-white/10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,200,0,0.18),_transparent_32%),linear-gradient(180deg,_rgba(255,255,255,0.04),_transparent_60%)]" />
+      <section className="relative overflow-hidden border-b border-border dark:border-white/10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(var(--brand-rgb),0.12),_transparent_32%),linear-gradient(180deg,_rgba(255,255,255,0.02),_transparent_60%)] pointer-events-none" />
         <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-16 sm:px-6 lg:px-8 lg:pb-16 lg:pt-24">
           <div className="max-w-3xl">
-            <Badge className="rounded-full bg-[#ffc800] px-3 py-1 text-black">Catalance Blog</Badge>
-            <h1 className="mt-5 max-w-4xl text-balance text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+            <Badge className="rounded-full bg-primary px-3 py-1 text-primary-foreground hover:bg-primary/90">Catalance Blog</Badge>
+            <h1 className="mt-5 max-w-4xl text-balance text-4xl font-semibold tracking-tight text-foreground dark:text-white sm:text-5xl lg:text-6xl">
               Articles for teams that want sharper execution, not generic advice.
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+            <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
               Practical writing on delivery systems, AI implementation, SEO, pricing, and client operations from the Catalance side of the table.
             </p>
           </div>
 
           <div className="mt-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative w-full max-w-md">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search blog posts"
-                className="h-12 rounded-full border-white/10 bg-white/[0.04] pl-11 text-white placeholder:text-slate-500"
+                className="h-12 rounded-full border-border bg-card pl-11 text-foreground placeholder:text-muted-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
               />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -128,7 +128,7 @@ const Blog = () => {
                   key={category}
                   type="button"
                   onClick={() => setSelectedCategory(category)}
-                  className={`rounded-full px-4 py-2 text-sm transition ${selectedCategory === category ? "bg-[#ffc800] text-black" : "border border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:text-white"}`}
+                  className={`rounded-full px-4 py-2 text-sm transition ${selectedCategory === category ? "bg-primary text-primary-foreground" : "border border-border bg-card text-muted-foreground hover:bg-muted dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:border-white/20 dark:hover:text-white"}`}
                 >
                   {category}
                 </button>
@@ -140,7 +140,7 @@ const Blog = () => {
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
         {loading ? (
-          <div className="flex min-h-[40vh] items-center justify-center text-slate-400">
+          <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Loading blog posts...
           </div>
@@ -149,9 +149,9 @@ const Blog = () => {
             {error}
           </div>
         ) : filteredPosts.length === 0 ? (
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] px-6 py-16 text-center">
-            <h2 className="text-2xl font-semibold">No posts match this filter</h2>
-            <p className="mt-3 text-sm text-slate-400">Try another keyword or clear the category filter.</p>
+          <div className="rounded-[2rem] border border-border bg-card px-6 py-16 text-center dark:border-white/10 dark:bg-white/[0.03]">
+            <h2 className="text-2xl font-semibold text-foreground dark:text-white">No posts match this filter</h2>
+            <p className="mt-3 text-sm text-muted-foreground">Try another keyword or clear the category filter.</p>
           </div>
         ) : (
           <div className="space-y-10">
@@ -159,32 +159,32 @@ const Blog = () => {
               <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_420px]">
                 <Link
                   to={`/blog/${featuredPost.slug}`}
-                  className="group overflow-hidden rounded-[2rem] border border-white/10 bg-[#121212] transition hover:border-[#ffc800]/40"
+                  className="group overflow-hidden rounded-[2rem] border border-border bg-card transition hover:border-primary/40 dark:border-white/10 dark:bg-[#121212] dark:hover:border-primary/40"
                 >
                   <div className="grid h-full lg:grid-cols-[minmax(0,1fr)_280px]">
                     <div className="flex flex-col justify-between p-6 sm:p-8">
                       <div>
-                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
-                          <Badge variant="outline" className="border-[#ffc800]/30 text-[#ffc800]">{featuredPost.category}</Badge>
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                          <Badge variant="outline" className="border-primary/30 text-primary">{featuredPost.category}</Badge>
                           <span>{featuredPost.publishedLabel}</span>
                           <span>{featuredPost.readTime}</span>
                         </div>
-                        <h2 className="mt-5 text-balance text-3xl font-semibold leading-tight sm:text-4xl">
+                        <h2 className="mt-5 text-balance text-3xl font-semibold leading-tight text-foreground dark:text-white sm:text-4xl">
                           {featuredPost.title}
                         </h2>
-                        <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300">
+                        <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground/90 dark:text-slate-300">
                           {featuredPost.excerpt}
                         </p>
                       </div>
                       <div className="mt-8 flex items-center gap-4 text-sm">
-                        <span className="text-slate-400">{featuredPost.authorName}</span>
-                        <span className="inline-flex items-center gap-2 text-[#ffc800]">
+                        <span className="text-muted-foreground">{featuredPost.authorName}</span>
+                        <span className="inline-flex items-center gap-2 text-primary">
                           Read article
                           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                         </span>
                       </div>
                     </div>
-                    <div className="min-h-[260px] overflow-hidden bg-[#1b1b1b]">
+                    <div className="min-h-[260px] overflow-hidden bg-muted dark:bg-[#1b1b1b]">
                       {featuredPost.coverImageUrl ? (
                         <img
                           src={featuredPost.coverImageUrl}
@@ -192,7 +192,7 @@ const Blog = () => {
                           className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                         />
                       ) : (
-                        <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,200,0,0.2),_transparent_35%)] text-sm text-slate-500">
+                        <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(var(--brand-rgb),0.12),_transparent_35%)] text-sm text-muted-foreground">
                           Featured article
                         </div>
                       )}
@@ -205,16 +205,16 @@ const Blog = () => {
                     <Link
                       key={post.id}
                       to={`/blog/${post.slug}`}
-                      className="group rounded-[1.75rem] border border-white/10 bg-[#101010] p-5 transition hover:border-white/20"
+                      className="group rounded-[1.75rem] border border-border bg-card p-5 transition hover:border-primary/20 dark:border-white/10 dark:bg-[#101010] dark:hover:border-white/20"
                     >
-                      <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.18em] text-slate-500">
+                      <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
                         <span>{post.category}</span>
                         <span>{post.readTime}</span>
                       </div>
-                      <h3 className="mt-4 text-xl font-semibold leading-tight text-white transition group-hover:text-[#ffc800]">
+                      <h3 className="mt-4 text-xl font-semibold leading-tight text-foreground transition group-hover:text-primary dark:text-white">
                         {post.title}
                       </h3>
-                      <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-400">
+                      <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
                         {post.excerpt}
                       </p>
                     </Link>
@@ -228,9 +228,9 @@ const Blog = () => {
                 <Link
                   key={post.id}
                   to={`/blog/${post.slug}`}
-                  className="group overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#101010] transition hover:border-[#ffc800]/30"
+                  className="group overflow-hidden rounded-[1.75rem] border border-border bg-card transition hover:border-primary/30 dark:border-white/10 dark:bg-[#101010] dark:hover:border-[#ffc800]/30"
                 >
-                  <div className="aspect-[16/10] overflow-hidden bg-[#171717]">
+                  <div className="aspect-[16/10] overflow-hidden bg-muted dark:bg-[#171717]">
                     {post.coverImageUrl ? (
                       <img
                         src={post.coverImageUrl}
@@ -238,25 +238,25 @@ const Blog = () => {
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center bg-[radial-gradient(circle,_rgba(255,200,0,0.2),_transparent_42%)] text-sm text-slate-500">
+                      <div className="flex h-full items-center justify-center bg-[radial-gradient(circle,_rgba(var(--brand-rgb),0.12),_transparent_42%)] text-sm text-muted-foreground">
                         Catalance
                       </div>
                     )}
                   </div>
                   <div className="space-y-4 p-5">
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
-                      <Badge variant="outline">{post.category}</Badge>
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                      <Badge variant="outline" className="border-border text-foreground dark:border-white/10 dark:text-white">{post.category}</Badge>
                       <span>{post.publishedLabel}</span>
                     </div>
-                    <h3 className="text-xl font-semibold leading-tight text-white transition group-hover:text-[#ffc800]">
+                    <h3 className="text-xl font-semibold leading-tight text-foreground transition group-hover:text-primary dark:text-white">
                       {post.title}
                     </h3>
-                    <p className="line-clamp-3 text-sm leading-6 text-slate-400">
+                    <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">
                       {post.excerpt}
                     </p>
                     <div className="flex items-center justify-between pt-2 text-sm">
-                      <span className="text-slate-400">{post.authorName}</span>
-                      <span className="inline-flex items-center gap-2 text-[#ffc800]">
+                      <span className="text-muted-foreground">{post.authorName}</span>
+                      <span className="inline-flex items-center gap-2 text-primary">
                         Read
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </span>
@@ -269,14 +269,14 @@ const Blog = () => {
         )}
       </section>
 
-      <section className="border-t border-white/10 bg-[#0d0d0d]">
+      <section className="border-t border-border bg-muted/30 dark:border-white/10 dark:bg-[#0d0d0d]">
         <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 px-4 py-12 sm:px-6 lg:flex-row lg:items-center lg:px-8">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-[#ffc800]">Need execution support?</p>
-            <h2 className="mt-3 text-3xl font-semibold">Turn a blog insight into a shipped project.</h2>
+            <p className="text-sm uppercase tracking-[0.2em] text-primary">Need execution support?</p>
+            <h2 className="mt-3 text-3xl font-semibold text-foreground dark:text-white">Turn a blog insight into a shipped project.</h2>
           </div>
-          <Button asChild className="rounded-full bg-[#ffc800] px-6 text-black hover:bg-[#ffd84d]">
-            <Link to="/get-started">Start your Catalance project</Link>
+          <Button asChild className="rounded-full bg-primary px-6 text-primary-foreground hover:bg-primary/90">
+            <Link to="/service">Start your Catalance project</Link>
           </Button>
         </div>
       </section>

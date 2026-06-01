@@ -25,7 +25,7 @@ const ClientCTA = () => {
   }, [])
 
   return (
-    <section className="bg-background px-4 py-20 sm:px-6 sm:py-32 lg:px-8">
+    <section className="bg-background px-4 py-10 sm:px-6 sm:py-32 lg:px-8">
       <div className="mx-auto max-w-[1240px]">
         <div className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-background px-6 py-12 sm:px-10 sm:py-14 lg:min-h-[460px] lg:px-16">
           <div className="absolute inset-0 bg-background" />

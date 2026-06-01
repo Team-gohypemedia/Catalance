@@ -68,18 +68,7 @@ const BrandMarquee = ({ isIntegrated = false }) => {
       "relative w-full overflow-hidden mx-auto",
       isIntegrated ? "py-4 sm:py-6" : "py-8 sm:py-12"
     )}>
-      {/* Diagonal Grid Background */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none opacity-[0.25] dark:opacity-[0.1]"
-        style={{
-          backgroundImage: `
-            repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 20px),
-            repeating-linear-gradient(-45deg, currentColor 0, currentColor 1px, transparent 1px, transparent 20px)
-          `,
-          backgroundSize: "40px 40px",
-          color: isDarkMode ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.15)"
-        }}
-      />
+
 
       <div className="relative z-10 mb-6 text-center">
         <span className="text-[0.7rem] font-bold uppercase tracking-[0.4em] text-foreground/70 dark:text-white/60">

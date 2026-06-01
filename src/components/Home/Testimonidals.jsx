@@ -226,7 +226,7 @@ const Testimonidals = () => {
   ], [])
 
   return (
-    <section className="relative overflow-hidden bg-background py-20 sm:py-32">
+    <section className="relative overflow-hidden bg-background py-10 sm:py-32">
       {/* Header Section (Title & Badge) */}
       <div className="relative z-20 mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-10 mb-8 sm:mb-12">
           <div className={`inline-flex rounded-full border px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all mb-8 ${
