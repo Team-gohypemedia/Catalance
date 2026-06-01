@@ -96,8 +96,16 @@ const ProposalDetailsDialog = ({
       open={isViewing && Boolean(activeProposal)}
       onOpenChange={handleProposalDialogOpenChange}
     >
-      <DialogContent className="flex max-h-[92vh] w-[min(92vw,820px)] flex-col overflow-hidden border border-border/60 bg-accent p-0 sm:max-w-[820px] [&>button]:right-5 [&>button]:top-5 [&>button]:z-10 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-background/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:transition-colors [&>button:hover]:bg-background/80 [&>button:hover]:text-white [&>button_svg]:h-4 [&>button_svg]:w-4">
-        <div className="shrink-0 border-b border-white/10 px-6 py-5">
+      <DialogContent className={cn(
+        "flex max-h-[92vh] flex-col overflow-hidden border border-border/60 bg-background p-0 transition-all duration-300 ease-in-out [&>button]:right-5 [&>button]:top-5 [&>button]:z-10 [&>button]:rounded-full [&>button]:border [&>button]:border-border/60 dark:[&>button]:border-white/10 [&>button]:bg-background/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:transition-colors [&>button:hover]:bg-background/80 dark:[&>button:hover]:bg-background/80 [&>button:hover]:text-foreground dark:[&>button:hover]:text-white [&>button_svg]:h-4 [&>button_svg]:w-4",
+        isAIChatOpen 
+          ? "w-[min(95vw,1220px)] sm:max-w-[1220px]" 
+          : "w-[min(92vw,820px)] sm:max-w-[820px]"
+      )}>
+        <div className={cn(
+          "shrink-0 border-b border-border/60 dark:border-white/10 px-6 py-4 transition-all duration-300",
+          isAIChatOpen && "sm:pr-[424px]"
+        )}>
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-3">
@@ -118,27 +126,27 @@ const ProposalDetailsDialog = ({
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <Badge
                     variant="outline"
-                    className="h-9 w-fit rounded-full border-white/10 bg-background/40 px-3.5 text-[#a6adbb]"
+                    className="h-8 w-fit rounded-full border-border dark:border-white/10 bg-background/40 px-3 text-muted-foreground dark:text-[#a6adbb]"
                   >
                     {activeProposal?.submittedDate || "No date"}
                   </Badge>
-                  <span className="text-xs uppercase tracking-[0.18em] text-[#64748b]">
+                  <span className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-muted-foreground">
                     Last updated
                   </span>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 pr-10 sm:justify-end sm:pr-12">
+              <div className="flex flex-wrap items-center gap-2 pr-10 sm:justify-end sm:pr-12">
                 {canEditActiveProposal ? (
                   isEditingProposal ? (
                     <>
                       <Button
                         type="button"
                         variant="outline"
-                        className="h-11 rounded-full border-white/10 bg-background/30 px-5 text-white hover:bg-background/50"
+                        className="h-9 rounded-full border-border dark:border-white/10 bg-background/30 px-4 text-sm text-foreground dark:text-white hover:bg-muted dark:hover:bg-background/50"
                         onClick={handleCancelProposalEditing}
                         disabled={isSavingProposal}
                       >
@@ -146,7 +154,7 @@ const ProposalDetailsDialog = ({
                       </Button>
                       <Button
                         type="button"
-                        className="h-11 rounded-full bg-primary px-5 text-[#141414] hover:bg-primary/90"
+                        className="h-9 rounded-full bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90"
                         onClick={handleSaveProposalChanges}
                         disabled={isSavingProposal}
                       >
@@ -160,10 +168,10 @@ const ProposalDetailsDialog = ({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 rounded-full border-primary/25 bg-primary/10 px-5 text-primary hover:bg-primary/15"
+                      className="h-9 rounded-full border-primary/25 bg-primary/10 px-4 text-sm text-primary hover:bg-primary/15"
                       onClick={startEditingProposal}
                     >
-                      <Pencil className="mr-2 h-4 w-4" />
+                      <Pencil className="mr-2 h-3.5 w-3.5" />
                       Edit Proposal
                     </Button>
                   )
@@ -177,9 +185,9 @@ const ProposalDetailsDialog = ({
                       startEditingProposal();
                       setIsAIChatOpen(true);
                     }}
-                    className="h-11 rounded-full border-primary/25 bg-background/30 px-5 text-foreground hover:bg-primary/20 hover:text-primary transition-colors"
+                    className="h-9 rounded-full border-primary/25 bg-background/30 px-4 text-sm text-foreground hover:bg-primary/20 hover:text-primary transition-colors"
                   >
-                    <Sparkles className="mr-2 h-4 w-4 text-primary" />
+                    <Sparkles className="mr-2 h-3.5 w-3.5 text-primary" />
                     Edit with AI
                   </Button>
                 )}
@@ -196,17 +204,20 @@ const ProposalDetailsDialog = ({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 [scrollbar-color:rgba(255,255,255,0.18)_transparent] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2">
-          <div className="space-y-8 pb-2">
-            <section className="space-y-3">
-              <div className="space-y-1">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#64748b]">
+        <div className={cn(
+          "min-h-0 flex-1 overflow-y-auto px-6 py-5 transition-all duration-300 [scrollbar-color:rgba(0,0,0,0.1)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.18)_transparent] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/10 dark:[&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2",
+          isAIChatOpen && "sm:pr-[424px]"
+        )}>
+          <div className="space-y-6 pb-2">
+            <section className="space-y-2">
+              <div className="space-y-0.5">
+                <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                   01 Project Summary
                 </p>
-                <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                <h3 className="text-base sm:text-lg font-semibold tracking-tight text-foreground">
                   Start with the essentials
                 </h3>
-                <p className="text-sm leading-6 text-[#94a3b8]">
+                <p className="text-xs sm:text-sm leading-5 sm:leading-6 text-muted-foreground">
                   Review the project name, client details, service, and budget before diving
                   into the full scope.
                 </p>
@@ -223,7 +234,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("title", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="h-9 rounded-xl border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
                         placeholder="Project name"
                       />
                     ) : (
@@ -241,7 +252,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("clientName", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="h-9 rounded-xl border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
                         placeholder="Client name"
                       />
                     ) : (
@@ -259,7 +270,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("service", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="h-9 rounded-xl border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
                         placeholder="Service"
                       />
                     ) : (
@@ -279,7 +290,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("budget", event.target.value)
                         }
-                        className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="h-9 rounded-xl border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
                         placeholder="e.g. 40000"
                       />
                     ) : (
@@ -290,13 +301,13 @@ const ProposalDetailsDialog = ({
               </div>
 
               {agencyServiceEntries.length > 0 && (
-                <div className="mt-5 overflow-hidden rounded-[18px] border border-white/10 bg-background/35">
+                <div className="mt-5 overflow-hidden rounded-[18px] border border-border dark:border-white/10 bg-card dark:bg-background/35">
                   <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.9fr)] gap-3 px-4 py-3 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:px-5">
                     <p className="min-w-0">Service</p>
                     <p className="min-w-0">Budget</p>
                     <p className="min-w-0">Timeline</p>
                   </div>
-                  <div className="divide-y divide-white/10">
+                  <div className="divide-y divide-border dark:divide-white/10">
                     {agencyServiceEntries.map((entry, index) => (
                       <div
                         key={`${entry.name}-${index}`}
@@ -318,13 +329,13 @@ const ProposalDetailsDialog = ({
               )}
             </section>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.95fr)]">
-              <section className="space-y-4">
-                <div className="space-y-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#64748b]">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.95fr)]">
+              <section className="space-y-3">
+                <div className="space-y-0.5">
+                  <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                     02 Project Scope
                   </p>
-                  <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                  <h3 className="text-base sm:text-lg font-semibold tracking-tight text-foreground">
                     What the project includes
                   </h3>
                 </div>
@@ -343,7 +354,7 @@ const ProposalDetailsDialog = ({
                       onChange={(event) =>
                         handleEditableProposalDraftChange("projectOverview", event.target.value)
                       }
-                      className="min-h-[180px] border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                      className="min-h-[130px] border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
                       placeholder="Summarize the project, business context, and intended outcome."
                     />
                   ) : (
@@ -353,7 +364,7 @@ const ProposalDetailsDialog = ({
                   )}
                 </ProposalSectionCard>
 
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid gap-3 lg:grid-cols-2">
                   <ProposalSectionCard
                     title="Primary Objectives"
                     description="Key goals this proposal is meant to deliver."
@@ -365,7 +376,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("objectivesText", event.target.value)
                         }
-                        className="min-h-[220px] border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="min-h-[160px] border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
                         placeholder={"One objective per line\nExample: Launch MVP for internal testing"}
                       />
                     ) : (
@@ -387,7 +398,7 @@ const ProposalDetailsDialog = ({
                         onChange={(event) =>
                           handleEditableProposalDraftChange("deliverablesText", event.target.value)
                         }
-                        className="min-h-[220px] border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                        className="min-h-[160px] border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
                         placeholder={"One deliverable per line\nExample: Admin dashboard with analytics"}
                       />
                     ) : (
@@ -400,12 +411,12 @@ const ProposalDetailsDialog = ({
                 </div>
               </section>
 
-              <section className="space-y-4 xl:sticky xl:top-0">
-                <div className="space-y-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#64748b]">
+              <section className="space-y-3 xl:sticky xl:top-0">
+                <div className="space-y-0.5">
+                  <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                     03 Technical And Delivery
                   </p>
-                  <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                  <h3 className="text-base sm:text-lg font-semibold tracking-tight text-foreground">
                     Supporting details
                   </h3>
                 </div>
@@ -418,27 +429,27 @@ const ProposalDetailsDialog = ({
                   }
                 >
                   {isEditingProposal ? (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div className="space-y-2 sm:col-span-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
+                          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                             Timeline
                           </p>
                           {isAgency ? (
-                            <p className="h-11 flex items-center text-sm font-medium text-muted-foreground">Multiple Timelines</p>
+                            <p className="h-9 flex items-center text-sm font-medium text-muted-foreground">Multiple Timelines</p>
                           ) : (
                             <Input
                               value={editableProposalDraft.timeline}
                               onChange={(event) =>
                                 handleEditableProposalDraftChange("timeline", event.target.value)
                               }
-                              className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                              className="h-9 rounded-xl border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
                               placeholder="e.g. 3+ months"
                             />
                           )}
                         </div>
                       </div>
-                      <div className="grid gap-4 border-t border-white/8 pt-4 sm:grid-cols-2">
+                      <div className="grid gap-3 border-t border-border dark:border-white/8 pt-3 sm:grid-cols-2">
                         <ProposalSummaryItem
                           label="Current Status"
                           value={activeProposalDetails?.statusDisplay || "Draft"}
@@ -450,7 +461,7 @@ const ProposalDetailsDialog = ({
                       </div>
                     </div>
                   ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                       <ProposalSummaryItem
                         label="Project Name"
                         value={resolveProposalTitle(activeProposal) || "Not set"}
@@ -481,7 +492,7 @@ const ProposalDetailsDialog = ({
                       onChange={(event) =>
                         handleEditableProposalDraftChange("techStackText", event.target.value)
                       }
-                      className="min-h-[160px] border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                      className="min-h-[110px] border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
                       placeholder={"One technology per line\nExample: Next.js"}
                     />
                   ) : Array.isArray(activeProposalStructuredData?.techStack) &&
@@ -491,14 +502,14 @@ const ProposalDetailsDialog = ({
                         <Badge
                           key={item}
                           variant="outline"
-                          className="rounded-full border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"
+                          className="rounded-full border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
                         >
                           {item}
                         </Badge>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm leading-6 text-[#94a3b8]">
+                    <p className="text-sm leading-6 text-muted-foreground">
                       No tech stack added yet.
                     </p>
                   )}
@@ -514,7 +525,7 @@ const ProposalDetailsDialog = ({
                       onChange={(event) =>
                         handleEditableProposalDraftChange("notes", event.target.value)
                       }
-                      className="min-h-[180px] border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+                      className="min-h-[130px] border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
                       placeholder="Add any assumptions, dependencies, or special notes."
                     />
                   ) : (
@@ -528,23 +539,26 @@ const ProposalDetailsDialog = ({
           </div>
         </div>
 
-        <DialogFooter className="shrink-0 flex flex-col gap-4 border-t border-white/10 bg-accent/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <DialogFooter className={cn(
+          "shrink-0 flex flex-col gap-4 border-t border-border/60 bg-muted/40 px-6 py-3.5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-accent/60 transition-all duration-300",
+          isAIChatOpen && "sm:pr-[424px]"
+        )}>
           <p className="text-xs leading-6 text-muted-foreground">
             Use the action buttons to continue the proposal lifecycle from here.
           </p>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             {activeProposal?.status === "draft" && !activeProposal?.requiresPayment ? (
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 rounded-full border-primary/25 bg-primary/10 px-5 text-primary hover:bg-primary/15"
+                className="h-9 rounded-full border-primary/25 bg-primary/10 px-4 text-sm text-primary hover:bg-primary/15"
                 onClick={() => openFreelancerSelection(activeProposal)}
                 disabled={sendingProposalId === activeProposal?.id}
               >
                 {sendingProposalId === activeProposal?.id ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader size="sm" className="mr-2" />
                 ) : (
-                  <Send className="mr-2 h-4 w-4" />
+                  <Send className="mr-2 h-3.5 w-3.5" />
                 )}
                 {sendingProposalId === activeProposal?.id
                   ? "Sending..."
@@ -555,7 +569,7 @@ const ProposalDetailsDialog = ({
             {canIncreaseBudget ? (
               <Button
                 type="button"
-                className="h-11 rounded-full bg-primary px-5 text-primary-foreground hover:bg-primary/90"
+                className="h-9 rounded-full bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90"
                 onClick={() => openBudgetDialogForProposal(activeProposal)}
                 disabled={isSavingProposal || isLoadingProposal}
               >
@@ -567,14 +581,14 @@ const ProposalDetailsDialog = ({
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 rounded-full border-primary/25 bg-primary/10 px-5 text-primary hover:bg-primary/15"
+                className="h-9 rounded-full border-primary/25 bg-primary/10 px-4 text-sm text-primary hover:bg-primary/15"
                 onClick={() => openFreelancerSelection(activeProposal)}
                 disabled={sendingProposalId === activeProposal?.id}
               >
                 {sendingProposalId === activeProposal?.id ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader size="sm" className="mr-2" />
                 ) : (
-                  <Send className="mr-2 h-4 w-4" />
+                  <Send className="mr-2 h-3.5 w-3.5" />
                 )}
                 {sendingProposalId === activeProposal?.id
                   ? "Sending..."
@@ -585,14 +599,14 @@ const ProposalDetailsDialog = ({
             {activeProposal?.requiresPayment ? (
               <Button
                 type="button"
-                className="rounded-full bg-emerald-500 text-black hover:bg-emerald-400"
+                className="h-9 rounded-full bg-emerald-500 px-4 text-sm text-black hover:bg-emerald-400"
                 onClick={() => handleApproveAndPay(activeProposal)}
                 disabled={processingPaymentProposalId === activeProposal?.id}
               >
                 {processingPaymentProposalId === activeProposal?.id ? (
                   <Loader size="sm" className="mr-2" />
                 ) : (
-                  <CreditCard className="mr-2 h-4 w-4" />
+                  <CreditCard className="mr-2 h-3.5 w-3.5" />
                 )}
                 {processingPaymentProposalId === activeProposal?.id
                   ? "Processing..."
@@ -604,10 +618,10 @@ const ProposalDetailsDialog = ({
               <Button
                 type="button"
                 variant="ghost"
-                className="h-11 rounded-full px-3 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300"
+                className="h-9 rounded-full px-3 text-sm text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300"
                 onClick={() => handleDelete(activeProposal)}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
+                <Trash2 className="mr-2 h-3.5 w-3.5" />
                 Delete
               </Button>
             ) : null}

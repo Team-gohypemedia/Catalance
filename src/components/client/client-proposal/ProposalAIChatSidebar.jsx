@@ -171,16 +171,16 @@ ${JSON.stringify({
   if (!open) return null;
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 z-50 flex w-full flex-col border-l border-white/10 bg-background/95 backdrop-blur-xl sm:w-[400px]">
-      <div className="flex h-[72px] items-center justify-between border-b border-white/10 px-6 shrink-0">
-        <div className="flex items-center gap-2 text-white">
+    <div className="absolute right-0 top-0 bottom-0 z-50 flex w-full flex-col border-l border-border dark:border-white/10 bg-background/95 backdrop-blur-xl sm:w-[400px]">
+      <div className="flex h-[60px] items-center justify-between border-b border-border dark:border-white/10 px-5 shrink-0">
+        <div className="flex items-center gap-2 text-foreground">
           <Sparkles className="h-5 w-5 text-primary" />
           <h3 className="font-semibold tracking-tight">Edit with AI</h3>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-full text-muted-foreground hover:bg-white/10 hover:text-white"
+          className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-white/10 dark:hover:text-white"
           onClick={onClose}
         >
           <X className="h-4 w-4" />
@@ -194,7 +194,7 @@ ${JSON.stringify({
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10">
                     <Sparkles className="h-8 w-8 text-primary" />
                   </div>
-                  <h4 className="text-sm font-semibold text-white mb-2">How can I help?</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-2">How can I help?</h4>
                   <p className="text-xs text-muted-foreground leading-relaxed max-w-[280px] mx-auto">
                     Try asking things like: &quot;Make the timeline 4 weeks shorter&quot; or &quot;Add a section about SEO to the deliverables.&quot;
                   </p>
@@ -219,10 +219,10 @@ ${JSON.stringify({
                         "rounded-2xl px-4 py-2.5 max-w-[80%] text-[13px] leading-relaxed",
                         m.role === "user" 
                           ? "bg-[#334155] text-white rounded-tr-sm" 
-                          : "bg-white/5 border border-white/10 text-slate-200 rounded-tl-sm"
+                          : "bg-muted border border-border text-foreground dark:bg-white/5 dark:border-white/10 dark:text-slate-200 rounded-tl-sm"
                       )}
                     >
-                      <div className="prose prose-sm prose-invert max-w-none">
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
                         <ReactMarkdown>
                           {m.content}
                         </ReactMarkdown>
@@ -236,7 +236,7 @@ ${JSON.stringify({
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-1 bg-primary/20 text-primary">
                     <Bot className="h-4 w-4" />
                   </div>
-                  <div className="flex items-center gap-2 rounded-2xl bg-white/5 border border-white/10 text-slate-200 px-4 py-2.5 rounded-tl-sm">
+                  <div className="flex items-center gap-2 rounded-2xl bg-muted border border-border text-foreground dark:bg-white/5 dark:border-white/10 dark:text-slate-200 px-4 py-2.5 rounded-tl-sm">
                     <Loader size="sm" />
                     <span className="text-[13px] text-muted-foreground">Thinking...</span>
                   </div>
@@ -245,7 +245,7 @@ ${JSON.stringify({
             </div>
           </ScrollArea>
 
-          <div className="border-t border-white/10 bg-accent/30 p-4 shrink-0">
+          <div className="border-t border-border dark:border-white/10 bg-muted/40 dark:bg-accent/30 p-4 shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -257,7 +257,7 @@ ${JSON.stringify({
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Message AI..."
-                className="pr-12 h-[44px] rounded-2xl border-white/10 bg-background/80 text-sm text-white placeholder:text-[#6f7785] focus-visible:border-primary/45 focus-visible:ring-primary/20"
+                className="pr-12 h-[44px] rounded-2xl border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/80 dark:text-white"
                 disabled={isLoading}
               />
               <Button
