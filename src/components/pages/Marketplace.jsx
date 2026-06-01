@@ -827,7 +827,7 @@ const Marketplace = () => {
   const debouncedQ = useDebounce(q, 180);
   const debouncedMin = useDebounce(minBudget, 400);
   const debouncedMax = useDebounce(maxBudget, 400);
-  const shouldShowResults = category !== "all" || Boolean(String(debouncedQ || "").trim());
+  const shouldShowResults = true;
   const sparklesEnabled = !shouldReduceMotion && !isMobileViewport;
   const sparklesDensity = isMobileViewport ? 60 : 120;
   const sparklesSpeed = isMobileViewport ? 0.35 : 0.55;
@@ -1051,16 +1051,6 @@ const Marketplace = () => {
 
     if (activeMarketplaceView !== "freelancers") {
       if (requestId === resultsRequestIdRef.current) {
-        setLoading(false);
-      }
-      return;
-    }
-
-    if (!shouldShowResults) {
-      if (requestId === resultsRequestIdRef.current) {
-        setData([]);
-        setTotal(0);
-        setTotalPages(0);
         setLoading(false);
       }
       return;
@@ -1301,8 +1291,7 @@ const Marketplace = () => {
   const isProjectsView = canViewProjectsMarketplace || activeMarketplaceView === "projects";
   const shouldRenderFreelancerResults =
     !canViewProjectsMarketplace &&
-    activeMarketplaceView === "freelancers" &&
-    shouldShowResults;
+    activeMarketplaceView === "freelancers";
   const activeTotalPages = isProjectsView ? projectTotalPages : totalPages;
 
   const openProjectsShowcase = useMemo(() => {
@@ -1575,7 +1564,7 @@ const Marketplace = () => {
 
       {/* ── Freelancer / Project results — appear right after carousel ── */}
       <AnimatePresence>
-        {(shouldRenderFreelancerResults || isProjectsView) && category !== "all" && (
+        {(shouldRenderFreelancerResults || (isProjectsView && category !== "all")) && (
           <motion.div
             key="results-panel"
             initial={{ opacity: 0, y: 32 }}
@@ -1647,7 +1636,32 @@ const Marketplace = () => {
                       ))}
                     </div>
                   </motion.div>
-                ) : data.length === 0 ? null : (
+                ) : data.length === 0 ? (
+                  <motion.div
+                    key="empty"
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="rounded-[34px] border border-dashed border-border bg-card px-6 py-20 text-center shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)]"
+                  >
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground dark:bg-white/[0.06] dark:text-slate-400">
+                      <Search className="h-7 w-7" />
+                    </div>
+                    <h2 className="mt-6 text-2xl font-semibold tracking-tight text-foreground dark:text-white">
+                      No freelancers match this filter yet
+                    </h2>
+                    <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-muted-foreground dark:text-slate-400">
+                      Try a broader search or clear the active filters to see more specialists.
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="mt-7 rounded-full px-6 py-5 text-sm font-semibold"
+                      onClick={resetFilters}
+                    >
+                      Clear all filters
+                    </Button>
+                  </motion.div>
+                ) : (
                   <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                       {data.map((item) => {

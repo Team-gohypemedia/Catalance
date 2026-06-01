@@ -1851,6 +1851,79 @@ const extractPrice = (sd = {}) => {
   return Number.isFinite(n) ? n : null;
 };
 
+const PROFILE_MARKETPLACE_ID_PREFIX = "profile";
+
+const buildProfileMarketplaceServiceId = (freelancerId = "", serviceKey = "") => {
+  const normalizedFreelancerId = String(freelancerId || "").trim();
+  const normalizedServiceKey = normalizeCategory(serviceKey) || normalizeSlug(serviceKey);
+  if (!normalizedFreelancerId || !normalizedServiceKey) return "";
+  return `${PROFILE_MARKETPLACE_ID_PREFIX}:${normalizedFreelancerId}:${normalizedServiceKey}`;
+};
+
+const parseProfileMarketplaceServiceId = (value = "") => {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^profile:([^:]+):([^:]+)$/i);
+  if (!match) return null;
+
+  const freelancerId = String(match[1] || "").trim();
+  const serviceKey = normalizeCategory(match[2]) || normalizeSlug(match[2]);
+  if (!freelancerId || !serviceKey) return null;
+
+  return { freelancerId, serviceKey };
+};
+
+const collectProfileMarketplaceServiceKeys = (profile = {}) => {
+  const detailsMap = asObject(profile?.serviceDetails);
+  const detailKeys = Object.keys(detailsMap)
+    .map((key) => normalizeCategory(key) || normalizeSlug(key))
+    .filter(Boolean);
+  const profileServices = asArray(profile?.services)
+    .map((entry) => normalizeCategory(entry) || resolveServiceKeyFromFilterServiceName(entry))
+    .filter(Boolean);
+
+  return uniqueValues([...detailKeys, ...profileServices]);
+};
+
+const buildProfileMarketplaceRows = (user = {}) => {
+  const profile = asObject(user?.freelancerProfile);
+  const detailsMap = asObject(profile?.serviceDetails);
+  const serviceKeys = collectProfileMarketplaceServiceKeys(profile);
+
+  return serviceKeys.map((serviceKey) => {
+    const structuredDetails = asObject(detailsMap[serviceKey]);
+    const serviceId =
+      buildProfileMarketplaceServiceId(user.id, serviceKey) || `${user.id}:${serviceKey}`;
+
+    return {
+      id: serviceId,
+      freelancerId: user.id,
+      serviceKey,
+      service:
+        structuredDetails.title ||
+        profile.serviceTitle ||
+        toTitleCaseLabel(serviceKey),
+      serviceDetails: structuredDetails,
+      isFeatured: false,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      freelancer: {
+        id: user.id,
+        fullName: user.fullName,
+        avatar: user.avatar,
+        isVerified: user.isVerified,
+        status: user.status,
+        freelancerProfile: {
+          openToWork: profile.openToWork,
+          rating: profile.rating,
+          reviewCount: profile.reviewCount,
+          experienceYears: profile.experienceYears,
+          serviceDetails: profile.serviceDetails,
+        },
+      },
+    };
+  });
+};
+
 const mapToMarketplaceRow = (candidate) => {
   // Canonical serviceDetails comes from Marketplace table row (_mktRow)
   const mktSd = candidate._mktRow?.serviceDetails || {};
@@ -1951,17 +2024,13 @@ export const getMarketplace = asyncHandler(async (req, res) => {
     : query;
 
   const userWhere = {
-    role: "FREELANCER",
+    OR: [
+      { role: "FREELANCER" },
+      { roles: { has: "FREELANCER" } },
+    ],
     status: { in: ["ACTIVE", "PENDING_APPROVAL"] },
     freelancerProfile: { isNot: null },
   };
-
-  if (query.category && query.category !== "all") {
-    userWhere.freelancerProfile = {
-      ...userWhere.freelancerProfile,
-      serviceCategory: query.category
-    };
-  }
 
   const rawUsers = await prisma.user.findMany({
     where: userWhere,
@@ -1976,32 +2045,7 @@ export const getMarketplace = asyncHandler(async (req, res) => {
     ],
   });
 
-  const marketplaceRows = rawUsers.map(user => {
-    return {
-      id: user.id,
-      freelancerId: user.id,
-      serviceKey: user.freelancerProfile.serviceCategory || "",
-      service: user.freelancerProfile.serviceTitle || user.freelancerProfile.services?.[0] || "",
-      serviceDetails: user.freelancerProfile.serviceDetails || {},
-      isFeatured: false,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      freelancer: {
-        id: user.id,
-        fullName: user.fullName,
-        avatar: user.avatar,
-        isVerified: user.isVerified,
-        status: user.status,
-        freelancerProfile: {
-          openToWork: user.freelancerProfile.openToWork,
-          rating: user.freelancerProfile.rating,
-          reviewCount: user.freelancerProfile.reviewCount,
-          experienceYears: user.freelancerProfile.experienceYears,
-          serviceDetails: user.freelancerProfile.serviceDetails,
-        }
-      }
-    };
-  });
+  const marketplaceRows = rawUsers.flatMap((user) => buildProfileMarketplaceRows(user));
 
   const tier1Candidates = marketplaceRows
     .map(createMarketplaceCandidate)
@@ -2570,6 +2614,7 @@ export const getMarketplaceFilterTools = asyncHandler(async (req, res) => {
 
 export const getServiceById = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const profileServiceRef = parseProfileMarketplaceServiceId(id);
 
   let service = await prisma.marketplace.findUnique({
     where: { id },
@@ -2590,6 +2635,57 @@ export const getServiceById = asyncHandler(async (req, res) => {
       }
     }
   });
+
+  if (!service && profileServiceRef) {
+    const freelancer = await prisma.user.findUnique({
+      where: { id: profileServiceRef.freelancerId },
+      select: {
+        id: true,
+        fullName: true,
+        avatar: true,
+        isVerified: true,
+        createdAt: true,
+        updatedAt: true,
+        freelancerProfile: {
+          select: {
+            ...FREELANCER_PROFILE_SAFE_SELECT,
+            serviceDetails: true,
+          },
+        },
+      },
+    });
+
+    const profileSd = extractStructuredServiceDetail(
+      { freelancerProfile: freelancer?.freelancerProfile || {} },
+      profileServiceRef.serviceKey,
+    );
+
+    if (freelancer && Object.keys(profileSd).length > 0) {
+      const mergedServiceDetails = buildMergedServiceDetails({
+        marketplaceDetails: {},
+        structuredDetails: profileSd,
+      });
+
+      service = {
+        id,
+        freelancerId: freelancer.id,
+        serviceKey: profileServiceRef.serviceKey,
+        service:
+          mergedServiceDetails.title ||
+          freelancer.freelancerProfile?.serviceTitle ||
+          toTitleCaseLabel(profileServiceRef.serviceKey),
+        serviceDetails: mergedServiceDetails,
+        bio: mergedServiceDetails.bio,
+        techStack: mergedServiceDetails.techStack,
+        deliverables: mergedServiceDetails.deliverables,
+        deliveryTime: mergedServiceDetails.deliveryTime,
+        isFeatured: false,
+        createdAt: freelancer.createdAt,
+        updatedAt: freelancer.updatedAt,
+        freelancer,
+      };
+    }
+  }
 
   // For Marketplace rows: enrich image from serviceDetails JSON only (no profileDetails)
   if (service) {
@@ -2770,6 +2866,7 @@ export const getServiceReviews = asyncHandler(async (req, res) => {
 const resolveServiceReviewContext = async (serviceId) => {
   const normalizedServiceId = String(serviceId || "").trim();
   if (!normalizedServiceId) return null;
+  const profileServiceRef = parseProfileMarketplaceServiceId(normalizedServiceId);
 
   const marketplaceService = await prisma.marketplace.findUnique({
     where: { id: normalizedServiceId },
@@ -2801,6 +2898,65 @@ const resolveServiceReviewContext = async (serviceId) => {
       ]),
       freelancerId: marketplaceService.freelancerId,
       serviceLabel: marketplaceService.service || "Freelancer Service",
+    };
+  }
+
+  if (profileServiceRef) {
+    const freelancer = await prisma.user.findUnique({
+      where: { id: profileServiceRef.freelancerId },
+      select: {
+        id: true,
+        freelancerProfile: {
+          select: {
+            serviceDetails: true,
+            serviceTitle: true,
+          },
+        },
+      },
+    });
+
+    const structuredDetails = extractStructuredServiceDetail(
+      { freelancerProfile: freelancer?.freelancerProfile || {} },
+      profileServiceRef.serviceKey,
+    );
+
+    if (!freelancer || Object.keys(structuredDetails).length === 0) {
+      return null;
+    }
+
+    const linkedMarketplaceService = await prisma.marketplace.findFirst({
+      where: {
+        freelancerId: freelancer.id,
+        serviceKey: profileServiceRef.serviceKey,
+      },
+      select: { id: true, service: true },
+    });
+
+    const linkedProjects = await prisma.freelancerProject.findMany({
+      where: {
+        freelancerId: freelancer.id,
+        serviceKey: profileServiceRef.serviceKey,
+      },
+      select: { id: true },
+      take: 100,
+    });
+
+    const serviceLabel =
+      firstTextValue(
+        structuredDetails.title,
+        linkedMarketplaceService?.service,
+        freelancer.freelancerProfile?.serviceTitle
+      ) || toTitleCaseLabel(profileServiceRef.serviceKey);
+
+    return {
+      canonicalServiceId: linkedMarketplaceService?.id || normalizedServiceId,
+      lookupServiceIds: uniqueValues([
+        normalizedServiceId,
+        linkedMarketplaceService?.id,
+        ...linkedProjects.map((project) => project.id),
+      ]),
+      freelancerId: freelancer.id,
+      serviceLabel,
     };
   }
 
