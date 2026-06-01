@@ -36,7 +36,7 @@ const brands = [
 
 const BrandCard = ({ brand, isDark }) => {
   return (
-    <div className="flex items-center justify-center px-12 py-6">
+    <div className="flex items-center justify-center px-4 py-2 sm:px-6 sm:py-3">
       <div
         className={cn(
           "flex items-center justify-center transition-all duration-300",
@@ -46,7 +46,7 @@ const BrandCard = ({ brand, isDark }) => {
         <img 
           src={brand.logo} 
           alt={brand.name} 
-          className="h-16 w-auto object-contain sm:h-20 md:h-24 lg:h-32"
+          className="w-[150px] h-[75px] sm:w-[320px] sm:h-[160px] object-contain"
           style={!isDark && brand.isWhite ? { filter: "brightness(0)" } : {}}
         />
       </div>
@@ -59,6 +59,9 @@ const BrandMarquee = ({ isIntegrated = false }) => {
   const isDarkMode = 
     theme === "dark" || 
     (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  const firstRowBrands = brands.slice(0, Math.ceil(brands.length / 2));
+  const secondRowBrands = brands.slice(Math.ceil(brands.length / 2));
 
   return (
     <div className={cn(
@@ -78,18 +81,24 @@ const BrandMarquee = ({ isIntegrated = false }) => {
         }}
       />
 
-      <div className="relative z-10 mb-8 text-center">
+      <div className="relative z-10 mb-6 text-center">
         <span className="text-[0.7rem] font-bold uppercase tracking-[0.4em] text-foreground/70 dark:text-white/60">
           Trusted by Industry Leaders
         </span>
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-col gap-2">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-32 bg-linear-to-r from-background to-transparent sm:w-64" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-32 bg-linear-to-l from-background to-transparent sm:w-64" />
         
         <Marquee pauseOnHover className="[--duration:40s]">
-          {brands.map((brand, idx) => (
+          {firstRowBrands.map((brand, idx) => (
+            <BrandCard key={`${brand.name}-${idx}`} brand={brand} isDark={isDarkMode} />
+          ))}
+        </Marquee>
+
+        <Marquee reverse pauseOnHover className="[--duration:40s]">
+          {secondRowBrands.map((brand, idx) => (
             <BrandCard key={`${brand.name}-${idx}`} brand={brand} isDark={isDarkMode} />
           ))}
         </Marquee>
