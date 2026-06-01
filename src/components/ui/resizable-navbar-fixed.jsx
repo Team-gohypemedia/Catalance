@@ -185,7 +185,7 @@ export const NavItems = ({
   return (
     <div
       className={cn(
-        "hidden min-w-0 flex-1 flex-row items-center justify-center gap-5 px-5 text-sm font-medium transition duration-200 lg:flex",
+        "hidden min-w-0 flex-1 flex-row items-center justify-center gap-2 px-3 text-sm font-medium transition duration-200 lg:flex",
         className
       )}
     >
@@ -200,7 +200,7 @@ export const NavItems = ({
             onClick={onItemClick}
             to={item.link}
             className={cn(
-              "relative inline-flex min-w-[7.25rem] shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 py-2 transition-all duration-300",
+              "relative inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full px-3 py-2 transition-all duration-300",
               isActive
                 ? "bg-primary text-primary-foreground shadow-[0_0_24px_rgba(34,42,53,0.06),0_1px_1px_rgba(0,0,0,0.05),0_0_0_1px_rgba(34,42,53,0.04),0_0_4px_rgba(34,42,53,0.08),0_16px_68px_rgba(47,48,55,0.05),0_1px_0_rgba(255,255,255,0.1)_inset]"
                 : "text-foreground/85 hover:text-foreground",

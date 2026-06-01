@@ -154,7 +154,7 @@ const ServiceCardsCarousel = () => {
   ];
 
   return (
-    <section className="relative flex w-full items-center overflow-hidden bg-background py-20 sm:py-32">
+    <section className="relative flex w-full items-center overflow-hidden bg-background pt-10 pb-10 sm:pt-16 sm:pb-16">
       <div className="relative mx-auto flex w-full max-w-7xl flex-col justify-center gap-10 px-4 sm:px-6 lg:px-8">
 
         {/* Header */}

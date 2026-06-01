@@ -151,54 +151,66 @@ const WavyBackground = ({ isDark }) => {
   )
 }
 
-const FloatingAvatar = ({ testimonial, delay = 0, x = "0%", y = "0%", scale = 1, isDark }) => (
-  <motion.div
-    className="absolute z-10 hover:z-50"
-    style={{ left: x, top: y }}
-    initial={{ opacity: 0, scale: 0 }}
-    animate={{ 
-      opacity: 0.9, 
-      scale: scale,
-      y: [0, -20, 0] 
-    }}
-    transition={{ 
-      y: { duration: 5, repeat: Infinity, ease: "easeInOut", delay },
-      opacity: { duration: 1 },
-      scale: { duration: 0.5 }
-    }}
-  >
-    <div className="group relative">
-      <div className={cn("absolute -inset-1 rounded-full opacity-20 blur-sm transition duration-500 group-hover:opacity-100", isDark ? "bg-[#F9D949]" : "bg-[#D9692A]")} />
-      <img
-        src={testimonial.image}
-        alt={testimonial.name}
-        className="relative size-10 rounded-full border-2 border-white/30 object-cover grayscale transition duration-500 group-hover:grayscale-0 group-hover:scale-110 sm:size-16"
-      />
-      {/* Pop-up Review */}
-      <div className="absolute top-full left-1/2 mt-3 w-48 sm:w-56 -translate-x-1/2 opacity-0 pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:-translate-y-1">
-        <div className={cn("relative rounded-xl border backdrop-blur-md p-3 sm:p-4 shadow-xl", isDark ? "border-white/10 bg-neutral-900/90" : "border-black/5 bg-white/95")}>
-            {/* Triangle pointer */}
-            <div className={cn(
-              "absolute -top-[6px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-t border-l",
-              isDark 
-                ? "border-white/10 bg-[#171717]" 
-                : "border-black/5 bg-white/95"
-            )}></div>
-           
-           <div className="flex items-center gap-0.5 mb-1.5 sm:mb-2">
-             {Array.from({ length: 5 }).map((_, i) => (
-               <svg key={i} viewBox="0 0 20 20" className="h-2.5 w-2.5 sm:h-3 sm:w-3" style={{ fill: isDark ? "#F9D949" : "#D9692A", color: isDark ? "#F9D949" : "#D9692A" }}>
-                 <path d="M10 1.5l2.49 5.04 5.56.81-4.02 3.92.95 5.54L10 13.98 5.02 16.81l.95-5.54-4.02-3.92 5.56-.81L10 1.5z" />
-               </svg>
-             ))}
-           </div>
-           <p className={cn("text-[10px] sm:text-xs font-medium italic leading-relaxed line-clamp-3", isDark ? "text-white/90" : "text-neutral-700")}>"{testimonial.quote}"</p>
-           <p className={cn("text-[9px] sm:text-[10px] font-bold mt-1.5 sm:mt-2 uppercase tracking-wider")} style={{ color: isDark ? "#F9D949" : "#D9692A" }}>- {testimonial.name}</p>
+const FloatingAvatar = ({ testimonial, delay = 0, x = "0%", y = "0%", scale = 1, isDark }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  return (
+    <motion.div
+      className={cn("absolute z-10 hover:z-50", isOpen ? "z-50" : "")}
+      style={{ left: x, top: y }}
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{ 
+        opacity: 0.9, 
+        scale: scale,
+        y: [0, -20, 0] 
+      }}
+      transition={{ 
+        y: { duration: 5, repeat: Infinity, ease: "easeInOut", delay },
+        opacity: { duration: 1 },
+        scale: { duration: 0.5 }
+      }}
+    >
+      <div 
+        className="group relative cursor-pointer"
+        onMouseEnter={() => setIsOpen(true)}
+        onMouseLeave={() => setIsOpen(false)}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className={cn("absolute -inset-1 rounded-full opacity-20 blur-sm transition duration-500", isOpen || "group-hover:opacity-100", isDark ? "bg-[#F9D949]" : "bg-[#D9692A]")} />
+        <img
+          src={testimonial.image}
+          alt={testimonial.name}
+          className={cn("relative size-10 rounded-full border-2 border-white/30 object-cover transition duration-500 sm:size-16", isOpen ? "grayscale-0 scale-110" : "grayscale group-hover:grayscale-0 group-hover:scale-110")}
+        />
+        {/* Pop-up Review */}
+        <div className={cn(
+          "absolute top-full left-1/2 mt-3 w-48 sm:w-56 -translate-x-1/2 transition-all duration-300",
+          isOpen ? "opacity-100 -translate-y-1 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}>
+          <div className={cn("relative rounded-xl border backdrop-blur-md p-3 sm:p-4 shadow-xl", isDark ? "border-white/10 bg-neutral-900/90" : "border-black/5 bg-white/95")}>
+              {/* Triangle pointer */}
+              <div className={cn(
+                "absolute -top-[6px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-t border-l",
+                isDark 
+                  ? "border-white/10 bg-[#171717]" 
+                  : "border-black/5 bg-white/95"
+              )}></div>
+             
+             <div className="flex items-center gap-0.5 mb-1.5 sm:mb-2">
+               {Array.from({ length: 5 }).map((_, i) => (
+                 <svg key={i} viewBox="0 0 20 20" className="h-2.5 w-2.5 sm:h-3 sm:w-3" style={{ fill: isDark ? "#F9D949" : "#D9692A", color: isDark ? "#F9D949" : "#D9692A" }}>
+                   <path d="M10 1.5l2.49 5.04 5.56.81-4.02 3.92.95 5.54L10 13.98 5.02 16.81l.95-5.54-4.02-3.92 5.56-.81L10 1.5z" />
+                 </svg>
+               ))}
+             </div>
+             <p className={cn("text-[10px] sm:text-xs font-medium italic leading-relaxed line-clamp-3", isDark ? "text-white/90" : "text-neutral-700")}>"{testimonial.quote}"</p>
+             <p className={cn("text-[9px] sm:text-[10px] font-bold mt-1.5 sm:mt-2 uppercase tracking-wider")} style={{ color: isDark ? "#F9D949" : "#D9692A" }}>- {testimonial.name}</p>
+          </div>
         </div>
       </div>
-    </div>
-  </motion.div>
-)
+    </motion.div>
+  );
+}
 
 const Testimonidals = () => {
   const [api, setApi] = React.useState(null)
@@ -263,7 +275,7 @@ const Testimonidals = () => {
         <FloatingAvatar testimonial={testimonials[3]} x="90%" y="45%" delay={1.5} scale={0.75} isDark={isDark} />
         <FloatingAvatar testimonial={testimonials[4]} x="20%" y="65%" delay={2} scale={1.1} isDark={isDark} />
         <FloatingAvatar testimonial={testimonials[5]} x="78%" y="70%" delay={0.8} scale={1} isDark={isDark} />
-        <FloatingAvatar testimonial={testimonials[3]} x="50%" y="5%" delay={1.2} scale={0.7} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[3]} x="50%" y="35%" delay={1.2} scale={1.1} isDark={isDark} />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">

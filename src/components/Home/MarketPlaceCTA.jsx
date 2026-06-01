@@ -10,9 +10,9 @@ import MascotCTA from "@/assets/videos/mascot-cta.mp4";
 import MascotPoster from "@/assets/mascot.png";
 
 const MARKETPLACE_STATS = [
-  { icon: Tag,       label: "Brands Onboarded",    value: 20,   suffix: "k+" },
-  { icon: Briefcase, label: "Successful Projects",  value: 1000, suffix: "+"  },
-  { icon: Users,     label: "Freelancers Enrolled", value: 10,   suffix: "+"  },
+  { icon: Tag,       label: "Brands Onboarded",    value: 220,   suffix: "+" },
+  { icon: Briefcase, label: "Successful Projects",  value: 20, suffix: "k+"  },
+  { icon: Users,     label: "Freelancers Enrolled", value: 100,   suffix: "k+"  },
 ];
 
 
@@ -113,34 +113,19 @@ const MarketPlaceCTA = () => {
 
   return (
     <section className="relative isolate w-full overflow-hidden bg-background">
-      {/* Far-right edge chevron */}
-      <span className={`${accentText} absolute right-4 top-1/2 -translate-y-1/2 text-3xl font-black opacity-40 select-none z-10 hidden lg:block`}>〉</span>
-      <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+
+      <div className="mx-auto w-full max-w-7xl px-4 pt-10 pb-20 sm:px-6 sm:pt-16 sm:pb-28 lg:px-8">
 
         {/* ── Heading with Sparkles ── */}
         <div className="flex justify-center mb-12 lg:mb-16">
           <h2 className="text-[clamp(1.8rem,4vw,3.2rem)] font-extrabold leading-[1.25] tracking-tight text-foreground dark:text-white text-center flex flex-col items-center">
             <span className="relative px-2">
-              {/* Top-Left Spark */}
-              <span className="absolute -top-3 -left-6 sm:-top-4 sm:-left-8 text-primary select-none">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" className="w-5 h-5 sm:w-7 sm:h-7">
-                  <path d="M16 10V2" />
-                  <path d="M12 12L4 4" />
-                  <path d="M10 16H2" />
-                </svg>
-              </span>
+
               Work Done On Your Terms,
             </span>
             <span className="relative px-2 mt-1">
               <span className="text-primary italic font-medium">Every Single Time</span>
-              {/* Bottom-Right Spark */}
-              <span className="absolute -bottom-3 -right-6 sm:-bottom-4 sm:-right-8 text-primary select-none">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" className="w-5 h-5 sm:w-7 sm:h-7">
-                  <path d="M8 14V22" />
-                  <path d="M12 12L20 20" />
-                  <path d="M14 8H22" />
-                </svg>
-              </span>
+
             </span>
           </h2>
         </div>
@@ -150,7 +135,7 @@ const MarketPlaceCTA = () => {
 
           {/* LEFT — description + CTA */}
           <div className="flex flex-col items-start justify-center gap-6 lg:pr-12">
-            <span className={`${accentText} text-2xl font-black opacity-40 select-none -ml-1`}>〈</span>
+
 
             <p className="text-sm sm:text-base leading-relaxed text-foreground/60 dark:text-white/60 max-w-xs">
               Our platform connects businesses with verified, top-tier
@@ -160,11 +145,11 @@ const MarketPlaceCTA = () => {
 
             <Link
               to="/talent"
-              className={`inline-flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:scale-105 active:scale-95 shadow-lg ${accentBg} ${isDarkMode ? "text-black" : "text-[#ffffff]"}`}
-              style={{ boxShadow: `0 8px 28px ${accentColor}45` }}
+              className={`inline-flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:scale-105 active:scale-95 shadow-lg ${accentBg}`}
+              style={{ boxShadow: `0 8px 28px ${accentColor}45`, color: "#ffffff" }}
             >
               Browse Talent
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-4 h-4" style={{ color: "#ffffff" }} />
             </Link>
           </div>
 

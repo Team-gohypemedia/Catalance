@@ -167,13 +167,12 @@ const Hero = () => {
           variant="outline"
           className="mb-3 inline-flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 rounded-full bg-background/35 px-4 py-1.5 text-[0.64rem] font-medium leading-none backdrop-blur-md sm:mb-9 sm:max-w-none sm:gap-2 sm:px-5 sm:text-sm border-black/10 dark:border-white/10"
         >
-          <Star className="size-3.5 shrink-0 sm:size-4" style={{ fill: starColor, color: starColor }} />
           <ShinyText
             speed={4}
             text={
               <div className="flex items-center gap-1.5">
                 <span className="px-1 font-bold">
-                  <NumberTicker value={10000} className="text-inherit" />+
+                  <NumberTicker value={22009} className="text-inherit" />+
                 </span>
                 <span>Projects delivered on Catalance</span>
               </div>
