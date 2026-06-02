@@ -120,7 +120,7 @@ const Hero = () => {
   const starColor = isDarkMode ? "#F9D949" : "#D9692A";
 
   return (
-    <section className="relative flex w-full flex-col items-center overflow-hidden bg-background pt-32 pb-10">
+    <section className="relative flex w-full flex-col items-center overflow-hidden bg-background pt-32 pb-0">
       <div aria-hidden className="pointer-events-none absolute inset-0">
 
 
@@ -169,7 +169,7 @@ const Hero = () => {
           />
         </Badge>
 
-        <h1 className="max-w-4xl text-[2.1rem] font-medium leading-[1.1] tracking-tight text-foreground dark:text-white sm:text-[2.75rem] md:text-[3.4rem] lg:text-[4.4rem]">
+        <h1 className="max-w-4xl text-[32px] font-medium leading-[1.1] tracking-tight text-foreground dark:text-white sm:text-[48px] md:text-[64px] lg:text-[76px] lg:leading-[1.05]">
           <AnimatedHeroText
             staticText="Find Talent You Can"
             titles={["Partner With", "Scale With", "Succeed With"]}

@@ -114,7 +114,7 @@ const MarketPlaceCTA = () => {
   return (
     <section className="relative isolate w-full overflow-hidden bg-background">
 
-      <div className="mx-auto w-full max-w-7xl px-4 pt-10 pb-10 sm:px-6 sm:pt-16 sm:pb-28 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-4 pt-10 pb-10 sm:px-6 sm:pt-8 sm:pb-16 lg:px-8">
 
         {/* ── Heading with Sparkles ── */}
         <div className="flex justify-center mb-12 lg:mb-16">

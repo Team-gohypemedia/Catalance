@@ -200,7 +200,7 @@ const MadeOnCatalance = () => {
       : "relative grid min-h-0 flex-1 grid-cols-2 gap-4 overflow-hidden py-6";
 
   return (
-    <section className="relative w-full overflow-hidden bg-background pt-10 pb-10 sm:py-32">
+    <section className="relative w-full overflow-hidden bg-background pt-10 pb-10 sm:pt-16 sm:pb-16">
 
       <div className="relative mx-auto flex w-full max-w-7xl flex-col px-4 sm:px-6 lg:px-10">
         <header className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">

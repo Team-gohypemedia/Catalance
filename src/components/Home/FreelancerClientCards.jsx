@@ -67,7 +67,7 @@ const FreelancerClientCards = () => {
     : "bg-[#D9692A] !text-[#ffffff] border border-transparent group-hover:!bg-white group-hover:!text-[#D9692A] transition-colors duration-500 ease-in-out shadow-sm group-hover:shadow-lg";
 
   return (
-    <section className="relative flex w-full items-center justify-center overflow-hidden bg-[#fafaf9] dark:bg-[#020202] px-4 pt-10 pb-10 sm:pt-32 sm:pb-16 sm:px-6 lg:px-8 transition-colors duration-500">
+    <section className="relative flex w-full items-center justify-center overflow-hidden bg-[#fafaf9] dark:bg-[#020202] px-4 pt-10 pb-10 sm:pt-16 sm:pb-16 sm:px-6 lg:px-8 transition-colors duration-500">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(var(--brand-rgb),0.05),rgba(0,0,0,0)_50%)]"
