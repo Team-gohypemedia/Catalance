@@ -1725,7 +1725,7 @@ const AssistantMessageBody = ({
                                         : 'border-black/10 bg-white hover:border-black/20 hover:bg-slate-50'
                                     }`}
                             >
-                                <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
+                                <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold keep-white ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
                                     {option.number}
                                 </span>
                                 <div className={`prose prose-sm max-w-none leading-relaxed prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
@@ -1737,7 +1737,7 @@ const AssistantMessageBody = ({
                                 key={`${option.number}-${option.text}`}
                                 className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 ${isDark ? 'border-white/15 bg-white/[0.045]' : 'border-black/10 bg-white'}`}
                             >
-                                <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
+                                <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold keep-white ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
                                     {option.number}
                                 </span>
                                 <div className={`prose prose-sm max-w-none leading-relaxed prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
@@ -3089,7 +3089,11 @@ const GuestAIDemo = () => {
 
     useEffect(() => {
         document.documentElement.classList.add("marketplace-page");
-        return () => document.documentElement.classList.remove("marketplace-page");
+        document.documentElement.classList.add("ai-demo-page");
+        return () => {
+            document.documentElement.classList.remove("marketplace-page");
+            document.documentElement.classList.remove("ai-demo-page");
+        };
     }, []);
 
     const [serviceSelectionMode, setServiceSelectionMode] = useState(
@@ -6354,7 +6358,7 @@ const GuestAIDemo = () => {
                                     : isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-400'
                                 }`}
                         >
-                            <Send className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4 shrink-0" />
+                            <Send className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4 shrink-0 keep-white" />
                         </Button>
                     </div>
                 </div>
