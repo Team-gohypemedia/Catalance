@@ -33,7 +33,7 @@ const BadgeIcon = ({ icon, earned }) => {
       className={cn(
         "flex size-12 items-center justify-center rounded-full border",
         earned
-          ? "border-[#ead7ad] bg-[#fff5dd] text-[#d9692a] shadow-[0_0_18px_rgba(217,105,42,0.08)]"
+          ? "border-[#ead7ad] bg-[#fff5dd] text-[#D9692A] shadow-[0_0_18px_rgba(217,105,42,0.08)]"
           : "border-[#eadbc7] bg-[#ffffff] text-[#8a7b66]",
       )}
     >
@@ -60,7 +60,7 @@ const BadgeCard = ({ badge, currentStreak }) => {
       {targetDays ? (
         <div className="mt-5">
           <div className="h-2 overflow-hidden rounded-full bg-[#eadbc7]">
-            <div className={cn("h-full rounded-full transition-all duration-700", earned ? "bg-[linear-gradient(90deg,#d9692a,#f08a3a)]" : "bg-[linear-gradient(90deg,#d9b47a,#f0c98d)]")} style={{ width: `${pct}%` }} />
+            <div className={cn("h-full rounded-full transition-all duration-700", earned ? "bg-[linear-gradient(90deg,#D9692A,#E8854A)]" : "bg-[linear-gradient(90deg,#d9b47a,#f0c98d)]")} style={{ width: `${pct}%` }} />
           </div>
           <div className="mt-2 flex items-center justify-between text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[#8a7b66]">
             <span>{Math.min(currentStreak, targetDays)} days</span>
@@ -81,7 +81,7 @@ const BadgeShelf = ({ badges = [], currentStreak = 0 }) => {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex size-11 items-center justify-center rounded-xl border border-[#eadbc7] bg-[#fff5dd]">
-            <Trophy className="size-5 text-[#d9692a]" />
+            <Trophy className="size-5 text-[#D9692A]" />
           </div>
           <div>
             <h3 className="text-[1.65rem] font-bold tracking-tight text-[#1c1b1f]">Achievement Badges</h3>

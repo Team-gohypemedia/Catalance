@@ -1902,7 +1902,7 @@
 html:not(.dark) .growth-quest-page {
   color-scheme: light;
   background:
-    radial-gradient(circle at top left, rgba(217, 105, 42, 0.1), transparent 34%),
+    radial-gradient(circle at top left, rgba(200, 80, 40, 0.1), transparent 34%),
     radial-gradient(circle at bottom right, rgba(249, 217, 73, 0.12), transparent 36%),
     linear-gradient(180deg, #faf6f0 0%, #fffaf3 60%, #f6efe5 100%);
   color: #1c1b1f;
@@ -1950,7 +1950,7 @@ html:not(.dark) .growth-quest-page .weekly-ranking__totals {
 
 html:not(.dark) .growth-quest-page .growth-quest-hero {
   background:
-    radial-gradient(circle at top left, rgba(217, 105, 42, 0.08), transparent 42%),
+    radial-gradient(circle at top left, rgba(200, 80, 40, 0.08), transparent 42%),
     linear-gradient(180deg, #ffffff 0%, #fffaf4 100%) !important;
   border-color: #e5e1d3 !important;
 }
@@ -1987,12 +1987,12 @@ html:not(.dark) .growth-quest-page .growth-quest-hero__sidebar {
 
 html:not(.dark) .growth-quest-page .growth-quest-attempts-ring strong {
   color: #1c1b1f !important;
-  border-color: rgba(217, 105, 42, 0.28) !important;
+  border-color: rgba(200, 80, 40, 0.28) !important;
   background: #fff7ed !important;
   box-shadow:
-    0 0 0 1px rgba(217, 105, 42, 0.1),
-    inset 0 0 16px rgba(217, 105, 42, 0.06),
-    0 0 20px rgba(217, 105, 42, 0.08) !important;
+    0 0 0 1px rgba(200, 80, 40, 0.1),
+    inset 0 0 16px rgba(200, 80, 40, 0.06),
+    0 0 20px rgba(200, 80, 40, 0.08) !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-button--secondary,
@@ -2006,15 +2006,15 @@ html:not(.dark) .growth-quest-page .growth-quest-nav-pills button {
 html:not(.dark) .growth-quest-page .growth-quest-button--secondary:hover:not(:disabled),
 html:not(.dark) .growth-quest-page .growth-quest-filter:hover,
 html:not(.dark) .growth-quest-page .growth-quest-nav-pills button:hover {
-  color: #d9692a !important;
+  color: #D9692A !important;
   background: #fff7ed !important;
-  border-color: rgba(217, 105, 42, 0.22) !important;
+  border-color: rgba(200, 80, 40, 0.22) !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-button--primary {
   color: #fffaf0 !important;
-  background: linear-gradient(135deg, #d9692a, #f08a3a) !important;
-  box-shadow: 0 12px 30px rgba(217, 105, 42, 0.2) !important;
+  background: linear-gradient(135deg, #D9692A, #E8854A) !important;
+  box-shadow: 0 12px 30px rgba(200, 80, 40, 0.2) !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-practice-preview > .growth-quest-practice-preview__list > article,
@@ -2038,9 +2038,9 @@ html:not(.dark) .growth-quest-page .growth-quest-practice-preview__side > articl
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-practice-preview > .growth-quest-practice-preview__list > article .growth-quest-chip--ghost {
-  color: #d9692a !important;
-  border-color: rgba(217, 105, 42, 0.2) !important;
-  background: rgba(217, 105, 42, 0.06) !important;
+  color: #D9692A !important;
+  border-color: rgba(200, 80, 40, 0.2) !important;
+  background: rgba(200, 80, 40, 0.06) !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-practice-preview > .growth-quest-practice-preview__list > article .growth-quest-chip--ghost *,
@@ -2081,7 +2081,7 @@ html:not(.dark) .growth-quest-page .growth-quest-practice-preview__side > articl
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-practice-preview .growth-quest-label {
-  color: #d9692a !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-stat-grid .growth-quest-stat-tile {
@@ -2120,7 +2120,7 @@ html:not(.dark) .growth-quest-page .growth-quest-rank-card .growth-quest-progres
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-rank-card .growth-quest-progress span {
-  background: linear-gradient(90deg, #d9692a, #f08a3a) !important;
+  background: linear-gradient(90deg, #D9692A, #E8854A) !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-rank-card [style*="color: rgba(180,190,210"],
@@ -2148,8 +2148,8 @@ html:not(.dark) .growth-quest-page .growth-quest-side-toggle {
 
 html:not(.dark) .growth-quest-page .growth-quest-side-toggle--active {
   background: linear-gradient(135deg, #fff6dc, #ffffff) !important;
-  border-color: rgba(217, 105, 42, 0.25) !important;
-  color: #d9692a !important;
+  border-color: rgba(200, 80, 40, 0.25) !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-mini-card {
@@ -2175,7 +2175,7 @@ html:not(.dark) .growth-quest-page .growth-quest-booster-row {
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-booster-row span:first-child {
-  color: #d9692a !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-booster-row span:last-child {
@@ -2201,7 +2201,7 @@ html:not(.dark) .growth-quest-page .growth-quest-rank-card .growth-quest-progres
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-rank-card .growth-quest-progress span {
-  background: linear-gradient(90deg, #d9692a, #f08a3a) !important;
+  background: linear-gradient(90deg, #D9692A, #E8854A) !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-side__panel {
@@ -2248,7 +2248,7 @@ html:not(.dark) .growth-quest-page .growth-quest-side__panel .text-[#a79b84] {
 
 html:not(.dark) .growth-quest-page .growth-quest-side__panel .text-[#d7c08e],
 html:not(.dark) .growth-quest-page .growth-quest-side__panel .text-[#8d836f] {
-  color: #d9692a !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-side__panel .bg-[#2d2417] {
@@ -2282,8 +2282,8 @@ html:not(.dark) .growth-quest-page .growth-quest-side__panel .growth-quest-side-
 
 html:not(.dark) .growth-quest-page .growth-quest-side__panel .growth-quest-side-toggle--active {
   background: linear-gradient(135deg, #fff6dc, #ffffff) !important;
-  border-color: rgba(217, 105, 42, 0.25) !important;
-  color: #d9692a !important;
+  border-color: rgba(200, 80, 40, 0.25) !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .weekly-ranking,
@@ -2337,8 +2337,8 @@ html:not(.dark) .growth-quest-page .weekly-ranking__coins p {
 }
 
 html:not(.dark) .growth-quest-page .weekly-ranking__totals {
-  border-color: rgba(217, 105, 42, 0.18) !important;
-  background: rgba(217, 105, 42, 0.05) !important;
+  border-color: rgba(200, 80, 40, 0.18) !important;
+  background: rgba(200, 80, 40, 0.05) !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-panel[style*="background: linear-gradient(145deg,rgba(8,10,24,0.99),rgba(5,7,18,0.99))"],
@@ -2371,14 +2371,14 @@ html:not(.dark) .growth-quest-page [style*="background: linear-gradient(145deg,r
 
 html:not(.dark) .growth-quest-page .growth-quest-panel[style*="background: linear-gradient(145deg,rgba(8,10,24,0.99),rgba(5,7,18,0.99))"] .text-[#6080ff],
 html:not(.dark) .growth-quest-page .growth-quest-panel[style*="background: linear-gradient(145deg,rgba(8,10,24,0.98),rgba(5,7,18,0.98))"] .text-[#6080ff] {
-  color: #d9692a !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page [style*="background: linear-gradient(145deg,rgba(8,10,24,0.99),rgba(5,7,18,0.99))"] .text-[#6080ff],
 html:not(.dark) .growth-quest-page [style*="background: linear-gradient(145deg,rgba(8,10,24,0.98),rgba(5,7,18,0.98))"] .text-[#6080ff],
 html:not(.dark) .growth-quest-page [style*="background: linear-gradient(145deg,rgba(8,10,24,0.99), rgba(5,7,18,0.99))"] .text-[#6080ff],
 html:not(.dark) .growth-quest-page [style*="background: linear-gradient(145deg,rgba(8,10,24,0.98), rgba(5,7,18,0.98))"] .text-[#6080ff] {
-  color: #d9692a !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-summary-card {
@@ -2398,7 +2398,7 @@ html:not(.dark) .growth-quest-page .growth-quest-summary-card span {
 
 html:not(.dark) .growth-quest-page .growth-quest-summary-card .text-[#6080ff],
 html:not(.dark) .growth-quest-page .growth-quest-summary-card [style*="color: #6080ff"] {
-  color: #d9692a !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-summary-card [style*="background: rgba(60,80,200,0.15)"],
@@ -2463,7 +2463,7 @@ html:not(.dark) .growth-quest-page .growth-quest-toolbar {
 html:not(.dark) .growth-quest-page .growth-quest-toolbar__head span,
 html:not(.dark) .growth-quest-page .growth-quest-label,
 html:not(.dark) .growth-quest-page .growth-quest-eyebrow {
-  color: #d9692a !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-toolbar__sep {
@@ -2490,12 +2490,12 @@ html:not(.dark) .growth-quest-page .growth-quest-feedback__status {
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-feedback__rewards {
-  color: #d9692a !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-feedback__rewards span {
-  border-color: rgba(217, 105, 42, 0.15) !important;
-  background: rgba(217, 105, 42, 0.06) !important;
+  border-color: rgba(200, 80, 40, 0.15) !important;
+  background: rgba(200, 80, 40, 0.06) !important;
 }
 
 html:not(.dark) .growth-quest-page .weekly-ranking {
@@ -2535,7 +2535,7 @@ html:not(.dark) .growth-quest-page .weekly-ranking__row:hover {
 }
 
 html:not(.dark) .growth-quest-page .weekly-ranking__row > div:first-child {
-  color: #d9692a !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .weekly-ranking__coins p,
@@ -2544,8 +2544,8 @@ html:not(.dark) .growth-quest-page .weekly-ranking__coins span {
 }
 
 html:not(.dark) .growth-quest-page .weekly-ranking__totals {
-  border-color: rgba(217, 105, 42, 0.18) !important;
-  background: rgba(217, 105, 42, 0.05) !important;
+  border-color: rgba(200, 80, 40, 0.18) !important;
+  background: rgba(200, 80, 40, 0.05) !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-contest-card {
@@ -2581,7 +2581,7 @@ html:not(.dark) .growth-quest-page .growth-quest-scroll-row::-webkit-scrollbar-t
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-scroll-row::-webkit-scrollbar-thumb {
-  background: #d9692a !important;
+  background: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-footer {
@@ -2589,7 +2589,7 @@ html:not(.dark) .growth-quest-page .growth-quest-footer {
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-footer::before {
-  background: linear-gradient(90deg, transparent, rgba(217, 105, 42, 0.3), transparent) !important;
+  background: linear-gradient(90deg, transparent, rgba(200, 80, 40, 0.3), transparent) !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-footer__brand h4,
@@ -2739,7 +2739,7 @@ html:not(.dark) .growth-quest-page .growth-quest-epic-card .growth-quest-label,
 html:not(.dark) .growth-quest-page .growth-quest-history-title,
 html:not(.dark) .growth-quest-page .growth-quest-history__footer button,
 html:not(.dark) .growth-quest-page .growth-quest-section-title h3 {
-  color: #d9692a !important;
+  color: #D9692A !important;
 }
 
 html:not(.dark) .growth-quest-page .growth-quest-card .text-white\/60,
@@ -2766,7 +2766,7 @@ html:not(.dark) .growth-quest-page .growth-quest-milestone-grid article [style*=
 html:not(.dark) .growth-quest-page .growth-quest-card .growth-quest-progress span,
 html:not(.dark) .growth-quest-page .growth-quest-focus-card-main .growth-quest-progress span,
 html:not(.dark) .growth-quest-page .growth-quest-milestone-grid .growth-quest-progress span {
-  background: linear-gradient(90deg, #d9692a, #f08a3a) !important;
+  background: linear-gradient(90deg, #D9692A, #E8854A) !important;
 }
 
 html:not(.dark) .growth-quest-page [style*="background: linear-gradient(135deg,rgba(8,10,24,0.98),rgba(12,8,28,0.97))"] {

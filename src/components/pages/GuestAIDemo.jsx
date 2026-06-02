@@ -6012,7 +6012,7 @@ const GuestAIDemo = () => {
                                                 style={{
                                                     background: isDark
                                                         ? 'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(249, 217, 73, 0.18) 0%, rgba(249, 217, 73, 0.08) 30%, transparent 65%)'
-                                                        : 'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(217, 105, 42, 0.18) 0%, rgba(217, 105, 42, 0.08) 30%, transparent 65%)',
+                                                        : 'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(200, 80, 40, 0.18) 0%, rgba(200, 80, 40, 0.08) 30%, transparent 65%)',
                                                 }}
                                             />
                                             {isAgencySelectionMode ? (

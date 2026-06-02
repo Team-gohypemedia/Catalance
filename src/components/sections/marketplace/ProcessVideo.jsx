@@ -8,36 +8,23 @@ const STEPS = [
   {
     id: "discover",
     step: "01",
-    title: "Explore & Brief",
-    description: "Focused categories, tools, and budget filters surface the right specialist in minutes.",
+    title: "Discover Talent",
+    description: "Explore curated categories and verified professionals tailored to your project needs.",
     icon: Search,
-    color: "from-sky-500/20 to-cyan-500/5",
-    border: "border-sky-500/20",
-    iconColor: "text-sky-400",
-    iconBg: "bg-sky-500/10 border-sky-500/20",
   },
   {
     id: "shortlist",
     step: "02",
-    title: "Shortlist Talent",
-    description: "Review verified portfolios, trust signals, and delivery windows to lock in your top match.",
+    title: "Compare & Shortlist",
+    description: "Review portfolios, ratings, skills, and experience to find the perfect match.",
     icon: Users,
-    color: "from-violet-500/20 to-purple-500/5",
-    border: "border-violet-500/20",
-    iconColor: "text-violet-400",
-    iconBg: "bg-violet-500/10 border-violet-500/20",
   },
   {
     id: "launch",
     step: "03",
-    title: "Launch Execution",
-    description: "Structured briefs and clear deliverable expectations drive fast, accountable results.",
+    title: "Launch With Confidence",
+    description: "Collaborate through clear milestones, secure payments, and reliable delivery.",
     icon: Rocket,
-    color: "from-primary/20 to-primary/5",
-    border: "border-primary/30",
-    iconColor: "text-primary",
-    iconBg: "bg-primary/10 border-primary/30",
-    active: true,
   },
 ];
 
@@ -75,8 +62,6 @@ const ProcessVideo = () => {
       {/* Ambient background glow */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/6 blur-[140px]" />
-        <div className="absolute right-[-10%] top-0 h-[400px] w-[400px] rounded-full bg-sky-500/5 blur-[120px]" />
-        <div className="absolute left-[-5%] bottom-0 h-[350px] w-[350px] rounded-full bg-violet-500/5 blur-[100px]" />
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -148,7 +133,7 @@ const ProcessVideo = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
-                      Stage 03 — Launch Execution
+                      Stage 03 — Launch With Confidence
                     </p>
                     <h3 className="mt-1 text-xl font-semibold text-white">
                       Connect and deploy with confidence
@@ -165,9 +150,7 @@ const ProcessVideo = () => {
                     <div
                       key={s.id}
                       className={`h-1.5 rounded-full transition-all duration-500 ${
-                        i === 2
-                          ? "w-10 bg-primary"
-                          : "w-4 bg-white/20"
+                        i === 2 ? "w-10 bg-primary" : "w-4 bg-white/20"
                       }`}
                     />
                   ))}
@@ -177,84 +160,43 @@ const ProcessVideo = () => {
             </div>
           </motion.div>
 
-          {/* ── RIGHT: Steps ── */}
+          {/* ── RIGHT: Steps (redesigned to match reference image) ── */}
           <motion.div
-            className="flex flex-col justify-center gap-5"
+            className="flex flex-col justify-center gap-3"
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
           >
-            {STEPS.map((step, index) => {
+            {STEPS.map((step) => {
               const Icon = step.icon;
               return (
                 <motion.div
                   key={step.id}
                   variants={itemVariants}
-                  className={`group relative overflow-hidden rounded-[28px] border p-6 transition-all duration-300 ${
-                    step.active
-                      ? `${step.border} bg-gradient-to-br ${step.color} shadow-[0_0_40px_-15px_rgba(var(--brand-rgb),0.3)]`
-                      : "border-white/8 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]"
-                  }`}
+                  className="group flex items-center gap-4 rounded-[20px] border border-border bg-card px-5 py-5 shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_4px_18px_rgba(0,0,0,0.07)] dark:border-white/8 dark:bg-white/[0.03] dark:hover:border-white/14 dark:hover:bg-white/[0.05]"
                 >
-                  {/* Subtle grid overlay */}
-                  <div
-                    className="pointer-events-none absolute inset-0 opacity-[0.025]"
-                    style={{
-                      backgroundImage: "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
-                      backgroundSize: "28px 28px",
-                    }}
-                  />
+                  {/* Large decorative step number */}
+                  <span
+                    className="w-10 shrink-0 select-none font-mono text-[2.4rem] font-extrabold leading-none tracking-tight text-primary/30 dark:text-primary/20"
+                    aria-hidden="true"
+                  >
+                    {step.step}
+                  </span>
 
-                  {/* Connector line between cards */}
-                  {index < STEPS.length - 1 && (
-                    <div className="absolute -bottom-[22px] left-[35px] z-10 h-[22px] w-px bg-gradient-to-b from-white/15 to-transparent" />
-                  )}
+                  {/* Circular icon container */}
+                  <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary dark:bg-primary/15">
+                    <Icon className="h-[22px] w-[22px] stroke-[1.65]" />
+                  </div>
 
-                  <div className="relative flex items-start gap-5">
-                    {/* Icon */}
-                    <div
-                      className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${step.iconBg} ${step.iconColor}`}
-                    >
-                      <Icon className="h-5 w-5" />
-                      {step.active && (
-                        <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-                          <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-primary" />
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1 flex items-center gap-3">
-                        <span
-                          className={`font-mono text-[11px] font-bold tracking-[0.25em] ${
-                            step.active ? "text-primary" : "text-slate-600"
-                          }`}
-                        >
-                          {step.step}
-                        </span>
-                        {step.active && (
-                          <span className="inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                            Live
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-[18px] font-semibold leading-snug text-white">
-                        {step.title}
-                      </h3>
-                      <p className="mt-1.5 text-[13px] leading-relaxed text-slate-400">
-                        {step.description}
-                      </p>
-                    </div>
-
-                    <ArrowRight
-                      className={`mt-0.5 h-4 w-4 shrink-0 transition-all duration-300 ${
-                        step.active
-                          ? "text-primary"
-                          : "text-slate-700 group-hover:translate-x-1 group-hover:text-slate-400"
-                      }`}
-                    />
+                  {/* Title + Description */}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-[15.5px] font-bold leading-snug text-foreground dark:text-white">
+                      {step.title}
+                    </h3>
+                    <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground dark:text-slate-400">
+                      {step.description}
+                    </p>
                   </div>
                 </motion.div>
               );

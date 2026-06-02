@@ -107,7 +107,7 @@ export const ManagerTopBar = () => {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-auto p-0 text-xs text-[#D9692A] hover:bg-transparent hover:text-[#B85A24]"
+                    className="h-auto p-0 text-xs text-[#D9692A] hover:bg-transparent hover:text-[#B85624]"
                     onClick={markAllAsRead}
                   >
                     Mark all as read

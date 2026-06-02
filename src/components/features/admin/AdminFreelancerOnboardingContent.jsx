@@ -1885,7 +1885,7 @@ const AdminFreelancerOnboardingContent = () => {
         />
 
         <section className="relative overflow-hidden rounded-[26px] border border-border bg-card p-5 shadow-[0_22px_60px_rgba(0,0,0,0.08)] lg:p-6">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(217,105,42,0.08),transparent)] opacity-60" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(200, 80, 40,0.08),transparent)] opacity-60" />
           <div className="relative flex flex-col gap-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div className="max-w-3xl">

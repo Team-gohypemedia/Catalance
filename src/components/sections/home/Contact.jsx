@@ -481,7 +481,7 @@ const Contact = () => {
                <button className={`px-6 py-3 w-full sm:w-auto rounded-xl flex shrink-0 justify-center items-center gap-2 font-bold shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 ${
                   isDark 
                     ? 'bg-primary text-primary-foreground hover:bg-yellow-400 hover:shadow-[0_0_20px_rgba(249,217,73,0.3)]' 
-                    : 'bg-[#D9692A] text-[#ffffff] hover:bg-[#bd5c25] hover:shadow-[0_0_20px_rgba(217,105,42,0.3)]'
+                    : 'bg-[#D9692A] text-[#ffffff] hover:bg-[#bd5c25] hover:shadow-[0_0_20px_rgba(200, 80, 40,0.3)]'
                }`}>
                   Get Started <ArrowUpRight className="w-4 h-4"/>
                </button>

@@ -31,7 +31,7 @@ export function AnimatedCard({ className, ...props }) {
         aria-labelledby="card-title"
         aria-describedby="card-description"
         className={cn(
-          "group/animated-card relative w-full overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition-all duration-500 cursor-pointer hover:!animate-none hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_20px_40px_-15px_rgba(217,105,42,0.15)] dark:border-zinc-800 dark:bg-black dark:hover:border-primary/30 dark:hover:shadow-[0_20px_40px_-15px_rgba(249,217,73,0.15)]",
+          "group/animated-card relative w-full overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition-all duration-500 cursor-pointer hover:!animate-none hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_20px_40px_-15px_rgba(200, 80, 40,0.15)] dark:border-zinc-800 dark:bg-black dark:hover:border-primary/30 dark:hover:shadow-[0_20px_40px_-15px_rgba(249,217,73,0.15)]",
           className
         )}
         style={{

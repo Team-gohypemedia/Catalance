@@ -36,7 +36,7 @@ const PrivacyPolicy = () => {
         }}
       />
 
-      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(217,105,42,0.15),transparent_45%)] dark:bg-[radial-gradient(circle_at_top,rgba(253,200,0,0.12),transparent_45%)]" />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(200, 80, 40,0.15),transparent_45%)] dark:bg-[radial-gradient(circle_at_top,rgba(253,200,0,0.12),transparent_45%)]" />
 
       <div className="relative z-10 mx-auto max-w-4xl px-6 pb-20 pt-24">
         <div className="text-center mb-16">
