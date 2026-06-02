@@ -31,6 +31,7 @@ import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Search from "lucide-react/dist/esm/icons/search";
 import Smile from "lucide-react/dist/esm/icons/smile";
 import X from "lucide-react/dist/esm/icons/x";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/shared/lib/api-client";
 import { migrateChatConversationStorageKey } from "@/shared/lib/storage-keys";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -247,23 +248,23 @@ const RequestListItem = ({ request, isActive, onSelect }) => {
       type="button"
       onClick={onSelect}
       className={cn(
-        "w-full rounded-[20px] border px-4 py-4 text-left transition",
+        "relative w-full overflow-hidden rounded-[16px] px-4 py-4 text-left transition",
         isActive
-          ? "border-white/[0.08] bg-background/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-          : "border-transparent bg-transparent hover:border-white/[0.05] hover:bg-white/[0.03]",
+          ? "bg-primary/5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-primary"
+          : "bg-transparent hover:bg-black/[0.03] dark:hover:bg-white/[0.03]",
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[0.98rem] font-semibold text-white">{title}</p>
-          <p className="mt-1 truncate text-sm text-[#cbd5e1]">{requesterName}</p>
+          <p className={cn("truncate text-[0.98rem] font-semibold", isActive ? "text-primary" : "text-foreground")}>{title}</p>
+          <p className="mt-1 truncate text-sm text-muted-foreground">{requesterName}</p>
         </div>
-        <span className="shrink-0 text-[11px] text-[#7f8795]">
+        <span className="shrink-0 text-[11px] text-muted-foreground/80">
           {formatConversationTimestamp(request?.updatedAt || request?.createdAt)}
         </span>
       </div>
 
-      <p className="mt-3 line-clamp-2 rounded-[16px] bg-white/[0.03] px-3 py-2 text-sm leading-6 text-[#8f96a3]">
+      <p className="mt-3 line-clamp-2 rounded-[12px] bg-black/[0.03] dark:bg-white/[0.03] px-3 py-2 text-sm leading-6 text-muted-foreground">
         {request?.requestMessage || request?.previewText || "New request"}
       </p>
     </button>
@@ -403,7 +404,7 @@ const ChatIconButton = ({ className, children, ...props }) => (
   <button
     type="button"
     className={cn(
-      "flex size-9 items-center justify-center rounded-full text-[#8f96a3] transition hover:bg-white/[0.03] hover:text-white disabled:pointer-events-none disabled:opacity-50",
+      "flex size-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-black/[0.05] dark:hover:bg-white/[0.05] hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
       className,
     )}
     {...props}
@@ -428,31 +429,31 @@ const ConversationItem = ({
       type="button"
       onClick={onSelect}
       className={cn(
-        "relative flex w-full items-center gap-4 rounded-[18px] border px-4 py-3.5 text-left transition",
+        "relative flex w-full items-center gap-3 overflow-hidden rounded-[16px] px-3 py-3 text-left transition",
         isActive
-          ? "border-white/[0.08] bg-background/70 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-          : "border-transparent text-white hover:border-white/[0.05] hover:bg-white/[0.03]",
+          ? "bg-primary/5 text-foreground before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-primary"
+          : "bg-transparent text-foreground hover:bg-black/[0.03] dark:hover:bg-white/[0.03]",
       )}
     >
       <div className="relative shrink-0">
-        <Avatar className={cn("size-12 border", isActive ? "border-white/[0.12]" : "border-white/10")}>
+        <Avatar className="size-11 border border-border">
           <AvatarImage src={conversation.avatar || undefined} alt={displayTitle} />
-          <AvatarFallback className="bg-[#2b2b31] text-sm font-semibold text-white">
+          <AvatarFallback className="bg-muted text-sm font-semibold text-foreground">
             {getInitials(displayTitle)}
           </AvatarFallback>
         </Avatar>
         {showOnline ? (
-          <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#171717] bg-[#22c55e]" />
+          <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-card bg-[#22c55e]" />
         ) : null}
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3">
-          <p className="truncate text-[0.98rem] font-semibold text-white">{displayTitle}</p>
+          <p className={cn("truncate text-[0.98rem] font-semibold", isActive ? "text-primary" : "text-foreground")}>{displayTitle}</p>
           <span
             className={cn(
               "shrink-0 text-[11px]",
-              isActive ? "text-[#cbd5e1]" : "text-[#7f8795]",
+              isActive ? "text-muted-foreground" : "text-muted-foreground/80",
             )}
           >
             {formatConversationTimestamp(conversation.lastActivity)}
@@ -462,7 +463,7 @@ const ConversationItem = ({
         <p
           className={cn(
             "mt-1 truncate text-[13px]",
-            isActive ? "text-[#dce4ee]" : "text-[#a9b2c0]",
+            isActive ? "text-foreground/80" : "text-muted-foreground",
           )}
         >
           {memberLabel}
@@ -470,8 +471,8 @@ const ConversationItem = ({
 
         <p
           className={cn(
-            "mt-1 truncate text-sm",
-            isActive ? "text-[#cbd5e1]" : "text-[#8f96a3]",
+            "mt-1 truncate text-[13px]",
+            isActive ? "text-muted-foreground" : "text-muted-foreground/80",
           )}
         >
           {displaySubtitle}
@@ -788,29 +789,29 @@ const ChatArea = ({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-card">
-      <div className="flex items-center justify-between gap-4 border-b border-white/[0.06] bg-card px-5 py-4 md:px-7">
+      <div className="flex items-center justify-between gap-4 border-b border-border bg-card px-5 py-4 md:px-7">
         <div className="flex min-w-0 items-center gap-4">
           <div className="relative shrink-0">
-            <Avatar className="size-12 border border-white/10">
+            <Avatar className="size-12 border border-border">
               <AvatarImage src={conversation?.avatar || undefined} alt={conversationAvatarLabel} />
-              <AvatarFallback className="bg-[#2b2b31] text-sm font-semibold text-white">
+              <AvatarFallback className="bg-muted text-sm font-semibold text-foreground">
                 {getInitials(conversationAvatarLabel)}
               </AvatarFallback>
             </Avatar>
             <span
               className={cn(
                 "absolute bottom-0 right-0 size-3 rounded-full border-2 border-card",
-                online ? "bg-[#22c55e]" : "bg-[#6b7280]",
+                online ? "bg-[#22c55e]" : "bg-muted-foreground",
               )}
             />
           </div>
 
           <div className="min-w-0">
-            <p className="truncate text-[1.15rem] font-semibold tracking-[-0.3px] text-white">
+            <p className="truncate text-[1.15rem] font-semibold tracking-[-0.3px] text-foreground">
               {conversationTitle}
             </p>
-            <p className="truncate text-[13px] text-[#cbd5e1]">{conversationMembers}</p>
-            <p className={cn("text-xs font-medium uppercase tracking-[0.16em]", online ? "text-[var(--primary)]" : "text-[#8f96a3]")}>
+            <p className="truncate text-[13px] text-foreground/80">{conversationMembers}</p>
+            <p className={cn("text-xs font-medium uppercase tracking-[0.16em]", online ? "text-[var(--primary)]" : "text-muted-foreground")}>
               {online ? `${conversationSubtitle} • Online` : conversationSubtitle}
             </p>
           </div>
@@ -823,7 +824,7 @@ const ChatArea = ({
               value={messageSearch}
               onChange={(event) => setMessageSearch(event.target.value)}
               placeholder="Search in chat..."
-              className="h-9 w-[220px] rounded-[14px] border-white/[0.1] bg-white/[0.03] px-3 text-sm text-white placeholder:text-[#6b7280] focus-visible:ring-0"
+              className="h-9 w-[220px] rounded-[14px] border-border bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
             />
           ) : null}
 
@@ -843,14 +844,14 @@ const ChatArea = ({
 
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
-              className="flex size-9 items-center justify-center rounded-full text-[#8f96a3] transition hover:bg-white/[0.03] hover:text-white"
+              className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-black/[0.05] dark:hover:bg-white/[0.05] hover:text-foreground"
               aria-label="More actions"
             >
               <MoreVertical className="size-4.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-44 rounded-[16px] border-white/[0.08] bg-[#1c1c1c] p-1.5 text-white"
+              className="w-44 rounded-[16px] border-border bg-card p-1.5 text-foreground"
             >
               <DropdownMenuItem
                 onSelect={(event) => {
@@ -900,7 +901,7 @@ const ChatArea = ({
               <React.Fragment key={message.id || `${message.createdAt || index}-${index}`}>
                 {showDateDivider ? (
                   <div className="flex justify-center py-2">
-                    <span className="rounded-full border border-white/[0.06] bg-[#1a1a1a] px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7f8795]">
+                    <span className="rounded-full border border-border bg-muted px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       {formatDayDivider(messageDate)}
                     </span>
                   </div>
@@ -908,9 +909,9 @@ const ChatArea = ({
 
                 <div className={cn("flex items-end gap-3", ownMessage ? "justify-end" : "justify-start")}>
                   {!ownMessage ? (
-                    <Avatar className="hidden size-8 shrink-0 self-end border border-white/10 sm:flex">
+                    <Avatar className="hidden size-8 shrink-0 self-end border border-border sm:flex">
                       <AvatarImage src={conversation?.avatar || undefined} alt={conversationAvatarLabel} />
-                      <AvatarFallback className="bg-[#2b2b31] text-[11px] font-semibold text-white">
+                      <AvatarFallback className="bg-muted text-[11px] font-semibold text-foreground">
                         {getInitials(conversationAvatarLabel)}
                       </AvatarFallback>
                     </Avatar>
@@ -926,7 +927,7 @@ const ChatArea = ({
                       <p
                         className={cn(
                           "mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.16em]",
-                          ownMessage ? "text-right text-[var(--primary)]" : "text-left text-[#94a3b8]",
+                          ownMessage ? "text-right text-[var(--primary)]" : "text-left text-muted-foreground",
                         )}
                       >
                         {roleLabel}
@@ -940,7 +941,7 @@ const ChatArea = ({
                             "w-fit max-w-full rounded-[20px] px-6 py-4 shadow-[0_18px_45px_-38px_rgba(0,0,0,0.8)]",
                             ownMessage
                               ? "min-w-[96px] rounded-[14px] rounded-br-none bg-primary text-primary-foreground"
-                              : "min-w-[96px] rounded-[14px] rounded-bl-none border border-white/[0.06] bg-[#1d1d1d] text-[#8f96a3]",
+                              : "min-w-[96px] rounded-[14px] rounded-bl-none border border-border bg-muted text-foreground/80",
                           )}
                         >
                           <div className="flex items-start gap-2 text-sm italic">
@@ -960,7 +961,7 @@ const ChatArea = ({
                                 "w-fit max-w-full overflow-hidden rounded-[14px] p-1.5 shadow-[0_18px_45px_-38px_rgba(0,0,0,0.8)]",
                                 ownMessage
                                   ? "rounded-br-none bg-primary text-primary-foreground"
-                                  : "rounded-bl-none border border-white/[0.06] bg-[#1d1d1d]",
+                                  : "rounded-bl-none border border-border bg-muted",
                               )}
                             >
                               {renderImageAttachment(message.attachment, message.id, ownMessage)}
@@ -975,7 +976,7 @@ const ChatArea = ({
                                   <p
                                     className={cn(
                                       "min-w-0 flex-1 whitespace-pre-wrap text-[0.98rem] leading-7",
-                                      ownMessage ? "text-primary-foreground" : "text-[#f1f5f9]",
+                                      ownMessage ? "text-primary-foreground" : "text-foreground",
                                     )}
                                     style={{
                                       overflowWrap: "break-word",
@@ -997,7 +998,7 @@ const ChatArea = ({
                                 "w-fit max-w-full shadow-[0_18px_45px_-38px_rgba(0,0,0,0.8)]",
                                 ownMessage
                                   ? "min-w-[96px] rounded-[12px] rounded-br-none bg-primary px-2.5 py-2 text-primary-foreground"
-                                  : "min-w-[96px] rounded-[12px] rounded-bl-none border border-white/[0.06] bg-[#1d1d1d] px-2.5 py-2 text-[#f1f5f9]",
+                                  : "min-w-[96px] rounded-[12px] rounded-bl-none border border-border bg-muted px-2.5 py-2 text-foreground",
                               )}
                             >
                               <div className="flex max-w-full items-end gap-2">
@@ -1037,7 +1038,7 @@ const ChatArea = ({
 
           {typingUsers.length > 0 && !deferredMessageSearch.trim() ? (
             <div className="flex justify-start">
-              <div className="rounded-[20px] border border-white/[0.06] bg-[#1d1d1d] px-4 py-3 text-sm text-[#8f96a3]">
+              <div className="rounded-[20px] border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
                 {typingUsers[0]} {typingUsers.length > 1 ? "and others are" : "is"} typing...
               </div>
             </div>
@@ -1046,9 +1047,23 @@ const ChatArea = ({
           {deferredMessageSearch.trim() && visibleMessages.length === 0 ? (
             <div className="flex min-h-[220px] items-center justify-center">
               <div className="text-center">
-                <p className="text-sm font-semibold text-white">No matching messages</p>
-                <p className="mt-1 text-xs text-[#8f96a3]">
+                <p className="text-sm font-semibold text-foreground">No matching messages</p>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Try a different search term in this conversation.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {visibleMessages.length === 0 && !deferredMessageSearch.trim() ? (
+            <div className="flex h-full items-center justify-center p-6">
+              <div className="flex w-full max-w-2xl flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border bg-card px-6 py-20 text-center">
+                <div className="mb-6 flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <MessageSquare className="size-8" />
+                </div>
+                <h3 className="text-2xl font-semibold text-foreground">No active messages</h3>
+                <p className="mt-2 text-base text-muted-foreground">
+                  Start a conversation with {conversationTitle} to discuss project requirements, timelines, and deliverables.
                 </p>
               </div>
             </div>
@@ -1056,9 +1071,9 @@ const ChatArea = ({
         </div>
       </div>
 
-      <div className="border-t border-white/[0.06] bg-card px-4 py-4 md:px-6">
+      <div className="border-t border-border bg-card px-4 py-4 md:px-6">
         {selectedFile ? (
-          <div className="mb-4 flex items-center gap-3 rounded-[22px] border border-white/[0.06] bg-card px-4 py-3">
+          <div className="mb-4 flex items-center gap-3 rounded-[22px] border border-border bg-card px-4 py-3">
             {filePreview ? (
               <img
                 src={filePreview}
@@ -1072,14 +1087,14 @@ const ChatArea = ({
             )}
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-white">{selectedFile.name}</p>
-              <p className="text-xs text-[#8f96a3]">{formatFileSize(selectedFile.size)}</p>
+              <p className="truncate text-sm font-semibold text-foreground">{selectedFile.name}</p>
+              <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
             </div>
 
             <button
               type="button"
               onClick={clearFile}
-              className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-[#8f96a3] transition hover:border-white/20 hover:text-white"
+              className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground transition hover:border-muted-foreground hover:text-foreground"
             >
               Remove
             </button>
@@ -1107,9 +1122,9 @@ const ChatArea = ({
               align="start"
               side="top"
               sideOffset={12}
-              className="w-[240px] rounded-[18px] border-white/[0.08] bg-[#1c1c1c] p-3 text-white"
+              className="w-[240px] rounded-[18px] border-border bg-card p-3 text-foreground"
             >
-              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Insert emoji
               </div>
               <div className="grid grid-cols-6 gap-2">
@@ -1118,7 +1133,7 @@ const ChatArea = ({
                     key={emoji}
                     type="button"
                     onClick={() => handleEmojiSelect(emoji)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl text-lg transition hover:bg-white/[0.06]"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-lg transition hover:bg-muted"
                     aria-label={`Insert ${emoji}`}
                   >
                     {emoji}
@@ -1136,14 +1151,14 @@ const ChatArea = ({
             <Paperclip className="size-5" />
           </ChatIconButton>
 
-          <div className="flex min-h-[52px] flex-1 items-center gap-3 rounded-[22px] border border-white/[0.08] bg-background/70 px-4">
+          <div className="flex min-h-[52px] flex-1 items-center gap-3 rounded-[22px] border border-border bg-transparent px-4">
             <Input
               ref={composerInputRef}
               value={messageInput}
               onChange={(event) => onMessageInputChange(event.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="Type your message..."
-              className="h-12 rounded-none border-0 bg-transparent px-0 text-[15px] text-white shadow-none placeholder:text-[#6b7280] focus-visible:ring-0 dark:bg-transparent"
+              className="h-12 rounded-none border-0 bg-transparent px-0 text-[15px] text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
               disabled={sending || uploading}
             />
           </div>
@@ -1153,7 +1168,7 @@ const ChatArea = ({
             onClick={() => {
               void handleSend();
             }}
-            className="flex size-12 items-center justify-center rounded-full bg-[var(--primary)] text-[#141414] transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:bg-[var(--primary)]/60"
+            className="flex size-12 items-center justify-center rounded-full bg-[var(--primary)] text-white transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:bg-[var(--primary)]/60"
             disabled={(sending || uploading) || (!messageInput.trim() && !selectedFile)}
             aria-label="Send message"
           >
@@ -2025,47 +2040,46 @@ const FreelancerChatContent = () => {
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
         <div className="max-w-[1600px] mx-auto min-h-full">
           <section className="mt-7 flex flex-col gap-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-4xl md:text-[3.4rem]">
                   Messages
                 </h1>
               </div>
 
+              <div className="flex items-center justify-end">
+                <div className="inline-flex items-center rounded-full border border-border bg-background p-1 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("messages")}
+                    className={cn(
+                      "rounded-full px-6 py-2 text-[0.95rem] font-semibold transition-colors",
+                      activeTab === "messages"
+                        ? "bg-[var(--primary)] text-white dark:text-[#141414]"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Messages ({conversations.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("requests")}
+                    className={cn(
+                      "rounded-full px-6 py-2 text-[0.95rem] font-semibold transition-colors",
+                      activeTab === "requests"
+                        ? "bg-[var(--primary)] text-white dark:text-[#141414]"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Requests ({pendingRequests.length})
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="flex min-h-[680px] w-full flex-col overflow-hidden rounded-[28px] border border-border bg-card lg:h-[calc(100vh-13.5rem)] lg:flex-row">
               <aside className="flex w-full shrink-0 flex-col border-b border-border bg-card lg:w-[360px] lg:border-b-0 lg:border-r">
                 <div className="px-4 pb-5 pt-5 md:px-6 md:pt-6">
-                  <div className="grid grid-cols-2 rounded-full border border-border bg-muted/50 p-1">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("messages")}
-                      className={cn(
-                        "rounded-full px-4 py-2.5 text-sm font-semibold transition",
-                        activeTab === "messages"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      Messages ({conversations.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("requests")}
-                      className={cn(
-                        "rounded-full px-4 py-2.5 text-sm font-semibold transition",
-                        activeTab === "requests"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      Requests ({pendingRequests.length})
-                    </button>
-                  </div>
-                </div>
-
-                <div className="px-4 pb-5 md:px-6">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-[#6b7280]" />
                     <Input

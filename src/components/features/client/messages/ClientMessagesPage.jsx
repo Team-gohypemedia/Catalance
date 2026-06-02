@@ -292,27 +292,24 @@ const ClientMessagesPage = () => {
 
           {!isMobileDetailOpen ? (
             <ClientPageHeader
-              className="shrink-0 lg:items-start"
+              className="mb-2 mt-8 shrink-0 lg:items-center"
               title="Messages"
               dateLabel={false}
+              actions={
+                <MessagesHeaderTabs
+                  activeTab={activeTab}
+                  onTabChange={handleTabChange}
+                  messagesCount={conversations.length}
+                  requestsCount={pendingRequests.length}
+                />
+              }
             />
-          ) : null}
-
-          {!isMobileDetailOpen ? (
-            <div className="mt-6 flex justify-end">
-              <MessagesHeaderTabs
-                activeTab={activeTab}
-                onTabChange={handleTabChange}
-                messagesCount={conversations.length}
-                requestsCount={pendingRequests.length}
-              />
-            </div>
           ) : null}
 
           <section
             className={cn(
               "flex min-h-0 flex-1",
-              isMobileDetailOpen ? "mt-0 overflow-hidden" : "mt-8",
+              isMobileDetailOpen ? "mt-0 overflow-hidden" : "mt-2",
             )}
           >
             {isMobile ? (

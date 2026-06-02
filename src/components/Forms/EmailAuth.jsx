@@ -154,6 +154,9 @@ function EmailAuth() {
 
   useEffect(() => {
     document.title = "Sign in | Catalance";
+    return () => {
+      document.title = "Catalance";
+    };
   }, []);
 
   const redirectParam = searchParams.get("redirect");

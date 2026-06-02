@@ -9,12 +9,12 @@ const MessagesHeaderTabs = React.memo(function MessagesHeaderTabs({
 }) {
   return (
     <div className="flex items-center justify-end">
-      <div className="inline-flex items-center gap-2 rounded-[32px] border border-border bg-background p-2 shadow-[0_16px_40px_-28px_rgba(0,0,0,0.18)]">
+      <div className="inline-flex items-center rounded-full border border-border bg-background p-1 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
         <button
           type="button"
           onClick={() => onTabChange("messages")}
           className={cn(
-            "min-w-[164px] rounded-[26px] px-5 py-4 text-[1.02rem] font-semibold transition-colors",
+            "rounded-full px-6 py-2 text-[0.95rem] font-semibold transition-colors",
             activeTab === "messages"
               ? "bg-[var(--primary)] text-white dark:text-[#141414]"
               : "text-muted-foreground hover:text-foreground",
@@ -26,7 +26,7 @@ const MessagesHeaderTabs = React.memo(function MessagesHeaderTabs({
           type="button"
           onClick={() => onTabChange("requests")}
           className={cn(
-            "min-w-[164px] rounded-[26px] px-5 py-4 text-[1.02rem] font-semibold transition-colors",
+            "rounded-full px-6 py-2 text-[0.95rem] font-semibold transition-colors",
             activeTab === "requests"
               ? "bg-[var(--primary)] text-white dark:text-[#141414]"
               : "text-muted-foreground hover:text-foreground",

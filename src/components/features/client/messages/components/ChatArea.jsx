@@ -32,6 +32,7 @@ import Search from "lucide-react/dist/esm/icons/search";
 import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
 import Smile from "lucide-react/dist/esm/icons/smile";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import { cn } from "@/shared/lib/utils";
 import {
   CHAT_EMOJIS,
@@ -594,6 +595,31 @@ const ChatArea = React.memo(function ChatArea({
               </div>
             </div>
           ) : null}
+
+          {deferredMessageSearch.trim() && visibleMessages.length === 0 ? (
+            <div className="flex min-h-[220px] items-center justify-center">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">No matching messages</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Try a different search term in this conversation.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {visibleMessages.length === 0 && !deferredMessageSearch.trim() ? (
+            <div className="flex h-full items-center justify-center p-6">
+              <div className="flex w-full max-w-2xl flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border bg-card px-6 py-20 text-center">
+                <div className="mb-6 flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <MessageSquare className="size-8" />
+                </div>
+                <h3 className="text-2xl font-semibold text-foreground">No active messages</h3>
+                <p className="mt-2 text-base text-muted-foreground">
+                  Start a conversation with {conversationTitle} to discuss project requirements, timelines, and deliverables.
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -730,7 +756,7 @@ const ChatArea = React.memo(function ChatArea({
               void handleSend();
             }}
             className={cn(
-              "flex items-center justify-center rounded-full bg-[var(--primary)] text-[#141414] transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:bg-[var(--primary)]/60",
+              "flex items-center justify-center rounded-full bg-[var(--primary)] text-white transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:bg-[var(--primary)]/60",
               mobileView ? "size-11" : "size-12",
             )}
             disabled={!chatUnlocked || sending || uploading || (!messageInput.trim() && !selectedFile)}

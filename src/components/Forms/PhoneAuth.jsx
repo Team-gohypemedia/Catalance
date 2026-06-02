@@ -276,6 +276,9 @@ function PhoneAuth() {
 
   useEffect(() => {
     document.title = "Sign in | Catalance";
+    return () => {
+      document.title = "Catalance";
+    };
   }, []);
 
   useEffect(() => {

@@ -958,7 +958,7 @@ const FreelancerPayments = () => {
                   type="button"
                   variant="outline"
                   onClick={handleConnectPayoutAccount}
-                  className="mt-6 h-12 w-full rounded-[16px] border-white/[0.05] bg-transparent text-sm font-medium text-muted-foreground hover:bg-white/[0.02] hover:text-white"
+                  className="mt-6 h-12 w-full rounded-[16px] border-border bg-transparent text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
                 >
                   <Plus className="mr-2 size-4 text-[var(--primary)]" />
                   Add Payment Method

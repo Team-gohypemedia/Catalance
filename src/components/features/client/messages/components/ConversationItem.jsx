@@ -35,10 +35,10 @@ const ConversationItem = React.memo(function ConversationItem({
       onClick={onSelect}
       data-conversation-key={getConversationKey(conversation)}
       className={cn(
-        "relative flex w-full items-center gap-4 rounded-[18px] border bg-card px-4 py-3.5 text-left transition",
+        "relative flex w-full items-center gap-4 overflow-hidden rounded-[16px] border border-transparent bg-transparent px-4 py-3 text-left transition",
         isActive
-          ? "border-[var(--primary)]/60 text-foreground dark:text-white shadow-[0_0_0_1px_rgba(255,193,7,0.2),inset_0_1px_0_rgba(255,255,255,0.03)]"
-          : "border-border text-foreground dark:border-white/[0.06] dark:text-white hover:border-border/80 dark:hover:border-white/[0.08]",
+          ? "bg-primary/5 text-foreground before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-primary dark:text-white"
+          : "text-foreground hover:bg-black/[0.03] dark:text-white dark:hover:bg-white/[0.03]",
       )}
     >
       <div className="relative shrink-0">
