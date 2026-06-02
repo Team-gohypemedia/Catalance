@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/shared/lib/utils";
 
 export const AnimatedHeroText = ({ 
   staticText, 
   titles = ["amazing", "new", "wonderful", "beautiful", "smart"],
-  className = "" 
+  className = "",
+  titleClassName = "font-semibold text-[var(--primary)]"
 }) => {
   const [titleNumber, setTitleNumber] = useState(0);
 
@@ -30,7 +32,7 @@ export const AnimatedHeroText = ({
             titleNumber === index && (
               <motion.span
                 key={index}
-                className="absolute font-semibold text-[var(--primary)] whitespace-nowrap sm:relative sm:inline-block"
+                className={cn("absolute whitespace-nowrap sm:relative sm:inline-block", titleClassName)}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}

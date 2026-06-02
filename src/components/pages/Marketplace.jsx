@@ -1507,6 +1507,7 @@ const Marketplace = () => {
                   staticText="Hire experts for" 
                   titles={["your next big idea", "professional solutions", "Achieving Results"]}
                   className="flex w-full flex-col items-center"
+                  titleClassName="font-serif italic font-light text-primary text-[0.9em]"
                 />
               </h1>
               <p className="mx-auto max-w-xl text-[17px] leading-relaxed text-[#c9c9c9]">

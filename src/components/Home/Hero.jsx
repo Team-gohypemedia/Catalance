@@ -172,8 +172,9 @@ const Hero = () => {
         <h1 className="max-w-4xl text-[2.1rem] font-medium leading-[1.1] tracking-tight text-foreground dark:text-white sm:text-[2.75rem] md:text-[3.4rem] lg:text-[4.4rem]">
           <AnimatedHeroText
             staticText="Find Talent You Can"
-            titles={["Rely on", "Grow with", "Trust in"]}
+            titles={["Partner With", "Scale With", "Succeed With"]}
             className="flex flex-col items-center"
+            titleClassName="font-serif italic font-light text-primary text-[0.9em]"
           />
         </h1>
 
@@ -181,13 +182,23 @@ const Hero = () => {
           Hire trusted experts focused on reliable and timely delivery.
         </p>
 
-        <Button
-          asChild
-          size="lg"
-          className="mb-12 px-8 text-lg font-semibold text-primary-foreground shadow-[0_14px_36px_rgba(var(--brand-rgb),0.22)]"
-        >
-          <Link to="/service">Hire Expert</Link>
-        </Button>
+        <div className="mb-12 flex flex-col items-center justify-center gap-4 sm:flex-row w-full max-w-md mx-auto sm:max-w-none">
+          <Button
+            asChild
+            size="lg"
+            className="w-full sm:w-auto px-8 text-lg font-semibold text-primary-foreground shadow-[0_14px_36px_rgba(var(--brand-rgb),0.22)]"
+          >
+            <Link to="/service">Hire an Expert</Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="w-full sm:w-auto border-primary text-primary bg-transparent hover:bg-primary hover:text-primary-foreground px-8 text-lg font-semibold transition-all duration-300"
+          >
+            <Link to="/signup?role=freelancer">Get Hired</Link>
+          </Button>
+        </div>
       </div>
 
       {/* Integrated Brand Marquee at the bottom */}
