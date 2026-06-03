@@ -42,14 +42,14 @@ const Footer = () => {
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="grid gap-14 lg:grid-cols-[0.95fr_1.9fr] lg:gap-10">
           <div className="flex flex-col gap-7">
-            <a className="flex w-fit items-center gap-2" href="#">
+            <Link className="flex w-fit items-center gap-2" to="/">
               <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-primary">
                 <img src={logo} alt="Catalance logo" className="h-9 w-9 object-contain invert dark:invert-0" />
               </div>
               <span className="text-2xl font-semibold tracking-tight text-primary">
                 Catalance
               </span>
-            </a>
+            </Link>
 
             <div className="flex items-center gap-4 text-muted-foreground">
               {[

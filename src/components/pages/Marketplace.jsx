@@ -26,8 +26,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { Sparkles as SparklesBackground } from "@/components/ui/sparkles";
-import MarketplaceServicesSection from "@/components/pages/marketplace-browse/MarketplaceServicesSection";
 import SubcategorySection from "@/components/pages/marketplace-browse/SubcategorySection";
+import ServiceCategoryCarousel from "@/components/ui/service-category-carousel";
+import { Input } from "@/components/ui/input";
 import { getSession } from "@/shared/lib/auth-storage";
 import { useAuth } from "@/shared/context/AuthContext";
 import { API_BASE_URL } from "@/shared/lib/api-client";
@@ -1647,18 +1648,23 @@ const Marketplace = () => {
               </div>
             </div>
 
-            <div id="marketplace-results" className="space-y-8">
-              <MarketplaceServicesSection
-                services={marketplaceBrowseCards}
-                loading={filterServicesLoading || browseLoading}
-                searchValue={q}
-                searchPlaceholder="What do you need done?"
-                onSearchChange={setQ}
+            <div id="marketplace-results" className="space-y-6">
+              {/* Header row with Title and Search/Filters */}
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between px-2 sm:px-5">
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-[-0.04em] text-white">
+                    Professional Services
+                  </h2>
+                </div>
+              </div>
+
+              {/* Carousel of Cards */}
+              <ServiceCategoryCarousel
+                services={visibleBrowseServices}
+                loading={(filterServicesLoading || browseLoading) && visibleBrowseServices.length === 0}
                 onSelectService={handleCategorySelect}
                 activeServiceKey={category}
-                actions={marketplaceBrowseActions}
               />
-
             </div>
           </div>
         </div>
@@ -2046,7 +2052,7 @@ const Marketplace = () => {
                                     }
                                     <div className="flex min-w-0 items-center gap-1">
                                       <span className="truncate text-[13.5px] font-bold text-gray-900">{item.freelancer?.fullName || "Anonymous"}</span>
-                                      {parseBooleanFlag(item.freelancer?.isVerified) && <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-primary text-white" />}
+                                      {parseBooleanFlag(item.freelancer?.isVerified) && <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-primary text-white keep-white" />}
                                     </div>
                                   </div>
 
@@ -2127,17 +2133,17 @@ const Marketplace = () => {
                   </div>
                 </motion.div>
               ) : canViewProjectsMarketplace && projectAccessError ? (
-                <motion.div key="projects-access-error" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="rounded-[34px] border border-dashed border-white/10 bg-white/[0.04] px-6 py-16 text-center shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)]">
+                <motion.div key="projects-access-error" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="rounded-[34px] border border-dashed border-white/10 bg-white/[0.04] dark-card px-6 py-16 text-center shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)]">
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.06] text-slate-400"><X className="h-7 w-7" /></div>
                   <h2 className="mt-6 text-2xl font-semibold tracking-tight text-white">Projects marketplace unavailable</h2>
                   <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-400">{projectAccessError}</p>
                 </motion.div>
               ) : projectData.length === 0 ? (
-                <motion.div key="projects-empty" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="rounded-[34px] border border-dashed border-white/10 bg-white/[0.04] px-6 py-20 text-center shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)]">
+                <motion.div key="projects-empty" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="rounded-[34px] border border-dashed border-white/10 bg-white/[0.04] dark-card px-6 py-20 text-center shadow-[0_24px_80px_-42px_rgba(2,6,23,0.82)]">
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.06] text-slate-400"><Search className="h-7 w-7" /></div>
                   <h2 className="mt-6 text-2xl font-semibold tracking-tight text-white">No live projects match this filter yet</h2>
                   <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-400">Try broadening service or budget filters to view more client opportunities.</p>
-                  <Button variant="outline" className="mt-7 rounded-full border-white/10 bg-white/[0.04] px-6 py-5 text-sm font-semibold text-white hover:bg-white/[0.08]" onClick={resetFilters}>Clear all filters</Button>
+                  <Button variant="outline" className="mt-7 rounded-full border-white/10 bg-white/[0.04] px-6 py-5 text-sm font-semibold text-white keep-white hover:bg-white/[0.08]" onClick={resetFilters}>Clear all filters</Button>
                 </motion.div>
               ) : (
                 <motion.div key="projects-grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
@@ -2163,7 +2169,7 @@ const Marketplace = () => {
                       const cta = resolveProjectCardCta(item);
                       return (
                         <motion.article key={item.id} className="h-full">
-                          <Card className="group h-full overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_28px_90px_-40px_color-mix(in_srgb,var(--primary)_22%,transparent)]">
+                          <Card className="group h-full overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] dark-card shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_28px_90px_-40px_color-mix(in_srgb,var(--primary)_22%,transparent)]">
                             <div className="relative h-44 overflow-hidden border-b border-white/10 bg-slate-950">
                               <div className={cn("absolute inset-0 bg-gradient-to-br", getGradient(item.serviceKey || item.id))} />
                               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/35 to-transparent" />
@@ -2237,13 +2243,13 @@ const Marketplace = () => {
           ) : null}
 
                      {((shouldRenderFreelancerResults && !loading) || (isProjectsView && !projectLoading)) && activeTotalPages > 1 && (
-              <div className="mt-6 flex flex-col gap-4 rounded-[30px] border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-slate-400">
-                  Page <span className="font-semibold text-white">{page}</span> of{" "}
-                  <span className="font-semibold text-white">{activeTotalPages}</span>
+              <div className="mt-6 flex flex-col gap-4 rounded-[30px] border border-black/5 bg-white/50 px-5 py-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-white/[0.04]">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Page <span className="font-semibold text-foreground dark:text-white">{page}</span> of{" "}
+                  <span className="font-semibold text-foreground dark:text-white">{activeTotalPages}</span>
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-black/5 bg-white/50 text-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.08]" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   {Array.from({ length: activeTotalPages }, (_, index) => index + 1)
@@ -2264,13 +2270,13 @@ const Marketplace = () => {
                       const isCurrentPage = pageNumber === page;
                       return (
                         <div key={pageNumber} className="contents">
-                          <Button type="button" variant={isCurrentPage ? "default" : "outline"} size="icon" className={cn("h-11 w-11 rounded-full", isCurrentPage ? "border-primary bg-primary text-black hover:bg-primary/90" : "border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]")} onClick={() => setPage(pageNumber)}>
+                          <Button type="button" variant={isCurrentPage ? "default" : "outline"} size="icon" className={cn("h-11 w-11 rounded-full", isCurrentPage ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90" : "border-black/5 bg-white/50 text-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.08]")} onClick={() => setPage(pageNumber)}>
                             {pageNumber}
                           </Button>
                         </div>
                       );
                     })}
-                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]" disabled={page >= activeTotalPages} onClick={() => setPage((current) => Math.min(activeTotalPages, current + 1))}>
+                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-black/5 bg-white/50 text-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.08]" disabled={page >= activeTotalPages} onClick={() => setPage((current) => Math.min(activeTotalPages, current + 1))}>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -2288,6 +2294,7 @@ const Marketplace = () => {
         </div>
 
         <div className="flex flex-col gap-8 pb-6">
+          {/*
           <section className="space-y-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -2379,7 +2386,9 @@ const Marketplace = () => {
               )}
             </div>
           </section>
+          */}
 
+          {/*
           <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
             <Card className="rounded-[30px] border border-border bg-card shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
               <CardContent className="space-y-5 p-6">
@@ -2488,6 +2497,7 @@ const Marketplace = () => {
               </div>
             </section>
           </section>
+          */}
         </div>
 
         <section id="why-catalance" className="relative space-y-10 py-6">

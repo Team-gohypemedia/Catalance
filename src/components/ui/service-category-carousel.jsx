@@ -2,16 +2,92 @@ import React, { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, LayoutGrid, CheckCircle2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import cataLogo from "@/assets/logos/logo.svg";
+
+/* ─── 3D Icon / Logo Mappings ─── */
+const SERVICE_LOGO_MODULES = import.meta.glob('../../assets/icons/*.png', {
+  eager: true,
+  import: 'default',
+});
+
+const normalizeServiceLogoKey = (value = '') =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[_-]+/g, ' ')
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const SERVICE_LOGOS_BY_KEY = Object.entries(SERVICE_LOGO_MODULES).reduce((acc, [path, source]) => {
+  const fileName = String(path || '').split('/').pop()?.replace(/\.png$/i, '') || '';
+  const key = normalizeServiceLogoKey(fileName);
+  if (key) {
+    acc[key] = source;
+  }
+  return acc;
+}, {});
+
+const SERVICE_LOGO_KEYS = Object.keys(SERVICE_LOGOS_BY_KEY);
+
+const SERVICE_LOGO_ALIASES = {
+  branding: 'branding and brand identity',
+  'branding kit': 'branding and brand identity',
+  'web development': 'website development',
+  website: 'website development',
+  'website uiux': 'website development',
+  'website ui ux': 'website development',
+  seo: 'seo optimization',
+  'seo search engine optimisation': 'seo optimization',
+  'seo search engine optimization': 'seo optimization',
+  'social media marketing organic': 'social media management',
+  'paid advertising performance': 'performance marketing',
+  'performance marketing': 'performance marketing',
+  'app development android ios cross platform': 'app development',
+  'software development web saas custom systems': 'software development',
+  'writing content': 'writing and content',
+  'whatsapp chatbot': 'whatsapp chat bot',
+  'creative design': 'creative and design',
+  'modeling 3d': '3d modeling',
+  'cgi video services': 'cgi video',
+  'crm erp integrated solutions': 'crm and erp solutions',
+  'crm and erp integrated solutions': 'crm and erp solutions',
+};
+
+const resolveServiceLogoSrc = (service = {}) => {
+  const candidates = [
+    service.slug,
+    service.key,
+    service.value,
+    service.id,
+    service.name,
+    service.label,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeServiceLogoKey(candidate);
+    if (!normalized) continue;
+
+    const mappedKey = SERVICE_LOGO_ALIASES[normalized] || normalized;
+    if (SERVICE_LOGOS_BY_KEY[mappedKey]) return SERVICE_LOGOS_BY_KEY[mappedKey];
+
+    const fuzzyKey = SERVICE_LOGO_KEYS.find((key) => key.includes(mappedKey) || mappedKey.includes(key));
+    if (fuzzyKey) return SERVICE_LOGOS_BY_KEY[fuzzyKey];
+  }
+
+  return cataLogo;
+};
 
 /* ─── Service Card ─── */
 const ServiceCarouselCard = ({ service, index, isActive, onSelect }) => {
   const Icon = service.icon || LayoutGrid;
+  const logoSrc = resolveServiceLogoSrc(service);
 
   return (
     <motion.button
       type="button"
       onClick={() => onSelect(service.key || service.value)}
-      className="relative shrink-0 cursor-pointer outline-none"
+      className="relative shrink-0 cursor-pointer outline-none group"
       whileHover={{
         rotateX: 3,
         rotateY: 3,
@@ -34,10 +110,10 @@ const ServiceCarouselCard = ({ service, index, isActive, onSelect }) => {
 
       <div
         className={cn(
-          "relative h-[260px] w-56 md:w-64 overflow-hidden rounded-[26px] border flex flex-col items-start justify-between p-5 transition-all duration-300",
+          "relative h-[290px] w-56 md:w-64 overflow-hidden rounded-[26px] border flex flex-col items-stretch justify-between p-5 transition-all duration-300 themed-card",
           isActive
-            ? "border-primary/40 bg-primary/10 shadow-[0_0_40px_-10px_rgba(var(--brand-rgb),0.5)]"
-            : "border-white/8 bg-white/[0.04] shadow-[0_20px_60px_-20px_rgba(2,6,23,0.7)] hover:border-white/15"
+            ? "border-primary/40 bg-primary/10 shadow-[0_0_40px_-10px_rgba(var(--brand-rgb),0.5)] dark:bg-primary/8"
+            : "border-white/8 bg-white/[0.04] shadow-[0_20px_60px_-20px_rgba(2,6,23,0.7)] hover:border-white/15 dark:bg-slate-950/40"
         )}
       >
         {/* Subtle grid texture */}
@@ -55,45 +131,51 @@ const ServiceCarouselCard = ({ service, index, isActive, onSelect }) => {
           <span
             className={cn(
               "font-mono text-[11px] font-bold tracking-[0.25em]",
-              isActive ? "text-primary" : "text-slate-600"
+              isActive ? "text-primary" : "text-slate-400 dark:text-slate-600"
             )}
           >
             {String(index).padStart(2, "0")}
           </span>
           <div
             className={cn(
-              "flex h-11 w-11 items-center justify-center rounded-xl border transition-colors duration-200",
+              "flex h-8 w-8 items-center justify-center rounded-lg border transition-colors duration-200",
               isActive
                 ? "border-primary/35 bg-primary/12 text-primary"
-                : "border-white/12 bg-white/[0.04] text-slate-400"
+                : "border-black/5 bg-black/[0.02] text-slate-500 dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-400"
             )}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-4 w-4" />
           </div>
         </div>
 
-        {/* Bottom: label + desc + badge */}
-        <div className="relative z-10 w-full space-y-2">
+        {/* Center: 3D illustration */}
+        <div className="flex-1 flex items-center justify-center w-full py-1">
+          <img
+            src={logoSrc}
+            alt={service.label}
+            className="w-24 h-24 object-contain drop-shadow-md group-hover:scale-[1.06] transition-transform duration-300"
+          />
+        </div>
+
+        {/* Bottom: label + badge */}
+        <div className="relative z-10 w-full space-y-3 text-center">
           <h3
             className={cn(
-              "text-[17px] font-semibold leading-snug tracking-tight",
-              isActive ? "text-white" : "text-slate-200"
+              "text-[16px] font-bold leading-snug tracking-tight text-center text-foreground dark:text-white",
+              isActive ? "text-primary dark:text-primary" : ""
             )}
           >
             {service.label}
           </h3>
-          <p className="line-clamp-2 text-[12px] leading-relaxed text-slate-500">
-            {service.description}
-          </p>
 
           {isActive ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-1 text-[10px] font-semibold text-primary">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Active
+            <span className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-4 py-1.5 text-[11px] font-semibold text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              Active filter
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium text-slate-500">
-              Tap to filter
+            <span className="mx-auto inline-flex items-center gap-1 rounded-full border border-black/8 bg-white/40 px-4 py-1.5 text-[11px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/[0.03] dark:text-slate-400 group-hover:border-primary/30 group-hover:bg-white group-hover:text-primary dark:group-hover:bg-white/10 dark:group-hover:text-white transition-all duration-200">
+              Tap to filter &rarr;
             </span>
           )}
         </div>

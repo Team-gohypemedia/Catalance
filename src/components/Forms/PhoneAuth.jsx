@@ -844,19 +844,21 @@ function PhoneAuth() {
         <div className="xl:hidden flex min-h-[calc(100svh-1rem)] w-full items-center">
           <div className="mx-auto flex w-full max-w-[28rem] flex-col items-center text-center">
             <div className="mt-2 flex flex-col items-center text-center">
-              <div className="mb-2.5 flex size-12 items-center justify-center rounded-[18px] border border-primary/70 bg-primary">
-                <img
-                  src={logo}
-                  alt="Catalance logo"
-                  className="h-7 w-7 object-contain invert dark:invert-0"
-                />
-              </div>
+              <Link to="/" className="flex flex-col items-center text-center group cursor-pointer">
+                <div className="mb-2.5 flex size-12 items-center justify-center rounded-[18px] border border-primary/70 bg-primary transition-all duration-300 group-hover:scale-105">
+                  <img
+                    src={logo}
+                    alt="Catalance logo"
+                    className="h-7 w-7 object-contain invert dark:invert-0"
+                  />
+                </div>
 
-              <h1 className="text-[2.15rem] font-medium leading-none tracking-[-0.02em] text-black dark:text-white">
-                Catalance
-              </h1>
+                <h1 className="text-[2.15rem] font-medium leading-none tracking-[-0.02em] text-black dark:text-white">
+                  Catalance
+                </h1>
+              </Link>
 
-              <p className="mt-1 text-[0.78rem] leading-tight text-black/68 dark:text-white/68">
+              <p className="mt-2 text-[0.78rem] leading-tight text-black/68 dark:text-white/68">
                 Hire verified creative freelancers.
               </p>
             </div>
@@ -930,23 +932,23 @@ function PhoneAuth() {
         <div className="hidden xl:grid min-h-[calc(100svh-4rem)] w-full items-center gap-12 xl:grid-cols-[1.05fr_0.95fr] xl:gap-16">
           <section className="order-2 flex justify-center xl:order-1 xl:justify-start">
             <div className="flex w-full max-w-xl flex-col items-center text-center">
-              <div className="relative mb-8 flex size-28 items-center justify-center rounded-[22px] border border-primary/70 bg-primary sm:size-32">
-                <img
-                  src={logo}
-                  alt="Catalance logo"
-                  className="h-14 w-14 object-contain sm:h-25 sm:w-25 invert dark:invert-0"
-                />
-              </div>
+              <Link to="/" className="flex flex-col items-center text-center group cursor-pointer">
+                <div className="relative mb-8 flex size-28 items-center justify-center rounded-[22px] border border-primary/70 bg-primary sm:size-32 transition-all duration-300 group-hover:scale-105">
+                  <img
+                    src={logo}
+                    alt="Catalance logo"
+                    className="h-14 w-14 object-contain sm:h-25 sm:w-25 invert dark:invert-0"
+                  />
+                </div>
 
-              <div className="space-y-5">
                 <h1 className="text-4xl font-semibold tracking-[-0.05em] text-black dark:text-white sm:text-6xl lg:text-7xl">
                   Catalance
                 </h1>
+              </Link>
 
-                <p className="max-w-lg text-lg leading-tight text-black/72 dark:text-white/72 sm:text-2xl">
-                  Hire verified creative freelancers.
-                </p>
-              </div>
+              <p className="mt-5 max-w-lg text-lg leading-tight text-black/72 dark:text-white/72 sm:text-2xl">
+                Hire verified creative freelancers.
+              </p>
 
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3 xl:justify-start">
                 <Button

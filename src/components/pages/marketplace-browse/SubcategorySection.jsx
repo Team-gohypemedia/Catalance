@@ -12,18 +12,18 @@ const SubcategorySection = ({
   toolsLoading = false,
   hideHeadings = false,
   hideEmptyMessages = false,
-}) => (
-  <div className="relative pl-1.5 sm:pl-3.5">
-    <div className="pointer-events-none absolute bottom-8 left-0 top-8 w-[2px] rounded-full bg-gradient-to-b from-primary/75 via-primary/40 to-transparent sm:left-1.5" />
+}) => {
+  const hasTools = tools.length > 0 || toolsLoading;
 
+  return (
     <div
       className={
         hideHeadings
-          ? "space-y-3 rounded-[32px] border border-border bg-card/70 p-5 shadow-sm backdrop-blur-2xl transition-all sm:p-6 dark:border-white/12 dark:bg-slate-950/92"
-          : "space-y-6 rounded-[32px] border border-border bg-card/70 p-6 shadow-sm backdrop-blur-2xl transition-all sm:p-7 dark:border-white/12 dark:bg-slate-950/92"
+          ? "space-y-2.5 rounded-2xl border border-border/80 bg-card/45 p-3.5 shadow-sm backdrop-blur-xl transition-all sm:p-4.5 dark:border-white/10 dark:bg-slate-950/80"
+          : "space-y-5 rounded-2xl border border-border/80 bg-card/45 p-4.5 shadow-sm backdrop-blur-xl transition-all sm:p-5.5 dark:border-white/10 dark:bg-slate-950/80"
       }
     >
-      <div className={hideHeadings ? "space-y-2" : "space-y-3"}>
+      <div className={hideHeadings ? "space-y-1.5" : "space-y-2.5"}>
         {!hideHeadings ? (
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Sub-categories
@@ -34,7 +34,7 @@ const SubcategorySection = ({
             {Array.from({ length: 5 }).map((_, index) => (
               <Skeleton
                 key={`subcategory-skeleton-${index}`}
-                className="h-[52px] w-44 shrink-0 rounded-full bg-white/[0.08]"
+                className="h-[40px] w-44 shrink-0 rounded-full bg-white/[0.08]"
               />
             ))}
           </div>
@@ -56,52 +56,54 @@ const SubcategorySection = ({
         )}
       </div>
 
-      <div
-        className={
-          hideHeadings
-            ? "space-y-2 border-t border-white/8 pt-3"
-            : "space-y-3 border-t border-white/8 pt-5"
-        }
-      >
-        {!hideHeadings ? (
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Tools
-          </p>
-        ) : null}
-        {toolsLoading ? (
-          <div className="flex gap-3 overflow-hidden px-2">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Skeleton
-                key={`tool-skeleton-${index}`}
-                className="h-[52px] w-44 shrink-0 rounded-full bg-white/[0.08]"
-              />
-            ))}
-          </div>
-        ) : (
-          <TechnologyChips
-            items={tools.map((item) => ({
-              key: String(item.id),
-              label: item.label || item.name,
-            }))}
-            selectedValues={selectedToolId ? [String(selectedToolId)] : []}
-            onToggle={(nextValue) => {
-              onSelectTool?.(Number.parseInt(nextValue, 10));
-            }}
-            horizontal
-            chipStyle="subtype"
-            itemClassName="rounded-full"
-            emptyLabel={
-              hideEmptyMessages
-                ? ""
-                : selectedSubCategoryId
-                  ? "No tools found for this sub-category yet."
-                  : "Choose a sub-category to load tools."
-            }
-          />
-        )}
-      </div>
+      {hasTools && (
+        <div
+          className={
+            hideHeadings
+              ? "space-y-1.5 border-t border-border/40 pt-2.5 dark:border-white/8"
+              : "space-y-2.5 border-t border-border/40 pt-4 dark:border-white/8"
+          }
+        >
+          {!hideHeadings ? (
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Tools
+            </p>
+          ) : null}
+          {toolsLoading ? (
+            <div className="flex gap-3 overflow-hidden px-2">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton
+                  key={`tool-skeleton-${index}`}
+                  className="h-[40px] w-44 shrink-0 rounded-full bg-white/[0.08]"
+                />
+              ))}
+            </div>
+          ) : (
+            <TechnologyChips
+              items={tools.map((item) => ({
+                key: String(item.id),
+                label: item.label || item.name,
+              }))}
+              selectedValues={selectedToolId ? [String(selectedToolId)] : []}
+              onToggle={(nextValue) => {
+                onSelectTool?.(Number.parseInt(nextValue, 10));
+              }}
+              horizontal
+              chipStyle="subtype"
+              itemClassName="rounded-full"
+              emptyLabel={
+                hideEmptyMessages
+                  ? ""
+                  : selectedSubCategoryId
+                    ? "No tools found for this sub-category yet."
+                    : "Choose a sub-category to load tools."
+              }
+            />
+          )}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 export default SubcategorySection;

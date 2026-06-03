@@ -318,7 +318,7 @@ export const MobileNavToggle = ({ isOpen, onClick }) => {
 };
 
 export const NavbarLogo = ({ className }) => (
-  <div className={cn("flex shrink-0 items-center gap-3 lg:min-w-[12rem]", className)}>
+  <Link to="/" className={cn("flex shrink-0 items-center gap-3 lg:min-w-[12rem] cursor-pointer", className)}>
     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
       <img
         src={logo}
@@ -329,7 +329,7 @@ export const NavbarLogo = ({ className }) => (
     <span className="text-lg font-bold tracking-tight text-[#1C1B1F] dark:text-white uppercase">
       Catalance
     </span>
-  </div>
+  </Link>
 );
 
 export const NavbarButton = ({

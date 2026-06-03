@@ -129,15 +129,10 @@ const getInitials = (value) => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
-/* ΓöÇΓöÇΓöÇ AuthButtons ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
-const AuthButtons = ({
-  showAuthenticatedNav,
-  currentDashboard,
-  user,
-}) => {
+/* ─── AuthButtons ────────────────────────────────────────────────────── */
+const AuthButtons = ({ showAuthenticatedNav, currentDashboard, user }) => {
   if (showAuthenticatedNav) {
     const displayName = getDisplayName(user);
-
     return (
       <div className="flex items-center gap-2">
         <WorkspaceProfileDropdown
@@ -168,15 +163,12 @@ const AuthButtons = ({
   );
 };
 
-/* ΓöÇΓöÇΓöÇ Navbar ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+/* ─── Navbar ─────────────────────────────────────────────────────────── */
 const Navbar = () => {
   const location = useLocation();
   const isHome = location.pathname === "/";
   const { user, token, isAuthenticated, authLoading, logout } = useAuth();
-  const {
-    currentDashboard,
-    profilePath,
-  } = useDashboardSwitcher();
+  const { currentDashboard, profilePath } = useDashboardSwitcher();
   const currentPath = location.pathname;
   const shouldShowAuthenticatedNav =
     isAuthenticated || (authLoading && Boolean(user && token));
@@ -193,20 +185,13 @@ const Navbar = () => {
     [hideServiceTab, isFreelancerUser],
   );
   const mobileMarketingNavItems = useMemo(
-    () =>
-      buildMobileMarketingNavItems({
-        isFreelancer: isFreelancerUser,
-        hideServiceTab,
-      }),
+    () => buildMobileMarketingNavItems({ isFreelancer: isFreelancerUser, hideServiceTab }),
     [hideServiceTab, isFreelancerUser],
   );
-  const activeDashboard =
-    currentDashboard === "freelancer" ? "freelancer" : "client";
+  const activeDashboard = currentDashboard === "freelancer" ? "freelancer" : "client";
   const displayName = getDisplayName(user);
   const workspaceNavItems =
-    activeDashboard === "freelancer"
-      ? freelancerWorkspaceNavItems
-      : clientWorkspaceNavItems;
+    activeDashboard === "freelancer" ? freelancerWorkspaceNavItems : clientWorkspaceNavItems;
   const activeMarketingKey = useMemo(
     () => getActiveNavKey(mobileMarketingNavItems, currentPath),
     [currentPath, mobileMarketingNavItems],
@@ -221,7 +206,7 @@ const Navbar = () => {
 
   return (
     <ResizableNavbar isHome={isHome} isDark={isDark}>
-      {/* Desktop Navbar */}
+      {/* Desktop Navbar — NavbarLogo is now a Link to="/" */}
       <NavBody>
         <NavbarLogo isHome={isHome} />
         <NavItems
@@ -239,6 +224,7 @@ const Navbar = () => {
         </div>
       </NavBody>
 
+      {/* Mobile Navbar */}
       {shouldShowAuthenticatedNav ? (
         <WorkspaceMobileSidebar
           currentDashboard={activeDashboard}
@@ -269,96 +255,92 @@ const Navbar = () => {
   );
 };
 
+/* ─── PublicMobileSidebar ────────────────────────────────────────────── */
 const PublicMobileSidebar = ({ navItems, currentPath, isHome }) => {
   const [open, setOpen] = useState(false);
 
   return (
     <div className="w-full px-4 py-2 lg:hidden">
       <div className="flex w-full items-center justify-between gap-3">
-        <Link to="/" onClick={() => setOpen(false)}>
-          <NavbarLogo />
-        </Link>
+        {/* NavbarLogo is itself a <Link to="/"> — no wrapper needed */}
+        <NavbarLogo />
 
         <div className="flex items-center gap-3">
           <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <button
-              type="button"
-              aria-label="Open navigation menu"
-              className="inline-flex size-10 items-center justify-center rounded-full text-white transition-colors hover:text-muted-foreground"
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                aria-label="Open navigation menu"
+                className="inline-flex size-10 items-center justify-center rounded-full text-white transition-colors hover:text-muted-foreground"
+              >
+                <Menu className="size-5" />
+              </button>
+            </SheetTrigger>
+
+            <SheetContent
+              side="right"
+              showCloseButton={false}
+              className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-white shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
             >
-              <Menu className="size-5" />
-            </button>
-          </SheetTrigger>
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation menu</SheetTitle>
+                <SheetDescription>Open site navigation links.</SheetDescription>
+              </SheetHeader>
 
-          <SheetContent
-            side="right"
-            showCloseButton={false}
-            className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-white shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
-          >
-            <SheetHeader className="sr-only">
-              <SheetTitle>Navigation menu</SheetTitle>
-              <SheetDescription>Open site navigation links.</SheetDescription>
-            </SheetHeader>
-
-            <div className="flex items-center justify-between px-4.5 py-2.5">
-              <SheetClose asChild>
-                <Link to="/">
-                  <NavbarLogo />
-                </Link>
-              </SheetClose>
-
-              <SheetClose asChild>
-                <button
-                  type="button"
-                  aria-label="Close navigation menu"
-                  className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
-                >
-                  <X className="size-4.5" />
-                </button>
-              </SheetClose>
-            </div>
-
-            <div className="flex min-h-0 flex-1 flex-col px-4.5 pb-4 pt-3">
-              <nav className="space-y-1.5">
-                {navItems.map((item) => {
-                  const isActive = isNavItemActive(currentPath, item.link);
-
-                  return (
-                    <SheetClose asChild key={item.link}>
-                      <Link
-                        to={item.link}
-                        aria-current={isActive ? "page" : undefined}
-                        className={cn(
-                          "flex min-h-10 w-full items-center justify-center rounded-[15px] px-3 py-1.5 text-[0.9rem] font-medium transition-colors",
-                          isActive
-                            ? "border border-primary bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {item.name}
-                      </Link>
-                    </SheetClose>
-                  );
-                })}
-              </nav>
-
-              <div className="mt-auto space-y-2 pt-6">
+              <div className="flex items-center justify-between px-4.5 py-2.5">
                 <SheetClose asChild>
-                  <Link
-                    to="/signin/phone"
-                    className="flex min-h-10 w-full items-center justify-center rounded-[15px] bg-primary px-3 py-1.5 text-[0.9rem] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                  <NavbarLogo />
+                </SheetClose>
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Close navigation menu"
+                    className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
                   >
-                    Sign In
-                  </Link>
+                    <X className="size-4.5" />
+                  </button>
                 </SheetClose>
               </div>
-            </div>
-          </SheetContent>
-        </Sheet>
+
+              <div className="flex min-h-0 flex-1 flex-col px-4.5 pb-4 pt-3">
+                <nav className="space-y-1.5">
+                  {navItems.map((item) => {
+                    const isActive = isNavItemActive(currentPath, item.link);
+                    return (
+                      <SheetClose asChild key={item.link}>
+                        <Link
+                          to={item.link}
+                          aria-current={isActive ? "page" : undefined}
+                          className={cn(
+                            "flex min-h-10 w-full items-center justify-center rounded-[15px] px-3 py-1.5 text-[0.9rem] font-medium transition-colors",
+                            isActive
+                              ? "border border-primary bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          {item.name}
+                        </Link>
+                      </SheetClose>
+                    );
+                  })}
+                </nav>
+
+                <div className="mt-auto space-y-2 pt-6">
+                  <SheetClose asChild>
+                    <Link
+                      to="/signin/phone"
+                      className="flex min-h-10 w-full items-center justify-center rounded-[15px] bg-primary px-3 py-1.5 text-[0.9rem] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                    >
+                      Sign In
+                    </Link>
+                  </SheetClose>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </div>
-  </div>
   );
 };
 
