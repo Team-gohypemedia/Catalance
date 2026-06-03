@@ -35,6 +35,16 @@ const ServiceChip = ({ service, active = false, onSelect }) => {
         <span className="line-clamp-2 text-[17px] font-semibold leading-[1.25] tracking-[-0.01em] text-white sm:text-[18px]">
           {service.label}
         </span>
+        {service.countLabel ? (
+          <span className="mt-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">
+            {service.countLabel}
+          </span>
+        ) : null}
+        {service.description ? (
+          <span className="mt-2 block line-clamp-2 text-[12px] leading-5 text-slate-400">
+            {service.description}
+          </span>
+        ) : null}
       </span>
     </button>
   );
@@ -129,26 +139,65 @@ const MarketplaceServicesSection = ({
         </div>
       </div>
 
+      {!loading && services.length ? (
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => scrollRail(-1)}
+            disabled={!railState.left}
+            aria-label="Scroll services left"
+            className={cn(
+              "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
+              railState.left
+                ? "border-white/15 bg-white/[0.05] text-white hover:border-white/25 hover:bg-white/[0.08]"
+                : "cursor-not-allowed border-white/8 bg-white/[0.03] text-slate-600"
+            )}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollRail(1)}
+            disabled={!railState.right}
+            aria-label="Scroll services right"
+            className={cn(
+              "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
+              railState.right
+                ? "border-white/15 bg-white/[0.05] text-white hover:border-white/25 hover:bg-white/[0.08]"
+                : "cursor-not-allowed border-white/8 bg-white/[0.03] text-slate-600"
+            )}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      ) : null}
+
       {loading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="flex gap-3 overflow-hidden">
           {Array.from({ length: 12 }).map((_, index) => (
             <Skeleton
               key={`service-chip-skeleton-${index}`}
-              className="h-[164px] w-full rounded-[22px]"
+              className="h-[164px] min-w-[240px] flex-none rounded-[22px]"
             />
           ))}
         </div>
       ) : services.length ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div
+          ref={railRef}
+          onScroll={updateRailState}
+          onWheel={handleWheel}
+          className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           {services.map((service) => {
             const serviceIdentity = service.key || service.value || service.label;
             return (
-              <ServiceChip
-                key={serviceIdentity}
-                service={service}
-                active={activeServiceKey === (service.key || service.value)}
-                onSelect={onSelectService}
-              />
+              <div key={serviceIdentity} className="min-w-[240px] max-w-[240px] flex-none snap-start sm:min-w-[260px] sm:max-w-[260px]">
+                <ServiceChip
+                  service={service}
+                  active={activeServiceKey === (service.key || service.value)}
+                  onSelect={onSelectService}
+                />
+              </div>
             );
           })}
         </div>

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowRight, BadgeCheck, Bot, BriefcaseBusiness, Banknote, Tag, Check,
   ChevronLeft, ChevronRight, Clock, Cloud, Code2,
   Database, Heart, LayoutGrid, LineChart, MessageSquare,
   Plus, RefreshCcw, Rocket, Search, Settings, SlidersHorizontal,
-  Sparkles, Star, Users, Workflow, X, Zap
+  Sparkles, Star, Users, Workflow, X
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
@@ -28,7 +28,6 @@ import { Slider } from "@/components/ui/slider";
 import { Sparkles as SparklesBackground } from "@/components/ui/sparkles";
 import MarketplaceServicesSection from "@/components/pages/marketplace-browse/MarketplaceServicesSection";
 import SubcategorySection from "@/components/pages/marketplace-browse/SubcategorySection";
-import ServiceCategoryCarousel from "@/components/ui/service-category-carousel";
 import { getSession } from "@/shared/lib/auth-storage";
 import { useAuth } from "@/shared/context/AuthContext";
 import { API_BASE_URL } from "@/shared/lib/api-client";
@@ -317,6 +316,12 @@ const getGradient = (seed = "") => {
   let hash = 0;
   for (let i = 0; i < seed.length; i += 1) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   return gradients[Math.abs(hash) % gradients.length];
+};
+
+const formatCompactCount = (value) => {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "0";
+  return new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(numeric);
 };
 
 const formatPrice = (price, range) => {
@@ -617,6 +622,16 @@ const parsePositiveInteger = (value) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+const readMarketplaceCategoryFromPath = () => {
+  if (typeof window === "undefined") return "";
+
+  const path = String(window.location.pathname || "").trim();
+  const match = path.match(/^\/marketplace\/([^/?#]+)\/?$/i);
+  if (!match?.[1]) return "";
+
+  return normalizeKey(decodeURIComponent(match[1])) || "";
+};
+
 const readMarketplaceSearchState = () => {
   if (typeof window === "undefined") {
     return {
@@ -641,7 +656,10 @@ const readMarketplaceSearchState = () => {
 
   return {
     q: getValue("q"),
-    category: normalizeKey(getValue("category")) || "all",
+    category:
+      readMarketplaceCategoryFromPath() ||
+      normalizeKey(getValue("category")) ||
+      "all",
     selectedSubCategoryId: parsePositiveInteger(params.get("subCategoryId")),
     selectedToolId: parsePositiveInteger(params.get("toolId")),
     selectedBuildModes: getValue("buildMode")
@@ -663,6 +681,7 @@ const Marketplace = () => {
   const { theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+  const { categorySlug } = useParams();
   const shouldReduceMotion = useReducedMotion();
   const resultsRequestIdRef = useRef(0);
   const projectRequestIdRef = useRef(0);
@@ -703,6 +722,8 @@ const Marketplace = () => {
   const [category, setCategory] = useState(initialSearchState.category);
   const [filterServices, setFilterServices] = useState([]);
   const [filterServicesLoading, setFilterServicesLoading] = useState(true);
+  const [browseData, setBrowseData] = useState({ services: [], selectedService: null });
+  const [browseLoading, setBrowseLoading] = useState(true);
   const [subCategoryOptions, setSubCategoryOptions] = useState([]);
   const [subCategoriesLoading, setSubCategoriesLoading] = useState(false);
   const [toolOptions, setToolOptions] = useState([]);
@@ -773,6 +794,28 @@ const Marketplace = () => {
   const didInitializeBuildModesRef = useRef(false);
   const didInitializePageResetRef = useRef(false);
 
+  const normalizedCategorySlug = normalizeKey(categorySlug) || "all";
+
+  const buildMarketplaceHref = useCallback(
+    (nextCategory = "all", search = location.search) => {
+      const normalizedCategory = normalizeKey(nextCategory) || "all";
+      const basePath =
+        normalizedCategory !== "all"
+          ? `/marketplace/${encodeURIComponent(normalizedCategory)}`
+          : "/marketplace";
+
+      return `${basePath}${search || ""}`;
+    },
+    [location.search]
+  );
+
+  useEffect(() => {
+    if (normalizedCategorySlug === category) return;
+    setCategory(normalizedCategorySlug);
+    setSelectedSubCategoryId(null);
+    setSelectedToolId(null);
+  }, [category, normalizedCategorySlug]);
+
   const sessionUser = useMemo(() => user ?? getSession()?.user ?? null, [user]);
   const viewerRoleTokens = useMemo(() => {
     const roles = Array.isArray(sessionUser?.roles) ? sessionUser.roles : [];
@@ -823,7 +866,11 @@ const Marketplace = () => {
 
   const activeService = serviceCategories.find((service) => service.value === category) || null;
   const activeBrowseService = activeService;
-
+  const browseServices = Array.isArray(browseData.services) ? browseData.services : [];
+  const browseServicesByKey = useMemo(
+    () => new Map(browseServices.map((service) => [service.key, service])),
+    [browseServices]
+  );
   const debouncedQ = useDebounce(q, 180);
   const debouncedMin = useDebounce(minBudget, 400);
   const debouncedMax = useDebounce(maxBudget, 400);
@@ -884,6 +931,39 @@ const Marketplace = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchBrowseData = async () => {
+      setBrowseLoading(true);
+      try {
+        const query = new URLSearchParams();
+        if (category !== "all") query.set("service", category);
+        const res = await fetch(`${API_BASE_URL}/marketplace/browse?${query.toString()}`);
+        if (!res.ok) throw new Error("Failed to fetch marketplace browse data");
+        const json = await res.json();
+        if (cancelled) return;
+        setBrowseData({
+          services: Array.isArray(json?.data?.services) ? json.data.services : [],
+          selectedService: json?.data?.selectedService || null,
+        });
+      } catch (error) {
+        console.error("[Marketplace] Failed to load browse data:", error);
+        if (!cancelled) {
+          setBrowseData({ services: [], selectedService: null });
+        }
+      } finally {
+        if (!cancelled) setBrowseLoading(false);
+      }
+    };
+
+    void fetchBrowseData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [category]);
 
   useEffect(() => {
     if (!didInitializeBuildModesRef.current) {
@@ -1197,7 +1277,6 @@ const Marketplace = () => {
     const params = new URLSearchParams();
     const normalizedQuery = String(q || "").trim();
     if (normalizedQuery) params.set("q", normalizedQuery);
-    if (category !== "all") params.set("category", category);
     if (selectedSubCategoryId) params.set("subCategoryId", String(selectedSubCategoryId));
     if (selectedToolId) params.set("toolId", String(selectedToolId));
     if (selectedBuildModes.length > 0) params.set("buildMode", selectedBuildModes.join(","));
@@ -1226,15 +1305,15 @@ const Marketplace = () => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const nextUrl = [
-      window.location.pathname,
-      marketplaceSearchParams ? `?${marketplaceSearchParams}` : "",
-    ].join("");
+    const nextUrl = buildMarketplaceHref(
+      category,
+      marketplaceSearchParams ? `?${marketplaceSearchParams}` : ""
+    );
     const currentUrl = `${window.location.pathname}${window.location.search}`;
     if (nextUrl !== currentUrl) {
       window.history.replaceState(window.history.state || {}, "", nextUrl);
     }
-  }, [marketplaceSearchParams]);
+  }, [buildMarketplaceHref, category, marketplaceSearchParams]);
 
   const resetFilters = () => {
     setQ("");
@@ -1250,14 +1329,12 @@ const Marketplace = () => {
     setDuration("");
     setRating("");
     setSort("newest");
+    navigate("/marketplace", { replace: true });
   };
 
   const handleCategorySelect = (nextCategory) => {
-    if (nextCategory === category) {
-      setCategory("all");
-      return;
-    }
-    setCategory(nextCategory);
+    const resolvedCategory = nextCategory === category ? "all" : nextCategory;
+    navigate(buildMarketplaceHref(resolvedCategory), { replace: false });
   };
 
   const handleSubCategorySelect = (nextValue) => {
@@ -1287,6 +1364,30 @@ const Marketplace = () => {
         return blob.includes(debouncedQ.toLowerCase());
       }),
     [category, debouncedQ, serviceCategories]
+  );
+  const marketplaceBrowseCards = useMemo(
+    () =>
+      visibleBrowseServices.map((service) => {
+        const summary = browseServicesByKey.get(service.value || service.key);
+        const countLabel =
+          summary?.freelancerCount > 0
+            ? `${formatCompactCount(summary.freelancerCount)} freelancers`
+            : null;
+        const preview = [
+          ...(Array.isArray(summary?.subcategoryPreview) ? summary.subcategoryPreview : []),
+          ...(Array.isArray(summary?.technologyPreview) ? summary.technologyPreview : []),
+        ]
+          .filter(Boolean)
+          .slice(0, 3)
+          .join(" • ");
+
+        return {
+          ...service,
+          countLabel,
+          description: preview || service.description,
+        };
+      }),
+    [browseServicesByKey, visibleBrowseServices]
   );
   const isProjectsView = canViewProjectsMarketplace || activeMarketplaceView === "projects";
   const shouldRenderFreelancerResults =
@@ -1324,6 +1425,29 @@ const Marketplace = () => {
       })),
     };
   }, [activeBrowseService?.label, activeService?.label, canViewProjectsMarketplace, projectData]);
+  const featuredTalent = useMemo(
+    () =>
+      [...data]
+        .sort((left, right) => {
+          const leftRating = Number(left?.rating || 0);
+          const rightRating = Number(right?.rating || 0);
+          if (rightRating !== leftRating) return rightRating - leftRating;
+          return Number(right?.reviewCount || 0) - Number(left?.reviewCount || 0);
+        })
+        .slice(0, 4),
+    [data]
+  );
+  const newTalent = useMemo(
+    () =>
+      [...data]
+        .sort((left, right) => {
+          const leftDate = new Date(left?.createdAt || 0).getTime();
+          const rightDate = new Date(right?.createdAt || 0).getTime();
+          return rightDate - leftDate;
+        })
+        .slice(0, 4),
+    [data]
+  );
 
   const marketplaceBrowseActions = (
     <Dialog open={isFilterOpen} onOpenChange={(open) => { setIsFilterOpen(open); if (open) syncDraftFilters(); }}>
@@ -1523,13 +1647,18 @@ const Marketplace = () => {
               </div>
             </div>
 
-            <div id="marketplace-results" className="w-full">
-              <ServiceCategoryCarousel
-                services={visibleBrowseServices}
-                loading={filterServicesLoading}
+            <div id="marketplace-results" className="space-y-8">
+              <MarketplaceServicesSection
+                services={marketplaceBrowseCards}
+                loading={filterServicesLoading || browseLoading}
+                searchValue={q}
+                searchPlaceholder="What do you need done?"
+                onSearchChange={setQ}
                 onSelectService={handleCategorySelect}
                 activeServiceKey={category}
+                actions={marketplaceBrowseActions}
               />
+
             </div>
           </div>
         </div>
@@ -1553,6 +1682,209 @@ const Marketplace = () => {
 
 
       {/* ── Freelancer / Project results — appear right after carousel ── */}
+      <div className="hidden relative z-20 mx-auto -mt-3 w-full max-w-[1280px] flex-col gap-8 px-4 pb-6 sm:px-6 lg:px-8">
+        <section className="space-y-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                Top Rated Freelancers
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-foreground dark:text-white">
+                Compare trusted specialists fast
+              </h2>
+            </div>
+            <p className="max-w-xl text-sm leading-7 text-muted-foreground dark:text-slate-400">
+              Ratings, pricing, and service fit are visible up front so clients can shortlist in minutes.
+            </p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {featuredTalent.length ? (
+              featuredTalent.map((item) => {
+                const price = formatPrice(
+                  item.serviceDetails?.startingPrice || item.serviceDetails?.minBudget || item.serviceDetails?.price,
+                  item.serviceDetails?.averageProjectPriceRange || item.serviceDetails?.priceRange
+                );
+
+                return (
+                  <Link
+                    key={`featured-${item.id}`}
+                    to={`/marketplace/service/${item.id}`}
+                    state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
+                    className="block h-full"
+                  >
+                    <Card className="h-full rounded-[28px] border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.04]">
+                      <CardContent className="flex h-full flex-col gap-4 p-5">
+                        <div className="flex items-center gap-3">
+                          {item.freelancer?.avatar ? (
+                            <img
+                              src={item.freelancer.avatar}
+                              alt={item.freelancer.fullName || "Freelancer"}
+                              className="h-11 w-11 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-sm font-bold text-foreground dark:bg-white/[0.06] dark:text-white">
+                              {getInitials(item.freelancer?.fullName)}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-foreground dark:text-white">
+                              {item.freelancer?.fullName || "Anonymous"}
+                            </p>
+                            <p className="text-xs text-muted-foreground dark:text-slate-400">
+                              {item.serviceDetails?.categoryLabel || item.service || "Marketplace service"}
+                            </p>
+                          </div>
+                        </div>
+                        <h3 className="line-clamp-2 text-base font-semibold leading-6 text-foreground dark:text-white">
+                          {item.service || "Untitled service"}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 dark:border-white/10 dark:bg-white/[0.03]">
+                            <Star className="h-3 w-3 fill-primary text-primary" />
+                            {Number(item.rating || 0).toFixed(1)}
+                          </span>
+                          <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2.5 py-1 dark:border-white/10 dark:bg-white/[0.03]">
+                            {item.reviewCount || 0} reviews
+                          </span>
+                        </div>
+                        <div className="mt-auto flex items-center justify-between border-t border-border pt-3 dark:border-white/10">
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                              Starting Price
+                            </p>
+                            <p className="mt-1 text-lg font-semibold text-foreground dark:text-white">
+                              {price}
+                            </p>
+                          </div>
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                            View
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })
+            ) : (
+              <Card className="rounded-[28px] border border-dashed border-border bg-card/70 p-6 text-sm text-muted-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400 md:col-span-2 xl:col-span-4">
+                Top-rated freelancer cards will appear here after the marketplace results load.
+              </Card>
+            )}
+          </div>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <Card className="rounded-[30px] border border-border bg-card shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+            <CardContent className="space-y-5 p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                    New Talent
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-foreground dark:text-white">
+                    Fresh profiles worth checking
+                  </h2>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="rounded-full text-xs font-semibold text-primary hover:bg-primary/10 hover:text-primary"
+                  onClick={() => scrollToSection("marketplace-results")}
+                >
+                  Explore all
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {newTalent.length ? (
+                  newTalent.map((item) => (
+                    <Link
+                      key={`new-${item.id}`}
+                      to={`/marketplace/service/${item.id}`}
+                      state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
+                      className="flex items-center justify-between gap-4 rounded-[22px] border border-border bg-muted/30 px-4 py-3 transition hover:border-primary/35 hover:bg-muted/50 dark:border-white/8 dark:bg-white/[0.03]"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground dark:text-white">
+                          {item.freelancer?.fullName || "Anonymous"}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground dark:text-slate-400">
+                          {item.service || "Marketplace service"}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs font-semibold text-primary">
+                        View profile
+                      </span>
+                    </Link>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground dark:text-slate-400">
+                    New-talent suggestions will appear here after results load.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <section id="open-projects" className="space-y-5">
+            <div className="flex flex-col gap-2">
+              <Badge className="w-fit rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+                Recent Opportunities
+              </Badge>
+              <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground dark:text-white">
+                Latest projects in demand
+              </h2>
+              <p className="text-sm leading-7 text-muted-foreground dark:text-slate-400">
+                Opportunities stay visible in discovery instead of being buried behind a separate tab.
+              </p>
+            </div>
+
+            <div className="grid gap-4">
+              {openProjectsShowcase.items.slice(0, 3).map((project) => (
+                <Card key={`showcase-${project.id}`} className="rounded-[26px] border border-border bg-card shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+                  <CardContent className="space-y-4 p-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground dark:border-white/12 dark:bg-white/[0.03] dark:text-slate-200">
+                        {project.serviceName}
+                      </Badge>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300">
+                        <Clock className="h-3 w-3" />
+                        {project.timeline}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-semibold leading-6 text-foreground dark:text-white">
+                      {project.title}
+                    </h3>
+                    <p className="line-clamp-3 text-xs leading-6 text-muted-foreground dark:text-slate-400">
+                      {project.summary}
+                    </p>
+                    <div className="flex items-end justify-between border-t border-border pt-3 dark:border-white/10">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Budget
+                        </p>
+                        <p className="mt-1 text-lg font-semibold text-foreground dark:text-white">
+                          {project.budgetLabel}
+                        </p>
+                      </div>
+                      <Link
+                        to={project.ctaTo}
+                        className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                      >
+                        {project.ctaLabel}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        </section>
+      </div>
+
       <AnimatePresence>
         {(shouldRenderFreelancerResults || (isProjectsView && category !== "all")) && (
           <motion.div
@@ -1581,7 +1913,11 @@ const Marketplace = () => {
               </div>
               <button
                 type="button"
-                onClick={() => { setCategory("all"); setSelectedSubCategoryId(null); setSelectedToolId(null); }}
+                onClick={() => {
+                  setSelectedSubCategoryId(null);
+                  setSelectedToolId(null);
+                  navigate(buildMarketplaceHref("all"), { replace: false });
+                }}
                 className="group inline-flex items-center gap-2.5 rounded-full border border-primary/10 bg-white/60 px-5 py-2.5 text-[13px] font-bold text-muted-foreground shadow-sm backdrop-blur-md transition-all hover:border-primary/40 hover:bg-white hover:text-primary dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.08]"
               >
                 <X className="h-4 w-4 transition-transform duration-300 group-hover:rotate-90" />
@@ -1946,79 +2282,212 @@ const Marketplace = () => {
 
       {/* ── Static Sections: projects showcase, why-catalance, FAQ, CTA ── */}
       <div className="relative z-20 mx-auto mt-4 flex w-full max-w-[1280px] flex-col gap-8 px-4 pb-16 sm:gap-10 sm:px-6 lg:px-8">
-
-        {canViewProjectsMarketplace ? (
-        <section id="open-projects" className="space-y-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="space-y-2">
-              <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-                Live Projects
-              </Badge>
-              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-foreground dark:text-white sm:text-4xl">
-                Open client briefs in active demand
-              </h2>
-              <p className="max-w-2xl text-sm leading-7 text-muted-foreground dark:text-slate-400">
-                Real project context helps specialists respond with sharper proposals and gives buyers clearer match quality.
-              </p>
-            </div>
-            {openProjectsShowcase.isFallback ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/40 px-4 py-2 text-xs font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                Marketplace preview
-              </span>
-            ) : null}
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-            {openProjectsShowcase.items.map((project) => (
-              <article key={project.id} className="h-full">
-                <Card className="group h-full rounded-[28px] border border-border bg-card shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)]">
-                  <CardContent className="flex h-full min-h-[180px] flex-col p-5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-[11px] font-medium text-foreground dark:border-white/15 dark:bg-white/[0.03] dark:text-slate-200">
-                        {project.serviceName}
-                      </Badge>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300">
-                        <Clock className="h-3 w-3" />
-                        {project.timeline}
-                      </span>
-                    </div>
-                    <h3 className="mt-4 line-clamp-2 text-base font-semibold leading-6 text-foreground dark:text-white">
-                      {project.title}
-                    </h3>
-                    <p className="mt-3 line-clamp-3 text-xs leading-6 text-muted-foreground dark:text-slate-400">
-                      {project.summary}
-                    </p>
-
-                    <div className="mt-auto flex items-end justify-between border-t border-border pt-4 dark:border-white/10">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 dark:text-slate-500">
-                          Budget
-                        </p>
-                        <p className="mt-1 text-lg font-semibold tracking-tight text-foreground dark:text-white">
-                          {project.budgetLabel}
-                        </p>
-                      </div>
-                      <Link
-                        to={project.ctaTo}
-                        className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:border-primary hover:bg-primary/90"
-                      >
-                        {project.ctaLabel}
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
-              </article>
-            ))}
-          </div>
-        </section>
-        ) : null}
-
-
         {/* Process Video Section */}
         <div className="w-full">
           <ProcessVideo />
+        </div>
+
+        <div className="flex flex-col gap-8 pb-6">
+          <section className="space-y-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                  Top Rated Freelancers
+                </p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-foreground dark:text-white">
+                  Compare trusted specialists fast
+                </h2>
+              </div>
+              <p className="max-w-xl text-sm leading-7 text-muted-foreground dark:text-slate-400">
+                Ratings, pricing, and service fit are visible up front so clients can shortlist in minutes.
+              </p>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+              {featuredTalent.length ? (
+                featuredTalent.map((item) => {
+                  const price = formatPrice(
+                    item.serviceDetails?.startingPrice || item.serviceDetails?.minBudget || item.serviceDetails?.price,
+                    item.serviceDetails?.averageProjectPriceRange || item.serviceDetails?.priceRange
+                  );
+
+                  return (
+                    <Link
+                      key={`featured-how-${item.id}`}
+                      to={`/marketplace/service/${item.id}`}
+                      state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
+                      className="block h-full"
+                    >
+                      <Card className="h-full rounded-[28px] border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.04]">
+                        <CardContent className="flex h-full flex-col gap-4 p-5">
+                          <div className="flex items-center gap-3">
+                            {item.freelancer?.avatar ? (
+                              <img
+                                src={item.freelancer.avatar}
+                                alt={item.freelancer.fullName || "Freelancer"}
+                                className="h-11 w-11 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-sm font-bold text-foreground dark:bg-white/[0.06] dark:text-white">
+                                {getInitials(item.freelancer?.fullName)}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-foreground dark:text-white">
+                                {item.freelancer?.fullName || "Anonymous"}
+                              </p>
+                              <p className="text-xs text-muted-foreground dark:text-slate-400">
+                                {item.serviceDetails?.categoryLabel || item.service || "Marketplace service"}
+                              </p>
+                            </div>
+                          </div>
+                          <h3 className="line-clamp-2 text-base font-semibold leading-6 text-foreground dark:text-white">
+                            {item.service || "Untitled service"}
+                          </h3>
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 dark:border-white/10 dark:bg-white/[0.03]">
+                              <Star className="h-3 w-3 fill-primary text-primary" />
+                              {Number(item.rating || 0).toFixed(1)}
+                            </span>
+                            <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2.5 py-1 dark:border-white/10 dark:bg-white/[0.03]">
+                              {item.reviewCount || 0} reviews
+                            </span>
+                          </div>
+                          <div className="mt-auto flex items-center justify-between border-t border-border pt-3 dark:border-white/10">
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                Starting Price
+                              </p>
+                              <p className="mt-1 text-lg font-semibold text-foreground dark:text-white">
+                                {price}
+                              </p>
+                            </div>
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                              View
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  );
+                })
+              ) : (
+                <Card className="rounded-[28px] border border-dashed border-border bg-card/70 p-6 text-sm text-muted-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400 md:col-span-2 xl:col-span-4">
+                  Top-rated freelancer cards will appear here after the marketplace results load.
+                </Card>
+              )}
+            </div>
+          </section>
+
+          <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+            <Card className="rounded-[30px] border border-border bg-card shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+              <CardContent className="space-y-5 p-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                      New Talent
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-foreground dark:text-white">
+                      Fresh profiles worth checking
+                    </h2>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="rounded-full text-xs font-semibold text-primary hover:bg-primary/10 hover:text-primary"
+                    onClick={() => scrollToSection("marketplace-results")}
+                  >
+                    Explore all
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {newTalent.length ? (
+                    newTalent.map((item) => (
+                      <Link
+                        key={`new-how-${item.id}`}
+                        to={`/marketplace/service/${item.id}`}
+                        state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
+                        className="flex items-center justify-between gap-4 rounded-[22px] border border-border bg-muted/30 px-4 py-3 transition hover:border-primary/35 hover:bg-muted/50 dark:border-white/8 dark:bg-white/[0.03]"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground dark:text-white">
+                            {item.freelancer?.fullName || "Anonymous"}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground dark:text-slate-400">
+                            {item.service || "Marketplace service"}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-xs font-semibold text-primary">
+                          View profile
+                        </span>
+                      </Link>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground dark:text-slate-400">
+                      New-talent suggestions will appear here after results load.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <section id="open-projects" className="space-y-5">
+              <div className="flex flex-col gap-2">
+                <Badge className="w-fit rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+                  Recent Opportunities
+                </Badge>
+                <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground dark:text-white">
+                  Latest projects in demand
+                </h2>
+                <p className="text-sm leading-7 text-muted-foreground dark:text-slate-400">
+                  Opportunities stay visible in discovery instead of being buried behind a separate tab.
+                </p>
+              </div>
+
+              <div className="grid gap-4">
+                {openProjectsShowcase.items.slice(0, 3).map((project) => (
+                  <Card key={`showcase-how-${project.id}`} className="rounded-[26px] border border-border bg-card shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+                    <CardContent className="space-y-4 p-5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground dark:border-white/12 dark:bg-white/[0.03] dark:text-slate-200">
+                          {project.serviceName}
+                        </Badge>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300">
+                          <Clock className="h-3 w-3" />
+                          {project.timeline}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-semibold leading-6 text-foreground dark:text-white">
+                        {project.title}
+                      </h3>
+                      <p className="line-clamp-3 text-xs leading-6 text-muted-foreground dark:text-slate-400">
+                        {project.summary}
+                      </p>
+                      <div className="flex items-end justify-between border-t border-border pt-3 dark:border-white/10">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            Budget
+                          </p>
+                          <p className="mt-1 text-lg font-semibold text-foreground dark:text-white">
+                            {project.budgetLabel}
+                          </p>
+                        </div>
+                        <Link
+                          to={project.ctaTo}
+                          className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                        >
+                          {project.ctaLabel}
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          </section>
         </div>
 
         <section id="why-catalance" className="relative space-y-10 py-6">

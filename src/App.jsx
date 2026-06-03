@@ -254,7 +254,7 @@ const App = () => {
               }
             />
             <Route
-              path="/marketplace"
+              path="/marketplace/:categorySlug?"
               element={
                 <LayoutWithNavbar>
                   <Marketplace />
