@@ -1673,83 +1673,84 @@ const Marketplace = () => {
                               state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
                               className="block h-full"
                             >
-                              <Card className="group relative h-full overflow-hidden rounded-[28px] border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-lg dark:border-white/8 dark:bg-[#070c18] dark:shadow-[0_22px_70px_-30px_rgba(2,6,23,0.9)]">
-                                {/* Image / gradient banner */}
-                                <div className="relative h-48 overflow-hidden bg-muted dark:bg-slate-950">
+                              <Card className="group relative flex h-full flex-col overflow-hidden rounded-[16px] border border-gray-200 bg-white shadow-[0_1px_12px_rgba(0,0,0,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_28px_rgba(0,0,0,0.12)]">
+
+                                {/* ── IMAGE ── */}
+                                <div className="relative h-48 w-full shrink-0 overflow-hidden bg-gray-100">
                                   {image
-                                    ? <img src={image} alt={item.service || "Marketplace service"} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                    ? <img src={image} alt={item.service || "Service"} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                                     : <div className={cn("absolute inset-0 bg-gradient-to-br", getGradient(item.serviceKey || item.id))} />
                                   }
-                                  {/* Gradient overlay */}
-                                  <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent dark:from-[#070c18] dark:via-[#070c18]/20" />
-
-                                  {/* Wishlist */}
-                                  {canUseClientWishlist && (
-                                    <div className="absolute right-3 top-3">
-                                      <button type="button" onClick={(event) => toggleFavorite(event, item)} aria-label={favorites[item.id] ? "Remove from favorites" : "Add to favorites"} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/60 text-foreground backdrop-blur-md transition hover:bg-background/80 dark:border-white/15 dark:bg-black/60 dark:text-white">
-                                        <Heart className={cn("h-3.5 w-3.5", favorites[item.id] ? "fill-rose-500 text-rose-500" : "text-muted-foreground dark:text-slate-200")} />
-                                      </button>
-                                    </div>
-                                  )}
-
-                                  {/* Featured badge */}
+                                  {/* Heart button — always visible top-right */}
+                                  <button
+                                    type="button"
+                                    onClick={(event) => { event.preventDefault(); if (canUseClientWishlist) toggleFavorite(event, item); }}
+                                    aria-label={favorites[item.id] ? "Remove from favorites" : "Add to favorites"}
+                                    className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow transition hover:bg-white"
+                                  >
+                                    <Heart className={cn("h-4 w-4", favorites[item.id] && canUseClientWishlist ? "fill-rose-500 text-rose-500" : "text-gray-400")} />
+                                  </button>
                                   {item.isFeatured && (
-                                    <div className="absolute bottom-3 left-3">
-                                      <Badge className="rounded-full border-none bg-emerald-500/90 px-2.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-                                        <Sparkles className="mr-1 h-2.5 w-2.5" /> Featured
+                                    <div className="absolute bottom-2 left-2">
+                                      <Badge className="rounded-full border-none bg-emerald-500/90 px-2.5 py-0.5 text-[10px] font-semibold text-white">
+                                        <Sparkles className="mr-1 h-2.5 w-2.5" />Featured
                                       </Badge>
                                     </div>
                                   )}
                                 </div>
 
-                                <CardContent className="flex flex-col gap-3 p-4">
-                                  {/* Freelancer row */}
-                                  <div className="flex items-center gap-3">
+                                {/* ── BODY ── */}
+                                <CardContent className="flex flex-1 flex-col p-4 pt-3.5">
+
+                                  {/* Row 1: Avatar + Name */}
+                                  <div className="mb-2 flex items-center gap-2">
                                     {item.freelancer?.avatar
-                                      ? <img src={item.freelancer.avatar} alt={item.freelancer.fullName || "Freelancer"} loading="lazy" decoding="async" className="h-10 w-10 rounded-full border border-border object-cover dark:border-white/10" />
-                                      : <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted text-xs font-bold text-foreground dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200">{getInitials(item.freelancer?.fullName)}</div>
+                                      ? <img src={item.freelancer.avatar} alt={item.freelancer.fullName || "Freelancer"} loading="lazy" decoding="async" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+                                      : <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">{getInitials(item.freelancer?.fullName)}</div>
                                     }
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex items-center gap-1.5">
-                                        <p className="truncate text-sm font-semibold text-foreground dark:text-white">{item.freelancer?.fullName || "Anonymous"}</p>
-                                        {parseBooleanFlag(item.freelancer?.isVerified) && <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-primary text-black" />}
-                                      </div>
-                                      {hasRating && (
-                                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                                          <Star className="h-3 w-3 fill-primary text-primary" />
-                                          <span className="font-bold text-foreground dark:text-white">{rating.toFixed(1)}</span>
-                                          <span className="font-medium">({item.reviewCount || 0} reviews)</span>
-                                        </div>
-                                      )}
+                                    <div className="flex min-w-0 items-center gap-1">
+                                      <span className="truncate text-[13.5px] font-bold text-gray-900">{item.freelancer?.fullName || "Anonymous"}</span>
+                                      {parseBooleanFlag(item.freelancer?.isVerified) && <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-primary text-white" />}
                                     </div>
                                   </div>
 
-                                  {/* Service title */}
-                                  <div>
-                                    <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary">{item.serviceDetails?.categoryLabel || item.serviceCategory || "Service"}</p>
-                                    <h3 className="mt-0.5 line-clamp-2 text-[14px] font-semibold leading-snug text-foreground group-hover:text-primary dark:text-white dark:group-hover:text-white/90">
-                                      {item.service || "Untitled service"}
-                                    </h3>
+                                  {/* Row 2: Service title — always 2 lines height */}
+                                  <p className="mb-3 line-clamp-2 min-h-[40px] text-[13px] leading-[1.5] text-gray-600">
+                                    {item.service || "Untitled service"}
+                                  </p>
+
+                                  {/* Row 3: Rating (left) | STARTING AT + price (right) — pinned to bottom */}
+                                  <div className="mt-auto flex items-end justify-between">
+                                    {/* Star rating */}
+                                    <div className="flex items-center gap-1">
+                                      {hasRating ? (
+                                        <>
+                                          <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                                          <span className="text-[12.5px] font-bold text-gray-800">{rating.toFixed(1)}</span>
+                                          <span className="text-[11.5px] text-gray-400">({item.reviewCount || 0})</span>
+                                        </>
+                                      ) : (
+                                        <span className="text-[11px] text-gray-300">No reviews yet</span>
+                                      )}
+                                    </div>
+                                    {/* STARTING AT + price */}
+                                    <div className="text-right">
+                                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400">Starting at</p>
+                                      <p className="text-[18px] font-extrabold leading-none text-gray-900">{price}</p>
+                                    </div>
                                   </div>
 
-                                  {/* Bio snippet */}
-                                  {item.bio && <p className="line-clamp-2 text-[12px] leading-relaxed text-muted-foreground dark:text-slate-500">{item.bio}</p>}
-
-                                  {/* Footer: price + CTA */}
-                                  <div className="mt-auto flex items-center justify-between border-t border-border pt-3 dark:border-white/6">
-                                    <div>
-                                      {delivery && (
-                                        <div className="mb-1 inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground dark:text-slate-500">
-                                          <Clock className="h-3 w-3" />{delivery}
-                                        </div>
-                                      )}
-                                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Starts from</p>
-                                      <p className="text-[16px] font-bold tracking-tight text-foreground dark:text-white">{price}</p>
+                                  {/* Row 4: Delivery (left) | View button (right) */}
+                                  <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+                                    <div className="flex items-center gap-1.5 text-[11.5px] text-gray-400">
+                                      <Clock className="h-3.5 w-3.5" />
+                                      {delivery || "Flexible"}
                                     </div>
-                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/35 bg-primary/90 px-3.5 py-2 text-[11px] font-bold text-primary-foreground transition group-hover:bg-primary">
-                                      View <ArrowRight className="h-3 w-3" />
+                                    <span className="inline-flex items-center rounded-full bg-primary px-5 py-2 text-[13px] font-bold !text-white shadow-sm transition group-hover:bg-primary/90" style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}>
+                                      View
                                     </span>
                                   </div>
+
                                 </CardContent>
                               </Card>
                             </Link>

@@ -1,15 +1,43 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
-import Edit3 from "lucide-react/dist/esm/icons/edit-3";
-import HeroMascotImage from "@/assets/images/hero-mascot-transparent.png";
+import HeroVideo from "@/assets/videos/WhatsApp Video 2026-06-03 at 12.28.59 PM.mp4";
 
 const MarketPlaceCTA = () => {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Only play when the video is visible in the viewport
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // Load and play only when visible
+            if (video.readyState === 0) {
+              video.load();
+            }
+            video.play().catch(() => {});
+          } else {
+            // Pause when scrolled out — frees up decoding resources
+            video.pause();
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section className="relative isolate w-full overflow-hidden bg-background">
-      <div className="mx-auto w-full max-w-[1400px] px-6 py-16 sm:px-8 sm:py-24 lg:px-12">
+      <div className="mx-auto w-full max-w-[1400px] px-6 py-6 sm:px-8 sm:py-10 lg:px-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-8 items-center">
-          
+
           {/* LEFT — description + CTA */}
           <div className="flex flex-col items-start justify-center gap-6 z-10 lg:pr-10">
             <h2 className="text-3xl sm:text-4xl lg:text-[3.2rem] font-extrabold leading-[1.15] tracking-tight text-foreground text-balance">
@@ -18,7 +46,7 @@ const MarketPlaceCTA = () => {
             <p className="text-base sm:text-lg leading-relaxed text-muted-foreground max-w-md">
               Hire verified freelancers and expert agencies for fast, high-quality project delivery.
             </p>
-            
+
             <div className="flex flex-wrap items-center gap-4 pt-4">
               <Link
                 to="/talent"
@@ -30,14 +58,16 @@ const MarketPlaceCTA = () => {
             </div>
           </div>
 
-          {/* RIGHT — Visual Composition */}
+          {/* RIGHT — Video (lazy-loaded, plays only when visible) */}
           <div className="relative flex items-center justify-center w-full mt-10 lg:mt-0">
-            {/* Uploaded Static Image */}
-            <img 
-              src={HeroMascotImage} 
-              alt="Catalance Marketplace Platform" 
-              className="w-full max-w-[500px] h-auto object-contain relative z-10 hover:scale-[1.02] transition-transform duration-700 ease-out"
-              draggable="false"
+            <video
+              ref={videoRef}
+              src={HeroVideo}
+              loop
+              muted
+              playsInline
+              preload="none"
+              className="w-full max-w-[500px] h-auto object-contain relative z-10 hover:scale-[1.02] transition-transform duration-700 ease-out rounded-2xl"
             />
           </div>
         </div>
