@@ -216,6 +216,16 @@ const stripBlockedMarker = (text = "") => {
     .trim();
 };
 
+const stripEmojis = (text = "") => {
+  if (typeof text !== "string") return text;
+  return text
+    .replace(/[#*0-9]\uFE0F?\u20E3/gu, "")
+    .replace(/[\p{Extended_Pictographic}\u200D\uFE0F]/gu, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n[ \t]+/g, "\n")
+    .trim();
+};
+
 const buildOpenRouterAuthError = (providerStatus, model) =>
   new AppError(
     "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in your deployment environment (e.g. Vercel Project Settings -> Environment Variables).",
@@ -2315,7 +2325,8 @@ CONVERSATION GUIDELINES:
 - Rephrase questions to feel more natural and welcoming, without changing their meaning.
 - Keep the options exactly as provided; do NOT reword option labels.
 - Do not add extra lines that could be mistaken for options.
-- Do not use emojis.
+- Never use emojis, emoticons, kaomoji, pictographs, dingbats, or decorative symbols in any response.
+- Use plain professional text only. Do not add visual characters such as hearts, stars, sparkles, checkmarks, or similar symbols.
 - Use **bold** for 1–3 key phrases (important numbers, key requirements, or the main question).
 - Use INR for all pricing.
 - Keep responses focused and actionable.
@@ -4467,10 +4478,11 @@ export const chatWithAI = async (
   });
 
   const content = data.choices?.[0]?.message?.content || "";
+  const emojiFreeContent = stripEmojis(content);
   if (isInternalTask) {
     return {
       success: true,
-      message: typeof content === "string" ? content.trim() : "",
+      message: typeof emojiFreeContent === "string" ? emojiFreeContent.trim() : "",
       usage: data.usage || null,
       meta: {
         task: normalizedServiceName || "public_assistant",
@@ -4489,7 +4501,7 @@ export const chatWithAI = async (
     };
   }
   const safeContent = sanitizeBudgetHallucination({
-    assistantText: content,
+    assistantText: emojiFreeContent,
     conversationHistory: formattedHistory,
     messages: formattedMessages,
     selectedServiceName: normalizedServiceName
