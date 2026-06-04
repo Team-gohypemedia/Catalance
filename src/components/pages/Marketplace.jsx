@@ -1358,13 +1358,22 @@ const Marketplace = () => {
   };
 
   const visibleBrowseServices = useMemo(
-    () =>
-      serviceCategories.filter((service) => {
+    () => {
+      const filtered = serviceCategories.filter((service) => {
         if (!debouncedQ || category !== "all") return true;
         const blob = [service.label, service.description].join(" ").toLowerCase();
         return blob.includes(debouncedQ.toLowerCase());
-      }),
-    [category, debouncedQ, serviceCategories]
+      });
+
+      return [...filtered].sort((a, b) => {
+        const summaryA = browseServicesByKey.get(a.value || a.key);
+        const summaryB = browseServicesByKey.get(b.value || b.key);
+        const countA = summaryA?.freelancerCount || 0;
+        const countB = summaryB?.freelancerCount || 0;
+        return countB - countA;
+      });
+    },
+    [category, debouncedQ, serviceCategories, browseServicesByKey]
   );
   const marketplaceBrowseCards = useMemo(
     () =>

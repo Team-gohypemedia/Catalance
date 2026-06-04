@@ -891,7 +891,7 @@ const buildTier1Where = (
     {
       freelancer: {
         role: "FREELANCER",
-        status: "ACTIVE",
+        status: { in: ["ACTIVE", "PENDING_APPROVAL"] },
         OR: profileAvailabilityConditions,
       },
     },
@@ -2399,7 +2399,7 @@ export const getMarketplaceBrowse = asyncHandler(async (req, res) => {
     }),
     prisma.marketplace.findMany({
       where: buildTier1BrowseWhere({
-        category: selectedServiceKey,
+        category: null,
         searchTerm: "",
       }),
       include: {
