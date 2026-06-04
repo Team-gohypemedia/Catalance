@@ -279,9 +279,10 @@ export const AuthProvider = ({ children }) => {
 
       if (response.status === 404) {
         console.warn(
-          "Profile endpoint returned 404. Skip verification until backend exposes /auth/profile."
+          "Profile endpoint returned 404. User does not exist in database. Clearing session."
         );
-        return user;
+        syncSession(null);
+        return null;
       }
 
       if (response.status >= 500) {

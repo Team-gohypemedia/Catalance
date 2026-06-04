@@ -17,6 +17,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
+import Loader from "@/components/common/Loader";
 import { DarkGradientBg } from "@/components/elegant-dark-pattern";
 import {
   API_BASE_URL,
@@ -4058,6 +4059,7 @@ const FreelancerOnboardingShell = () => {
               disabled={footerPrimaryDisabled}
               className={ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS}
             >
+              {isProfileSaving && <Loader size="sm" className="mr-2 inline-flex" />}
               {footerPrimaryLabel}
             </Button>
 
