@@ -415,7 +415,7 @@ const EXPERIENCE_VALUE_LABELS = {
 
 const MARKETPLACE_SERVICE_TITLE_BY_KEY = {
   branding: "Branding",
-  web_development: "Web Development",
+  web_development: "Website Development",
   seo: "SEO",
   social_media_marketing: "Social Media Management",
   paid_advertising: "Performance Marketing / Paid Ads",

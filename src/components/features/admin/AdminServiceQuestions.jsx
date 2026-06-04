@@ -326,15 +326,28 @@ const AdminServiceQuestions = () => {
 
                 <div className="grid items-start gap-5 xl:grid-cols-[290px_minmax(0,1fr)]">
 
-                    <Card className="rounded-[24px] border border-border bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--muted)))] shadow-[0_18px_44px_rgba(15,23,42,0.12)] dark:bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-                        <CardHeader className="space-y-4 border-b border-border p-4">
-                            <div className="space-y-1">
-                                <CardTitle className="text-xl font-semibold tracking-tight">Services</CardTitle>
-                                <p className="text-sm leading-6 text-muted-foreground">Select a service to manage its interview flow, branching, and AI context capture.</p>
+                    <Card className="rounded-[24px] border border-border bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--muted)))] shadow-[0_18px_44px_rgba(15,23,42,0.12)] dark:bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)] xl:sticky xl:top-6 xl:flex xl:flex-col xl:max-h-[calc(100vh-3rem)]">
+                        <CardHeader className="space-y-3.5 border-b border-border p-4 shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <CardTitle className="text-lg font-semibold tracking-tight text-foreground">Services</CardTitle>
+                                    <Badge variant="secondary" className="rounded-full font-mono text-xs px-2 py-0.5">
+                                        {visibleServices.length === services.length ? services.length : `${visibleServices.length}/${services.length}`}
+                                    </Badge>
+                                </div>
+                                {serviceSearch && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => setServiceSearch("")} 
+                                        className="text-xs text-primary hover:underline transition"
+                                    >
+                                        Clear filter
+                                    </button>
+                                )}
                             </div>
-                            <div className="rounded-2xl border border-border bg-background/70 px-3 py-2.5">
+                            <div className="relative rounded-xl border border-border bg-background/50 px-3 py-1.5 focus-within:border-primary/45 transition">
                                 <Label htmlFor="service-search" className="sr-only">Search Services</Label>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2.5">
                                     <LucideIcons.Search className="h-4 w-4 text-muted-foreground" />
                                     <Input
                                         id="service-search"
@@ -344,18 +357,14 @@ const AdminServiceQuestions = () => {
                                         placeholder="Search services..."
                                         autoComplete="off"
                                         spellCheck={false}
-                                        className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                                        className="h-6 border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0 text-sm"
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-2.5">
-                                <SummaryMetric label="Visible" value={visibleServices.length} note="Services matching this filter" />
-                                <SummaryMetric label="Catalog" value={services.length} note="Services available to configure" />
-                            </div>
                         </CardHeader>
 
-                        <CardContent className="p-3">
-                            <div className="space-y-2">
+                        <CardContent className="pt-2 pb-0 px-0 overflow-hidden flex flex-col min-h-0 flex-1">
+                            <div className="overflow-y-auto flex-1 px-3 pb-3 space-y-2">
                                     {loadingServices ? (
                                         <div className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                                             Loading services...
@@ -392,7 +401,7 @@ const AdminServiceQuestions = () => {
                                                             <div className="flex items-start justify-between gap-3">
                                                                 <div className="min-w-0">
                                                                     <p className="line-clamp-2 text-sm font-medium leading-5 text-foreground">{service.name}</p>
-                                                                    <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{service.id}</p>
+                                                                    <p className="mt-1 truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground" title={service.id}>{service.id}</p>
                                                                 </div>
                                                                 {isSelected ? <LucideIcons.ChevronRight className="mt-1 h-4 w-4 shrink-0 text-primary" /> : null}
                                                             </div>
@@ -433,7 +442,7 @@ const AdminServiceQuestions = () => {
                                         </p>
                                         {selectedService ? (
                                             <div className="mt-4 flex flex-wrap items-center gap-2">
-                                                <Badge variant="outline" className="rounded-full border-border bg-background/70 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                                <Badge variant="outline" className="max-w-full truncate rounded-full border-border bg-background/70 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground" title={selectedService.id}>
                                                     {selectedService.id}
                                                 </Badge>
                                                 <Badge variant={selectedService.active ? "default" : "secondary"} className="rounded-full">
@@ -650,7 +659,7 @@ const AdminServiceQuestions = () => {
                                                                                     {question.options && question.options.length > 0 ? (
                                                                                         <div className="mt-3 flex flex-wrap gap-2">
                                                                                             {question.options.map((option, optionIndex) => (
-                                                                                                <Badge key={optionIndex} variant="outline" className="rounded-full border-border bg-background/70">
+                                                                                                <Badge key={optionIndex} variant="outline" className="h-auto max-w-full whitespace-normal break-words rounded-xl border-border bg-background/70 px-2.5 py-1 text-left">
                                                                                                     {option.label || option}
                                                                                                 </Badge>
                                                                                             ))}

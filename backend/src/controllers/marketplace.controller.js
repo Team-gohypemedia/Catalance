@@ -42,7 +42,7 @@ const CATEGORY_ALIAS_MAP = new Map([
 
 const FILTER_SERVICE_KEY_BY_NAME = new Map([
   ["Branding", "branding"],
-  ["Web Development", "web_development"],
+  ["Website Development", "web_development"],
   ["SEO", "seo"],
   ["Social Media Management", "social_media_marketing"],
   ["Performance Marketing", "paid_advertising"],

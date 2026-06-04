@@ -16,7 +16,7 @@ const rawServicePositiveKeywordsByName = {
     "Tone of Voice",
     "Brand Storytelling",
   ],
-  "Web Development": [
+  "Website Development": [
     "React",
     "Next.js",
     "Vue.js",

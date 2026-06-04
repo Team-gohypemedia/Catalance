@@ -503,18 +503,18 @@ const AdminDashboard = () => {
                         className="flex cursor-pointer items-center justify-between rounded-lg border bg-background p-4 transition-colors hover:border-primary/20/50"
                         onClick={() => navigate(`/admin/users/${user.id}`)}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted font-bold">
+                        <div className="flex items-center gap-3 min-w-0 mr-4">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted font-bold">
                             {user.fullName.charAt(0)}
                           </div>
-                          <div className="overflow-hidden">
+                          <div className="min-w-0 overflow-hidden">
                             <p className="truncate font-medium">{user.fullName}</p>
                             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                           </div>
                         </div>
                         <Button
                           size="sm"
-                          className="bg-green-600 hover:bg-green-700"
+                          className="shrink-0 bg-green-600 hover:bg-green-700"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleApproveUser(user.id);

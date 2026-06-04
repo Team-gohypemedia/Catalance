@@ -1072,7 +1072,7 @@ const getServiceLabel = (service) => {
     id === "website_ui_ux" ||
     id === "web-development"
   ) {
-    return "Web Development";
+    return "Website Development";
   }
 
   const name = service?.name || "";

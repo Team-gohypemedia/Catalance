@@ -28,14 +28,14 @@ import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
 const MetricCard = ({ icon: Icon, title, value, description, tone = "default" }) => (
-  <Card className="group relative overflow-hidden border-white/10 bg-card transition-all hover:border-primary/30">
+  <Card className="group relative overflow-hidden border-border bg-card transition-all hover:border-primary/30">
     <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent pointer-events-none" />
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-[0.65rem] font-black uppercase tracking-[0.15em] text-muted-foreground">
         {title}
       </CardTitle>
       <div className={cn(
-        "flex size-8 items-center justify-center rounded-lg bg-white/[0.04] text-muted-foreground transition-colors group-hover:text-primary",
+        "flex size-8 items-center justify-center rounded-lg bg-muted/30 text-muted-foreground transition-colors group-hover:text-primary",
         tone === "primary" && "bg-primary/10 text-primary",
         tone === "emerald" && "bg-emerald-500/10 text-emerald-400"
       )}>
@@ -43,7 +43,7 @@ const MetricCard = ({ icon: Icon, title, value, description, tone = "default" })
       </div>
     </CardHeader>
     <CardContent>
-      <div className="text-3xl font-black tracking-tight text-white">{value}</div>
+      <div className="text-3xl font-black tracking-tight text-foreground">{value}</div>
       <p className="mt-1 text-[0.65rem] font-bold text-muted-foreground">{description}</p>
     </CardContent>
   </Card>
@@ -133,7 +133,7 @@ const AdminEngagementOverview = () => {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[0.65rem] font-black uppercase tracking-wider text-primary">
               Management Dashboard
             </span>
-            <h1 className="mt-3 text-4xl font-black tracking-tight text-white">Engagement Engine</h1>
+            <h1 className="mt-3 text-4xl font-black tracking-tight text-foreground">Engagement Engine</h1>
             <p className="mt-2 text-sm font-medium text-muted-foreground">
               Monitor Daily Growth Quest activity and manage questions, daily schedules, and contests.
             </p>
@@ -142,7 +142,7 @@ const AdminEngagementOverview = () => {
             <Button
               type="button"
               variant="outline"
-              className="rounded-xl border-white/10 px-6 font-bold"
+              className="rounded-xl border-border px-6 font-bold"
               onClick={() => navigate("/admin/engagement/questions")}
             >
               Manage Content
@@ -150,7 +150,7 @@ const AdminEngagementOverview = () => {
             <Button
               type="button"
               variant="outline"
-              className="rounded-xl border-white/10 px-6 font-bold"
+              className="rounded-xl border-border px-6 font-bold"
               onClick={() => navigate("/admin/engagement/questions#contest-feed")}
             >
               <CalendarDays className="size-4" />
@@ -181,11 +181,11 @@ const AdminEngagementOverview = () => {
             </div>
 
             <div className="grid gap-8 xl:grid-cols-[1fr_380px]">
-              <Card className="overflow-hidden border-white/10 bg-card">
-                <CardHeader className="border-b border-white/[0.05] bg-white/[0.01] px-6 py-5">
+              <Card className="overflow-hidden border-border bg-card">
+                <CardHeader className="border-b border-border/50 bg-muted/5 px-6 py-5">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <CardTitle className="text-lg font-black text-white">Freelancer Progress</CardTitle>
+                      <CardTitle className="text-lg font-black text-foreground">Freelancer Progress</CardTitle>
                       <p className="text-xs font-medium text-muted-foreground">Global activity tracking</p>
                     </div>
                     <div className="relative w-full sm:w-72">
@@ -194,7 +194,7 @@ const AdminEngagementOverview = () => {
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                         placeholder="Search by name or email..."
-                        className="h-10 rounded-xl border-white/10 bg-background/50 pl-10 text-sm focus:ring-primary/20"
+                        className="h-10 rounded-xl border-border bg-background/50 pl-10 text-sm focus:ring-primary/20"
                       />
                     </div>
                   </div>
@@ -202,8 +202,8 @@ const AdminEngagementOverview = () => {
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader className="bg-white/[0.02]">
-                        <TableRow className="hover:bg-transparent border-white/[0.05]">
+                      <TableHeader className="bg-muted/10">
+                        <TableRow className="hover:bg-transparent border-border/50">
                           <TableHead className="px-6 py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Freelancer</TableHead>
                           <TableHead className="py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Rank</TableHead>
                           <TableHead className="py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Streak</TableHead>
@@ -222,10 +222,10 @@ const AdminEngagementOverview = () => {
                           </TableRow>
                         ) : (
                           users.map((user) => (
-                            <TableRow key={user.userId} className="group border-white/[0.05] hover:bg-white/[0.02]">
+                            <TableRow key={user.userId} className="group border-border/50 hover:bg-muted/10">
                               <TableCell className="px-6 py-4">
                                 <div>
-                                  <p className="font-bold text-white">{user.fullName}</p>
+                                  <p className="font-bold text-foreground">{user.fullName}</p>
                                   <p className="text-[0.7rem] text-muted-foreground">{user.email}</p>
                                 </div>
                               </TableCell>
@@ -235,15 +235,15 @@ const AdminEngagementOverview = () => {
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                <span className="inline-flex items-center gap-1.5 font-bold text-white">
+                                <span className="inline-flex items-center gap-1.5 font-bold text-foreground">
                                   <Flame className="size-3.5 text-[#facc15]" /> {user.currentStreak}d
                                 </span>
                               </TableCell>
                               <TableCell className="font-bold text-emerald-400">{user.lifetimeXp.toLocaleString()}</TableCell>
-                              <TableCell className="font-bold text-white">{user.loyaltyCoins.toLocaleString()}</TableCell>
+                              <TableCell className="font-bold text-foreground">{user.loyaltyCoins.toLocaleString()}</TableCell>
                               <TableCell className="font-bold text-primary">{user.rollingAccuracy}%</TableCell>
                               <TableCell className="px-6">
-                                <span className="inline-flex items-center rounded-lg bg-white/[0.04] px-2.5 py-1 text-[0.7rem] font-bold text-muted-foreground group-hover:text-white">
+                                <span className="inline-flex items-center rounded-lg bg-muted/30 px-2.5 py-1 text-[0.7rem] font-bold text-muted-foreground group-hover:text-foreground">
                                   {user.weakTopic || "N/A"}
                                 </span>
                               </TableCell>
@@ -257,17 +257,17 @@ const AdminEngagementOverview = () => {
               </Card>
 
                 <div className="flex flex-col gap-6">
-                <Card className="relative overflow-hidden border-white/10 bg-card">
+                <Card className="relative overflow-hidden border-border bg-card">
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.05] to-transparent pointer-events-none" />
                   <CardHeader className="px-6 py-5">
-                    <CardTitle className="text-lg font-black text-white">Question Bank</CardTitle>
+                    <CardTitle className="text-lg font-black text-foreground">Question Bank</CardTitle>
                     <p className="text-xs font-medium text-muted-foreground">Content ecosystem status</p>
                   </CardHeader>
                   <CardContent className="space-y-4 px-6 pb-6">
-                    <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 transition-all hover:bg-white/[0.05]">
+                    <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 px-5 py-4 transition-all hover:bg-muted/40">
                       <div>
                         <p className="text-[0.65rem] font-black uppercase tracking-wider text-muted-foreground">Approved</p>
-                        <p className="mt-1 text-2xl font-black text-white">{overview?.approvedQuestions || 0}</p>
+                        <p className="mt-1 text-2xl font-black text-foreground">{overview?.approvedQuestions || 0}</p>
                       </div>
                       <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
                         <CheckCircle2 className="size-5" />
@@ -277,7 +277,7 @@ const AdminEngagementOverview = () => {
                     <div className="flex items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 transition-all hover:bg-primary/10">
                       <div>
                         <p className="text-[0.65rem] font-black uppercase tracking-wider text-primary">Pending Review</p>
-                        <p className="mt-1 text-2xl font-black text-white">{overview?.pendingQuestions || 0}</p>
+                        <p className="mt-1 text-2xl font-black text-foreground">{overview?.pendingQuestions || 0}</p>
                       </div>
                       <div className="flex size-10 items-center justify-center rounded-xl bg-primary/20 text-primary">
                         <Loader2 className="size-5 animate-spin" />
@@ -294,21 +294,21 @@ const AdminEngagementOverview = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="relative overflow-hidden border-white/10 bg-card">
+                <Card className="relative overflow-hidden border-border bg-card">
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent pointer-events-none" />
                   <CardHeader className="px-6 py-5">
-                    <CardTitle className="text-lg font-black text-white">Contest Feed</CardTitle>
+                    <CardTitle className="text-lg font-black text-foreground">Contest Feed</CardTitle>
                     <p className="text-xs font-medium text-muted-foreground">
                       Add contest title, description, CTA, and active dates for freelancers.
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-4 px-6 pb-6">
-                    <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+                    <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 px-5 py-4">
                       <div>
                         <p className="text-[0.65rem] font-black uppercase tracking-wider text-muted-foreground">
                           Admin Managed
                         </p>
-                        <p className="mt-1 text-sm font-bold text-white">
+                        <p className="mt-1 text-sm font-bold text-foreground">
                           Open the content manager to create and publish contests.
                         </p>
                       </div>
@@ -320,7 +320,7 @@ const AdminEngagementOverview = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full rounded-xl border-white/10 py-6 font-black"
+                      className="w-full rounded-xl border-border py-6 font-black"
                       onClick={() => navigate("/admin/engagement/questions#contest-feed")}
                     >
                       Open Contest Feed
@@ -328,9 +328,9 @@ const AdminEngagementOverview = () => {
                   </CardContent>
                 </Card>
 
-                <div className="rounded-[24px] border border-white/10 bg-card p-6">
+                <div className="rounded-[24px] border border-border bg-card p-6">
                   <div className="flex items-center gap-3">
-                    <div className="flex size-8 items-center justify-center rounded-lg bg-white/[0.05] text-muted-foreground">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-muted/40 text-muted-foreground">
                       <Activity className="size-4" />
                     </div>
                     <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">System Health</p>
@@ -341,10 +341,10 @@ const AdminEngagementOverview = () => {
                 </div>
               </div>
 
-              <Card className="overflow-hidden border-white/10 bg-card">
-                <CardHeader className="border-b border-white/[0.05] bg-white/[0.01] px-6 py-5">
+              <Card className="overflow-hidden border-border bg-card">
+                <CardHeader className="border-b border-border/50 bg-muted/5 px-6 py-5">
                   <div>
-                    <CardTitle className="text-lg font-black text-white">Recent Quest Activity</CardTitle>
+                    <CardTitle className="text-lg font-black text-foreground">Recent Quest Activity</CardTitle>
                     <p className="text-xs font-medium text-muted-foreground">
                       Latest completed Growth Quest sessions
                     </p>
@@ -353,8 +353,8 @@ const AdminEngagementOverview = () => {
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader className="bg-white/[0.02]">
-                        <TableRow className="hover:bg-transparent border-white/[0.05]">
+                      <TableHeader className="bg-muted/10">
+                        <TableRow className="hover:bg-transparent border-border/50">
                           <TableHead className="px-6 py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Freelancer</TableHead>
                           <TableHead className="py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Day</TableHead>
                           <TableHead className="py-4 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Score</TableHead>
@@ -371,19 +371,19 @@ const AdminEngagementOverview = () => {
                           </TableRow>
                         ) : (
                           recentSessions.map((session) => (
-                            <TableRow key={session.id} className="border-white/[0.05] hover:bg-white/[0.02]">
+                            <TableRow key={session.id} className="border-border/50 hover:bg-muted/10">
                               <TableCell className="px-6 py-4">
                                 <div>
-                                  <p className="font-bold text-white">{session.fullName}</p>
+                                  <p className="font-bold text-foreground">{session.fullName}</p>
                                   <p className="text-[0.7rem] text-muted-foreground">{session.email}</p>
                                 </div>
                               </TableCell>
-                              <TableCell className="font-medium text-white">{session.dayKey}</TableCell>
+                              <TableCell className="font-medium text-foreground">{session.dayKey}</TableCell>
                               <TableCell className="font-bold text-primary">
                                 {session.correctCount}/{session.questionCount} · {session.accuracy}%
                               </TableCell>
                               <TableCell className="font-bold text-emerald-400">+{session.xpAwarded}</TableCell>
-                              <TableCell className="px-6 font-bold text-white">+{session.coinsAwarded}</TableCell>
+                              <TableCell className="px-6 font-bold text-foreground">+{session.coinsAwarded}</TableCell>
                             </TableRow>
                           ))
                         )}

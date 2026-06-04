@@ -44,7 +44,7 @@ import ProcessVideo from "@/components/sections/marketplace/ProcessVideo";
 import { useTheme } from "@/components/providers/theme-provider";
 
 const FALLBACK_CATEGORIES = [
-  ["Web Development", "web_development", Code2, "Products and storefronts"],
+  ["Website Development", "web_development", Code2, "Products and storefronts"],
   ["AI Automation", "ai_automation", Bot, "Agents and workflows"],
   ["SEO", "seo", LineChart, "Organic growth"],
   ["Lead Generation", "lead_generation", Rocket, "Outbound and funnels"],
@@ -235,7 +235,7 @@ const FALLBACK_OPEN_PROJECTS = [
   {
     id: "fallback-project-1",
     title: "Launch-ready Shopify redesign for premium wellness brand",
-    serviceName: "Web Development",
+    serviceName: "Website Development",
     timeline: "4-6 weeks",
     budgetLabel: "Rs. 2,20,000",
     summary: "Need storefront redesign, PDP optimization, and conversion-focused checkout flow.",

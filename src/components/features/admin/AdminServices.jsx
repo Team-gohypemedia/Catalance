@@ -906,8 +906,8 @@ const AdminServices = () => {
                                                 <DynamicIcon name={service.icon} className="h-6 w-6" />
                                             </div>
                                             <div className="min-w-0 flex-1 space-y-2.5">
-                                                <div className="inline-flex max-w-full items-center rounded-full border border-border bg-background/70 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                                                    <span className="truncate">{service.id}</span>
+                                                <div className="inline-block max-w-full truncate rounded-full border border-border bg-background/70 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground" title={service.id}>
+                                                    {service.id}
                                                 </div>
                                                 <CardTitle className="line-clamp-2 break-words text-[1.45rem] font-semibold leading-tight tracking-tight [text-wrap:balance]">
                                                     {service.name}
