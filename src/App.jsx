@@ -1,7 +1,6 @@
 import PropTypes from "prop-types";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { ThemeProvider } from "@/components/providers/theme-provider";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -240,8 +239,7 @@ const DashboardRouteTransitionLoader = () => {
 const App = () => {
   return (
     <main>
-      <ThemeProvider defaultTheme="system" storageKey="catalance-theme">
-        <Suspense fallback={<RouteFallback />}>
+      <Suspense fallback={<RouteFallback />}>
           <DashboardRouteTransitionLoader />
           <Routes>
             <Route path="/ai-demo" element={<GuestAIDemo />} />
@@ -839,7 +837,6 @@ const App = () => {
           </Routes>
         </Suspense>
         <CataButton />
-      </ThemeProvider>
     </main>
   );
 };
