@@ -15,6 +15,7 @@ import {
   upsertQuestion,
   reorderQuestions,
   deleteQuestion,
+  importServiceQuestions,
   createProjectManager,
   updateProjectManager,
   updateProjectManagerProfile,
@@ -130,6 +131,7 @@ router.get("/services/:serviceId/questions", getServiceQuestions);
 router.post("/services/:serviceId/questions", upsertQuestion);
 router.post("/services/:serviceId/questions/reorder", reorderQuestions);
 router.delete("/services/:serviceId/questions/:id", deleteQuestion);
+router.post("/services/:serviceId/questions/import", importServiceQuestions);
 router.get("/freelancer-onboarding-content", getAdminFreelancerOnboardingContent);
 router.put("/freelancer-onboarding-content", updateAdminFreelancerOnboardingContent);
 

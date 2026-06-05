@@ -167,7 +167,6 @@ const AdminEngagementQuestions = lazy(
   () => import("@/components/features/engagement/AdminEngagementQuestions.jsx"),
 );
 const GetStarted = lazy(() => import("@/components/features/auth/GetStarted"));
-const BrowseTalent = lazy(() => import("@/components/pages/BrowseTalent"));
 const EnterpriseSolutions = lazy(
   () => import("@/components/pages/EnterpriseSolutions"),
 );
@@ -290,11 +289,7 @@ const App = () => {
             />
             <Route
               path="/talent"
-              element={
-                <LayoutWithNavbar>
-                  <BrowseTalent />
-                </LayoutWithNavbar>
-              }
+              element={<Navigate replace to="/marketplace?view=freelancers#specialists-section" />}
             />
             <Route
               path="/enterprise"

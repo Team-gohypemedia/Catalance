@@ -2160,3 +2160,59 @@ export const deleteQuestion = asyncHandler(async (req, res) => {
 
   res.json({ success: true });
 });
+
+export const importServiceQuestions = asyncHandler(async (req, res) => {
+  const { serviceId } = req.params;
+  const { questions } = req.body;
+
+  if (!questions || !Array.isArray(questions)) {
+    throw new AppError("Invalid questions data", 400);
+  }
+
+  const service = await prisma.service.findUnique({
+    where: { slug: serviceId }
+  });
+
+  if (!service) {
+    throw new AppError("Service not found", 404);
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Delete existing questions
+    await tx.serviceQuestion.deleteMany({
+      where: { serviceId: service.id }
+    });
+
+    // Validate and map data for createMany
+    const questionsData = questions.map((q, index) => {
+      const id = q.id || q.slug;
+      const questionText = q.question || q.text;
+      const type = q.type || "input";
+
+      if (!id || !questionText) {
+        throw new AppError(`Missing id or question text for item at index ${index}`, 400);
+      }
+
+      return {
+        serviceId: service.id,
+        slug: id,
+        text: questionText,
+        type,
+        options: q.options || [],
+        logic: q.logic || [],
+        required: q.required === undefined ? true : q.required,
+        order: index,
+        subtitle: q.subtitle || null,
+        saveResponse: q.saveResponse === undefined ? false : q.saveResponse,
+        nextQuestionSlug: q.nextQuestionSlug || null
+      };
+    });
+
+    // Bulk insert questions
+    await tx.serviceQuestion.createMany({
+      data: questionsData
+    });
+  });
+
+  res.json({ success: true });
+});

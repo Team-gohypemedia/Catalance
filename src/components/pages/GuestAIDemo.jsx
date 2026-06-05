@@ -5234,8 +5234,8 @@ const GuestAIDemo = () => {
     const briefingDotClasses = isDark ? 'bg-primary shadow-[0_0_0_5px_rgba(var(--brand-rgb),0.12)]' : 'bg-primary shadow-[0_0_0_5px_rgba(var(--brand-rgb),0.10)]';
     const briefingHeadingClasses = isDark ? 'text-white' : 'text-foreground';
     const briefingHeadingSizeClasses = isDark
-        ? 'text-[clamp(1.55rem,2.5vw,2.55rem)] leading-[1.16] tracking-[-0.024em] [text-shadow:0_0_28px_rgba(255,255,255,0.04)]'
-        : 'text-[clamp(1.85rem,3.5vw,3.1rem)] leading-[1.14] tracking-[-0.024em]';
+        ? 'text-[clamp(1.45rem,2.2vw,2.2rem)] leading-[1.16] tracking-[-0.024em] [text-shadow:0_0_28px_rgba(255,255,255,0.04)]'
+        : 'text-[clamp(1.55rem,2.5vw,2.4rem)] leading-[1.14] tracking-[-0.024em]';
     const briefingMutedSentenceClasses = isDark ? 'text-white/28' : 'text-muted-foreground/50';
     const briefingAccentTextClasses = isDark ? '!text-primary' : '!text-[#D9692A]';
     const briefingAccentPillClasses = isDark ? 'bg-primary/12 text-primary' : 'bg-primary/10 text-primary';
@@ -5245,7 +5245,7 @@ const GuestAIDemo = () => {
         : 'border-transparent bg-transparent';
     const briefingCardClasses = isDark
         ? 'border-primary/16 bg-[linear-gradient(180deg,rgba(23,23,27,0.96)_0%,rgba(14,14,18,0.98)_100%)] shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.05),0_0_44px_rgba(var(--brand-rgb),0.08),0_55px_120px_-70px_rgba(0,0,0,0.88)]'
-        : 'bg-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-transparent';
+        : 'bg-white border border-[#e8e0d5] shadow-[0_24px_80px_-20px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.04)]';
     const briefingCardDividerClasses = isDark ? 'border-border/70' : 'border-border/40';
     const briefingStepEyebrowClasses = isDark ? 'text-primary/90' : 'text-muted-foreground';
     const briefingStepTitleClasses = isDark ? 'text-white' : 'text-foreground';
@@ -5254,9 +5254,9 @@ const GuestAIDemo = () => {
     const briefingMicroLabelClasses = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
     const briefingChipClasses = isDark
         ? 'border-border/70 bg-transparent text-zinc-200 hover:border-primary/50 hover:bg-primary/10 hover:text-white'
-        : 'border-border bg-white text-foreground hover:border-primary/50 hover:bg-primary/5';
-    const briefingSelectedChipClasses = isDark ? 'border-primary bg-primary text-primary-foreground' : 'border-foreground bg-foreground text-background';
-    const briefingBudgetFieldClasses = isDark ? 'border-border/70 bg-white/[0.04]' : 'border-border bg-background/50';
+        : 'border-primary bg-white text-foreground hover:bg-primary/5 hover:text-primary';
+    const briefingSelectedChipClasses = isDark ? 'border-primary bg-primary text-primary-foreground' : 'border-primary bg-primary !text-white';
+    const briefingBudgetFieldClasses = isDark ? 'border-border/70 bg-white/[0.04]' : 'border-[#e4dbd2] bg-[#faf8f6]';
     const briefingUploadClasses = isDark
         ? 'border-border/70 bg-white/[0.03] text-zinc-300 hover:border-primary/50 hover:bg-primary/10'
         : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/50 hover:bg-primary/5';
@@ -5289,37 +5289,38 @@ const GuestAIDemo = () => {
         return (
             <>
                 <Navbar />
-                <main className="relative min-h-screen overflow-hidden bg-background pt-24 text-foreground transition-colors sm:pt-28">
+                <main className="relative min-h-screen overflow-hidden bg-background pt-16 text-foreground transition-colors sm:pt-20">
                     <div className="pointer-events-none absolute inset-0 overflow-hidden">
                         <div className={`absolute inset-0 ${briefingBackdropClasses}`} />
                         <div className={`absolute left-1/2 top-24 h-[24rem] w-[24rem] -translate-x-1/2 rounded-full blur-[110px] ${briefingGlowClasses}`} />
                         <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:72px_72px] [mask-image:radial-gradient(circle_at_center,black,transparent_78%)]" />
                     </div>
 
-                    <div className={`relative z-10 mx-auto w-full px-5 py-8 sm:px-8 lg:px-10 ${isDark ? 'max-w-[1280px]' : 'max-w-[1360px]'}`}>
-                        <div className="mx-auto flex min-h-[calc(100vh-6.5rem)] w-full max-w-[980px] flex-col justify-center sm:min-h-[calc(100vh-7rem)]">
-                        <div className={`relative px-5 py-2 sm:px-8 sm:py-4 lg:px-10 ${briefingHeroStageClasses}`}>
-                            <div className="relative z-10 flex flex-col items-center text-center">
-                                <div className={`${isDark ? 'max-w-[860px]' : 'max-w-[940px]'}`}>
-                                    <h1 className={`font-serif ${briefingHeadingSizeClasses} ${briefingHeadingClasses}`}>
-                                        <span>I&apos;m looking for </span>
-                                        <span className={`${briefingAccentTextClasses} !italic`}>
-                                            {briefingSentence.role || 'the right freelancer'}
-                                        </span>
-                                        <span>
-                                            {' '}to help me with{' '}
-                                        </span>
-                                        <span className={`${briefingAccentTextClasses} !italic`}>
-                                            {briefingSentence.goal || 'my project'}.
-                                        </span>
-                                    </h1>
-                                    <p className={`mx-auto mt-4 max-w-2xl text-sm leading-7 sm:text-[15px] ${briefingBodyClasses}`}>
-                                        Shape the brief fast, keep the message sharp, and move directly toward the right specialist.
-                                    </p>
+                    <div className={`relative z-10 mx-auto w-full px-5 ${isDark ? 'py-4 sm:py-6 sm:px-8 lg:px-10 max-w-[1280px]' : 'py-6 sm:py-10 sm:px-10 max-w-[840px]'}`}>
+                        <div className={`mx-auto flex w-full flex-col justify-center min-h-0 ${isDark ? 'max-w-[980px]' : 'max-w-full'}`}>
+                            {isDark && (
+                                <div className={`relative px-5 py-1 sm:px-8 sm:py-2 lg:px-10 ${briefingHeroStageClasses}`}>
+                                    <div className="relative z-10 flex flex-col items-center text-center">
+                                        <div className="max-w-[860px]">
+                                            <h1 className={`font-serif ${briefingHeadingSizeClasses} ${briefingHeadingClasses}`}>
+                                                <span>I&apos;m looking for </span>
+                                                <span className={`${briefingAccentTextClasses} !italic`}>
+                                                    {briefingSentence.role || 'the right freelancer'}
+                                                </span>
+                                                <span>
+                                                    {' '}to help me with{' '}
+                                                </span>
+                                                <span className={`${briefingAccentTextClasses} !italic`}>
+                                                    {briefingSentence.goal || 'my project'}.
+                                                </span>
+                                            </h1>
+                                            <p className={`mx-auto mt-2 max-w-2xl text-sm leading-6 sm:text-[14px] ${briefingBodyClasses}`}>
+                                                Shape the brief fast, keep the message sharp, and move directly toward the right specialist.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-
-                            </div>
-                        </div>
+                            )}
 
                         <form
                             onSubmit={(event) => {
@@ -5335,44 +5336,46 @@ const GuestAIDemo = () => {
                                     goToNextBriefingStep();
                                 }
                             }}
-                            className={`relative z-10 mt-4 overflow-hidden backdrop-blur sm:mt-6 ${isDark ? 'rounded-[1.25rem] sm:rounded-[1.7rem]' : 'rounded-[1.25rem] sm:rounded-[2rem]'} ${briefingCardClasses}`}
+                            className={`relative z-10 overflow-hidden backdrop-blur ${isDark ? 'mt-3 sm:mt-4 rounded-[1.25rem] sm:rounded-[1.7rem]' : 'rounded-[1.5rem] sm:rounded-[2rem]'} ${briefingCardClasses}`}
                         >
-                            <div className={`${isDark ? 'px-4 pt-5 pb-2 sm:px-6 sm:pt-6' : 'px-4 pt-6 pb-4 sm:px-8 sm:pt-10'}`}>
-                                <div className="flex flex-wrap items-center gap-4">
-                                    <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-[15px] font-bold text-primary-foreground">
-                                        {String(briefingStepIndex + 1).padStart(2, '0')}
-                                    </span>
-                                    <div className="flex flex-col gap-0.5">
-                                        <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${briefingStepEyebrowClasses}`}>
-                                            {currentBriefingStep.eyebrow}
-                                        </p>
-                                        <h2 className={`text-xl font-medium sm:text-2xl ${briefingStepTitleClasses}`}>
+                            <div className={`${isDark ? 'px-4 pt-5 pb-2 sm:px-6 sm:pt-6' : 'px-6 pt-7 pb-3 sm:px-8 sm:pt-8'}`}>
+                                {isDark ? (
+                                    <div className="flex flex-wrap items-center gap-4">
+                                        <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-[15px] font-bold text-primary-foreground">
+                                            {String(briefingStepIndex + 1).padStart(2, '0')}
+                                        </span>
+                                        <div className="flex flex-col gap-0.5">
+                                            <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${briefingStepEyebrowClasses}`}>
+                                                {currentBriefingStep.eyebrow}
+                                            </p>
+                                            <h2 className={`text-xl font-medium sm:text-2xl ${briefingStepTitleClasses}`}>
+                                                {currentBriefingStep.label}
+                                            </h2>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="">
+                                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-[0.65rem] bg-primary text-[15px] font-bold text-primary-foreground">
+                                            {String(briefingStepIndex + 1).padStart(2, '0')}
+                                        </span>
+                                        <h2 className="mt-4 text-[1.65rem] font-bold leading-[1.18] tracking-[-0.02em] text-foreground sm:text-[2rem]">
                                             {currentBriefingStep.label}
                                         </h2>
+                                        <p className="mt-2 text-sm text-muted-foreground">
+                                            {currentBriefingStep.key === 'role'
+                                                ? 'Choose the direction that best describes your project.'
+                                                : currentBriefingStep.key === 'goal'
+                                                    ? 'Choose the option that best describes your project, or type your own requirement.'
+                                                    : 'Attach any references that will help us read your brief faster.'}
+                                        </p>
                                     </div>
-                                </div>
+                                )}
                             </div>
 
-                            <div className={`${isDark ? 'space-y-5 px-5 py-5 sm:px-6 sm:py-5' : 'space-y-6 px-6 py-6 sm:px-8 sm:py-7'}`}>
+                            <div className={`space-y-5 ${isDark ? 'px-5 py-4 sm:px-6 sm:py-4' : 'px-6 py-4 sm:px-8 sm:py-5'}`}>
                                 {currentBriefingStep.key === 'role' ? (
                                     <>
-                                        <input
-                                            value={briefingAnswers.role}
-                                            onChange={(event) => updateBriefingAnswer('role', event.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    if (canContinueBriefing) {
-                                                        startTransition(() => {
-                                                            setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
-                                                        });
-                                                    }
-                                                }
-                                            }}
-                                            placeholder={currentBriefingStep.placeholder}
-                                            className={`w-full bg-transparent ${isDark ? 'pb-3' : 'pb-4'} font-medium italic outline-none ${briefingInputTypographyClasses} ${briefingFieldTextClasses}`}
-                                        />
-                                        <div className="space-y-4 pt-4">
+                                        <div className="space-y-3">
                                             <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Popular directions</p>
                                             <div className="flex flex-wrap gap-3">
                                                 {visibleRoleServices.map((service) => (
@@ -5385,18 +5388,18 @@ const GuestAIDemo = () => {
                                                                 setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
                                                             });
                                                         }}
-                                                        className={`rounded-full border px-4 py-2 text-sm transition-colors ${briefingChipClasses}`}
+                                                        className={`rounded-full border px-4 py-2 text-xs transition-colors ${briefingChipClasses}`}
                                                     >
                                                         {service?.name || service?.title}
                                                     </button>
                                                 ))}
-                                                {!showAllRoleServices && orderedServices.length > 7 ? (
+                                                {orderedServices.length > 7 ? (
                                                     <button
                                                         type="button"
-                                                        onClick={() => setShowAllRoleServices(true)}
-                                                        className={`rounded-full border px-4 py-2 text-sm transition-colors ${briefingChipClasses}`}
+                                                        onClick={() => setShowAllRoleServices(!showAllRoleServices)}
+                                                        className={`rounded-full border px-4 py-2 text-xs transition-colors ${briefingChipClasses}`}
                                                     >
-                                                        Other
+                                                        {showAllRoleServices ? 'Less' : 'Other'}
                                                     </button>
                                                 ) : null}
                                             </div>
@@ -5406,36 +5409,73 @@ const GuestAIDemo = () => {
 
                                 {currentBriefingStep.key === 'goal' ? (
                                     <>
-                                        <textarea
-                                            value={briefingAnswers.goal}
-                                            onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && !e.shiftKey) {
-                                                    e.preventDefault();
-                                                    if (canContinueBriefing) {
-                                                        startTransition(() => {
-                                                            setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
-                                                        });
+                                        {!isDark && (
+                                            <div className="space-y-1.5">
+                                                <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Your requirement</p>
+                                                <div className={`flex items-center rounded-xl border px-4 py-3 ${briefingBudgetFieldClasses}`}>
+                                                    <input
+                                                        value={briefingAnswers.goal}
+                                                        onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                if (canContinueBriefing) {
+                                                                    startTransition(() => {
+                                                                        setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
+                                                                    });
+                                                                }
+                                                            }
+                                                        }}
+                                                        placeholder={currentBriefingStep.placeholder}
+                                                        className={`w-full bg-transparent text-base outline-none ${briefingFieldTextClasses}`}
+                                                    />
+                                                    {briefingAnswers.goal && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateBriefingAnswer('goal', '')}
+                                                            className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary !text-white transition-colors hover:brightness-90"
+                                                        >
+                                                            <X className="h-3 w-3" style={{ color: 'white', stroke: 'white' }} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {isDark && (
+                                            <textarea
+                                                value={briefingAnswers.goal}
+                                                onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                                        e.preventDefault();
+                                                        if (canContinueBriefing) {
+                                                            startTransition(() => {
+                                                                setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
+                                                            });
+                                                        }
                                                     }
-                                                }
-                                            }}
-                                            rows={2}
-                                            placeholder={currentBriefingStep.placeholder}
-                                            className={`w-full resize-none bg-transparent ${isDark ? 'min-h-[78px] pb-3' : 'min-h-[98px] pb-4'} font-medium italic outline-none ${briefingTextareaTypographyClasses} ${briefingFieldTextClasses}`}
-                                        />
-                                        <div className="space-y-4 pt-4">
-                                            <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Suggested phrasing</p>
+                                                }}
+                                                rows={2}
+                                                placeholder={currentBriefingStep.placeholder}
+                                                className={`w-full resize-none bg-transparent min-h-[78px] pb-3 font-medium italic outline-none ${briefingTextareaTypographyClasses} ${briefingFieldTextClasses}`}
+                                            />
+                                        )}
+                                        <div className={`space-y-3 ${isDark ? 'pt-4' : 'pt-2'}`}>
+                                            <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Popular options</p>
                                             <div className="flex flex-wrap gap-3">
-                                                {briefingGoalSuggestions.map((suggestion) => (
-                                                    <button
-                                                        key={suggestion}
-                                                        type="button"
-                                                        onClick={() => updateBriefingAnswer('goal', suggestion)}
-                                                        className={`rounded-full border px-4 py-2 text-sm transition-colors ${briefingChipClasses}`}
-                                                    >
-                                                        {suggestion}
-                                                    </button>
-                                                ))}
+                                                {briefingGoalSuggestions.map((suggestion) => {
+                                                    const isSelected = briefingAnswers.goal === suggestion;
+                                                    return (
+                                                        <button
+                                                            key={suggestion}
+                                                            type="button"
+                                                            onClick={() => updateBriefingAnswer('goal', suggestion)}
+                                                            className={`rounded-full border px-4 py-2 text-xs transition-colors ${isSelected ? briefingSelectedChipClasses : briefingChipClasses}`}
+                                                        >
+                                                            {suggestion}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </>
@@ -5597,30 +5637,31 @@ const GuestAIDemo = () => {
                                 ) : null}
                             </div>
 
-                            <div className={`flex flex-col gap-4 border-t sm:flex-row sm:items-center sm:justify-between ${isDark ? 'px-5 py-4 sm:px-6' : 'px-6 pb-6 pt-5 sm:px-8 sm:pb-8 sm:pt-6'} ${briefingCardDividerClasses}`}>
+                            <div className={`flex flex-col gap-4 border-t sm:flex-row sm:items-center sm:justify-between ${isDark ? 'px-5 py-4 sm:px-6' : 'px-6 py-4 sm:px-8'} ${briefingCardDividerClasses}`}>
                                 <button
                                     type="button"
                                     onClick={goToPreviousBriefingStep}
                                     disabled={briefingStepIndex === 0}
-                                    className={`flex items-center gap-2 text-[12px] font-semibold transition-colors disabled:opacity-50 ${briefingHintClasses} ${briefingBackButtonClasses}`}
+                                    className={`flex items-center gap-2 text-[13px] font-semibold transition-colors disabled:opacity-50 ${briefingHintClasses} ${briefingBackButtonClasses}`}
                                 >
                                     <ArrowLeft className="h-4 w-4" />
                                     <span>Back</span>
                                 </button>
 
                                 <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                                    <div className={`text-[13px] font-semibold tracking-wide ${briefingLikelyMatchClasses}`}>
-                                        {loading
-                                            ? 'Loading service intelligence...'
-                                            : inferredBriefingService
-                                                ? <>Likely match: <span className={`font-medium ${briefingAccentTextClasses}`}>{inferredBriefingService?.name || inferredBriefingService?.title}</span></>
-                                                : (servicesError || '')}
-                                    </div>
+                                    {inferredBriefingService && !loading && isDark && (
+                                        <div className={`text-[13px] font-semibold tracking-wide ${briefingLikelyMatchClasses}`}>
+                                            <>Likely match: <span className={`font-medium ${briefingAccentTextClasses}`}>{inferredBriefingService?.name || inferredBriefingService?.title}</span></>
+                                        </div>
+                                    )}
+                                    {loading && (
+                                        <div className={`text-[13px] font-semibold tracking-wide ${briefingLikelyMatchClasses}`}>Loading...</div>
+                                    )}
                                     {!['role', 'kickoff', 'duration'].includes(currentBriefingStep.key) && (currentBriefingStep.key !== 'goal' || canContinueBriefing) && (
                                         <button
                                             type="submit"
                                             disabled={!canContinueBriefing}
-                                            className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all ${isDark ? 'h-11 px-5 text-sm' : 'h-12 px-8 text-[15px]'} ${briefingPrimaryButtonClasses}`}
+                                            className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all ${isDark ? 'h-11 px-5 text-sm' : 'h-10 px-5 text-sm'} ${briefingPrimaryButtonClasses}`}
                                         >
                                             {isLastBriefingStep ? (briefingSubmitting ? 'Starting...' : 'Continue') : 'Continue'}
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
@@ -5630,8 +5671,10 @@ const GuestAIDemo = () => {
                             </div>
                         </form>
                         </div>
+                    </div>
 
-                        <section className="mt-20 border-t border-white/6 pt-12">
+                    <div className={`relative z-10 mx-auto w-full px-5 ${isDark ? 'py-4 sm:py-6 sm:px-8 lg:px-10 max-w-[1280px]' : 'py-8 sm:px-8 lg:px-10 max-w-[1360px]'}`}>
+                        <section className="mt-12 border-t border-white/6 pt-8">
                             <div className="mb-8 text-center">
                                 <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingEyebrowClasses}`}>Explore Services</p>
                                 <h2 className={`mt-3 text-2xl font-semibold sm:text-3xl ${briefingHeadingClasses}`}>Browse service categories</h2>

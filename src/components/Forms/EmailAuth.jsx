@@ -633,7 +633,7 @@ function EmailAuth() {
                   variant="outline"
                   className="h-12 rounded-full border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.03] px-5 text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
                 >
-                  <Link to="/talent" className="gap-2.5">
+                  <Link to="/marketplace?view=freelancers#specialists-section" className="gap-2.5">
                     <Search className="size-4 text-primary" />
                     Hire freelancers
                   </Link>

@@ -717,6 +717,9 @@ const Marketplace = () => {
     if (initialSearchState.view === "projects" && roleTokens.includes("FREELANCER")) {
       return "projects";
     }
+    if (initialSearchState.view === "freelancers") {
+      return "freelancers";
+    }
     return roleTokens.includes("FREELANCER") ? "projects" : "freelancers";
   });
   const [q, setQ] = useState(initialSearchState.q);
@@ -983,6 +986,18 @@ const Marketplace = () => {
       setActiveMarketplaceView("freelancers");
     }
   }, [activeMarketplaceView, canViewProjectsMarketplace]);
+
+  useEffect(() => {
+    if (!location.hash) return;
+    const targetId = location.hash.slice(1);
+    const timer = setTimeout(() => {
+      const element = document.getElementById(targetId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [location.hash, loading, projectLoading]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1904,6 +1919,7 @@ const Marketplace = () => {
         {(shouldRenderFreelancerResults || (isProjectsView && category !== "all")) && (
           <motion.div
             key="results-panel"
+            id="specialists-section"
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }}
             exit={{ opacity: 0, y: 16 }}

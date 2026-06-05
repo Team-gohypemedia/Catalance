@@ -56,6 +56,9 @@ const AdminServiceQuestions = () => {
     // Dialog State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [currentQuestion, setCurrentQuestion] = useState(null);
+    const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+    const [importJson, setImportJson] = useState("");
+    const [lastImportHistory, setLastImportHistory] = useState(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -319,6 +322,117 @@ const AdminServiceQuestions = () => {
         });
     };
 
+    const handleCopyJsonFlow = () => {
+        if (!questions || questions.length === 0) {
+            toast.error("No questions to copy");
+            return;
+        }
+
+        const rawJsonText = JSON.stringify(questions, null, 2);
+
+        navigator.clipboard.writeText(rawJsonText).then(() => {
+            toast.success("JSON Flow copied to clipboard!");
+        }).catch(err => {
+            console.error("Failed to copy JSON:", err);
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = rawJsonText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textArea);
+                toast.success("JSON Flow copied to clipboard!");
+            } catch (fallbackErr) {
+                toast.error("Failed to copy JSON flow to clipboard");
+            }
+        });
+    };
+
+    const handleImportFlow = async () => {
+        if (!selectedServiceId) return;
+        if (!importJson.trim()) {
+            toast.error("Please paste flow JSON first");
+            return;
+        }
+
+        try {
+            let parsed;
+            try {
+                let jsonPart = importJson.trim();
+                const jsonMarker = "Raw JSON Configuration:";
+                if (jsonPart.includes(jsonMarker)) {
+                    jsonPart = jsonPart.split(jsonMarker)[1].trim();
+                }
+                if (jsonPart.endsWith("===")) {
+                    jsonPart = jsonPart.slice(0, -3).trim();
+                }
+                parsed = JSON.parse(jsonPart);
+            } catch (jsonErr) {
+                toast.error("Invalid JSON format. Please check the pasted content.");
+                return;
+            }
+
+            if (!Array.isArray(parsed)) {
+                toast.error("The imported flow must be an array of questions.");
+                return;
+            }
+
+            const res = await authFetch(`/admin/services/${selectedServiceId}/questions/import`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ questions: parsed })
+            });
+
+            if (res.ok) {
+                setLastImportHistory({
+                    serviceId: selectedServiceId,
+                    questions: [...questions]
+                });
+                toast.success("Flow imported successfully!");
+                fetchQuestions(selectedServiceId);
+                setIsImportDialogOpen(false);
+                setImportJson("");
+            } else {
+                const data = await res.json();
+                toast.error(data?.error || "Failed to import flow");
+            }
+        } catch (error) {
+            console.error("Error importing flow:", error);
+            toast.error("Error importing flow");
+        }
+    };
+
+    const handleUndoImport = async () => {
+        if (!lastImportHistory || lastImportHistory.serviceId !== selectedServiceId) return;
+
+        if (!confirm("Are you sure you want to undo the last JSON import and restore the previous questions?")) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await authFetch(`/admin/services/${selectedServiceId}/questions/import`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ questions: lastImportHistory.questions })
+            });
+
+            if (res.ok) {
+                toast.success("JSON import undone successfully!");
+                fetchQuestions(selectedServiceId);
+                setLastImportHistory(null);
+            } else {
+                const data = await res.json();
+                toast.error(data?.error || "Failed to undo import");
+            }
+        } catch (error) {
+            console.error("Error undoing import:", error);
+            toast.error("Error undoing import");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <AdminLayout>
             <div className="relative mx-auto flex max-w-[1440px] flex-col gap-6 px-5 py-6 lg:px-6">
@@ -490,6 +604,34 @@ const AdminServiceQuestions = () => {
                                             <LucideIcons.Copy className="mr-2 h-4 w-4" />
                                             Copy Flow
                                         </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleCopyJsonFlow}
+                                            disabled={!selectedServiceId || questions.length === 0}
+                                            className="rounded-full border-border bg-background/70 px-4 hover:bg-accent"
+                                        >
+                                            <LucideIcons.FileJson className="mr-2 h-4 w-4" />
+                                            Copy JSON
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setIsImportDialogOpen(true)}
+                                            disabled={!selectedServiceId}
+                                            className="rounded-full border-border bg-background/70 px-4 hover:bg-accent"
+                                        >
+                                            <LucideIcons.Upload className="mr-2 h-4 w-4" />
+                                            Import Flow
+                                        </Button>
+                                        {lastImportHistory && lastImportHistory.serviceId === selectedServiceId && (
+                                            <Button
+                                                variant="outline"
+                                                onClick={handleUndoImport}
+                                                className="rounded-full border-orange-500/30 bg-orange-500/10 px-4 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 dark:border-orange-500/25"
+                                            >
+                                                <LucideIcons.Undo className="mr-2 h-4 w-4" />
+                                                Undo Import
+                                            </Button>
+                                        )}
                                         <Button
                                             onClick={() => handleOpenDialog()}
                                             disabled={!selectedServiceId}
@@ -964,6 +1106,42 @@ const AdminServiceQuestions = () => {
                                 </DialogFooter>
                             </form>
                         </div>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+                    <DialogContent className="flex max-h-[min(90vh,620px)] w-[96vw] max-w-[640px] flex-col gap-0 overflow-hidden border border-border bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)))] p-0 shadow-[0_28px_80px_rgba(15,23,42,0.18)] dark:bg-[linear-gradient(180deg,rgba(28,28,28,0.98),rgba(12,12,12,0.98))] dark:shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+                        <DialogHeader className="border-b border-border p-5 pb-4">
+                            <DialogTitle className="text-xl font-semibold">Import Question Flow</DialogTitle>
+                            <DialogDescription className="text-sm text-muted-foreground mt-1">
+                                Paste the Raw JSON configuration or the entire text copied via the &quot;Copy Flow&quot; button.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="import-json" className="text-sm font-medium text-foreground">Flow JSON / Configuration Text</Label>
+                                <Textarea
+                                    id="import-json"
+                                    placeholder='Paste JSON here (e.g. [{"id": "q_1", "question": "What is...", "type": "input"}])'
+                                    value={importJson}
+                                    onChange={(e) => setImportJson(e.target.value)}
+                                    className="min-h-[260px] font-mono text-xs focus-visible:ring-primary/45 resize-none bg-background/50 border-border"
+                                />
+                            </div>
+                            <div className="text-xs text-muted-foreground bg-muted/40 rounded-xl p-3 border border-border">
+                                <span className="font-semibold text-foreground">Important Note:</span> Importing a new flow will overwrite all existing questions for this service. Make sure to back up or copy your current flow first.
+                            </div>
+                        </div>
+
+                        <DialogFooter className="border-t border-border p-5 pt-4">
+                            <Button type="button" variant="ghost" onClick={() => { setIsImportDialogOpen(false); setImportJson(""); }} className="rounded-full">
+                                Cancel
+                            </Button>
+                            <Button type="button" onClick={handleImportFlow} className="rounded-full px-5 shadow-[0_14px_30px_rgba(255,199,0,0.14)]">
+                                Import & Overwrite
+                            </Button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
             </div>

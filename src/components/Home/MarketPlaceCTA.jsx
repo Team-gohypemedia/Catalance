@@ -10,23 +10,18 @@ const MarketPlaceCTA = () => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Only play when the video is visible in the viewport
+    // Control play/pause states based on viewport visibility
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            // Load and play only when visible
-            if (video.readyState === 0) {
-              video.load();
-            }
             video.play().catch(() => {});
           } else {
-            // Pause when scrolled out — frees up decoding resources
             video.pause();
           }
         });
       },
-      { threshold: 0.2 }
+      { threshold: 0.05 }
     );
 
     observer.observe(video);
@@ -39,7 +34,7 @@ const MarketPlaceCTA = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-8 items-center">
 
           {/* LEFT — description + CTA */}
-          <div className="flex flex-col items-start justify-center gap-6 z-10 lg:pr-10">
+          <div className="flex flex-col items-start justify-center gap-6 z-10 lg:pr-10 lg:self-center">
             <h2 className="text-3xl sm:text-4xl lg:text-[3.2rem] font-extrabold leading-[1.15] tracking-tight text-foreground text-balance">
               Work Done On Your Terms, Every Single Time.
             </h2>
@@ -49,7 +44,7 @@ const MarketPlaceCTA = () => {
 
             <div className="flex flex-wrap items-center gap-4 pt-4">
               <Link
-                to="/talent"
+                to="/marketplace?view=freelancers#specialists-section"
                 className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl font-bold text-sm bg-primary text-primary-foreground transition-all hover:scale-105 active:scale-95 shadow-[0_8px_24px_rgba(217,105,42,0.25)]"
               >
                 Browse Talent
@@ -59,15 +54,16 @@ const MarketPlaceCTA = () => {
           </div>
 
           {/* RIGHT — Video (lazy-loaded, plays only when visible) */}
-          <div className="relative flex items-center justify-center w-full mt-10 lg:mt-0">
+          <div className="relative flex items-center justify-center w-full mt-10 lg:mt-0 lg:self-center">
             <video
               ref={videoRef}
               src={HeroVideo}
+              autoPlay
               loop
               muted
               playsInline
-              preload="none"
-              className="w-full max-w-[500px] h-auto object-contain relative z-10 hover:scale-[1.02] transition-transform duration-700 ease-out rounded-2xl"
+              preload="auto"
+              className="w-full max-w-[640px] h-auto object-contain relative z-10 hover:scale-[1.02] transition-transform duration-700 ease-out rounded-2xl"
             />
           </div>
         </div>
