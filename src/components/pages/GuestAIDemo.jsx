@@ -893,38 +893,6 @@ const buildTimingBreakdown = (durationMs = 0, timingPayload = null) => {
     };
 };
 
-const getTimingBreakdownGroups = (thinkingMeta = null) => {
-    const breakdown = thinkingMeta?.timingBreakdown;
-    if (!breakdown) return [];
-
-    const groups = [];
-    if (breakdown.clientRows.length > 0) {
-        groups.push({
-            key: 'client',
-            label: 'Client',
-            rows: breakdown.clientRows,
-        });
-    }
-
-    if (breakdown.serverTiming) {
-        groups.push({
-            key: 'server',
-            label: 'Server',
-            rows: [
-                {
-                    key: 'server_total',
-                    label: 'Total server time',
-                    durationMs: breakdown.serverTiming.totalDurationMs,
-                    detail: 'Total backend processing time for this response.',
-                },
-                ...breakdown.serverTiming.steps,
-            ],
-        });
-    }
-
-    return groups;
-};
-
 const buildThinkingMeta = (durationMs = 0, timingPayload = null) => {
     const state = buildThinkingState(durationMs);
     return {
@@ -1607,7 +1575,7 @@ const parseAssistantMessageLayout = (content = "", { forceInteractiveOptions = f
     const hasQuestionLine = lines.some((line) => QUESTION_LINE_REGEX.test(line));
     const isLikelyInteractivePrompt =
         normalizedOptionEntries.length >= 2 &&
-        normalizedOptionEntries.length <= 12 &&
+        normalizedOptionEntries.length <= 24 &&
         (hasQuestionLine || OPTION_PROMPT_CUE_REGEX.test(normalized) || forceInteractiveOptions);
 
     // Keep numbered informational answers as normal markdown instead of forcing
@@ -1687,7 +1655,7 @@ const AssistantMessageBody = ({
         forceInteractiveOptions,
     });
     const hasStructuredQuestion = Boolean(questionText) || options.length > 0;
-    const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[0.97rem] leading-7 prose-p:my-3.5 prose-ul:my-3 prose-ol:my-3 prose-li:my-1.5 prose-strong:font-semibold prose-headings:font-semibold ${isDark
+    const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[13px] leading-normal prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5 prose-li:my-0.5 prose-strong:font-semibold prose-headings:font-semibold ${isDark
         ? 'prose-invert prose-p:text-slate-100 prose-li:text-slate-100 prose-headings:text-white prose-a:text-primary'
         : 'prose-p:text-slate-700 prose-li:text-slate-700 prose-headings:text-slate-900 prose-a:text-primary'
         }`;
@@ -1697,50 +1665,56 @@ const AssistantMessageBody = ({
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-2">
             {contextText && (
                 <AssistantMarkdownBlocks content={contextText} className={assistantMarkdownClassName} />
             )}
 
             {questionText && (
-                <div className={`rounded-2xl border px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isDark ? 'border-primary/20 bg-primary/5' : 'border-primary/25 bg-primary/5'}`}>
-                    <div className={`prose prose-sm max-w-none text-[0.95rem] font-medium leading-7 prose-p:my-1 ${isDark ? 'prose-invert prose-p:text-primary' : 'prose-p:text-slate-800'}`}>
+                <div className={`rounded-2xl border px-3.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isDark ? 'border-primary/20 bg-primary/5' : 'border-primary/25 bg-primary/5'}`}>
+                    <div className={`prose prose-sm max-w-none text-[12.5px] font-medium leading-normal prose-p:my-0.5 ${isDark ? 'prose-invert prose-p:text-primary' : 'prose-p:text-slate-800'}`}>
                         <ReactMarkdown>{questionText}</ReactMarkdown>
                     </div>
                 </div>
             )}
 
             {options.length > 0 && (
-                <div className="space-y-2.5">
+                <div className={`grid gap-1.5 ${
+                    options.length > 8
+                        ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
+                        : options.length > 4
+                            ? 'grid-cols-1 sm:grid-cols-2'
+                            : 'grid-cols-1'
+                }`}>
                     {options.map((option) => (
                         enableOptionClick ? (
                             <button
                                 key={`${option.number}-${option.text}`}
                                 type="button"
                                 onClick={() => onOptionClick(option.text)}
-                                className={`group flex w-full items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left transition-all ${isOptionSelected(option.text)
+                                className={`group flex w-full items-start gap-2 rounded-xl border px-2.5 py-1.5 text-left transition-all ${isOptionSelected(option.text)
                                     ? 'border-primary bg-primary/18 ring-1 ring-primary/45'
                                     : isDark
                                         ? 'border-white/15 bg-white/[0.045] hover:border-white/30 hover:bg-white/[0.09]'
                                         : 'border-black/10 bg-white hover:border-black/20 hover:bg-slate-50'
                                     }`}
                             >
-                                <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold keep-white ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
+                                <span className={`mt-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full text-[10px] font-semibold keep-white ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
                                     {option.number}
                                 </span>
-                                <div className={`prose prose-sm max-w-none leading-relaxed prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
+                                <div className={`prose prose-sm max-w-none text-[13px] leading-normal prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
                                     <ReactMarkdown>{option.text}</ReactMarkdown>
                                 </div>
                             </button>
                         ) : (
                             <div
                                 key={`${option.number}-${option.text}`}
-                                className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 ${isDark ? 'border-white/15 bg-white/[0.045]' : 'border-black/10 bg-white'}`}
+                                className={`flex items-start gap-2 rounded-xl border px-2.5 py-1.5 ${isDark ? 'border-white/15 bg-white/[0.045]' : 'border-black/10 bg-white'}`}
                             >
-                                <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold keep-white ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
+                                <span className={`mt-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full text-[10px] font-semibold keep-white ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
                                     {option.number}
                                 </span>
-                                <div className={`prose prose-sm max-w-none leading-relaxed prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
+                                <div className={`prose prose-sm max-w-none text-[13px] leading-normal prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
                                     <ReactMarkdown>{option.text}</ReactMarkdown>
                                 </div>
                             </div>
@@ -1748,14 +1722,16 @@ const AssistantMessageBody = ({
                     ))}
 
                     {enableOptionClick && isMultiInput && (
-                        <Button
-                            type="button"
-                            className="mt-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary-foreground hover:bg-primary/90"
-                            disabled={selectedCount === 0}
-                            onClick={onSubmitMulti}
-                        >
-                            Send selection
-                        </Button>
+                        <div className="col-span-full mt-1.5">
+                            <Button
+                                type="button"
+                                className="rounded-full bg-primary px-4 py-1.5 h-8 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground hover:bg-primary/90"
+                                disabled={selectedCount === 0}
+                                onClick={onSubmitMulti}
+                            >
+                                Send selection
+                            </Button>
+                        </div>
                     )}
                 </div>
             )}
@@ -5231,14 +5207,11 @@ const GuestAIDemo = () => {
         : 'bg-[radial-gradient(circle_at_top,rgba(var(--brand-rgb),0.12),transparent_40%),radial-gradient(circle_at_bottom,rgba(var(--brand-rgb),0.08),transparent_30%),linear-gradient(180deg,rgba(var(--background-rgb),1)_0%,rgba(var(--brand-rgb),0.08)_100%)]';
     const briefingGlowClasses = isDark ? 'bg-primary/14' : 'bg-primary/15';
     const briefingEyebrowClasses = isDark ? 'text-primary/70' : 'text-primary/80';
-    const briefingDotClasses = isDark ? 'bg-primary shadow-[0_0_0_5px_rgba(var(--brand-rgb),0.12)]' : 'bg-primary shadow-[0_0_0_5px_rgba(var(--brand-rgb),0.10)]';
     const briefingHeadingClasses = isDark ? 'text-white' : 'text-foreground';
     const briefingHeadingSizeClasses = isDark
         ? 'text-[clamp(1.45rem,2.2vw,2.2rem)] leading-[1.16] tracking-[-0.024em] [text-shadow:0_0_28px_rgba(255,255,255,0.04)]'
         : 'text-[clamp(1.55rem,2.5vw,2.4rem)] leading-[1.14] tracking-[-0.024em]';
-    const briefingMutedSentenceClasses = isDark ? 'text-white/28' : 'text-muted-foreground/50';
     const briefingAccentTextClasses = isDark ? '!text-primary' : '!text-[#D9692A]';
-    const briefingAccentPillClasses = isDark ? 'bg-primary/12 text-primary' : 'bg-primary/10 text-primary';
     const briefingBodyClasses = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
     const briefingHeroStageClasses = isDark
         ? 'border-primary/14 bg-[linear-gradient(135deg,rgba(var(--brand-rgb),0.08)_0%,rgba(255,255,255,0.02)_22%,rgba(16,16,19,0.96)_70%)] shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.04),0_45px_120px_-70px_rgba(var(--brand-rgb),0.45)]'
@@ -5249,7 +5222,6 @@ const GuestAIDemo = () => {
     const briefingCardDividerClasses = isDark ? 'border-border/70' : 'border-border/40';
     const briefingStepEyebrowClasses = isDark ? 'text-primary/90' : 'text-muted-foreground';
     const briefingStepTitleClasses = isDark ? 'text-white' : 'text-foreground';
-    const briefingInputBorderClasses = isDark ? 'border-border/70' : 'border-transparent';
     const briefingFieldTextClasses = isDark ? 'text-white placeholder:text-white/30' : 'text-foreground placeholder:text-muted-foreground/50';
     const briefingMicroLabelClasses = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
     const briefingChipClasses = isDark
@@ -5272,17 +5244,9 @@ const GuestAIDemo = () => {
     const briefingPrimaryButtonClasses = canContinueBriefing
         ? 'bg-primary !text-white hover:-translate-y-0.5 hover:brightness-95'
         : (isDark ? 'cursor-not-allowed bg-zinc-700 text-zinc-300' : 'cursor-not-allowed bg-muted text-muted-foreground');
-    const briefingInputTypographyClasses = isDark
-        ? 'text-[clamp(1.05rem,1.8vw,1.35rem)]'
-        : 'text-[clamp(1.2rem,2.3vw,1.65rem)]';
     const briefingTextareaTypographyClasses = isDark
         ? 'text-[clamp(1rem,1.7vw,1.28rem)]'
         : 'text-[clamp(1.15rem,2.1vw,1.55rem)]';
-    const showBriefingGoal = briefingStepIndex >= 1;
-    const showBriefingBudget = false;
-    const showBriefingKickoff = false;
-    const showBriefingDuration = false;
-    const showBriefingReferences = briefingStepIndex >= 2;
     const visibleRoleServices = showAllRoleServices ? orderedServices : orderedServices.slice(0, 7);
 
     if (!selectedService) {
@@ -6768,7 +6732,7 @@ const GuestAIDemo = () => {
                     ref={scrollRef}
                     className={`w-full flex-1 min-h-0 pt-4 transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''}`}
                 >
-                    <div className={`mx-auto flex w-full max-w-4xl flex-col space-y-8 px-4 sm:px-5 lg:px-8 ${isInitialScreen ? 'min-h-[calc(100vh-16rem)] justify-center py-8 sm:min-h-[calc(100vh-17rem)] sm:py-10' : 'pt-4 pb-10 sm:pb-12'}`}>
+                    <div className={`mx-auto flex w-full max-w-4xl flex-col space-y-4 px-4 sm:px-5 lg:px-8 ${isInitialScreen ? 'min-h-[calc(100vh-16rem)] justify-center py-8 sm:min-h-[calc(100vh-17rem)] sm:py-10' : 'pt-2 pb-6 sm:pb-8'}`}>
                         {messages.map((msg, idx) => {
                             const { text: messageContent, attachments: messageAttachments, urls: messageUrls } = parseMessageContentWithAttachments(
                                 msg.content,
@@ -6785,7 +6749,6 @@ const GuestAIDemo = () => {
                             const thinkingMeta = Number.isFinite(Number(msg?.thinkingMeta?.durationMs))
                                 ? msg.thinkingMeta
                                 : null;
-                            const timingBreakdownGroups = getTimingBreakdownGroups(thinkingMeta);
 
                             return msg.role === 'user' ? (
                                 /* ── USER message: right-aligned bubble ── */
@@ -6804,7 +6767,7 @@ const GuestAIDemo = () => {
                                                         href={urlEntry.url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className={`max-w-[320px] rounded-2xl border px-3.5 py-2.5 text-left ${isDark ? 'border-white/10 bg-white/5 text-slate-200' : 'border-black/5 bg-slate-100 text-slate-700'}`}
+                                                        className={`max-w-[320px] rounded-2xl border px-3.5 py-2.5 text-left ${isDark ? 'border-white/15 bg-white/5 text-slate-200' : 'border-black/5 bg-slate-100 text-slate-700'}`}
                                                     >
                                                         <div className="flex items-center gap-2">
                                                             <Globe className="h-4 w-4 shrink-0 opacity-70" />
@@ -6828,11 +6791,11 @@ const GuestAIDemo = () => {
                                                 {messageAttachments.map((attachment, attachmentIdx) => {
                                                     const isImg = String(attachment.type || '').startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(String(attachment.url || ''));
                                                     return isImg ? (
-                                                        <a key={`${attachment.url}-${attachmentIdx}`} href={attachment.url} target="_blank" rel="noopener noreferrer" className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/10' : 'border-black/5'}`}>
+                                                        <a key={`${attachment.url}-${attachmentIdx}`} href={attachment.url} target="_blank" rel="noopener noreferrer" className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/15' : 'border-black/5'}`}>
                                                             <img src={attachment.url} alt={attachment.name || 'Attachment'} className="max-h-36 object-contain" />
                                                         </a>
                                                     ) : (
-                                                        <a key={`${attachment.url}-${attachmentIdx}`} href={attachment.url} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${isDark ? 'border-white/10 bg-white/5 text-slate-200' : 'border-black/5 bg-slate-100 text-slate-700'}`}>
+                                                        <a key={`${attachment.url}-${attachmentIdx}`} href={attachment.url} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${isDark ? 'border-white/15 bg-white/5 text-slate-200' : 'border-black/5 bg-slate-100 text-slate-700'}`}>
                                                             <FileText className="h-4 w-4 shrink-0 opacity-70" />
                                                             <span className="max-w-[150px] truncate">{attachment.name || 'Attachment'}</span>
                                                         </a>
@@ -6842,7 +6805,7 @@ const GuestAIDemo = () => {
                                         )}
                                         {/* text bubble */}
                                         {messageContent && (
-                                            <div className={`rounded-3xl px-5 py-3 text-[15px] leading-relaxed break-words ${isDark
+                                            <div className={`rounded-3xl px-5 py-3 text-[13.5px] leading-normal break-words ${isDark
                                                     ? 'bg-[#2F2F2F] text-white'
                                                     : 'bg-[#F0F0F0] text-slate-900'
                                                 }`}>
@@ -6874,10 +6837,10 @@ const GuestAIDemo = () => {
                                                     <Sparkles className="h-3 w-3 text-primary" />
                                                     Proposal ready
                                                 </div>
-                                                <div className={`text-[15px] leading-relaxed ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                                <div className={`text-[13.5px] leading-normal ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                                     <ProposalPreview content={messageContent || msg.content} isDark={isDark} />
                                                 </div>
-                                                <div className={`pt-3 border-t ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
+                                                <div className={`pt-3 border-t ${isDark ? 'border-white/15' : 'border-slate-100'}`}>
                                                     <Button
                                                         onClick={() => handleProceed(proposalCardContent)}
                                                         variant="outline"
@@ -6889,7 +6852,7 @@ const GuestAIDemo = () => {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className={`text-[15px] leading-relaxed ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                            <div className={`text-[13.5px] leading-normal ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                                 <AssistantMessageBody
                                                     content={messageContent || msg.content}
                                                     isDark={isDark}
@@ -6904,7 +6867,7 @@ const GuestAIDemo = () => {
                                             </div>
                                         )}
                                         {thinkingMeta && (
-                                            <div className={`mt-2 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            <div className={`mt-1 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                                 Responded in {formatThinkingDuration(thinkingMeta.durationMs)}
                                             </div>
                                         )}
