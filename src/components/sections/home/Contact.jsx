@@ -160,77 +160,121 @@ const Contact = () => {
 
       <div className="relative z-10 max-w-[1200px] mx-auto flex flex-col gap-6 md:gap-10">
         
-        {/* 1. Hero Section */}
-        <div className={`hero-content relative w-full p-8 md:p-12 lg:p-16 rounded-2xl border ${borderColor} ${cardBg} backdrop-blur-md flex flex-col md:flex-row gap-10 justify-between items-center`}>
-          {/* Decorative Quote Icon */}
-          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={`absolute -top-4 left-4 md:-top-8 md:left-8 w-20 h-20 md:w-28 md:h-28 opacity-80 ${isDark ? 'text-primary' : 'text-[#D9692A]'}`}>
-            <path d="M20 80 L 20 60 C 20 45 35 45 35 30 L 35 10" stroke="currentColor" strokeWidth="16" strokeLinecap="round" opacity="0.25" />
-            <path d="M45 80 L 45 60 C 45 45 60 45 60 30 L 60 10" stroke="currentColor" strokeWidth="16" strokeLinecap="round" opacity="0.5" />
-            <path d="M70 80 L 70 60 C 70 45 85 45 85 30 L 85 10" stroke="currentColor" strokeWidth="16" strokeLinecap="round" opacity="0.85" />
-          </svg>
-          <div className="md:w-1/2 flex flex-col items-start gap-4 relative z-10 pt-12 md:pt-16">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-[1.2] tracking-tight">
-              We Would Love to Hear <br />
-              <span className={`inline-block px-4 py-1 mt-2 rounded-xl italic font-semibold ${brandBgClass} ${brandTextOnBgClass}`}>
-                from You
-              </span>
-            </h1>
-          </div>
-          <div className="md:w-1/2 flex flex-col items-start md:items-end gap-6 text-left md:text-right">
-            <p className={`text-sm md:text-base max-w-md leading-relaxed ${mutedText}`}>
-              Thank you for your interest in Catalance. We value your thoughts, questions, and feedback. Please don't hesitate to reach out to us. Our dedicated team is here to assist you.
-            </p>
-            <div className="flex gap-3">
-              {[
-                {
-                  href: "https://www.facebook.com/profile.php?id=61586800500990",
-                  label: "Facebook",
-                  icon: (props) => (
-                    <svg viewBox="0 0 24 24" {...props}>
-                      <path
-                        d="M9.101 23.69h4.837v-10.74h3.244l.477-4.185H13.938v-2.67c0-1.127.265-1.9 1.83-1.9h2.24V.5C17.624.444 16.03 0 14.28 0 10.623 0 8.007 2.23 8.007 6.31v3.454H4.898v4.185H8.01V23.69H9.1z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  ),
-                },
-                {
-                  href: "https://www.linkedin.com/company/catalance/?viewAsMember=true",
-                  label: "LinkedIn",
-                  icon: (props) => (
-                    <svg viewBox="0 0 24 24" {...props}>
-                      <path
-                        d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  ),
-                },
-                {
-                  href: "https://www.instagram.com/catalance_official/",
-                  label: "Instagram",
-                  icon: (props) => (
-                    <svg viewBox="0 0 24 24" {...props}>
-                      <path
-                        d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.33.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.33 0 8.74 0 12s.014 3.67.072 4.947c.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.257 0 3.666-.014 4.947-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.257-.014-3.67-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.666.014 15.257 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  ),
-                },
-              ].map((social, idx) => (
-                <a
-                  key={idx}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={social.label}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center ${brandBgClass} ${brandTextOnBgClass} hover:-translate-y-1 transition-transform shadow-md`}
+        {/* 1. Hero Section — target design */}
+        <div className={`hero-content relative w-full rounded-2xl border ${borderColor} overflow-hidden`}
+          style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#FAF7F4' }}
+        >
+          <div className="flex flex-col sm:flex-row items-stretch">
+
+            {/* ── LEFT PANEL ── */}
+            <div className="relative flex flex-row items-center sm:w-1/2 overflow-hidden py-8 px-6 sm:py-10 sm:px-8 gap-6">
+
+              {/* Large salmon decorative quote strokes — top-left corner, behind everything */}
+              <svg
+                viewBox="0 0 90 110"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+                className="absolute top-3 left-3 w-16 h-20 sm:w-20 sm:h-24 pointer-events-none select-none"
+                style={{ opacity: isDark ? 0.18 : 1 }}
+              >
+                {/* Left stroke */}
+                <path
+                  d="M14 100 L14 62 C14 38 32 38 32 18"
+                  stroke={isDark ? '#F9D949' : '#e8b49a'}
+                  strokeWidth="16"
+                  strokeLinecap="round"
+                />
+                {/* Right stroke */}
+                <path
+                  d="M52 100 L52 62 C52 38 70 38 70 18"
+                  stroke={isDark ? '#F9D949' : '#e8b49a'}
+                  strokeWidth="16"
+                  strokeLinecap="round"
+                />
+              </svg>
+
+              {/* Phone image — large, left-anchored, slight bottom overflow */}
+              <div className="relative z-10 shrink-0 -mb-8 -ml-2 sm:-mb-10">
+                <img
+                  src="/retro-phone.png"
+                  alt="Retro cordless telephone"
+                  className="h-44 sm:h-52 w-auto object-contain"
+                  draggable={false}
+                />
+              </div>
+
+              {/* Heading + fromYou pill — beside the phone */}
+              <div className="relative z-10 flex flex-col items-start gap-3 min-w-0 flex-1">
+                <h1
+                  className="font-extrabold leading-tight tracking-tight"
+                  style={{
+                    fontSize: 'clamp(1.1rem, 2vw, 1.65rem)',
+                    color: isDark ? '#ffffff' : '#1a1209',
+                  }}
                 >
-                  <social.icon className="w-5 h-5" />
-                </a>
-              ))}
+                  We Would Love to Hear
+                </h1>
+                <span
+                  className={`italic font-bold rounded-xl px-6 py-2.5 text-lg sm:text-xl ${brandBgClass} ${brandTextOnBgClass}`}
+                  style={{ letterSpacing: '-0.01em' }}
+                >
+                  fromYou
+                </span>
+              </div>
             </div>
+
+            {/* ── RIGHT PANEL ── */}
+            <div className="flex flex-col justify-between px-8 py-10 sm:px-12 sm:py-12 sm:w-1/2">
+              <p className={`text-sm md:text-base leading-relaxed max-w-sm ${mutedText}`}>
+                Thank you for your interest in Catalance. We value your thoughts, questions, and feedback. Please don't hesitate to reach out to us. Our dedicated team is here to assist you.
+              </p>
+
+              {/* Social icons — bottom-right */}
+              <div className="flex gap-3 justify-end mt-6">
+                {[
+                  {
+                    href: "https://www.facebook.com/profile.php?id=61586800500990",
+                    label: "Facebook",
+                    icon: (props) => (
+                      <svg viewBox="0 0 24 24" {...props}>
+                        <path d="M9.101 23.69h4.837v-10.74h3.244l.477-4.185H13.938v-2.67c0-1.127.265-1.9 1.83-1.9h2.24V.5C17.624.444 16.03 0 14.28 0 10.623 0 8.007 2.23 8.007 6.31v3.454H4.898v4.185H8.01V23.69H9.1z" fill="currentColor"/>
+                      </svg>
+                    ),
+                  },
+                  {
+                    href: "https://www.linkedin.com/company/catalance/?viewAsMember=true",
+                    label: "LinkedIn",
+                    icon: (props) => (
+                      <svg viewBox="0 0 24 24" {...props}>
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" fill="currentColor"/>
+                      </svg>
+                    ),
+                  },
+                  {
+                    href: "https://www.instagram.com/catalance_official/",
+                    label: "Instagram",
+                    icon: (props) => (
+                      <svg viewBox="0 0 24 24" {...props}>
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.33.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.33 0 8.74 0 12s.014 3.67.072 4.947c.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.257 0 3.666-.014 4.947-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.257-.014-3.67-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.666.014 15.257 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" fill="currentColor"/>
+                      </svg>
+                    ),
+                  },
+                ].map((social, idx) => (
+                  <a
+                    key={idx}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={social.label}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center ${brandBgClass} ${brandTextOnBgClass} hover:-translate-y-1 transition-transform shadow-md`}
+                  >
+                    <social.icon className="w-5 h-5" />
+                  </a>
+                ))}
+              </div>
+            </div>
+
           </div>
         </div>
 

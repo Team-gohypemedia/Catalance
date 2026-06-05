@@ -5365,7 +5365,7 @@ const GuestAIDemo = () => {
                                                         onClick={() => setShowAllRoleServices(!showAllRoleServices)}
                                                         className={`rounded-full border px-4 py-2 text-xs transition-colors ${briefingSelectedChipClasses}`}
                                                     >
-                                                        {showAllRoleServices ? 'Less' : 'Other'}
+                                                        {showAllRoleServices ? 'Less' : 'More'}
                                                     </button>
                                                 ) : null}
                                             </div>
