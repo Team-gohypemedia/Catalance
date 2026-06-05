@@ -5354,20 +5354,22 @@ const GuestAIDemo = () => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="">
-                                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-[0.65rem] bg-primary text-[15px] font-bold text-primary-foreground">
+                                    <div className="flex gap-4 items-start">
+                                        <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.65rem] bg-primary text-[15px] font-bold text-primary-foreground">
                                             {String(briefingStepIndex + 1).padStart(2, '0')}
                                         </span>
-                                        <h2 className="mt-4 text-[1.65rem] font-bold leading-[1.18] tracking-[-0.02em] text-foreground sm:text-[2rem]">
-                                            {currentBriefingStep.label}
-                                        </h2>
-                                        <p className="mt-2 text-sm text-muted-foreground">
-                                            {currentBriefingStep.key === 'role'
-                                                ? 'Choose the direction that best describes your project.'
-                                                : currentBriefingStep.key === 'goal'
-                                                    ? 'Choose the option that best describes your project, or type your own requirement.'
-                                                    : 'Attach any references that will help us read your brief faster.'}
-                                        </p>
+                                        <div className="flex-1 min-w-0">
+                                            <h2 className="text-lg font-bold leading-snug tracking-[-0.01em] text-foreground sm:text-xl">
+                                                {currentBriefingStep.key === 'role'
+                                                    ? 'Choose the direction that best describes your project.'
+                                                    : currentBriefingStep.key === 'goal'
+                                                        ? 'Choose the option that best describes your project, or type your own requirement.'
+                                                        : 'Attach any references that will help us read your brief faster.'}
+                                            </h2>
+                                            <p className="mt-2 text-sm text-muted-foreground">
+                                                {currentBriefingStep.label}
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -5397,7 +5399,7 @@ const GuestAIDemo = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => setShowAllRoleServices(!showAllRoleServices)}
-                                                        className={`rounded-full border px-4 py-2 text-xs transition-colors ${briefingChipClasses}`}
+                                                        className={`rounded-full border px-4 py-2 text-xs transition-colors ${briefingSelectedChipClasses}`}
                                                     >
                                                         {showAllRoleServices ? 'Less' : 'Other'}
                                                     </button>
