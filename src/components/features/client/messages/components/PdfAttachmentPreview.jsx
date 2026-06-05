@@ -173,7 +173,7 @@ const PdfAttachmentPreview = React.memo(function PdfAttachmentPreview({
                 ? "Generating preview..."
                 : "Preview unavailable"}
             </p>
-            <p className="mt-1 text-xs text-[#4b5563]">
+            <p className="mt-1 text-xs text-[#000000]">
               {previewState.error
                 ? "Open the file to view the full document."
                 : "Preparing the first page of the PDF."}

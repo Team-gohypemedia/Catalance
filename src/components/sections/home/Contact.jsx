@@ -258,7 +258,7 @@ const Contact = () => {
                   </span>
                 </div>
                 <div className={`absolute top-3 right-3 sm:relative sm:top-auto sm:right-auto w-6 h-6 sm:w-8 sm:h-8 shrink-0 rounded-full flex items-center justify-center bg-neutral-900 text-white dark:bg-white dark:text-black transition-transform group-hover:scale-110`}>
-                  <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 text-white dark:text-black" />
                 </div>
               </CardElement>
             );
@@ -483,7 +483,7 @@ const Contact = () => {
                     ? 'bg-primary text-primary-foreground hover:bg-yellow-400 hover:shadow-[0_0_20px_rgba(249,217,73,0.3)]' 
                     : 'bg-[#D9692A] text-[#ffffff] hover:bg-[#bd5c25] hover:shadow-[0_0_20px_rgba(200, 80, 40,0.3)]'
                }`}>
-                  Get Started <ArrowUpRight className="w-4 h-4"/>
+                  Get Started <ArrowUpRight className="w-4 h-4 text-white"/>
                </button>
             </div>
         </div>

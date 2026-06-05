@@ -23,7 +23,7 @@ body[data-scroll-locked] {
   --secondary: oklch(0.9700 0 0);
   --secondary-foreground: oklch(0.2050 0 0);
   --muted: oklch(0.9700 0 0);
-  --muted-foreground: oklch(0.5560 0 0);
+  --muted-foreground: #000000;
   --accent: oklch(0.9700 0 0);
   --accent-foreground: oklch(0.2050 0 0);
   --destructive: oklch(0.5770 0.2450 27.3250);
@@ -381,16 +381,16 @@ body[data-scroll-locked] {
     --primary: #D9692A;
     --primary-foreground: #FAF6F0;
     --secondary: #f1f5f9;
-    --secondary-foreground: #334155;
+    --secondary-foreground: #000000;
     --muted: #f8fafc;
-    --muted-foreground: #64748b;
+    --muted-foreground: #000000;
     --accent: #e2e8f0;
     --accent-foreground: #0f172a;
     --border: #dbe3ef;
     --input: #d7e5ff;
     --ring: #D9692A;
     --sidebar: #ffffff;
-    --sidebar-foreground: #334155;
+    --sidebar-foreground: #000000;
     --sidebar-primary: oklch(0.8652 0.1768 90.3800);
     --sidebar-primary-foreground: #0f172a;
     --sidebar-accent: #f1f5f9;
@@ -455,10 +455,10 @@ html.marketplace-page:not(.dark) {
   --popover-foreground:   #000000;
   --primary:              #D9692A; /* New Primary Color */
   --primary-foreground:   #FAF6F0;
-  --secondary:            #7C778A; /* Muted Taupe from inactive icons */
+  --secondary:            #000000; /* Muted Taupe from inactive icons */
   --secondary-foreground: #FFFFFF;
   --muted:                #F8F6EF; /* Very subtle warm gray */
-  --muted-foreground:     #444444;
+  --muted-foreground:     #000000;
   --accent:               #FFF3C4;
   --accent-foreground:    #1C1B1F;
   --border:               #E5E1D3; /* Very soft border */
@@ -511,7 +511,7 @@ html.marketplace-page:not(.dark) main h4 {
 html.home-page:not(.dark) main p,
 html.onboarding-page:not(.dark) main p,
 html.marketplace-page:not(.dark) main p {
-  color: #7C778A !important;
+  color: #000000 !important;
 }
 
 /* ── Override dull body text colors for AI Demo page (using black/darker text) ── */
@@ -566,10 +566,10 @@ html:not(.dark) a[class*="bg-primary/"]:not([class*="bg-primary/5"]):not([class*
 /* Softer muted variants for text-white/55 etc */
 html.home-page:not(.dark) main [class*="text-white/"]:not(.keep-white):not(.dark-card *),
 html.onboarding-page:not(.dark) main [class*="text-white/"]:not(.keep-white):not(.dark-card *) {
-  color: #7C778A !important;
+  color: #000000 !important;
 }
 html.marketplace-page:not(.dark) main [class*="text-white/"]:not(.keep-white):not(.dark-card *) {
-  color: #7C778A !important;
+  color: #000000 !important;
 }
 
 /* ── Section backgrounds (alternate) ── */
@@ -619,7 +619,7 @@ html.marketplace-page:not(.dark) main .glass-card {
 /* Card labels & Secondary text */
 html.home-page:not(.dark) main article span[class*="uppercase"],
 html.home-page:not(.dark) main [class*="text-secondary"] {
-  color: #7C778A !important;
+  color: #000000 !important;
   font-weight: 600;
   letter-spacing: 0.05em;
 }
@@ -726,7 +726,7 @@ html.onboarding-page:not(.dark) main [class*="focus:bg-white/10"] * {
 
 html.onboarding-page:not(.dark) main input::placeholder,
 html.onboarding-page:not(.dark) main textarea::placeholder {
-  color: #7C778A !important;
+  color: #000000 !important;
   opacity: 0.65 !important;
 }
 
@@ -798,7 +798,7 @@ html.home-page:not(.dark) main [class*="border-primary"] {
 html.home-page:not(.dark) main svg:not([class*="text-primary"]):not([class*="fill-primary"]):not(.keep-white),
 html.onboarding-page:not(.dark) main svg:not([class*="text-primary"]):not([class*="fill-primary"]):not(.keep-white),
 html.marketplace-page:not(.dark) main svg:not([class*="text-primary"]):not([class*="fill-primary"]):not(.keep-white) {
-  color: #7C778A !important;
+  color: #000000 !important;
 }
 
 /* Ensure keep-white SVGs are white under light theme */
@@ -847,7 +847,7 @@ html:not(.dark) .themed-card span {
 }
 
 html:not(.dark) .themed-card .text-white\/62 {
-  color: #7C778A !important;
+  color: #000000 !important;
 }
 
 /* Mascot Handling */
@@ -910,3 +910,110 @@ html:not(.dark) footer a[aria-label]:hover {
 .animate-shine {
   animation: shine 2s linear infinite;
 }
+
+/* =============================================================================
+   Global Light Theme Grey Text/Icon to Black Overrides
+   ============================================================================= */
+
+/* Override default Tailwind slate, gray, zinc, neutral, stone, and muted text/icon classes to black in light theme */
+html:not(.dark) [class*="text-slate-300"],
+html:not(.dark) [class*="text-slate-400"],
+html:not(.dark) [class*="text-slate-500"],
+html:not(.dark) [class*="text-slate-600"],
+html:not(.dark) [class*="text-slate-700"],
+html:not(.dark) [class*="text-gray-300"],
+html:not(.dark) [class*="text-gray-400"],
+html:not(.dark) [class*="text-gray-500"],
+html:not(.dark) [class*="text-gray-600"],
+html:not(.dark) [class*="text-gray-700"],
+html:not(.dark) [class*="text-zinc-300"],
+html:not(.dark) [class*="text-zinc-400"],
+html:not(.dark) [class*="text-zinc-500"],
+html:not(.dark) [class*="text-zinc-600"],
+html:not(.dark) [class*="text-zinc-700"],
+html:not(.dark) [class*="text-neutral-300"],
+html:not(.dark) [class*="text-neutral-400"],
+html:not(.dark) [class*="text-neutral-500"],
+html:not(.dark) [class*="text-neutral-600"],
+html:not(.dark) [class*="text-neutral-700"],
+html:not(.dark) [class*="text-stone-300"],
+html:not(.dark) [class*="text-stone-400"],
+html:not(.dark) [class*="text-stone-500"],
+html:not(.dark) [class*="text-stone-600"],
+html:not(.dark) [class*="text-stone-700"],
+html:not(.dark) [class*="text-muted-foreground"] {
+  color: #000000 !important;
+}
+
+/* Override default Tailwind stroke classes specifically for light theme */
+html:not(.dark) [class*="stroke-slate-300"],
+html:not(.dark) [class*="stroke-slate-400"],
+html:not(.dark) [class*="stroke-slate-500"],
+html:not(.dark) [class*="stroke-slate-600"],
+html:not(.dark) [class*="stroke-slate-700"],
+html:not(.dark) [class*="stroke-gray-300"],
+html:not(.dark) [class*="stroke-gray-400"],
+html:not(.dark) [class*="stroke-gray-500"],
+html:not(.dark) [class*="stroke-gray-600"],
+html:not(.dark) [class*="stroke-gray-700"],
+html:not(.dark) [class*="stroke-zinc-300"],
+html:not(.dark) [class*="stroke-zinc-400"],
+html:not(.dark) [class*="stroke-zinc-500"],
+html:not(.dark) [class*="stroke-zinc-600"],
+html:not(.dark) [class*="stroke-zinc-700"],
+html:not(.dark) [class*="stroke-neutral-300"],
+html:not(.dark) [class*="stroke-neutral-400"],
+html:not(.dark) [class*="stroke-neutral-500"],
+html:not(.dark) [class*="stroke-neutral-600"],
+html:not(.dark) [class*="stroke-neutral-700"],
+html:not(.dark) [class*="stroke-stone-300"],
+html:not(.dark) [class*="stroke-stone-400"],
+html:not(.dark) [class*="stroke-stone-500"],
+html:not(.dark) [class*="stroke-stone-600"],
+html:not(.dark) [class*="stroke-stone-700"] {
+  stroke: #000000 !important;
+}
+
+/* Override default Tailwind fill classes specifically for light theme */
+html:not(.dark) [class*="fill-slate-300"],
+html:not(.dark) [class*="fill-slate-400"],
+html:not(.dark) [class*="fill-slate-500"],
+html:not(.dark) [class*="fill-slate-600"],
+html:not(.dark) [class*="fill-slate-700"],
+html:not(.dark) [class*="fill-gray-300"],
+html:not(.dark) [class*="fill-gray-400"],
+html:not(.dark) [class*="fill-gray-500"],
+html:not(.dark) [class*="fill-gray-600"],
+html:not(.dark) [class*="fill-gray-700"],
+html:not(.dark) [class*="fill-zinc-300"],
+html:not(.dark) [class*="fill-zinc-400"],
+html:not(.dark) [class*="fill-zinc-500"],
+html:not(.dark) [class*="fill-zinc-600"],
+html:not(.dark) [class*="fill-zinc-700"],
+html:not(.dark) [class*="fill-neutral-300"],
+html:not(.dark) [class*="fill-neutral-400"],
+html:not(.dark) [class*="fill-neutral-500"],
+html:not(.dark) [class*="fill-neutral-600"],
+html:not(.dark) [class*="fill-neutral-700"],
+html:not(.dark) [class*="fill-stone-300"],
+html:not(.dark) [class*="fill-stone-400"],
+html:not(.dark) [class*="fill-stone-500"],
+html:not(.dark) [class*="fill-stone-600"],
+html:not(.dark) [class*="fill-stone-700"] {
+  fill: #000000 !important;
+}
+
+/* Ensure all light theme icons are black by default unless explicitly colored or inside a white/primary text container */
+html:not(.dark) svg:not([class*="text-"]):not([class*="fill-"]):not([class*="stroke-"]):not(.keep-white):not(:is([class*="bg-primary"] *, [class*="text-white"] *, [class*="text-primary-foreground"] *, button.bg-primary *, a.bg-primary *)) {
+  color: #000000 !important;
+}
+
+/* Keep SVGs inside primary bg or white/primary-foreground text containers white in light theme */
+html:not(.dark) [class*="bg-primary"] svg,
+html:not(.dark) [class*="text-primary-foreground"] svg,
+html:not(.dark) [class*="text-white"] svg,
+html:not(.dark) button.bg-primary svg,
+html:not(.dark) a.bg-primary svg {
+  color: inherit !important;
+}
+

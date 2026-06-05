@@ -34,7 +34,7 @@ const BadgeIcon = ({ icon, earned }) => {
         "flex size-12 items-center justify-center rounded-full border",
         earned
           ? "border-[#ead7ad] bg-[#fff5dd] text-[#D9692A] shadow-[0_0_18px_rgba(217,105,42,0.08)]"
-          : "border-[#eadbc7] bg-[#ffffff] text-[#8a7b66]",
+          : "border-[#eadbc7] bg-[#ffffff] text-[#000000]",
       )}
     >
       <Icon className="size-5" />
@@ -51,18 +51,18 @@ const BadgeCard = ({ badge, currentStreak }) => {
     <article className="rounded-[16px] border border-[#e5e1d3] bg-[#fffaf4] p-5">
       <div className="flex items-start justify-between gap-4">
         <BadgeIcon icon={badge?.icon} earned={earned} />
-        <span className={cn("rounded-md px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.16em]", earned ? "bg-[#ecfdf3] text-[#15803d]" : "bg-[#f5efe3] text-[#8a7b66]")}>
+        <span className={cn("rounded-md px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.16em]", earned ? "bg-[#ecfdf3] text-[#15803d]" : "bg-[#f5efe3] text-[#000000]")}>
           {earned ? "Unlocked" : "Locked"}
         </span>
       </div>
       <h4 className="mt-5 text-2xl font-bold tracking-tight text-[#1c1b1f]">{badge?.title}</h4>
-      <p className="mt-2 min-h-[58px] text-sm leading-6 text-[#6f6457]">{badge?.description || "Badge reward"}</p>
+      <p className="mt-2 min-h-[58px] text-sm leading-6 text-[#000000]">{badge?.description || "Badge reward"}</p>
       {targetDays ? (
         <div className="mt-5">
           <div className="h-2 overflow-hidden rounded-full bg-[#eadbc7]">
             <div className={cn("h-full rounded-full transition-all duration-700", earned ? "bg-[linear-gradient(90deg,#D9692A,#E8854A)]" : "bg-[linear-gradient(90deg,#d9b47a,#f0c98d)]")} style={{ width: `${pct}%` }} />
           </div>
-          <div className="mt-2 flex items-center justify-between text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[#8a7b66]">
+          <div className="mt-2 flex items-center justify-between text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[#000000]">
             <span>{Math.min(currentStreak, targetDays)} days</span>
             <span>{targetDays} days</span>
           </div>
@@ -85,10 +85,10 @@ const BadgeShelf = ({ badges = [], currentStreak = 0 }) => {
           </div>
           <div>
             <h3 className="text-[1.65rem] font-bold tracking-tight text-[#1c1b1f]">Achievement Badges</h3>
-            <p className="mt-1 text-sm text-[#6f6457]">Unlock streak and contest rewards here.</p>
+            <p className="mt-1 text-sm text-[#000000]">Unlock streak and contest rewards here.</p>
           </div>
         </div>
-        <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#8a7b66]">{unlockedCount}/{badgeList.length} Unlocked</span>
+        <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#000000]">{unlockedCount}/{badgeList.length} Unlocked</span>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {badgeList.map((badge) => (
@@ -97,7 +97,7 @@ const BadgeShelf = ({ badges = [], currentStreak = 0 }) => {
       </div>
       <div className="mt-8 rounded-[14px] border border-[#eadbc7] bg-[#fffaf4] px-4 py-4">
         <p className="text-sm font-semibold text-[#1c1b1f]">Active Inventory</p>
-        <p className="mt-1 text-sm text-[#6f6457]">Contest badges and unlocked streak badges stay visible in your account profile.</p>
+        <p className="mt-1 text-sm text-[#000000]">Contest badges and unlocked streak badges stay visible in your account profile.</p>
       </div>
     </section>
   );
