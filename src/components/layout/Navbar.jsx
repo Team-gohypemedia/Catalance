@@ -36,8 +36,8 @@ const buildNavItems = ({
     name: isFreelancer ? "Opportunity" : "Marketplace",
     link: isFreelancer ? "/opportunity" : "/marketplace",
   },
-  { name: "Contact", link: "/contact" },
   ...(isFreelancer ? [{ name: "Growth Hub", link: "/freelancer/growth-quest" }] : []),
+  { name: "Contact", link: "/contact" },
 ];
 
 const buildMobileMarketingNavItems = ({
@@ -53,10 +53,10 @@ const buildMobileMarketingNavItems = ({
     key: "marketplace",
     to: isFreelancer ? "/opportunity" : "/marketplace",
   },
-  { label: "Contact", key: "contact", to: "/contact" },
   ...(isFreelancer
     ? [{ label: "Growth Hub", key: "growth-quest", to: "/freelancer/growth-quest" }]
     : []),
+  { label: "Contact", key: "contact", to: "/contact" },
 ];
 
 const clientWorkspaceNavItems = [
@@ -256,7 +256,7 @@ const Navbar = () => {
 };
 
 /* ─── PublicMobileSidebar ────────────────────────────────────────────── */
-const PublicMobileSidebar = ({ navItems, currentPath, isHome }) => {
+const PublicMobileSidebar = ({ navItems, currentPath, _isHome }) => {
   const [open, setOpen] = useState(false);
 
   return (

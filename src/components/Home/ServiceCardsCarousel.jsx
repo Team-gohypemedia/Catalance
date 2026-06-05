@@ -2,7 +2,6 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 
-import cataLogo from "@/assets/logos/logo.svg";
 import { Button } from "@/components/ui/button";
 
 import voiceAgentImg from "@/assets/cards/voice-agent.png";
@@ -41,7 +40,7 @@ const HOME_SERVICES = [
   },
 ];
 
-const HOME_SERVICE_CARDS = HOME_SERVICES.map((service, index) => ({
+const HOME_SERVICE_CARDS = HOME_SERVICES.map((service) => ({
   ...service,
   isPriority: true,
 }));
@@ -59,7 +58,7 @@ const ServiceRailCard = React.memo(function ServiceRailCard({ service, onSelect 
           src={service.cardImg}
           alt={service.title}
           loading={service.isPriority ? "eager" : "lazy"}
-          fetchpriority={service.isPriority ? "high" : "low"}
+          fetchPriority={service.isPriority ? "high" : "low"}
           decoding="async"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
@@ -84,7 +83,7 @@ const ServiceRailCard = React.memo(function ServiceRailCard({ service, onSelect 
               src={service.logoSrc}
               alt={service.title}
               loading={service.isPriority ? "eager" : "lazy"}
-              fetchpriority={service.isPriority ? "high" : "low"}
+              fetchPriority={service.isPriority ? "high" : "low"}
               decoding="async"
               className="relative z-10 h-24 w-24 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.24)] sm:h-40 sm:w-40"
             />
@@ -204,14 +203,6 @@ const ServiceCardsCarousel = () => {
           </div>
         </div>
 
-        <Button
-          type="button"
-          onClick={() => navigate("/service")}
-          variant="outline"
-          className="self-center mt-4 hover:bg-primary hover:text-primary-foreground hover:border-transparent transition-colors duration-300"
-        >
-          View All
-        </Button>
 
       </div>
 
