@@ -394,7 +394,7 @@ const AdminServiceQuestions = () => {
                 setImportJson("");
             } else {
                 const data = await res.json();
-                toast.error(data?.error || "Failed to import flow");
+                toast.error(data?.message || data?.error || "Failed to import flow");
             }
         } catch (error) {
             console.error("Error importing flow:", error);
@@ -423,7 +423,7 @@ const AdminServiceQuestions = () => {
                 setLastImportHistory(null);
             } else {
                 const data = await res.json();
-                toast.error(data?.error || "Failed to undo import");
+                toast.error(data?.message || data?.error || "Failed to undo import");
             }
         } catch (error) {
             console.error("Error undoing import:", error);

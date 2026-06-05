@@ -6,6 +6,7 @@ import UserRound from "lucide-react/dist/esm/icons/user-round";
 import Rocket from "lucide-react/dist/esm/icons/rocket";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import Truck from "lucide-react/dist/esm/icons/truck";
+import X from "lucide-react/dist/esm/icons/x";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -42,8 +43,9 @@ const welcomeHighlights = [
 const FreelancerOnboardingWelcomeModal = ({
   open = false,
   onStartOnboarding,
+  onClose,
 }) => (
-  <AlertDialog open={open} onOpenChange={() => {}}>
+  <AlertDialog open={open} onOpenChange={onClose}>
     <AlertDialogContent
       onEscapeKeyDown={preventModalDismiss}
       onInteractOutside={preventModalDismiss}
@@ -51,6 +53,16 @@ const FreelancerOnboardingWelcomeModal = ({
       className="origin-center w-[calc(100vw-2rem)] max-w-[34rem] overflow-hidden rounded-[16px] border border-gray-100 bg-white p-0 text-[#1C1B1F] shadow-[0_20px_60px_rgba(0,0,0,0.12)] sm:w-[min(94vw,34rem)] sm:rounded-[20px]"
     >
       <div className="relative max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain bg-white">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-4 left-4 flex size-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+          >
+            <X className="size-4" />
+          </button>
+        )}
         
         <div className="flex flex-col gap-4 p-5 sm:gap-6 sm:p-8 pt-8 sm:pt-10 items-center">
           
@@ -126,6 +138,7 @@ const FreelancerOnboardingWelcomeModal = ({
 FreelancerOnboardingWelcomeModal.propTypes = {
   open: PropTypes.bool,
   onStartOnboarding: PropTypes.func.isRequired,
+  onClose: PropTypes.func,
 };
 
 export default FreelancerOnboardingWelcomeModal;

@@ -38,4 +38,22 @@ describe("FreelancerOnboardingWelcomeModal", () => {
 
     expect(handleStartOnboarding).toHaveBeenCalledTimes(1);
   });
+
+  it("renders the close button when onClose is provided and calls the handler when clicked", () => {
+    const handleClose = vi.fn();
+
+    render(
+      <FreelancerOnboardingWelcomeModal
+        open
+        onStartOnboarding={vi.fn()}
+        onClose={handleClose}
+      />
+    );
+
+    const closeButton = screen.getByLabelText(/close/i);
+    expect(closeButton).toBeTruthy();
+
+    fireEvent.click(closeButton);
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
 });

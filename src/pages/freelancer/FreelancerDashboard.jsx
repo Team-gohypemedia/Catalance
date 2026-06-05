@@ -34,7 +34,8 @@ import {
 const FreelancerDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const shouldShowOnboardingWelcome = requiresFreelancerOnboarding(user);
+  const [isWelcomeDismissed, setIsWelcomeDismissed] = React.useState(false);
+  const shouldShowOnboardingWelcome = requiresFreelancerOnboarding(user) && !isWelcomeDismissed;
 
   useEffect(() => {
     if (!shouldShowOnboardingWelcome || typeof window === "undefined") {
@@ -270,6 +271,7 @@ const FreelancerDashboard = () => {
               onStartOnboarding={() =>
                 navigate(FREELANCER_ONBOARDING_PATH, { replace: true })
               }
+              onClose={() => setIsWelcomeDismissed(true)}
             />
           </div>
         </div>
