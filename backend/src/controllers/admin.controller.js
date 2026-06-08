@@ -2014,6 +2014,8 @@ export const getServiceQuestions = asyncHandler(async (req, res) => {
     logic: q.logic || [],
     subtitle: q.subtitle || "",
     saveResponse: q.saveResponse || false,
+    showRecommendationPopup: q.showRecommendationPopup || false,
+    disableAutoRecommendationPopup: q.disableAutoRecommendationPopup || false,
     nextQuestionSlug: q.nextQuestionSlug || ""
   }));
 
@@ -2022,7 +2024,20 @@ export const getServiceQuestions = asyncHandler(async (req, res) => {
 
 export const upsertQuestion = asyncHandler(async (req, res) => {
   const { serviceId } = req.params; // Service SLUG
-  const { id, type, question, options, logic, existingId, required, subtitle, saveResponse, nextQuestionSlug } = req.body; // id is question SLUG
+  const {
+    id,
+    type,
+    question,
+    options,
+    logic,
+    existingId,
+    required,
+    subtitle,
+    saveResponse,
+    showRecommendationPopup,
+    disableAutoRecommendationPopup,
+    nextQuestionSlug
+  } = req.body; // id is question SLUG
 
   if (!serviceId || !id || !type || !question) {
     throw new AppError("Missing required fields", 400);
@@ -2038,6 +2053,10 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
 
   const isRequired = required === undefined ? true : required;
   const isSaveResponse = saveResponse === undefined ? false : saveResponse;
+  const isShowRecommendationPopup =
+    showRecommendationPopup === undefined ? false : showRecommendationPopup;
+  const isDisableAutoRecommendationPopup =
+    disableAutoRecommendationPopup === undefined ? false : disableAutoRecommendationPopup;
 
   // If existingId is provided, we might be renaming the slug.
   if (existingId && existingId !== id) {
@@ -2061,6 +2080,8 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         required: isRequired,
         subtitle: subtitle || null,
         saveResponse: isSaveResponse,
+        showRecommendationPopup: isShowRecommendationPopup,
+        disableAutoRecommendationPopup: isDisableAutoRecommendationPopup,
         nextQuestionSlug: nextQuestionSlug || null
       }
     });
@@ -2084,6 +2105,8 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         required: isRequired,
         subtitle: subtitle || null,
         saveResponse: isSaveResponse,
+        showRecommendationPopup: isShowRecommendationPopup,
+        disableAutoRecommendationPopup: isDisableAutoRecommendationPopup,
         nextQuestionSlug: nextQuestionSlug || null
       },
       create: {
@@ -2097,6 +2120,8 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         order: nextOrder,
         subtitle: subtitle || null,
         saveResponse: isSaveResponse,
+        showRecommendationPopup: isShowRecommendationPopup,
+        disableAutoRecommendationPopup: isDisableAutoRecommendationPopup,
         nextQuestionSlug: nextQuestionSlug || null
       }
     });
@@ -2204,6 +2229,10 @@ export const importServiceQuestions = asyncHandler(async (req, res) => {
         order: index,
         subtitle: q.subtitle || null,
         saveResponse: q.saveResponse === undefined ? false : q.saveResponse,
+        showRecommendationPopup:
+          q.showRecommendationPopup === undefined ? false : q.showRecommendationPopup,
+        disableAutoRecommendationPopup:
+          q.disableAutoRecommendationPopup === undefined ? false : q.disableAutoRecommendationPopup,
         nextQuestionSlug: q.nextQuestionSlug || null
       };
     });

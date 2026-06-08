@@ -655,6 +655,8 @@ model ServiceQuestion {
 
   subtitle         String? // Context for AI
   saveResponse     Boolean @default(false) // Flag to save response for special handling
+  showRecommendationPopup Boolean @default(false) // Auto-open recommendation helper for this question on the guest UI
+  disableAutoRecommendationPopup Boolean @default(false) // Prevent automatic recommendation helper popups for this question
   nextQuestionSlug String? // Default next question if logic doesn't override
 
   service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)

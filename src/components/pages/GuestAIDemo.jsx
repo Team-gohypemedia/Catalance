@@ -2037,7 +2037,11 @@ const buildFreeformOptionHelperCopy = ({
 const shouldAutoRecommendCurrentQuestion = ({
     questionText = '',
     contextText = '',
+    forceRecommendationPopup = false,
+    disableAutoRecommendationPopup = false,
 }) => {
+    if (disableAutoRecommendationPopup) return false;
+    if (forceRecommendationPopup) return true;
     const combinedPrompt = `${normalizeHelperIntentText(questionText)} ${normalizeHelperIntentText(contextText)}`.trim();
     return AUTO_HELPER_QUESTION_REGEX.test(combinedPrompt);
 };
@@ -3531,11 +3535,15 @@ const GuestAIDemo = () => {
         notice: contextualPendingOptionNotice,
         placeholder: contextualPendingOptionPlaceholder,
     });
+    const shouldForceRecommendationPopup = Boolean(inputConfig?.showRecommendationPopup);
+    const shouldDisableAutoRecommendationPopup = Boolean(inputConfig?.disableAutoRecommendationPopup);
     const shouldAutoRecommendQuestion = !latestAssistantIsProposal
         && Boolean(latestAssistantPrompt.questionText)
         && shouldAutoRecommendCurrentQuestion({
             questionText: latestAssistantPrompt.questionText,
             contextText: latestAssistantPrompt.contextText,
+            forceRecommendationPopup: shouldForceRecommendationPopup,
+            disableAutoRecommendationPopup: shouldDisableAutoRecommendationPopup,
         });
     const automaticQuestionHelperKey = shouldAutoRecommendQuestion
         ? `${sessionId || 'guest'}::${normalizeOptionToken(latestAssistantPrompt.questionText)}::${normalizeOptionToken(latestAssistantPrompt.contextText)}`
@@ -3837,6 +3845,12 @@ const GuestAIDemo = () => {
     }, [inputConfig.type, inputConfig.options]);
 
     useEffect(() => {
+        if (shouldDisableAutoRecommendationPopup && pendingOptionFollowup?.autoSuggestion) {
+            setPendingOptionFollowup(null);
+        }
+    }, [pendingOptionFollowup?.autoSuggestion, shouldDisableAutoRecommendationPopup]);
+
+    useEffect(() => {
         if (!pendingOptionFollowup?.autoSuggestion) return;
 
         if (!automaticQuestionHelperKey) {
@@ -3847,6 +3861,7 @@ const GuestAIDemo = () => {
     useEffect(() => {
         if (!automaticQuestionHelperKey) return;
         if (dismissedAutoHelperKeysRef.current.has(automaticQuestionHelperKey)) return;
+        if (shouldDisableAutoRecommendationPopup) return;
 
         if (pendingOptionFollowup?.autoSuggestion) {
             if (pendingOptionFollowup.questionKey === automaticQuestionHelperKey) return;
@@ -3878,6 +3893,7 @@ const GuestAIDemo = () => {
         latestAssistantPrompt.options,
         latestAssistantPrompt.questionText,
         pendingOptionFollowup,
+        shouldDisableAutoRecommendationPopup,
     ]);
 
     useEffect(() => {

@@ -2245,6 +2245,13 @@ const getQuestionOptionLabels = (question = {}, runtimeOptionsByQuestionSlug = {
         .map((option) => String(option?.label || option?.value || "").trim())
         .filter(Boolean);
 
+const buildQuestionInputConfig = (question = null, runtimeOptionsByQuestionSlug = {}) => ({
+    type: question?.type || "text",
+    options: question ? getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug) : [],
+    showRecommendationPopup: Boolean(question?.showRecommendationPopup),
+    disableAutoRecommendationPopup: Boolean(question?.disableAutoRecommendationPopup),
+});
+
 const extractComparableAnswerTokens = (answerValue = "") => {
     if (Array.isArray(answerValue)) {
         return Array.from(
@@ -5828,10 +5835,10 @@ const buildServiceStartState = async ({
         );
     }
 
-    const firstQuestionConfig = {
-        type: firstQuestionDefinition?.type || "text",
-        options: getDisplayedQuestionOptions(firstQuestionDefinition, runtimeOptionsByQuestionSlug)
-    };
+    const firstQuestionConfig = buildQuestionInputConfig(
+        firstQuestionDefinition,
+        runtimeOptionsByQuestionSlug
+    );
     const startPrefillBridge = buildSessionStartPrefillBridge(activeStartContext);
     const aiFirstQuestion = firstQuestionDefinition
         ? await buildAiGuidedQuestionMessage({
@@ -6272,7 +6279,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: 'asc' } } } });
             return res.json({
                 success: true, message: fullCancelMsg,
-                inputConfig: { type: currentQuestion?.type || "text", options: getDisplayedQuestionOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug) },
+                inputConfig: buildQuestionInputConfig(currentQuestion, sessionRuntimeOptionsByQuestionSlug),
                 history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
             });
         }
@@ -6320,7 +6327,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 success: true,
                 message: blockedCorrectionMessage,
                 inputConfig: currentQuestion
-                    ? { type: currentQuestion?.type || "text", options: getDisplayedQuestionOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug) }
+                    ? buildQuestionInputConfig(currentQuestion, sessionRuntimeOptionsByQuestionSlug)
                     : { type: "text", options: [] },
                 history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
             });
@@ -6386,7 +6393,12 @@ export const guestChat = asyncHandler(async (req, res) => {
         const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: 'asc' } } } });
         return res.json({
             success: true, message: correctionMessage,
-            inputConfig: correctionNextStep < questions.length ? { type: questions[correctionNextStep].type || "text", options: getDisplayedQuestionOptions(questions[correctionNextStep], correctedRuntimeOptionsByQuestionSlug) } : { type: "text", options: [] },
+            inputConfig: correctionNextStep < questions.length
+                ? buildQuestionInputConfig(
+                    questions[correctionNextStep],
+                    correctedRuntimeOptionsByQuestionSlug
+                )
+                : { type: "text", options: [] },
             history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
         });
     }
@@ -6861,13 +6873,10 @@ export const guestChat = asyncHandler(async (req, res) => {
             return res.json({
                 success: true,
                 message: reservedBrandMessage,
-                inputConfig: {
-                    type: currentQuestion?.type || "text",
-                    options: getDisplayedQuestionOptions(
-                        currentQuestion,
-                        sessionRuntimeOptionsByQuestionSlug
-                    )
-                },
+                inputConfig: buildQuestionInputConfig(
+                    currentQuestion,
+                    sessionRuntimeOptionsByQuestionSlug
+                ),
                 history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
             });
         }
@@ -6921,13 +6930,10 @@ export const guestChat = asyncHandler(async (req, res) => {
             return res.json({
                 success: true,
                 message: followupMessage,
-                inputConfig: {
-                    type: currentQuestion?.type || "text",
-                    options: getDisplayedQuestionOptions(
-                        currentQuestion,
-                        sessionRuntimeOptionsByQuestionSlug
-                    )
-                },
+                inputConfig: buildQuestionInputConfig(
+                    currentQuestion,
+                    sessionRuntimeOptionsByQuestionSlug
+                ),
                 history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
             });
         }
@@ -6971,13 +6977,10 @@ export const guestChat = asyncHandler(async (req, res) => {
             return res.json({
                 success: true,
                 message: followupMessage,
-                inputConfig: {
-                    type: currentQuestion?.type || "text",
-                    options: getDisplayedQuestionOptions(
-                        currentQuestion,
-                        sessionRuntimeOptionsByQuestionSlug
-                    )
-                },
+                inputConfig: buildQuestionInputConfig(
+                    currentQuestion,
+                    sessionRuntimeOptionsByQuestionSlug
+                ),
                 history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
             });
         }
@@ -7028,13 +7031,10 @@ export const guestChat = asyncHandler(async (req, res) => {
             return res.json({
                 success: true,
                 message: followupMessage,
-                inputConfig: {
-                    type: currentQuestion?.type || "text",
-                    options: getDisplayedQuestionOptions(
-                        currentQuestion,
-                        sessionRuntimeOptionsByQuestionSlug
-                    )
-                },
+                inputConfig: buildQuestionInputConfig(
+                    currentQuestion,
+                    sessionRuntimeOptionsByQuestionSlug
+                ),
                 history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
             });
         }
@@ -7430,13 +7430,10 @@ export const guestChat = asyncHandler(async (req, res) => {
             return res.json({
                 success: true,
                 message: feedbackMsg,
-                inputConfig: {
-                    type: currentQuestion?.type || "text",
-                    options: getDisplayedQuestionOptions(
-                        currentQuestion,
-                        sessionRuntimeOptionsByQuestionSlug
-                    )
-                },
+                inputConfig: buildQuestionInputConfig(
+                    currentQuestion,
+                    sessionRuntimeOptionsByQuestionSlug
+                ),
                 history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
             });
         }
@@ -7758,10 +7755,10 @@ export const guestChat = asyncHandler(async (req, res) => {
         }
 
         // Configure next input
-        nextInputConfig = {
-            type: nextQuestion.type || "text",
-            options: getDisplayedQuestionOptions(nextQuestion, nextRuntimeOptionsByQuestionSlug)
-        };
+        nextInputConfig = buildQuestionInputConfig(
+            nextQuestion,
+            nextRuntimeOptionsByQuestionSlug
+        );
     } else {
         // CASE B: All questions answered -> Generate Proposal
         try {
@@ -7858,10 +7855,7 @@ export const getGuestHistory = asyncHandler(async (req, res) => {
 
         const currentQuestion = service?.questions?.[session.currentStep];
         if (currentQuestion) {
-            inputConfig = {
-                type: currentQuestion.type || "text",
-                options: getDisplayedQuestionOptions(currentQuestion, runtimeOptionsByQuestionSlug)
-            };
+            inputConfig = buildQuestionInputConfig(currentQuestion, runtimeOptionsByQuestionSlug);
         }
     }
 

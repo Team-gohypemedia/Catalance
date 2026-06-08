@@ -67,6 +67,8 @@ const AdminServiceQuestions = () => {
         question: "",
         subtitle: "",
         saveResponse: false,
+        showRecommendationPopup: false,
+        disableAutoRecommendationPopup: false,
         nextQuestionSlug: "",
         required: true,
         options: [],
@@ -96,6 +98,8 @@ const AdminServiceQuestions = () => {
     });
     const savedContextCount = questions.filter((question) => question.saveResponse).length;
     const optionalCount = questions.filter((question) => !question.required).length;
+    const recommendationPopupCount = questions.filter((question) => question.showRecommendationPopup).length;
+    const blockedRecommendationPopupCount = questions.filter((question) => question.disableAutoRecommendationPopup).length;
     const branchingRuleCount = questions.reduce(
         (count, question) => count + ((question.logic || []).filter((rule) => rule.nextQuestionSlug).length),
         0
@@ -192,6 +196,8 @@ const AdminServiceQuestions = () => {
                 question: question.question,
                 subtitle: question.subtitle || "",
                 saveResponse: question.saveResponse || false,
+                showRecommendationPopup: question.showRecommendationPopup || false,
+                disableAutoRecommendationPopup: question.disableAutoRecommendationPopup || false,
                 nextQuestionSlug: question.nextQuestionSlug || "",
                 required: question.required !== undefined ? question.required : true,
                 options: question.options || [],
@@ -205,6 +211,8 @@ const AdminServiceQuestions = () => {
                 question: "",
                 subtitle: "",
                 saveResponse: false,
+                showRecommendationPopup: false,
+                disableAutoRecommendationPopup: false,
                 nextQuestionSlug: "",
                 required: true,
                 options: [],
@@ -650,6 +658,8 @@ const AdminServiceQuestions = () => {
                                             <SummaryMetric label="AI Context" value={savedContextCount} note="Questions saved for downstream prompts" />
                                             <SummaryMetric label="Branches" value={branchingRuleCount} note="Conditional rules that reroute the flow" />
                                             <SummaryMetric label="Selections" value={selectionQuestionCount} note="Choice-based prompts in this flow" />
+                                            <SummaryMetric label="Reco Popups" value={recommendationPopupCount} note="Questions that auto-open a recommendation helper" />
+                                            <SummaryMetric label="Reco Blocked" value={blockedRecommendationPopupCount} note="Questions where auto recommendation is disabled" />
                                         </div>
                                         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-background/70 px-3.5 py-2.5 text-sm text-muted-foreground">
                                             <LucideIcons.GripVertical className="h-4 w-4 text-primary" />
@@ -751,6 +761,16 @@ const AdminServiceQuestions = () => {
                                                                                                 AI Context Saved
                                                                                             </Badge>
                                                                                         ) : null}
+                                                                                        {question.showRecommendationPopup ? (
+                                                                                            <Badge variant="secondary" className="rounded-full border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-300">
+                                                                                                Recommendation Popup
+                                                                                            </Badge>
+                                                                                        ) : null}
+                                                                                        {question.disableAutoRecommendationPopup ? (
+                                                                                            <Badge variant="secondary" className="rounded-full border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300">
+                                                                                                Auto Recommendation Off
+                                                                                            </Badge>
+                                                                                        ) : null}
                                                                                     </div>
                                                                                     <div className="space-y-2">
                                                                                         <h3 className="text-xl font-semibold leading-tight tracking-tight text-foreground [text-wrap:balance]">
@@ -817,6 +837,8 @@ const AdminServiceQuestions = () => {
                                                                                         <p>Default next: <span className="text-foreground">{question.nextQuestionSlug || "Sequential"}</span></p>
                                                                                         <p>Branch rules: <span className="text-foreground">{logicRuleCount}</span></p>
                                                                                         <p>Stored for AI: <span className="text-foreground">{question.saveResponse ? "Yes" : "No"}</span></p>
+                                                                                        <p>Popup suggestion: <span className="text-foreground">{question.showRecommendationPopup ? "Auto show" : "Off"}</span></p>
+                                                                                        <p>Auto recommendation: <span className="text-foreground">{question.disableAutoRecommendationPopup ? "Blocked" : "Allowed"}</span></p>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -940,6 +962,26 @@ const AdminServiceQuestions = () => {
                                         />
                                         <Label htmlFor="q-saveResponse" className="cursor-pointer">
                                             Save Response for AI Context
+                                        </Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="q-showRecommendationPopup"
+                                            checked={formData.showRecommendationPopup}
+                                            onCheckedChange={(checked) => setFormData({ ...formData, showRecommendationPopup: Boolean(checked) })}
+                                        />
+                                        <Label htmlFor="q-showRecommendationPopup" className="cursor-pointer">
+                                            Auto-show recommendation popup on user side
+                                        </Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="q-disableAutoRecommendationPopup"
+                                            checked={formData.disableAutoRecommendationPopup}
+                                            onCheckedChange={(checked) => setFormData({ ...formData, disableAutoRecommendationPopup: Boolean(checked) })}
+                                        />
+                                        <Label htmlFor="q-disableAutoRecommendationPopup" className="cursor-pointer">
+                                            Fully stop automatic recommendation popup for this question
                                         </Label>
                                     </div>
                                 </div>

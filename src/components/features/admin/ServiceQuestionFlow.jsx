@@ -120,6 +120,16 @@ const nodeHelper = (question, index) => {
                                     AI Context
                                 </span>
                             ) : null}
+                            {question.showRecommendationPopup ? (
+                                <span className="inline-flex items-center rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">
+                                    Reco Popup
+                                </span>
+                            ) : null}
+                            {question.disableAutoRecommendationPopup ? (
+                                <span className="inline-flex items-center rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-300">
+                                    Reco Off
+                                </span>
+                            ) : null}
                         </div>
 
                         <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-2.5 text-[11px] text-slate-400">
