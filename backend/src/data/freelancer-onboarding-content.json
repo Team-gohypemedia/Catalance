@@ -286,31 +286,6 @@
           "prefix": "",
           "browseLabel": "",
           "removeLabel": ""
-        },
-        "custom_field_4": {
-          "id": "custom_field_4",
-          "type": "select",
-          "label": "New Question",
-          "placeholder": "",
-          "helperText": "",
-          "searchPlaceholder": "",
-          "required": false,
-          "visible": true,
-          "system": false,
-          "canDelete": true,
-          "options": [
-            {
-              "value": "",
-              "label": ""
-            },
-            {
-              "value": "",
-              "label": ""
-            }
-          ],
-          "prefix": "",
-          "browseLabel": "",
-          "removeLabel": ""
         }
       },
       "fieldList": [
@@ -376,31 +351,6 @@
           "canDelete": false,
           "helperText": "",
           "searchPlaceholder": "",
-          "prefix": "",
-          "browseLabel": "",
-          "removeLabel": ""
-        },
-        {
-          "id": "custom_field_4",
-          "type": "select",
-          "label": "New Question",
-          "placeholder": "",
-          "helperText": "",
-          "searchPlaceholder": "",
-          "required": false,
-          "visible": true,
-          "system": false,
-          "canDelete": true,
-          "options": [
-            {
-              "value": "",
-              "label": ""
-            },
-            {
-              "value": "",
-              "label": ""
-            }
-          ],
           "prefix": "",
           "browseLabel": "",
           "removeLabel": ""
