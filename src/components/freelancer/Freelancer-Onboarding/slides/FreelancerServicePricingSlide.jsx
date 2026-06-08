@@ -42,6 +42,7 @@ const FreelancerServicePricingSlide = ({
   onServiceStepChange,
   onSkipServices,
   servicePricingValidationErrors = {},
+  continueButton,
 }) => {
   const serviceName = currentServiceName || "Service";
   const pricingContent =
@@ -235,6 +236,8 @@ const FreelancerServicePricingSlide = ({
           </div>
         </div>
       </div>
+
+      {continueButton}
     </section>
   );
 };

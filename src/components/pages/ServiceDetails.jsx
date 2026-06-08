@@ -611,7 +611,7 @@ const ServiceDetails = () => {
                     <p className="text-sm font-semibold text-foreground dark:text-white">{normalized.freelancer.name}</p>
                     {normalized.freelancer.isVerified ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase text-primary-foreground">
-                        <BadgeCheck className="h-3 w-3 keep-white" />
+                        <BadgeCheck className="h-3 w-3 keep-white verified-badge-custom-stroke" />
                         Verified
                       </span>
                     ) : null}

@@ -104,7 +104,7 @@ const FreelancerPendingProposalRow = ({ item }) => (
         disabled={item.isAccepting}
         className={cn(
           freelancerPendingProposalActionButtonClassName,
-          "bg-[var(--primary)] text-white hover:bg-primary/80 lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
+          "bg-[var(--primary)] text-white dark:text-[#1C1B1F] hover:bg-primary/80 lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
           item.isAccepting && "cursor-not-allowed opacity-60",
         )}
       >
@@ -214,7 +214,7 @@ const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "" }) =>
             <button
               type="button"
               onClick={onOpenAll}
-              className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/80 sm:min-w-0"
+              className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80 sm:min-w-0"
             >
               View Proposals
             </button>

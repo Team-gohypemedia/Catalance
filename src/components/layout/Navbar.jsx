@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Menu from "lucide-react/dist/esm/icons/menu";
 import X from "lucide-react/dist/esm/icons/x";
 import { cn } from "@/shared/lib/utils";
+import ThemeToggle from "@/components/common/ThemeToggle";
+import { useTheme } from "@/components/providers/theme-provider";
 import {
   Navbar as ResizableNavbar,
   NavBody,
@@ -202,7 +204,28 @@ const Navbar = () => {
   );
 
   const closeMobileMenu = () => {};
-  const isDark = false;
+
+  const { theme } = useTheme();
+  const [isSystemDark, setIsSystemDark] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return false;
+    }
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e) => {
+      setIsSystemDark(e.matches);
+    };
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  const isDark = theme === "dark" || (theme === "system" && isSystemDark);
 
   return (
     <ResizableNavbar isHome={isHome} isDark={isDark}>
@@ -216,6 +239,7 @@ const Navbar = () => {
           currentPath={currentPath}
         />
         <div className="flex shrink-0 items-center justify-end gap-3 pl-2 lg:min-w-[12rem]">
+          <ThemeToggle />
           <AuthButtons
             showAuthenticatedNav={shouldShowAuthenticatedNav}
             currentDashboard={currentDashboard}
@@ -266,6 +290,7 @@ const PublicMobileSidebar = ({ navItems, currentPath, _isHome }) => {
         <NavbarLogo />
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <button

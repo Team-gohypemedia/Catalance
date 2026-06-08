@@ -12,7 +12,7 @@ const ProjectRedirectCard = memo(function ProjectRedirectCard({ item, className 
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        <h3 className="w-full text-center text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
+        <h3 className="w-full text-center text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-[#1C1B1F] dark:text-white">
           {item.title}
         </h3>
 

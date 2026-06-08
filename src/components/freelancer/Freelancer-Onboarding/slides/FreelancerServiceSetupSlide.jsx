@@ -3,6 +3,7 @@ import { applyServiceTemplate } from "@/shared/lib/freelancer-onboarding-content
 const FreelancerServiceSetupSlide = ({
   currentServiceName = "Service",
   onboardingContent,
+  continueButton,
 }) => {
   const title = applyServiceTemplate(
     onboardingContent?.serviceSetup?.titleTemplate ||
@@ -23,6 +24,8 @@ const FreelancerServiceSetupSlide = ({
         <p className="text-muted-foreground font-regular text-sm md:text-lg lg:text-base mx-auto max-w-sm sm:max-w-md md:max-w-xl lg:max-w-2xl">
           {description}
         </p>
+
+        {continueButton}
       </div>
     </section>
   );

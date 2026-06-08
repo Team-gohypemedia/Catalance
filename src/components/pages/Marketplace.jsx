@@ -2040,10 +2040,10 @@ const Marketplace = () => {
                               state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
                               className="block h-full"
                             >
-                              <Card className="group relative flex h-full flex-col overflow-hidden rounded-[16px] border border-gray-200 bg-white shadow-[0_1px_12px_rgba(0,0,0,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_28px_rgba(0,0,0,0.12)]">
+                              <Card className="group relative flex h-full flex-col overflow-hidden rounded-[16px] border border-gray-200 bg-white shadow-[0_1px_12px_rgba(0,0,0,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_28px_rgba(0,0,0,0.12)] dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.5)]">
 
                                 {/* ── IMAGE ── */}
-                                <div className="relative h-48 w-full shrink-0 overflow-hidden bg-gray-100">
+                                <div className="relative h-48 w-full shrink-0 overflow-hidden bg-gray-100 dark:bg-white/[0.02]">
                                   {image
                                     ? <img src={image} alt={item.service || "Service"} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                                     : <div className={cn("absolute inset-0 bg-gradient-to-br", getGradient(item.serviceKey || item.id))} />
@@ -2053,9 +2053,9 @@ const Marketplace = () => {
                                     type="button"
                                     onClick={(event) => { event.preventDefault(); if (canUseClientWishlist) toggleFavorite(event, item); }}
                                     aria-label={favorites[item.id] ? "Remove from favorites" : "Add to favorites"}
-                                    className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow transition hover:bg-white"
+                                    className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow transition hover:bg-white dark:bg-zinc-800/90 dark:hover:bg-zinc-700"
                                   >
-                                    <Heart className={cn("h-4 w-4", favorites[item.id] && canUseClientWishlist ? "fill-rose-500 text-rose-500" : "text-gray-400")} />
+                                    <Heart className={cn("h-4 w-4", favorites[item.id] && canUseClientWishlist ? "fill-rose-500 text-rose-500" : "text-gray-400 dark:text-zinc-400")} />
                                   </button>
                                   {item.isFeatured && (
                                     <div className="absolute bottom-2 left-2">
@@ -2076,13 +2076,13 @@ const Marketplace = () => {
                                       : <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">{getInitials(item.freelancer?.fullName)}</div>
                                     }
                                     <div className="flex min-w-0 items-center gap-1">
-                                      <span className="truncate text-[13.5px] font-bold text-gray-900">{item.freelancer?.fullName || "Anonymous"}</span>
-                                      {parseBooleanFlag(item.freelancer?.isVerified) && <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-primary text-white keep-white" />}
+                                      <span className="truncate text-[13.5px] font-bold text-gray-900 dark:text-white">{item.freelancer?.fullName || "Anonymous"}</span>
+                                      {parseBooleanFlag(item.freelancer?.isVerified) && <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-primary text-white keep-white verified-badge-custom" />}
                                     </div>
                                   </div>
 
                                   {/* Row 2: Service title — always 2 lines height */}
-                                  <p className="mb-3 line-clamp-2 min-h-[40px] text-[13px] leading-[1.5] text-gray-600">
+                                  <p className="mb-3 line-clamp-2 min-h-[40px] text-[13px] leading-[1.5] text-gray-600 dark:text-gray-300">
                                     {item.service || "Untitled service"}
                                   </p>
 
@@ -2093,27 +2093,27 @@ const Marketplace = () => {
                                       {hasRating ? (
                                         <>
                                           <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-                                          <span className="text-[12.5px] font-bold text-gray-800">{rating.toFixed(1)}</span>
-                                          <span className="text-[11.5px] text-gray-400">({item.reviewCount || 0})</span>
+                                          <span className="text-[12.5px] font-bold text-gray-800 dark:text-gray-200">{rating.toFixed(1)}</span>
+                                          <span className="text-[11.5px] text-gray-400 dark:text-gray-500">({item.reviewCount || 0})</span>
                                         </>
                                       ) : (
-                                        <span className="text-[11px] text-gray-300">No reviews yet</span>
+                                        <span className="text-[11px] text-gray-300 dark:text-gray-500">No reviews yet</span>
                                       )}
                                     </div>
                                     {/* STARTING AT + price */}
                                     <div className="text-right">
-                                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400">Starting at</p>
-                                      <p className="text-[18px] font-extrabold leading-none text-gray-900">{price}</p>
+                                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Starting at</p>
+                                      <p className="text-[18px] font-extrabold leading-none text-gray-900 dark:text-white">{price}</p>
                                     </div>
                                   </div>
 
                                   {/* Row 4: Delivery (left) | View button (right) */}
-                                  <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-                                    <div className="flex items-center gap-1.5 text-[11.5px] text-gray-400">
+                                  <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 dark:border-white/10">
+                                    <div className="flex items-center gap-1.5 text-[11.5px] text-gray-400 dark:text-gray-500">
                                       <Clock className="h-3.5 w-3.5" />
                                       {delivery || "Flexible"}
                                     </div>
-                                    <span className="inline-flex items-center rounded-full bg-primary px-5 py-2 text-[13px] font-bold !text-white shadow-sm transition group-hover:bg-primary/90" style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}>
+                                    <span className="inline-flex items-center rounded-full bg-primary px-5 py-2 text-[13px] font-bold text-primary-foreground shadow-sm transition group-hover:bg-primary/90">
                                       View
                                     </span>
                                   </div>

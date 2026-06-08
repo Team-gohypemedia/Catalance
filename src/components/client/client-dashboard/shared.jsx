@@ -15,7 +15,7 @@ export const DashboardPanel = memo(function DashboardPanel({
     <div
       {...props}
       className={cn(
-        "rounded-[28px] border border-white/[0.06] bg-[#232323]/90 backdrop-blur-[10px]",
+        "rounded-[28px] border border-white/[0.06] bg-card backdrop-blur-[10px]",
         className,
       )}
     >

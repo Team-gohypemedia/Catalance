@@ -55,6 +55,7 @@ const WorkspaceProfileDropdown = ({
   profile,
   profileInitial,
   showVerifiedBadge = false,
+  portalled = true,
 }) => {
   const { logout } = useAuth();
   const [open, setOpen] = React.useState(false);
@@ -116,6 +117,7 @@ const WorkspaceProfileDropdown = ({
       <PopoverContent
         align="end"
         sideOffset={12}
+        portalled={portalled}
         className="w-[min(92vw,17rem)] rounded-[1rem] border border-border bg-card p-2.5 text-foreground shadow-lg"
       >
         <div className="space-y-2.5">

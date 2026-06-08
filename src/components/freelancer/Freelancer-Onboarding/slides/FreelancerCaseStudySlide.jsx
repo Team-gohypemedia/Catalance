@@ -174,6 +174,7 @@ const FreelancerCaseStudySlide = ({
   onSkipServices,
   caseStudyValidationErrors = {},
   onUploadMediaFile,
+  continueButton,
 }) => {
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [bannerUploadError, setBannerUploadError] = useState("");
@@ -298,7 +299,7 @@ const FreelancerCaseStudySlide = ({
                   disabled={isCaseStudyLimitReached}
                   className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted sm:w-auto"
                 >
-                  <Plus className="h-4 w-4 !text-white keep-white" />
+                  <Plus className="h-4 w-4 text-inherit" />
                   {caseStudyContent?.addButtonLabel || "Add Case Study"}
                 </button>
 
@@ -324,7 +325,7 @@ const FreelancerCaseStudySlide = ({
                 disabled={isCaseStudyLimitReached}
                 className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted"
               >
-                <Plus className="h-4 w-4 !text-white keep-white" />
+                <Plus className="h-4 w-4 text-inherit" />
                 {caseStudyContent?.addButtonLabel || "Add Case Study"}
               </button>
             </div>
@@ -353,14 +354,12 @@ const FreelancerCaseStudySlide = ({
                       className={cn(
                         "flex h-10 items-center justify-center gap-2 rounded-full border pl-4 pr-1.5 text-center text-sm font-semibold transition-colors cursor-pointer",
                         isActive
-                          ? "border-primary bg-primary !text-white"
+                          ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
                       )}
-                      style={isActive ? { color: "white", WebkitTextFillColor: "white" } : undefined}
                     >
                       <span 
-                        className={cn("truncate max-w-[11rem]", isActive && "!text-white keep-white")}
-                        style={isActive ? { color: "white" } : undefined}
+                        className={cn("truncate max-w-[11rem]", isActive && "text-primary-foreground")}
                       >
                         {caseStudyLabel}
                       </span>
@@ -796,6 +795,8 @@ const FreelancerCaseStudySlide = ({
       </div>
       </div>
       </div>
+
+      {continueButton}
     </section>
   );
 };

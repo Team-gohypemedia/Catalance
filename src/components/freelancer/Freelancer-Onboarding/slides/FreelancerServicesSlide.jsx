@@ -64,6 +64,7 @@ const FreelancerServicesSlide = ({
   selectedServices,
   onToggleService,
   dbServices,
+  continueButton,
 }) => {
   const services = Array.isArray(dbServices) ? dbServices : [];
 
@@ -123,6 +124,8 @@ const FreelancerServicesSlide = ({
           </div>
         )}
       </div>
+
+      {continueButton}
     </section>
   );
 };

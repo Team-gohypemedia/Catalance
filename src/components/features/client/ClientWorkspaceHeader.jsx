@@ -4,6 +4,7 @@ import React from "react";
 import Bell from "lucide-react/dist/esm/icons/bell";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import ThemeToggle from "@/components/common/ThemeToggle";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
@@ -401,6 +402,22 @@ const ClientWorkspaceHeader = ({
   className,
 }) => {
   const { logout } = useAuth();
+
+  React.useEffect(() => {
+    document.documentElement.classList.add("workspace-zoom");
+    document.documentElement.style.zoom = "0.75";
+    return () => {
+      const path = window.location.pathname.toLowerCase();
+      if (
+        (!path.startsWith("/freelancer") && !path.startsWith("/client")) ||
+        path.includes("/onboarding")
+      ) {
+        document.documentElement.classList.remove("workspace-zoom");
+        document.documentElement.style.zoom = "";
+      }
+    };
+  }, []);
+
   const displayName = String(profile?.name || "Client").trim() || "Client";
   const profileInitial = profile?.initial || getInitials(displayName);
 
@@ -449,7 +466,7 @@ const ClientWorkspaceHeader = ({
             />
 
           <div className="flex items-center gap-4">
-              {/* <ThemeToggle /> */}
+              <ThemeToggle />
               <WorkspaceProfileDropdown
                 profile={profile}
                 displayName={displayName}

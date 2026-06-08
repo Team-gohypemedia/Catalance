@@ -1,6 +1,8 @@
 import React, { useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import ProcessVideoAsset from "@/assets/videos/follow_this_img_and_animtion_p.mp4";
+import DarkthemeAsset from "@/assets/videos/Darktheme.mp4";
+import { useTheme } from "@/components/providers/theme-provider";
 import { Search, Users, Rocket, ArrowRight, Play, Pause } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -39,6 +41,13 @@ const itemVariants = {
 };
 
 const ProcessVideo = () => {
+  const { theme } = useTheme();
+  const isDarkMode = 
+    theme === "dark" || 
+    (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  const videoSrc = isDarkMode ? DarkthemeAsset : ProcessVideoAsset;
+
   const videoRef = useRef(null);
   const [playing, setPlaying] = useState(true);
 
@@ -98,12 +107,13 @@ const ProcessVideo = () => {
             {/* Outer glow ring */}
             <div className="absolute -inset-[1px] rounded-[44px] bg-gradient-to-br from-primary/30 via-sky-500/10 to-violet-500/20 blur-[1px]" />
 
-            <div className="relative flex h-full flex-col overflow-hidden rounded-[42px] border border-white/10 bg-[#050810] shadow-[0_60px_120px_-30px_rgba(2,6,23,0.9)]">
+            <div className="relative flex h-full flex-col overflow-hidden rounded-[42px] border border-white/10 bg-[#050810] dark:bg-black shadow-[0_60px_120px_-30px_rgba(2,6,23,0.9)]">
               {/* Video */}
               <div className="relative flex-1 overflow-hidden">
                 <video
+                  key={videoSrc}
                   ref={videoRef}
-                  src={ProcessVideoAsset}
+                  src={videoSrc}
                   autoPlay
                   loop
                   muted

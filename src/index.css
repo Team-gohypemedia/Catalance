@@ -1017,3 +1017,68 @@ html:not(.dark) a.bg-primary svg {
   color: inherit !important;
 }
 
+/* =============================================================================
+   Global Dark Mode Primary Button and Scrollbar Overrides
+   ============================================================================= */
+
+/* Fix primary buttons/elements text and icon color in dark mode */
+html.dark .bg-primary,
+html.dark .bg-\[var\(--primary\)\] {
+  color: #1C1B1F !important;
+}
+html.dark .bg-primary *,
+html.dark .bg-\[var\(--primary\)\] * {
+  color: #1C1B1F !important;
+  stroke: #1C1B1F !important;
+}
+html.dark .hover\:bg-primary:hover,
+html.dark .hover\:bg-\[var\(--primary\)\]:hover {
+  color: #1C1B1F !important;
+}
+html.dark .hover\:bg-primary:hover *,
+html.dark .hover\:bg-\[var\(--primary\)\]:hover * {
+  color: #1C1B1F !important;
+  stroke: #1C1B1F !important;
+}
+
+/* Fix the vertical slider (scrollbar) color in dark mode */
+html.dark .subtle-scrollbar {
+  scrollbar-color: #FFC107 #09060D !important;
+}
+html.dark .subtle-scrollbar::-webkit-scrollbar-track {
+  background: #09060D !important;
+}
+html.dark .subtle-scrollbar::-webkit-scrollbar-thumb {
+  background: #FFC107 !important;
+  border: 2px solid #09060D !important;
+}
+
+/* Fix verified badge background (fill) and border/checkmark (stroke) in dark mode */
+html.dark .verified-badge-custom {
+  fill: var(--primary) !important;
+  color: #1C1B1F !important;
+}
+
+/* Fix verified badge icon stroke color inside primary pills in dark mode */
+html.dark .verified-badge-custom-stroke {
+  color: #1C1B1F !important;
+}
+
+/* Zoom workspace layouts to 75% to fit more contents cleanly on laptop screens */
+html.workspace-zoom {
+  zoom: 0.75 !important;
+}
+
+/* Reciprocal zoom correction for all portalled floating UI components inside workspace pages */
+html.workspace-zoom [data-slot="popover-content"],
+html.workspace-zoom [data-slot="dropdown-menu-content"],
+html.workspace-zoom [data-slot="dropdown-menu-sub-content"],
+html.workspace-zoom [data-slot="select-content"],
+html.workspace-zoom [data-slot="tooltip-content"],
+html.workspace-zoom [data-slot="dialog-content"],
+html.workspace-zoom [data-slot="sheet-content"] {
+  zoom: 1.33333333 !important;
+}
+
+
+

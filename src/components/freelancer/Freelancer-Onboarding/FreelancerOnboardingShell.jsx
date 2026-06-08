@@ -3993,6 +3993,22 @@ const FreelancerOnboardingShell = () => {
                 isProfileSaving={isProfileSaving}
                 user={user}
                 onSkipServices={handleSkipServicesSection}
+                continueButton={
+                  isFooterHidden ? null : (
+                    <div className="mt-8 flex w-full justify-center pb-2">
+                      <Button
+                        type="button"
+                        size="lg"
+                        onClick={footerPrimaryAction}
+                        disabled={footerPrimaryDisabled}
+                        className={ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS}
+                      >
+                        {isProfileSaving && <Loader size="sm" className="mr-2 inline-flex" />}
+                        {footerPrimaryLabel}
+                      </Button>
+                    </div>
+                  )
+                }
               />
             </motion.div>
           </AnimatePresence>
@@ -4045,27 +4061,6 @@ const FreelancerOnboardingShell = () => {
         >
           <Sparkles className="size-5 animate-pulse" />
         </button>
-      )}
-
-      {isFooterHidden ? null : (
-        <footer className="relative z-20 shrink-0 px-4 py-4 sm:px-6">
-          <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
-            <div />
-
-            <Button
-              type="button"
-              size="lg"
-              onClick={footerPrimaryAction}
-              disabled={footerPrimaryDisabled}
-              className={ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS}
-            >
-              {isProfileSaving && <Loader size="sm" className="mr-2 inline-flex" />}
-              {footerPrimaryLabel}
-            </Button>
-
-            <div />
-          </div>
-        </footer>
       )}
       <ProfileImageCropDialog
         open={isProfileCropOpen}
