@@ -1,6 +1,5 @@
 import React, { useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import ProcessVideoAsset from "@/assets/videos/follow_this_img_and_animtion_p.mp4";
 import DarkthemeAsset from "@/assets/videos/Darktheme.mp4";
 import { useTheme } from "@/components/providers/theme-provider";
 import { Search, Users, Rocket, ArrowRight, Play, Pause } from "lucide-react";
@@ -46,7 +45,7 @@ const ProcessVideo = () => {
     theme === "dark" || 
     (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-  const videoSrc = isDarkMode ? DarkthemeAsset : ProcessVideoAsset;
+  const videoSrc = DarkthemeAsset;
 
   const videoRef = useRef(null);
   const [playing, setPlaying] = useState(true);
