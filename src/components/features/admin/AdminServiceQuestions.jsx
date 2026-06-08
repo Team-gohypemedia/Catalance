@@ -69,6 +69,8 @@ const AdminServiceQuestions = () => {
         saveResponse: false,
         showRecommendationPopup: false,
         disableAutoRecommendationPopup: false,
+        questionResponseMode: "",
+        questionReplyLength: "",
         nextQuestionSlug: "",
         required: true,
         options: [],
@@ -198,6 +200,8 @@ const AdminServiceQuestions = () => {
                 saveResponse: question.saveResponse || false,
                 showRecommendationPopup: question.showRecommendationPopup || false,
                 disableAutoRecommendationPopup: question.disableAutoRecommendationPopup || false,
+                questionResponseMode: question.questionResponseMode || "",
+                questionReplyLength: question.questionReplyLength || "",
                 nextQuestionSlug: question.nextQuestionSlug || "",
                 required: question.required !== undefined ? question.required : true,
                 options: question.options || [],
@@ -213,6 +217,8 @@ const AdminServiceQuestions = () => {
                 saveResponse: false,
                 showRecommendationPopup: false,
                 disableAutoRecommendationPopup: false,
+                questionResponseMode: "",
+                questionReplyLength: "",
                 nextQuestionSlug: "",
                 required: true,
                 options: [],
@@ -771,6 +777,20 @@ const AdminServiceQuestions = () => {
                                                                                                 Auto Recommendation Off
                                                                                             </Badge>
                                                                                         ) : null}
+                                                                                        {question.questionResponseMode ? (
+                                                                                            <Badge variant="secondary" className="rounded-full border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-300">
+                                                                                                {question.questionResponseMode === "final_confirmation"
+                                                                                                    ? "Final Confirmation"
+                                                                                                    : question.questionResponseMode === "final_confirmation_end"
+                                                                                                        ? "End Flow Confirmation"
+                                                                                                        : question.questionResponseMode}
+                                                                                            </Badge>
+                                                                                        ) : null}
+                                                                                        {question.questionReplyLength ? (
+                                                                                            <Badge variant="secondary" className="rounded-full border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                                                                                                {`${question.questionReplyLength} chars`}
+                                                                                            </Badge>
+                                                                                        ) : null}
                                                                                     </div>
                                                                                     <div className="space-y-2">
                                                                                         <h3 className="text-xl font-semibold leading-tight tracking-tight text-foreground [text-wrap:balance]">
@@ -839,6 +859,14 @@ const AdminServiceQuestions = () => {
                                                                                         <p>Stored for AI: <span className="text-foreground">{question.saveResponse ? "Yes" : "No"}</span></p>
                                                                                         <p>Popup suggestion: <span className="text-foreground">{question.showRecommendationPopup ? "Auto show" : "Off"}</span></p>
                                                                                         <p>Auto recommendation: <span className="text-foreground">{question.disableAutoRecommendationPopup ? "Blocked" : "Allowed"}</span></p>
+                                                                                        <p>Response mode: <span className="text-foreground">{
+                                                                                            question.questionResponseMode === "final_confirmation"
+                                                                                                ? "Final confirmation"
+                                                                                                : question.questionResponseMode === "final_confirmation_end"
+                                                                                                    ? "End flow confirmation"
+                                                                                                    : question.questionResponseMode || "Universal"
+                                                                                        }</span></p>
+                                                                                        <p>Reply limit: <span className="text-foreground">{question.questionReplyLength ? `${question.questionReplyLength} characters` : "Universal"}</span></p>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -983,6 +1011,52 @@ const AdminServiceQuestions = () => {
                                         <Label htmlFor="q-disableAutoRecommendationPopup" className="cursor-pointer">
                                             Fully stop automatic recommendation popup for this question
                                         </Label>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="q-response-mode">Question Response Mode (Optional)</Label>
+                                        <Select
+                                            value={formData.questionResponseMode || "default_mode"}
+                                            onValueChange={(val) => setFormData({
+                                                ...formData,
+                                                questionResponseMode: val === "default_mode" ? "" : val,
+                                            })}
+                                        >
+                                            <SelectTrigger id="q-response-mode">
+                                                <SelectValue placeholder="Use universal behavior" />
+                                            </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="default_mode">
+                                                        <span className="text-muted-foreground italic">Use universal behavior</span>
+                                                    </SelectItem>
+                                                    <SelectItem value="final_confirmation">Final confirmation</SelectItem>
+                                                    <SelectItem value="final_confirmation_end">Final confirmation + end flow</SelectItem>
+                                                </SelectContent>
+                                        </Select>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            <code>Final confirmation</code> accepts completion replies like <code>not really</code> or <code>nothing else</code>. <code>Final confirmation + end flow</code> accepts those replies and then ends the questionnaire immediately by generating the proposal from that question.
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="q-reply-length">Assistant Reply Character Limit (Optional)</Label>
+                                        <Input
+                                            id="q-reply-length"
+                                            type="number"
+                                            min="1"
+                                            step="1"
+                                            value={formData.questionReplyLength}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                questionReplyLength: String(e.target.value || "").replace(/[^\d]/g, ""),
+                                            })}
+                                            placeholder="e.g. 20 or 300"
+                                        />
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Leave empty to use the current universal approach. If filled, the assistant will try to keep this question&apos;s reply under that many characters.
+                                        </p>
                                     </div>
                                 </div>
 

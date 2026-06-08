@@ -1917,6 +1917,7 @@ export const getServices = asyncHandler(async (req, res) => {
     icon: s.icon,
     active: s.active,
     aiPrompt: s.aiPrompt,
+    aiGlossary: s.aiGlossary,
     proposalStructure: s.proposalStructure,
     agencyProposalStructure: s.agencyProposalStructure,
     internalProposalStructure: s.internalProposalStructure,
@@ -1937,6 +1938,7 @@ export const upsertService = asyncHandler(async (req, res) => {
     icon,
     active,
     aiPrompt,
+    aiGlossary,
     proposalStructure,
     agencyProposalStructure,
     internalProposalStructure,
@@ -1956,6 +1958,7 @@ export const upsertService = asyncHandler(async (req, res) => {
       icon,
       active: active === undefined ? true : active,
       aiPrompt,
+      aiGlossary,
       proposalStructure: proposalStructure || null,
       agencyProposalStructure: agencyProposalStructure || null,
       internalProposalStructure: internalProposalStructure || null,
@@ -1970,6 +1973,7 @@ export const upsertService = asyncHandler(async (req, res) => {
       icon,
       active: active === undefined ? true : active,
       aiPrompt,
+      aiGlossary,
       proposalStructure: proposalStructure || null,
       agencyProposalStructure: agencyProposalStructure || null,
       internalProposalStructure: internalProposalStructure || null,
@@ -2016,6 +2020,8 @@ export const getServiceQuestions = asyncHandler(async (req, res) => {
     saveResponse: q.saveResponse || false,
     showRecommendationPopup: q.showRecommendationPopup || false,
     disableAutoRecommendationPopup: q.disableAutoRecommendationPopup || false,
+    questionResponseMode: q.questionResponseMode || "",
+    questionReplyLength: q.questionReplyLength || "",
     nextQuestionSlug: q.nextQuestionSlug || ""
   }));
 
@@ -2036,6 +2042,8 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
     saveResponse,
     showRecommendationPopup,
     disableAutoRecommendationPopup,
+    questionResponseMode,
+    questionReplyLength,
     nextQuestionSlug
   } = req.body; // id is question SLUG
 
@@ -2057,6 +2065,8 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
     showRecommendationPopup === undefined ? false : showRecommendationPopup;
   const isDisableAutoRecommendationPopup =
     disableAutoRecommendationPopup === undefined ? false : disableAutoRecommendationPopup;
+  const normalizedQuestionResponseMode = String(questionResponseMode || "").trim().toLowerCase();
+  const normalizedQuestionReplyLength = String(questionReplyLength || "").trim();
 
   // If existingId is provided, we might be renaming the slug.
   if (existingId && existingId !== id) {
@@ -2082,6 +2092,8 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         saveResponse: isSaveResponse,
         showRecommendationPopup: isShowRecommendationPopup,
         disableAutoRecommendationPopup: isDisableAutoRecommendationPopup,
+        questionResponseMode: normalizedQuestionResponseMode || null,
+        questionReplyLength: normalizedQuestionReplyLength || null,
         nextQuestionSlug: nextQuestionSlug || null
       }
     });
@@ -2107,6 +2119,8 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         saveResponse: isSaveResponse,
         showRecommendationPopup: isShowRecommendationPopup,
         disableAutoRecommendationPopup: isDisableAutoRecommendationPopup,
+        questionResponseMode: normalizedQuestionResponseMode || null,
+        questionReplyLength: normalizedQuestionReplyLength || null,
         nextQuestionSlug: nextQuestionSlug || null
       },
       create: {
@@ -2122,6 +2136,8 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         saveResponse: isSaveResponse,
         showRecommendationPopup: isShowRecommendationPopup,
         disableAutoRecommendationPopup: isDisableAutoRecommendationPopup,
+        questionResponseMode: normalizedQuestionResponseMode || null,
+        questionReplyLength: normalizedQuestionReplyLength || null,
         nextQuestionSlug: nextQuestionSlug || null
       }
     });
@@ -2233,6 +2249,8 @@ export const importServiceQuestions = asyncHandler(async (req, res) => {
           q.showRecommendationPopup === undefined ? false : q.showRecommendationPopup,
         disableAutoRecommendationPopup:
           q.disableAutoRecommendationPopup === undefined ? false : q.disableAutoRecommendationPopup,
+        questionResponseMode: String(q.questionResponseMode || "").trim().toLowerCase() || null,
+        questionReplyLength: String(q.questionReplyLength || "").trim() || null,
         nextQuestionSlug: q.nextQuestionSlug || null
       };
     });

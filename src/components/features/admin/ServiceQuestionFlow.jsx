@@ -130,6 +130,20 @@ const nodeHelper = (question, index) => {
                                     Reco Off
                                 </span>
                             ) : null}
+                            {question.questionResponseMode ? (
+                                <span className="inline-flex items-center rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">
+                                    {question.questionResponseMode === 'final_confirmation'
+                                        ? 'Final Confirm'
+                                        : question.questionResponseMode === 'final_confirmation_end'
+                                            ? 'End Flow'
+                                            : question.questionResponseMode}
+                                </span>
+                            ) : null}
+                            {question.questionReplyLength ? (
+                                <span className="inline-flex items-center rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300">
+                                    {`${question.questionReplyLength} chars`}
+                                </span>
+                            ) : null}
                         </div>
 
                         <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-2.5 text-[11px] text-slate-400">

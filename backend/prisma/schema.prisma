@@ -624,6 +624,7 @@ model Service {
   icon        String? // Optional icon name
   active      Boolean @default(true)
   aiPrompt    String? @db.Text // Custom AI instructions for this service
+  aiGlossary  String? @db.Text // Optional term meanings / glossary for this service
   proposalStructure String? @db.Text // Admin-managed proposal field order/template
   agencyProposalStructure String? @db.Text // Admin-managed multi-service agency proposal template
   internalProposalStructure String? @db.Text // Internal-only project proposalJson structure/template
@@ -657,6 +658,8 @@ model ServiceQuestion {
   saveResponse     Boolean @default(false) // Flag to save response for special handling
   showRecommendationPopup Boolean @default(false) // Auto-open recommendation helper for this question on the guest UI
   disableAutoRecommendationPopup Boolean @default(false) // Prevent automatic recommendation helper popups for this question
+  questionResponseMode String? // Optional question behavior override, e.g. final_confirmation
+  questionReplyLength String? // Optional assistant reply length override: short, medium, or long
   nextQuestionSlug String? // Default next question if logic doesn't override
 
   service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)

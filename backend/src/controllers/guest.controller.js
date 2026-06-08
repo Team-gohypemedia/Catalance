@@ -2004,6 +2004,19 @@ const getQuestionAdminControls = (question = {}, servicePrompt = "") =>
         parseAdminControlText(servicePrompt || "")
     );
 
+const buildServiceAiInstructions = (service = {}) => {
+    const promptText = String(service?.aiPrompt || "").trim();
+    const glossaryText = String(service?.aiGlossary || "").trim();
+
+    return [
+        promptText,
+        glossaryText ? `AI Glossary / Meaning Map:\n${glossaryText}` : "",
+    ]
+        .filter(Boolean)
+        .join("\n\n")
+        .trim();
+};
+
 const buildAdminControlSummaryText = (controls = {}) => {
     const parts = [];
     const contextText = String(controls?.contextText || "").replace(/\s+/g, " ").trim();
@@ -3130,8 +3143,31 @@ const ATOMIC_ANSWER_SEPARATOR_REGEX = /[,;\n:]/;
 const PERSON_NAME_TOKEN_REGEX = /^[a-z][a-z'.-]*$/i;
 const BUSINESS_NAME_TOKEN_REGEX = /^[a-z0-9][a-z0-9&'.-]*$/i;
 const BUSINESS_NAME_EXTRA_DETAIL_REGEX = /\b(i|we|our|my|brand|business|company|project|service|services|offer|provide|need|requirements?|budget|timeline|website|app|content|machine|process)\b/i;
-const SIMPLE_CONFIRMATION_NO_REGEX = /^(?:no|nope|nah|nothing else|nothing more|that's all|thats all|all good|no thanks|no thank you)$/i;
+const SIMPLE_CONFIRMATION_NO_REGEX = /^(?:no|nope|nah|not really|nothing else|nothing more|no more|that's all|thats all|all good|no thanks|no thank you)$/i;
 const SIMPLE_CONFIRMATION_YES_REGEX = /^(?:yes|yeah|yep|sure|okay|ok|go ahead|continue|generate|please generate|yes generate)$/i;
+const QUESTION_RESPONSE_MODE_FINAL_CONFIRMATION = "final_confirmation";
+const QUESTION_RESPONSE_MODE_FINAL_CONFIRMATION_END = "final_confirmation_end";
+const normalizeQuestionResponseMode = (question = {}) =>
+    normalizeTextToken(question?.questionResponseMode || "");
+
+const isFinalConfirmationResponseMode = (question = {}) => {
+    const configuredMode = normalizeQuestionResponseMode(question);
+    return configuredMode === QUESTION_RESPONSE_MODE_FINAL_CONFIRMATION
+        || configuredMode === QUESTION_RESPONSE_MODE_FINAL_CONFIRMATION_END;
+};
+
+const isFlowEndingQuestionResponseMode = (question = {}) =>
+    normalizeQuestionResponseMode(question) === QUESTION_RESPONSE_MODE_FINAL_CONFIRMATION_END;
+
+const getQuestionReplyCharacterLimit = (question = {}) => {
+    const rawValue = String(question?.questionReplyLength || "").trim();
+    if (!rawValue) return null;
+
+    const numericValue = Number.parseInt(rawValue, 10);
+    if (!Number.isInteger(numericValue) || numericValue <= 0) return null;
+
+    return Math.min(numericValue, 2000);
+};
 
 const stripAtomicAnswerPrefix = (message = "", identityType = "other") => {
     const rawMessage = String(message || "").trim();
@@ -3234,10 +3270,22 @@ const shouldSkipMessageAnswerExtraction = ({
         return looksLikeAtomicNameAnswer(rawMessage, identityType);
     }
 
+    if (
+        isProposalConfirmationQuestion(currentQuestion)
+        && (SIMPLE_CONFIRMATION_NO_REGEX.test(rawMessage) || SIMPLE_CONFIRMATION_YES_REGEX.test(rawMessage))
+    ) {
+        return true;
+    }
+
     return false;
 };
 
 const isProposalConfirmationQuestion = (question = {}) => {
+    const configuredMode = normalizeQuestionResponseMode(question);
+    if (configuredMode) {
+        return isFinalConfirmationResponseMode(question);
+    }
+
     const combinedText = [
         question?.slug || "",
         question?.id || "",
@@ -3277,6 +3325,33 @@ const buildLocalValidationAckMessage = (question = {}, normalizedAnswer = "") =>
     }
 
     return pickFriendlyBridge(question?.text || answerText || "response");
+};
+
+const buildQuestionReplyLengthPolicy = ({
+    question = {},
+    isOpeningIntakeQuestion = false,
+    isPostFifthAckSuggestionMode = false,
+}) => {
+    const characterLimit = getQuestionReplyCharacterLimit(question);
+    if (characterLimit) {
+        return {
+            label: "custom_character_limit",
+            wordLimit: null,
+            characterLimit,
+            ruleText: `- Keep the full response under ${characterLimit} characters total, including spaces.`,
+        };
+    }
+
+    return {
+        label: "universal",
+        wordLimit: isOpeningIntakeQuestion ? 50 : 150,
+        characterLimit: null,
+        ruleText: isOpeningIntakeQuestion
+            ? "- Keep the full response under 50 words. Use up to two short lead-in sentences before the question: one acknowledgement or warm opener, plus one short bridge sentence."
+            : isPostFifthAckSuggestionMode
+            ? "- Keep it concise in post-question-5 mode and under 150 words total."
+            : "- Keep the full response under 150 words total while staying natural and conversational.",
+    };
 };
 
 const getFastLocalValidationResult = ({
@@ -4516,11 +4591,12 @@ Task:
 8) If options exist, show them as numbered list using the exact labels provided.
 `;
 
-    const responseLengthRule = isOpeningIntakeQuestion
-        ? "- Keep the full response under 50 words. Use up to two short lead-in sentences before the question: one acknowledgement or warm opener, plus one short bridge sentence."
-        : isPostFifthAckSuggestionMode
-        ? "- Keep it concise in post-question-5 mode and under 150 words total."
-        : "- Keep the full response under 150 words total while staying natural and conversational.";
+    const replyLengthPolicy = buildQuestionReplyLengthPolicy({
+        question: nextQuestion,
+        isOpeningIntakeQuestion,
+        isPostFifthAckSuggestionMode,
+    });
+    const responseLengthRule = replyLengthPolicy.ruleText;
 
     const postFifthRuleBlock = isPostFifthAckSuggestionMode
         ? `
@@ -4612,7 +4688,9 @@ ${responseLengthRule}
 - Treat Admin Controls as higher-priority steering than generic style rules whenever they apply to this question.
 - If Admin Controls prioritize options or set a preferred option, keep that ordering and recommendation unless it clearly conflicts with confirmed user context.
 ${postFifthRuleBlock}
-- Keep under ${isOpeningIntakeQuestion ? 50 : 150} words.
+${replyLengthPolicy.characterLimit
+        ? `- Keep under ${replyLengthPolicy.characterLimit} characters.`
+        : `- Keep under ${replyLengthPolicy.wordLimit} words.`}
 
 ${outputFormatBlock}
 `;
@@ -5679,6 +5757,7 @@ const buildCurrentQuestionValidationPrompt = ({
     serviceName = "",
     servicePrompt = "",
     currentQuestionText = "",
+    currentQuestionResponseMode = "",
     currentQuestionOptions = [],
     currentQuestionNumberedOptions = [],
     currentQuestionCanonicalOptions = [],
@@ -5696,6 +5775,7 @@ const buildCurrentQuestionValidationPrompt = ({
         parseAdminControlText(currentQuestionSubtitle || ""),
         parseAdminControlText(servicePrompt || "")
     );
+    const normalizedCurrentQuestionResponseMode = normalizeTextToken(currentQuestionResponseMode);
     const currentQuestionContext = buildAdminControlSummaryText(adminControls);
     const answersContext = buildAnswersContextLines(knownContextByQuestion, {
         maxItems: 5,
@@ -5728,6 +5808,7 @@ ${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when 
     })}
 
 Current question: ${JSON.stringify(currentQuestionText)}
+Current question response mode: ${JSON.stringify(normalizedCurrentQuestionResponseMode || "universal")}
 Visible numbered options: ${JSON.stringify(numberedOptions)}
 Canonical option pool: ${JSON.stringify(canonicalOptions)}
 Earlier confirmed answers:
@@ -5750,6 +5831,7 @@ ${JSON.stringify(attachmentInferredAnswer || "")}
 Validation rules:
 - Greeting only, gibberish, or irrelevant text when details are needed => INVALID.
 - Direct side-question, confusion, advice request, "not sure", or "other" => INFO_REQUEST.
+- If current question response mode is "final_confirmation" or "final_confirmation_end", short completion replies like "not really", "nothing else", "no more", "that's all", "go ahead", or "generate it" are VALID.
 - If direct text is empty but attachment/URL context clearly answers the question => VALID.
 - If the reply clearly chooses by option number, map it using the visible numbered options.
 - Do not mistake descriptive numbers like "1 month" or "10 pages" for option numbers unless the user is clearly choosing by number.
@@ -5788,6 +5870,7 @@ const buildServiceStartState = async ({
     startContext = {},
     timingTracker = null,
 }) => {
+    const serviceAiInstructions = buildServiceAiInstructions(service);
     let initialAnswersBySlug = Object.entries(prefilledAnswersBySlug || {}).reduce((acc, [slug, value]) => {
         if (slug && hasAnswerValue(value)) {
             acc[slug] = value;
@@ -5815,7 +5898,7 @@ const buildServiceStartState = async ({
     if (firstQuestionDefinition?.slug) {
         const runtimeOptions = await generateRuntimeOptionsForQuestion({
             serviceName: service.name,
-            servicePrompt: service.aiPrompt || "",
+            servicePrompt: serviceAiInstructions,
             question: firstQuestionDefinition,
             answersByQuestionText: answersPayload.byQuestionText,
             answersBySlug: answersPayload.bySlug,
@@ -5843,7 +5926,7 @@ const buildServiceStartState = async ({
     const aiFirstQuestion = firstQuestionDefinition
         ? await buildAiGuidedQuestionMessage({
             serviceName: service.name,
-            servicePrompt: service.aiPrompt || "",
+            servicePrompt: serviceAiInstructions,
             userLastMessage: startPrefillBridge ? String(activeStartContext?.acknowledgedAnswer || "") : "",
             currentQuestion: startPrefillBridge ? activeStartContext?.acknowledgedQuestion || {} : {},
             nextQuestion: firstQuestionDefinition,
@@ -5996,7 +6079,7 @@ const generateProposalResponseForSession = async ({
                 proposalContext,
                 proposalHistory,
                 service.name,
-                service.aiPrompt || "",
+                buildServiceAiInstructions(service),
                 {
                     proposalStructure: service.proposalStructure || "",
                     proposalPrompt: service.proposalPrompt || ""
@@ -6012,7 +6095,7 @@ const generateProposalResponseForSession = async ({
             proposalContext,
             proposalHistory,
             service.name,
-            service.aiPrompt || "",
+            buildServiceAiInstructions(service),
             {
                 proposalStructure: service.proposalStructure || "",
                 proposalPrompt: service.proposalPrompt || ""
@@ -6233,6 +6316,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     if (!service) {
         throw new AppError("Service context lost", 404);
     }
+    const serviceAiInstructions = buildServiceAiInstructions(service);
 
     const questions = service.questions;
     const currentStep = session.currentStep;
@@ -6359,7 +6443,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             const correctionNextQuestion = questions[correctionNextStep];
             const runtimeOptions = await generateRuntimeOptionsForQuestion({
                 serviceName: service.name,
-                servicePrompt: service.aiPrompt || "",
+                servicePrompt: serviceAiInstructions,
                 question: correctionNextQuestion,
                 answersByQuestionText: correctedPayload.byQuestionText,
                 answersBySlug: correctedAnswersBySlug,
@@ -6817,8 +6901,8 @@ export const guestChat = asyncHandler(async (req, res) => {
             `
             : "";
 
-        if (service.aiPrompt) {
-            console.log(`\n--- [AI Context Loaded] ---\nService: ${service.name}\nPrompt: ${service.aiPrompt}\n---------------------------\n`);
+        if (serviceAiInstructions) {
+            console.log(`\n--- [AI Context Loaded] ---\nService: ${service.name}\nPrompt: ${serviceAiInstructions}\n---------------------------\n`);
         }
 
         const businessNameGuardAction = getBusinessNameValidationGuardAction({
@@ -6833,7 +6917,7 @@ export const guestChat = asyncHandler(async (req, res) => {
 
             const reservedBrandMessage = await buildBusinessNameGuardMessage({
                 serviceName: service.name,
-                servicePrompt: service.aiPrompt || "",
+                servicePrompt: serviceAiInstructions,
                 scenario: "reserved_platform_brand",
                 brandName: businessNameGuardAction.brandName,
                 userLastMessage: userMessageText,
@@ -6890,7 +6974,7 @@ export const guestChat = asyncHandler(async (req, res) => {
 
             const followupMessage = await buildBusinessNameGuardMessage({
                 serviceName: service.name,
-                servicePrompt: service.aiPrompt || "",
+                servicePrompt: serviceAiInstructions,
                 scenario: "ask_known_brand_affiliation",
                 brandName: businessNameGuardAction.brandName,
                 userLastMessage: userMessageText,
@@ -6941,7 +7025,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         if (businessNameGuardAction.type === "ask_pending_brand_role") {
             const followupMessage = await buildBusinessNameGuardMessage({
                 serviceName: service.name,
-                servicePrompt: service.aiPrompt || "",
+                servicePrompt: serviceAiInstructions,
                 scenario: "ask_pending_brand_role",
                 brandName: businessNameGuardAction.brandName,
                 userLastMessage: userMessageText,
@@ -6991,7 +7075,7 @@ export const guestChat = asyncHandler(async (req, res) => {
 
             const followupMessage = await buildBusinessNameGuardMessage({
                 serviceName: service.name,
-                servicePrompt: service.aiPrompt || "",
+                servicePrompt: serviceAiInstructions,
                 scenario: "deny_pending_brand",
                 brandName: businessNameGuardAction.brandName,
                 userLastMessage: userMessageText,
@@ -7090,8 +7174,9 @@ export const guestChat = asyncHandler(async (req, res) => {
         if (!validationResult) {
             const validationPrompt = buildCurrentQuestionValidationPrompt({
                 serviceName: service.name,
-                servicePrompt: service.aiPrompt || "",
+                servicePrompt: serviceAiInstructions,
                 currentQuestionText,
+                currentQuestionResponseMode: currentQuestion?.questionResponseMode || "",
                 currentQuestionOptions,
                 currentQuestionNumberedOptions,
                 currentQuestionCanonicalOptions,
@@ -7154,7 +7239,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         if (!validationResult) {
             const aiReaskCurrentQuestion = await buildAiGuidedQuestionMessage({
                 serviceName: service.name,
-                servicePrompt: service.aiPrompt || "",
+                servicePrompt: serviceAiInstructions,
                 userLastMessage: userMessageText,
                 currentQuestion,
                 nextQuestion: currentQuestion,
@@ -7375,7 +7460,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 ? ""
                 : await buildAiGuidedQuestionMessage({
                     serviceName: service.name,
-                    servicePrompt: service.aiPrompt || "",
+                    servicePrompt: serviceAiInstructions,
                     userLastMessage: userMessageText,
                     currentQuestion,
                     nextQuestion: currentQuestion,
@@ -7610,7 +7695,9 @@ export const guestChat = asyncHandler(async (req, res) => {
         );
     }
 
-    const nextStep = findNextUnansweredStep(questions, updatedAnswersBySlug);
+    const nextStep = isFlowEndingQuestionResponseMode(currentQuestion)
+        ? questions.length
+        : findNextUnansweredStep(questions, updatedAnswersBySlug);
     let persistedAnswers = buildPersistedAnswersPayload(updatedAnswersBySlug, questions, {
         runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
         existingPayload: session.answers || {}
@@ -7619,7 +7706,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     if (nextStep < questions.length) {
         const runtimeOptions = await generateRuntimeOptionsForQuestion({
             serviceName: service.name,
-            servicePrompt: service.aiPrompt || "",
+            servicePrompt: serviceAiInstructions,
             question: questions[nextStep],
             answersByQuestionText: persistedAnswers.byQuestionText,
             answersBySlug: updatedAnswersBySlug,
@@ -7728,7 +7815,7 @@ export const guestChat = asyncHandler(async (req, res) => {
 
         const aiGuidedQuestionMessage = await buildAiGuidedQuestionMessage({
             serviceName: service.name,
-            servicePrompt: service.aiPrompt || "",
+            servicePrompt: serviceAiInstructions,
             userLastMessage: userMessageText,
             currentQuestion,
             nextQuestion,

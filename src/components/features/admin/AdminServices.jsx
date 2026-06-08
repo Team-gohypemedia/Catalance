@@ -29,6 +29,7 @@ const EMPTY_FORM = {
     icon: "",
     active: true,
     aiPrompt: "",
+    aiGlossary: "",
     proposalStructure: "",
     agencyProposalStructure: "",
     internalProposalStructure: "",
@@ -556,6 +557,7 @@ const AdminServices = () => {
             icon: service.icon || "",
             active: service.active !== undefined ? service.active : true,
             aiPrompt: service.aiPrompt || "",
+            aiGlossary: service.aiGlossary || "",
             proposalStructure: service.proposalStructure || "",
             agencyProposalStructure: service.agencyProposalStructure || "",
             internalProposalStructure: service.internalProposalStructure || "",
@@ -718,6 +720,7 @@ const AdminServices = () => {
             description: formData.description.trim(),
             icon: formData.icon.trim(),
             aiPrompt: formData.aiPrompt.trim(),
+            aiGlossary: formData.aiGlossary.trim(),
             proposalPrompt: formData.proposalPrompt.trim(),
             proposalStructure,
             agencyProposalStructure,
@@ -1166,6 +1169,19 @@ const AdminServices = () => {
                                             <div className="space-y-2">
                                                 <Label htmlFor="service-ai-prompt">AI Context / System Prompt</Label>
                                                 <Textarea id="service-ai-prompt" value={formData.aiPrompt} onChange={(event) => setFormData((current) => ({ ...current, aiPrompt: event.target.value }))} className="min-h-[140px] resize-y font-mono text-sm" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="service-ai-glossary">AI Glossary / Meaning Map</Label>
+                                                <Textarea
+                                                    id="service-ai-glossary"
+                                                    value={formData.aiGlossary}
+                                                    onChange={(event) => setFormData((current) => ({ ...current, aiGlossary: event.target.value }))}
+                                                    className="min-h-[140px] resize-y font-mono text-sm"
+                                                    placeholder={"Teach the AI what words mean for this service.\n\nExamples:\nMVP = first launch with only core features\nModern and professional = clean layout, premium visuals, serious tone, not playful\nLead form = enquiry/contact form, not payment checkout"}
+                                                />
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    Optional glossary for service-specific terms, phrases, and client wording. Simple lines like <code>word = meaning</code> work well.
+                                                </p>
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="service-proposal-prompt">Proposal Prompt Rules</Label>
