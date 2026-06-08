@@ -4756,7 +4756,7 @@ const GuestAIDemo = () => {
             : pendingAttachments;
         let contentToSend = forcedContent ?? input;
 
-        if (!ignorePendingOptionFollowup && pendingOptionValue) {
+        if (!ignorePendingOptionFollowup && pendingOptionValue && !pendingOptionFollowup?.autoSuggestion) {
             const detailText = String(input || '').trim();
             const acceptsPendingRecommendation = Boolean(
                 pendingRecommendedAnswer
@@ -6878,7 +6878,9 @@ const GuestAIDemo = () => {
                                                     isOptionSelected={isOptionSelectedByText}
                                                     isMultiInput={isMultiInput}
                                                     selectedCount={selectedOptions.length}
-                                                    onSubmitMulti={(e) => handleSendMessage(e, selectedOptions)}
+                                                    onSubmitMulti={(e) => handleSendMessage(e, selectedOptions, {
+                                                        ignorePendingOptionFollowup: Boolean(pendingOptionFollowup?.autoSuggestion),
+                                                    })}
                                                 />
                                             </div>
                                         )}
