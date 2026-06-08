@@ -422,6 +422,7 @@ const FreelancerServiceReviewSlide = ({
   user,
   onServiceStepChange,
   onSkipServices,
+  continueButton,
 }) => {
   const { authFetch } = useAuth();
   const [categoryOptions, setCategoryOptions] = useState([]);
@@ -1320,6 +1321,8 @@ const FreelancerServiceReviewSlide = ({
           </div>
         </div>
       </div>
+
+      {continueButton}
     </section>
   );
 };

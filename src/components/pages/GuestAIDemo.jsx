@@ -5258,7 +5258,7 @@ const GuestAIDemo = () => {
     const briefingHintClasses = isDark ? 'text-zinc-400' : 'text-muted-foreground';
     const briefingLikelyMatchClasses = isDark ? 'text-zinc-300' : 'text-muted-foreground';
     const briefingPrimaryButtonClasses = canContinueBriefing
-        ? 'bg-primary !text-white hover:-translate-y-0.5 hover:brightness-95'
+        ? `bg-primary ${isDark ? 'text-[#1C1B1F]' : '!text-white'} hover:-translate-y-0.5 hover:brightness-95`
         : (isDark ? 'cursor-not-allowed bg-zinc-700 text-zinc-300' : 'cursor-not-allowed bg-muted text-muted-foreground');
     const briefingTextareaTypographyClasses = isDark
         ? 'text-[clamp(1rem,1.7vw,1.28rem)]'
@@ -5278,29 +5278,6 @@ const GuestAIDemo = () => {
 
                     <div className={`relative z-10 mx-auto w-full px-5 ${isDark ? 'py-4 sm:py-6 sm:px-8 lg:px-10 max-w-[1280px]' : 'py-6 sm:py-10 sm:px-10 max-w-[840px]'}`}>
                         <div className={`mx-auto flex w-full flex-col justify-center min-h-0 ${isDark ? 'max-w-[980px]' : 'max-w-full'}`}>
-                            {isDark && (
-                                <div className={`relative px-5 py-1 sm:px-8 sm:py-2 lg:px-10 ${briefingHeroStageClasses}`}>
-                                    <div className="relative z-10 flex flex-col items-center text-center">
-                                        <div className="max-w-[860px]">
-                                            <h1 className={`font-serif ${briefingHeadingSizeClasses} ${briefingHeadingClasses}`}>
-                                                <span>I&apos;m looking for </span>
-                                                <span className={`${briefingAccentTextClasses} !italic`}>
-                                                    {briefingSentence.role || 'the right freelancer'}
-                                                </span>
-                                                <span>
-                                                    {' '}to help me with{' '}
-                                                </span>
-                                                <span className={`${briefingAccentTextClasses} !italic`}>
-                                                    {briefingSentence.goal || 'my project'}.
-                                                </span>
-                                            </h1>
-                                            <p className={`mx-auto mt-2 max-w-2xl text-sm leading-6 sm:text-[14px] ${briefingBodyClasses}`}>
-                                                Shape the brief fast, keep the message sharp, and move directly toward the right specialist.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
 
                         <form
                             onSubmit={(event) => {
@@ -5320,17 +5297,21 @@ const GuestAIDemo = () => {
                         >
                             <div className={`${isDark ? 'px-4 pt-5 pb-2 sm:px-6 sm:pt-6' : 'px-6 pt-7 pb-3 sm:px-8 sm:pt-8'}`}>
                                 {isDark ? (
-                                    <div className="flex flex-wrap items-center gap-4">
+                                    <div className="flex gap-4 items-start">
                                         <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-[15px] font-bold text-primary-foreground">
                                             {String(briefingStepIndex + 1).padStart(2, '0')}
                                         </span>
-                                        <div className="flex flex-col gap-0.5">
-                                            <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${briefingStepEyebrowClasses}`}>
-                                                {currentBriefingStep.eyebrow}
-                                            </p>
-                                            <h2 className={`text-xl font-medium sm:text-2xl ${briefingStepTitleClasses}`}>
-                                                {currentBriefingStep.label}
+                                        <div className="flex-1 min-w-0">
+                                            <h2 className={`text-xl font-medium leading-snug tracking-[-0.01em] sm:text-2xl ${briefingStepTitleClasses}`}>
+                                                {currentBriefingStep.key === 'role'
+                                                    ? 'What type of service are you looking for?'
+                                                    : currentBriefingStep.key === 'goal'
+                                                        ? 'Choose the option that best describes your project, or type your own requirement.'
+                                                        : 'Attach any references that will help us read your brief faster.'}
                                             </h2>
+                                            <p className={`mt-2 text-sm ${briefingBodyClasses}`}>
+                                                {currentBriefingStep.label}
+                                            </p>
                                         </div>
                                     </div>
                                 ) : (
@@ -5646,7 +5627,7 @@ const GuestAIDemo = () => {
                                             className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all ${isDark ? 'h-11 px-5 text-sm' : 'h-10 px-5 text-sm'} ${briefingPrimaryButtonClasses}`}
                                         >
                                             {isLastBriefingStep ? (briefingSubmitting ? 'Starting...' : 'Continue') : 'Continue'}
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                                         </button>
                                     )}
                                 </div>
@@ -5683,7 +5664,7 @@ const GuestAIDemo = () => {
                                             type="button"
                                             onClick={() => setServiceSelectionMode(modeOption.key)}
                                             className={`inline-flex h-11 items-center justify-center rounded-full border px-6 text-sm font-semibold transition-all duration-300 ${isActive
-                                                ? 'border-primary bg-primary !text-white shadow-[0_12px_30px_-18px_rgba(249,217,73,0.9)]'
+                                                ? `border-primary bg-primary ${isDark ? 'text-[#1C1B1F]' : '!text-white'} shadow-[0_12px_30px_-18px_rgba(249,217,73,0.9)]`
                                                 : isDark
                                                     ? 'border-white/12 bg-card/80 text-zinc-200 hover:border-primary/50'
                                                     : 'border-[#dccfb8] bg-white text-[#1c1b1f] shadow-[0_10px_30px_-20px_rgba(0,0,0,0.14)] hover:border-primary/50'
@@ -5727,12 +5708,12 @@ const GuestAIDemo = () => {
                                             onClick={() => startAgencyFlow()}
                                             disabled={agencySelectedServices.length === 0}
                                             className={`inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-all ${agencySelectedServices.length > 0
-                                                ? 'bg-primary !text-white shadow-[0_12px_30px_-18px_rgba(249,217,73,0.9)] hover:-translate-y-0.5'
+                                                ? `bg-primary ${isDark ? 'text-[#1C1B1F]' : '!text-white'} shadow-[0_12px_30px_-18px_rgba(249,217,73,0.9)] hover:-translate-y-0.5`
                                                 : 'cursor-not-allowed bg-muted text-muted-foreground'
                                                 }`}
                                         >
-                                            <span className={agencySelectedServices.length > 0 ? "!text-white" : "!text-muted-foreground"}>Continue with Agency</span>
-                                            <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0 ? 'bg-white/20 !text-white' : 'bg-background text-zinc-500'}`}>
+                                            <span className={agencySelectedServices.length > 0 ? (isDark ? "text-[#1C1B1F]" : "!text-white") : "!text-muted-foreground"}>Continue with Agency</span>
+                                            <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0 ? (isDark ? 'bg-black/10 text-[#1C1B1F]' : 'bg-white/20 !text-white') : 'bg-background text-zinc-500'}`}>
                                                 {agencySelectedServices.length}
                                             </span>
                                         </button>
@@ -5769,7 +5750,7 @@ const GuestAIDemo = () => {
                                         {isAgencySelectionMode ? (
                                             <div className="absolute right-4 top-4 z-20">
                                                 <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${agencySelectedServiceIds.includes(getServiceIdentifier(feature))
-                                                    ? 'bg-primary !text-white'
+                                                    ? (isDark ? 'bg-primary text-[#1C1B1F]' : 'bg-primary !text-white')
                                                     : isDark
                                                         ? 'border border-white/10 bg-black/40 text-zinc-400'
                                                         : 'border border-[#e8dfcf] bg-white/90 text-[#7c6f5d]'
@@ -5900,24 +5881,24 @@ const GuestAIDemo = () => {
                                                     type="button"
                                                     onClick={() => setServiceSelectionMode(modeOption.key)}
                                                     className={`rounded-[1.5rem] border px-5 py-4 text-left transition-all duration-300 ${isActive
-                                                            ? 'border-primary bg-primary !text-white shadow-[0_16px_36px_-20px_rgba(249,217,73,0.8)]'
+                                                            ? `border-primary bg-primary ${isDark ? 'text-[#1C1B1F]' : '!text-white'} shadow-[0_16px_36px_-20px_rgba(249,217,73,0.8)]`
                                                             : 'border-white/10 bg-black/20 text-zinc-200 hover:border-primary/40 hover:bg-white/[0.04]'
                                                         }`}
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div>
-                                                            <p className={`text-xs font-bold uppercase tracking-[0.22em] ${isActive ? '!text-white/80' : 'text-primary'}`}>
+                                                            <p className={`text-xs font-bold uppercase tracking-[0.22em] ${isActive ? (isDark ? 'text-black/70' : '!text-white/80') : 'text-primary'}`}>
                                                                 {modeOption.label}
                                                             </p>
-                                                            <h3 className={`mt-2 text-lg font-bold ${isActive ? '!text-white' : 'text-white'}`}>
+                                                            <h3 className={`mt-2 text-lg font-bold ${isActive ? (isDark ? 'text-black' : '!text-white') : (isDark ? 'text-white' : 'text-foreground')}`}>
                                                                 {modeOption.title}
                                                             </h3>
-                                                            <p className={`mt-2 text-sm leading-relaxed ${isActive ? 'text-black/75' : 'text-zinc-400'}`}>
+                                                            <p className={`mt-2 text-sm leading-relaxed ${isActive ? (isDark ? 'text-black/75' : 'text-white/80') : 'text-zinc-400'}`}>
                                                                 {modeOption.description}
                                                             </p>
                                                         </div>
                                                         <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isActive
-                                                                ? 'bg-black/10 text-black'
+                                                                ? (isDark ? 'bg-black/10 text-black' : 'bg-white/20 !text-white')
                                                                 : 'border border-white/10 text-zinc-400'
                                                             }`}>
                                                             {isActive ? 'Active' : 'Select'}
@@ -5946,14 +5927,14 @@ const GuestAIDemo = () => {
                                                         : 'Select services to continue'
                                                 }
                                                 className={`inline-flex h-9 items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold whitespace-nowrap transition-all ${agencySelectedServices.length > 0
-                                                        ? 'border-primary/40 bg-primary !text-white hover:-translate-y-0.5 hover:opacity-90'
+                                                        ? `border-primary/40 bg-primary ${isDark ? 'text-[#1C1B1F]' : '!text-white'} hover:-translate-y-0.5 hover:opacity-90`
                                                         : 'cursor-not-allowed border-white/10 bg-background text-zinc-500'
                                                     }`}
                                             >
-                                                <span className={agencySelectedServices.length > 0 ? "!text-white" : "!text-muted-foreground"}>Continue</span>
+                                                <span className={agencySelectedServices.length > 0 ? (isDark ? "text-[#1C1B1F]" : "!text-white") : "!text-muted-foreground"}>Continue</span>
                                                 <span
                                                     className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${agencySelectedServices.length > 0
-                                                            ? 'bg-white/20 !text-white'
+                                                            ? (isDark ? 'bg-black/10 text-[#1C1B1F]' : 'bg-white/20 !text-white')
                                                             : 'bg-background text-zinc-500'
                                                         }`}
                                                 >
@@ -6043,7 +6024,7 @@ const GuestAIDemo = () => {
                                             {isAgencySelectionMode ? (
                                                 <div className="absolute right-4 top-4 z-20">
                                                     <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isAgencyCardSelected
-                                                            ? 'bg-primary !text-white'
+                                                            ? (isDark ? 'bg-primary text-[#1C1B1F]' : 'bg-primary !text-white')
                                                             : 'border border-white/10 bg-black/40 text-zinc-400'
                                                         }`}>
                                                         {isAgencyCardSelected ? 'Selected' : 'Select'}

@@ -137,6 +137,7 @@ const FreelancerBasicProfileSlide = ({
   resumeAutofillMessage = "",
   resumeUploadRequestId = 0,
   onboardingContent,
+  continueButton,
 }) => {
   const deviceInputRef = useRef(null);
   const resumeInputRef = useRef(null);
@@ -522,9 +523,9 @@ const FreelancerBasicProfileSlide = ({
               />
               <span className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90">
                 {isResumeAutofillRunning ? (
-                  <Loader2 className="size-3.5 animate-spin !text-white keep-white" />
+                  <Loader2 className="size-3.5 animate-spin" />
                 ) : (
-                  <Upload className="size-3.5 !text-white keep-white" />
+                  <Upload className="size-3.5" />
                 )}
                 {isResumeAutofillRunning
                   ? field.loadingLabel || "Reading..."
@@ -805,6 +806,12 @@ const FreelancerBasicProfileSlide = ({
           </div>
           
         </div>
+
+        {continueButton ? (
+          <div className="pt-5 border-t border-border">
+            {continueButton}
+          </div>
+        ) : null}
       </div>
     </section>
   );

@@ -3,6 +3,7 @@
 import React from "react";
 import Bell from "lucide-react/dist/esm/icons/bell";
 import { Link } from "react-router-dom";
+import ThemeToggle from "@/components/common/ThemeToggle";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
@@ -287,6 +288,22 @@ const FreelancerWorkspaceHeader = ({
   className,
 }) => {
   const { logout } = useAuth();
+
+  React.useEffect(() => {
+    document.documentElement.classList.add("workspace-zoom");
+    document.documentElement.style.zoom = "0.75";
+    return () => {
+      const path = window.location.pathname.toLowerCase();
+      if (
+        (!path.startsWith("/freelancer") && !path.startsWith("/client")) ||
+        path.includes("/onboarding")
+      ) {
+        document.documentElement.classList.remove("workspace-zoom");
+        document.documentElement.style.zoom = "";
+      }
+    };
+  }, []);
+
   const displayName = String(profile?.name || "Freelancer").trim() || "Freelancer";
   const profileInitial = profile?.initial || getInitials(displayName);
 
@@ -343,7 +360,7 @@ const FreelancerWorkspaceHeader = ({
             />
 
             <div className="flex items-center gap-3">
-              {/* <ThemeToggle /> */}
+              <ThemeToggle />
               <WorkspaceProfileDropdown
                 profile={profile}
                 displayName={displayName}
@@ -371,14 +388,14 @@ const FreelancerWorkspaceHeader = ({
                 <button
                   type="button"
                   onClick={onPrimaryAction}
-                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/80"
+                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80"
                 >
                   {primaryActionContent}
                 </button>
               ) : (
                 <Link
                   to={primaryActionTo}
-                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/80"
+                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80"
                 >
                   {primaryActionContent}
                 </Link>

@@ -43,7 +43,7 @@ const iconMap = {
  * ThemeToggle ΓÇö single icon trigger ΓåÆ popover with Light / System / Dark options.
  * Matches the WorkspaceProfileDropdown visual style (dark glass, rounded-[1rem]).
  */
-export default function ThemeToggle({ className }) {
+export default function ThemeToggle({ className, portalled }) {
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
 
@@ -101,6 +101,7 @@ export default function ThemeToggle({ className }) {
       <PopoverContent
         align="end"
         sideOffset={14}
+        portalled={portalled}
         className={cn(
           "w-[15rem] overflow-hidden rounded-[1.2rem] border p-1.5 backdrop-blur-xl shadow-2xl",
           // Light Mode

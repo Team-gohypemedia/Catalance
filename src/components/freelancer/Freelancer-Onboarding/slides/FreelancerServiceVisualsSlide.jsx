@@ -652,6 +652,7 @@ const FreelancerServiceVisualsSlide = ({
   onUploadServiceMediaFile,
   onSkipServices,
   serviceVisualsValidationErrors = {},
+  continueButton,
 }) => {
   const visualsContent =
     onboardingContent?.serviceVisuals ||
@@ -816,6 +817,8 @@ const FreelancerServiceVisualsSlide = ({
           ) : null}
         </div>
       </div>
+
+      {continueButton}
     </section>
   );
 };

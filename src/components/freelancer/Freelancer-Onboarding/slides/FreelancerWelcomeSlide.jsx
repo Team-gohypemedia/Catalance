@@ -1,6 +1,6 @@
 import React from 'react'
 
-const FreelancerWelcomeSlide = () => {
+const FreelancerWelcomeSlide = ({ continueButton }) => {
   return (
     <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 text-center sm:min-h-[70vh] sm:px-6">
       <div>
@@ -13,6 +13,8 @@ const FreelancerWelcomeSlide = () => {
         <p className={`mx-auto md:max-w-xl lg:max-w-2xl md:text-base lg:text-lg font-regular text-muted-foreground`}>
           Share your strengths, we'll match you with clients who value them.
         </p>
+
+        {continueButton}
       </div>
     </section>
   )

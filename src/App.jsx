@@ -200,8 +200,13 @@ const LegacyLoginRedirect = () => {
   );
 };
 
-const isWorkspacePath = (pathname = "") =>
-  pathname.startsWith("/client") || pathname.startsWith("/freelancer");
+const isWorkspacePath = (pathname = "") => {
+  const p = String(pathname || "").trim().toLowerCase();
+  if (p.includes("/onboarding")) {
+    return false;
+  }
+  return p.startsWith("/client") || p.startsWith("/freelancer");
+};
 
 const DashboardRouteTransitionLoader = () => {
   const { pathname } = useLocation();
@@ -236,6 +241,18 @@ const DashboardRouteTransitionLoader = () => {
 };
 
 const App = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (isWorkspacePath(pathname)) {
+      document.documentElement.classList.add("workspace-zoom");
+      document.documentElement.style.zoom = "0.75";
+    } else {
+      document.documentElement.classList.remove("workspace-zoom");
+      document.documentElement.style.zoom = "";
+    }
+  }, [pathname]);
+
   return (
     <main>
       <Suspense fallback={<RouteFallback />}>

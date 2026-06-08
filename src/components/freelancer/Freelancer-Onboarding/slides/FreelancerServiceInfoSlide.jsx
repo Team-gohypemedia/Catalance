@@ -884,6 +884,7 @@ const FreelancerServiceInfoSlide = ({
   onServiceStepChange,
   onSkipServices,
   serviceInfoValidationErrors = {},
+  continueButton,
 }) => {
   const serviceInfoContent =
     onboardingContent?.serviceInfo ||
@@ -1607,6 +1608,8 @@ const FreelancerServiceInfoSlide = ({
           </div>
         </div>
       </div>
+
+      {continueButton}
     </section>
   );
 };

@@ -8,7 +8,7 @@ const ONBOARDING_PAGE_TITLE_CLASS =
 const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
-const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChange }) => {
+const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChange, continueButton }) => {
   const agreementRef = useRef(null);
   const [hasReachedEnd, setHasReachedEnd] = useState(false);
   const [isAgreementChecked, setIsAgreementChecked] = useState(false);
@@ -317,6 +317,8 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
             ? "Check the box to enable Agree & Continue."
             : "Scroll to the end to enable the confirmation checkbox."}
         </p>
+
+        {continueButton}
       </div>
     </section>
   );

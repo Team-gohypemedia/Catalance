@@ -2,8 +2,17 @@ import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import HeroVideo from "@/assets/videos/WhatsApp Video 2026-06-03 at 12.28.59 PM.mp4";
+import DarkthemeAsset from "@/assets/videos/Darktheme.mp4";
+import { useTheme } from "@/components/providers/theme-provider";
 
 const MarketPlaceCTA = () => {
+  const { theme } = useTheme();
+  const isDarkMode = 
+    theme === "dark" || 
+    (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  const videoSrc = isDarkMode ? DarkthemeAsset : HeroVideo;
+
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -29,7 +38,7 @@ const MarketPlaceCTA = () => {
   }, []);
 
   return (
-    <section className="relative isolate w-full overflow-hidden bg-background">
+    <section className="relative isolate w-full overflow-hidden bg-background dark:bg-black">
       <div className="mx-auto w-full max-w-[1400px] px-6 py-6 sm:px-8 sm:py-10 lg:px-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-8 items-center">
 
@@ -56,8 +65,9 @@ const MarketPlaceCTA = () => {
           {/* RIGHT — Video (lazy-loaded, plays only when visible) */}
           <div className="relative flex items-center justify-center w-full mt-10 lg:mt-0 lg:self-center">
             <video
+              key={videoSrc}
               ref={videoRef}
-              src={HeroVideo}
+              src={videoSrc}
               autoPlay
               loop
               muted
