@@ -89,7 +89,7 @@ const ProcessVideo = () => {
             <span className="italic font-medium text-primary">search to execution</span>
           </h2>
           <p className="mt-5 max-w-lg text-[17px] leading-relaxed text-slate-400">
-            Three focused stages designed to get you from discovery to delivered results — fast.
+            Three focused stages designed to get you from discovery to delivered results â€” fast.
           </p>
         </motion.div>
 

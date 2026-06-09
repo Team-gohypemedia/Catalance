@@ -529,7 +529,7 @@ const CategoryMultiSelect = ({
           type="button"
           onClick={() => setIsOpen((current) => !current)}
           className={cn(
-            "flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors focus:ring-1",
+            "flex h-10 w-full items-center justify-between rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors focus:ring-1",
             hasError
               ? "border-destructive/70 text-foreground focus:border-destructive/60 focus:ring-destructive/20"
               : selectedOptions.length > 0
@@ -1371,7 +1371,7 @@ const FreelancerServiceInfoSlide = ({
           </h1>
         </div>
 
-        <div className="w-full">
+        <div className="mx-auto w-full max-w-3xl">
           <ServiceInfoStepper
             activeStepId="overview"
             onStepChange={onServiceStepChange}
@@ -1379,7 +1379,7 @@ const FreelancerServiceInfoSlide = ({
           />
         </div>
 
-        <div className="w-full space-y-5">
+        <div className="mx-auto w-full max-w-3xl space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <h2 className="text-lg sm:text-xl md:text-2xl font-medium text-foreground">
@@ -1406,7 +1406,7 @@ const FreelancerServiceInfoSlide = ({
             </Button>
           </div>
 
-          <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
+          <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
             <div className="space-y-0">
               {fieldMap.title?.visible === false ? null : (
               <>
@@ -1437,7 +1437,7 @@ const FreelancerServiceInfoSlide = ({
                     "I will do something I'm really good at"
                   }
                   className={cn(
-                    "h-12 w-full rounded-xl border bg-card px-4 !pr-24 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                    "h-10 w-full rounded-xl border bg-card px-4 !pr-24 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                     titleError
                       ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                       : "border-border focus:border-primary/50 focus:ring-primary/20",
@@ -1455,9 +1455,9 @@ const FreelancerServiceInfoSlide = ({
               )}
             </div>
 
-            <div className="space-y-0">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {fieldMap.categories?.visible === false ? null : (
-              <>
+              <div className="space-y-0">
               <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 {fieldMap.categories?.label || serviceInfoContent?.fields?.categories?.label || "Select Category"}
               </label>
@@ -1499,13 +1499,11 @@ const FreelancerServiceInfoSlide = ({
               {skillsError ? (
                 <p className="mt-1 text-sm text-destructive">{skillsError}</p>
               ) : null}
-              </>
+              </div>
               )}
-            </div>
 
-            <div className="space-y-0">
               {fieldMap.experience?.visible === false ? null : (
-              <>
+              <div className="space-y-0">
               <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 {fieldMap.experience?.label || serviceInfoContent?.fields?.experience?.label || "Experience"}
               </label>
@@ -1519,11 +1517,12 @@ const FreelancerServiceInfoSlide = ({
                   "Select experience level"
                 }
                 hasError={Boolean(experienceError)}
+                className="h-10"
               />
               {experienceError ? (
                 <p className="mt-1 text-sm text-destructive">{experienceError}</p>
               ) : null}
-              </>
+              </div>
               )}
             </div>
 
@@ -1547,6 +1546,7 @@ const FreelancerServiceInfoSlide = ({
                       isSearchable={Boolean(field.searchPlaceholder)}
                       searchPlaceholder={field.searchPlaceholder || "Search here"}
                       hasError={Boolean(customError)}
+                      className="h-10"
                     />
                     {customError ? (
                       <p className="mt-1 text-sm text-destructive">{customError}</p>
@@ -1591,7 +1591,7 @@ const FreelancerServiceInfoSlide = ({
                     onChange={(event) => onServiceInfoFieldChange(field.id, event.target.value)}
                     placeholder={field.placeholder || ""}
                     className={cn(
-                      "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      "h-10 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                       customError
                         ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                         : "border-border focus:border-primary/50 focus:ring-primary/20",

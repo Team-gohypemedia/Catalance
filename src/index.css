@@ -466,15 +466,31 @@ html.marketplace-page:not(.dark) {
   --ring:                 #D9692A;
 }
 
+html.onboarding-page:not(.dark),
+html.onboarding-page:not(.dark) body,
+html.onboarding-page:not(.dark) #root {
+  background-color: #FAF6F0;
+  background-image: url("/assets/slides/wavy-bg.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+html.onboarding-page:not(.dark) main [class*="bg-white"]:not(button):not(a):not(.keep-white),
+html.onboarding-page:not(.dark) main [class*="bg-card"]:not(button):not(a):not(.keep-white),
+html.onboarding-page:not(.dark) main [class*="bg-background"]:not(button):not(a):not(.keep-white) {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  background-image: none !important;
+}
+
 /* ── Root surface ── */
 html.home-page:not(.dark) main,
 html.onboarding-page:not(.dark) main,
 html.marketplace-page:not(.dark) main {
-  background-color: #FAF6F0;
+  background-color: transparent;
   color: #1C1B1F;
 }
-
-/* ── Specific Navbar Visibility Fix (Global Stitch Theme) ── */
 html:not(.dark) [class*="fixed"][class*="top-2"] > div,
 html:not(.dark) [class*="resizable-navbar"] {
   background-color: #FFFFFF !important;

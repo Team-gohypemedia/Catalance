@@ -28,7 +28,7 @@ const DELIVERY_TIMELINE_OPTIONS = [
 ];
 
 const fieldClassName =
-  "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1";
+  "h-10 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1";
 const textareaClassName =
   "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1";
 
@@ -132,6 +132,7 @@ const FreelancerServicePricingSlide = ({
         options={options}
         placeholder={field.placeholder || "Select option"}
         hasError={Boolean(error)}
+        className="h-10"
       />
       {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
     </div>
@@ -146,7 +147,7 @@ const FreelancerServicePricingSlide = ({
           </h1>
         </div>
 
-        <div className="w-full">
+        <div className="mx-auto w-full max-w-3xl">
           <ServiceInfoStepper
             activeStepId="pricing"
             onStepChange={onServiceStepChange}
@@ -154,7 +155,7 @@ const FreelancerServicePricingSlide = ({
           />
         </div>
 
-        <div className="w-full space-y-5">
+        <div className="mx-auto w-full max-w-3xl space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-foreground")}>
@@ -179,7 +180,7 @@ const FreelancerServicePricingSlide = ({
             </Button>
           </div>
 
-          <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
+          <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
             {fieldMap.description?.visible !== false
               ? renderTextareaField(
                   fieldMap.description,
@@ -189,25 +190,27 @@ const FreelancerServicePricingSlide = ({
                 )
               : null}
 
-            {fieldMap.deliveryTimeline?.visible !== false
-              ? renderSelectField(
-                  fieldMap.deliveryTimeline,
-                  servicePricingForm.deliveryTimeline,
-                  String(servicePricingValidationErrors.deliveryTimeline || "").trim(),
-                  (value) => onServicePricingFieldChange("deliveryTimeline", value),
-                  deliveryTimelineOptions,
-                )
-              : null}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {fieldMap.deliveryTimeline?.visible !== false
+                ? renderSelectField(
+                    fieldMap.deliveryTimeline,
+                    servicePricingForm.deliveryTimeline,
+                    String(servicePricingValidationErrors.deliveryTimeline || "").trim(),
+                    (value) => onServicePricingFieldChange("deliveryTimeline", value),
+                    deliveryTimelineOptions,
+                  )
+                : null}
 
-            {fieldMap.priceRange?.visible !== false
-              ? renderInputField(
-                  fieldMap.priceRange,
-                  servicePricingForm.priceRange || "",
-                  String(servicePricingValidationErrors.priceRange || "").trim(),
-                  (value) => onServicePricingFieldChange("priceRange", value),
-                  { numeric: true },
-                )
-              : null}
+              {fieldMap.priceRange?.visible !== false
+                ? renderInputField(
+                    fieldMap.priceRange,
+                    servicePricingForm.priceRange || "",
+                    String(servicePricingValidationErrors.priceRange || "").trim(),
+                    (value) => onServicePricingFieldChange("priceRange", value),
+                    { numeric: true },
+                  )
+                : null}
+            </div>
 
             {customPricingFields.map((field) => {
               const value = serviceDraft?.customFields?.servicePricing?.[field.id] ?? "";

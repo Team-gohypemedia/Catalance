@@ -897,8 +897,8 @@ const AgencyServiceReviewSlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
-      <div className="w-full space-y-8">
+    <section className="mx-auto flex w-full max-w-5xl flex-col items-center">
+      <div className="w-full space-y-4">
         <div className="text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Final </span>
@@ -908,7 +908,7 @@ const AgencyServiceReviewSlide = ({
           </h1>
         </div>
 
-        <div className="w-full">
+        <div className="mx-auto w-full max-w-3xl">
           <ServiceInfoStepper
             activeStepId="preview"
             onStepChange={onServiceStepChange}

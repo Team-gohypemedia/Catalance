@@ -115,7 +115,7 @@ const FileUploadButton = ({
         type="button"
         onClick={() => inputRef.current?.click()}
         className={cn(
-          "flex h-12 w-full items-center justify-start gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors",
+          "flex h-10 w-full items-center justify-start gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors",
           file ? "text-foreground" : "text-muted-foreground",
           hasError
             ? "border-destructive/70 hover:border-destructive/80"
@@ -255,7 +255,7 @@ const FreelancerCaseStudySlide = ({
         </div>
 
         {/* Stepper */}
-        <div className="w-full">
+        <div className="mx-auto w-full max-w-3xl">
           <ServiceInfoStepper
             activeStepId="caseStudy"
             onStepChange={onServiceStepChange}
@@ -264,7 +264,7 @@ const FreelancerCaseStudySlide = ({
         </div>
 
         {/* Step Content */}
-        <div className="w-full space-y-5">
+        <div className="mx-auto w-full max-w-3xl space-y-4">
           <div className="space-y-4">
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3 sm:flex sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-3">
@@ -391,13 +391,13 @@ const FreelancerCaseStudySlide = ({
             ) : null}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.08)] sm:p-6">
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_18px_60px_rgba(0,0,0,0.08)]">
           {/* Project Header */}
           <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "mb-4 text-foreground")}>
             {activeCaseStudyLabel}
           </h3>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Case Study Title */}
             <div className="space-y-0">
               <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
@@ -415,7 +415,7 @@ const FreelancerCaseStudySlide = ({
                   "e.g. E-commerce Platform Redesign"
                 }
                 className={cn(
-                  "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  "h-10 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                   titleError
                     ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                     : "border-border focus:border-primary/50 focus:ring-primary/20",
@@ -474,6 +474,7 @@ const FreelancerCaseStudySlide = ({
                   "Search niches"
                 }
                 hasError={Boolean(nicheError)}
+                className="h-10"
               />
               {nicheError ? (
                 <p className="mt-1 text-sm text-destructive">{nicheError}</p>
@@ -501,7 +502,7 @@ const FreelancerCaseStudySlide = ({
                       "https://..."
                     }
                     className={cn(
-                      "h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
+                      "h-10 w-full rounded-xl border border-border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
                     )}
                   />
                 </div>
@@ -520,6 +521,7 @@ const FreelancerCaseStudySlide = ({
                     fieldMap.role?.placeholder || caseStudyContent?.fields?.role?.placeholder || "Select role"
                   }
                   hasError={Boolean(roleError)}
+                  className="h-10"
                 />
                 {roleError ? (
                   <p className="mt-1 text-sm text-destructive">{roleError}</p>
@@ -542,6 +544,7 @@ const FreelancerCaseStudySlide = ({
                     "Select duration"
                   }
                   hasError={Boolean(timelineError)}
+                  className="h-10"
                 />
                 {timelineError ? (
                   <p className="mt-1 text-sm text-destructive">{timelineError}</p>
@@ -567,7 +570,7 @@ const FreelancerCaseStudySlide = ({
                       "e.g. 5000"
                     }
                     className={cn(
-                      "h-12 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      "h-10 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                       budgetError
                         ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                         : "border-border focus:border-primary/50 focus:ring-primary/20",
@@ -721,6 +724,7 @@ const FreelancerCaseStudySlide = ({
                 onChange={(val) => onCaseStudyFieldChange("previewGradient", val)}
                 options={GRADIENT_OPTIONS}
                 placeholder="Select gradient"
+                className="h-10"
               />
             </div>
             {customCaseStudyFields.map((field) => {
@@ -764,6 +768,7 @@ const FreelancerCaseStudySlide = ({
                       isSearchable={Boolean(field.searchPlaceholder)}
                       searchPlaceholder={field.searchPlaceholder || "Search"}
                       hasError={Boolean(customError)}
+                      className="h-10"
                     />
                     {customError ? <p className="mt-1 text-sm text-destructive">{customError}</p> : null}
                   </div>
@@ -781,7 +786,7 @@ const FreelancerCaseStudySlide = ({
                     onChange={(e) => onCaseStudyFieldChange(field.id, e.target.value)}
                     placeholder={field.placeholder || ""}
                     className={cn(
-                      "h-12 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      "h-10 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                       customError
                         ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                         : "border-border focus:border-primary/50 focus:ring-primary/20",

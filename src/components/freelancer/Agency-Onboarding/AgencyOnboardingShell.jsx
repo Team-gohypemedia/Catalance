@@ -3694,7 +3694,7 @@ const AgencyOnboardingShell = ({
 
   return (
     <DarkGradientBg className="text-[#f1f5f9]">
-      <main className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-transparent h-[100dvh]">
+      <main className="relative flex h-screen flex-col overflow-hidden bg-transparent h-[100dvh]">
       <header className="relative z-20 shrink-0 border-b border-white/8 bg-card">
         <div
           className="absolute left-0 top-0 h-1 bg-[var(--primary)] transition-all duration-300"
@@ -3798,7 +3798,7 @@ const AgencyOnboardingShell = ({
         ref={onboardingScrollContainerRef}
         className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto"
       >
-        <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+        <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12 pb-24">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentSlide.id}
@@ -3881,44 +3881,45 @@ const AgencyOnboardingShell = ({
             </motion.div>
           </AnimatePresence>
 
-          {isFooterHidden ? null : (
-            <footer className="relative z-20 mt-8 shrink-0 px-4 py-4 sm:px-6">
-              <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
-                <div />
-
-                <Button
-                  type="button"
-                  size="lg"
-                  onClick={footerPrimaryAction}
-                  disabled={footerPrimaryDisabled}
-                  className={ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS}
-                >
-                  {footerPrimaryLabel}
-                </Button>
-
-                {isProfileActionFooter ? (
-                  <div />
-                ) : (
-                  <div className="flex justify-end">
-                    {isServiceSectionSlide && currentSlide.id !== "serviceSetup" && currentSlide.id !== "serviceInfo" ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="lg"
-                        onClick={handleSkipServicesSection}
-                        disabled={isProfileSaving}
-                        className={ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS}
-                      >
-                        Skip
-                      </Button>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            </footer>
-          )}
         </div>
       </section>
+
+      {isFooterHidden ? null : (
+        <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6 shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
+          <div className="mx-auto max-w-6xl grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
+            <div />
+
+            <Button
+              type="button"
+              size="lg"
+              onClick={footerPrimaryAction}
+              disabled={footerPrimaryDisabled}
+              className={ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS}
+            >
+              {footerPrimaryLabel}
+            </Button>
+
+            {isProfileActionFooter ? (
+              <div />
+            ) : (
+              <div className="flex justify-end">
+                {isServiceSectionSlide && currentSlide.id !== "serviceSetup" && currentSlide.id !== "serviceInfo" ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="lg"
+                    onClick={handleSkipServicesSection}
+                    disabled={isProfileSaving}
+                    className={ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS}
+                  >
+                    Skip
+                  </Button>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </footer>
+      )}
       <ProfileImageCropDialog
         open={isProfileCropOpen}
         file={pendingProfilePhotoFile}

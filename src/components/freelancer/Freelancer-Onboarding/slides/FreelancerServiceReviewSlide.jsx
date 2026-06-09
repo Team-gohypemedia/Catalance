@@ -940,8 +940,8 @@ const FreelancerServiceReviewSlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
-      <div className="w-full space-y-8">
+    <section className="mx-auto flex w-full max-w-5xl flex-col items-center">
+      <div className="w-full space-y-4">
         <div className="text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Final </span>
@@ -951,14 +951,14 @@ const FreelancerServiceReviewSlide = ({
           </h1>
         </div>
 
-        <div className="w-full">
+        <div className="mx-auto w-full max-w-3xl">
           <ServiceInfoStepper
             activeStepId="preview"
             onStepChange={onServiceStepChange}
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-3">
               <div className="space-y-2">

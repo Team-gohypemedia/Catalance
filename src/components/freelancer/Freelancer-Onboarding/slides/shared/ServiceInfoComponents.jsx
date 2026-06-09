@@ -64,7 +64,7 @@ const StepperItem = ({
       className={cn(
         "relative flex h-9 w-full min-w-0 items-center rounded-full border text-sm transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10",
         isActive
-          ? "justify-center gap-0 border-primary bg-primary px-2 text-white dark:text-[#1C1B1F] shadow-[0_0_16px_rgba(var(--brand-rgb),0.22)] min-[360px]:px-3 sm:gap-2 sm:px-4"
+          ? "justify-center gap-0 border-primary bg-primary px-2 text-white keep-white dark:text-[#1C1B1F] shadow-[0_0_16px_rgba(var(--brand-rgb),0.22)] min-[360px]:px-3 sm:gap-2 sm:px-4"
           : isCompleted
             ? "justify-center gap-0 border-border bg-muted/80 px-2 text-foreground hover:border-primary/30 hover:bg-muted sm:gap-2 sm:px-4"
             : "justify-center gap-0 border-border/40 bg-muted/30 px-2 text-muted-foreground/85 hover:border-border/85 hover:bg-muted/60 hover:text-foreground sm:gap-2 sm:px-4",
@@ -76,18 +76,18 @@ const StepperItem = ({
         className={cn(
           ONBOARDING_STEP_LABEL_CLASS,
           isActive
-            ? "max-w-none whitespace-nowrap text-xs font-medium text-white dark:text-[#1C1B1F] min-[360px]:text-sm"
+            ? "max-w-none whitespace-nowrap text-xs font-medium text-white keep-white dark:text-[#1C1B1F] min-[360px]:text-sm"
             : "max-w-full truncate text-sm font-normal text-inherit",
         )}
       >
         {/* Mobile: active -> show label, inactive -> show step number. Desktop (sm+): always show full label. */}
         <span 
-          className={cn(isActive ? "block sm:hidden text-white dark:text-[#1C1B1F]" : "block sm:hidden")}
+          className={cn(isActive ? "block sm:hidden text-white keep-white dark:text-[#1C1B1F]" : "block sm:hidden")}
         >
           {isActive ? step.label : String(step.step)}
         </span>
         <span 
-          className={cn("hidden sm:inline", isActive && "text-white dark:text-[#1C1B1F]")}
+          className={cn("hidden sm:inline", isActive && "text-white keep-white dark:text-[#1C1B1F]")}
         >
           {step.label}
         </span>
@@ -196,6 +196,7 @@ export const CustomSelect = ({
   isSearchable = false,
   searchPlaceholder = "Search...",
   viewportBottomOffset = 0,
+  className = "",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -379,6 +380,7 @@ export const CustomSelect = ({
           hasError
             ? "border-destructive/70 ring-1 ring-destructive/20"
             : isOpen && "border-primary/50 ring-1 ring-primary/20",
+          className,
         )}
         aria-invalid={hasError}
       >

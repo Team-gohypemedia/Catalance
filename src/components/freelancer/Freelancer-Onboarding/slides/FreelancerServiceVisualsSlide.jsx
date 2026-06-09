@@ -680,7 +680,7 @@ const FreelancerServiceVisualsSlide = ({
         </div>
 
         {/* Stepper */}
-        <div className="w-full">
+        <div className="mx-auto w-full max-w-3xl">
           <ServiceInfoStepper
             activeStepId="visuals"
             onStepChange={onServiceStepChange}
@@ -689,7 +689,7 @@ const FreelancerServiceVisualsSlide = ({
         </div>
 
         {/* Step Content */}
-        <div className="w-full space-y-5">
+        <div className="mx-auto w-full max-w-3xl space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-foreground")}>
@@ -715,7 +715,7 @@ const FreelancerServiceVisualsSlide = ({
             </Button>
           </div>
 
-          <div className="space-y-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
+          <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
             <UploadArea
               files={serviceVisualsForm.mediaFiles}
               onChange={(next) =>
@@ -738,7 +738,7 @@ const FreelancerServiceVisualsSlide = ({
           </div>
 
           {customVisualFields.length > 0 ? (
-            <div className="space-y-5 rounded-2xl border border-border bg-card p-4 sm:p-5">
+            <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
               {customVisualFields.map((field) => {
                 const value = serviceVisualsForm?.customFields?.serviceVisuals?.[field.id] ?? "";
                 const error = String(serviceVisualsValidationErrors[field.id] || "").trim();
@@ -784,6 +784,7 @@ const FreelancerServiceVisualsSlide = ({
                         isSearchable={Boolean(field.searchPlaceholder)}
                         searchPlaceholder={field.searchPlaceholder || "Search"}
                         hasError={Boolean(error)}
+                        className="h-10"
                       />
                       {error ? <p className="text-sm text-destructive">{error}</p> : null}
                     </div>
@@ -803,7 +804,7 @@ const FreelancerServiceVisualsSlide = ({
                       }
                       placeholder={field.placeholder || ""}
                       className={cn(
-                        "h-12 w-full rounded-xl border bg-card px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-1",
+                        "h-10 w-full rounded-xl border bg-card px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-1",
                         error
                           ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                           : "border-border focus:border-primary/50 focus:ring-primary/20",

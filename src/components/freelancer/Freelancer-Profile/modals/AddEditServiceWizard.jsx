@@ -733,7 +733,7 @@ const AddEditServiceWizard = ({
                         }));
                       }}
                       placeholder="I will do something I'm really good at"
-                      className="h-12 w-full rounded-xl border border-border bg-card px-4 pr-24 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                      className="h-10 w-full rounded-xl border border-border bg-card px-4 pr-24 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                     />
                     <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-foreground/30">
                       {serviceTitleLength} / {SERVICE_TITLE_MAX} MAX
@@ -741,16 +741,38 @@ const AddEditServiceWizard = ({
                   </div>
                 </div>
 
-                <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                    Select Category
-                  </label>
-                  <CategoryMultiSelect
-                    selected={selectedCategoryKeys}
-                    options={allCategoryOptions}
-                    isLoading={isCategoriesLoading}
-                    onChange={handleSelectedCategoriesChange}
-                  />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-2.5">
+                    <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                      Select Category
+                    </label>
+                    <CategoryMultiSelect
+                      selected={selectedCategoryKeys}
+                      options={allCategoryOptions}
+                      isLoading={isCategoriesLoading}
+                      onChange={handleSelectedCategoriesChange}
+                    />
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                      Experience
+                    </label>
+                    <CustomSelect
+                      value={serviceProfileForm.experience}
+                      onChange={(value) =>
+                        setServiceProfileForm((prev) => ({
+                          ...prev,
+                          experience: value,
+                          experienceYears: value,
+                        }))
+                      }
+                      options={EXPERIENCE_OPTIONS}
+                      placeholder="Select experience level"
+                      viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
+                      className="h-10"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2.5">
@@ -781,6 +803,7 @@ const AddEditServiceWizard = ({
                         })}
                         placeholder="Select sub-category"
                         viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
+                        className="h-10"
                       />
 
                       <div className="rounded-xl border border-border bg-card/60 p-3 sm:p-4">
@@ -803,25 +826,6 @@ const AddEditServiceWizard = ({
                       </div>
                     </div>
                   )}
-                </div>
-
-                <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                    Experience
-                  </label>
-                  <CustomSelect
-                    value={serviceProfileForm.experience}
-                    onChange={(value) =>
-                      setServiceProfileForm((prev) => ({
-                        ...prev,
-                        experience: value,
-                        experienceYears: value,
-                      }))
-                    }
-                    options={EXPERIENCE_OPTIONS}
-                    placeholder="Select experience level"
-                    viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
-                  />
                 </div>
               </div>
             </div>
@@ -856,54 +860,57 @@ const AddEditServiceWizard = ({
                   }
                   placeholder="Description..."
                   rows={4}
-                  className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                  className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   maxLength={500}
                 />
               </div>
 
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                  Delivery Timeline
-                </label>
-                <CustomSelect
-                  value={serviceProfileForm.deliveryTimeline}
-                  onChange={(val) =>
-                    setServiceProfileForm((prev) => ({
-                      ...prev,
-                      deliveryTimeline: val,
-                      deliveryTime: val,
-                    }))
-                  }
-                  options={DELIVERY_TIMELINE_OPTIONS}
-                  placeholder="Select delivery time"
-                  viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
-                />
-              </div>
-
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                  Starting Price
-                </label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-foreground/40">
-                    ₹
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={serviceProfileForm.priceRange || ""}
-                    onChange={(e) => {
-                      const digitsOnly = e.target.value.replace(/\D/g, "");
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-2.5">
+                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                    Delivery Timeline
+                  </label>
+                  <CustomSelect
+                    value={serviceProfileForm.deliveryTimeline}
+                    onChange={(val) =>
                       setServiceProfileForm((prev) => ({
                         ...prev,
-                        priceRange: digitsOnly,
-                        averageProjectPrice: digitsOnly,
-                        averagePrice: digitsOnly,
-                      }));
-                    }}
-                    placeholder="Enter starting price"
-                    className="w-full rounded-xl border border-border bg-card py-3 pl-8 pr-4 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                        deliveryTimeline: val,
+                        deliveryTime: val,
+                      }))
+                    }
+                    options={DELIVERY_TIMELINE_OPTIONS}
+                    placeholder="Select delivery time"
+                    viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
+                    className="h-10"
                   />
+                </div>
+
+                <div className="space-y-2.5">
+                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                    Starting Price
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-foreground/40">
+                      ₹
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={serviceProfileForm.priceRange || ""}
+                      onChange={(e) => {
+                        const digitsOnly = e.target.value.replace(/\D/g, "");
+                        setServiceProfileForm((prev) => ({
+                          ...prev,
+                          priceRange: digitsOnly,
+                          averageProjectPrice: digitsOnly,
+                          averagePrice: digitsOnly,
+                        }));
+                      }}
+                      placeholder="Enter starting price"
+                      className="h-10 w-full rounded-xl border border-border bg-card pl-8 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1021,7 +1028,7 @@ const AddEditServiceWizard = ({
                   value={activeCaseStudy?.title || ""}
                   onChange={(e) => updateCaseStudy("title", e.target.value)}
                   placeholder="e.g. E-commerce Platform Redesign"
-                  className="h-12 w-full rounded-xl border border-border bg-card px-4 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                  className="h-10 w-full rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                 />
               </div>
 
@@ -1034,7 +1041,7 @@ const AddEditServiceWizard = ({
                   onChange={(e) => updateCaseStudy("description", e.target.value)}
                   placeholder="Briefly describe the project and its goals..."
                   rows={4}
-                  className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                  className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                 />
               </div>
 
@@ -1050,6 +1057,7 @@ const AddEditServiceWizard = ({
                   isSearchable
                   searchPlaceholder="Search niches"
                   viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
+                  className="h-10"
                 />
               </div>
 
@@ -1065,7 +1073,7 @@ const AddEditServiceWizard = ({
                       value={activeCaseStudy?.projectLink || ""}
                       onChange={(e) => updateCaseStudy("projectLink", e.target.value)}
                       placeholder="https://..."
-                      className="h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                      className="h-10 w-full rounded-xl border border-border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                     />
                   </div>
                 </div>
@@ -1090,6 +1098,7 @@ const AddEditServiceWizard = ({
                     options={ROLE_OPTIONS}
                     placeholder="Select role"
                     viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
+                    className="h-10"
                   />
                 </div>
               </div>
@@ -1105,6 +1114,7 @@ const AddEditServiceWizard = ({
                     options={PROJECT_TIMELINE_OPTIONS}
                     placeholder="Select duration"
                     viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
+                    className="h-10"
                   />
                 </div>
 
@@ -1122,7 +1132,7 @@ const AddEditServiceWizard = ({
                         updateCaseStudy("budget", value);
                       }}
                       placeholder="e.g. 5000"
-                      className="h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                      className="h-10 w-full rounded-xl border border-border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                     />
                   </div>
                 </div>
@@ -1651,7 +1661,7 @@ const FileUploadButton = ({ file, onChange }) => {
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm text-foreground/40 transition-colors hover:border-white/20"
+        className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm text-foreground/40 transition-colors hover:border-white/20"
       >
         <Upload className="h-4 w-4" />
         <span className="truncate">{fileName || "Upload file"}</span>
@@ -1730,7 +1740,7 @@ const CategoryMultiSelect = ({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 text-sm transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
+          "flex h-10 w-full items-center justify-between rounded-xl border bg-card px-4 text-sm transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
           selectedOptions.length > 0
             ? "border-primary/25 text-foreground"
             : "border-border text-foreground/40"
@@ -1836,13 +1846,13 @@ const TechnologiesInput = ({ toolOptions, selectedToolIds, customSkillNames, onC
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustom())}
           placeholder="Add custom skill..."
-          className="h-12 rounded-xl border-border bg-card px-4 text-sm text-foreground placeholder:text-foreground/40 focus:border-primary/50"
+          className="h-10 rounded-xl border-border bg-card px-4 text-sm text-foreground placeholder:text-foreground/40 focus:border-primary/50"
         />
         <Button
           type="button"
           onClick={addCustom}
           variant="secondary"
-          className="h-12 rounded-xl px-6"
+          className="h-10 rounded-xl px-6"
         >
           Add
         </Button>

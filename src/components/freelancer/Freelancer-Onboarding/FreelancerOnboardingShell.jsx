@@ -1138,7 +1138,9 @@ const FreelancerOnboardingShell = () => {
         storedDraft.selectedWorkPreference || "",
       ).trim();
       const normalizedStoredWorkPreference =
-        storedWorkPreference === "individual" ? storedWorkPreference : "";
+        storedWorkPreference === "individual" && Number(storedDraft.currentSlideIndex) > 1
+          ? storedWorkPreference
+          : "";
       const storedSlides = getOnboardingSlideSet(normalizedStoredWorkPreference);
       const nextServices = normalizeDraftSkillList(
         (Array.isArray(storedDraft.selectedServices)
@@ -1277,7 +1279,7 @@ const FreelancerOnboardingShell = () => {
           : currentForm.customFields,
     }));
     setSelectedWorkPreference(
-      String(profileDetails.role || "").trim() === "individual"
+      String(profileDetails.role || "").trim() === "individual" && currentSlideIndex > 1
         ? "individual"
         : "",
     );
@@ -2850,7 +2852,7 @@ const FreelancerOnboardingShell = () => {
     const profileDetails = {
       ...currentProfileDetails,
       profileDetailsVersion: 3,
-      role: selectedWorkPreference || "individual",
+      role: selectedWorkPreference || null,
       fullName: resolvedFullName,
       professionalBio: basicProfileForm.professionalBio.trim(),
       services: orderedSelectedServices,
@@ -3755,7 +3757,8 @@ const FreelancerOnboardingShell = () => {
     setIsResumeAutofillRunning(false);
     setResumeAutofillState(createInitialResumeAutofillState());
     setServiceValidationErrorsByStep({});
-  }, [basicProfileForm.profilePhoto]);
+    clearStoredOnboardingDraft(onboardingDraftStorageKey);
+  }, [basicProfileForm.profilePhoto, onboardingDraftStorageKey]);
 
   const handleResetOnboarding = useCallback(async () => {
     if (isResettingOnboarding) {
@@ -3819,7 +3822,7 @@ const FreelancerOnboardingShell = () => {
 
   return (
     <DarkGradientBg className="text-[#f1f5f9]">
-      <main className="onboarding-radius-10 relative flex h-screen min-h-screen flex-col overflow-hidden bg-transparent h-[100dvh]">
+      <main className="onboarding-radius-10 relative flex h-screen flex-col overflow-hidden bg-transparent h-[100dvh]">
       <header className="relative z-20 shrink-0 border-b border-white/8 bg-card">
         <div
           className="absolute left-0 top-0 h-1 bg-[var(--primary)] transition-all duration-300"
@@ -3908,9 +3911,27 @@ const FreelancerOnboardingShell = () => {
 
       <section
         ref={onboardingScrollContainerRef}
-        className="subtle-scrollbar relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+        className="subtle-scrollbar relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
       >
-        <div className="min-h-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+        >
+          {/* Dark theme gradient background */}
+          <div className="absolute inset-0 hidden dark:block dark:bg-[linear-gradient(180deg,#181818_0%,#0f0f0f_100%)]" />
+          <div className="absolute inset-0 hidden dark:block dark:bg-[radial-gradient(circle_at_50%_20%,rgba(255,196,123,0.08),transparent_34%)]" />
+          <div
+            className="absolute inset-0 hidden dark:block dark:opacity-30"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 18px 18px, rgba(227,122,36,0.26) 0 2px, transparent 2.4px), radial-gradient(circle at 18px 18px, rgba(227,122,36,0.08) 0 1px, transparent 1.4px)",
+              backgroundSize: "34px 34px, 96px 96px",
+              backgroundPosition: "0 0, 0 0",
+            }}
+          />
+          <div className="absolute inset-0 hidden dark:block dark:bg-[linear-gradient(135deg,rgba(255,196,123,0.05)_0%,transparent_18%,transparent_82%,rgba(255,196,123,0.05)_100%)]" />
+        </div>
+        <div className="min-h-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-24">
           <AnimatePresence initial={false} mode="wait">
             <motion.div
               key={currentSlide.id}
@@ -3993,31 +4014,34 @@ const FreelancerOnboardingShell = () => {
                 isProfileSaving={isProfileSaving}
                 user={user}
                 onSkipServices={handleSkipServicesSection}
-                continueButton={
-                  isFooterHidden ? null : (
-                    <div className="mt-8 flex w-full justify-center pb-2">
-                      <Button
-                        type="button"
-                        size="lg"
-                        onClick={footerPrimaryAction}
-                        disabled={footerPrimaryDisabled}
-                        className={ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS}
-                      >
-                        {isProfileSaving && <Loader size="sm" className="mr-2 inline-flex" />}
-                        {footerPrimaryLabel}
-                      </Button>
-                    </div>
-                  )
-                }
+                continueButton={null}
               />
             </motion.div>
           </AnimatePresence>
         </div>
       </section>
 
+      {/* Sticky Bottom Bar */}
+      {!isFooterHidden && (
+        <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6 flex justify-center shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
+          <Button
+            type="button"
+            size="lg"
+            onClick={footerPrimaryAction}
+            disabled={footerPrimaryDisabled}
+            className={ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS}
+          >
+            {isProfileSaving && <Loader size="sm" className="mr-2 inline-flex" />}
+            {footerPrimaryLabel}
+          </Button>
+        </footer>
+      )}
+
       {isAiHelperExpanded ? (
         <div
-          className="fixed bottom-6 right-5 z-40 flex max-w-[20rem] items-center gap-3 rounded-[24px] border border-border/50 bg-background p-2 pr-4 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all sm:right-8"
+          className={`fixed right-5 z-40 flex max-w-[20rem] items-center gap-3 rounded-[24px] border border-border/50 bg-background p-2 pr-4 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all sm:right-8 ${
+            isFooterHidden ? "bottom-6" : "bottom-[92px]"
+          }`}
         >
           <button
             type="button"
@@ -4056,7 +4080,9 @@ const FreelancerOnboardingShell = () => {
         <button
           type="button"
           onClick={() => setIsAiHelperExpanded(true)}
-          className="fixed bottom-6 right-5 z-40 flex size-12 items-center justify-center rounded-full border border-border/50 bg-background text-primary shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all hover:scale-110 hover:border-primary/40 hover:shadow-[0_12px_40px_rgba(0,0,0,0.16)] sm:right-8 cursor-pointer"
+          className={`fixed right-5 z-40 flex size-12 items-center justify-center rounded-full border border-border/50 bg-background text-primary shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all hover:scale-110 hover:border-primary/40 hover:shadow-[0_12px_40px_rgba(0,0,0,0.16)] sm:right-8 cursor-pointer ${
+            isFooterHidden ? "bottom-6" : "bottom-[92px]"
+          }`}
           aria-label="Get help completing profile"
         >
           <Sparkles className="size-5 animate-pulse" />
