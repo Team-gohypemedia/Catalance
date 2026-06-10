@@ -2626,6 +2626,19 @@ const combineInlineMessages = (...parts) =>
         .filter(Boolean)
         .join(" ");
 
+const stripQuestionStepLabels = (message = "") => {
+    let cleaned = String(message || "");
+    if (!cleaned.trim()) return "";
+
+    cleaned = cleaned
+        .replace(/^\s*Q\d+\.\s*$/gim, "")
+        .replace(/^\s*Q\d+\.\s*/i, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+    return cleaned;
+};
+
 const stripNameNotedRecap = (message = "") => {
     let cleaned = String(message || "");
     if (!cleaned.trim()) return "";
@@ -7872,6 +7885,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     }
 
     responseContent = stripNameNotedRecap(responseContent);
+    responseContent = stripQuestionStepLabels(responseContent);
 
     // 5. Save Assistant Message
     console.log(`[Assistant]: ${responseContent}`);

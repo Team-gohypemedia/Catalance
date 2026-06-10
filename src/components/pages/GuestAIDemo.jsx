@@ -1321,8 +1321,15 @@ const isAgencyProposalMessage = (content = "") => {
     return /(^|\n)\s*service breakdown\s*:/i.test(String(content || ""));
 };
 
+const stripQuestionStepLabels = (content = "") =>
+    String(content || "")
+        .replace(/^\s*Q\d+\.\s*$/gim, "")
+        .replace(/^\s*Q\d+\.\s*/i, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
 const normalizeMarkdownContent = (content = "") =>
-    String(content)
+    stripQuestionStepLabels(String(content))
         .replace(/^```(?:markdown)?\s*/i, "")
         .replace(/\s*```$/i, "")
         .trim();
