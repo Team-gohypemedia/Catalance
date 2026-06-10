@@ -2,12 +2,15 @@ import { promises as fs } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { prisma } from "../lib/prisma.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CONFIG_PATH = path.resolve(
   __dirname,
   "../data/freelancer-onboarding-content.json",
 );
+const CONFIG_RECORD_ID = "freelancer-onboarding-content";
 
 const isPlainObject = (value) =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -52,14 +55,66 @@ const parseConfigPayload = (rawValue) => {
   return { global, services };
 };
 
-export const loadFreelancerOnboardingContent = async () => {
+const loadFallbackContent = async () => {
   const rawConfig = await fs.readFile(CONFIG_PATH, "utf8");
   return parseConfigPayload(rawConfig);
 };
 
+const writeFallbackContent = async (payload) => {
+  await fs.writeFile(CONFIG_PATH, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+};
+
+const upsertStoredContent = async (payload) =>
+  prisma.freelancerOnboardingContent.upsert({
+    where: { id: CONFIG_RECORD_ID },
+    create: {
+      id: CONFIG_RECORD_ID,
+      content: payload,
+    },
+    update: {
+      content: payload,
+    },
+  });
+
+export const loadFreelancerOnboardingContent = async () => {
+  try {
+    const storedContent = await prisma.freelancerOnboardingContent.findUnique({
+      where: { id: CONFIG_RECORD_ID },
+    });
+
+    if (isPlainObject(storedContent?.content)) {
+      return parseConfigPayload(JSON.stringify(storedContent.content));
+    }
+  } catch (error) {
+    console.warn(
+      "[freelancerOnboardingContent] Falling back to file config:",
+      error?.message || error,
+    );
+  }
+
+  const fallbackContent = await loadFallbackContent();
+  try {
+    await upsertStoredContent(fallbackContent);
+  } catch (error) {
+    console.warn(
+      "[freelancerOnboardingContent] Could not seed DB from fallback config:",
+      error?.message || error,
+    );
+  }
+  return fallbackContent;
+};
+
 export const saveFreelancerOnboardingContent = async (nextConfig) => {
   const payload = parseConfigPayload(JSON.stringify(nextConfig || {}));
-  await fs.writeFile(CONFIG_PATH, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  try {
+    await upsertStoredContent(payload);
+  } catch (error) {
+    if (String(process.env.VERCEL || "").trim()) {
+      throw error;
+    }
+
+    await writeFallbackContent(payload);
+  }
   return payload;
 };
 

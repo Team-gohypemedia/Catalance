@@ -241,6 +241,15 @@ model Marketplace {
   @@index([isFeatured])
 }
 
+model FreelancerOnboardingContent {
+  id        String   @id
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("FreelancerOnboardingContent")
+}
+
 model Project {
   id                       String        @id @default(cuid())
   title                    String
