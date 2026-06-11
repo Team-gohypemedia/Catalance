@@ -167,15 +167,15 @@ const Contact = () => {
           <div className="flex flex-col sm:flex-row items-stretch">
 
             {/* ── LEFT PANEL ── */}
-            <div className="relative flex flex-row items-center sm:w-1/2 overflow-hidden py-8 px-6 sm:py-10 sm:px-8 gap-6">
+            <div className="relative flex flex-row items-center sm:w-1/2 overflow-hidden py-8 px-6 sm:py-10 sm:px-10 gap-4 sm:gap-6">
 
-              {/* Large salmon decorative quote strokes — top-left corner, behind everything */}
+              {/* Salmon decorative quote strokes — adjusted size and position */}
               <svg
                 viewBox="0 0 90 110"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
                 aria-hidden="true"
-                className="absolute top-3 left-3 w-16 h-20 sm:w-20 sm:h-24 pointer-events-none select-none"
+                className="absolute top-4 left-4 w-10 h-12 sm:w-12 sm:h-14 pointer-events-none select-none"
                 style={{ opacity: isDark ? 0.18 : 1 }}
               >
                 {/* Left stroke */}
@@ -194,29 +194,29 @@ const Contact = () => {
                 />
               </svg>
 
-              {/* Phone image — large, left-anchored, slight bottom overflow */}
-              <div className="relative z-10 shrink-0 -mb-8 -ml-2 sm:-mb-10">
+              {/* Phone image — slightly larger to balance the container, adjusted left margin */}
+              <div className="relative z-10 shrink-0 -mb-8 -ml-1 sm:-mb-10 sm:-ml-2">
                 <img
                   src="/retro-phone.png"
                   alt="Retro cordless telephone"
-                  className="h-44 sm:h-52 w-auto object-contain"
+                  className="h-48 sm:h-60 w-auto object-contain"
                   draggable={false}
                 />
               </div>
 
-              {/* Heading + fromYou pill — beside the phone */}
-              <div className="relative z-10 flex flex-col items-start gap-3 min-w-0 flex-1">
+              {/* Heading + fromYou pill — beside the phone, aligned nicely */}
+              <div className="relative z-10 flex flex-col items-start justify-center gap-2.5 min-w-0 flex-1 pl-1">
                 <h1
                   className="font-extrabold leading-tight tracking-tight"
                   style={{
-                    fontSize: 'clamp(1.1rem, 2vw, 1.65rem)',
+                    fontSize: 'clamp(1.15rem, 2.2vw, 1.85rem)',
                     color: isDark ? '#ffffff' : '#1a1209',
                   }}
                 >
                   We Would Love to Hear
                 </h1>
                 <span
-                  className={`italic font-bold rounded-xl px-6 py-2.5 text-lg sm:text-xl ${brandBgClass} ${brandTextOnBgClass}`}
+                  className={`italic font-bold rounded-xl px-5 py-2 text-base sm:text-lg ${brandBgClass} ${brandTextOnBgClass}`}
                   style={{ letterSpacing: '-0.01em' }}
                 >
                   fromYou
@@ -225,13 +225,13 @@ const Contact = () => {
             </div>
 
             {/* ── RIGHT PANEL ── */}
-            <div className="flex flex-col justify-between px-8 py-10 sm:px-12 sm:py-12 sm:w-1/2">
+            <div className="relative flex flex-col justify-center px-8 py-10 sm:px-12 sm:py-12 sm:w-1/2">
               <p className={`text-sm md:text-base leading-relaxed max-w-sm ${mutedText}`}>
                 Thank you for your interest in Catalance. We value your thoughts, questions, and feedback. Please don't hesitate to reach out to us. Our dedicated team is here to assist you.
               </p>
-
+              
               {/* Social icons — bottom-right */}
-              <div className="flex gap-3 justify-end mt-6">
+              <div className="absolute bottom-4 right-6 sm:bottom-6 sm:right-12 flex gap-3 justify-end">
                 {[
                   {
                     href: "https://www.facebook.com/profile.php?id=61586800500990",

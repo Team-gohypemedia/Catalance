@@ -38,6 +38,8 @@ import {
     Sparkles,
     Paperclip,
     X,
+    Check,
+    Users,
     Image as ImageIcon,
     FileText,
     Trash2,
@@ -5960,6 +5962,121 @@ const GuestAIDemo = () => {
                                     </div>
                                 ))}
                             </div>
+
+                            {/* ===== Why Businesses Choose Catalance ===== */}
+                            <section id="why-choose-catalance" className="relative py-2 mt-12 z-10">
+                                {/* Warm cream background card with adjusted height */}
+                                <div className="relative rounded-3xl overflow-hidden border border-orange-100/60 dark:border-white/10 bg-[#FDF7F0] dark:bg-[#18130d] px-4 py-6 sm:px-8 sm:py-6">
+
+                                    {/* Header */}
+                                    <div className="text-center mb-6 space-y-2">
+                                        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-[1.1] text-[#1a1209] dark:text-white">
+                                            Why Businesses Choose <span className="text-primary">Catalance</span>
+                                        </h2>
+                                        <p className="text-[#6b5c45] dark:text-slate-400 text-xs max-w-md mx-auto leading-relaxed">
+                                            Everything you need for successful project delivery — without the marketplace headaches.
+                                        </p>
+
+                                        {/* Trust avatars */}
+                                        <div className="flex items-center justify-center gap-1.5 pt-0.5">
+                                            <div className="flex -space-x-1.5">
+                                                {["t1", "t2", "t3", "t4"].map((seed) => (
+                                                    <div key={seed} className="w-6 h-6 rounded-full overflow-hidden ring-2 ring-[#FDF7F0] dark:ring-[#18130d] bg-orange-100">
+                                                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`} alt="" className="w-full h-full object-cover" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <span className="text-[11px] text-[#6b5c45] dark:text-slate-400">
+                                                Trusted by <span className="font-bold text-primary">300+ Businesses</span>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Comparison Table */}
+                                    <div className="max-w-2xl mx-auto">
+                                        {/* Column Headers */}
+                                        <div className="grid grid-cols-2 rounded-2xl overflow-hidden mb-0 shadow-sm">
+                                            {/* Catalance header */}
+                                            <div className="bg-primary flex items-center justify-center gap-1.5 py-2 px-4">
+                                                <div className="w-4 h-4 rounded-full bg-white/20 dark:bg-black/20 flex items-center justify-center">
+                                                    <div className="w-2 h-2 rounded-full bg-white dark:bg-black" />
+                                                </div>
+                                                <span className="!text-white dark:!text-black font-bold text-xs sm:text-sm">Catalance</span>
+                                            </div>
+                                            {/* VS badge & Other Platforms header */}
+                                            <div className="bg-[#e8e5e0] dark:bg-[#2a2520] flex items-center justify-center gap-1.5 py-2 px-4 relative">
+                                                <div className="absolute left-0 -translate-x-1/2 w-6 h-6 rounded-full bg-[#f5f1ec] dark:bg-[#1a1512] border border-[#ddd9d3] dark:border-white/10 flex items-center justify-center z-10">
+                                                    <span className="text-[7px] font-extrabold text-[#888] uppercase">vs</span>
+                                                </div>
+                                                <Users className="w-3.5 h-3.5 text-[#888] dark:text-slate-400" />
+                                                <span className="text-[#555] dark:text-slate-300 font-semibold text-xs sm:text-sm">Other Platforms</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Comparison Rows */}
+                                        <div className="divide-y divide-[#e8e0d5] dark:divide-white/10 bg-white/70 dark:bg-white/[0.03] rounded-b-2xl border border-t-0 border-[#e8e0d5] dark:border-white/10">
+                                            {[
+                                                {
+                                                    catalance: { title: "Verified Freelancers", desc: "Rigorous verification for skill and experience." },
+                                                    other: { title: "Open Marketplace", desc: "Anyone can join with no verification." },
+                                                },
+                                                {
+                                                    catalance: { title: "100% Refund Policy*", desc: "Full refund if you're not satisfied with the work." },
+                                                    other: { title: "Limited Protection", desc: "Limited refund and dispute protection." },
+                                                },
+                                                {
+                                                    catalance: { title: "Freelancer Replacement Available*", desc: "We'll replace your freelancer at no extra cost." },
+                                                    other: { title: "Find a New Freelancer Yourself", desc: "You have to restart the whole process again." },
+                                                },
+                                                {
+                                                    catalance: { title: "Dedicated Support", desc: "Real people, ready to help you succeed." },
+                                                    other: { title: "Self-Service Support", desc: "Mostly help articles and automated replies." },
+                                                },
+                                                {
+                                                    catalance: { title: "Fast Talent Matching", desc: "We match you with the right talent, faster." },
+                                                    other: { title: "Endless Profile Searching", desc: "You search, filter and hope for the best." },
+                                                },
+                                                {
+                                                    catalance: { title: "Transparent Pricing", desc: "Clear pricing, no hidden charges." },
+                                                    other: { title: "Unexpected Platform Fees", desc: "Service fees and add-ons you didn't expect." },
+                                                },
+                                                {
+                                                    catalance: { title: "Focused on Project Success", desc: "Your success is our top priority." },
+                                                    other: { title: "Focused on Transactions", desc: "Their focus is on fees and transactions." },
+                                                },
+                                            ].map((row, idx) => (
+                                                <div key={idx} className="grid grid-cols-2">
+                                                    {/* Catalance column */}
+                                                    <div className="flex items-start gap-2 py-2 px-3 sm:px-4 border-r border-[#e8e0d5] dark:border-white/10">
+                                                        <div className="mt-0.5 shrink-0 w-4.5 h-4.5 rounded-full bg-primary/10 flex items-center justify-center">
+                                                            <Check className="w-2.5 h-2.5 text-primary" strokeWidth={3} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-[#1a1209] dark:text-white leading-snug">{row.catalance.title}</p>
+                                                            <p className="text-[10px] text-[#7a6a55] dark:text-slate-400 mt-0.5 leading-relaxed">{row.catalance.desc}</p>
+                                                        </div>
+                                                    </div>
+                                                    {/* Other platforms column */}
+                                                    <div className="flex items-start gap-2 py-2 px-3 sm:px-4">
+                                                        <div className="mt-0.5 shrink-0 w-4.5 h-4.5 rounded-full bg-red-100/80 dark:bg-red-900/20 flex items-center justify-center">
+                                                            <X className="w-2.5 h-2.5 text-red-500" strokeWidth={3} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-[#1a1209] dark:text-white leading-snug">{row.other.title}</p>
+                                                            <p className="text-[10px] text-[#7a6a55] dark:text-slate-400 mt-0.5 leading-relaxed">{row.other.desc}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Footnote */}
+                                        <div className="text-right mt-2">
+                                            <span className="text-[9px] text-primary italic font-medium">*Terms & Conditions Apply.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
                         </section>
                     </div>
                 </main>
@@ -6239,6 +6356,121 @@ const GuestAIDemo = () => {
                                 })
                             )}
                         </div>
+
+                        {/* ===== Why Businesses Choose Catalance ===== */}
+                        <section id="why-choose-catalance" className="relative py-2 mt-12 z-10">
+                            {/* Warm cream background card with adjusted height */}
+                            <div className="relative rounded-3xl overflow-hidden border border-orange-100/60 dark:border-white/10 bg-[#FDF7F0] dark:bg-[#18130d] px-4 py-6 sm:px-8 sm:py-6">
+
+                                {/* Header */}
+                                <div className="text-center mb-6 space-y-2">
+                                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-[1.1] text-[#1a1209] dark:text-white">
+                                        Why Businesses Choose <span className="text-primary">Catalance</span>
+                                    </h2>
+                                    <p className="text-[#6b5c45] dark:text-slate-400 text-xs max-w-md mx-auto leading-relaxed">
+                                        Everything you need for successful project delivery — without the marketplace headaches.
+                                    </p>
+
+                                    {/* Trust avatars */}
+                                    <div className="flex items-center justify-center gap-1.5 pt-0.5">
+                                        <div className="flex -space-x-1.5">
+                                            {["t1", "t2", "t3", "t4"].map((seed) => (
+                                                <div key={seed} className="w-6 h-6 rounded-full overflow-hidden ring-2 ring-[#FDF7F0] dark:ring-[#18130d] bg-orange-100">
+                                                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`} alt="" className="w-full h-full object-cover" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <span className="text-[11px] text-[#6b5c45] dark:text-slate-400">
+                                            Trusted by <span className="font-bold text-primary">300+ Businesses</span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Comparison Table */}
+                                <div className="max-w-2xl mx-auto">
+                                    {/* Column Headers */}
+                                    <div className="grid grid-cols-2 rounded-2xl overflow-hidden mb-0 shadow-sm">
+                                        {/* Catalance header */}
+                                        <div className="bg-primary flex items-center justify-center gap-1.5 py-2 px-4">
+                                            <div className="w-4 h-4 rounded-full bg-white/20 dark:bg-black/20 flex items-center justify-center">
+                                                <div className="w-2 h-2 rounded-full bg-white dark:bg-black" />
+                                            </div>
+                                            <span className="!text-white dark:!text-black font-bold text-xs sm:text-sm">Catalance</span>
+                                        </div>
+                                        {/* VS badge & Other Platforms header */}
+                                        <div className="bg-[#e8e5e0] dark:bg-[#2a2520] flex items-center justify-center gap-1.5 py-2 px-4 relative">
+                                            <div className="absolute left-0 -translate-x-1/2 w-6 h-6 rounded-full bg-[#f5f1ec] dark:bg-[#1a1512] border border-[#ddd9d3] dark:border-white/10 flex items-center justify-center z-10">
+                                                <span className="text-[7px] font-extrabold text-[#888] uppercase">vs</span>
+                                            </div>
+                                            <Users className="w-3.5 h-3.5 text-[#888] dark:text-slate-400" />
+                                            <span className="text-[#555] dark:text-slate-300 font-semibold text-xs sm:text-sm">Other Platforms</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Comparison Rows */}
+                                    <div className="divide-y divide-[#e8e0d5] dark:divide-white/10 bg-white/70 dark:bg-white/[0.03] rounded-b-2xl border border-t-0 border-[#e8e0d5] dark:border-white/10">
+                                        {[
+                                            {
+                                                catalance: { title: "Verified Freelancers", desc: "Rigorous verification for skill and experience." },
+                                                other: { title: "Open Marketplace", desc: "Anyone can join with no verification." },
+                                            },
+                                            {
+                                                catalance: { title: "100% Refund Policy*", desc: "Full refund if you're not satisfied with the work." },
+                                                other: { title: "Limited Protection", desc: "Limited refund and dispute protection." },
+                                            },
+                                            {
+                                                catalance: { title: "Freelancer Replacement Available*", desc: "We'll replace your freelancer at no extra cost." },
+                                                other: { title: "Find a New Freelancer Yourself", desc: "You have to restart the whole process again." },
+                                            },
+                                            {
+                                                catalance: { title: "Dedicated Support", desc: "Real people, ready to help you succeed." },
+                                                other: { title: "Self-Service Support", desc: "Mostly help articles and automated replies." },
+                                            },
+                                            {
+                                                catalance: { title: "Fast Talent Matching", desc: "We match you with the right talent, faster." },
+                                                other: { title: "Endless Profile Searching", desc: "You search, filter and hope for the best." },
+                                            },
+                                            {
+                                                catalance: { title: "Transparent Pricing", desc: "Clear pricing, no hidden charges." },
+                                                other: { title: "Unexpected Platform Fees", desc: "Service fees and add-ons you didn't expect." },
+                                            },
+                                            {
+                                                catalance: { title: "Focused on Project Success", desc: "Your success is our top priority." },
+                                                other: { title: "Focused on Transactions", desc: "Their focus is on fees and transactions." },
+                                            },
+                                        ].map((row, idx) => (
+                                            <div key={idx} className="grid grid-cols-2">
+                                                {/* Catalance column */}
+                                                <div className="flex items-start gap-2 py-2 px-3 sm:px-4 border-r border-[#e8e0d5] dark:border-white/10">
+                                                    <div className="mt-0.5 shrink-0 w-4.5 h-4.5 rounded-full bg-primary/10 flex items-center justify-center">
+                                                        <Check className="w-2.5 h-2.5 text-primary" strokeWidth={3} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-[#1a1209] dark:text-white leading-snug">{row.catalance.title}</p>
+                                                        <p className="text-[10px] text-[#7a6a55] dark:text-slate-400 mt-0.5 leading-relaxed">{row.catalance.desc}</p>
+                                                    </div>
+                                                </div>
+                                                {/* Other platforms column */}
+                                                <div className="flex items-start gap-2 py-2 px-3 sm:px-4">
+                                                    <div className="mt-0.5 shrink-0 w-4.5 h-4.5 rounded-full bg-red-100/80 dark:bg-red-900/20 flex items-center justify-center">
+                                                        <X className="w-2.5 h-2.5 text-red-500" strokeWidth={3} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-[#1a1209] dark:text-white leading-snug">{row.other.title}</p>
+                                                        <p className="text-[10px] text-[#7a6a55] dark:text-slate-400 mt-0.5 leading-relaxed">{row.other.desc}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Footnote */}
+                                    <div className="text-right mt-2">
+                                        <span className="text-[9px] text-primary italic font-medium">*Terms & Conditions Apply.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
 
                         {/* WHY CATALANCE AI */}
                         <div className="relative z-10 mt-24">

@@ -1,8 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
-import HeroVideo from "@/assets/videos/WhatsApp Video 2026-06-03 at 12.28.59 PM.mp4";
-import DarkthemeAsset from "@/assets/videos/Darktheme.mp4";
 import { useTheme } from "@/components/providers/theme-provider";
 
 const MarketPlaceCTA = () => {
@@ -11,7 +9,7 @@ const MarketPlaceCTA = () => {
     theme === "dark" || 
     (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-  const videoSrc = isDarkMode ? DarkthemeAsset : HeroVideo;
+  const videoSrc = isDarkMode ? "/assets/Darktheme.mp4" : "/assets/WhatsApp-Video.mp4";
 
   const videoRef = useRef(null);
 

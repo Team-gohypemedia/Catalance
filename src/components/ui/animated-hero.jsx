@@ -25,7 +25,7 @@ export const AnimatedHeroText = ({
   return (
     <span className={className}>
       <span className="block sm:inline">{staticText}</span>
-      <span className="relative flex w-full justify-center overflow-hidden text-center md:pb-4 md:pt-1 sm:inline-flex sm:w-auto sm:ml-3">
+      <span className="relative flex w-full justify-center overflow-hidden text-center md:pb-0 md:pt-0 sm:inline-flex sm:w-auto sm:ml-3">
         &nbsp;
         <AnimatePresence mode="wait">
           {titles.map((title, index) => (

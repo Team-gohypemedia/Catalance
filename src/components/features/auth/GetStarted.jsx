@@ -1,232 +1,403 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { cn } from "@/shared/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { useTheme } from "@/components/providers/theme-provider";
-import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
-import Laptop from "lucide-react/dist/esm/icons/laptop";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
-import Check from "lucide-react/dist/esm/icons/check";
-import MatrixRain from "@/components/ui/matrix-code";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
+import Zap from "lucide-react/dist/esm/icons/zap";
+import CircleHelp from "lucide-react/dist/esm/icons/circle-help";
+import logoDark from "@/assets/logos/logo.svg";
+import logoLight from "@/assets/logos/logo.svg";
 
-const ROLE_OPTIONS = [
-    {
-        id: "CLIENT",
-        title: "I'm a Client",
-        subtitle: "Hiring for a project",
-        description: "Post projects, review proposals, and collaborate with top talent worldwide.",
-        icon: BriefcaseBusiness,
-        features: ["Post unlimited projects", "Access verified professionals", "Secure milestone payments", "Dedicated support"],
-        buttonText: "Continue as Client",
-        color: "primary"
-    },
-    {
-        id: "FREELANCER",
-        title: "I'm a Freelancer",
-        subtitle: "Looking for work",
-        description: "Showcase your skills, submit proposals, and get hired for premium projects.",
-        icon: Laptop,
-        features: ["Zero commission fees", "Global opportunities", "Build your portfolio", "Fast, secure payments"],
-        buttonText: "Continue as Freelancer",
-        color: "primary"
-    }
+/* ─── Feature bullet list ─────────────────────────────────────────── */
+const FEATURES = [
+  {
+    icon: Sparkles,
+    title: "Personalized experience",
+    desc: "Get recommended roles and content that match your goals.",
+    colorLight: "bg-violet-100 text-violet-600",
+    colorDark: "bg-violet-900/40 text-violet-400",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Secure & private",
+    desc: "Your information is encrypted and never shared.",
+    colorLight: "bg-emerald-100 text-emerald-600",
+    colorDark: "bg-emerald-900/40 text-emerald-400",
+  },
+  {
+    icon: Zap,
+    title: "Quick & easy",
+    desc: "Takes less than 2 minutes to complete.",
+    colorLight: "bg-amber-100 text-amber-600",
+    colorDark: "bg-amber-900/40 text-amber-400",
+  },
 ];
 
+/* ─── Role card ───────────────────────────────────────────────────── */
+function RoleCard({ id, label, sublabel, emoji, selected, onSelect, isDark }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(id)}
+      className={cn(
+        "w-full flex items-center gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-all duration-200",
+        selected
+          ? "border-primary bg-primary/10 shadow-md shadow-primary/10"
+          : isDark
+          ? "border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.07]"
+          : "border-black/[0.07] bg-white hover:border-primary/30 hover:bg-primary/5"
+      )}
+    >
+      <span className="text-3xl leading-none select-none">{emoji}</span>
+      <div className="min-w-0">
+        <p
+          className={cn(
+            "font-semibold text-[0.95rem] leading-tight",
+            selected
+              ? "text-primary"
+              : isDark
+              ? "text-white"
+              : "text-[#1C1B1F]"
+          )}
+        >
+          {label}
+        </p>
+        <p
+          className={cn(
+            "text-[0.78rem] mt-0.5",
+            isDark ? "text-white/50" : "text-black/50"
+          )}
+        >
+          {sublabel}
+        </p>
+      </div>
+      {/* Radio indicator */}
+      <span
+        className={cn(
+          "ml-auto flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-all",
+          selected
+            ? "border-primary bg-primary"
+            : isDark
+            ? "border-white/20"
+            : "border-black/20"
+        )}
+      >
+        {selected && (
+          <span className="size-2 rounded-full bg-white dark:bg-[#1C1B1F]" />
+        )}
+      </span>
+    </button>
+  );
+}
+
+/* ─── Page ────────────────────────────────────────────────────────── */
 export default function GetStarted() {
-    const [searchParams] = useSearchParams();
-    const [selectedRole, setSelectedRole] = useState(null);
-    const [isHovering, setIsHovering] = useState(null);
-    const navigate = useNavigate();
-    const { theme } = useTheme();
-    const isDark =
-        theme === "dark" ||
-        (theme === "system" &&
-            typeof window !== "undefined" &&
-            typeof window.matchMedia === "function" &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const [searchParams] = useSearchParams();
+  const [selectedRole, setSelectedRole] = useState(null);
+  const navigate = useNavigate();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
-    useEffect(() => {
-        document.documentElement.classList.add("onboarding-page");
-        return () => document.documentElement.classList.remove("onboarding-page");
-    }, []);
+  useEffect(() => {
+    document.documentElement.classList.add("onboarding-page");
+    return () => document.documentElement.classList.remove("onboarding-page");
+  }, []);
 
-    // Check if coming from "Start Your Career" button
-    const forFreelancer = searchParams.get("for") === "freelancer";
+  // Pre-select freelancer if coming from hero CTA
+  useEffect(() => {
+    if (searchParams.get("for") === "freelancer") setSelectedRole("FREELANCER");
+  }, [searchParams]);
 
-    const handleContinue = (roleId) => {
-        const role = roleId.toLowerCase();
-        if (role === "client") {
-            navigate("/service");
-        } else {
-            navigate(`/signup?role=${role}`);
-        }
-    };
+  const handleContinue = () => {
+    if (!selectedRole) return;
+    const role = selectedRole.toLowerCase();
+    if (role === "client") {
+      navigate("/service");
+    } else {
+      navigate(`/signup?role=${role}`);
+    }
+  };
 
-    return (
-        <div className={cn(
-            "min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden py-20 px-6",
-            isDark ? "bg-black" : "bg-white"
-        )}>
-            {/* Background Effects */}
-            {isDark && (
-                <MatrixRain
-                    color="#FACC15"
-                    className="absolute inset-0 z-0"
-                    fadeOpacity={0.1}
-                    style={{ opacity: 0.1 }}
-                />
-            )}
+  return (
+    <div
+      className={cn(
+        "min-h-screen w-full flex flex-col relative overflow-hidden",
+        isDark ? "bg-[#0A0A0A]" : "bg-[#FAF6F0]"
+      )}
+    >
+      {/* ── Subtle dot-grid background ─────────────────────────────── */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: isDark
+            ? "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)"
+            : "radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+        }}
+      />
 
-            {/* Grid Background */}
-            <div
-                aria-hidden
-                className={`absolute inset-0 z-0 ${isDark ? "opacity-20" : "opacity-30"}`}
-                style={{
-                    backgroundImage: isDark
-                        ? `linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
-               linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)`
-                        : `linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
-               linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px)`,
-                    backgroundSize: "80px 80px",
-                }}
-            />
+      {/* ── Decorative blobs ───────────────────────────────────────── */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-40 -left-40 size-[500px] rounded-full opacity-20 blur-[120px]"
+        style={{ background: isDark ? "#F9D94930" : "#D9692A30" }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-40 -right-40 size-[400px] rounded-full opacity-15 blur-[100px]"
+        style={{ background: isDark ? "#F9D94925" : "#D9692A25" }}
+      />
 
-            {/* Content */}
-            <div className="relative z-10 w-full max-w-4xl mx-auto text-center">
-                {/* Header */}
-                <div className="mb-12">
-                    <p className="text-sm uppercase tracking-[0.3em] text-primary mb-4">
-                        Get Started
-                    </p>
-                    <h1 className={cn(
-                        "text-4xl md:text-5xl font-semibold mb-4",
-                        isDark ? "text-white" : "text-gray-900"
-                    )}>
-                        Join as a <span className="text-primary">Client</span> or <span className="text-primary">Freelancer</span>
-                    </h1>
-                    <p className={cn(
-                        "text-lg max-w-2xl mx-auto",
-                        isDark ? "text-neutral-400" : "text-gray-600"
-                    )}>
-                        Choose how you want to use Catalance and start your journey today.
-                    </p>
-                </div>
-
-                {/* Role Cards */}
-                <div className="grid md:grid-cols-2 gap-6 mb-8">
-                    {ROLE_OPTIONS.map((option) => {
-                        const Icon = option.icon;
-                        const isActive = selectedRole === option.id;
-                        const isHovered = isHovering === option.id;
-                        const shouldHighlight = forFreelancer && option.id === "FREELANCER";
-
-                        return (
-                            <Card
-                                key={option.id}
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => setSelectedRole(option.id)}
-                                onMouseEnter={() => setIsHovering(option.id)}
-                                onMouseLeave={() => setIsHovering(null)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                        e.preventDefault();
-                                        setSelectedRole(option.id);
-                                    }
-                                }}
-                                className={cn(
-                                    "relative p-8 text-left cursor-pointer border-2 transition-all duration-300",
-                                    "hover:shadow-xl hover:shadow-primary/10",
-                                    isActive
-                                        ? "border-primary shadow-lg shadow-primary/20 scale-[1.02]"
-                                        : shouldHighlight
-                                            ? "border-primary/50"
-                                            : "border-border hover:border-primary/50",
-                                    isDark ? "bg-black/40 backdrop-blur-sm" : "bg-white/80 backdrop-blur-sm"
-                                )}
-                            >
-                                {/* Selection Indicator */}
-                                {isActive && (
-                                    <div className="absolute top-4 right-4 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                                        <Check className="w-4 h-4 text-black" />
-                                    </div>
-                                )}
-
-                                {/* Icon & Title */}
-                                <div className="flex items-start gap-4 mb-4">
-                                    <div className={cn(
-                                        "p-3 rounded-xl transition-colors",
-                                        isActive || isHovered ? "bg-primary text-black" : "bg-muted text-primary"
-                                    )}>
-                                        <Icon className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <h3 className={cn(
-                                            "text-xl font-semibold",
-                                            isDark ? "text-white" : "text-gray-900"
-                                        )}>
-                                            {option.title}
-                                        </h3>
-                                        <p className="text-sm text-muted-foreground">{option.subtitle}</p>
-                                    </div>
-                                </div>
-
-                                {/* Description */}
-                                <p className={cn(
-                                    "text-sm mb-6",
-                                    isDark ? "text-neutral-400" : "text-gray-600"
-                                )}>
-                                    {option.description}
-                                </p>
-
-                                {/* Features */}
-                                <ul className="space-y-2 mb-6">
-                                    {option.features.map((feature, idx) => (
-                                        <li key={idx} className="flex items-center gap-2 text-sm">
-                                            <Check className={cn(
-                                                "w-4 h-4",
-                                                isActive ? "text-primary" : "text-muted-foreground"
-                                            )} />
-                                            <span className={isDark ? "text-neutral-300" : "text-gray-700"}>
-                                                {feature}
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-
-                                {/* Continue Button */}
-                                <Button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleContinue(option.id);
-                                    }}
-                                    className={cn(
-                                        "w-full group transition-all duration-300",
-                                        isActive
-                                            ? "bg-primary hover:bg-primary/90 text-black"
-                                            : "bg-muted hover:bg-primary hover:text-black"
-                                    )}
-                                >
-                                    {option.buttonText}
-                                    <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                </Button>
-                            </Card>
-                        );
-                    })}
-                </div>
-
-                {/* Login Link */}
-                <p className={cn(
-                    "text-sm",
-                    isDark ? "text-neutral-400" : "text-gray-600"
-                )}>
-                    Already have an account?{" "}
-                    <Link to="/signin/phone" className="text-primary hover:underline font-medium">
-                        Log in
-                    </Link>
-                </p>
-            </div>
+      {/* ── Logo bar ───────────────────────────────────────────────── */}
+      <header className="relative z-10 flex items-center gap-2.5 px-8 pt-7 pb-0">
+        <div
+          className={cn(
+            "flex size-8 items-center justify-center rounded-full",
+            "bg-primary"
+          )}
+        >
+          <img
+            src={isDark ? logoDark : logoLight}
+            alt=""
+            className="h-[18px] w-[18px] object-contain invert dark:invert-0"
+          />
         </div>
-    );
+        <span
+          className={cn(
+            "text-[1.05rem] font-bold tracking-[-0.4px]",
+            isDark ? "text-white" : "text-[#1C1B1F]"
+          )}
+        >
+          Catalance
+        </span>
+      </header>
+
+      {/* ── Main split layout ──────────────────────────────────────── */}
+      <main className="relative z-10 flex flex-1 items-center justify-center gap-12 px-6 py-12 lg:px-16 xl:gap-20">
+        {/* ──── Left panel ─────────────────────────────────────────── */}
+        <div className="hidden max-w-sm flex-1 lg:flex lg:flex-col">
+          {/* Step badge */}
+          <div
+            className={cn(
+              "mb-7 inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1 text-[0.75rem] font-medium",
+              isDark
+                ? "border-white/10 bg-white/[0.05] text-white/60"
+                : "border-black/[0.08] bg-white/70 text-black/50"
+            )}
+          >
+            <Sparkles className="size-3 text-primary" />
+            Step 1 of 2
+          </div>
+
+          {/* Headline */}
+          <h1
+            className={cn(
+              "mb-4 text-[2.6rem] font-bold leading-[1.15] tracking-[-1px]",
+              isDark ? "text-white" : "text-[#1C1B1F]"
+            )}
+          >
+            Join as a{" "}
+            <span className="text-primary">Client</span>
+            {" "}or{" "}
+            <span className="text-primary">Freelancer</span>
+            {" "}👋
+          </h1>
+
+          {/* Sub text */}
+          <p
+            className={cn(
+              "mb-9 text-[0.95rem] leading-relaxed",
+              isDark ? "text-white/50" : "text-black/50"
+            )}
+          >
+            Let's get to know you better so we can personalize your experience.
+          </p>
+
+          {/* Feature list */}
+          <div className="space-y-4">
+            {FEATURES.map(({ icon: Icon, title, desc, colorLight, colorDark }) => (
+              <div key={title} className="flex items-start gap-4">
+                <div
+                  className={cn(
+                    "mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl",
+                    isDark ? colorDark : colorLight
+                  )}
+                >
+                  <Icon className="size-4.5" />
+                </div>
+                <div>
+                  <p
+                    className={cn(
+                      "text-[0.88rem] font-semibold",
+                      isDark ? "text-white" : "text-[#1C1B1F]"
+                    )}
+                  >
+                    {title}
+                  </p>
+                  <p
+                    className={cn(
+                      "text-[0.8rem] leading-snug",
+                      isDark ? "text-white/45" : "text-black/45"
+                    )}
+                  >
+                    {desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Help link */}
+          <div className="mt-10 flex items-center gap-1.5">
+            <CircleHelp
+              className={cn("size-4", isDark ? "text-white/30" : "text-black/30")}
+            />
+            <span
+              className={cn(
+                "text-[0.8rem]",
+                isDark ? "text-white/40" : "text-black/40"
+              )}
+            >
+              Need help?
+            </span>
+            <Link
+              to="/contact"
+              className="text-[0.8rem] text-primary hover:underline font-medium"
+            >
+              Contact support
+            </Link>
+          </div>
+        </div>
+
+        {/* ──── Right card ─────────────────────────────────────────── */}
+        <div
+          className={cn(
+            "w-full max-w-md rounded-3xl border p-8 shadow-2xl",
+            isDark
+              ? "border-white/[0.07] bg-white/[0.04] backdrop-blur-xl shadow-black/60"
+              : "border-black/[0.06] bg-white shadow-black/[0.08]"
+          )}
+        >
+          {/* Mobile headline (visible below lg) */}
+          <div className="mb-7 lg:hidden">
+            <div
+              className={cn(
+                "mb-4 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.75rem] font-medium",
+                isDark
+                  ? "border-white/10 bg-white/[0.05] text-white/60"
+                  : "border-black/[0.08] bg-black/[0.04] text-black/50"
+              )}
+            >
+              <Sparkles className="size-3 text-primary" />
+              Step 1 of 2
+            </div>
+            <h1
+              className={cn(
+                "text-2xl font-bold tracking-[-0.5px]",
+                isDark ? "text-white" : "text-[#1C1B1F]"
+              )}
+            >
+              Join as a <span className="text-primary">Client</span> or{" "}
+              <span className="text-primary">Freelancer</span>
+            </h1>
+          </div>
+
+          {/* Card title */}
+          <p
+            className={cn(
+              "mb-1.5 text-[1.15rem] font-bold tracking-[-0.3px]",
+              isDark ? "text-white" : "text-[#1C1B1F]"
+            )}
+          >
+            How will you use Catalance?
+          </p>
+          <p
+            className={cn(
+              "mb-6 text-[0.82rem]",
+              isDark ? "text-white/45" : "text-black/45"
+            )}
+          >
+            Choose your role to get started. You can always switch later.
+          </p>
+
+          {/* Role options */}
+          <div className="space-y-3">
+            <RoleCard
+              id="CLIENT"
+              label="I'm a Client"
+              sublabel="Hiring for a project"
+              emoji="💼"
+              selected={selectedRole === "CLIENT"}
+              onSelect={setSelectedRole}
+              isDark={isDark}
+            />
+            <RoleCard
+              id="FREELANCER"
+              label="I'm a Freelancer"
+              sublabel="Looking for work"
+              emoji="💻"
+              selected={selectedRole === "FREELANCER"}
+              onSelect={setSelectedRole}
+              isDark={isDark}
+            />
+          </div>
+
+          {/* Divider */}
+          <div
+            className={cn(
+              "my-6 h-px",
+              isDark ? "bg-white/[0.06]" : "bg-black/[0.06]"
+            )}
+          />
+
+          {/* CTA button */}
+          <button
+            type="button"
+            onClick={handleContinue}
+            disabled={!selectedRole}
+            className={cn(
+              "group flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[0.95rem] font-bold transition-all duration-200",
+              selectedRole
+                ? "bg-primary text-white shadow-lg shadow-primary/30 hover:brightness-110 active:scale-[0.98]"
+                : isDark
+                ? "cursor-not-allowed bg-white/[0.07] text-white/30"
+                : "cursor-not-allowed bg-black/[0.05] text-black/25"
+            )}
+          >
+            Continue
+            <ArrowRight className="size-4.5 transition-transform group-hover:translate-x-1" />
+          </button>
+
+          {/* Security note */}
+          <p
+            className={cn(
+              "mt-4 text-center text-[0.72rem]",
+              isDark ? "text-white/30" : "text-black/35"
+            )}
+          >
+            🔒 Your information is secure and will never be shared.
+          </p>
+
+          {/* Login link */}
+          <p
+            className={cn(
+              "mt-3 text-center text-[0.8rem]",
+              isDark ? "text-white/40" : "text-black/40"
+            )}
+          >
+            Already have an account?{" "}
+            <Link
+              to="/signin/phone"
+              className="font-semibold text-primary hover:underline"
+            >
+              Log in
+            </Link>
+          </p>
+        </div>
+      </main>
+    </div>
+  );
 }
