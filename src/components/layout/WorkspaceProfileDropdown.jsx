@@ -27,7 +27,7 @@ const tileClasses =
   "flex size-[2.05rem] shrink-0 items-center justify-center rounded-[0.8rem] border border-border bg-muted text-foreground";
 
 const actionLabelClasses =
-  "text-[0.8rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[0.84rem]";
+  "text-[0.86rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[0.9rem]";
 
 const ActionLink = ({ icon: Icon, label, to, onSelect }) => (
   <Link
@@ -81,7 +81,7 @@ const WorkspaceProfileDropdown = ({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-11 shrink-0 items-center gap-2.5 rounded-full border border-border bg-transparent px-3.5 text-[0.83rem] font-semibold text-[#1C1B1F] dark:text-white shadow-none transition-colors hover:border-border hover:bg-transparent"
+          className="flex h-11 shrink-0 items-center gap-2.5 rounded-full border border-border bg-transparent px-3.5 text-[0.92rem] font-semibold text-[#1C1B1F] dark:text-white shadow-none transition-colors hover:border-border hover:bg-transparent"
         >
           <Avatar className="size-6.5 border border-border">
             <AvatarImage src={profile?.avatar} alt={displayName} />
@@ -130,10 +130,10 @@ const WorkspaceProfileDropdown = ({
             </Avatar>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[0.94rem] font-semibold leading-none tracking-[-0.04em] text-foreground sm:text-[1rem]">
+              <p className="truncate text-[0.98rem] font-semibold leading-none tracking-[-0.04em] text-foreground sm:text-[1.05rem]">
                 {displayName}
               </p>
-              <p className="mt-1 truncate text-[0.7rem] font-medium tracking-[-0.02em] text-muted-foreground sm:text-[0.74rem]">
+              <p className="mt-1 truncate text-[0.78rem] font-medium tracking-[-0.02em] text-muted-foreground sm:text-[0.82rem]">
                 {profile?.email}
               </p>
             </div>
@@ -172,10 +172,10 @@ const WorkspaceProfileDropdown = ({
                     </span>
 
                     <span className="min-w-0">
-                      <span className="block truncate text-[0.8rem] font-semibold tracking-[-0.03em] text-foreground">
+                      <span className="block truncate text-[0.86rem] font-semibold tracking-[-0.03em] text-foreground">
                         {switchLabel}
                       </span>
-                      <span className="mt-0.5 block truncate text-[0.68rem] text-muted-foreground">
+                      <span className="mt-0.5 block truncate text-[0.73rem] text-muted-foreground">
                         Currently in {currentDashboardLabel} mode
                       </span>
                     </span>
@@ -205,7 +205,7 @@ const WorkspaceProfileDropdown = ({
             <span className="flex size-[2.05rem] shrink-0 items-center justify-center rounded-[0.8rem] bg-red-500/[0.12] text-[#ff6d6d]">
               <LogOut className="size-4 stroke-[1.85]" />
             </span>
-            <span className="text-[0.8rem] font-semibold tracking-[-0.03em] text-[#ff6d6d]">
+            <span className="text-[0.86rem] font-semibold tracking-[-0.03em] text-[#ff6d6d]">
               Log Out
             </span>
           </button>

@@ -75,13 +75,13 @@ const HeaderNavItem = ({ active, item, mobile, onSelect, variant = "marketing" }
       )
     : variant === "workspace"
       ? cn(
-          "shrink-0 rounded-full px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+          "shrink-0 rounded-full px-3 py-2 text-base lg:text-[17px] font-semibold whitespace-nowrap transition-colors",
           active
             ? "border border-border bg-background text-primary"
             : "text-muted-foreground hover:text-foreground",
         )
       : cn(
-          "shrink-0 whitespace-nowrap text-sm font-medium transition-colors",
+          "shrink-0 whitespace-nowrap text-base lg:text-[17px] font-semibold transition-colors",
           active ? "text-[var(--primary)]" : "text-muted-foreground hover:text-foreground",
         );
 
@@ -291,7 +291,7 @@ const FreelancerWorkspaceHeader = ({
 
   React.useEffect(() => {
     document.documentElement.classList.add("workspace-zoom");
-    document.documentElement.style.zoom = "0.75";
+    document.documentElement.style.zoom = "1.0";
     return () => {
       const path = window.location.pathname.toLowerCase();
       if (
@@ -346,8 +346,9 @@ const FreelancerWorkspaceHeader = ({
         )}
       />
 
-      <div className="hidden space-y-4 pb-3 pt-3 lg:block">
-        <div className="mx-auto w-full rounded-[40px] border border-border bg-background p-3 sm:p-4 xl:w-[85%]">
+      <div className="hidden pb-3 pt-0 lg:block bg-transparent dark:pt-3">
+        {/* Top Navbar */}
+        <div className="w-full border-b border-border/50 dark:border-border dark:bg-background bg-transparent dark:rounded-[40px] px-6 py-4 xl:w-full dark:mx-auto dark:p-3 dark:sm:p-4 dark:xl:w-[94%]">
           <div className="flex items-center justify-between gap-4">
             <Link to="/">
               <BrandMark />
@@ -372,8 +373,9 @@ const FreelancerWorkspaceHeader = ({
           </div>
         </div>
 
-        <div className="mt-7">
-          <div className="mx-auto w-full flex flex-col gap-4 border-b border-border px-4 pb-3 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between xl:w-[85%] xl:px-0">
+        {/* Secondary Navbar */}
+        <div className="mt-4 dark:mt-7">
+          <div className="mx-auto w-full flex flex-col gap-4 border-b border-border/50 dark:border-border px-6 pb-3 lg:flex-row lg:items-center lg:justify-between xl:w-full dark:xl:w-[94%]">
             <div className="space-y-3">
               <HeaderNav
                 items={workspaceNavItems}

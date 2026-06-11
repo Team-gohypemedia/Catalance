@@ -189,7 +189,7 @@ export const FreelancerTopBar = () => {
 
   return (
     <div className="sticky top-0 z-50 bg-background lg:static lg:bg-transparent w-full">
-      <div className="mx-auto w-full max-w-[1536px] px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+      <div className="mx-auto w-full max-w-[1536px] px-4 sm:px-6 lg:px-[40px] xl:w-[94%] xl:max-w-none">
         <FreelancerWorkspaceHeader
           profile={profile}
           activeWorkspaceKey={activeWorkspaceKey}

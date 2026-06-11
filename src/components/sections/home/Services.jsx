@@ -1,4 +1,4 @@
-﻿import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
@@ -117,7 +117,7 @@ const Services = () => {
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
                                 <h3 className="text-lg font-bold mb-2 text-center">Website Development</h3>
-                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹10,000</span></p>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">?10,000</span></p>
                             </div>
                         </div>
 
@@ -132,7 +132,7 @@ const Services = () => {
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
                                 <h3 className="text-lg font-bold mb-2 text-center">App Development</h3>
-                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹80,000</span></p>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">?80,000</span></p>
                             </div>
                         </div>
 
@@ -147,7 +147,7 @@ const Services = () => {
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
                                 <h3 className="text-lg font-bold mb-2 text-center">Creative & Design</h3>
-                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹25,000</span></p>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">?25,000</span></p>
                             </div>
                         </div>
 
@@ -162,7 +162,7 @@ const Services = () => {
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
                                 <h3 className="text-lg font-bold mb-2 text-center">Marketing</h3>
-                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹10,000</span>/mo</p>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">?10,000</span>/mo</p>
                             </div>
                         </div>
 
@@ -177,7 +177,7 @@ const Services = () => {
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
                                 <h3 className="text-lg font-bold mb-2 text-center">Voice Agent (AI Voice Bot / Call Automation)</h3>
-                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹50,000</span></p>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">?50,000</span></p>
                             </div>
                         </div>
                     </div>

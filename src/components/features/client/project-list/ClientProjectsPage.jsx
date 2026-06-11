@@ -293,7 +293,7 @@ const ClientProjectsPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-          <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+          <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[94%] xl:max-w-none">
             <ClientWorkspaceHeader
               profile={{
                 avatar: user?.avatar,

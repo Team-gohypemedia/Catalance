@@ -8,7 +8,7 @@ import testimonial2 from '@/assets/images/testimonials/mohd-kaif.jpg'
 import testimonial3 from '@/assets/images/testimonials/nitin-nayak.jpg'
 import testimonial4 from '@/assets/images/testimonials/aniket-thakur.jpg'
 
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const testimonials = [
   {
@@ -153,6 +153,80 @@ const WavyBackground = ({ isDark }) => {
 
 const FloatingAvatar = ({ testimonial, delay = 0, x = "0%", y = "0%", scale = 1, isDark }) => {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [typedText, setTypedText] = React.useState('');
+  const [hasBeenHovered, setHasBeenHovered] = React.useState(false);
+  const typewriterTimeoutRef = React.useRef(null);
+  const currentTextRef = React.useRef('');
+  const audioPlayerRef = React.useRef(null);
+
+  const yVal = typeof y === "string" ? parseFloat(y) : y;
+  const popDown = yVal < 50;
+
+  const stopAudio = React.useCallback(() => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause(); 
+      audioPlayerRef.current.currentTime = 0; 
+      audioPlayerRef.current.src = ''; 
+      audioPlayerRef.current.load(); 
+      audioPlayerRef.current = null; 
+    }
+  }, []); 
+
+  const startTypewriter = React.useCallback((text) => {
+    if (typewriterTimeoutRef.current) {
+      clearTimeout(typewriterTimeoutRef.current);
+    }
+    setTypedText('');
+    currentTextRef.current = text;
+    
+    let i = 0;
+    const type = () => {
+      if (i <= text.length) {
+        setTypedText(text.slice(0, i));
+        i++;
+        typewriterTimeoutRef.current = setTimeout(type, 35);
+      }
+    };
+    type();
+  }, []);
+
+  const stopTypewriter = React.useCallback(() => {
+    if (typewriterTimeoutRef.current) {
+      clearTimeout(typewriterTimeoutRef.current);
+      typewriterTimeoutRef.current = null;
+    }
+    setTypedText('');
+    currentTextRef.current = '';
+  }, []); 
+
+  const handleMouseEnter = React.useCallback(() => {
+    setIsOpen(true);
+    stopAudio(); 
+  
+    if (testimonial.audio) {
+      const newAudio = new Audio(`/audio/${testimonial.audio}`);
+      audioPlayerRef.current = newAudio; 
+      newAudio.play().catch(e => {
+        console.warn("Audio playback prevented or failed:", e);
+      });
+    }
+    
+    setHasBeenHovered(true);
+    startTypewriter(testimonial.quote);
+  }, [testimonial, stopAudio, startTypewriter]); 
+
+  const handleMouseLeave = React.useCallback(() => {
+    setIsOpen(false);
+    stopAudio(); 
+    stopTypewriter();
+  }, [stopAudio, stopTypewriter]);
+
+  React.useEffect(() => {
+    return () => {
+      stopAudio(); 
+      stopTypewriter(); 
+    };
+  }, [stopAudio, stopTypewriter]);
 
   return (
     <motion.div
@@ -172,41 +246,75 @@ const FloatingAvatar = ({ testimonial, delay = 0, x = "0%", y = "0%", scale = 1,
     >
       <div 
         className="group relative cursor-pointer"
-        onMouseEnter={() => setIsOpen(true)}
-        onMouseLeave={() => setIsOpen(false)}
-        onClick={() => setIsOpen(!isOpen)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
-        <div className={cn("absolute -inset-1 rounded-full opacity-20 blur-sm transition duration-500", isOpen || "group-hover:opacity-100", isDark ? "bg-[#F9D949]" : "bg-[#D9692A]")} />
-        <img
+        <div className={cn(
+          "absolute -inset-1 rounded-full opacity-0 blur-md transition duration-500 group-hover:opacity-100", 
+          isOpen ? "opacity-100" : "", 
+          isDark ? "bg-[#F9D949]" : "bg-[#D9692A]"
+        )} />
+        <motion.img
           src={testimonial.image}
           alt={testimonial.name}
-          className={cn("relative size-10 rounded-full border-2 border-white/30 object-cover transition duration-500 sm:size-16", isOpen ? "grayscale-0 scale-110" : "grayscale group-hover:grayscale-0 group-hover:scale-110")}
+          className="relative size-10 rounded-full border-4 object-cover transition-all duration-300 sm:size-16"
+          animate={{ 
+            borderColor: isOpen 
+              ? 'var(--primary)' 
+              : (isDark ? '#262626' : '#E5E7EB'),
+            scale: isOpen ? 1.08 : 1
+          }}
+          transition={{ duration: 0.3 }}
         />
-        {/* Pop-up Review */}
-        <div className={cn(
-          "absolute top-full left-1/2 mt-3 w-48 sm:w-56 -translate-x-1/2 transition-all duration-300",
-          isOpen ? "opacity-100 -translate-y-1 pointer-events-auto" : "opacity-0 pointer-events-none"
-        )}>
-          <div className={cn("relative rounded-xl border backdrop-blur-md p-3 sm:p-4 shadow-xl", isDark ? "border-white/10 bg-neutral-900/90" : "border-black/5 bg-white/95")}>
-              {/* Triangle pointer */}
-              <div className={cn(
-                "absolute -top-[6px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-t border-l",
-                isDark 
-                  ? "border-white/10 bg-[#171717]" 
-                  : "border-black/5 bg-white/95"
-              )}></div>
-             
-             <div className="flex items-center gap-0.5 mb-1.5 sm:mb-2">
-               {Array.from({ length: 5 }).map((_, i) => (
-                 <svg key={i} viewBox="0 0 20 20" className="h-2.5 w-2.5 sm:h-3 sm:w-3" style={{ fill: isDark ? "#F9D949" : "#D9692A", color: isDark ? "#F9D949" : "#D9692A" }}>
-                   <path d="M10 1.5l2.49 5.04 5.56.81-4.02 3.92.95 5.54L10 13.98 5.02 16.81l.95-5.54-4.02-3.92 5.56-.81L10 1.5z" />
-                 </svg>
-               ))}
-             </div>
-             <p className={cn("text-[10px] sm:text-xs font-medium italic leading-relaxed line-clamp-3", isDark ? "text-white/90" : "text-neutral-700")}>"{testimonial.quote}"</p>
-             <p className={cn("text-[9px] sm:text-[10px] font-bold mt-1.5 sm:mt-2 uppercase tracking-wider")} style={{ color: isDark ? "#F9D949" : "#D9692A" }}>- {testimonial.name}</p>
-          </div>
-        </div>
+        {/* Pop-up Review with Typewriter Effect */}
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: popDown ? -10 : 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: popDown ? -10 : 10 }}
+              transition={{ duration: 0.4 }}
+              className={cn(
+                "absolute left-1/2 -translate-x-1/2 w-52 sm:w-60 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 text-xs px-4 py-3.5 rounded-2xl shadow-2xl border border-neutral-200/60 dark:border-neutral-800 z-50 text-left",
+                popDown ? "top-full mt-4" : "bottom-full mb-4"
+              )}
+            >
+              <div className="flex items-center gap-0.5 mb-1.5 sm:mb-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <svg key={i} viewBox="0 0 20 20" className="h-2.5 w-2.5 sm:h-3 sm:w-3" style={{ fill: isDark ? "#F9D949" : "#D9692A", color: isDark ? "#F9D949" : "#D9692A" }}>
+                    <path d="M10 1.5l2.49 5.04 5.56.81-4.02 3.92.95 5.54L10 13.98 5.02 16.81l.95-5.54-4.02-3.92 5.56-.81L10 1.5z" />
+                  </svg>
+                ))}
+              </div>
+              <div className="h-20 overflow-hidden whitespace-pre-wrap font-medium leading-relaxed opacity-90 dark:opacity-95 text-[11px] sm:text-xs">
+                "{typedText}"
+                <span className="animate-pulse text-primary font-bold">|</span>
+              </div>
+              <p className="mt-2 text-right font-bold text-neutral-900 dark:text-white text-[10px] sm:text-xs uppercase tracking-wider">
+                - {testimonial.name}
+              </p>
+              <p className="text-right text-neutral-900/50 dark:text-neutral-400 text-[9px] sm:text-[10px] font-semibold mt-0.5">
+                {testimonial.role}
+              </p>
+              {/* Connector dots */}
+              {popDown ? (
+                /* Upward pointing bubble connector dots */
+                <div className="absolute left-1/2 transform -translate-x-1/2 -top-4 flex flex-col items-center pointer-events-none">
+                  <div className="w-1 h-1 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850"></div>
+                  <div className="w-1.5 h-1.5 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850 mt-0.5"></div>
+                  <div className="w-2.5 h-2.5 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850 mt-0.5"></div>
+                </div>
+              ) : (
+                /* Downward pointing bubble connector dots */
+                <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-4 flex flex-col items-center pointer-events-none">
+                  <div className="w-2.5 h-2.5 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850"></div>
+                  <div className="w-1.5 h-1.5 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850 mt-0.5"></div>
+                  <div className="w-1 h-1 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850 mt-0.5"></div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );

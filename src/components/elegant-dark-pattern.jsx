@@ -31,16 +31,7 @@ export function DarkGradientBg({ children, className }) {
             }}
           />
         </>
-      ) : (
-        <>
-          <div
-            className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{
-              backgroundImage: 'url("/assets/slides/wavy-bg.png")',
-            }}
-          />
-        </>
-      )}
+      ) : null}
       <div className="relative z-10">{children}</div>
     </div>
   );

@@ -3821,9 +3821,28 @@ const FreelancerOnboardingShell = () => {
   }
 
   return (
-    <DarkGradientBg className="text-[#f1f5f9]">
+    <DarkGradientBg className="text-neutral-900 dark:text-[#f1f5f9]">
       <main className="onboarding-radius-10 relative flex h-screen flex-col overflow-hidden bg-transparent h-[100dvh]">
-      <header className="relative z-20 shrink-0 border-b border-white/8 bg-card">
+        {/* Fixed Background container - placed here so it doesn't move or clip on scroll */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+        >
+          {/* Dark theme gradient background */}
+          <div className="absolute inset-0 hidden dark:block dark:bg-[linear-gradient(180deg,#181818_0%,#0f0f0f_100%)]" />
+          <div className="absolute inset-0 hidden dark:block dark:bg-[radial-gradient(circle_at_50%_20%,rgba(255,196,123,0.08),transparent_34%)]" />
+          <div
+            className="absolute inset-0 hidden dark:block dark:opacity-30"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 18px 18px, rgba(227,122,36,0.26) 0 2px, transparent 2.4px), radial-gradient(circle at 18px 18px, rgba(227,122,36,0.08) 0 1px, transparent 1.4px)",
+              backgroundSize: "34px 34px, 96px 96px",
+              backgroundPosition: "0 0, 0 0",
+            }}
+          />
+          <div className="absolute inset-0 hidden dark:block dark:bg-[linear-gradient(135deg,rgba(255,196,123,0.05)_0%,transparent_18%,transparent_82%,rgba(255,196,123,0.05)_100%)]" />
+        </div>
+        <header className="relative z-20 shrink-0 border-b border-white/8 bg-card">
         <div
           className="absolute left-0 top-0 h-1 bg-[var(--primary)] transition-all duration-300"
           style={{ width: `${progressValue}%` }}
@@ -3913,25 +3932,11 @@ const FreelancerOnboardingShell = () => {
         ref={onboardingScrollContainerRef}
         className="subtle-scrollbar relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-        >
-          {/* Dark theme gradient background */}
-          <div className="absolute inset-0 hidden dark:block dark:bg-[linear-gradient(180deg,#181818_0%,#0f0f0f_100%)]" />
-          <div className="absolute inset-0 hidden dark:block dark:bg-[radial-gradient(circle_at_50%_20%,rgba(255,196,123,0.08),transparent_34%)]" />
-          <div
-            className="absolute inset-0 hidden dark:block dark:opacity-30"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 18px 18px, rgba(227,122,36,0.26) 0 2px, transparent 2.4px), radial-gradient(circle at 18px 18px, rgba(227,122,36,0.08) 0 1px, transparent 1.4px)",
-              backgroundSize: "34px 34px, 96px 96px",
-              backgroundPosition: "0 0, 0 0",
-            }}
-          />
-          <div className="absolute inset-0 hidden dark:block dark:bg-[linear-gradient(135deg,rgba(255,196,123,0.05)_0%,transparent_18%,transparent_82%,rgba(255,196,123,0.05)_100%)]" />
-        </div>
-        <div className="min-h-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-24">
+        <div className={`min-h-full px-4 sm:px-6 lg:px-8 ${
+          currentSlide?.id === "individualProof"
+            ? "py-2 sm:py-3 lg:py-4 pb-2 sm:pb-3 lg:pb-4"
+            : `py-4 sm:py-6 lg:py-8 ${isFooterHidden ? 'pb-4 sm:pb-6 lg:pb-8' : 'pb-24'}`
+        }`}>
           <AnimatePresence initial={false} mode="wait">
             <motion.div
               key={currentSlide.id}
@@ -4015,6 +4020,7 @@ const FreelancerOnboardingShell = () => {
                 user={user}
                 onSkipServices={handleSkipServicesSection}
                 continueButton={null}
+                onContinue={handleContinue}
               />
             </motion.div>
           </AnimatePresence>

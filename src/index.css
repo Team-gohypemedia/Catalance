@@ -470,18 +470,6 @@ html.onboarding-page:not(.dark),
 html.onboarding-page:not(.dark) body,
 html.onboarding-page:not(.dark) #root {
   background-color: #FAF6F0;
-  background-image: url("/assets/slides/wavy-bg.png");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-}
-
-html.onboarding-page:not(.dark) main [class*="bg-white"]:not(button):not(a):not(.keep-white),
-html.onboarding-page:not(.dark) main [class*="bg-card"]:not(button):not(a):not(.keep-white),
-html.onboarding-page:not(.dark) main [class*="bg-background"]:not(button):not(a):not(.keep-white) {
-  background-color: rgba(255, 255, 255, 0.7) !important;
-  background-image: none !important;
 }
 
 /* ── Root surface ── */
@@ -1080,21 +1068,7 @@ html.dark .verified-badge-custom-stroke {
   color: #1C1B1F !important;
 }
 
-/* Zoom workspace layouts to 75% to fit more contents cleanly on laptop screens */
+/* Workspace zoom layouts disabled */
 html.workspace-zoom {
-  zoom: 0.75 !important;
+  zoom: 1.0 !important;
 }
-
-/* Reciprocal zoom correction for all portalled floating UI components inside workspace pages */
-html.workspace-zoom [data-slot="popover-content"],
-html.workspace-zoom [data-slot="dropdown-menu-content"],
-html.workspace-zoom [data-slot="dropdown-menu-sub-content"],
-html.workspace-zoom [data-slot="select-content"],
-html.workspace-zoom [data-slot="tooltip-content"],
-html.workspace-zoom [data-slot="dialog-content"],
-html.workspace-zoom [data-slot="sheet-content"] {
-  zoom: 1.33333333 !important;
-}
-
-
-

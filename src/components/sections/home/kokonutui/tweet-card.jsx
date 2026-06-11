@@ -1,4 +1,4 @@
-﻿import VerifiedIcon from "lucide-react/dist/esm/icons/verified";
+import VerifiedIcon from "lucide-react/dist/esm/icons/verified";
 import { cn } from "@/shared/lib/utils";
 
 export default function TweetCard({
@@ -7,7 +7,7 @@ export default function TweetCard({
     authorImage = "https://pbs.twimg.com/profile_images/1971614417809997824/Zen4oXbs_400x400.jpg",
 
     content = [
-        "All components from KokonutUI can now be open in @v0 ≡ƒÄë",
+        "All components from KokonutUI can now be open in @v0 =���",
         "1. Click on 'Open in V0'",
         "2. Customize with prompts",
         "3. Deploy to your app",
@@ -132,7 +132,7 @@ export default function TweetCard({
                                             @{reply.authorHandle}
                                         </span>
                                         <span className="text-black dark:text-white/60 text-sm">
-                                            ┬╖
+                                            -+
                                         </span>
                                         <span className="text-black dark:text-white/60 text-sm">
                                             {reply.timestamp}

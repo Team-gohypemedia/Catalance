@@ -3,6 +3,7 @@ const COMMON_START_SLIDES = [
     id: "welcome",
     progressValue: 4,
     continueLabel: "Continue",
+    footerMode: "hidden",
   },
   {
     id: "workPreference",
@@ -25,7 +26,7 @@ const BASIC_PROFILE_SLIDE = {
 
 const SERVICES_SLIDE = {
   id: "services",
-  title: "Which Services Do You Want To Offer?",
+  title: "Tell Us What You Can Help Clients With.",
   description: "Select at least 1 service. You can choose as many as you want.",
   progressValue: 18,
   continueLabel: "Continue",
@@ -101,10 +102,10 @@ const INDIVIDUAL_FLOW_SLIDES = [
     id: "individualProof",
     progressValue: 12,
     continueLabel: "Continue",
+    footerMode: "hidden",
   },
   BASIC_PROFILE_SLIDE,
   SERVICES_SLIDE,
-  SERVICE_SETUP_SLIDE,
   SERVICE_INFO_SLIDE,
   SERVICE_PRICING_SLIDE,
   SERVICE_VISUALS_SLIDE,
