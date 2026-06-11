@@ -2632,11 +2632,25 @@ const stripQuestionStepLabels = (message = "") => {
 
     cleaned = cleaned
         .replace(/^\s*Q\d+\.\s*$/gim, "")
-        .replace(/^\s*Q\d+\.\s*/i, "")
+        .replace(/\bQ\d+\.\s*/g, "")
         .replace(/\n{3,}/g, "\n\n")
         .trim();
 
     return cleaned;
+};
+
+const stripAdminDirectiveLines = (message = "") => {
+    const lines = String(message || "").split("\n");
+    const filtered = lines.filter((line) => {
+        const trimmed = String(line || "").trim();
+        if (!trimmed) return true;
+        return !/^@[a-z][a-z0-9_-]*:/i.test(trimmed);
+    });
+
+    return filtered
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
 };
 
 const stripNameNotedRecap = (message = "") => {
@@ -3257,6 +3271,25 @@ const looksLikeAtomicNameAnswer = (message = "", identityType = "other") => {
     return false;
 };
 
+const looksLikeMeaningfulBusinessSummaryAnswer = (message = "") => {
+    const stripped = String(message || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/[.!?]+$/g, "")
+        .trim();
+
+    if (!stripped) return false;
+
+    const normalized = normalizeTextToken(stripped);
+    if (!normalized) return false;
+    if (GREETING_SMALLTALK_REGEX.test(normalized)) return false;
+    if (SIMPLE_CONFIRMATION_NO_REGEX.test(normalized) || SIMPLE_CONFIRMATION_YES_REGEX.test(normalized)) return false;
+    if (/^(?:not sure|maybe|idk|i don't know|i do not know)$/i.test(normalized)) return false;
+    if (!/[a-z0-9]/i.test(stripped)) return false;
+
+    return true;
+};
+
 const shouldSkipMessageAnswerExtraction = ({
     message = "",
     currentQuestion = null,
@@ -3316,6 +3349,7 @@ const isProposalConfirmationQuestion = (question = {}) => {
 
 const buildLocalValidationAckMessage = (question = {}, normalizedAnswer = "") => {
     const identityType = getQuestionIdentityType(question);
+    const sharedStartType = getQuestionSharedStartType(question);
     const questionType = normalizeTextToken(question?.type || "input");
     const answerText = String(normalizedAnswer || "").trim();
 
@@ -3335,6 +3369,10 @@ const buildLocalValidationAckMessage = (question = {}, normalizedAnswer = "") =>
 
     if (identityType === "business_name") {
         return "Thanks!";
+    }
+
+    if (sharedStartType === "business_summary") {
+        return "Thanks, that helps.";
     }
 
     return pickFriendlyBridge(question?.text || answerText || "response");
@@ -3410,6 +3448,19 @@ const getFastLocalValidationResult = ({
             status: "valid_answer",
             message: buildLocalValidationAckMessage(question, normalizedAnswer),
             normalizedAnswer,
+        };
+    }
+
+    if (getQuestionSharedStartType(question) === "business_summary") {
+        if (!looksLikeMeaningfulBusinessSummaryAnswer(rawMessage)) {
+            return null;
+        }
+
+        return {
+            isValid: true,
+            status: "valid_answer",
+            message: buildLocalValidationAckMessage(question, rawMessage),
+            normalizedAnswer: normalizeSharedSessionStartValue(rawMessage, 600),
         };
     }
 
@@ -5853,6 +5904,7 @@ Validation rules:
 - If the user names a different option, follow the latest user intent.
 - For business/brand-name questions, "Catalance" or direct variants => INVALID and ask for their own project or brand name.
 - Other well-known company names are not auto-invalid. Do NOT automatically reject them. If team affiliation/role is already clear, they may be VALID; otherwise ask whether they are part of that team and what their role is.
+- For business-summary/about-business questions, short plain-English descriptions are VALID; do not require a long paragraph unless the reply is actually empty, a greeting, or unrelated.
 - If the answer logically implies one option (example: "Elementor" implies WordPress), accept it as VALID.
 - If the user asks for an unsupported platform/tool that conflicts with all available options, return INFO_REQUEST and explain the supported direction briefly.
 - Do not force literal option matching when the user's meaning is already clear.
@@ -7886,6 +7938,7 @@ export const guestChat = asyncHandler(async (req, res) => {
 
     responseContent = stripNameNotedRecap(responseContent);
     responseContent = stripQuestionStepLabels(responseContent);
+    responseContent = stripAdminDirectiveLines(responseContent);
 
     // 5. Save Assistant Message
     console.log(`[Assistant]: ${responseContent}`);
@@ -8194,6 +8247,8 @@ export const __testables = {
     buildLockedServiceReply,
     buildPersistedAnswersPayload,
     buildQuestionDisplayAnswer,
+    stripAdminDirectiveLines,
+    stripQuestionStepLabels,
     findExtractedBudgetMinimumViolation,
     findBudgetMinimumViolationChange,
     getBusinessNameValidationGuardAction,
@@ -8205,6 +8260,7 @@ export const __testables = {
     getQuestionAdminControls,
     getSemanticDependentIndexesForChanges,
     getQuestionIdentityType,
+    getFastLocalValidationResult,
     getMostRecentMessageContentByRole,
     getServiceScopedMessages,
     isBudgetQuestion,

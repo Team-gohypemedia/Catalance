@@ -14,6 +14,8 @@ const {
   buildSessionStartPrefill,
   buildSupplementalBudgetExtractions,
   buildQuestionDisplayAnswer,
+  stripAdminDirectiveLines,
+  stripQuestionStepLabels,
   findExtractedBudgetMinimumViolation,
   findBudgetMinimumViolationChange,
   getBusinessNameValidationGuardAction,
@@ -23,6 +25,7 @@ const {
   normalizeGuestAdvicePayload,
   getQuestionAdminControls,
   getQuestionIdentityType,
+  getFastLocalValidationResult,
   getMostRecentMessageContentByRole,
   getPostProposalBudgetFollowupAction,
   getSemanticDependentIndexesForChanges,
@@ -239,7 +242,10 @@ test("prefills the first personal-name question from a logged-in user name", () 
       prefillName: "  Ravindra    Kumar  ",
     }),
     {
-      answersBySlug: { client_name: "Ravindra Kumar" },
+      answersBySlug: {
+        client_name: "Ravindra Kumar",
+        contact_name: "Ravindra Kumar",
+      },
       acknowledgedQuestion: questions[1],
       acknowledgedAnswer: "Ravindra Kumar",
     }
@@ -394,6 +400,42 @@ test("classifies personal-name and business-name questions separately", () => {
   assert.equal(
     getQuestionIdentityType({ slug: "company_name", text: "What is your company or brand name?" }),
     "business_name",
+  );
+});
+
+test("accepts short business descriptions for about-business questions", () => {
+  const result = getFastLocalValidationResult({
+    question: {
+      slug: "about_business",
+      text: "Tell us a little about your business.",
+    },
+    userMessage: "it is about music",
+  });
+
+  assert.ok(result);
+  assert.equal(result.isValid, true);
+  assert.equal(result.status, "valid_answer");
+  assert.equal(result.normalizedAnswer, "it is about music");
+});
+
+test("strips admin directive lines from assistant output before returning it", () => {
+  assert.equal(
+    stripAdminDirectiveLines([
+      "Thanks for sharing.",
+      "@reply: Keep replies concise.",
+      "Tell us a little about your business.",
+    ].join("\n")),
+    [
+      "Thanks for sharing.",
+      "Tell us a little about your business.",
+    ].join("\n")
+  );
+});
+
+test("strips inline question step labels from assistant output before returning it", () => {
+  assert.equal(
+    stripQuestionStepLabels("Thanks for sharing your brand name, dj group! Q3. Tell us a little about your business."),
+    "Thanks for sharing your brand name, dj group! Tell us a little about your business."
   );
 });
 
