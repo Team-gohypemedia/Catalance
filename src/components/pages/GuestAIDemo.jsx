@@ -71,6 +71,11 @@ import {
 } from '@/shared/lib/storage-keys';
 import { CLIENT_DASHBOARD_SEND_PROPOSAL_PATH } from '@/shared/lib/proposal-dashboard-intent';
 import cataLogo from '@/assets/logos/logo.svg';
+import * as pdfjsLib from 'pdfjs-dist';
+import mammoth from 'mammoth';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const { primaryKey: GUEST_CHAT_STORAGE_KEY } = getGuestChatStorageKeys();
 const { primaryKey: GUEST_CHAT_SIDEBAR_SIZE_KEY } =
@@ -91,6 +96,7 @@ const ALLOWED_UPLOAD_MIME_TYPES = new Set([
     'application/x-zip-compressed',
 ]);
 const ALLOWED_UPLOAD_EXTENSIONS = ['.pdf', '.doc', '.docx', '.txt', '.zip'];
+const BRIEFING_FILE_TEXT_MAX_CHARS = 12000;
 
 const SERVICE_LOGO_MODULES = import.meta.glob('../../assets/icons/*.png', {
     eager: true,
@@ -2830,6 +2836,7 @@ const buildBriefingSummary = ({
     answers = createInitialBriefingAnswers(),
     referenceLinks = [],
     attachmentCount = 0,
+    fileContexts = [],
 }) => {
     const parts = buildBriefingSentenceParts({
         ...answers,
@@ -2852,11 +2859,128 @@ const buildBriefingSummary = ({
         lines.push(`Reference links:\n${normalizedLinks.map((link) => `- ${link}`).join('\n')}`);
     }
 
+    const readableFileContexts = (Array.isArray(fileContexts) ? fileContexts : [])
+        .map((entry) => ({
+            name: String(entry?.name || 'Attachment').trim() || 'Attachment',
+            typeLabel: String(entry?.typeLabel || 'File').trim() || 'File',
+            text: String(entry?.text || '').trim(),
+        }))
+        .filter((entry) => entry.text);
+
+    if (readableFileContexts.length > 0) {
+        lines.push([
+            'Reference file content:',
+            ...readableFileContexts.map((entry) =>
+                [
+                    `### ${entry.name}`,
+                    `Type: ${entry.typeLabel}`,
+                    '',
+                    entry.text.slice(0, BRIEFING_FILE_TEXT_MAX_CHARS),
+                ].join('\n').trim()
+            ),
+        ].join('\n\n'));
+    }
+
     if (attachmentCount > 0) {
         lines.push(`Attached ${attachmentCount} reference file${attachmentCount === 1 ? '' : 's'} for context.`);
     }
 
     return lines.filter(Boolean).join('\n\n').trim();
+};
+
+const getBriefingFileExtension = (fileName = '') => {
+    const match = String(fileName || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+    return match?.[1] || '';
+};
+
+const getBriefingFileTypeLabel = (file = {}) => {
+    const mimeType = String(file?.type || '').toLowerCase();
+    const extension = getBriefingFileExtension(file?.name || '');
+
+    if (mimeType === 'application/pdf' || extension === 'pdf') return 'PDF';
+    if (
+        mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        || extension === 'docx'
+    ) {
+        return 'DOCX';
+    }
+    if (mimeType === 'application/msword' || extension === 'doc') return 'DOC';
+    if (mimeType === 'text/plain' || extension === 'txt') return 'TXT';
+    if (extension === 'zip') return 'ZIP';
+    if (mimeType.startsWith('image/')) return 'Image';
+    return 'File';
+};
+
+const truncateBriefingFileText = (text = '') => {
+    const normalized = String(text || '').replace(/\u0000/g, '').trim();
+    if (normalized.length <= BRIEFING_FILE_TEXT_MAX_CHARS) {
+        return normalized;
+    }
+    return `${normalized.slice(0, BRIEFING_FILE_TEXT_MAX_CHARS).trimEnd()}\n\n[Truncated to keep the request size manageable.]`;
+};
+
+const extractBriefingTextFromPdf = async (file) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+
+    for (let i = 1; i <= pdf.numPages; i += 1) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const items = textContent.items.filter((item) => item.str.trim().length > 0);
+
+        items.sort((a, b) => {
+            const yDiff = b.transform[5] - a.transform[5];
+            if (Math.abs(yDiff) > 5) {
+                return yDiff;
+            }
+            return a.transform[4] - b.transform[4];
+        });
+
+        let pageText = '';
+        let lastY = null;
+        items.forEach((item) => {
+            const { str: text, transform } = item;
+            const y = transform[5];
+            if (lastY !== null && Math.abs(y - lastY) > 5) {
+                pageText += '\n';
+            }
+            pageText += (pageText && pageText[pageText.length - 1] !== '\n' ? ' ' : '') + text;
+            lastY = y;
+        });
+
+        fullText += `${pageText}\n\n`;
+    }
+
+    return truncateBriefingFileText(fullText);
+};
+
+const extractBriefingTextFromDocx = async (file) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return truncateBriefingFileText(result.value || '');
+};
+
+const extractBriefingTextFromFile = async (file) => {
+    const extension = getBriefingFileExtension(file?.name || '');
+    const mimeType = String(file?.type || '').toLowerCase();
+
+    if (mimeType === 'application/pdf' || extension === 'pdf') {
+        return extractBriefingTextFromPdf(file);
+    }
+
+    if (
+        mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        || extension === 'docx'
+    ) {
+        return extractBriefingTextFromDocx(file);
+    }
+
+    if (mimeType === 'text/plain' || extension === 'txt') {
+        return truncateBriefingFileText(await file.text());
+    }
+
+    return '';
 };
 
 const buildBriefingGoalSuggestions = (role = '') => {
@@ -4247,13 +4371,47 @@ const GuestAIDemo = () => {
             return;
         }
 
+        setBriefingSubmitting(true);
+
+        let fileContexts = [];
+        if (briefingFiles.length > 0) {
+            const extractedContexts = await Promise.all(
+                briefingFiles.map(async (file) => {
+                    try {
+                        const text = await extractBriefingTextFromFile(file);
+                        return {
+                            name: file.name || 'Attachment',
+                            typeLabel: getBriefingFileTypeLabel(file),
+                            text,
+                        };
+                    } catch (error) {
+                        console.warn('[GuestAIDemo] Failed to extract text from briefing file:', file?.name, error);
+                        return {
+                            name: file.name || 'Attachment',
+                            typeLabel: getBriefingFileTypeLabel(file),
+                            text: '',
+                        };
+                    }
+                }),
+            );
+
+            fileContexts = extractedContexts;
+
+            const unreadableFiles = extractedContexts.filter((entry) => !String(entry.text || '').trim());
+            if (unreadableFiles.length > 0) {
+                toast.info(
+                    `${unreadableFiles.length} attached file${unreadableFiles.length === 1 ? '' : 's'} could not be text-read in the browser and will be uploaded as files only.`,
+                );
+            }
+        }
+
         const summary = buildBriefingSummary({
             answers: briefingAnswers,
             referenceLinks: briefingReferenceLinks,
             attachmentCount: briefingFiles.length,
+            fileContexts,
         });
 
-        setBriefingSubmitting(true);
         setPendingBriefSubmission({
             content: summary,
             attachments: briefingFiles,
