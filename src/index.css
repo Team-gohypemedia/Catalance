@@ -1072,3 +1072,15 @@ html.dark .verified-badge-custom-stroke {
 html.workspace-zoom {
   zoom: 1.0 !important;
 }
+
+/* --- Animated Theme Toggle (View Transitions API) ------------------- */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html[data-catalance-theme-vt="active"]::view-transition-group(root) {
+  animation-duration: var(--catalance-theme-vt-duration);
+}
+

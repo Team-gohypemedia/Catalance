@@ -3,50 +3,35 @@
 import { createContext, useContext, useEffect, useState } from "react"
 
 const ThemeProviderContext = createContext({
-  theme: "system",
+  theme: "light",
   setTheme: () => null,
 })
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "light",
   storageKey = "catalance-theme",
   ...props
 }) {
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem(storageKey) || defaultTheme
-  )
+  const [theme, setThemeState] = useState(() => {
+    const stored = localStorage.getItem(storageKey)
+    // Only accept "light" or "dark" — drop legacy "system" values
+    if (stored === "light" || stored === "dark") return stored
+    return defaultTheme
+  })
 
   useEffect(() => {
     const root = window.document.documentElement
     root.classList.remove("light", "dark")
-
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light"
-
-      root.classList.add(systemTheme)
-
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
-      const handleChange = (e) => {
-        root.classList.remove("light", "dark")
-        root.classList.add(e.matches ? "dark" : "light")
-      }
-
-      mediaQuery.addEventListener("change", handleChange)
-      return () => mediaQuery.removeEventListener("change", handleChange)
-    }
-
     root.classList.add(theme)
   }, [theme])
 
   const value = {
     theme,
     setTheme: (newTheme) => {
+      if (newTheme !== "light" && newTheme !== "dark") return
       localStorage.setItem(storageKey, newTheme)
-      setTheme(newTheme)
+      setThemeState(newTheme)
     },
   }
 
