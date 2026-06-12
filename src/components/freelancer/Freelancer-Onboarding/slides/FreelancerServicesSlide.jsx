@@ -2,32 +2,32 @@ import Layers from "lucide-react/dist/esm/icons/layers";
 
 import { cn } from "@/shared/lib/utils";
 
-/* ── GIF asset map by service name (light mode) ── */
+/* ── PNG asset map by service name (light mode) ── */
 
 const BASE = "https://assets.catalance.in/services";
 
-const SERVICE_GIF_MAP = {
-  advertising: `${BASE}/advertising.gif`,
-  "ai automation": `${BASE}/ai%20automation.gif`,
-  "app development": `${BASE}/app%20development.gif`,
-  branding: `${BASE}/branding.gif`,
-  "customer support": `${BASE}/customer%20support.gif`,
-  "influencer marketing": `${BASE}/influencer%20maketing.gif`,
-  "lead generation": `${BASE}/lead%20genration.gif`,
-  "paid advertising": `${BASE}/paid%20advertisment.gif`,
-  seo: `${BASE}/seo.gif`,
-  "social media management": `${BASE}/social%20media.gif`,
-  "software development": `${BASE}/software%20development.gif`,
-  "video services": `${BASE}/video%20service.gif`,
-  "web development": `${BASE}/web%20development.gif`,
-  "website development": `${BASE}/web%20development.gif`,
-  "whatsapp chatbot": `${BASE}/whatsapp%20chatbot.gif`,
-  "writing & content": `${BASE}/writing%20%26%20content.gif`,
+const SERVICE_IMAGE_MAP = {
+  advertising: `${BASE}/advertising.png`,
+  "ai automation": `${BASE}/ai%20automation.png`,
+  "app development": `${BASE}/app%20development.png`,
+  branding: `${BASE}/branding.png`,
+  "customer support": `${BASE}/customer%20support.png`,
+  "influencer marketing": `${BASE}/influencer%20maketing.png`,
+  "lead generation": `${BASE}/lead%20genration.png`,
+  "paid advertising": `${BASE}/paid%20advertisment.png`,
+  seo: `${BASE}/seo.png`,
+  "social media management": `${BASE}/social%20media.png`,
+  "software development": `${BASE}/software%20development.png`,
+  "video services": `${BASE}/video%20service.png`,
+  "web development": `${BASE}/web%20development.png`,
+  "website development": `${BASE}/web%20development.png`,
+  "whatsapp chatbot": `${BASE}/whatsapp%20chatbot.png`,
+  "writing & content": `${BASE}/writing%20%26%20content.png`,
 };
 
-const resolveGif = (serviceName) => {
+const resolveImage = (serviceName) => {
   const key = String(serviceName || "").toLowerCase().trim();
-  return SERVICE_GIF_MAP[key] || null;
+  return SERVICE_IMAGE_MAP[key] || null;
 };
 
 const resolveServiceKey = (service) =>
@@ -37,19 +37,19 @@ const resolveServiceKey = (service) =>
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 
-/* ── Service card icon: GIF if available, Lucide fallback ── */
+/* ── Service card icon: PNG if available, Lucide fallback ── */
 
 const ServiceIcon = ({ serviceName, isSelected }) => {
-  const gif = resolveGif(serviceName);
+  const imageSrc = resolveImage(serviceName);
 
-  if (gif) {
+  if (imageSrc) {
     return (
       <div
         className="mb-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg"
         style={{ background: "transparent" }}
       >
         <img
-          src={gif}
+          src={imageSrc}
           alt={serviceName}
           className="h-full w-full object-contain"
           draggable={false}
