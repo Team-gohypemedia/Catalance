@@ -297,7 +297,7 @@ const Contact = () => {
               >
                 <div className="flex flex-col gap-1 overflow-hidden pr-8 sm:pr-2 text-left">
                   <span className={`text-[9px] sm:text-[11px] md:text-xs uppercase tracking-wider font-semibold ${mutedText}`}>{item.title}</span>
-                  <span className={`text-[11px] sm:text-sm md:text-base font-bold truncate transition-colors ${item.link ? `${brandTextClass} group-hover:opacity-80` : ""}`}>
+                  <span className={`text-[11px] sm:text-sm md:text-base font-bold truncate transition-colors ${item.link ? `${textColor} group-hover:opacity-70` : ""}`}>
                     {item.value}
                   </span>
                 </div>
@@ -388,7 +388,7 @@ const Contact = () => {
                 {/* Quick Stats Grid */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className={`p-4 rounded-xl border ${borderColor} ${cardBg}`}>
-                        <div className={`text-xl md:text-2xl font-extrabold ${brandTextClass}`}>100%</div>
+                        <div className={`text-xl md:text-2xl font-extrabold ${textColor}`}>100%</div>
                         <div className={`text-xs ${mutedText} mt-1`}>National Coverage</div>
                     </div>
                     <div className={`p-4 rounded-xl border ${borderColor} ${cardBg}`}>

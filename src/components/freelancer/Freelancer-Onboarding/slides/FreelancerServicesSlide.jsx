@@ -1,55 +1,33 @@
-import BarChart3 from "lucide-react/dist/esm/icons/bar-chart-3";
-import Bot from "lucide-react/dist/esm/icons/bot";
-import Box from "lucide-react/dist/esm/icons/box";
-import Clapperboard from "lucide-react/dist/esm/icons/clapperboard";
-import Code from "lucide-react/dist/esm/icons/code";
-import Film from "lucide-react/dist/esm/icons/film";
-import Globe from "lucide-react/dist/esm/icons/globe";
 import Layers from "lucide-react/dist/esm/icons/layers";
-import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
-import MessageSquare from "lucide-react/dist/esm/icons/message-square";
-import Mic from "lucide-react/dist/esm/icons/mic";
-import Palette from "lucide-react/dist/esm/icons/palette";
-import PenTool from "lucide-react/dist/esm/icons/pen-tool";
-import Search from "lucide-react/dist/esm/icons/search";
-import Share2 from "lucide-react/dist/esm/icons/share-2";
-import Smartphone from "lucide-react/dist/esm/icons/smartphone";
-import Sparkles from "lucide-react/dist/esm/icons/sparkles";
-import Star from "lucide-react/dist/esm/icons/star";
-import Target from "lucide-react/dist/esm/icons/target";
-import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
-import Video from "lucide-react/dist/esm/icons/video";
 
 import { cn } from "@/shared/lib/utils";
 
-/* ── Icon lookup by service name ── */
+/* ── GIF asset map by service name (light mode) ── */
 
-const SERVICE_ICON_MAP = {
-  branding: Sparkles,
-  "web development": Globe,
-  seo: Search,
-  "social media management": Share2,
-  "paid advertising": TrendingUp,
-  "app development": Smartphone,
-  "software development": Code,
-  "lead generation": Target,
-  "video services": Video,
-  "writing & content": PenTool,
-  "customer support": MessageCircle,
-  "influencer marketing": Star,
-  "ugc marketing": Clapperboard,
-  "ai automation": Bot,
-  "whatsapp chatbot": MessageSquare,
-  "creative & design": Palette,
-  "3d modeling": Box,
-  "cgi / vfx": Film,
-  "crm & erp": BarChart3,
-  "voice ai / ai calling": Mic,
+const BASE = "https://assets.catalance.in/services";
+
+const SERVICE_GIF_MAP = {
+  advertising: `${BASE}/advertising.gif`,
+  "ai automation": `${BASE}/ai%20automation.gif`,
+  "app development": `${BASE}/app%20development.gif`,
+  branding: `${BASE}/branding.gif`,
+  "customer support": `${BASE}/customer%20support.gif`,
+  "influencer marketing": `${BASE}/influencer%20maketing.gif`,
+  "lead generation": `${BASE}/lead%20genration.gif`,
+  "paid advertising": `${BASE}/paid%20advertisment.gif`,
+  seo: `${BASE}/seo.gif`,
+  "social media management": `${BASE}/social%20media.gif`,
+  "software development": `${BASE}/software%20development.gif`,
+  "video services": `${BASE}/video%20service.gif`,
+  "web development": `${BASE}/web%20development.gif`,
+  "website development": `${BASE}/web%20development.gif`,
+  "whatsapp chatbot": `${BASE}/whatsapp%20chatbot.gif`,
+  "writing & content": `${BASE}/writing%20%26%20content.gif`,
 };
 
-const resolveIcon = (serviceName) => {
+const resolveGif = (serviceName) => {
   const key = String(serviceName || "").toLowerCase().trim();
-  return SERVICE_ICON_MAP[key] || Layers;
+  return SERVICE_GIF_MAP[key] || null;
 };
 
 const resolveServiceKey = (service) =>
@@ -58,6 +36,42 @@ const resolveServiceKey = (service) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+
+/* ── Service card icon: GIF if available, Lucide fallback ── */
+
+const ServiceIcon = ({ serviceName, isSelected }) => {
+  const gif = resolveGif(serviceName);
+
+  if (gif) {
+    return (
+      <div
+        className="mb-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg"
+        style={{ background: "transparent" }}
+      >
+        <img
+          src={gif}
+          alt={serviceName}
+          className="h-full w-full object-contain"
+          draggable={false}
+          style={{
+            filter: isSelected ? "none" : "grayscale(0%)",
+            opacity: isSelected ? 1 : 0.85,
+            transition: "opacity 0.2s ease",
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <Layers
+      className={cn(
+        "mb-3 h-5 w-5",
+        isSelected ? "text-primary" : "text-muted-foreground"
+      )}
+    />
+  );
+};
 
 const FreelancerServicesSlide = ({
   slide,
@@ -83,7 +97,6 @@ const FreelancerServicesSlide = ({
         {services.length > 0 ? (
           <div className="grid w-full grid-cols-2 justify-center gap-3.5 md:[grid-template-columns:repeat(3,172px)] xl:[grid-template-columns:repeat(5,172px)]">
             {services.map((service) => {
-              const Icon = resolveIcon(service.name);
               const serviceKey = resolveServiceKey(service);
               const isSelected = selectedServices.includes(serviceKey);
 
@@ -100,11 +113,9 @@ const FreelancerServicesSlide = ({
                   )}
                   aria-pressed={isSelected}
                 >
-                  <Icon
-                    className={cn(
-                      "mb-3 h-5 w-5",
-                      isSelected ? "text-primary" : "text-muted-foreground"
-                    )}
+                  <ServiceIcon
+                    serviceName={service.name}
+                    isSelected={isSelected}
                   />
                   <span
                     className={cn(

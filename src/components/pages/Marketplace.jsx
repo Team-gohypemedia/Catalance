@@ -2086,7 +2086,7 @@ const Marketplace = () => {
                                     {item.service || "Untitled service"}
                                   </p>
 
-                                  {/* Row 3: Rating (left) | STARTING AT + price (right) — pinned to bottom */}
+                                  {/* Row 3: Rating (left) | Delivery time (right) */}
                                   <div className="mt-auto flex items-end justify-between">
                                     {/* Star rating */}
                                     <div className="flex items-center gap-1">
@@ -2100,18 +2100,18 @@ const Marketplace = () => {
                                         <span className="text-[11px] text-gray-300 dark:text-gray-500">No reviews yet</span>
                                       )}
                                     </div>
-                                    {/* STARTING AT + price */}
-                                    <div className="text-right">
-                                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Starting at</p>
-                                      <p className="text-[18px] font-extrabold leading-none text-gray-900 dark:text-white">{price}</p>
-                                    </div>
-                                  </div>
-
-                                  {/* Row 4: Delivery (left) | View button (right) */}
-                                  <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 dark:border-white/10">
+                                    {/* Delivery time */}
                                     <div className="flex items-center gap-1.5 text-[11.5px] text-gray-400 dark:text-gray-500">
                                       <Clock className="h-3.5 w-3.5" />
                                       {delivery || "Flexible"}
+                                    </div>
+                                  </div>
+
+                                  {/* Row 4: STARTING AT + price (left) | View button (right) */}
+                                  <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 dark:border-white/10">
+                                    <div>
+                                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Starting at</p>
+                                      <p className="text-[18px] font-extrabold leading-none text-gray-900 dark:text-white">{price}</p>
                                     </div>
                                     <span className="inline-flex items-center rounded-full bg-primary px-5 py-2 text-[13px] font-bold text-primary-foreground shadow-sm transition group-hover:bg-primary/90">
                                       View
