@@ -9,7 +9,9 @@ const MarketPlaceCTA = () => {
     theme === "dark" || 
     (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-  const videoSrc = isDarkMode ? "/assets/Darktheme.mp4" : "/assets/WhatsApp-Video.mp4";
+  const videoSrc = isDarkMode
+    ? "https://assets.catalance.in/assets/Darktheme.mp4"
+    : "https://assets.catalance.in/assets/WhatsApp%20Video%202026-06-03%20at%2012.28.59%20PM.mp4";
 
   const videoRef = useRef(null);
 

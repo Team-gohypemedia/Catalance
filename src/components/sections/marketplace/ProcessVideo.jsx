@@ -44,7 +44,7 @@ const ProcessVideo = () => {
     theme === "dark" || 
     (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-  const videoSrc = "/assets/Catalance.mp4";
+  const videoSrc = "https://assets.catalance.in/assets/Catalance.mp4";
 
   const videoRef = useRef(null);
   const [playing, setPlaying] = useState(true);
