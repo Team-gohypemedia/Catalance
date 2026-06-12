@@ -4,7 +4,7 @@ import { AppError } from "../utils/app-error.js";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL =
-  env.OPENROUTER_MODEL || process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+  env.OPENROUTER_MODEL || process.env.OPENROUTER_MODEL || "openai/gpt-5.1";
 const DEFAULT_REFERER =
   env.FRONTEND_URL || env.CORS_ORIGIN || "http://localhost:5173";
 const MAX_RESUME_TEXT_CHARS = 24000;

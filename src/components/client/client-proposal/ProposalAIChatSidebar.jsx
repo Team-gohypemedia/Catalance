@@ -109,7 +109,7 @@ ${JSON.stringify({
           "X-Title": "Catalance AI Editor",
         },
         body: JSON.stringify({
-          model: import.meta.env.VITE_OPENROUTER_MODEL || "openai/gpt-4o-mini",
+          model: import.meta.env.VITE_OPENROUTER_MODEL || "openai/gpt-5.1",
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: contextBlock },
