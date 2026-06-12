@@ -23,6 +23,7 @@ import { useAuth } from "@/shared/context/AuthContext";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import MediaGallery from "./marketplace-details/MediaGallery";
 import StickySidebar from "./marketplace-details/StickySidebar";
+import cataLogo from "@/assets/logos/logo.svg";
 
 const asObject = (value) =>
   value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -1044,9 +1045,11 @@ const ServiceDetails = () => {
               <div className="grid grid-cols-2 rounded-2xl overflow-hidden mb-0 shadow-sm">
                 {/* Catalance header */}
                 <div className="bg-primary flex items-center justify-center gap-1.5 py-2 px-4">
-                  <div className="w-4 h-4 rounded-full bg-white/20 dark:bg-black/20 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-white dark:bg-black" />
-                  </div>
+                  <img
+                    src={cataLogo}
+                    alt="Catalance logo"
+                    className="h-4 w-4 object-contain invert dark:invert-0"
+                  />
                   <span className="!text-white dark:!text-black font-bold text-xs sm:text-sm">Catalance</span>
                 </div>
                 {/* VS badge & Other Platforms header */}
@@ -1062,6 +1065,10 @@ const ServiceDetails = () => {
               {/* Comparison Rows */}
               <div className="divide-y divide-[#e8e0d5] dark:divide-white/10 bg-white/70 dark:bg-white/[0.03] rounded-b-2xl border border-t-0 border-[#e8e0d5] dark:border-white/10">
                 {[
+                  {
+                    catalance: { title: "Project Manager Included", desc: "You get a dedicated project manager to lead and coordinate your project." },
+                    other: { title: "No Project Manager", desc: "You're on your own with no dedicated project manager." },
+                  },
                   {
                     catalance: { title: "Verified Freelancers", desc: "Rigorous verification for skill and experience." },
                     other: { title: "Open Marketplace", desc: "Anyone can join with no verification." },
@@ -1099,7 +1106,7 @@ const ServiceDetails = () => {
                       </div>
                       <div>
                         <p className="text-xs font-bold text-[#1a1209] dark:text-white leading-snug">{row.catalance.title}</p>
-                        <p className="text-[10px] text-[#7a6a55] dark:text-slate-400 mt-0.5 leading-relaxed">{row.catalance.desc}</p>
+                        <p className="text-[10px] text-[#7a6a55] dark:text-zinc-200 mt-0.5 leading-relaxed">{row.catalance.desc}</p>
                       </div>
                     </div>
                     {/* Other platforms column */}
@@ -1109,7 +1116,7 @@ const ServiceDetails = () => {
                       </div>
                       <div>
                         <p className="text-xs font-bold text-[#1a1209] dark:text-white leading-snug">{row.other.title}</p>
-                        <p className="text-[10px] text-[#7a6a55] dark:text-slate-400 mt-0.5 leading-relaxed">{row.other.desc}</p>
+                        <p className="text-[10px] text-[#7a6a55] dark:text-zinc-200 mt-0.5 leading-relaxed">{row.other.desc}</p>
                       </div>
                     </div>
                   </div>
