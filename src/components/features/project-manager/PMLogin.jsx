@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
     Field,
     FieldDescription,
@@ -23,140 +22,14 @@ import BarChart2 from "lucide-react/dist/esm/icons/bar-chart-2";
 import Users from "lucide-react/dist/esm/icons/users";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import catalanceLogo from "@/assets/logos/logo.svg";
+import pmLoginDark from "@/assets/images/pm-login-dark.png";
+import pmLoginLight from "@/assets/images/pm-login-light.png";
 
 const initialFormState = {
     email: "",
     password: ""
-};
-
-const AnimatedDeskIllustration = ({ isDark, gender }) => (
-  <svg viewBox="0 0 500 240" className="w-full h-auto max-w-[440px] -ml-4 select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <style>
-      {`
-        @keyframes steam {
-          0% { transform: translateY(0) scaleX(1); opacity: 0; }
-          30% { opacity: 0.5; }
-          100% { transform: translateY(-12px) scaleX(1.4); opacity: 0; }
-        }
-        @keyframes typing {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(0.5px) rotate(0.4deg); }
-        }
-        @keyframes bob {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-2px); }
-        }
-        @keyframes glow {
-          0%, 100% { filter: drop-shadow(0 0 1px rgba(217, 105, 42, 0.4)); }
-          50% { filter: drop-shadow(0 0 5px rgba(217, 105, 42, 0.8)); }
-        }
-        .steam-line {
-          animation: steam 2.5s infinite linear;
-          transform-origin: bottom center;
-        }
-        .steam-line-2 {
-          animation: steam 2.5s infinite linear;
-          animation-delay: 1.25s;
-          transform-origin: bottom center;
-        }
-        .typing-arm {
-          animation: typing 0.12s infinite ease-in-out;
-          transform-origin: 100px 170px;
-        }
-        .bobbing-head-body {
-          animation: bob 4s infinite ease-in-out;
-        }
-        .glowing-chart {
-          animation: glow 3s infinite ease-in-out;
-        }
-      `}
-    </style>
-
-    {/* Skyline Buildings */}
-    <path d="M0 200 V120 H40 V150 H90 V110 H130 V160 H180 V100 H220 V200 Z" fill={isDark ? "rgba(255,255,255,0.015)" : "#F5EFE6"} opacity="0.6" />
-    <path d="M220 200 V130 H260 V110 H300 V150 H340 V120 H380 V200 Z" fill={isDark ? "rgba(255,255,255,0.01)" : "#F5EFE6"} opacity="0.4" />
-
-    {/* Table Surface */}
-    <path d="M -10 200 C 100 200, 220 205, 340 215 C 390 220, 440 228, 480 240 H -10 Z" fill={isDark ? "#2A1D15" : "#F1D2B9"} />
-
-    {/* Plant */}
-    <path d="M 16 180 H 26 L 24 200 H 18 Z" fill="#C5683C" />
-    <path d="M 21 180 C 14 165, 9 175, 21 180 Z" fill="#5B8266" />
-    <path d="M 21 180 C 28 165, 33 175, 21 180 Z" fill="#6A9977" />
-    <path d="M 21 180 C 21 155, 24 175, 21 180 Z" fill="#5B8266" />
-
-    {/* Mug with animated steam */}
-    <rect x="360" y="180" width="16" height="20" rx="3" fill="#D9692A" />
-    <path d="M 376 184 C 381 184, 383 187, 383 190 C 383 193, 381 196, 376 196" stroke="#D9692A" strokeWidth="2" />
-    <path className="steam-line" d="M 365 172 Q 367 169 365 166" stroke={isDark ? "rgba(255,255,255,0.4)" : "#D9692A"} strokeWidth="1.2" strokeLinecap="round" />
-    <path className="steam-line-2" d="M 371 170 Q 373 167 371 164" stroke={isDark ? "rgba(255,255,255,0.4)" : "#D9692A"} strokeWidth="1.2" strokeLinecap="round" />
-
-    {/* Chair */}
-    <rect x="35" y="175" width="45" height="8" rx="2" fill="#2E2C2B" />
-    <path d="M 30 125 C 30 120, 35 115, 40 115 H 45 C 50 115, 55 120, 55 125 V 175 H 30 Z" fill="#2E2C2B" />
-    <path d="M 50 175 V 225 H 55 V 175 Z" fill="#423F3E" />
-    <line x1="42" y1="225" x2="68" y2="225" stroke="#2E2C2B" strokeWidth="3" strokeLinecap="round" />
-
-    {/* Character Bobbing Head & Body Wrapper */}
-    <g className="bobbing-head-body">
-      {gender === "female" ? (
-        // FEMALE CHARACTER
-        <>
-          {/* Hair back */}
-          <path d="M 72 110 C 65 110, 60 125, 60 145 C 60 165, 75 170, 80 170 Z" fill="#3B2314" />
-          {/* Body */}
-          <path d="M 72 170 C 72 150, 95 150, 110 155 L 155 180 C 165 185, 165 190, 160 215 H 70 Z" fill="#D9692A" />
-          {/* Head */}
-          <circle cx="92" cy="115" r="14" fill="#FDD7C6" />
-          {/* Hair front */}
-          <path d="M 92 101 C 77 101, 74 129, 92 129 C 104 129, 106 117, 102 111 C 98 105, 96 101, 92 101 Z" fill="#3B2314" />
-          {/* Face Nose details */}
-          <path d="M 98 113 H 104 L 100 118 H 96 Z" fill="#FDD7C6" />
-          {/* Neck */}
-          <rect x="85" y="126" width="10" height="15" fill="#FDD7C6" />
-          {/* Arm with typing animation */}
-          <path className="typing-arm" d="M 100 170 Q 140 170, 205 198" stroke="#FDD7C6" strokeWidth="8" strokeLinecap="round" />
-          <path className="typing-arm" d="M 100 170 Q 140 170, 205 198" stroke="#D9692A" strokeWidth="8" strokeLinecap="round" opacity="0.25" />
-        </>
-      ) : (
-        // MALE CHARACTER
-        <>
-          {/* Body */}
-          <path d="M 72 170 C 72 150, 95 150, 110 155 L 155 180 C 165 185, 165 190, 160 215 H 70 Z" fill="#4B6FA5" />
-          {/* Head */}
-          <circle cx="92" cy="115" r="14" fill="#FDD7C6" />
-          {/* Short Hair */}
-          <path d="M 80 102 C 85 98, 105 98, 105 107 C 105 112, 102 115, 100 115 C 95 115, 95 106, 80 106 Z" fill="#221C18" />
-          {/* Beard/Stubble */}
-          <path d="M 84 120 C 84 128, 98 128, 100 120 C 95 122, 90 122, 84 120 Z" fill="#221C18" opacity="0.8" />
-          {/* Glasses */}
-          <circle cx="98" cy="113" r="4.5" stroke="#1A1A1A" strokeWidth="1.2" />
-          <line x1="92" y1="113" x2="94" y2="113" stroke="#1A1A1A" strokeWidth="1.2" />
-          {/* Nose/chin */}
-          <path d="M 98 113 H 103 L 100 118 H 96 Z" fill="#FDD7C6" />
-          {/* Neck */}
-          <rect x="85" y="126" width="10" height="15" fill="#FDD7C6" />
-          {/* Arm with typing animation */}
-          <path className="typing-arm" d="M 100 170 Q 140 170, 205 198" stroke="#FDD7C6" strokeWidth="8" strokeLinecap="round" />
-          <path className="typing-arm" d="M 100 170 Q 140 170, 205 198" stroke="#4B6FA5" strokeWidth="8" strokeLinecap="round" opacity="0.25" />
-        </>
-      )}
-    </g>
-
-    {/* Laptop with glowing screen chart */}
-    <path d="M 195 200 H 275 L 262 165 H 202 Z" fill={isDark ? "#1C1C1E" : "#ffffff"} stroke={isDark ? "rgba(255,255,255,0.15)" : "#C6B9A8"} strokeWidth="1.5" />
-    <rect x="188" y="198" width="94" height="4" rx="2" fill={isDark ? "#3A3A3C" : "#A39480"} />
-    <circle className="glowing-chart" cx="225" cy="182" r="6" stroke="#D9692A" strokeWidth="3.2" fill="none" />
-    <line x1="240" y1="178" x2="254" y2="178" stroke={isDark ? "#fff" : "#1C1B1F"} strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
-    <line x1="240" y1="184" x2="250" y2="184" stroke={isDark ? "#fff" : "#1C1B1F"} strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
-  </svg>
-);
-
-AnimatedDeskIllustration.propTypes = {
-  isDark: PropTypes.bool.isRequired,
-  gender: PropTypes.string.isRequired
 };
 
 function PMLogin({ className, ...props }) {
@@ -165,7 +38,6 @@ function PMLogin({ className, ...props }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
-    const [gender, setGender] = useState("female");
     const navigate = useNavigate();
     const location = useLocation();
     const { login: setAuthSession } = useAuth();
@@ -174,7 +46,7 @@ function PMLogin({ className, ...props }) {
 
     useEffect(() => {
         document.documentElement.classList.add("onboarding-page");
-        
+
         const observer = new MutationObserver(() => {
             setIsDark(document.documentElement.classList.contains("dark"));
         });
@@ -239,135 +111,197 @@ function PMLogin({ className, ...props }) {
         }
     };
 
+    const features = [
+        {
+            icon: BarChart2,
+            title: "Overview at a Glance",
+            desc: "Get instant insights into projects, tasks and team performance.",
+        },
+        {
+            icon: Users,
+            title: "Team Collaboration",
+            desc: "Communicate, assign tasks and keep your team aligned.",
+        },
+        {
+            icon: CheckCircle2,
+            title: "On Track, Always",
+            desc: "Monitor timelines, milestones and deliver results on time.",
+        },
+    ];
+
     return (
         <div
             className={cn(
                 "min-h-screen w-full flex flex-col relative overflow-hidden",
-                isDark ? "bg-[#0A0A0A]" : "bg-[#FAF6F0]",
+                isDark ? "bg-[#080808]" : "bg-[#FAF6F0]",
                 className
             )}
             {...props}
         >
-            {/* dot-grid pattern */}
+            {/* Animated gradient orbs */}
+            <div
+                aria-hidden
+                className="pointer-events-none absolute -top-32 -left-32 size-[600px] rounded-full opacity-30 blur-[140px] animate-pulse"
+                style={{ background: isDark ? "#F9D94918" : "#D9692A18", animationDuration: "6s" }}
+            />
+            <div
+                aria-hidden
+                className="pointer-events-none absolute -bottom-32 -right-32 size-[500px] rounded-full opacity-20 blur-[120px] animate-pulse"
+                style={{ background: isDark ? "#F9D94912" : "#D9692A12", animationDuration: "9s", animationDelay: "3s" }}
+            />
+            <div
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[800px] rounded-full opacity-[0.04] blur-[180px]"
+                style={{ background: isDark ? "#F9D949" : "#D9692A" }}
+            />
+
+            {/* Dot-grid pattern */}
             <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0"
                 style={{
                     backgroundImage: isDark
-                        ? "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)"
-                        : "radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px)",
-                    backgroundSize: "28px 28px",
+                        ? "radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)"
+                        : "radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px)",
+                    backgroundSize: "32px 32px",
                 }}
             />
-            {/* background decorative blobs */}
-            <div aria-hidden className="pointer-events-none absolute -top-40 -left-40 size-[500px] rounded-full opacity-20 blur-[120px]" style={{ background: isDark ? "#F9D94930" : "#D9692A30" }} />
-            <div aria-hidden className="pointer-events-none absolute -bottom-40 -right-40 size-[400px] rounded-full opacity-15 blur-[100px]" style={{ background: isDark ? "#F9D94925" : "#D9692A25" }} />
 
             {/* Logo bar */}
-            <header className="relative z-10 flex items-center gap-2.5 px-8 pt-7">
-                <div className="flex size-8 items-center justify-center rounded-full bg-primary">
-                    <img src={catalanceLogo} alt="" className="h-[18px] w-[18px] object-contain invert dark:invert-0" />
+            <header className="relative z-10 flex items-center justify-between px-8 pt-7 pb-0">
+                <div className="flex items-center gap-2.5">
+                    <div className="flex size-8 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30">
+                        <img src={catalanceLogo} alt="" className="h-[18px] w-[18px] object-contain invert dark:invert-0" />
+                    </div>
+                    <span className={cn("text-[1.05rem] font-bold tracking-[-0.4px]", isDark ? "text-white" : "text-[#1C1B1F]")}>
+                        Catalance
+                    </span>
                 </div>
-                <span className={cn("text-[1.05rem] font-bold tracking-[-0.4px]", isDark ? "text-white" : "text-[#1C1B1F]")}>Catalance</span>
+                <div className={cn(
+                    "hidden sm:flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold",
+                    isDark ? "border-white/[0.08] bg-white/[0.03] text-white/40" : "border-black/[0.08] bg-black/[0.02] text-black/40"
+                )}>
+                    <ShieldCheck className="size-3 text-primary" />
+                    Secure PM Portal
+                </div>
             </header>
 
-            {/* Main split */}
-            <main className="relative z-10 flex flex-1 items-center justify-center gap-6 px-6 py-6 lg:py-8 lg:px-16 lg:gap-12 max-w-5xl mx-auto w-full">
-                
-                {/* Left panel (Desktop Only) */}
-                <div className="hidden max-w-md flex-1 lg:flex lg:flex-col lg:justify-between lg:self-stretch pb-4 pt-2">
+            {/* Main split layout */}
+            <main className="relative z-10 flex flex-1 items-center justify-center gap-8 px-6 py-8 lg:py-6 lg:px-16 lg:gap-16 max-w-6xl mx-auto w-full">
+
+                {/* ── Left panel (Desktop Only) ── */}
+                <div className="hidden lg:flex flex-col justify-between flex-1 max-w-[440px] self-stretch pt-2 pb-4">
+
+                    {/* Top: heading + features */}
                     <div>
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                        {/* Brand mark */}
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className={cn(
+                                "flex h-12 w-12 items-center justify-center rounded-2xl border",
+                                isDark
+                                    ? "border-white/[0.08] bg-white/[0.04]"
+                                    : "border-primary/20 bg-primary/8"
+                            )}>
                                 <ShieldCheck className="h-6 w-6 text-primary" />
                             </div>
                             <div>
-                                <h1 className={cn("text-[2.2rem] font-bold tracking-[-1px] leading-none", isDark ? "text-white" : "text-[#1C1B1F]")}>
+                                <h1 className={cn("text-[2rem] font-bold tracking-[-1.2px] leading-none", isDark ? "text-white" : "text-[#1C1B1F]")}>
                                     PM Portal
                                 </h1>
-                                <p className="text-primary font-medium text-xs tracking-wider uppercase mt-0.5">
+                                <p className="text-primary font-semibold text-[10px] tracking-[0.12em] uppercase mt-1 opacity-80">
                                     Project Manager Portal
                                 </p>
                             </div>
                         </div>
-                        <p className={cn("mb-8 text-[0.92rem] leading-relaxed", isDark ? "text-white/50" : "text-black/50")}>
-                            Access your projects, track progress, and deliver success.
+
+                        <p className={cn("mb-7 text-[0.9rem] leading-relaxed", isDark ? "text-white/45" : "text-black/50")}>
+                            Access your projects, track progress, and deliver success with confidence.
                         </p>
 
-                        {/* Features list */}
+                        {/* Features */}
                         <div className="space-y-4">
-                            {[
-                                { 
-                                    icon: BarChart2, 
-                                    title: "Overview at a Glance", 
-                                    desc: "Get instant insights into projects, tasks and team performance.", 
-                                    light: "bg-accent text-accent-foreground dark:bg-white/[0.06] dark:text-white"
-                                },
-                                { 
-                                    icon: Users, 
-                                    title: "Team Collaboration", 
-                                    desc: "Communicate, assign tasks and keep your team aligned.", 
-                                    light: "bg-accent text-accent-foreground dark:bg-white/[0.06] dark:text-white"
-                                },
-                                { 
-                                    icon: CheckCircle2, 
-                                    title: "On Track, Always", 
-                                    desc: "Monitor timelines, milestones and deliver results on time.", 
-                                    light: "bg-accent text-accent-foreground dark:bg-white/[0.06] dark:text-white"
-                                },
-                            ].map(({ icon: Icon, title, desc, light }) => (
-                                <div key={title} className="flex items-start gap-3.5">
-                                    <div className={cn("mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full", light)}>
+                            {features.map(({ icon: Icon, title, desc }, idx) => (
+                                <div key={title} className="flex items-start gap-3.5 group">
+                                    <div className={cn(
+                                        "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-110",
+                                        isDark
+                                            ? "bg-white/[0.06] text-white/70 group-hover:bg-primary/20 group-hover:text-primary"
+                                            : "bg-primary/10 text-primary group-hover:bg-primary/15"
+                                    )}>
                                         <Icon className="size-4.5" />
                                     </div>
                                     <div>
-                                        <p className={cn("text-[0.85rem] font-semibold", isDark ? "text-white" : "text-[#1C1B1F]")}>{title}</p>
-                                        <p className={cn("text-[0.78rem] leading-snug", isDark ? "text-white/45" : "text-black/45")}>{desc}</p>
+                                        <p className={cn("text-[0.85rem] font-semibold leading-snug", isDark ? "text-white/85" : "text-[#1C1B1F]")}>
+                                            {title}
+                                        </p>
+                                        <p className={cn("text-[0.77rem] leading-relaxed mt-0.5", isDark ? "text-white/35" : "text-black/45")}>
+                                            {desc}
+                                        </p>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Desk Illustration with switcher at bottom left */}
-                    <div className="mt-4 space-y-3">
-                        <AnimatedDeskIllustration isDark={isDark} gender={gender} />
-                        <button
-                            type="button"
-                            onClick={() => setGender(prev => prev === "female" ? "male" : "female")}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200",
-                                isDark 
-                                    ? "bg-white/[0.04] border-white/10 text-white/70 hover:bg-white/[0.08]" 
-                                    : "bg-white border-black/[0.08] text-black/60 shadow-sm hover:bg-black/[0.02]"
-                            )}
-                        >
-                            <RefreshCw className="size-3" />
-                            Switch Manager View
-                        </button>
+                    {/* Bottom: illustration */}
+                    <div className="mt-6 relative">
+                        {/* Subtle glow under illustration */}
+                        <div
+                            aria-hidden
+                            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-16 blur-2xl opacity-25 rounded-full"
+                            style={{ background: isDark ? "#F9D949" : "#D9692A" }}
+                        />
+                        <img
+                            src={isDark ? pmLoginDark : pmLoginLight}
+                            alt="Project manager at work"
+                            className="w-full max-w-[400px] h-auto object-contain select-none relative z-10 transition-all duration-700"
+                            draggable={false}
+                        />
                     </div>
                 </div>
 
-                {/* Right Card / Form container */}
-                <div className={cn("w-full max-w-md rounded-3xl border p-6 shadow-2xl shadow-black/5 dark:shadow-black/40", isDark ? "border-white/[0.07] bg-white/[0.04] backdrop-blur-xl" : "border-black/[0.06] bg-white")}>
-                    
-                    {/* Header inside Card */}
-                    <div className="flex flex-col items-center gap-2 text-center mb-4">
-                        <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
-                            <ShieldCheck className="h-5 w-5 text-primary" />
+                {/* ── Right Card / Form ── */}
+                <div className={cn(
+                    "w-full max-w-[420px] rounded-3xl border p-7 shadow-2xl relative overflow-hidden",
+                    isDark
+                        ? "border-white/[0.07] bg-white/[0.03] backdrop-blur-2xl shadow-black/60"
+                        : "border-black/[0.07] bg-white shadow-black/[0.08]"
+                )}>
+
+                    {/* Subtle card glow top */}
+                    <div
+                        aria-hidden
+                        className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-32 blur-3xl opacity-20 rounded-full pointer-events-none"
+                        style={{ background: isDark ? "#F9D949" : "#D9692A" }}
+                    />
+
+                    {/* Card header */}
+                    <div className="flex flex-col items-center gap-2 text-center mb-6 relative z-10">
+                        <div className={cn(
+                            "h-12 w-12 rounded-2xl flex items-center justify-center mb-1 shadow-lg",
+                            isDark ? "bg-primary/15 shadow-primary/10" : "bg-primary/10 shadow-primary/10"
+                        )}>
+                            <ShieldCheck className="h-6 w-6 text-primary" />
                         </div>
-                        <h2 className={cn("text-xl font-bold tracking-tight", isDark ? "text-white" : "text-[#1C1B1F]")}>
+                        <h2 className={cn("text-[1.4rem] font-bold tracking-tight leading-tight", isDark ? "text-white" : "text-[#1C1B1F]")}>
                             Welcome Back!
                         </h2>
-                        <p className={cn("text-xs", isDark ? "text-white/45" : "text-black/45")}>
+                        <p className={cn("text-xs font-medium", isDark ? "text-white/40" : "text-black/40")}>
                             Secure login for Project Managers
                         </p>
                     </div>
 
-                    <form onSubmit={handleSubmit} noValidate className="space-y-0">
-                        <FieldGroup className="space-y-3.5">
-                            <Field className="block space-y-1 text-left">
-                                <FieldLabel htmlFor="loginEmail" className="text-[11px] font-semibold uppercase tracking-wider text-black/50 dark:text-white/50">Email</FieldLabel>
+                    {/* Form */}
+                    <form onSubmit={handleSubmit} noValidate className="space-y-0 relative z-10">
+                        <FieldGroup className="space-y-4">
+                            {/* Email */}
+                            <Field className="block space-y-1.5 text-left">
+                                <FieldLabel
+                                    htmlFor="loginEmail"
+                                    className={cn("text-[11px] font-bold uppercase tracking-[0.1em]", isDark ? "text-white/45" : "text-black/45")}
+                                >
+                                    Email
+                                </FieldLabel>
                                 <div className="relative">
                                     <Input
                                         id="loginEmail"
@@ -378,16 +312,26 @@ function PMLogin({ className, ...props }) {
                                         value={formData.email}
                                         onChange={handleChange}
                                         required
-                                        className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:text-[#1c1b1f]/45 dark:placeholder:text-[#ffffff]/35 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                                        className={cn(
+                                            "!h-11 rounded-xl border pr-11 text-[13px] transition-all duration-200",
+                                            "focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/15",
+                                            isDark
+                                                ? "border-white/[0.09] bg-white/[0.04] text-white placeholder:text-white/30"
+                                                : "border-black/[0.1] bg-black/[0.02] text-[#1C1B1F] placeholder:text-black/30"
+                                        )}
                                     />
-                                    <Mail className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
+                                    <Mail className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-primary/50" />
                                 </div>
                             </Field>
 
-                            <Field className="block space-y-1 text-left">
-                                <div className="flex justify-between items-center">
-                                    <FieldLabel htmlFor="loginPassword" className="text-[11px] font-semibold uppercase tracking-wider text-black/50 dark:text-white/50">Password</FieldLabel>
-                                </div>
+                            {/* Password */}
+                            <Field className="block space-y-1.5 text-left">
+                                <FieldLabel
+                                    htmlFor="loginPassword"
+                                    className={cn("text-[11px] font-bold uppercase tracking-[0.1em]", isDark ? "text-white/45" : "text-black/45")}
+                                >
+                                    Password
+                                </FieldLabel>
                                 <div className="relative">
                                     <Input
                                         id="loginPassword"
@@ -398,80 +342,96 @@ function PMLogin({ className, ...props }) {
                                         value={formData.password}
                                         onChange={handleChange}
                                         required
-                                        className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:text-[#1c1b1f]/45 dark:placeholder:text-[#ffffff]/35 focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                                    />
-                                    <div
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute top-0 right-0 h-full px-3 flex items-center cursor-pointer select-none text-zinc-400 hover:text-foreground"
-                                    >
-                                        {showPassword ? (
-                                            <EyeOff className="h-4 w-4" />
-                                        ) : (
-                                            <Eye className="h-4 w-4" />
+                                        className={cn(
+                                            "!h-11 rounded-xl border pr-11 text-[13px] transition-all duration-200",
+                                            "focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/15",
+                                            isDark
+                                                ? "border-white/[0.09] bg-white/[0.04] text-white placeholder:text-white/30"
+                                                : "border-black/[0.1] bg-black/[0.02] text-[#1C1B1F] placeholder:text-black/30"
                                         )}
-                                    </div>
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className={cn(
+                                            "absolute right-0 top-0 h-full px-3.5 flex items-center cursor-pointer select-none transition-colors",
+                                            isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"
+                                        )}
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
                                 </div>
                             </Field>
 
-                            {/* Remember Me and Forgot Password row */}
-                            <div className="flex items-center justify-between text-xs">
-                                <label className="flex items-center gap-2 cursor-pointer select-none text-black/60 dark:text-white/60">
+                            {/* Remember + Forgot */}
+                            <div className="flex items-center justify-between text-[12px]">
+                                <label className={cn("flex items-center gap-2 cursor-pointer select-none font-medium", isDark ? "text-white/55" : "text-black/55")}>
                                     <input
                                         type="checkbox"
                                         checked={rememberMe}
                                         onChange={(e) => setRememberMe(e.target.checked)}
-                                        className="rounded border-black/15 dark:border-white/10 text-primary focus:ring-primary/20"
+                                        className="rounded border-black/15 dark:border-white/10 text-primary focus:ring-primary/20 accent-primary"
                                     />
-                                    <span>Remember me</span>
+                                    Remember me
                                 </label>
-                                <Link to="/forgot-password" className="text-primary hover:underline font-medium">
+                                <Link to="/forgot-password" className="text-primary hover:text-primary/80 font-semibold transition-colors hover:underline">
                                     Forgot password?
                                 </Link>
                             </div>
 
-                            {formError ? (
+                            {/* Error */}
+                            {formError && (
                                 <FieldDescription
-                                    className="text-red-400 text-xs text-center"
+                                    className="text-red-400 text-xs text-center bg-red-400/10 rounded-xl py-2 px-3 border border-red-400/20"
                                     aria-live="polite"
                                 >
                                     {formError}
                                 </FieldDescription>
-                            ) : null}
+                            )}
 
                             {/* Submit CTA */}
                             <div className="pt-1">
-                                <Button 
-                                    type="submit" 
-                                    disabled={isSubmitting} 
-                                    className="group flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[0.95rem] font-bold transition-all duration-200 keep-white bg-primary text-white shadow-lg shadow-primary/30 hover:brightness-110 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                                <Button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="group flex w-full items-center justify-center gap-2.5 rounded-2xl h-[46px] text-[0.9rem] font-bold transition-all duration-200 keep-white bg-primary text-white shadow-xl shadow-primary/25 hover:brightness-110 hover:shadow-primary/40 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
                                     {isSubmitting ? (
-                                        <Loader2 className="size-4 animate-spin text-white keep-white" />
+                                        <>
+                                            <Loader2 className="size-4 animate-spin text-white keep-white" />
+                                            Verifying...
+                                        </>
                                     ) : (
-                                        <Lock className="size-4 text-white keep-white" />
+                                        <>
+                                            <Lock className="size-4 text-white keep-white" />
+                                            Access Dashboard
+                                            <ArrowRight className="size-4 text-white keep-white transition-transform group-hover:translate-x-0.5" />
+                                        </>
                                     )}
-                                    {isSubmitting ? "Verifying..." : "Access Dashboard"}
                                 </Button>
                             </div>
                         </FieldGroup>
                     </form>
 
-                    {/* Footer note inside Card */}
-                    <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] py-2 px-3">
-                        <Lock className={cn("size-3.5", isDark ? "text-white/30" : "text-black/30")} />
-                        <span className={cn("text-[0.7rem] font-medium tracking-tight", isDark ? "text-white/30" : "text-black/35")}>
+                    {/* Security note */}
+                    <div className={cn(
+                        "mt-5 flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 relative z-10",
+                        isDark ? "bg-white/[0.03] border border-white/[0.05]" : "bg-black/[0.025] border border-black/[0.06]"
+                    )}>
+                        <Lock className={cn("size-3.5", isDark ? "text-white/25" : "text-black/25")} />
+                        <span className={cn("text-[0.68rem] font-semibold tracking-tight", isDark ? "text-white/25" : "text-black/30")}>
                             Restricted Access. Authorized Personnel Only.
                         </span>
                     </div>
 
                     {/* Register link */}
-                    <div className="mt-3 text-center text-xs text-muted-foreground">
+                    <div className={cn("mt-4 text-center text-[12px] font-medium relative z-10", isDark ? "text-white/35" : "text-black/40")}>
                         Need a PM account?{" "}
-                        <Link to="/project-manager/register" className="text-primary hover:underline font-semibold">
+                        <Link to="/project-manager/register" className="text-primary hover:text-primary/80 font-bold transition-colors hover:underline">
                             Register here
                         </Link>
                     </div>
-
                 </div>
             </main>
         </div>

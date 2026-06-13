@@ -96,7 +96,7 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
               </div>
               <div className="flex flex-col text-left min-w-0">
                 <div className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white leading-snug">Get Matched</div>
-                <div className="text-[11px] leading-tight text-neutral-900/60 dark:text-neutral-450 mt-0.5 font-medium">We connect you with clients who need you.</div>
+                <div className="text-[11px] leading-tight text-neutral-900/60 dark:text-neutral-400 mt-0.5 font-medium">We connect you with clients who need you.</div>
               </div>
             </div>
 
@@ -107,7 +107,7 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
               </div>
               <div className="flex flex-col text-left min-w-0">
                 <div className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white leading-snug">Show Your Value</div>
-                <div className="text-[11px] leading-tight text-neutral-900/60 dark:text-neutral-450 mt-0.5 font-medium">Highlight your strengths and stand out.</div>
+                <div className="text-[11px] leading-tight text-neutral-900/60 dark:text-neutral-400 mt-0.5 font-medium">Highlight your strengths and stand out.</div>
               </div>
             </div>
 
@@ -118,7 +118,7 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
               </div>
               <div className="flex flex-col text-left min-w-0">
                 <div className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white leading-snug">Grow Your Business</div>
-                <div className="text-[11px] leading-tight text-neutral-900/60 dark:text-neutral-450 mt-0.5 font-medium">Build relationships and achieve more.</div>
+                <div className="text-[11px] leading-tight text-neutral-900/60 dark:text-neutral-400 mt-0.5 font-medium">Build relationships and achieve more.</div>
               </div>
             </div>
 

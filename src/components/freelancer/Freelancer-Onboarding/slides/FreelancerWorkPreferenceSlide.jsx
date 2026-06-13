@@ -57,7 +57,7 @@ const FreelancerWorkPreferenceSlide = ({
                   "h-5 w-5 sm:h-5.5 sm:w-5.5 transition-all duration-300",
                   selectedWorkPreference === "individual"
                     ? "text-white keep-white"
-                    : "text-neutral-900/60 dark:text-neutral-450 group-hover:text-primary"
+                    : "text-neutral-900/60 dark:text-neutral-400 group-hover:text-primary"
                 )} />
               </div>
 
@@ -116,7 +116,7 @@ const FreelancerWorkPreferenceSlide = ({
                   "h-3.5 w-3.5 transition-colors duration-300",
                   selectedWorkPreference === "individual"
                     ? "text-primary"
-                    : "text-neutral-900/60 dark:text-neutral-450"
+                    : "text-neutral-900/60 dark:text-neutral-400"
                 )} />
                 <div className="font-semibold">Choose projects</div>
               </div>
@@ -126,13 +126,13 @@ const FreelancerWorkPreferenceSlide = ({
                 "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
                 selectedWorkPreference === "individual"
                   ? "border-primary/20 bg-primary/5 text-primary"
-                  : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-450"
+                  : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
               )}>
                 <Workflow className={cn(
                   "h-3.5 w-3.5 transition-colors duration-300",
                   selectedWorkPreference === "individual"
                     ? "text-primary"
-                    : "text-neutral-900/60 dark:text-neutral-450"
+                    : "text-neutral-900/60 dark:text-neutral-400"
                 )} />
                 <div className="font-semibold">Work your way</div>
               </div>
@@ -164,7 +164,7 @@ const FreelancerWorkPreferenceSlide = ({
                   "h-5 w-5 sm:h-5.5 sm:w-5.5 transition-all duration-300",
                   selectedWorkPreference === "agency"
                     ? "text-white keep-white"
-                    : "text-neutral-900/60 dark:text-neutral-450 group-hover:text-primary"
+                    : "text-neutral-900/60 dark:text-neutral-400 group-hover:text-primary"
                 )} />
               </div>
 
@@ -223,7 +223,7 @@ const FreelancerWorkPreferenceSlide = ({
                   "h-3.5 w-3.5 transition-colors duration-300",
                   selectedWorkPreference === "agency"
                     ? "text-primary"
-                    : "text-neutral-900/60 dark:text-neutral-450"
+                    : "text-neutral-900/60 dark:text-neutral-400"
                 )} />
                 <div className="font-semibold">Manage projects</div>
               </div>
@@ -233,13 +233,13 @@ const FreelancerWorkPreferenceSlide = ({
                 "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
                 selectedWorkPreference === "agency"
                   ? "border-primary/20 bg-primary/5 text-primary"
-                  : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-450"
+                  : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
               )}>
                 <TrendingUp className={cn(
                   "h-3.5 w-3.5 transition-colors duration-300",
                   selectedWorkPreference === "agency"
                     ? "text-primary"
-                    : "text-neutral-900/60 dark:text-neutral-450"
+                    : "text-neutral-900/60 dark:text-neutral-400"
                 )} />
                 <div className="font-semibold">Scale your business</div>
               </div>

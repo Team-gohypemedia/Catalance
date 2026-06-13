@@ -1,115 +1,206 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
-
 import { Button } from "@/components/ui/button";
-
-import voiceAgentImg from "@/assets/cards/voice-agent.png";
-import aiAutomationImg from "@/assets/cards/ai-automation.png";
-import crmErpImg from "@/assets/cards/crm-erp-solutions.png";
-import customerSupportImg from "@/assets/cards/customer-support.png";
+import {
+  ArrowRight,
+  Bot,
+  Workflow,
+  Users,
+  Mic,
+  Database,
+  LineChart,
+  Video,
+  Smartphone,
+  Sparkles,
+  Palette,
+  PenTool,
+  Megaphone,
+  Rocket,
+  Share2,
+  Camera,
+  Film,
+  Globe
+} from "lucide-react";
 
 const HOME_SERVICES = [
   {
-    id: "voice_agent",
-    title: "Voice Agent",
-    description: "Voice Agent (AI Voice Bot / Call Automation) for sales, support, and follow-ups.",
-    cardImg: voiceAgentImg,
-    price: "₹50,000/-",
-  },
-  {
     id: "ai_automation",
     title: "AI Automation",
-    description: "Automate workflows to save time and improve productivity.",
-    cardImg: aiAutomationImg,
+    icon: Bot,
+    bgColor: "bg-gradient-to-br from-[#DDD6FE] to-[#A78BFA]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/ai%20automation.png",
     price: "₹25,000/-",
   },
   {
-    id: "crm_erp_integrated_solutions",
+    id: "crm_erp",
     title: "CRM & ERP Solutions",
-    description: "Systems that streamline operations and centralize business data.",
-    cardImg: crmErpImg,
+    icon: Workflow,
+    bgColor: "bg-gradient-to-br from-[#A7F3D0] to-[#34D399]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/crm%20%26%20epr%20intergrated%20solutions.png",
     price: "₹50,000/-",
   },
   {
     id: "customer_support",
     title: "Customer Support",
-    description: "Reliable support services that improve customer satisfaction and retention.",
-    cardImg: customerSupportImg,
+    icon: Users,
+    bgColor: "bg-gradient-to-br from-[#FDE68A] to-[#FBBF24]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/customer%20support.png",
     price: "₹10,000/- Month",
+  },
+  {
+    id: "voice_agent",
+    title: "Voice Agent",
+    icon: Mic,
+    bgColor: "bg-gradient-to-br from-[#FDA4AF] to-[#FB7185]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/voice%20agent.png",
+    price: "₹50,000/-",
+  },
+  {
+    id: "3d_services",
+    title: "3D Services",
+    icon: Database,
+    bgColor: "bg-gradient-to-br from-[#93C5FD] to-[#60A5FA]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/3d%20services.png",
+    price: "₹30,000/-",
+  },
+  {
+    id: "seo",
+    title: "SEO",
+    icon: LineChart,
+    bgColor: "bg-gradient-to-br from-[#86EFAC] to-[#4ADE80]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/SEO.png",
+    price: "₹15,000/- Month",
+  },
+  {
+    id: "ai_video_generation",
+    title: "AI Video Generation",
+    icon: Video,
+    bgColor: "bg-gradient-to-br from-[#C7D2FE] to-[#818CF8]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/ai%20video%20generation.png",
+    price: "₹20,000/-",
+  },
+  {
+    id: "app_development",
+    title: "App Development",
+    icon: Smartphone,
+    bgColor: "bg-gradient-to-br from-[#C084FC] to-[#A855F7]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/app%20development.png",
+    price: "₹80,000/-",
+  },
+  {
+    id: "brandkit",
+    title: "Brand Kit",
+    icon: Sparkles,
+    bgColor: "bg-gradient-to-br from-[#FBCFE8] to-[#F472B6]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/brandkit.png",
+    price: "₹15,000/-",
+  },
+  {
+    id: "creative_design",
+    title: "Creative & Design",
+    icon: Palette,
+    bgColor: "bg-gradient-to-br from-[#FEE2E2] to-[#FCA5A5]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/creative%20%26%20design.png",
+    price: "₹12,000/-",
+  },
+  {
+    id: "content_writing",
+    title: "Content Writing",
+    icon: PenTool,
+    bgColor: "bg-gradient-to-br from-[#FFEDD5] to-[#FDBA74]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/content%20writing.png",
+    price: "₹8,000/-",
+  },
+  {
+    id: "influencer_marketing",
+    title: "Influencer Marketing",
+    icon: Megaphone,
+    bgColor: "bg-gradient-to-br from-[#E0F2FE] to-[#7DD3FC]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/influencer%20marketing.png",
+    price: "₹25,000/-",
+  },
+  {
+    id: "paid_advertising",
+    title: "Paid Advertising",
+    icon: Rocket,
+    bgColor: "bg-gradient-to-br from-[#FECACA] to-[#F87171]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/paid%20adverting.png",
+    price: "₹20,000/- Month",
+  },
+  {
+    id: "social_media_marketing",
+    title: "Social Media Marketing",
+    icon: Share2,
+    bgColor: "bg-gradient-to-br from-[#A5F3FC] to-[#22D3EE]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/social%20media%20marketin.png",
+    price: "₹15,000/- Month",
+  },
+  {
+    id: "ugc_marketing",
+    title: "UGC Marketing",
+    icon: Camera,
+    bgColor: "bg-gradient-to-br from-[#FEF08A] to-[#FACC15]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/ugc%20marketing.png",
+    price: "₹18,000/-",
+  },
+  {
+    id: "video_services",
+    title: "Video Services",
+    icon: Film,
+    bgColor: "bg-gradient-to-br from-[#E9D5FF] to-[#D8B4FE]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/video%20services.png",
+    price: "₹15,000/-",
+  },
+  {
+    id: "web_development",
+    title: "Web Development",
+    icon: Globe,
+    bgColor: "bg-gradient-to-br from-[#99F6E4] to-[#2DD4BF]",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/web%20development.png",
+    price: "₹45,000/-",
   },
 ];
 
-const HOME_SERVICE_CARDS = HOME_SERVICES.map((service) => ({
+const HOME_SERVICE_CARDS = HOME_SERVICES.map((service, index) => ({
   ...service,
-  isPriority: true,
+  isPriority: index < 4,
 }));
 
 const ServiceRailCard = React.memo(function ServiceRailCard({ service, onSelect }) {
-  if (service.cardImg) {
-    return (
-      <button
-        type="button"
-        onClick={() => onSelect(service)}
-        aria-label={`Explore ${service.title}`}
-        className="group relative flex h-[24rem] w-[16rem] flex-shrink-0 flex-col overflow-hidden rounded-[2rem] border border-border/10 bg-transparent shadow-[0_10px_28px_-26px_rgba(0,0,0,0.58)] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 sm:h-[27rem] sm:w-[18rem] sm:rounded-[2.1rem]"
-      >
-        <img
-          src={service.cardImg}
-          alt={service.title}
-          loading={service.isPriority ? "eager" : "lazy"}
-          fetchPriority={service.isPriority ? "high" : "low"}
-          decoding="async"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-        />
-      </button>
-    );
-  }
+  const IconComponent = service.icon;
 
   return (
     <button
       type="button"
       onClick={() => onSelect(service)}
       aria-label={`Explore ${service.title}`}
-      className="group relative flex h-full min-h-[21.5rem] w-[16rem] flex-shrink-0 flex-col overflow-hidden rounded-[2rem] border border-border/70 bg-card p-6 text-left text-card-foreground shadow-[0_10px_28px_-26px_rgba(0,0,0,0.58)] transition-colors duration-300 hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-[22rem] sm:w-[18rem] sm:rounded-[2.1rem]"
+      className="group relative flex h-[24rem] w-[16rem] flex-shrink-0 flex-col justify-between overflow-hidden rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] bg-card p-6 text-left shadow-[0_12px_30px_-15px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 sm:h-[27rem] sm:w-[18rem] sm:rounded-[2.1rem]"
     >
-      <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-white/[0.03] via-transparent to-transparent" />
-
-      <div className="relative flex h-full flex-1 flex-col">
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-          <div className="relative flex h-24 w-full items-center justify-center self-center sm:h-28">
-            <div className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/8 blur-lg" />
-            <img
-              src={service.logoSrc}
-              alt={service.title}
-              loading={service.isPriority ? "eager" : "lazy"}
-              fetchPriority={service.isPriority ? "high" : "low"}
-              decoding="async"
-              className="relative z-10 h-24 w-24 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.24)] sm:h-40 sm:w-40"
-            />
-          </div>
-
-          <div className="flex w-full justify-center text-center">
-            <h3 className="mx-auto max-w-[12.5rem] text-center text-lg font-bold leading-tight text-card-foreground transition-colors duration-300 group-hover:text-primary">
-              {service.title}
-            </h3>
-          </div>
+      {/* Top section: Icon and Title */}
+      <div className="flex flex-col gap-3.5 relative z-10 w-full">
+        {/* Circular Icon Container */}
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
+          <IconComponent className="h-5 w-5" />
         </div>
 
-        <div className="flex w-full items-end justify-between gap-4 border-t border-border/60 pt-4 text-left">
-          <div>
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Starting At
-            </p>
-            <p className="text-lg font-bold text-card-foreground transition-colors duration-300 group-hover:text-primary">
-              {service.price}
-            </p>
-          </div>
+        {/* Title */}
+        <h3 className="text-2xl font-bold tracking-tight text-foreground leading-tight">
+          {service.title}
+        </h3>
+      </div>
 
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors duration-300 group-hover:border-primary group-hover:text-primary">
-            <ArrowRight className="h-4 w-4" />
-          </span>
-        </div>
+      {/* Bottom section: 3D Illustration */}
+      <div className="relative w-full flex items-center justify-center h-48 sm:h-56 mt-auto">
+        {/* Subtle drop shadow / glow behind image */}
+        <div className="absolute w-32 h-6 bg-black/[0.04] dark:bg-white/[0.04] blur-xl rounded-full bottom-2 transition-all duration-300 group-hover:scale-110 group-hover:opacity-60" />
+
+        <img
+          src={service.illustrationUrl}
+          alt={service.title}
+          className="h-full w-full object-contain select-none z-10 transition-transform duration-500 group-hover:scale-[1.08] group-hover:-translate-y-2"
+          loading={service.isPriority ? "eager" : "lazy"}
+          draggable={false}
+        />
       </div>
     </button>
   );
@@ -144,10 +235,8 @@ const ServiceCardsCarousel = () => {
     if (trackRef.current) trackRef.current.style.animationPlayState = "running";
   };
 
-  // Duplicate cards for seamless loop (4 times to look smooth with 4 unique items)
+  // Duplicate cards for seamless loop
   const allCards = [
-    ...HOME_SERVICE_CARDS,
-    ...HOME_SERVICE_CARDS,
     ...HOME_SERVICE_CARDS,
     ...HOME_SERVICE_CARDS,
   ];
@@ -190,7 +279,7 @@ const ServiceCardsCarousel = () => {
             className="flex gap-4 sm:gap-5"
             style={{
               width: "max-content",
-              animation: "marquee-scroll 55s linear infinite",
+              animation: "marquee-scroll 65s linear infinite",
             }}
           >
             {allCards.map((service, i) => (
@@ -202,7 +291,6 @@ const ServiceCardsCarousel = () => {
             ))}
           </div>
         </div>
-
 
       </div>
 
