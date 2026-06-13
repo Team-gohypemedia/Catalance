@@ -24,7 +24,7 @@ const GRATITUDE_REGEX = /\b(thanks|thank you|thx|ty)\b/i;
 const ATTACHMENT_REFERENCE_REGEX = /\b(pdf|document|doc|file|attachment|uploaded|upload|proposal|brochure|resume|deck|sheet)\b/i;
 const URL_REFERENCE_REGEX = /\b(url|link|website|site|webpage|page|reference)\b/i;
 const EXTRACTION_CONFIDENCE_MIN = 0.7;
-const EXTRACTION_CONFIDENCE_UPDATE_MIN = 0.86;
+const EXTRACTION_CONFIDENCE_UPDATE_MIN = 0.99;
 const FRIENDLY_BRIDGES = [
     "Thanks for sharing that.",
     "Great, this helps a lot.",
