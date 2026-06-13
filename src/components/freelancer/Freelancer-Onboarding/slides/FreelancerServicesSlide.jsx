@@ -7,22 +7,22 @@ import { cn } from "@/shared/lib/utils";
 const BASE = "https://assets.catalance.in/services";
 
 const SERVICE_IMAGE_MAP = {
-  advertising: `${BASE}/advertising.png`,
-  "ai automation": `${BASE}/ai%20automation.png`,
-  "app development": `${BASE}/app%20development.png`,
-  branding: `${BASE}/branding.png`,
-  "customer support": `${BASE}/customer%20support.png`,
-  "influencer marketing": `${BASE}/influencer%20maketing.png`,
-  "lead generation": `${BASE}/lead%20genration.png`,
-  "paid advertising": `${BASE}/paid%20advertisment.png`,
-  seo: `${BASE}/seo.png`,
-  "social media management": `${BASE}/social%20media.png`,
-  "software development": `${BASE}/software%20development.png`,
-  "video services": `${BASE}/video%20service.png`,
-  "web development": `${BASE}/web%20development.png`,
-  "website development": `${BASE}/web%20development.png`,
-  "whatsapp chatbot": `${BASE}/whatsapp%20chatbot.png`,
-  "writing & content": `${BASE}/writing%20%26%20content.png`,
+  advertising: `${BASE}/advertising.gif`,
+  "ai automation": `${BASE}/ai%20automation.gif`,
+  "app development": `${BASE}/app%20development.gif`,
+  branding: `${BASE}/branding.gif`,
+  "customer support": `${BASE}/customer%20support.gif`,
+  "influencer marketing": `${BASE}/influencer%20maketing.gif`,
+  "lead generation": `${BASE}/lead%20genration.gif`,
+  "paid advertising": `${BASE}/paid%20advertisment.gif`,
+  seo: `${BASE}/seo.gif`,
+  "social media management": `${BASE}/social%20media.gif`,
+  "software development": `${BASE}/software%20development.gif`,
+  "video services": `${BASE}/video%20service.gif`,
+  "web development": `${BASE}/web%20development.gif`,
+  "website development": `${BASE}/web%20development.gif`,
+  "whatsapp chatbot": `${BASE}/whatsapp%20chatbot.gif`,
+  "writing & content": `${BASE}/writing%20%26%20content.gif`,
 };
 
 const resolveImage = (serviceName) => {
