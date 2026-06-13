@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/components/providers/theme-provider";
 import {
   ArrowRight,
   Bot,
@@ -27,7 +28,7 @@ const HOME_SERVICES = [
     id: "ai_automation",
     title: "AI Automation",
     icon: Bot,
-    bgColor: "bg-gradient-to-br from-[#DDD6FE] to-[#A78BFA]",
+    cardBg: "#e3e1db",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/ai%20automation.png",
     price: "₹25,000/-",
   },
@@ -35,7 +36,7 @@ const HOME_SERVICES = [
     id: "crm_erp",
     title: "CRM & ERP Solutions",
     icon: Workflow,
-    bgColor: "bg-gradient-to-br from-[#A7F3D0] to-[#34D399]",
+    cardBg: "#efefec",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/crm%20%26%20epr%20intergrated%20solutions.png",
     price: "₹50,000/-",
   },
@@ -43,7 +44,7 @@ const HOME_SERVICES = [
     id: "customer_support",
     title: "Customer Support",
     icon: Users,
-    bgColor: "bg-gradient-to-br from-[#FDE68A] to-[#FBBF24]",
+    cardBg: "#edece7",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/customer%20support.png",
     price: "₹10,000/- Month",
   },
@@ -51,7 +52,7 @@ const HOME_SERVICES = [
     id: "voice_agent",
     title: "Voice Agent",
     icon: Mic,
-    bgColor: "bg-gradient-to-br from-[#FDA4AF] to-[#FB7185]",
+    cardBg: "#ccccc6",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/voice%20agent.png",
     price: "₹50,000/-",
   },
@@ -59,7 +60,7 @@ const HOME_SERVICES = [
     id: "3d_services",
     title: "3D Services",
     icon: Database,
-    bgColor: "bg-gradient-to-br from-[#93C5FD] to-[#60A5FA]",
+    cardBg: "#f1f1ed",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/3d%20services.png",
     price: "₹30,000/-",
   },
@@ -67,7 +68,7 @@ const HOME_SERVICES = [
     id: "seo",
     title: "SEO",
     icon: LineChart,
-    bgColor: "bg-gradient-to-br from-[#86EFAC] to-[#4ADE80]",
+    cardBg: "#eff0eb",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/SEO.png",
     price: "₹15,000/- Month",
   },
@@ -75,7 +76,7 @@ const HOME_SERVICES = [
     id: "ai_video_generation",
     title: "AI Video Generation",
     icon: Video,
-    bgColor: "bg-gradient-to-br from-[#C7D2FE] to-[#818CF8]",
+    cardBg: "#ecede8",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/ai%20video%20generation.png",
     price: "₹20,000/-",
   },
@@ -83,7 +84,7 @@ const HOME_SERVICES = [
     id: "app_development",
     title: "App Development",
     icon: Smartphone,
-    bgColor: "bg-gradient-to-br from-[#C084FC] to-[#A855F7]",
+    cardBg: "#f0f0ed",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/app%20development.png",
     price: "₹80,000/-",
   },
@@ -91,7 +92,7 @@ const HOME_SERVICES = [
     id: "brandkit",
     title: "Brand Kit",
     icon: Sparkles,
-    bgColor: "bg-gradient-to-br from-[#FBCFE8] to-[#F472B6]",
+    cardBg: "#eae6df",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/brandkit.png",
     price: "₹15,000/-",
   },
@@ -99,7 +100,7 @@ const HOME_SERVICES = [
     id: "creative_design",
     title: "Creative & Design",
     icon: Palette,
-    bgColor: "bg-gradient-to-br from-[#FEE2E2] to-[#FCA5A5]",
+    cardBg: "#e9e6df",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/creative%20%26%20design.png",
     price: "₹12,000/-",
   },
@@ -107,7 +108,7 @@ const HOME_SERVICES = [
     id: "content_writing",
     title: "Content Writing",
     icon: PenTool,
-    bgColor: "bg-gradient-to-br from-[#FFEDD5] to-[#FDBA74]",
+    cardBg: "#eff0eb",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/content%20writing.png",
     price: "₹8,000/-",
   },
@@ -115,7 +116,7 @@ const HOME_SERVICES = [
     id: "influencer_marketing",
     title: "Influencer Marketing",
     icon: Megaphone,
-    bgColor: "bg-gradient-to-br from-[#E0F2FE] to-[#7DD3FC]",
+    cardBg: "#eeefea",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/influencer%20marketing.png",
     price: "₹25,000/-",
   },
@@ -123,7 +124,7 @@ const HOME_SERVICES = [
     id: "paid_advertising",
     title: "Paid Advertising",
     icon: Rocket,
-    bgColor: "bg-gradient-to-br from-[#FECACA] to-[#F87171]",
+    cardBg: "#f1f1ec",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/paid%20adverting.png",
     price: "₹20,000/- Month",
   },
@@ -131,7 +132,7 @@ const HOME_SERVICES = [
     id: "social_media_marketing",
     title: "Social Media Marketing",
     icon: Share2,
-    bgColor: "bg-gradient-to-br from-[#A5F3FC] to-[#22D3EE]",
+    cardBg: "#eeefea",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/social%20media%20marketin.png",
     price: "₹15,000/- Month",
   },
@@ -139,7 +140,7 @@ const HOME_SERVICES = [
     id: "ugc_marketing",
     title: "UGC Marketing",
     icon: Camera,
-    bgColor: "bg-gradient-to-br from-[#FEF08A] to-[#FACC15]",
+    cardBg: "#efefe9",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/ugc%20marketing.png",
     price: "₹18,000/-",
   },
@@ -147,7 +148,7 @@ const HOME_SERVICES = [
     id: "video_services",
     title: "Video Services",
     icon: Film,
-    bgColor: "bg-gradient-to-br from-[#E9D5FF] to-[#D8B4FE]",
+    cardBg: "#efefee",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/video%20services.png",
     price: "₹15,000/-",
   },
@@ -155,7 +156,7 @@ const HOME_SERVICES = [
     id: "web_development",
     title: "Web Development",
     icon: Globe,
-    bgColor: "bg-gradient-to-br from-[#99F6E4] to-[#2DD4BF]",
+    cardBg: "#f1f2f0",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/web%20development.png",
     price: "₹45,000/-",
   },
@@ -166,7 +167,7 @@ const HOME_SERVICE_CARDS = HOME_SERVICES.map((service, index) => ({
   isPriority: index < 4,
 }));
 
-const ServiceRailCard = React.memo(function ServiceRailCard({ service, onSelect }) {
+const ServiceRailCard = React.memo(function ServiceRailCard({ service, isDark, onSelect }) {
   const IconComponent = service.icon;
 
   return (
@@ -174,7 +175,10 @@ const ServiceRailCard = React.memo(function ServiceRailCard({ service, onSelect 
       type="button"
       onClick={() => onSelect(service)}
       aria-label={`Explore ${service.title}`}
-      className="group relative flex h-[24rem] w-[16rem] flex-shrink-0 flex-col justify-between overflow-hidden rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] bg-card p-6 text-left shadow-[0_12px_30px_-15px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 sm:h-[27rem] sm:w-[18rem] sm:rounded-[2.1rem]"
+      className="group relative flex h-[24rem] w-[16rem] flex-shrink-0 flex-col justify-between overflow-hidden rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] p-6 text-left shadow-[0_12px_30px_-15px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 sm:h-[27rem] sm:w-[18rem] sm:rounded-[2.1rem]"
+      style={{
+        backgroundColor: isDark ? "var(--card)" : service.cardBg
+      }}
     >
       {/* Top section: Icon and Title */}
       <div className="flex flex-col gap-3.5 relative z-10 w-full">
@@ -209,6 +213,11 @@ const ServiceRailCard = React.memo(function ServiceRailCard({ service, onSelect 
 const ServiceCardsCarousel = () => {
   const navigate = useNavigate();
   const trackRef = React.useRef(null);
+  const { theme } = useTheme();
+
+  const isDark = 
+    theme === "dark" || 
+    (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   const handleGetFreeProposal = React.useCallback(() => {
     navigate("/service");
@@ -286,6 +295,7 @@ const ServiceCardsCarousel = () => {
               <ServiceRailCard
                 key={`${service.id}-${i}`}
                 service={service}
+                isDark={isDark}
                 onSelect={handleSelectService}
               />
             ))}

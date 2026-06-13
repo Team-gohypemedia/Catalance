@@ -194,7 +194,7 @@ const Hero = () => {
             asChild
             variant="outline"
             size="lg"
-            className="w-full sm:w-auto border-primary text-primary bg-transparent hover:bg-primary hover:text-primary-foreground px-8 text-lg font-semibold transition-all duration-300"
+            className="w-full sm:w-auto border-primary dark:border-primary text-primary dark:text-primary bg-transparent hover:!bg-primary dark:hover:!bg-primary hover:!text-primary-foreground dark:hover:!text-primary-foreground px-8 text-lg font-semibold transition-all duration-300"
           >
             <Link to="/signup?role=freelancer">Get Hired</Link>
           </Button>
