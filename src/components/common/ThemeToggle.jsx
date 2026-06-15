@@ -29,9 +29,8 @@ function getClipPaths(cx, cy, maxRadius) {
  * Integrates with the existing useTheme() context (light / dark only — no system).
  */
 export default function ThemeToggle({ className }) {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, isDark } = useTheme();
   const buttonRef = useRef(null);
-  const isDark = theme === "dark";
 
   const toggleTheme = useCallback(() => {
     const button = buttonRef.current;

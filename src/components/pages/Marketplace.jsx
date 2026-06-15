@@ -1926,7 +1926,7 @@ const Marketplace = () => {
             className="relative z-20 mx-auto w-full max-w-[1280px] px-4 pt-4 sm:px-6 lg:px-8"
           >
             {/* Active category header */}
-            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div className="space-y-1.5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary">
                   {isProjectsView ? "Live Projects" : "Specialists"}
@@ -1956,8 +1956,8 @@ const Marketplace = () => {
               </button>
             </div>
 
-            {/* Subcategory row */}
-            {category !== "all" && (
+            {/* Subcategory row - Commented out as requested */}
+            {/* {category !== "all" && category !== "crm_erp" && (
               <div className="mb-6">
                 <SubcategorySection
                   service={activeBrowseService || activeService}
@@ -1973,7 +1973,7 @@ const Marketplace = () => {
                   hideEmptyMessages
                 />
               </div>
-            )}
+            )} */}
 
             {/* Freelancer grid */}
             {shouldRenderFreelancerResults && (

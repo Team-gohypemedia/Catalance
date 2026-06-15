@@ -3190,13 +3190,7 @@ const GuestAIDemo = () => {
         cardElement.style.setProperty('--card-glow-y', `${event.clientY - bounds.top}px`);
     }, []);
 
-    const { theme } = useTheme();
-    const isDark =
-        theme === 'dark' ||
-        (theme === 'system' &&
-            typeof window !== 'undefined' &&
-            typeof window.matchMedia === 'function' &&
-            window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const { theme, isDark } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();

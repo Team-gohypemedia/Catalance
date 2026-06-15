@@ -97,8 +97,7 @@ export default function GetStarted() {
   const [searchParams] = useSearchParams();
   const [selectedRole, setSelectedRole] = useState(null);
   const navigate = useNavigate();
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const { theme, isDark } = useTheme();
 
   useEffect(() => {
     document.documentElement.classList.add("onboarding-page");

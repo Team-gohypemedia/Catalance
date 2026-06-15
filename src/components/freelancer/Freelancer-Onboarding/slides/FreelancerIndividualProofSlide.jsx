@@ -232,8 +232,8 @@ const FreelancerIndividualProofSlide = ({ onContinue }) => {
         {/* Center Badge on top of the semicircle arc */}
         <div className="absolute left-1/2 -translate-x-1/2 top-2 sm:top-3 md:top-4 z-10">
           <div className="relative -translate-y-1/2">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFF0E6] dark:bg-[#1E120A] border border-[#FFE0CC] dark:border-[#3D2310] flex items-center justify-center shadow-sm">
-              <img src={catalanceLogo} alt="Catalance Logo" className="h-5 w-5 sm:h-6 sm:w-6 object-contain dark:invert" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#D9692A] dark:bg-[#F9D949] border border-[#D9692A] dark:border-[#F9D949] flex items-center justify-center shadow-sm">
+              <img src={catalanceLogo} alt="Catalance Logo" className="h-5 w-5 sm:h-6 sm:w-6 object-contain invert dark:invert-0" />
             </div>
             <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-[#10B981] border border-white dark:border-neutral-900 flex items-center justify-center">
               <Check className="h-2.5 w-2.5 text-white keep-white stroke-[3px]" />

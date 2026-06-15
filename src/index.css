@@ -20,6 +20,7 @@ body[data-scroll-locked] {
   --primary: #D9692A;
   --primary-foreground: #FAF6F0;
   --brand-rgb: 217, 105, 42;
+  --background-rgb: 250, 246, 240;
   --secondary: oklch(0.9700 0 0);
   --secondary-foreground: oklch(0.2050 0 0);
   --muted: oklch(0.9700 0 0);

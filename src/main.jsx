@@ -17,7 +17,7 @@ createRoot(document.getElementById("root")).render(
       <ScrollToTop />
       <AuthProvider>
         <NotificationProvider>
-          <ThemeProvider defaultTheme="system" storageKey="catalance-theme">
+          <ThemeProvider defaultTheme="light" storageKey="catalance-theme">
             <App />
             <Toaster richColors position="top-right" />
           </ThemeProvider>

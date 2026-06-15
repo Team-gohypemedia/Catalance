@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react"
 
 const ThemeProviderContext = createContext({
   theme: "light",
+  isDark: false,
   setTheme: () => null,
 })
 
@@ -15,19 +16,22 @@ export function ThemeProvider({
 }) {
   const [theme, setThemeState] = useState(() => {
     const stored = localStorage.getItem(storageKey)
-    // Only accept "light" or "dark" — drop legacy "system" values
     if (stored === "light" || stored === "dark") return stored
-    return defaultTheme
+    return defaultTheme === "dark" ? "dark" : "light"
   })
+
+  const [isDark, setIsDark] = useState(theme === "dark")
 
   useEffect(() => {
     const root = window.document.documentElement
     root.classList.remove("light", "dark")
+    setIsDark(theme === "dark")
     root.classList.add(theme)
   }, [theme])
 
   const value = {
     theme,
+    isDark,
     setTheme: (newTheme) => {
       if (newTheme !== "light" && newTheme !== "dark") return
       localStorage.setItem(storageKey, newTheme)

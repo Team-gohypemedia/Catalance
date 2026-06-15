@@ -205,8 +205,7 @@ const Navbar = () => {
 
   const closeMobileMenu = () => {};
 
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const { theme, isDark } = useTheme();
 
   return (
     <ResizableNavbar isHome={isHome} isDark={isDark}>
