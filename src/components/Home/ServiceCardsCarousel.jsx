@@ -25,92 +25,49 @@ import {
 
 const HOME_SERVICES = [
   {
+    id: "web_development",
+    title: "Website Development",
+    icon: Globe,
+    cardBg: "#f1f2f0",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/web%20development.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/web%20dev%201.png",
+    price: "₹45,000/-",
+  },
+  {
+    id: "app_development",
+    title: "Mobile App",
+    icon: Smartphone,
+    cardBg: "#f0f0ed",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/app%20development.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/app%20dev%201.png",
+    price: "₹80,000/-",
+  },
+  {
     id: "ai_automation",
     title: "AI Automation",
     icon: Bot,
     cardBg: "#e3e1db",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/ai%20automation.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/ai%20automation%201.png",
     price: "₹25,000/-",
   },
   {
     id: "crm_erp",
-    title: "CRM & ERP Solutions",
+    title: "CRM & ERP Integrated Solutions",
     icon: Workflow,
     cardBg: "#efefec",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/crm%20%26%20epr%20intergrated%20solutions.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/crm%20%26%20epr%20solutions%201.png",
     price: "₹50,000/-",
-  },
-  {
-    id: "customer_support",
-    title: "Customer Support",
-    icon: Users,
-    cardBg: "#edece7",
-    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/customer%20support.png",
-    price: "₹10,000/- Month",
-  },
-  {
-    id: "voice_agent",
-    title: "Voice Agent",
-    icon: Mic,
-    cardBg: "#ccccc6",
-    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/voice%20agent.png",
-    price: "₹50,000/-",
-  },
-  {
-    id: "3d_services",
-    title: "3D Services",
-    icon: Database,
-    cardBg: "#f1f1ed",
-    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/3d%20services.png",
-    price: "₹30,000/-",
   },
   {
     id: "seo",
-    title: "SEO",
+    title: "SEO/GMB",
     icon: LineChart,
     cardBg: "#eff0eb",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/SEO.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/seo%201.png",
     price: "₹15,000/- Month",
-  },
-  {
-    id: "ai_video_generation",
-    title: "AI Video Generation",
-    icon: Video,
-    cardBg: "#ecede8",
-    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/ai%20video%20generation.png",
-    price: "₹20,000/-",
-  },
-  {
-    id: "app_development",
-    title: "App Development",
-    icon: Smartphone,
-    cardBg: "#f0f0ed",
-    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/app%20development.png",
-    price: "₹80,000/-",
-  },
-  {
-    id: "brandkit",
-    title: "Brand Kit",
-    icon: Sparkles,
-    cardBg: "#eae6df",
-    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/brandkit.png",
-    price: "₹15,000/-",
-  },
-  {
-    id: "creative_design",
-    title: "Creative & Design",
-    icon: Palette,
-    cardBg: "#e9e6df",
-    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/creative%20%26%20design.png",
-    price: "₹12,000/-",
-  },
-  {
-    id: "content_writing",
-    title: "Content Writing",
-    icon: PenTool,
-    cardBg: "#eff0eb",
-    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/content%20writing.png",
-    price: "₹8,000/-",
   },
   {
     id: "influencer_marketing",
@@ -118,15 +75,8 @@ const HOME_SERVICES = [
     icon: Megaphone,
     cardBg: "#eeefea",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/influencer%20marketing.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/influencer%20marketing%201.png",
     price: "₹25,000/-",
-  },
-  {
-    id: "paid_advertising",
-    title: "Paid Advertising",
-    icon: Rocket,
-    cardBg: "#f1f1ec",
-    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/paid%20adverting.png",
-    price: "₹20,000/- Month",
   },
   {
     id: "social_media_marketing",
@@ -134,15 +84,53 @@ const HOME_SERVICES = [
     icon: Share2,
     cardBg: "#eeefea",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/social%20media%20marketin.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/social%20media%20marketing%201.png",
     price: "₹15,000/- Month",
   },
   {
     id: "ugc_marketing",
-    title: "UGC Marketing",
+    title: "UGC",
     icon: Camera,
     cardBg: "#efefe9",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/ugc%20marketing.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/ucg%20marketing%201.png",
     price: "₹18,000/-",
+  },
+  {
+    id: "creative_design",
+    title: "Creative & Design",
+    icon: Palette,
+    cardBg: "#e9e6df",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/creative%20%26%20design.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/creative%20%26%20design%201.png",
+    price: "₹12,000/-",
+  },
+  {
+    id: "brandkit",
+    title: "Branding Kit",
+    icon: Sparkles,
+    cardBg: "#eae6df",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/brandkit.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/brand%20kit%201.png",
+    price: "₹15,000/-",
+  },
+  {
+    id: "paid_advertising",
+    title: "Paid Advertising",
+    icon: Rocket,
+    cardBg: "#f1f1ec",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/paid%20adverting.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/paid%20advertising%201.png",
+    price: "₹20,000/- Month",
+  },
+  {
+    id: "content_writing",
+    title: "Writing & Content",
+    icon: PenTool,
+    cardBg: "#eff0eb",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/content%20writing.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/content%20%26%20writing%201.png",
+    price: "₹8,000/-",
   },
   {
     id: "video_services",
@@ -150,15 +138,35 @@ const HOME_SERVICES = [
     icon: Film,
     cardBg: "#efefee",
     illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/video%20services.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/video%20services%201.png",
     price: "₹15,000/-",
   },
   {
-    id: "web_development",
-    title: "Web Development",
-    icon: Globe,
-    cardBg: "#f1f2f0",
-    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/web%20development.png",
-    price: "₹45,000/-",
+    id: "ai_video_generation",
+    title: "AI Video Generation",
+    icon: Video,
+    cardBg: "#ecede8",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/ai%20video%20generation.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/ai%20video%20gen%201.png",
+    price: "₹20,000/-",
+  },
+  {
+    id: "3d_services",
+    title: "3D Animation",
+    icon: Database,
+    cardBg: "#f1f1ed",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/3d%20services.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/3D%20modeling%201.png",
+    price: "₹30,000/-",
+  },
+  {
+    id: "voice_agent",
+    title: "Voice Agent",
+    icon: Mic,
+    cardBg: "#ccccc6",
+    illustrationUrl: "https://assets.catalance.in/catalance%20service%20icons/catalance%20service%20icons/voice%20agent.png",
+    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/voice%20agent%201.png",
+    price: "₹50,000/-",
   },
 ];
 
@@ -169,6 +177,7 @@ const HOME_SERVICE_CARDS = HOME_SERVICES.map((service, index) => ({
 
 const ServiceRailCard = React.memo(function ServiceRailCard({ service, isDark, onSelect }) {
   const IconComponent = service.icon;
+  const imageUrl = isDark && service.darkIllustrationUrl ? service.darkIllustrationUrl : service.illustrationUrl;
 
   return (
     <button
@@ -199,7 +208,7 @@ const ServiceRailCard = React.memo(function ServiceRailCard({ service, isDark, o
         <div className="absolute w-32 h-6 bg-black/[0.04] dark:bg-white/[0.04] blur-xl rounded-full bottom-2 transition-all duration-300 group-hover:scale-110 group-hover:opacity-60" />
 
         <img
-          src={service.illustrationUrl}
+          src={imageUrl}
           alt={service.title}
           className="h-full w-full object-contain select-none z-10 transition-transform duration-500 group-hover:scale-[1.08] group-hover:-translate-y-2"
           loading={service.isPriority ? "eager" : "lazy"}

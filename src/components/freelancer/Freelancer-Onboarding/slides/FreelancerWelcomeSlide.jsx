@@ -55,7 +55,7 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveReviewIdx((prev) => (prev + 1) % testimonials.length)
-    }, 5000)
+    }, 3000)
     return () => clearInterval(interval)
   }, [])
 

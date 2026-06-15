@@ -41,6 +41,7 @@ const SERVICE_LOGO_ALIASES = {
   'seo search engine optimisation': 'seo optimization',
   'seo search engine optimization': 'seo optimization',
   'social media marketing organic': 'social media management',
+  'paid advertising': 'performance marketing',
   'paid advertising performance': 'performance marketing',
   'performance marketing': 'performance marketing',
   'app development android ios cross platform': 'app development',

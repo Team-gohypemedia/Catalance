@@ -136,6 +136,7 @@ const SERVICE_LOGO_ALIASES = {
     'seo search engine optimisation': 'seo optimization',
     'seo search engine optimization': 'seo optimization',
     'social media marketing organic': 'social media management',
+    'paid advertising': 'performance marketing',
     'paid advertising performance': 'performance marketing',
     'performance marketing': 'performance marketing',
     'app development android ios cross platform': 'app development',
@@ -1686,7 +1687,7 @@ const AssistantMessageBody = ({
             )}
 
             {questionText && (
-                <div className={`rounded-2xl border px-3.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isDark ? 'border-primary/20 bg-primary/5' : 'border-primary/25 bg-primary/5'}`}>
+                <div className={`rounded-2xl border px-3.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isDark ? 'border-primary/20 bg-primary/5' : 'border-primary/30 bg-primary/12'}`}>
                     <div className={`prose prose-sm max-w-none text-[12.5px] font-medium leading-normal prose-p:my-0.5 ${isDark ? 'prose-invert prose-p:text-primary' : 'prose-p:text-slate-800'}`}>
                         <ReactMarkdown>{questionText}</ReactMarkdown>
                     </div>

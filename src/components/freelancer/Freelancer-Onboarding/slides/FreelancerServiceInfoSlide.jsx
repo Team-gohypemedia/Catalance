@@ -872,6 +872,51 @@ const CategoryMultiSelect = ({
   );
 };
 
+const SERVICE_PLACEHOLDERS = {
+  "influencer marketing": [
+    "Influencer Growth Strategy",
+    "Creator-Led Brand Growth",
+    "Influencer Campaign Management",
+    "Digital Creator Partnerships",
+    "Influencer Activation Campaign",
+  ],
+  "website development": [
+    "Build a modern Next.js web application",
+    "Develop a custom e-commerce Shopify store",
+    "Create a responsive business website in React",
+  ],
+  "web development": [
+    "Build a modern Next.js web application",
+    "Develop a custom e-commerce Shopify store",
+    "Create a responsive business website in React",
+  ],
+  "app development": [
+    "Develop a native iOS & Android App in Flutter",
+    "Build a custom React Native mobile application",
+    "Create a high-performance mobile app with Expo",
+  ],
+  "branding": [
+    "Design a modern brand identity and logo",
+    "Develop a complete corporate brand guidelines book",
+    "Create a visual identity system for startup launch",
+  ],
+  "software development": [
+    "Develop a custom SaaS platform with billing",
+    "Build a secure REST API with Node.js and PostgreSQL",
+    "Create a desktop app with Electron and React",
+  ],
+  "seo": [
+    "Boost ranking with complete on-page SEO optimization",
+    "Perform deep keyword research and competitor analysis",
+    "Write SEO-friendly blog articles and content strategy",
+  ],
+  "social media management": [
+    "Create a monthly social media content calendar",
+    "Design engaging Instagram posts and stories template",
+    "Manage community engagement and page growth",
+  ],
+};
+
 const FreelancerServiceInfoSlide = ({
   currentService,
   currentServiceName,
@@ -919,6 +964,68 @@ const FreelancerServiceInfoSlide = ({
   const [toolOptionsByCategory, setToolOptionsByCategory] = useState({});
   const [isToolsLoading, setIsToolsLoading] = useState(false);
   const [toolFetchError, setToolFetchError] = useState("");
+  const [displayedPlaceholder, setDisplayedPlaceholder] = useState("");
+  
+  const placeholders = useMemo(() => {
+    const key = String(serviceName || "").toLowerCase().trim();
+    return SERVICE_PLACEHOLDERS[key] || [
+      fieldMap.title?.placeholder ||
+      serviceInfoContent?.fields?.title?.placeholder ||
+      "I will do something I'm really good at"
+    ];
+  }, [serviceName, fieldMap.title?.placeholder, serviceInfoContent?.fields?.title?.placeholder]);
+
+  useEffect(() => {
+    if (placeholders.length === 1) {
+      setDisplayedPlaceholder(placeholders[0]);
+      return;
+    }
+
+    let isMounted = true;
+    let currentWordIndex = 0;
+    let currentCharIndex = 0;
+    let isDeleting = false;
+    let typingSpeed = 100;
+    let timer;
+
+    const tick = () => {
+      if (!isMounted) return;
+
+      const currentWord = placeholders[currentWordIndex];
+      
+      if (!isDeleting) {
+        setDisplayedPlaceholder(currentWord.substring(0, currentCharIndex + 1));
+        currentCharIndex++;
+
+        if (currentCharIndex === currentWord.length) {
+          isDeleting = true;
+          typingSpeed = 2000;
+        } else {
+          typingSpeed = 80;
+        }
+      } else {
+        setDisplayedPlaceholder(currentWord.substring(0, currentCharIndex - 1));
+        currentCharIndex--;
+
+        if (currentCharIndex === 0) {
+          isDeleting = false;
+          currentWordIndex = (currentWordIndex + 1) % placeholders.length;
+          typingSpeed = 500;
+        } else {
+          typingSpeed = 40;
+        }
+      }
+
+      timer = setTimeout(tick, typingSpeed);
+    };
+
+    timer = setTimeout(tick, 500);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [placeholders]);
   const toolOptionsCacheRef = useRef(new Map());
   const toolFetchRequestIdRef = useRef(0);
 
@@ -1431,11 +1538,7 @@ const FreelancerServiceInfoSlide = ({
                       onServiceInfoFieldChange("title", event.target.value);
                     }
                   }}
-                  placeholder={
-                    fieldMap.title?.placeholder ||
-                    serviceInfoContent?.fields?.title?.placeholder ||
-                    "I will do something I'm really good at"
-                  }
+                  placeholder={displayedPlaceholder}
                   className={cn(
                     "h-10 w-full rounded-xl border bg-card px-4 !pr-24 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
                     titleError
@@ -1526,7 +1629,7 @@ const FreelancerServiceInfoSlide = ({
               )}
             </div>
 
-            {customServiceInfoFields.map((field) => {
+            {/* {customServiceInfoFields.map((field) => {
               const customValue = serviceDraft?.customFields?.serviceInfo?.[field.id] ?? "";
               const customError = String(serviceInfoValidationErrors[field.id] || "").trim();
               const isSelect = field.type === "select";
@@ -1602,7 +1705,7 @@ const FreelancerServiceInfoSlide = ({
                   ) : null}
                 </div>
               );
-            })}
+            })} */}
 
 
           </div>
