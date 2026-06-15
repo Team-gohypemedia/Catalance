@@ -665,15 +665,14 @@ const ChatArea = React.memo(function ChatArea({
             accept="image/*,.pdf,.doc,.docx,.txt,.zip"
           />
           <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
-            <PopoverTrigger
-              aria-label="Emoji picker"
-              disabled={!chatUnlocked || sending || uploading}
-              className={cn(
-                "flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground dark:hover:bg-white/[0.03] dark:hover:text-white disabled:pointer-events-none disabled:opacity-50",
-                mobileView ? "size-7" : "size-9",
-              )}
-            >
-              <Smile className={mobileView ? "size-4.5" : "size-5"} />
+            <PopoverTrigger asChild>
+              <ChatIconButton
+                aria-label="Emoji picker"
+                disabled={!chatUnlocked || sending || uploading}
+                className={mobileView ? "size-7" : "size-9"}
+              >
+                <Smile className={mobileView ? "size-4.5" : "size-5"} />
+              </ChatIconButton>
             </PopoverTrigger>
             <PopoverContent
               align="start"
@@ -698,7 +697,7 @@ const ChatArea = React.memo(function ChatArea({
                       handleInputChange(nextValue);
                       setEmojiPickerOpen(false);
                     }}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl text-lg transition hover:bg-muted dark:hover:bg-white/[0.06]"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-lg transition hover:scale-110 hover:bg-muted dark:hover:bg-white/[0.06]"
                   >
                     {emoji}
                   </button>

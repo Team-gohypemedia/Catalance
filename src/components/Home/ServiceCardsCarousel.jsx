@@ -146,7 +146,7 @@ const HOME_SERVICES = [
     title: "AI Video Generation",
     icon: Video,
     cardBg: "#ecede8",
-    illustrationUrl: "https://assets.catalance.in/lite%20service%20icons/ai%20video%20gen.png",
+    illustrationUrl: "",
     darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/ai%20video%20gen%201.png",
     price: "₹20,000/-",
   },
@@ -204,13 +204,15 @@ const ServiceRailCard = React.memo(function ServiceRailCard({ service, isDark, o
         {/* Subtle drop shadow / glow behind image */}
         <div className="absolute w-32 h-6 bg-black/[0.04] dark:bg-white/[0.04] blur-xl rounded-full bottom-2 transition-all duration-300 group-hover:scale-110 group-hover:opacity-60" />
 
-        <img
-          src={imageUrl}
-          alt={service.title}
-          className={`h-full w-full object-contain select-none z-10 transition-transform duration-500 group-hover:scale-[1.08] group-hover:-translate-y-2 ${!isDark ? "mix-blend-multiply" : ""}`}
-          loading={service.isPriority ? "eager" : "lazy"}
-          draggable={false}
-        />
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={service.title}
+            className={`h-full w-full object-contain select-none z-10 transition-transform duration-500 group-hover:scale-[1.08] group-hover:-translate-y-2 ${!isDark ? "mix-blend-multiply" : ""}`}
+            loading={service.isPriority ? "eager" : "lazy"}
+            draggable={false}
+          />
+        ) : null}
       </div>
     </button>
   );

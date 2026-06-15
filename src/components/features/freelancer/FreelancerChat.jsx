@@ -1111,12 +1111,13 @@ const ChatArea = ({
           />
 
           <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
-            <PopoverTrigger
-              aria-label="Emoji picker"
-              disabled={sending || uploading}
-              className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-black/[0.05] dark:hover:bg-white/[0.05] hover:text-foreground dark:hover:text-white disabled:pointer-events-none disabled:opacity-50"
-            >
-              <Smile className="size-5" />
+            <PopoverTrigger asChild>
+              <ChatIconButton
+                aria-label="Emoji picker"
+                disabled={sending || uploading}
+              >
+                <Smile className="size-5" />
+              </ChatIconButton>
             </PopoverTrigger>
             <PopoverContent
               align="start"
@@ -1133,7 +1134,7 @@ const ChatArea = ({
                     key={emoji}
                     type="button"
                     onClick={() => handleEmojiSelect(emoji)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl text-lg transition hover:bg-muted"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-lg transition hover:scale-110 hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
                     aria-label={`Insert ${emoji}`}
                   >
                     {emoji}

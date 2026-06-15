@@ -114,46 +114,45 @@ const ClientProjectDetailMainColumn = ({
 
   return (
     <div className="space-y-4">
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-      {[
-        { label: "Service Type", value: projectDetailSnapshot.service },
-        { label: "Budget", value: projectDetailSnapshot.budget },
-        { label: "Timeline", value: projectDetailSnapshot.timeline },
-      ].map((item) => (
-        <div
-          key={item.label}
-          className={cn(
-            `${insetPanelClassName} min-w-0 bg-muted dark:bg-[#171717]`,
-            item.label === "Timeline" ? "col-span-2 lg:col-span-1" : "",
-          )}
-        >
-          <p className={eyebrowClassName}>{item.label}</p>
-          <p className="mt-3 break-words text-sm font-semibold tracking-[-0.02em] text-foreground dark:text-white sm:text-[15px]">
-            {item.value || "Not specified"}
-          </p>
-        </div>
-      ))}
-    </div>
-
     <Card className={panelClassName}>
       <CardHeader className="pb-3">
         <CardTitle className={eyebrowClassName}>
-          <span className="inline-flex items-center gap-2 align-middle">
-            <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
-              <span className="absolute inset-0 rounded-full bg-[#10b981]/10" />
-              <span className="absolute inset-0 rounded-full bg-[#10b981]/20 animate-ping" />
-              <span className="relative block size-[6px] rounded-full bg-[#10b981]" />
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
             </span>
             <span>Overview</span>
-          </span>
+          </div>
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 space-y-6">
         <div className="px-2 py-1">
           <p className="text-justify text-sm leading-7 text-muted-foreground dark:text-[#d4d4d8]">
             {projectDetailSnapshot.overview ||
               "Project scope, priorities, and delivery context will appear here once the brief is fully structured."}
           </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          {[
+            { label: "Service Type", value: projectDetailSnapshot.service },
+            { label: "Budget", value: projectDetailSnapshot.budget },
+            { label: "Timeline", value: projectDetailSnapshot.timeline },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className={cn(
+                `${insetPanelClassName} min-w-0 !bg-card`,
+                item.label === "Timeline" ? "col-span-2 lg:col-span-1" : "",
+              )}
+            >
+              <p className={eyebrowClassName}>{item.label}</p>
+              <p className="mt-3 break-words text-sm font-semibold tracking-[-0.02em] text-foreground dark:text-white sm:text-[15px]">
+                {item.value || "Not specified"}
+              </p>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>
