@@ -207,7 +207,7 @@ const ServiceRailCard = React.memo(function ServiceRailCard({ service, isDark, o
         <img
           src={imageUrl}
           alt={service.title}
-          className="h-full w-full object-contain select-none z-10 transition-transform duration-500 group-hover:scale-[1.08] group-hover:-translate-y-2"
+          className={`h-full w-full object-contain select-none z-10 transition-transform duration-500 group-hover:scale-[1.08] group-hover:-translate-y-2 ${!isDark ? "mix-blend-multiply" : ""}`}
           loading={service.isPriority ? "eager" : "lazy"}
           draggable={false}
         />
@@ -221,8 +221,8 @@ const ServiceCardsCarousel = () => {
   const trackRef = React.useRef(null);
   const { theme } = useTheme();
 
-  const isDark = 
-    theme === "dark" || 
+  const isDark =
+    theme === "dark" ||
     (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   const handleGetFreeProposal = React.useCallback(() => {

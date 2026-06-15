@@ -3430,7 +3430,23 @@ const FreelancerProfile = () => {
     Boolean(String(serviceProfileForm.coverImage || "").trim()) ||
     (Array.isArray(serviceProfileForm.mediaFiles)
       ? serviceProfileForm.mediaFiles.some(
-        (entry) => resolveServiceMediaKind(entry) !== "video",
+        (entry) => {
+          const kind = String(entry?.kind || "").trim().toLowerCase();
+          if (kind === "video") return false;
+          if (kind === "image") return true;
+          const mime = String(entry?.mimeType || entry?.type || entry?.contentType || "").trim().toLowerCase();
+          if (mime.startsWith("video/")) return false;
+          if (mime.startsWith("image/")) return true;
+          if (typeof File !== "undefined") {
+            const localFile = entry instanceof File ? entry : entry?.file instanceof File ? entry.file : null;
+            const fileType = String(localFile?.type || "").trim().toLowerCase();
+            if (fileType.startsWith("video/")) return false;
+            if (fileType.startsWith("image/")) return true;
+          }
+          const url = String(entry?.uploadedUrl || entry?.url || entry?.previewUrl || entry?.mediaUrl || entry?.src || entry?.value || "").trim();
+          if (/\.(mp4|webm|mov|m4v|ogg)(?:[?#]|$)/i.test(url)) return false;
+          return true;
+        },
       )
       : false);
   const hasServiceSkills =
