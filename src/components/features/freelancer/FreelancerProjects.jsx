@@ -800,7 +800,7 @@ const FreelancerProjectCard = ({ project }) => {
           </span>
         </div>
 
-        <h2 className="mt-5 text-[clamp(1.75rem,2vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
+        <h2 className="mt-5 text-[clamp(1.75rem,2vw,2.15rem)] font-semibold tracking-[-0.04em] text-foreground">
           {project.title}
         </h2>
 
@@ -819,7 +819,7 @@ const FreelancerProjectCard = ({ project }) => {
           </Avatar>
 
           <div className="min-w-0">
-            <p className="truncate text-[1rem] font-medium text-white">{project.clientName}</p>
+            <p className="truncate text-[1rem] font-medium text-foreground">{project.clientName}</p>
             <p className="truncate text-sm text-[#8f96a3]">{project.clientRole}</p>
           </div>
         </div>
@@ -827,7 +827,7 @@ const FreelancerProjectCard = ({ project }) => {
         <div className="mt-6 grid grid-cols-2 gap-4">
           <div className={cn("rounded-[14px] p-4", detailPanelClassName)}>
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">Your Payout</p>
-            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
               {project.payoutLabel}
             </p>
           </div>
@@ -836,7 +836,7 @@ const FreelancerProjectCard = ({ project }) => {
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">
               {project.timelineDisplayLabel}
             </p>
-            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
               {project.timelineLabel}
             </p>
           </div>
@@ -866,7 +866,7 @@ const FreelancerProjectCard = ({ project }) => {
 
           <p
             title={project.currentPhase?.label || "Phase 1"}
-            className="mt-2 line-clamp-1 text-[0.98rem] font-semibold tracking-[-0.02em] text-white"
+            className="mt-2 line-clamp-1 text-[0.98rem] font-semibold tracking-[-0.02em] text-foreground"
           >
             {project.currentPhase?.label || "Phase 1"}
           </p>

@@ -73,6 +73,24 @@ const ServiceIcon = ({ serviceName, isSelected }) => {
   );
 };
 
+const renderTitle = (title) => {
+  if (typeof title !== "string") return title;
+  const target = "Help Clients";
+  const index = title.indexOf(target);
+  if (index !== -1) {
+    const before = title.slice(0, index);
+    const after = title.slice(index + target.length);
+    return (
+      <>
+        {before}
+        <span className="text-primary">{target}</span>
+        {after}
+      </>
+    );
+  }
+  return title;
+};
+
 const FreelancerServicesSlide = ({
   slide,
   selectedServices,
@@ -86,8 +104,8 @@ const FreelancerServicesSlide = ({
     <section className="mx-auto flex w-full max-w-[340px] flex-col items-center px-4 sm:max-w-[380px] md:max-w-6xl md:px-0">
       <div className="w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-xl md:text-4xl lg:text-5xl font-medium text-primary mb-1 md:mb-2 lg:mb-2">
-            {slide.title}
+          <h1 className="text-xl md:text-4xl lg:text-5xl font-medium text-foreground mb-1 md:mb-2 lg:mb-2">
+            {renderTitle(slide.title)}
           </h1>
           <p className="text-muted-foreground font-regular text-sm md:text-lg lg:text-base">
             {slide.description}

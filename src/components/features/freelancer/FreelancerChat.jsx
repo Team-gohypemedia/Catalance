@@ -1114,7 +1114,7 @@ const ChatArea = ({
             <PopoverTrigger
               aria-label="Emoji picker"
               disabled={sending || uploading}
-              className="flex size-9 items-center justify-center rounded-full text-[#8f96a3] transition hover:bg-white/[0.03] hover:text-white disabled:pointer-events-none disabled:opacity-50"
+              className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-black/[0.05] dark:hover:bg-white/[0.05] hover:text-foreground dark:hover:text-white disabled:pointer-events-none disabled:opacity-50"
             >
               <Smile className="size-5" />
             </PopoverTrigger>

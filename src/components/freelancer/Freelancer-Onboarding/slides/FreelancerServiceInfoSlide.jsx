@@ -931,6 +931,7 @@ const FreelancerServiceInfoSlide = ({
   serviceInfoValidationErrors = {},
   continueButton,
 }) => {
+  const serviceName = currentServiceName || "Service";
   const serviceInfoContent =
     onboardingContent?.serviceInfo ||
     DEFAULT_FREELANCER_ONBOARDING_CONTENT.serviceInfo;
@@ -1030,7 +1031,6 @@ const FreelancerServiceInfoSlide = ({
   const toolFetchRequestIdRef = useRef(0);
 
   const resolvedServiceId = toPositiveInteger(currentService?.id);
-  const serviceName = currentServiceName || "Service";
   const normalizedSubcategories = useMemo(
     () =>
       Array.isArray(serviceDraft?.subcategories)

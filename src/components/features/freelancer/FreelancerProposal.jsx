@@ -365,7 +365,7 @@ const ProposalRowCard = ({
 
           <div className="space-y-5">
             <div className="space-y-2">
-              <h3 className="max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
+              <h3 className="max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-foreground">
                 {displayTitle}
               </h3>
               {proposalServiceType ? (
@@ -399,7 +399,7 @@ const ProposalRowCard = ({
                 <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   Client
                 </p>
-                <p className="mt-1 truncate text-[1.05rem] font-semibold leading-tight tracking-[-0.02em] text-white sm:text-[1.125rem]">
+                <p className="mt-1 truncate text-[1.05rem] font-semibold leading-tight tracking-[-0.02em] text-foreground sm:text-[1.125rem]">
                   {proposal.clientName}
                 </p>
               </div>
@@ -413,7 +413,7 @@ const ProposalRowCard = ({
                 <p className="whitespace-nowrap text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.76rem]">
                   Budget
                 </p>
-                <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
+                <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-foreground">
                   {budget}
                 </div>
               </div>
@@ -425,7 +425,7 @@ const ProposalRowCard = ({
                 <p className="whitespace-nowrap text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.76rem]">
                   Timeline
                 </p>
-                <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
+                <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-foreground">
                   <span className="capitalize">{timeline}</span>
                 </div>
               </div>
@@ -1007,10 +1007,10 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
             {selectedProposal?.status === "rejected" &&
             selectedProposal?.rejectionReason ? (
               <div className="rounded-lg border border-red-500/25 bg-red-500/10 p-4">
-                <h4 className="text-sm font-semibold text-red-200">
+                <h4 className="text-sm font-semibold text-red-800 dark:text-red-200">
                   Rejection reason
                 </h4>
-                <p className="mt-1 text-sm text-red-100">
+                <p className="mt-1 text-sm text-red-700 dark:text-red-100">
                   {selectedProposal.rejectionReason}
                 </p>
               </div>

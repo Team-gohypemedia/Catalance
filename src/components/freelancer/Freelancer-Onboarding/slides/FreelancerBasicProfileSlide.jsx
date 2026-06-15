@@ -114,6 +114,20 @@ const resolveMultiSelectSummary = (values = [], options = [], placeholder = "") 
     .join(" ");
 };
 
+const renderTitle = (title) => {
+  if (typeof title !== "string") return title;
+  if (title.endsWith("Profile")) {
+    const mainPart = title.slice(0, -7);
+    return (
+      <>
+        {mainPart}
+        <span className="text-primary">Profile</span>
+      </>
+    );
+  }
+  return title;
+};
+
 const FreelancerBasicProfileSlide = ({
   slide,
   basicProfileForm,
@@ -523,9 +537,9 @@ const FreelancerBasicProfileSlide = ({
               />
               <span className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90">
                 {isResumeAutofillRunning ? (
-                  <Loader2 className="size-3.5 animate-spin" />
+                  <Loader2 className="size-3.5 animate-spin text-primary-foreground" />
                 ) : (
-                  <Upload className="size-3.5" />
+                  <Upload className="size-3.5 text-primary-foreground" />
                 )}
                 {isResumeAutofillRunning
                   ? field.loadingLabel || "Reading..."
@@ -763,8 +777,8 @@ const FreelancerBasicProfileSlide = ({
   return (
     <section className="mx-auto flex min-h-[68vh] w-full max-w-4xl flex-col items-center justify-center gap-5">
       <div className="w-full max-w-2xl text-center">
-        <h1 className="mb-1 text-xl font-medium text-primary md:mb-2 md:text-4xl lg:mb-2 lg:text-5xl">
-          {slideTitle}
+        <h1 className="mb-1 text-xl font-medium text-foreground md:mb-2 md:text-4xl lg:mb-2 lg:text-5xl">
+          {renderTitle(slideTitle)}
         </h1>
         <p className="text-sm font-regular text-muted-foreground md:text-lg lg:text-base">
           {slideDescription}
