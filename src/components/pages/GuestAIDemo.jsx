@@ -5438,8 +5438,8 @@ const GuestAIDemo = () => {
                         <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:72px_72px] [mask-image:radial-gradient(circle_at_center,black,transparent_78%)]" />
                     </div>
 
-                    <div className={`relative z-10 mx-auto w-full px-5 ${isDark ? 'py-4 sm:py-6 sm:px-8 lg:px-10 max-w-[1280px]' : 'py-6 sm:py-10 sm:px-10 max-w-[840px]'}`}>
-                        <div className={`mx-auto flex w-full flex-col justify-center min-h-0 ${isDark ? 'max-w-[980px]' : 'max-w-full'}`}>
+                    <div className={`relative z-10 mx-auto w-full px-5 py-6 sm:py-10 sm:px-10 max-w-[840px]`}>
+                        <div className={`mx-auto flex w-full flex-col justify-center min-h-0 max-w-full`}>
 
                         <form
                             onSubmit={(event) => {
@@ -5455,49 +5455,29 @@ const GuestAIDemo = () => {
                                     goToNextBriefingStep();
                                 }
                             }}
-                            className={`relative z-10 overflow-hidden backdrop-blur ${isDark ? 'mt-3 sm:mt-4 rounded-[1.25rem] sm:rounded-[1.7rem]' : 'rounded-[1.5rem] sm:rounded-[2rem]'} ${briefingCardClasses}`}
+                            className={`relative z-10 overflow-hidden backdrop-blur rounded-[1.5rem] sm:rounded-[2rem] ${briefingCardClasses}`}
                         >
-                            <div className={`${isDark ? 'px-4 pt-5 pb-2 sm:px-6 sm:pt-6' : 'px-6 pt-7 pb-3 sm:px-8 sm:pt-8'}`}>
-                                {isDark ? (
-                                    <div className="flex gap-4 items-start">
-                                        <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-[15px] font-bold text-primary-foreground">
-                                            {String(briefingStepIndex + 1).padStart(2, '0')}
-                                        </span>
-                                        <div className="flex-1 min-w-0">
-                                            <h2 className={`text-xl font-medium leading-snug tracking-[-0.01em] sm:text-2xl ${briefingStepTitleClasses}`}>
-                                                {currentBriefingStep.key === 'role'
-                                                    ? 'What type of service are you looking for?'
-                                                    : currentBriefingStep.key === 'goal'
-                                                        ? 'Choose the option that best describes your project, or type your own requirement.'
-                                                        : 'Attach any references that will help us read your brief faster.'}
-                                            </h2>
-                                            <p className={`mt-2 text-sm ${briefingBodyClasses}`}>
-                                                {currentBriefingStep.label}
-                                            </p>
-                                        </div>
+                            <div className="px-6 pt-7 pb-3 sm:px-8 sm:pt-8">
+                                <div className="flex gap-4 items-start">
+                                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.65rem] bg-primary text-[15px] font-bold text-primary-foreground">
+                                        {String(briefingStepIndex + 1).padStart(2, '0')}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                        <h2 className={`text-lg font-bold leading-snug tracking-[-0.01em] sm:text-xl ${isDark ? 'text-white' : 'text-foreground'}`}>
+                                            {currentBriefingStep.key === 'role'
+                                                ? 'Choose the direction that best describes your project.'
+                                                : currentBriefingStep.key === 'goal'
+                                                    ? 'Choose the option that best describes your project, or type your own requirement.'
+                                                    : 'Attach any references that will help us read your brief faster.'}
+                                        </h2>
+                                        <p className={`mt-2 text-sm ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}>
+                                            {currentBriefingStep.label}
+                                        </p>
                                     </div>
-                                ) : (
-                                    <div className="flex gap-4 items-start">
-                                        <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.65rem] bg-primary text-[15px] font-bold text-primary-foreground">
-                                            {String(briefingStepIndex + 1).padStart(2, '0')}
-                                        </span>
-                                        <div className="flex-1 min-w-0">
-                                            <h2 className="text-lg font-bold leading-snug tracking-[-0.01em] text-foreground sm:text-xl">
-                                                {currentBriefingStep.key === 'role'
-                                                    ? 'Choose the direction that best describes your project.'
-                                                    : currentBriefingStep.key === 'goal'
-                                                        ? 'Choose the option that best describes your project, or type your own requirement.'
-                                                        : 'Attach any references that will help us read your brief faster.'}
-                                            </h2>
-                                            <p className="mt-2 text-sm text-muted-foreground">
-                                                {currentBriefingStep.label}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
+                                </div>
                             </div>
 
-                            <div className={`space-y-5 ${isDark ? 'px-5 py-4 sm:px-6 sm:py-4' : 'px-6 py-4 sm:px-8 sm:py-5'}`}>
+                            <div className={`space-y-5 px-6 py-4 sm:px-8 sm:py-5`}>
                                 {currentBriefingStep.key === 'role' ? (
                                     <>
                                         <div className="space-y-3">
@@ -5534,58 +5514,37 @@ const GuestAIDemo = () => {
 
                                 {currentBriefingStep.key === 'goal' ? (
                                     <>
-                                        {!isDark && (
-                                            <div className="space-y-1.5">
-                                                <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Your requirement</p>
-                                                <div className={`flex items-center rounded-xl border px-4 py-3 ${briefingBudgetFieldClasses}`}>
-                                                    <input
-                                                        value={briefingAnswers.goal}
-                                                        onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') {
-                                                                e.preventDefault();
-                                                                if (canContinueBriefing) {
-                                                                    startTransition(() => {
-                                                                        setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
-                                                                    });
-                                                                }
+                                        <div className="space-y-1.5">
+                                            <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Your requirement</p>
+                                            <div className={`flex items-center rounded-xl border px-4 py-3 ${briefingBudgetFieldClasses}`}>
+                                                <input
+                                                    value={briefingAnswers.goal}
+                                                    onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            if (canContinueBriefing) {
+                                                                startTransition(() => {
+                                                                    setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
+                                                                });
                                                             }
-                                                        }}
-                                                        placeholder={currentBriefingStep.placeholder}
-                                                        className={`w-full bg-transparent text-base outline-none ${briefingFieldTextClasses}`}
-                                                    />
-                                                    {briefingAnswers.goal && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => updateBriefingAnswer('goal', '')}
-                                                            className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary !text-white transition-colors hover:brightness-90"
-                                                        >
-                                                            <X className="h-3 w-3" style={{ color: 'white', stroke: 'white' }} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {isDark && (
-                                            <textarea
-                                                value={briefingAnswers.goal}
-                                                onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                                        e.preventDefault();
-                                                        if (canContinueBriefing) {
-                                                            startTransition(() => {
-                                                                setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
-                                                            });
                                                         }
-                                                    }
-                                                }}
-                                                rows={2}
-                                                placeholder={currentBriefingStep.placeholder}
-                                                className={`w-full resize-none bg-transparent min-h-[78px] pb-3 font-medium italic outline-none ${briefingTextareaTypographyClasses} ${briefingFieldTextClasses}`}
-                                            />
-                                        )}
-                                        <div className={`space-y-3 ${isDark ? 'pt-4' : 'pt-2'}`}>
+                                                    }}
+                                                    placeholder={currentBriefingStep.placeholder}
+                                                    className={`w-full bg-transparent text-base outline-none ${briefingFieldTextClasses}`}
+                                                />
+                                                {briefingAnswers.goal && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateBriefingAnswer('goal', '')}
+                                                        className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary !text-white transition-colors hover:brightness-90"
+                                                    >
+                                                        <X className="h-3 w-3" style={{ color: 'white', stroke: 'white' }} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className={`space-y-3 pt-2`}>
                                             <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Popular options</p>
                                             <div className="flex flex-wrap gap-3">
                                                 {briefingGoalSuggestions.map((suggestion) => {
@@ -5762,7 +5721,7 @@ const GuestAIDemo = () => {
                                 ) : null}
                             </div>
 
-                            <div className={`flex flex-col gap-4 border-t sm:flex-row sm:items-center sm:justify-between ${isDark ? 'px-5 py-4 sm:px-6' : 'px-6 py-4 sm:px-8'} ${briefingCardDividerClasses}`}>
+                            <div className={`flex flex-col gap-4 border-t sm:flex-row sm:items-center sm:justify-between px-6 py-4 sm:px-8 ${briefingCardDividerClasses}`}>
                                 <button
                                     type="button"
                                     onClick={goToPreviousBriefingStep}
@@ -5774,14 +5733,7 @@ const GuestAIDemo = () => {
                                 </button>
 
                                 <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                                    {inferredBriefingService && !loading && isDark && (
-                                        <div className={`text-[13px] font-semibold tracking-wide ${briefingLikelyMatchClasses}`}>
-                                            <>Likely match: <span className={`font-medium ${briefingAccentTextClasses}`}>{inferredBriefingService?.name || inferredBriefingService?.title}</span></>
-                                        </div>
-                                    )}
-                                    {loading && (
-                                        <div className={`text-[13px] font-semibold tracking-wide ${briefingLikelyMatchClasses}`}>Loading...</div>
-                                    )}
+
                                     {!['role', 'kickoff', 'duration'].includes(currentBriefingStep.key) && (currentBriefingStep.key !== 'goal' || canContinueBriefing) && (
                                         <button
                                             type="submit"
