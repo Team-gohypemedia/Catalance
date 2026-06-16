@@ -55,6 +55,13 @@ const SERVICE_IMAGE_MAP_DARK = {
   "writing & content": `${BASE_DARK}/writing.gif`,
   "3d modeling": `${BASE_DARK}/3d-modeling.gif`,
   "creative & design": `${BASE_DARK}/creative-design.gif`,
+  "crm & erp": `${BASE_DARK}/crm-erp.gif`,
+  "crm & erp solutions": `${BASE_DARK}/crm-erp.gif`,
+  "ugc marketing": `${BASE_DARK}/ugc-marketing.gif`,
+  "cgi / vfx": `${BASE_DARK}/cgi-vfx.gif`,
+  "cgi video services": `${BASE_DARK}/cgi-vfx.gif`,
+  "voice ai / ai calling": `${BASE_DARK}/voice-assistant.gif`,
+  "voice agent / ai calling": `${BASE_DARK}/voice-assistant.gif`,
 };
 
 const resolveImage = (serviceName, isDark) => {
