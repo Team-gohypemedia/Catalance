@@ -1,6 +1,7 @@
 import Layers from "lucide-react/dist/esm/icons/layers";
 
 import { cn } from "@/shared/lib/utils";
+import { useTheme } from "@/components/providers/theme-provider";
 
 /* ── PNG asset map by service name (light mode) ── */
 
@@ -23,6 +24,16 @@ const SERVICE_IMAGE_MAP = {
   "website development": `${BASE}/web%20development.gif`,
   "whatsapp chatbot": `${BASE}/whatsapp%20chatbot.gif`,
   "writing & content": `${BASE}/writing%20%26%20content.gif`,
+  
+  // New light-theme only GIFs
+  "3d modeling": `${BASE}/3d-modeling.gif`,
+  "cgi / vfx": `${BASE}/cgicfx.gif`,
+  "cgi video services": `${BASE}/cgicfx.gif`,
+  "creative & design": `${BASE}/creative%20design.gif`,
+  "crm & erp": `${BASE}/crm-epr.gif`,
+  "crm & erp solutions": `${BASE}/crm-epr.gif`,
+  "voice ai / ai calling": `${BASE}/ai%20voice.gif`,
+  "voice agent / ai calling": `${BASE}/ai%20voice.gif`,
 };
 
 const resolveImage = (serviceName) => {
@@ -40,9 +51,12 @@ const resolveServiceKey = (service) =>
 /* ── Service card icon: PNG if available, Lucide fallback ── */
 
 const ServiceIcon = ({ serviceName, isSelected }) => {
+  const { isDark } = useTheme();
   const imageSrc = resolveImage(serviceName);
+  
+  const shouldHideImage = isDark;
 
-  if (imageSrc) {
+  if (imageSrc && !shouldHideImage) {
     return (
       <div
         className="mb-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg"
