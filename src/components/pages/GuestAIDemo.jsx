@@ -2794,13 +2794,7 @@ const BRIEFING_STEP_DEFINITIONS = [
         key: 'goal',
         label: 'What should they help you bring to life?',
         eyebrow: 'Shape the outcome',
-        placeholder: '',
-    },
-    {
-        key: 'references',
-        label: 'Anything to share that helps us read the brief faster?',
-        eyebrow: 'Optional references',
-        placeholder: 'Paste a Figma, Dribbble, Loom, Notion, or docs link...',
+        placeholder: 'Enter your project brief...',
     },
 ];
 
@@ -5466,9 +5460,7 @@ const GuestAIDemo = () => {
                                         <h2 className={`text-lg font-bold leading-snug tracking-[-0.01em] sm:text-xl ${isDark ? 'text-white' : 'text-foreground'}`}>
                                             {currentBriefingStep.key === 'role'
                                                 ? 'Choose the direction that best describes your project.'
-                                                : currentBriefingStep.key === 'goal'
-                                                    ? 'Choose the option that best describes your project, or type your own requirement.'
-                                                    : 'Attach any references that will help us read your brief faster.'}
+                                                : 'Briefly describe your project requirement.'}
                                         </h2>
                                         <p className={`mt-2 text-sm ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}>
                                             {currentBriefingStep.label}
@@ -5544,7 +5536,7 @@ const GuestAIDemo = () => {
                                                 )}
                                             </div>
                                         </div>
-                                        <div className={`space-y-3 pt-2`}>
+                                        {/* <div className={`space-y-3 pt-2`}>
                                             <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Popular options</p>
                                             <div className="flex flex-wrap gap-3">
                                                 {briefingGoalSuggestions.map((suggestion) => {
@@ -5561,7 +5553,7 @@ const GuestAIDemo = () => {
                                                     );
                                                 })}
                                             </div>
-                                        </div>
+                                        </div> */}
                                     </>
                                 ) : null}
 
@@ -5647,81 +5639,10 @@ const GuestAIDemo = () => {
                                     </div>
                                 ) : null}
 
-                                {currentBriefingStep.key === 'references' ? (
-                                    <div className="space-y-4">
-                                        <div className="flex flex-col gap-3 sm:flex-row">
-                                            <input
-                                                value={briefingReferenceInput}
-                                                onChange={(event) => setBriefingReferenceInput(event.target.value)}
-                                                placeholder={currentBriefingStep.placeholder}
-                                                className={`min-w-0 flex-1 rounded-2xl border outline-none ${isDark ? 'px-4 py-2.5 text-sm' : 'px-5 py-3 text-base'} ${briefingBudgetFieldClasses} ${briefingFieldTextClasses}`}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={addBriefingReferenceLink}
-                                                className={`inline-flex items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground transition-all hover:brightness-95 ${isDark ? 'h-[46px] px-5 text-sm' : 'h-[54px] px-6 text-sm'}`}
-                                            >
-                                                Add link
-                                            </button>
-                                        </div>
 
-                                        <button
-                                            type="button"
-                                            onClick={() => briefingAttachmentInputRef.current?.click()}
-                                            className={`flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed transition-colors ${isDark ? 'px-4 py-3 text-[13px]' : 'px-5 py-4 text-sm'} ${briefingUploadClasses}`}
-                                        >
-                                            <Paperclip className="h-4 w-4" />
-                                            Upload a SOW, PRD, brief, or visual reference
-                                        </button>
-                                        <input
-                                            ref={briefingAttachmentInputRef}
-                                            type="file"
-                                            multiple
-                                            accept={CHAT_FILE_ACCEPT}
-                                            className="hidden"
-                                            onChange={handleBriefingFilePick}
-                                        />
-
-                                        {(briefingReferenceLinks.length > 0 || briefingFiles.length > 0) ? (
-                                            <div className="space-y-2">
-                                                {briefingReferenceLinks.map((link, index) => (
-                                                    <div key={link} className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${briefingTagClasses}`}>
-                                                        <p className={`truncate text-sm ${briefingTagTextClasses}`}>{link}</p>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeBriefingReferenceLink(index)}
-                                                            className={`rounded-full p-1 transition-colors ${briefingIconButtonClasses}`}
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                                {briefingFiles.map((file, index) => (
-                                                    <div key={`${file.name}-${file.size}-${index}`} className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${briefingTagClasses}`}>
-                                                        <div className="min-w-0">
-                                                            <p className={`truncate text-sm font-medium ${briefingTagTextClasses}`}>{file.name}</p>
-                                                            <p className={`text-xs ${briefingTagSubtleClasses}`}>{formatBytes(file.size)}</p>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeBriefingFile(index)}
-                                                            className={`rounded-full p-1 transition-colors ${briefingIconButtonClasses}`}
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : null}
-
-                                        <p className={`text-sm ${briefingHintClasses}`}>
-                                            Optional. The AI will still infer the service fit without references.
-                                        </p>
-                                    </div>
-                                ) : null}
                             </div>
 
-                            <div className={`flex flex-col gap-4 border-t sm:flex-row sm:items-center sm:justify-between px-6 py-4 sm:px-8 ${briefingCardDividerClasses}`}>
+                            <div className={`flex flex-row items-center justify-between gap-4 border-t px-6 py-4 sm:px-8 ${briefingCardDividerClasses}`}>
                                 <button
                                     type="button"
                                     onClick={goToPreviousBriefingStep}
@@ -5732,9 +5653,9 @@ const GuestAIDemo = () => {
                                     <span>Back</span>
                                 </button>
 
-                                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                                <div className="flex items-center gap-4">
 
-                                    {!['role', 'kickoff', 'duration'].includes(currentBriefingStep.key) && (currentBriefingStep.key !== 'goal' || canContinueBriefing) && (
+                                    {!['role', 'kickoff', 'duration'].includes(currentBriefingStep.key) && (
                                         <button
                                             type="submit"
                                             disabled={!canContinueBriefing}
