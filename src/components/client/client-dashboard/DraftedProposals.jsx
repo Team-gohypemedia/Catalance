@@ -339,7 +339,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
     && serviceEntries.length > 0;
 
   const actionButtons = (
-    <div className="mt-5 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end border-t border-border pt-4 dark:border-white/[0.06]">
+    <div className="mt-5 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-start border-t border-border pt-4 dark:border-white/[0.06]">
       <button
         type="button"
         onClick={item.onView}

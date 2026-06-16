@@ -321,7 +321,7 @@ const NotificationTriggerButton = ({ unreadCount = 0 }) => {
 const HeaderNavItem = ({ active, item, mobile, onSelect, variant = "marketing" }) => {
   const className = mobile
     ? cn(
-        "rounded-full border px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
+        "shrink-0 rounded-full border px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
         active
           ? "border-primary/30 bg-primary/15 text-primary"
           : "border-border bg-transparent text-muted-foreground hover:text-foreground",
@@ -453,7 +453,7 @@ const ClientWorkspaceHeader = ({
       />
 
       {/* Mobile Workspace Tabs (Visible only on lg:hidden) */}
-      <div className="flex items-center gap-3 border-b border-border/50 bg-background px-4 py-3 lg:hidden overflow-x-auto">
+      <div className="flex items-center gap-3 border-b border-border/50 bg-background px-4 py-3 lg:hidden overflow-x-auto [scrollbar-color:rgba(255,255,255,0.14)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/10 dark:[&::-webkit-scrollbar-thumb]:bg-white/10">
         <HeaderNav
           items={workspaceNavItems}
           activeKey={activeWorkspaceKey}
