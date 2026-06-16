@@ -3859,8 +3859,30 @@ const FreelancerOnboardingShell = () => {
           className="absolute left-0 top-0 h-1 bg-[var(--primary)] transition-all duration-300"
           style={{ width: `${progressValue}%` }}
         />
-        <div className="relative flex items-center justify-end px-4 py-4 sm:px-6">
-
+        <div className="relative flex items-center justify-between px-4 py-4 sm:px-6">
+          {isFirstSlide ? (
+              <Button
+                asChild
+                variant="secondary"
+                className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
+              >
+                <Link to={FREELANCER_DASHBOARD_PATH} replace>
+                  <ChevronLeft className="h-4 w-4" />
+                  Back to dashboard
+                </Link>
+              </Button>
+          ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                onClick={handleBack}
+                className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                aria-label="Back to dashboard"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+          )}
           <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
             <SheetTrigger asChild>
               <Button
@@ -4018,30 +4040,7 @@ const FreelancerOnboardingShell = () => {
 
       {/* Sticky Bottom Bar */}
       {!isFooterHidden && (
-        <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6 flex items-center justify-between shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
-          {isFirstSlide ? (
-            <Button
-              asChild
-              variant="secondary"
-              className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
-            >
-              <Link to={FREELANCER_DASHBOARD_PATH} replace>
-                <ChevronLeft className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Back to dashboard</span>
-              </Link>
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleBack}
-              className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
-              aria-label="Go back"
-            >
-              <ChevronLeft className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Back</span>
-            </Button>
-          )}
+        <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6 flex justify-center shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
 
           <Button
             type="button"
