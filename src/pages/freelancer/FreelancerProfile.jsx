@@ -103,7 +103,7 @@ import {
 } from "@/components/freelancer/Freelancer-Profile";
 import CaseStudyModalContent from "@/components/freelancer/Freelancer-Profile/modals/CaseStudyModalContent";
 
-const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const AVATAR_UPLOAD_MAX_BYTES = 4.5 * 1024 * 1024;
 const PROFILE_PHOTO_PICK_MAX_BYTES = 20 * 1024 * 1024;
 const CUSTOM_SERVICE_OPTION_VALUE = "__custom__";
 
@@ -1742,8 +1742,8 @@ const FreelancerProfile = () => {
         return;
       }
 
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Resume must be less than 5MB");
+      if (file.size > 4.5 * 1024 * 1024) {
+        toast.error("File size must be 4.5MB or smaller.");
         return;
       }
 

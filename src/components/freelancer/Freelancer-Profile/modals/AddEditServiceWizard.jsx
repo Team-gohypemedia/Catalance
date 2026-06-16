@@ -60,7 +60,7 @@ const WIZARD_DROPDOWN_BOTTOM_OFFSET = 132;
 const MAX_KEYWORDS = 5;
 const MAX_IMAGES = 2;
 const MAX_VIDEOS = 1;
-const MAX_MEDIA_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_MEDIA_FILE_SIZE_BYTES = 4.5 * 1024 * 1024;
 const PROFILE_SERVICE_INFO_STEPS = SERVICE_INFO_STEPS.filter(
   (step) => step.id !== "preview"
 );
@@ -1543,7 +1543,7 @@ const ServiceMediaUploadArea = ({
       if (hadUnsupportedType) {
         toast.error("Only image or video files are allowed.");
       } else if (hadOversizedFile) {
-        toast.error("Each file must be 5MB or smaller.");
+        toast.error("Each file must be 4.5MB or smaller.");
       } else if (!valid.length) {
         toast.error("Please add up to 2 images and 1 video.");
       }

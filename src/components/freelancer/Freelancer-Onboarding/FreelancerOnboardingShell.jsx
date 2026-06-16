@@ -99,8 +99,8 @@ const slideRegistry = {
   communicationPolicy: FreelancerCommunicationPolicySlide,
 };
 
-const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
-const RESUME_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const AVATAR_UPLOAD_MAX_BYTES = 4.5 * 1024 * 1024;
+const RESUME_UPLOAD_MAX_BYTES = 4.5 * 1024 * 1024;
 const RESUME_AUTOFILL_CONFIDENCE_THRESHOLD = 0.9;
 const MIN_USERNAME_LENGTH = 3;
 const RESUME_UPLOAD_ALLOWED_MIME_TYPES = new Set([
@@ -3590,7 +3590,7 @@ const FreelancerOnboardingShell = () => {
     }
 
     if (file.size > AVATAR_UPLOAD_MAX_BYTES) {
-      const message = "Profile image must be 5MB or smaller.";
+      const message = "Profile image must be 4.5MB or smaller.";
       setProfileError(message);
       setBasicProfileErrors((currentErrors) => ({
         ...currentErrors,
@@ -3671,7 +3671,7 @@ const FreelancerOnboardingShell = () => {
     }
 
     if (file.size > RESUME_UPLOAD_MAX_BYTES) {
-      const message = "Resume must be 5MB or smaller.";
+      const message = "Resume must be 4.5MB or smaller.";
       setProfileError(message);
       setBasicProfileErrors((currentErrors) => ({
         ...currentErrors,

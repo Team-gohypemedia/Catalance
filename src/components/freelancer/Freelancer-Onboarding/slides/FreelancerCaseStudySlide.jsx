@@ -21,7 +21,7 @@ import {
   resolveCaseStudyFields,
 } from "@/shared/lib/freelancer-onboarding-content";
 
-const CASE_STUDY_BANNER_MAX_BYTES = 5 * 1024 * 1024;
+const CASE_STUDY_BANNER_MAX_BYTES = 4.5 * 1024 * 1024;
 
 const ONBOARDING_PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
@@ -658,8 +658,8 @@ const FreelancerCaseStudySlide = ({
                       setBannerUploadError("Banner image must be an image file.");
                       return;
                     }
-                    if (Number(file.size) > CASE_STUDY_BANNER_MAX_BYTES) {
-                      setBannerUploadError("Banner image must be 5MB or smaller.");
+                    if (file.size > CASE_STUDY_BANNER_MAX_BYTES) {
+                      setBannerUploadError("Banner image must be 4.5MB or smaller.");
                       return;
                     }
                     try {
@@ -703,14 +703,9 @@ const FreelancerCaseStudySlide = ({
                     </div>
                   </div>
                 ) : null}
-                <p
-                  className={cn(
-                    "mt-2 px-1 text-xs",
-                    bannerUploadError ? "text-destructive" : "text-muted-foreground",
-                  )}
-                >
-                  {bannerUploadError || "JPG, PNG, GIF, or WebP. Max 5MB."}
-                </p>
+                <span className="text-xs text-muted-foreground mt-2 block">
+                  {bannerUploadError || "JPG, PNG, GIF, or WebP. Max 4.5MB."}
+                </span>
               </div>
             </div>
 

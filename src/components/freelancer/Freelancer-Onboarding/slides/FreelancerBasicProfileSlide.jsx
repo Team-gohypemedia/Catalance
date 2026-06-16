@@ -185,10 +185,11 @@ const FreelancerBasicProfileSlide = ({
   const languageField = fieldMap.languages || null;
   const normalizedStateOptions = Array.isArray(stateOptions) ? stateOptions : [];
   const hasStateOptions = normalizedStateOptions.length > 0;
-  const stateSelectValue =
-    hasStateOptions && normalizedStateOptions.includes(basicProfileForm.state)
+  const stateSelectValue = hasStateOptions
+    ? normalizedStateOptions.includes(basicProfileForm.state)
       ? basicProfileForm.state
-      : "";
+      : ""
+    : basicProfileForm.state || "";
   const fullNameValue = String(getFieldValue(basicProfileForm, "fullName") || "").trim();
   const profileInitials = getInitials(fullNameValue);
   const displayUsername = basicProfileForm.username

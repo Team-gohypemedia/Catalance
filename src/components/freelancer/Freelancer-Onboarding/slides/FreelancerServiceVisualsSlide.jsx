@@ -25,7 +25,7 @@ const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
 const MAX_IMAGES = 2;
 const MAX_VIDEOS = 1;
-const MAX_MEDIA_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_MEDIA_FILE_SIZE_BYTES = 4.5 * 1024 * 1024;
 
 const getMediaFile = (value) => {
   if (typeof File === "undefined") return null;
@@ -418,7 +418,7 @@ const UploadArea = ({
       if (hadUnsupportedType) {
         setUploadError("Only image or video files are allowed.");
       } else if (hadOversizedFile) {
-        setUploadError("Each file must be 5MB or smaller.");
+        setUploadError("Each file must be 4.5MB or smaller.");
       } else if (!validFiles.length) {
         setUploadError("Please add up to 2 images and 1 video.");
       }
