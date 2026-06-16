@@ -229,9 +229,7 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
             <FolderOpen className="size-4 shrink-0" />
             <span className="hidden sm:inline">Project Filter</span>
             <span className="sm:hidden">Filter</span>
-            <span
-              className="max-w-[8.5rem] truncate rounded-full border border-border/60 bg-background px-2.5 py-0.5 text-[11px] font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:max-w-[10rem]"
-            >
+            <span className="max-w-[8.5rem] truncate rounded-full bg-black/10 dark:bg-black/20 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm sm:max-w-[10rem]">
               {selectedProjectLabel}
             </span>
           </div>

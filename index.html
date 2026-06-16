@@ -65,6 +65,16 @@
         });
       })();
     </script>
+
+    <!-- Theme Initializer to prevent FOUC -->
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem("catalance-theme") || "light";
+          document.documentElement.classList.add(theme);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

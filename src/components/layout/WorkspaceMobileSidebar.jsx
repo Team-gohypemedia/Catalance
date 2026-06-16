@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import React from "react";
 import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
 import FileText from "lucide-react/dist/esm/icons/file-text";
-import HandPlatter from "lucide-react/dist/esm/icons/hand-platter";
+import Layers from "lucide-react/dist/esm/icons/layers";
 import House from "lucide-react/dist/esm/icons/house";
 import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
 import LogOut from "lucide-react/dist/esm/icons/log-out";
@@ -43,7 +43,7 @@ const iconMap = {
   profile: UserRound,
   home: House,
   marketplace: Store,
-  service: HandPlatter,
+  service: Layers,
   contact: PhoneCall,
 };
 

@@ -146,7 +146,7 @@ const HOME_SERVICES = [
     title: "AI Video Generation",
     icon: Video,
     cardBg: "#ecede8",
-    illustrationUrl: "",
+    illustrationUrl: "https://assets.catalance.in/lite%20service%20icons/ai%20video%20gen.png",
     darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/ai%20video%20gen%201.png",
     price: "₹20,000/-",
   },

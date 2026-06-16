@@ -184,7 +184,7 @@ const GROWTH_QUEST_SERVICE_FALLBACKS = [
   "Branding Kit",
   "UGC Marketing",
   "Paid Advertising",
-  "Social Media Marketing (Organic)",
+  "Social Media Marketing",
   "Video Services",
   "Writing & Content",
   "3D Animation/CGI Videos",

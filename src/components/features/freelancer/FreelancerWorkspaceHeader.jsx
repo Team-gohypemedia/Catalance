@@ -23,7 +23,7 @@ import { cn } from "@/shared/lib/utils";
 
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
-  { label: "Opportunity", key: "marketplace", to: "/marketplace" },
+  // { label: "Opportunity", key: "marketplace", to: "/marketplace" },
   { label: "Service", key: "service", to: "/service" },
   { label: "Growth Hub", key: "growth-quest", to: "/freelancer/growth-quest" },
   { label: "Contact", key: "contact", to: "/contact" },
@@ -109,7 +109,7 @@ const HeaderNav = ({ activeKey, items, mobile = false, onSelect, variant = "mark
   <nav
     className={
       mobile
-        ? "flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden"
+        ? "flex items-center gap-2 shrink-0 lg:hidden"
         : cn(
             "hidden items-center lg:flex",
             variant === "workspace" ? "gap-7 xl:gap-8" : "gap-8 xl:gap-9",
@@ -346,10 +346,39 @@ const FreelancerWorkspaceHeader = ({
         )}
       />
 
-      <div className="hidden pb-3 pt-0 lg:block bg-transparent dark:pt-3">
+      {/* Mobile Workspace Tabs (Visible only on lg:hidden) */}
+      <div className="flex items-center gap-3 border-b border-border/50 bg-background px-4 py-3 lg:hidden overflow-x-auto">
+        <HeaderNav
+          items={workspaceNavItems}
+          activeKey={activeWorkspaceKey}
+          onSelect={onWorkspaceNav}
+          variant="workspace"
+          mobile={true}
+        />
+        <div className="flex items-center gap-3 shrink-0 ml-auto">
+          {typeof onPrimaryAction === "function" ? (
+            <button
+              type="button"
+              onClick={onPrimaryAction}
+              className="flex items-center whitespace-nowrap gap-1.5 rounded-full bg-[var(--primary)] px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
+            >
+              {primaryActionContent}
+            </button>
+          ) : (
+            <Link
+              to={primaryActionTo}
+              className="flex items-center whitespace-nowrap gap-1.5 rounded-full bg-[var(--primary)] px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
+            >
+              {primaryActionContent}
+            </Link>
+          )}
+        </div>
+      </div>
+
+      <div className="hidden pb-3 pt-3 lg:block bg-transparent">
         {/* Top Navbar */}
-        <div className="w-full border-b border-border/50 dark:border-border dark:bg-background bg-transparent dark:rounded-[40px] px-6 py-4 xl:w-full dark:mx-auto dark:p-3 dark:sm:p-4 dark:xl:w-[94%]">
-          <div className="flex items-center justify-between gap-4">
+        <div className="mx-auto w-full border border-border/50 dark:border-border bg-background rounded-[40px] p-3 sm:p-4 xl:w-[94%]">
+          <div className="flex items-center justify-between gap-4 px-3 sm:px-0">
             <Link to="/">
               <BrandMark />
             </Link>
@@ -374,8 +403,8 @@ const FreelancerWorkspaceHeader = ({
         </div>
 
         {/* Secondary Navbar */}
-        <div className="mt-4 dark:mt-7">
-          <div className="mx-auto w-full flex flex-col gap-4 border-b border-border/50 dark:border-border px-6 pb-3 lg:flex-row lg:items-center lg:justify-between xl:w-full dark:xl:w-[94%]">
+        <div className="mt-7">
+          <div className="mx-auto w-full flex flex-col gap-4 border-b border-border/50 dark:border-border px-6 pb-3 lg:flex-row lg:items-center lg:justify-between xl:w-[94%]">
             <div className="space-y-3">
               <HeaderNav
                 items={workspaceNavItems}

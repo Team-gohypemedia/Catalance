@@ -1271,7 +1271,7 @@ const SERVICE_CARD_ORDER_GROUPS = [
         "Performance Marketing",
     ],
     [
-        "Social Media Marketing (Organic)",
+        "Social Media Marketing",
         "Social Media Marketing",
     ],
     [

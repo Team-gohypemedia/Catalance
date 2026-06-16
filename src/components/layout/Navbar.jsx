@@ -34,10 +34,10 @@ const buildNavItems = ({
 } = {}) => [
   { name: "Home", link: "/" },
   ...(!hideServiceTab ? [{ name: "Service", link: "/service" }] : []),
-  {
-    name: isFreelancer ? "Opportunity" : "Marketplace",
-    link: isFreelancer ? "/opportunity" : "/marketplace",
-  },
+  // {
+  //   name: isFreelancer ? "Opportunity" : "Marketplace",
+  //   link: isFreelancer ? "/opportunity" : "/marketplace",
+  // },
   ...(isFreelancer ? [{ name: "Growth Hub", link: "/freelancer/growth-quest" }] : []),
   { name: "Contact", link: "/contact" },
 ];
@@ -50,11 +50,11 @@ const buildMobileMarketingNavItems = ({
   ...(!isFreelancer && !hideServiceTab
     ? [{ label: "Services", key: "service", to: "/service" }]
     : []),
-  {
-    label: isFreelancer ? "Opportunity" : "Marketplace",
-    key: "marketplace",
-    to: isFreelancer ? "/opportunity" : "/marketplace",
-  },
+  // {
+  //   label: isFreelancer ? "Opportunity" : "Marketplace",
+  //   key: "marketplace",
+  //   to: isFreelancer ? "/opportunity" : "/marketplace",
+  // },
   ...(isFreelancer
     ? [{ label: "Growth Hub", key: "growth-quest", to: "/freelancer/growth-quest" }]
     : []),
