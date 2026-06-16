@@ -206,9 +206,11 @@ const sanitizeAssistantContent = (content = "") => {
 
   return lines
     .join("\n")
+    .replace(/(^|[ \t\r\n])Q\d+\s*[\.\:\-]?\s*/gim, "$1")
     // Keep question cards visually consistent by normalizing deeper headings.
     .replace(/^\s*#{3,6}\s+/gm, "## ")
     .replace(/[ \t]*\[blocked\][ \t]*/gi, " ")
+    .replace(/[ \t]{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 };

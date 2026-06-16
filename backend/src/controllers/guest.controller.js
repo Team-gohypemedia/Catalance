@@ -2631,13 +2631,26 @@ const stripQuestionStepLabels = (message = "") => {
     if (!cleaned.trim()) return "";
 
     cleaned = cleaned
-        .replace(/^\s*Q\d+\.\s*$/gim, "")
-        .replace(/\bQ\d+\.\s*/g, "")
+        .replace(/(^|[ \t\r\n])Q\d+\s*[\.\:\-]?\s*/gim, "$1")
+        .replace(/^\s*Q\d+\s*[\.\:\-]?\s*$/gim, "")
+        .replace(/[ \t]{2,}/g, " ")
         .replace(/\n{3,}/g, "\n\n")
         .trim();
 
     return cleaned;
 };
+
+const sanitizeGuestAssistantContent = (content = "") =>
+    stripQuestionStepLabels(String(content || ""));
+
+const sanitizeGuestMessageArray = (messages = []) =>
+    Array.isArray(messages)
+        ? messages.map((message) => (
+            message?.role === "assistant" && typeof message.content === "string"
+                ? { ...message, content: sanitizeGuestAssistantContent(message.content) }
+                : message
+        ))
+        : [];
 
 const stripAdminDirectiveLines = (message = "") => {
     const lines = String(message || "").split("\n");
@@ -4619,6 +4632,7 @@ Task:
 3) Ask the required first question naturally (rephrase it; do not copy it verbatim).
 4) Do NOT give suggestions, recommendations, best practices, feature ideas, or strategic advice.
 5) If options exist, show them as numbered list using exact labels.
+6) Never prefix the question with labels like Q1, Q2, Q3, or any step number.
 `;
 
     const openingIntakeTaskBlock = `
@@ -4628,6 +4642,7 @@ Task:
 3) Ask the required next question naturally.
 4) Do NOT give suggestions, recommendations, best practices, feature ideas, or strategic advice.
 5) If options exist, show them as numbered list using the exact labels provided.
+6) Never prefix the question with labels like Q1, Q2, Q3, or any step number.
 `;
 
     const followupTaskBlock = isOpeningIntakeQuestion
@@ -4653,6 +4668,7 @@ Task:
 6) If user seems unsure/confused, add helpful guidance before asking.
 7) Ask the required next question naturally (rephrase it; do not copy it verbatim).
 8) If options exist, show them as numbered list using the exact labels provided.
+9) Never prefix the question with labels like Q1, Q2, Q3, or any step number.
 `;
 
     const replyLengthPolicy = buildQuestionReplyLengthPolicy({
@@ -4851,18 +4867,20 @@ ${outputFormatBlock}
 
         // We removed the strict question mark test because the AI might naturally end with a colon like "Please choose an option below:"
 
-        if (hasOptions) {
-            const optionLabels = getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug);
-            const normalizedParsedMessage = stripInlineOptionListTail(parsedMessage);
-            if (!hasNumberedOptionsInMessage(normalizedParsedMessage)) {
-                const cleanedMessage = stripExistingOptionLines(normalizedParsedMessage, optionLabels);
-                return `${cleanedMessage} \n\n${optionLabelsText} `;
+            if (hasOptions) {
+                const optionLabels = getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug);
+                const normalizedParsedMessage = stripInlineOptionListTail(parsedMessage);
+                if (!hasNumberedOptionsInMessage(normalizedParsedMessage)) {
+                    const cleanedMessage = stripQuestionStepLabels(
+                        stripExistingOptionLines(normalizedParsedMessage, optionLabels)
+                    );
+                    return `${cleanedMessage} \n\n${optionLabelsText} `;
+                }
+
+                return stripQuestionStepLabels(normalizedParsedMessage);
             }
 
-            return normalizedParsedMessage;
-        }
-
-        return parsedMessage;
+        return stripQuestionStepLabels(parsedMessage);
     } catch (e) {
         console.error("[buildAiGuidedQuestionMessage] Fatal error:", e);
         return "";
@@ -6005,6 +6023,7 @@ const buildServiceStartState = async ({
             timingTracker,
         })
         : "";
+    const sanitizedAiFirstQuestion = stripQuestionStepLabels(aiFirstQuestion);
     const isNameFirstQuestion = NAME_QUESTION_REGEX.test(String(firstQuestionDefinition?.text || ""));
     const firstQuestionFallbackPrompt = firstQuestionDefinition
         ? (
@@ -6013,8 +6032,9 @@ const buildServiceStartState = async ({
                 : (firstQuestionDefinition.text || "How can I help you regarding this service?")
         )
         : `How can I help you regarding ${service?.name || "this service"}?`;
-    const firstQuestion = aiFirstQuestion
-        || (startPrefillBridge
+    let firstQuestion = sanitizedAiFirstQuestion;
+    if (!firstQuestion) {
+        firstQuestion = startPrefillBridge
             ? buildFriendlyMessage(
                 firstQuestionFallbackPrompt,
                 combineInlineMessages(
@@ -6028,7 +6048,8 @@ const buildServiceStartState = async ({
             )
             : (isNameFirstQuestion
                 ? buildServiceAwareOpeningMessage(service.name)
-                : firstQuestionFallbackPrompt));
+                : firstQuestionFallbackPrompt);
+    }
 
     return {
         answersPayload,
@@ -7960,7 +7981,7 @@ export const guestChat = asyncHandler(async (req, res) => {
 
     // Re-fetch messages for complete history or append manually
     const newHistory = toChronologicalGuestHistory([
-        ...session.messages,
+        ...sanitizeGuestMessageArray(session.messages),
         createdUserMessage,
         createdAssistantMessage,
     ]);
@@ -8015,7 +8036,7 @@ export const getGuestHistory = asyncHandler(async (req, res) => {
 
     res.json({
         success: true,
-        messages: session.messages,
+        messages: sanitizeGuestMessageArray(session.messages),
         inputConfig,
     });
 });
