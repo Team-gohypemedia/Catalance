@@ -1,6 +1,7 @@
 import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
+import { ensurePdfJsRuntime } from "../utils/pdfjs-runtime.js";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL =
@@ -23,6 +24,7 @@ const clipText = (value = "", maxChars = MAX_RESUME_TEXT_CHARS) =>
 
 const loadPdfJs = async () => {
   if (!pdfJsModulePromise) {
+    ensurePdfJsRuntime();
     pdfJsModulePromise = import("pdfjs-dist/legacy/build/pdf.mjs");
   }
 
