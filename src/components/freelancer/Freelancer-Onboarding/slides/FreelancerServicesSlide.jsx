@@ -3,11 +3,12 @@ import Layers from "lucide-react/dist/esm/icons/layers";
 import { cn } from "@/shared/lib/utils";
 import { useTheme } from "@/components/providers/theme-provider";
 
-/* ── PNG asset map by service name (light mode) ── */
+/* ── PNG asset maps by service name ── */
 
 const BASE = "https://assets.catalance.in/services";
+const BASE_DARK = "https://assets.catalance.in/catalance%20gif%20dark";
 
-const SERVICE_IMAGE_MAP = {
+const SERVICE_IMAGE_MAP_LIGHT = {
   advertising: `${BASE}/advertising.gif`,
   "ai automation": `${BASE}/ai%20automation.gif`,
   "app development": `${BASE}/app%20development.gif`,
@@ -25,8 +26,6 @@ const SERVICE_IMAGE_MAP = {
   "whatsapp chatbot": `${BASE}/whatsapp%20chatbot.gif`,
   "writing & content": `${BASE}/writing%20%26%20content.gif`,
   "ugc marketing": `${BASE}/ugc%20marketing.gif`,
-  
-  // New light-theme only GIFs
   "3d modeling": `${BASE}/3d-modeling.gif`,
   "cgi / vfx": `${BASE}/cgicfx.gif`,
   "cgi video services": `${BASE}/cgicfx.gif`,
@@ -37,9 +36,31 @@ const SERVICE_IMAGE_MAP = {
   "voice agent / ai calling": `${BASE}/ai%20voice.gif`,
 };
 
-const resolveImage = (serviceName) => {
+const SERVICE_IMAGE_MAP_DARK = {
+  advertising: `${BASE_DARK}/advertising.gif`,
+  "ai automation": `${BASE_DARK}/ai%20automation.gif`,
+  "app development": `${BASE_DARK}/app%20dev.gif`,
+  branding: `${BASE_DARK}/brand-kit.gif`,
+  "customer support": `${BASE_DARK}/customer%20services.gif`,
+  "influencer marketing": `${BASE_DARK}/influencer%20marketign.gif`,
+  "lead generation": `${BASE_DARK}/lead%20gen.gif`,
+  "paid advertising": `${BASE_DARK}/paid%20advertisign.gif`,
+  seo: `${BASE_DARK}/seo.gif`,
+  "social media management": `${BASE_DARK}/social-media.gif`,
+  "software development": `${BASE_DARK}/software%20dev.gif`,
+  "video services": `${BASE_DARK}/video%20services.gif`,
+  "web development": `${BASE_DARK}/software.gif`,
+  "website development": `${BASE_DARK}/software.gif`,
+  "whatsapp chatbot": `${BASE_DARK}/chat-bot.gif`,
+  "writing & content": `${BASE_DARK}/writing.gif`,
+  "3d modeling": `${BASE_DARK}/3d-modeling.gif`,
+  "creative & design": `${BASE_DARK}/creative-design.gif`,
+};
+
+const resolveImage = (serviceName, isDark) => {
   const key = String(serviceName || "").toLowerCase().trim();
-  return SERVICE_IMAGE_MAP[key] || null;
+  const map = isDark ? SERVICE_IMAGE_MAP_DARK : SERVICE_IMAGE_MAP_LIGHT;
+  return map[key] || null;
 };
 
 const resolveServiceKey = (service) =>
@@ -53,11 +74,9 @@ const resolveServiceKey = (service) =>
 
 const ServiceIcon = ({ serviceName, isSelected }) => {
   const { isDark } = useTheme();
-  const imageSrc = resolveImage(serviceName);
-  
-  const shouldHideImage = isDark;
+  const imageSrc = resolveImage(serviceName, isDark);
 
-  if (imageSrc && !shouldHideImage) {
+  if (imageSrc) {
     return (
       <div
         className="mb-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg"
