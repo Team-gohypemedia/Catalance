@@ -1,4 +1,5 @@
 const isMissing = (value) => value === undefined || value === null;
+let pdfWorkerModulePromise = null;
 
 class MinimalDOMMatrix {
   constructor(init = undefined) {
@@ -150,4 +151,22 @@ export const ensurePdfJsRuntime = () => {
   if (isMissing(globalThis.Path2D)) {
     globalThis.Path2D = MinimalPath2D;
   }
+};
+
+export const loadPdfJsWorker = async () => {
+  if (!pdfWorkerModulePromise) {
+    pdfWorkerModulePromise = import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+  }
+
+  const workerModule = await pdfWorkerModulePromise;
+  if (workerModule?.WorkerMessageHandler) {
+    globalThis.pdfjsWorker = {
+      ...(globalThis.pdfjsWorker && typeof globalThis.pdfjsWorker === "object"
+        ? globalThis.pdfjsWorker
+        : {}),
+      WorkerMessageHandler: workerModule.WorkerMessageHandler,
+    };
+  }
+
+  return workerModule;
 };

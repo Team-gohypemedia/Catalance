@@ -2,7 +2,7 @@ import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
 import { env } from "../config/env.js";
-import { ensurePdfJsRuntime } from "../utils/pdfjs-runtime.js";
+import { ensurePdfJsRuntime, loadPdfJsWorker } from "../utils/pdfjs-runtime.js";
 import {
     chatWithAI,
     formatCurrencyValue,
@@ -1025,6 +1025,7 @@ const isTextAttachment = (attachment = {}) =>
 const loadPdfJs = async () => {
     if (!pdfJsModulePromise) {
         ensurePdfJsRuntime();
+        await loadPdfJsWorker();
         pdfJsModulePromise = import("pdfjs-dist/legacy/build/pdf.mjs");
     }
     return pdfJsModulePromise;
