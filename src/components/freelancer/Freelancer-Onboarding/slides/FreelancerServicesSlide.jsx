@@ -24,6 +24,7 @@ const SERVICE_IMAGE_MAP = {
   "website development": `${BASE}/web%20development.gif`,
   "whatsapp chatbot": `${BASE}/whatsapp%20chatbot.gif`,
   "writing & content": `${BASE}/writing%20%26%20content.gif`,
+  "ugc marketing": `${BASE}/ugc%20marketing.gif`,
   
   // New light-theme only GIFs
   "3d modeling": `${BASE}/3d-modeling.gif`,
