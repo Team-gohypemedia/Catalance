@@ -778,6 +778,16 @@ const getThinkingStageIndex = (elapsedMs = 0) => {
     return stageIndex;
 };
 
+const sanitizeAssistantContent = (content = "") => {
+    if (typeof content !== "string") return "";
+
+    return content
+        .replace(/(^|[ \t\r\n])Q\d+\s*[\.\:\-]?\s*/gim, "$1")
+        .replace(/[ \t]{2,}/g, " ")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+};
+
 const buildThinkingState = (elapsedMs = 0) => {
     const stageIndex = getThinkingStageIndex(elapsedMs);
     return {
@@ -4530,13 +4540,17 @@ const GuestAIDemo = () => {
 
             const nextSessionHistory = Array.isArray(data.history) && data.history.length > 0
                 ? mergeMessagesWithThinkingMeta(
-                    data.history,
+                    data.history.map((message) => (
+                        message?.role === 'assistant' && typeof message.content === 'string'
+                            ? { ...message, content: sanitizeAssistantContent(message.content) }
+                            : message
+                    )),
                     [],
                     completedThinkingMeta
                 )
                 : [{
                     role: 'assistant',
-                    content: data.message || `Hello! I see you're interested in **${service.name}**.`,
+                    content: sanitizeAssistantContent(data.message || `Hello! I see you're interested in **${service.name}**.`),
                     thinkingMeta: completedThinkingMeta,
                 }];
 
@@ -5250,7 +5264,7 @@ const GuestAIDemo = () => {
             } else if (typeof data?.message === 'string' && data.message.trim()) {
                 const aiMsg = {
                     role: 'assistant',
-                    content: data.message,
+                    content: sanitizeAssistantContent(data.message),
                     thinkingMeta: completedThinkingMeta,
                 };
                 const nextMessages = replaceMessages((prev) => [...prev, aiMsg]);
