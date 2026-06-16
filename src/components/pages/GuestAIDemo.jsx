@@ -1347,6 +1347,19 @@ const stripQuestionStepLabels = (content = "") =>
         .replace(/\n{3,}/g, "\n\n")
         .trim();
 
+const stripInlineOptionListTail = (value = "") => {
+    if (typeof value !== "string") return "";
+    const text = value.trim();
+    if (!text) return "";
+
+    const inlineOptionIndex = text.search(/\s+\d+\s*[.)]\s+\S/);
+    if (inlineOptionIndex > 0) {
+        return text.slice(0, inlineOptionIndex).trim().replace(/[:\-]\s*$/, "").trim();
+    }
+
+    return text;
+};
+
 const normalizeMarkdownContent = (content = "") =>
     stripQuestionStepLabels(String(content))
         .replace(/^```(?:markdown)?\s*/i, "")
@@ -1642,9 +1655,11 @@ const parseAssistantMessageLayout = (content = "", { forceInteractiveOptions = f
 
     const splitQuestionLine = splitContextAndQuestion(lines[questionIndex]);
     const hasInlineQuestionSplit = Boolean(splitQuestionLine.questionText);
-    const questionText = hasInlineQuestionSplit
-        ? splitQuestionLine.questionText
-        : lines[questionIndex];
+    const questionText = stripInlineOptionListTail(
+        hasInlineQuestionSplit
+            ? splitQuestionLine.questionText
+            : lines[questionIndex]
+    );
     const contextParts = lines
         .filter((line, idx) => idx !== questionIndex && !OPTION_LINE_REGEX.test(line));
 

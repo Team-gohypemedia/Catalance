@@ -748,6 +748,19 @@ const removeMarkdownDecorators = (value = "") =>
     .replace(/`([^`]+)`/g, "$1")
     .trim();
 
+const stripInlineOptionListTail = (value = "") => {
+  if (typeof value !== "string") return "";
+  const text = value.trim();
+  if (!text) return "";
+
+  const inlineOptionIndex = text.search(/\s+\d+\s*[.)]\s+\S/);
+  if (inlineOptionIndex > 0) {
+    return text.slice(0, inlineOptionIndex).trim().replace(/[:\-]\s*$/, "").trim();
+  }
+
+  return text;
+};
+
 const MULTI_SELECT_QUESTION_REGEX =
   /\b(select all|all that apply|multiple|pick any|one or more|as many|more than one)\b/i;
 const TEMPLATE_ADDITIONAL_PAGES_CONTEXT_REGEX = /\badditional pages?\b/i;
@@ -789,7 +802,7 @@ const parseQuestionCardContent = (content = "") => {
         }
         return;
       }
-      const normalizedLine = removeMarkdownDecorators(line);
+      const normalizedLine = stripInlineOptionListTail(removeMarkdownDecorators(line));
       if (normalizedLine) bodyLines.push(normalizedLine);
     });
 
@@ -799,11 +812,16 @@ const parseQuestionCardContent = (content = "") => {
         line,
       ),
   );
+  const cleanedBodyLines = filteredBodyLines
+    .map((line) => stripInlineOptionListTail(line))
+    .filter(Boolean);
   const questionTitle =
-    filteredBodyLines.find((line) => line.endsWith("?")) ||
-    filteredBodyLines[0] ||
-    "";
-  const helperLines = filteredBodyLines.filter((line) => line !== questionTitle);
+    stripInlineOptionListTail(
+      cleanedBodyLines.find((line) => line.endsWith("?")) ||
+      cleanedBodyLines[0] ||
+      "",
+    );
+  const helperLines = cleanedBodyLines.filter((line) => line !== questionTitle);
   let options = numberedLines.map((item) => item.label);
   let nonInteractiveOptions = [];
 
