@@ -282,7 +282,7 @@ const Contact = () => {
         <div className="w-full grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {[
             { title: "Address", value: "New Delhi, India", link: null },
-            { title: "You Can Email Here", value: "support@catalance.com", link: "mailto:support@catalance.com" },
+            { title: "You Can Email Here", value: "support@catalance.in", link: "mailto:support@catalance.in" },
             { title: "Call us on", value: "+91 8882855425", link: "tel:+918882855425" },
             { title: "Working Hours", value: "10:00 am - 6:00 pm", link: null },
           ].map((item, idx) => {

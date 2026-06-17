@@ -4031,3 +4031,190 @@ export const resetPassword = async (token, newPassword) => {
 
   return { message: "Password has been reset successfully" };
 };
+
+export const deleteUserService = async (targetId, targetEmail) => {
+  // 1. Find all projects owned or managed by targetId
+  let projectIds = [];
+  try {
+    const ownedProjects = await prisma.project.findMany({
+      where: {
+        OR: [{ ownerId: targetId }, { managerId: targetId }]
+      },
+      select: { id: true }
+    });
+    projectIds = ownedProjects.map(p => p.id);
+  } catch (err) {
+    console.error("Error finding projects:", err.message);
+  }
+
+  // 2. Delete milestones approvals related to these projects
+  try {
+    await prisma.milestoneApproval.deleteMany({
+      where: {
+        OR: [{ approverId: targetId }, { projectId: { in: projectIds } }]
+      }
+    });
+  } catch (err) {}
+
+  // 3. Delete project tasks
+  try {
+    await prisma.projectTask.deleteMany({
+      where: { projectId: { in: projectIds } }
+    });
+  } catch (err) {}
+
+  // 4. Delete disputes
+  try {
+    await prisma.dispute.deleteMany({
+      where: {
+        OR: [{ raisedById: targetId }, { managerId: targetId }, { projectId: { in: projectIds } }]
+      }
+    });
+  } catch (err) {}
+
+  // 5. Delete appointments
+  try {
+    await prisma.appointment.deleteMany({
+      where: {
+        OR: [{ bookedById: targetId }, { managerId: targetId }, { projectId: { in: projectIds } }]
+      }
+    });
+  } catch (err) {}
+
+  // 6. Delete payments
+  try {
+    await prisma.payment.deleteMany({
+      where: {
+        OR: [{ freelancerId: targetId }, { projectId: { in: projectIds } }]
+      }
+    });
+  } catch (err) {}
+
+  // 7. Delete proposals
+  try {
+    await prisma.proposal.deleteMany({
+      where: {
+        OR: [{ freelancerId: targetId }, { projectId: { in: projectIds } }]
+      }
+    });
+  } catch (err) {}
+
+  // 8. Delete completed projects
+  try {
+    await prisma.completedProject.deleteMany({
+      where: {
+        OR: [{ originalProjectId: { in: projectIds } }, { ownerId: targetId }, { managerId: targetId }]
+      }
+    });
+  } catch (err) {}
+
+  // 9. Delete internal reviews
+  try {
+    await prisma.internalFreelancerReview.deleteMany({
+      where: {
+        OR: [{ reviewerId: targetId }, { freelancerId: targetId }, { projectId: { in: projectIds } }]
+      }
+    });
+  } catch (err) {}
+
+  // 10. Delete admin escalations
+  try {
+    await prisma.adminEscalation.deleteMany({
+      where: {
+        OR: [{ raisedById: targetId }, { projectId: { in: projectIds } }]
+      }
+    });
+  } catch (err) {}
+
+  // 11. Delete projects themselves
+  try {
+    await prisma.project.deleteMany({
+      where: { id: { in: projectIds } }
+    });
+  } catch (err) {}
+
+  // 12. Delete chat messages and conversations
+  try {
+    await prisma.chatMessage.deleteMany({ where: { senderId: targetId } });
+    await prisma.chatConversation.deleteMany({ where: { createdById: targetId } });
+  } catch (err) {}
+
+  // 13. Delete profile updates
+  try {
+    await prisma.profileUpdateRequest.deleteMany({
+      where: { OR: [{ userId: targetId }, { reviewerId: targetId }] }
+    });
+  } catch (err) {}
+
+  // 14. Delete notifications
+  try {
+    await prisma.notification.deleteMany({ where: { userId: targetId } });
+  } catch (err) {}
+
+  // 15. Delete marketplace entries
+  try {
+    await prisma.marketplace.deleteMany({ where: { freelancerId: targetId } });
+  } catch (err) {}
+
+  // 16. Delete freelancer projects
+  try {
+    await prisma.freelancerProject.deleteMany({ where: { freelancerId: targetId } });
+  } catch (err) {}
+
+  // 17. Delete freelancer skills
+  try {
+    await prisma.freelancerSkill.deleteMany({ where: { userId: targetId } });
+  } catch (err) {}
+
+  // 18. Delete manager availabilities
+  try {
+    await prisma.managerAvailability.deleteMany({ where: { managerId: targetId } });
+  } catch (err) {}
+
+  // 19. Delete engagement data
+  try {
+    await prisma.engagementAnswerSession.deleteMany({ where: { userId: targetId } });
+    await prisma.pointsLedger.deleteMany({ where: { userId: targetId } });
+    await prisma.engagementUserBadge.deleteMany({ where: { userId: targetId } });
+    await prisma.engagementProcessReport.deleteMany({ where: { userId: targetId } });
+    await prisma.engagementPersonalizedQuestion.deleteMany({ where: { userId: targetId } });
+    await prisma.engagementProfile.deleteMany({ where: { userId: targetId } });
+  } catch (err) {}
+
+  // 20. Delete user profiles
+  try {
+    await prisma.freelancerProfile.deleteMany({ where: { userId: targetId } });
+    await prisma.clientProfile.deleteMany({ where: { userId: targetId } });
+    await prisma.managerProfile.deleteMany({ where: { userId: targetId } });
+  } catch (err) {}
+
+  // 21. Delete Firebase User
+  try {
+    const admin = (await import('firebase-admin')).default;
+    let initialized = false;
+    if (!admin.apps.length) {
+      const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+      if (serviceAccountStr) {
+        admin.initializeApp({
+          credential: admin.credential.cert(JSON.parse(serviceAccountStr)),
+          projectId: process.env.FIREBASE_PROJECT_ID || 'catalance-4dc1b',
+        });
+      } else {
+        admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID || 'catalance-4dc1b' });
+      }
+      initialized = true;
+    }
+    const userRecord = await admin.auth().getUserByEmail(targetEmail);
+    if (userRecord) {
+      await admin.auth().deleteUser(userRecord.uid);
+      console.log('Successfully deleted user from Firebase:', userRecord.uid);
+    }
+  } catch (error) {
+    if (error.code !== 'auth/user-not-found') {
+      console.log('Error deleting from firebase:', error);
+    }
+  }
+
+  // 22. Finally delete the user!
+  await prisma.user.delete({ where: { id: targetId } });
+};

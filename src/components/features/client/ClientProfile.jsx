@@ -30,6 +30,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -422,7 +432,7 @@ const NotificationToggleRow = ({
 );
 
 const ClientProfileContent = () => {
-  const { user, authFetch, refreshUser } = useAuth();
+  const { user, authFetch, refreshUser, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -432,6 +442,9 @@ const ClientProfileContent = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [pendingProfilePhotoFile, setPendingProfilePhotoFile] = useState(null);
   const [isProfileCropOpen, setIsProfileCropOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({ ...emptyFormData });
   const [notificationPrefs, setNotificationPrefs] = useState({
     ...defaultNotificationPrefs,
@@ -685,6 +698,32 @@ const ClientProfileContent = () => {
       );
     } finally {
       setPortalLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.toLowerCase() !== "delete") {
+      toast.error("Please type 'delete' to confirm.");
+      return;
+    }
+    setDeleting(true);
+    try {
+      const response = await authFetch("/users/me", { method: "DELETE" });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.message || "Failed to delete account");
+      }
+      toast.success("Account deleted successfully");
+      if (typeof logout === "function") {
+        await logout();
+      } else {
+        window.location.href = "/";
+      }
+    } catch (err) {
+      toast.error(err.message || "Something went wrong.");
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -1174,6 +1213,37 @@ const ClientProfileContent = () => {
                 </div>
               </div>
             </ProfileSurface>
+
+            <ProfileSurface className="mt-8 p-6 sm:p-10 border-red-500/20">
+              <div className="space-y-6 sm:space-y-8">
+                <div>
+                  <h2 className="text-[1.1rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.35rem]">
+                    Danger Zone
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Permanently delete your account and all associated data.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-[14px] border border-red-500/20 bg-red-500/10 px-4 py-3.5 sm:px-5 sm:py-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-red-600 dark:text-red-400">Delete Account</p>
+                    <p className="mt-0.5 text-xs leading-4 text-red-600/80 dark:text-red-400/80">
+                      This action cannot be undone.
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setDeleteConfirmText("");
+                      setDeleteDialogOpen(true);
+                    }}
+                  >
+                    Delete Account
+                  </Button>
+                </div>
+              </div>
+            </ProfileSurface>
           </div>
         </main>
 
@@ -1252,6 +1322,43 @@ const ClientProfileContent = () => {
         onApply={handleProfilePhotoCropped}
         onCancel={closeProfileCropDialog}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your
+              account and remove your data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <p className="mb-2 text-sm text-muted-foreground">
+              Please type <span className="font-semibold text-foreground">delete</span> to confirm.
+            </p>
+            <Input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="Type 'delete' here..."
+              disabled={deleting}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteAccount();
+              }}
+              disabled={deleting || deleteConfirmText.toLowerCase() !== "delete"}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+              {deleting ? "Deleting..." : "Delete Account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
