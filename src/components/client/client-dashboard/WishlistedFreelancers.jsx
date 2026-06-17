@@ -73,9 +73,11 @@ const WishlistedFreelancers = memo(function WishlistedFreelancers({
   return (
     <section className={cn("flex h-full w-full min-w-0 flex-col", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-        <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground">
-          Wishlisted Freelancers
-        </h2>
+        <div className="min-w-0">
+          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
+            Wishlisted Freelancers
+          </h2>
+        </div>
       </div>
 
       <DashboardPanel

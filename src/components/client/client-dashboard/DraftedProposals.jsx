@@ -11,6 +11,10 @@ import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import User from "lucide-react/dist/esm/icons/user";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import Folder from "lucide-react/dist/esm/icons/folder";
+import Send from "lucide-react/dist/esm/icons/send";
+import Eye from "lucide-react/dist/esm/icons/eye";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
@@ -21,7 +25,7 @@ import {
 } from "./shared.jsx";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
-import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
+import { extractLabeledLineValue, extractStructuredFieldValue } from "@/shared/lib/labeled-fields";
 import {
   getProposalStorageKeys,
   loadSavedProposalsFromStorage,
@@ -330,25 +334,77 @@ const buildProjectUpsertPayload = (proposal, normalizedBudget) => {
   return payload;
 };
 
+const parseProposalString = (text) => {
+  if (!text) return null;
+
+  const result = {
+    clientName: "",
+    businessName: "",
+    serviceType: "",
+    projectOverview: "",
+    objectives: [],
+    deliverables: [],
+    techStack: {
+      frontend: "",
+      backend: "",
+      database: "",
+      hosting: "",
+    }
+  };
+
+  const extractMatch = (regex) => {
+    const match = text.match(regex);
+    return match ? match[1].trim() : "";
+  };
+
+  result.clientName = extractMatch(/Client Name:\s*(.*?)(?=\s*Business Name:|\s*$)/i);
+  result.businessName = extractMatch(/Business Name:\s*(.*?)(?=\s*Service Type:|\s*$)/i);
+  result.serviceType = extractMatch(/Service Type:\s*(.*?)(?=\s*Project Overview:|\s*$)/i);
+  
+  result.projectOverview = extractMatch(/Project Overview:\s*(.*?)(?=\s*Primary Objectives:|\s*Features\/Deliverables Included:|\s*$)/is);
+  
+  const objectivesText = extractMatch(/Primary Objectives:\s*(.*?)(?=\s*Features\/Deliverables Included:|\s*$)/is);
+  if (objectivesText) {
+    result.objectives = objectivesText.split(/[-*•\n]+/).map(s => s.trim()).filter(s => s.length > 0);
+  }
+
+  const deliverablesText = extractMatch(/Features\/Deliverables Included:\s*(.*?)(?=\s*Website Type:|\s*Design Style:|\s*Website Build Type:|\s*$)/is);
+  if (deliverablesText) {
+    result.deliverables = deliverablesText.split(/[-*•\n]+/).map(s => s.trim()).filter(s => s.length > 0);
+  }
+
+  result.techStack.frontend = extractMatch(/Frontend Framework:\s*(.*?)(?=\s*Backend Technology:|\s*$)/i) || extractMatch(/Frontend:\s*(.*?)(?=\s*Backend:|\s*$)/i);
+  result.techStack.backend = extractMatch(/Backend Technology:\s*(.*?)(?=\s*Database:|\s*$)/i) || extractMatch(/Backend:\s*(.*?)(?=\s*Database:|\s*$)/i);
+  result.techStack.database = extractMatch(/Database:\s*(.*?)(?=\s*Hosting:|\s*$)/i);
+  result.techStack.hosting = extractMatch(/Hosting:\s*(.*?)(?=\s*Page Count:|\s*Launch Timeline:|\s*$)/i);
+
+  if (!result.projectOverview && result.objectives.length === 0 && result.deliverables.length === 0) {
+    return null;
+  }
+
+  return result;
+};
+
 const DraftProposalRow = memo(function DraftProposalRow({ item }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isTopExpanded, setIsTopExpanded] = useState(false);
   const serviceEntries = resolveDraftRowServiceEntries(item);
   const shouldShowAgencyServiceCards =
     (Boolean(item.isAgencyProposal) || serviceEntries.length > 1)
     && serviceEntries.length > 0;
 
+  const parsedData = parseProposalString(item.summary);
+
   const actionButtons = (
-    <div className="mt-5 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-start border-t border-border pt-4 dark:border-white/[0.06]">
+    <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end border-t border-border pt-6">
       <button
         type="button"
         onClick={item.onView}
         className={cn(
           draftProposalActionButtonClassName,
-          `${draftProposalSurfaceToneClassName} h-11 w-full justify-center gap-2 text-[0.92rem] text-foreground hover:bg-muted/60 sm:w-auto sm:px-6`,
+          "h-12 w-full justify-center gap-2 border border-border bg-background text-[0.92rem] text-foreground hover:bg-muted/80 sm:w-[160px] rounded-lg",
         )}
       >
-        <FileText className="size-4 shrink-0" />
+        <Eye className="size-4 shrink-0" />
         View Details
       </button>
 
@@ -357,119 +413,251 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
         onClick={item.onSend}
         className={cn(
           draftProposalActionButtonClassName,
-          "h-11 w-full justify-center bg-[var(--primary)] px-7 text-[0.92rem] text-white shadow-[0_12px_24px_-12px_rgba(230,108,32,0.78)] hover:bg-primary/80 dark:text-[#141414] sm:w-auto",
+          "h-12 w-full justify-center gap-2 bg-primary px-7 text-[0.92rem] text-primary-foreground hover:bg-primary/90 sm:w-[180px] rounded-lg",
         )}
       >
+        <Send className="size-4 shrink-0" />
         Send Proposal
       </button>
     </div>
   );
 
-  const contentPanels = shouldShowAgencyServiceCards ? (
-    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3 xl:auto-rows-fr">
-      {serviceEntries.map((entry, index) => (
-        <div
-          key={`${entry.name}-${index}`}
-          className={cn(draftProposalDetailBlockClassName, "h-full")}
-        >
-          <p className="min-h-[2.5rem] break-words text-[0.82rem] font-medium leading-5 text-foreground">
-            {entry.name}
-          </p>
+  let contentPanels;
 
-          <div className="mt-2.5 flex items-center gap-3 text-[0.9rem] leading-none">
-            <p className="truncate font-semibold tracking-[-0.02em] text-muted-foreground">
-              {entry.budget}
+  if (shouldShowAgencyServiceCards) {
+    contentPanels = (
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3 xl:auto-rows-fr">
+        {serviceEntries.map((entry, index) => (
+          <div
+            key={`${entry.name}-${index}`}
+            className={cn(draftProposalDetailBlockClassName, "h-full")}
+          >
+            <p className="min-h-[2.5rem] break-words text-[0.82rem] font-medium leading-5 text-foreground">
+              {entry.name}
             </p>
-            <span className="h-4 w-px shrink-0 bg-border dark:bg-white/[0.12]" aria-hidden="true" />
-            <p className="truncate font-medium text-muted-foreground">
-              {entry.timeline}
+
+            <div className="mt-2.5 flex items-center gap-3 text-[0.9rem] leading-none">
+              <p className="truncate font-semibold tracking-[-0.02em] text-muted-foreground">
+                {entry.budget}
+              </p>
+              <span className="h-4 w-px shrink-0 bg-border dark:bg-white/[0.12]" aria-hidden="true" />
+              <p className="truncate font-medium text-muted-foreground">
+                {entry.timeline}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  } else if (parsedData) {
+    contentPanels = (
+      <div className="flex flex-col gap-8 w-full mt-2">
+        
+        {/* Top Header Section */}
+        <div className="flex flex-col gap-2">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">{item.title || parsedData.businessName || "Proposal"}</h2>
+          <div className="flex flex-wrap items-center gap-4 text-[0.85rem] font-medium text-muted-foreground">
+            {parsedData.clientName && (
+              <div className="flex items-center gap-1.5">
+                <User className="size-4" />
+                <span>Client: {parsedData.clientName}</span>
+              </div>
+            )}
+            {parsedData.serviceType && (
+              <div className="flex items-center gap-1.5">
+                <Folder className="size-4" />
+                <span>Service: {parsedData.serviceType}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Middle Collapsible Section (Mobile) */}
+        <div className={cn(
+          "relative flex flex-col gap-8 w-full overflow-hidden transition-[max-height] duration-500 ease-in-out",
+          !isExpanded ? "max-h-[280px] sm:max-h-none" : "max-h-[2500px]"
+        )}>
+          {/* Project Overview */}
+          {parsedData.projectOverview && (
+            <div className="space-y-3">
+              <h3 className="text-[1.1rem] font-semibold text-foreground tracking-tight">Project Overview</h3>
+              <div className="rounded-[10px] border border-primary/20 bg-primary/5 p-4 text-[0.95rem] leading-relaxed text-foreground">
+                {parsedData.projectOverview}
+              </div>
+            </div>
+          )}
+
+          {/* Main Content Split */}
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            
+            {/* Key Objectives */}
+            {parsedData.objectives.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-[0.75rem] font-bold uppercase tracking-wider text-muted-foreground">Key Objectives</h3>
+                <ul className="flex flex-col gap-3">
+                  {parsedData.objectives.map((obj, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-[0.9rem] text-foreground">
+                      <CheckCircle2 className="size-5 shrink-0 text-primary mt-[1px]" />
+                      <span className="leading-relaxed">{obj}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Technical Stack */}
+            {(parsedData.techStack.frontend || parsedData.techStack.backend || parsedData.techStack.database || parsedData.techStack.hosting) && (
+              <div className="space-y-4">
+                <div className="rounded-[12px] bg-muted/40 dark:bg-muted/20 border border-border/50 p-6">
+                  <h3 className="text-[0.75rem] font-bold uppercase tracking-wider text-primary mb-5">Technical Stack</h3>
+                  <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                    {parsedData.techStack.frontend && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[0.7rem] uppercase font-semibold text-muted-foreground">Frontend</span>
+                        <span className="text-[0.95rem] font-bold text-foreground">{parsedData.techStack.frontend}</span>
+                      </div>
+                    )}
+                    {parsedData.techStack.backend && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[0.7rem] uppercase font-semibold text-muted-foreground">Backend</span>
+                        <span className="text-[0.95rem] font-bold text-foreground">{parsedData.techStack.backend}</span>
+                      </div>
+                    )}
+                    {parsedData.techStack.database && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[0.7rem] uppercase font-semibold text-muted-foreground">Database</span>
+                        <span className="text-[0.95rem] font-bold text-foreground">{parsedData.techStack.database}</span>
+                      </div>
+                    )}
+                    {parsedData.techStack.hosting && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[0.7rem] uppercase font-semibold text-muted-foreground">Hosting</span>
+                        <span className="text-[0.95rem] font-bold text-foreground">{parsedData.techStack.hosting}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Included Deliverables */}
+          {parsedData.deliverables.length > 0 && (
+            <div className="space-y-4 border-t border-border/60 pt-6">
+              <h3 className="text-[0.75rem] font-bold uppercase tracking-wider text-muted-foreground">Included Deliverables</h3>
+              <div className="flex flex-wrap gap-2.5">
+                {parsedData.deliverables.map((del, i) => (
+                  <div key={i} className="rounded-full bg-secondary border border-border/40 px-4 py-2 text-[0.8rem] font-semibold text-secondary-foreground">
+                    {del}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Fading Overlay for Mobile */}
+          {!isExpanded && (
+            <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-background dark:from-card to-transparent sm:hidden pointer-events-none" />
+          )}
+        </div>
+
+        {/* Read More Toggle for Mobile */}
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-[0.85rem] font-bold text-primary hover:underline sm:hidden self-start"
+        >
+          {isExpanded ? "Show less" : "Read more"}
+        </button>
+
+        {/* Budget and Timeline */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-4">
+          <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-muted/30 dark:bg-muted/10 py-4 sm:py-6 text-center">
+            <span className="text-[0.65rem] sm:text-[0.75rem] font-bold uppercase tracking-wider text-muted-foreground">Budget</span>
+            <span className="text-[1.15rem] sm:text-[1.5rem] font-bold text-foreground truncate max-w-full px-2">{item.budget}</span>
+          </div>
+          <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-muted/30 dark:bg-muted/10 py-4 sm:py-6 text-center">
+            <span className="text-[0.65rem] sm:text-[0.75rem] font-bold uppercase tracking-wider text-muted-foreground">Timeline</span>
+            <span className="text-[1.15rem] sm:text-[1.5rem] font-bold text-foreground truncate max-w-full px-2">{item.timeline || "Not set"}</span>
+          </div>
+        </div>
+
+      </div>
+    );
+  } else {
+    // Fallback original view
+    contentPanels = (
+      <div className="space-y-4">
+        <div className="flex flex-col items-start gap-1">
+          <p className={cn("max-w-[42rem] text-[1.05rem] leading-7 text-muted-foreground", !isExpanded && "line-clamp-3")}>
+            {item.summary || "Draft proposal ready to review and send."}
+          </p>
+          {item.summary?.length > 150 && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-[0.88rem] font-semibold text-primary hover:underline"
+            >
+              {isExpanded ? "Read less" : "Read more"}
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+          <div className={cn(draftProposalDetailBlockClassName, "px-3 py-3 sm:px-4 sm:py-4")}>
+            <p className="text-[0.65rem] sm:text-[0.78rem] uppercase tracking-[0.18em] text-muted-foreground">
+              Budget
+            </p>
+            <p className="mt-2 text-[1rem] sm:text-[1.15rem] font-semibold tracking-[-0.02em] text-foreground truncate max-w-full">
+              {item.budget}
+            </p>
+          </div>
+
+          <div className={cn(draftProposalDetailBlockClassName, "px-3 py-3 sm:px-4 sm:py-4")}>
+            <p className="text-[0.65rem] sm:text-[0.78rem] uppercase tracking-[0.18em] text-muted-foreground">
+              Timeline
+            </p>
+            <p className="mt-2 text-[1rem] sm:text-[1.15rem] font-semibold tracking-[-0.02em] text-foreground truncate max-w-full">
+              {item.timeline || "Not set"}
             </p>
           </div>
         </div>
-      ))}
-    </div>
-  ) : (
-    <div className="space-y-4">
-      <div className="flex flex-col items-start gap-1">
-        <p className={cn("max-w-[42rem] text-[1.05rem] leading-7 text-muted-foreground", !isExpanded && "line-clamp-3")}>
-          {item.summary || "Draft proposal ready to review and send."}
-        </p>
-        {item.summary?.length > 150 && (
-          <button
-            type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="text-[0.88rem] font-semibold text-primary hover:underline"
-          >
-            {isExpanded ? "Read less" : "Read more"}
-          </button>
-        )}
       </div>
-
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        <div className={draftProposalDetailBlockClassName}>
-          <p className="text-[0.78rem] uppercase tracking-[0.18em] text-muted-foreground">
-            Budget
-          </p>
-          <p className="mt-2 text-[1.15rem] font-semibold tracking-[-0.02em] text-foreground">
-            {item.budget}
-          </p>
-        </div>
-
-        <div className={draftProposalDetailBlockClassName}>
-          <p className="text-[0.78rem] uppercase tracking-[0.18em] text-muted-foreground">
-            Timeline
-          </p>
-          <p className="mt-2 text-[1.15rem] font-semibold tracking-[-0.02em] text-foreground">
-            {item.timeline || "Not set"}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="w-full min-w-0">
-      <div className="mb-3 flex items-center justify-between gap-3 border-b border-border pb-3 dark:border-white/[0.06]">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-[#fff7ef] px-3 py-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--primary)] dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-primary">
-          DRAFT
+    <div className="w-full min-w-0 pb-2">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-primary">
+            DRAFT
+          </div>
+          <p className="text-[0.8rem] font-medium tracking-[0.02em] text-muted-foreground sm:text-[0.85rem]">
+            {item.dateLabel || new Date().toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </p>
         </div>
-        <p className="text-[0.8rem] font-medium tracking-[0.02em] text-muted-foreground sm:text-[0.85rem]">
-          {item.dateLabel || new Date().toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          })}
-        </p>
         <button
           type="button"
           onClick={item.onDelete}
-          className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
+          className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
           aria-label={`Delete ${item.title}`}
         >
-          <Trash2 className="size-4.5" />
+          <Trash2 className="size-4" />
         </button>
       </div>
 
-      <p className="min-w-0 truncate text-[0.98rem] font-semibold tracking-[-0.05em] text-foreground sm:text-[1.06rem] lg:text-[1.12rem]">
-        {item.title}
-      </p>
+      {!parsedData && (
+        <p className="min-w-0 truncate text-[1.15rem] font-bold tracking-tight text-foreground sm:text-[1.25rem] lg:text-[1.35rem] mb-4">
+          {item.title}
+        </p>
+      )}
 
-      <div className="mt-2 flex flex-col items-start gap-1">
-        <div className={cn("max-w-[28rem] text-[0.78rem] leading-5 text-muted-foreground sm:text-[0.82rem]", !isTopExpanded && "line-clamp-2")}>
-          {item.summary || "Draft proposal ready to send to selected freelancers."}
-        </div>
-        {item.summary?.length > 100 && (
-          <button
-            type="button"
-            onClick={() => setIsTopExpanded(!isTopExpanded)}
-            className="text-[0.75rem] font-semibold text-primary hover:underline"
-          >
-            {isTopExpanded ? "Read less" : "Read more"}
-          </button>
-        )}
-      </div>
-
-      <div className="mt-4 w-full min-w-0">
+      <div className="w-full min-w-0">
         {contentPanels}
       </div>
       {actionButtons}
