@@ -32,15 +32,14 @@ const ClientDashboardContent = () => {
           <ActiveProjects />
 
           {useEmptyWorkspaceLayout ? (
-            <section className="mt-14 flex flex-col gap-5 sm:gap-6 xl:gap-7">
-              <Proposals />
+            <section className="mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
+              <div className="min-w-0 flex flex-col gap-5 sm:gap-6 xl:gap-7">
+                <Proposals />
+              </div>
 
-              <section className="grid items-stretch gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
-                {/* Left column now just houses Proposals when it has content, otherwise empty or can just contain Wishlisted freelancers if we shift it */}
-                <div className="grid h-full gap-5 sm:gap-6 xl:gap-7 lg:col-start-2">
-                  <WishlistedFreelancers />
-                </div>
-              </section>
+              <div className="grid gap-5 sm:gap-6 xl:gap-7">
+                <WishlistedFreelancers />
+              </div>
             </section>
           ) : (
             <section className="mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">

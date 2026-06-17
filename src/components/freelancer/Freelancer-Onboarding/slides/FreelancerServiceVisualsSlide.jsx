@@ -105,91 +105,31 @@ const MediaPreviewBadge = ({ icon: Icon, label, className = "" }) => (
   </div>
 );
 
-const MediaHeroPreview = ({ item, previewUrl, onUpload }) => {
-  if (!item) {
-    return (
-      <button
-        type="button"
-        onClick={onUpload}
-        className={cn(
-          "group flex h-[240px] w-full items-center justify-center rounded-[28px] border border-dashed border-border bg-muted/40 px-4 text-left transition-colors hover:border-primary/45 hover:bg-primary/5 sm:h-[280px] lg:h-[320px]",
-        )}
-      >
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-primary">
-            <Plus className="h-5 w-5" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-base font-semibold text-foreground">Upload your first file</p>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Click to choose one image or video, or drag it here.
-            </p>
-          </div>
-        </div>
-      </button>
-    );
-  }
+/* ─── Upload Slot (empty placeholder for adding media) ─── */
 
-  return (
-    <div className="group relative aspect-[16/9] w-full overflow-hidden rounded-[28px] border border-border bg-black shadow-[0_20px_80px_rgba(0,0,0,0.42)] dark-card">
-      {item.isVideo ? (
-        previewUrl ? (
-          <video
-            key={previewUrl}
-            src={previewUrl}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-            muted
-            playsInline
-            autoPlay
-            loop
-            controls
-            preload="metadata"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(37,99,235,0.18),transparent_34%),linear-gradient(135deg,#090909,#141414_60%,#0f0f0f)] text-muted-foreground/80">
-            <div className="flex flex-col items-center gap-3">
-              <Play className="h-8 w-8" />
-              <span className="text-sm font-medium">Video preview unavailable</span>
-            </div>
-          </div>
-        )
-      ) : previewUrl ? (
-        <img
-          src={previewUrl}
-          alt={item.name}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(var(--brand-rgb),0.12),transparent_32%),linear-gradient(135deg,#090909,#141414_60%,#0f0f0f)] text-muted-foreground/80">
-          <div className="flex flex-col items-center gap-3">
-            <Image className="h-8 w-8" />
-            <span className="text-sm font-medium">Image preview unavailable</span>
-          </div>
-        </div>
-      )}
-
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.05)_0%,rgba(0,0,0,0.12)_58%,rgba(0,0,0,0.56)_100%)]" />
-      <div className="pointer-events-none absolute bottom-4 right-4">
-        <MediaPreviewBadge
-          icon={item.isVideo ? Play : Image}
-          label={item.isVideo ? "Video" : "Image"}
-        />
-      </div>
-    </div>
-  );
-};
-
-const MediaThumbnail = ({ item, previewUrl, index, isActive, onSelect }) => (
+const UploadSlot = ({ onClick, isUploading, label = "Add" }) => (
   <button
     type="button"
-    onClick={() => onSelect(index)}
-    className={cn(
-      "group relative aspect-[4/3] overflow-hidden rounded-2xl border bg-muted text-left transition-all duration-200 dark-card",
-      isActive
-        ? "border-primary/80 shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.35),0_16px_40px_rgba(0,0,0,0.28)]"
-        : "border-border hover:border-primary/40",
-    )}
+    onClick={onClick}
+    className="group relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-muted/30 text-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5"
   >
+    {isUploading ? (
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+    ) : (
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+        <Plus className="h-4 w-4" />
+      </div>
+    )}
+    <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">
+      {isUploading ? "Uploading..." : label}
+    </span>
+  </button>
+);
+
+/* ─── Media Thumbnail Card ─── */
+
+const MediaCard = ({ item, previewUrl, index, onRemove }) => (
+  <div className="group relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-border bg-black shadow-sm transition-all duration-200 hover:shadow-md dark-card">
     {previewUrl ? (
       item.isVideo ? (
         <video
@@ -210,35 +150,47 @@ const MediaThumbnail = ({ item, previewUrl, index, isActive, onSelect }) => (
       )
     ) : (
       <div className="flex h-full w-full items-center justify-center bg-card text-muted-foreground/50">
-        <Image className="h-5 w-5" />
+        {item.isVideo ? <Play className="h-6 w-6" /> : <Image className="h-6 w-6" />}
       </div>
     )}
 
-    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(0,0,0,0.12)_60%,rgba(0,0,0,0.72)_100%)]" />
+    {/* Gradient overlay */}
+    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_40%,rgba(0,0,0,0.5)_100%)]" />
 
-    {item.isVideo ? (
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/80 bg-black/30 backdrop-blur-sm keep-white">
-          <Play className="h-4 w-4 text-white keep-white" />
-        </div>
-      </div>
-    ) : null}
-
-    <div className="absolute left-2 top-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-white/10 bg-black/55 px-2 text-[10px] font-semibold text-white/85 backdrop-blur-md keep-white">
+    {/* Index badge */}
+    <div className="absolute left-2 top-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-black/50 px-1.5 text-[10px] font-semibold text-white backdrop-blur-sm keep-white">
       {index + 1}
     </div>
 
+    {/* Type badge */}
     <MediaPreviewBadge
       icon={item.isVideo ? Play : Image}
       label={item.isVideo ? "Video" : "Image"}
       className="absolute bottom-2 left-2"
     />
 
-    {isActive ? (
-      <div className="absolute inset-0 rounded-2xl ring-2 ring-primary/80" />
+    {/* Remove button (always visible, using theme colors for contrast) */}
+    <button
+      type="button"
+      onClick={() => onRemove(item.id)}
+      className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md transition-all duration-200 hover:scale-105 hover:bg-destructive/90"
+      aria-label={`Remove ${item.name}`}
+    >
+      <Trash2 className="h-4 w-4" />
+    </button>
+
+    {/* Play button overlay for videos */}
+    {item.isVideo ? (
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-black/30 backdrop-blur-sm keep-white">
+          <Play className="h-4 w-4 text-white keep-white" />
+        </div>
+      </div>
     ) : null}
-  </button>
+  </div>
 );
+
+/* ──────────────────── Upload Area ──────────────────── */
 
 const UploadArea = ({
   files,
@@ -248,12 +200,15 @@ const UploadArea = ({
   uploadRuleWithMedia,
   uploadRuleEmpty,
 }) => {
-  const inputRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const videoInputRef = useRef(null);
+  const anyInputRef = useRef(null);
   const filesRef = useRef(Array.isArray(files) ? files : []);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
-  const [activePreviewIndex, setActivePreviewIndex] = useState(0);
+
+  const [showUploadOptions, setShowUploadOptions] = useState(false);
 
   useEffect(() => {
     filesRef.current = Array.isArray(files) ? files : [];
@@ -320,31 +275,29 @@ const UploadArea = ({
     [previewItems, previewUrls],
   );
 
-  useEffect(() => {
-    setActivePreviewIndex((currentIndex) => {
-      if (resolvedPreviewItems.length === 0) {
-        return 0;
-      }
-
-      return Math.min(currentIndex, resolvedPreviewItems.length - 1);
-    });
-  }, [resolvedPreviewItems.length]);
-
-  const activePreview = resolvedPreviewItems[activePreviewIndex] || null;
   const hasMedia = resolvedPreviewItems.length > 0;
   const imageCount = files.filter((file) => !isVideoMedia(file)).length;
   const videoCount = files.filter((file) => isVideoMedia(file)).length;
   const canAddImage = imageCount < MAX_IMAGES;
   const canAddVideo = videoCount < MAX_VIDEOS;
-  const canAdd = canAddImage || canAddVideo;
+  const totalCount = files.length;
+  const maxTotal = MAX_IMAGES + MAX_VIDEOS;
 
-  const acceptTypes = [
-    ...(canAddImage ? ["image/*"] : []),
-    ...(canAddVideo ? ["video/*"] : []),
-  ].join(",");
+  const openImagePicker = useCallback((e) => {
+    if (e) e.stopPropagation();
+    imageInputRef.current?.click();
+    setShowUploadOptions(false);
+  }, []);
 
-  const openFilePicker = useCallback(() => {
-    inputRef.current?.click();
+  const openVideoPicker = useCallback((e) => {
+    if (e) e.stopPropagation();
+    videoInputRef.current?.click();
+    setShowUploadOptions(false);
+  }, []);
+
+  const openAnyPicker = useCallback((e) => {
+    if (e) e.stopPropagation();
+    anyInputRef.current?.click();
   }, []);
 
   const uploadSingleFile = useCallback(
@@ -416,11 +369,17 @@ const UploadArea = ({
       }
 
       if (hadUnsupportedType) {
-        setUploadError("Only image or video files are allowed.");
+        const msg = "Only image or video files are allowed.";
+        setUploadError(msg);
+        toast.error(msg);
       } else if (hadOversizedFile) {
-        setUploadError("Each file must be 4.5MB or smaller.");
+        const msg = "Each file must be 4.5MB or smaller.";
+        setUploadError(msg);
+        toast.error(msg);
       } else if (!validFiles.length) {
-        setUploadError("Please add up to 2 images and 1 video.");
+        const msg = `Please add up to ${MAX_IMAGES} images and ${MAX_VIDEOS} video.`;
+        setUploadError(msg);
+        toast.error(msg);
       }
 
       if (!validFiles.length) {
@@ -476,160 +435,170 @@ const UploadArea = ({
     setIsDragOver(true);
   };
 
-  const currentPreviewLabel = hasMedia
-    ? `${activePreviewIndex + 1} of ${resolvedPreviewItems.length}`
-    : "";
-
   return (
     <div
-      className="space-y-3"
+      className="space-y-4"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={() => setIsDragOver(false)}
     >
-      <div className={cn("space-y-4 transition-opacity", isDragOver ? "opacity-95" : "opacity-100")}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <p className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-foreground")}>
-              Upload Media
-            </p>
-            <p className={cn("text-sm", hasError ? "text-destructive/80" : "text-muted-foreground")}>
-              Add one image or video to create the primary preview.
-            </p>
-          </div>
-
-          {activePreview ? (
-            <button
-              type="button"
-              onClick={() => removeFile(activePreview.id)}
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-border/80 hover:bg-muted"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span>Remove</span>
-            </button>
-          ) : hasMedia && canAdd ? (
-            <button
-              type="button"
-              onClick={openFilePicker}
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-border/80 hover:bg-muted"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Add another</span>
-            </button>
-          ) : null}
-        </div>
-
-        {!hasMedia ? (
-          <div className="space-y-3 min-w-0">
-            <MediaHeroPreview
-              item={activePreview}
-              previewUrl={activePreview?.previewUrl}
-              onUpload={openFilePicker}
-            />
-          </div>
-        ) : (
-          <div className="grid items-start gap-6 lg:gap-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-            <div className="min-w-0 w-full">
-              <MediaHeroPreview
-                item={activePreview}
-                previewUrl={activePreview?.previewUrl}
-                onUpload={openFilePicker}
-              />
-            </div>
-
-            <div className="w-full min-w-0 lg:py-4">
-              <div className="grid grid-cols-2 gap-4">
-                {resolvedPreviewItems[0] ? (
-                  <MediaThumbnail
-                    key={resolvedPreviewItems[0].id}
-                    item={resolvedPreviewItems[0]}
-                    previewUrl={resolvedPreviewItems[0].previewUrl}
-                    index={0}
-                    isActive={0 === activePreviewIndex}
-                    onSelect={setActivePreviewIndex}
-                  />
-                ) : (
-                  <div className="aspect-[4/3] rounded-2xl bg-muted/20" />
-                )}
-
-                <div className="flex flex-col items-center justify-center gap-1 text-center">
-                  <p className="text-lg font-semibold tracking-tight text-foreground">
-                    {currentPreviewLabel}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Images: {imageCount} &bull; Video: {videoCount}
-                  </p>
-                </div>
-
-                {resolvedPreviewItems[1] ? (
-                  <MediaThumbnail
-                    key={resolvedPreviewItems[1].id}
-                    item={resolvedPreviewItems[1]}
-                    previewUrl={resolvedPreviewItems[1].previewUrl}
-                    index={1}
-                    isActive={1 === activePreviewIndex}
-                    onSelect={setActivePreviewIndex}
-                  />
-                ) : (
-                  <div className="aspect-[4/3] rounded-2xl bg-muted/30" />
-                )}
-
-                {resolvedPreviewItems[2] ? (
-                  <MediaThumbnail
-                    key={resolvedPreviewItems[2].id}
-                    item={resolvedPreviewItems[2]}
-                    previewUrl={resolvedPreviewItems[2].previewUrl}
-                    index={2}
-                    isActive={2 === activePreviewIndex}
-                    onSelect={setActivePreviewIndex}
-                  />
-                ) : canAdd ? (
-                  <button
-                    type="button"
-                    onClick={openFilePicker}
-                    className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-primary/40 bg-card transition-colors hover:border-primary hover:bg-primary/5 shadow-sm"
-                  >
-                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-primary">
-                      {isUploading ? (
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                      ) : (
-                        <Plus className="h-6 w-6 text-primary" />
-                      )}
-                      <span className="text-sm font-medium text-primary">
-                        {isUploading ? "Uploading" : "Add another"}
-                      </span>
-                    </div>
-                  </button>
-                ) : (
-                  <div className="aspect-[4/3] rounded-2xl bg-muted/30" />
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div
-          className={cn(
-            "rounded-xl border bg-transparent px-4 py-2.5",
-            hasError ? "border-destructive/30" : "border-border",
-          )}
-        >
-            <p className={cn("text-xs font-normal leading-relaxed", hasError ? "text-destructive/80" : "text-muted-foreground")}>
-            {hasMedia
-              ? uploadRuleWithMedia
-              : uploadRuleEmpty}
+      {/* ─── Header: Title + Upload Type Buttons ─── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-0.5">
+          <p className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-foreground")}>
+            Upload Media
+          </p>
+          <p className={cn("text-sm", hasError ? "text-destructive/80" : "text-muted-foreground")}>
+            {totalCount}/{maxTotal} files uploaded &bull; {imageCount}/{MAX_IMAGES} images &bull; {videoCount}/{MAX_VIDEOS} video
           </p>
         </div>
       </div>
 
+      {/* ─── Media Grid ─── */}
+      {!hasMedia ? (
+        /* Empty state: Large drop zone */
+        <div className="relative flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShowUploadOptions(!showUploadOptions)}
+            className={cn(
+              "group flex w-full flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-all duration-300",
+              isDragOver
+                ? "border-primary bg-primary/5"
+                : showUploadOptions
+                  ? "border-primary/40 bg-primary/5"
+                  : hasError
+                    ? "border-destructive/40 bg-destructive/5 hover:border-destructive/60"
+                    : "border-border bg-muted/20 hover:border-primary/40 hover:bg-primary/5",
+            )}
+          >
+            <div className={cn(
+              "flex h-14 w-14 items-center justify-center rounded-2xl border transition-colors",
+              isDragOver || showUploadOptions
+                ? "border-primary/50 bg-primary/10 text-primary"
+                : "border-border bg-card text-muted-foreground group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary",
+            )}>
+              <Plus className={cn("h-6 w-6 transition-transform duration-200", showUploadOptions ? "rotate-45" : "")} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-base font-semibold text-foreground">
+                Upload images or video
+              </p>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Drag & drop or click to browse. Max {MAX_IMAGES} images + {MAX_VIDEOS} video.
+              </p>
+            </div>
+          </button>
+          
+          {showUploadOptions && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex w-48 flex-col gap-1 p-2 bg-card border border-border/80 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] animate-in fade-in zoom-in-95 duration-200 dark-card">
+              {canAddImage && (
+                <button
+                  type="button"
+                  onClick={openImagePicker}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-all duration-200 hover:bg-muted"
+                >
+                  <Image className="h-4 w-4 text-muted-foreground" />
+                  <span>Image ad</span>
+                </button>
+              )}
+              {canAddVideo && (
+                <button
+                  type="button"
+                  onClick={openVideoPicker}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-all duration-200 hover:bg-muted"
+                >
+                  <Play className="h-4 w-4 text-muted-foreground" />
+                  <span>Video ad</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Media grid with thumbnails */
+        <div className={cn(
+          "grid gap-3 transition-opacity",
+          isDragOver ? "opacity-70" : "opacity-100",
+          resolvedPreviewItems.length === 1
+            ? "grid-cols-2 sm:grid-cols-3"
+            : resolvedPreviewItems.length === 2
+              ? "grid-cols-2 sm:grid-cols-3"
+              : "grid-cols-2 sm:grid-cols-3",
+        )}>
+          {resolvedPreviewItems.map((item, index) => (
+            <MediaCard
+              key={item.id}
+              item={item}
+              previewUrl={item.previewUrl}
+              index={index}
+              onRemove={removeFile}
+            />
+          ))}
+
+          {/* Add more slots */}
+          {canAddImage ? (
+            <UploadSlot
+              onClick={openImagePicker}
+              isUploading={isUploading}
+              label={`Image (${imageCount}/${MAX_IMAGES})`}
+            />
+          ) : null}
+          {canAddVideo ? (
+            <UploadSlot
+              onClick={openVideoPicker}
+              isUploading={isUploading}
+              label={`Video (${videoCount}/${MAX_VIDEOS})`}
+            />
+          ) : null}
+        </div>
+      )}
+
+      {/* ─── Upload Rules ─── */}
+      <div
+        className={cn(
+          "rounded-xl border bg-transparent px-4 py-2.5",
+          hasError ? "border-destructive/30" : "border-border",
+        )}
+      >
+          <p className={cn("text-xs font-normal leading-relaxed", hasError ? "text-destructive/80" : "text-muted-foreground")}>
+          {hasMedia
+            ? uploadRuleWithMedia
+            : uploadRuleEmpty}
+        </p>
+      </div>
+
+      {/* ─── Error Message ─── */}
       {uploadError ? (
         <p className="px-1 text-sm font-medium text-rose-300">{uploadError}</p>
       ) : null}
 
+      {/* ─── Hidden File Inputs ─── */}
       <input
-        ref={inputRef}
+        ref={imageInputRef}
         type="file"
-        accept={acceptTypes}
+        accept="image/*"
+        multiple
+        onChange={(e) => {
+          void processFiles(e.target.files);
+          e.target.value = "";
+        }}
+        className="hidden"
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/*"
+        onChange={(e) => {
+          void processFiles(e.target.files);
+          e.target.value = "";
+        }}
+        className="hidden"
+      />
+      <input
+        ref={anyInputRef}
+        type="file"
+        accept="image/*,video/*"
         multiple
         onChange={(e) => {
           void processFiles(e.target.files);

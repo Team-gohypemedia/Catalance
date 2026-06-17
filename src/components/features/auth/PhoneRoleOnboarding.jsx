@@ -847,7 +847,7 @@ function PhoneRoleOnboarding() {
                 )}
               >
                 {isSaving ? <Loader2 className="size-4 animate-spin text-white keep-white" /> : null}
-                {isSaving ? "Saving..." : isEmailRequired ? "Continue" : "Continue with WhatsApp"}
+                {isSaving ? "Saving..." : "Continue"}
 
               </button>
             </div>
